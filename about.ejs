@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>About | AI Directory</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+</head>
+  <script>
+  const menuBtn = document.querySelector(".menu-toggle");
+  const mobileMenu = document.querySelector(".mobile-menu");
+  const overlay = document.querySelector(".menu-overlay");
+
+  menuBtn.addEventListener("click", () => {
+    mobileMenu.classList.toggle("active");
+    overlay.classList.toggle("active");
+  });
+
+  overlay.addEventListener("click", () => {
+    mobileMenu.classList.remove("active");
+    overlay.classList.remove("active");
+  });
+  </script>
+<body>
+
+<%- include("partials/header") %>
+
+<main class="page-container">
+
+<section class="about-section">
+
+<h1>About AIDEX</h1>
+
+<p>
+
+AIDEX helps you discover the best AI tools across categories like writing, coding, image generation, video creation, and more.
+
+</p>
+
+<p>
+
+Our mission is to make AI tools easy to find for creators, students, businesses, and developers.
+
+</p>
+
+</section>
+
+
+<section class="team-section">
+
+<h2>Meet Our Team</h2>
+
+<div class="team-grid">
+
+<div class="team-card">
+
+<h3>Ananya Prabal Das</h3>
+
+<p>CEO & Co-Founder</p>
+
+</div>
+
+<div class="team-card">
+
+<h3>Chhanda Prabal Das</h3>
+
+<p>Co-Founder & Adviser</p>
+
+</div>
+
+</div>
+
+</section>
+
+</main>
+
+<%- include("partials/footer") %>
+
+</body>
+</html>

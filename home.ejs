@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>AIDEX | Discover the Best AI Tools</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+
+<!-- ================= NAVBAR ================= -->
+
+<nav class="navbar">
+
+<div class="logo">AIDEX</div>
+
+<button class="menu-toggle">☰</button>
+
+<ul class="nav-links">
+<li><a href="/">Home</a></li>
+<li><a href="/tools">Tools</a></li>
+<li><a href="/trending">Trending</a></li>
+<li><a href="/submit">Submit</a></li>
+<li><a href="/about">About</a></li>
+</ul>
+
+</nav>
+
+
+<!-- MOBILE MENU -->
+
+<div class="mobile-menu">
+<a href="/">Home</a>
+<a href="/tools">Tools</a>
+<a href="/trending">Trending</a>
+<a href="/submit">Submit</a>
+<a href="/about">About</a>
+</div>
+
+<div class="menu-overlay"></div>
+
+
+<!-- ================= HERO ================= -->
+
+<section class="hero">
+
+<h1>Welcome to the AIDEX</h1>
+
+<p>Discover the best AI tools in one place</p>
+
+<a href="/tools" class="hero-btn">Explore Tools</a>
+  <form action="/search" method="GET" class="search-form">
+    <input type="text" name="q" placeholder="Search AI tools..." required>
+    <button type="submit">Search</button>
+  </form>
+
+  </section>
+
+</section>
+
+
+<!-- ================= CATEGORY SECTION ================= -->
+
+<section class="categories-section">
+
+<h2>Explore by Category</h2>
+
+<div class="categories">
+
+<%
+const categories = [
+"Writing AI",
+"Image AI",
+"Video AI",
+"Coding AI",
+"ML AI"
+];
+
+categories.forEach(function(category){ 
+%>
+
+<a class="category-card"
+href="/tools/category/<%= encodeURIComponent(category) %>">
+
+<%= category %>
+
+</a>
+
+<% }) %>
+
+</div>
+
+</section>
+
+
+<!-- ================= FEATURED TOOLS ================= -->
+
+<section class="featured">
+
+<h2>Featured Tools</h2>
+
+<div class="tools-grid">
+
+<% if (tools && tools.length > 0) { %>
+
+<% tools.forEach(function(tool){ %>
+
+<div class="tool-card">
+
+<h3><%= tool.name %></h3>
+
+<p><%= tool.description %></p>
+
+<a href="<%= tool.url %>" target="_blank">
+Visit Tool
+</a>
+
+</div>
+
+<% }) %>
+
+<% } else { %>
+
+<p style="text-align:center;">No tools available yet.</p>
+
+<% } %>
+
+</div>
+
+</section>
+
+
+<!-- ================= FOOTER ================= -->
+
+<footer class="simple-footer">
+
+<p>© <%= new Date().getFullYear() %> AI Directory. All rights reserved.</p>
+
+</footer>
+
+
+<!-- MOBILE MENU SCRIPT (MUST BE AT BOTTOM) -->
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function(){
+
+const menuBtn = document.querySelector(".menu-toggle");
+const mobileMenu = document.querySelector(".mobile-menu");
+const overlay = document.querySelector(".menu-overlay");
+
+menuBtn.addEventListener("click", function(){
+mobileMenu.classList.toggle("active");
+overlay.classList.toggle("active");
+});
+
+overlay.addEventListener("click", function(){
+mobileMenu.classList.remove("active");
+overlay.classList.remove("active");
+});
+
+});
+
+</script>
+
+</body>
+</html>

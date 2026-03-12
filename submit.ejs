@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Submit AI Tool | AI Directory</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+</head>
+
+  <script>
+  const menuBtn = document.querySelector(".menu-toggle");
+  const mobileMenu = document.querySelector(".mobile-menu");
+  const overlay = document.querySelector(".menu-overlay");
+
+  menuBtn.addEventListener("click", () => {
+    mobileMenu.classList.toggle("active");
+    overlay.classList.toggle("active");
+  });
+
+  overlay.addEventListener("click", () => {
+    mobileMenu.classList.remove("active");
+    overlay.classList.remove("active");
+  });
+  </script>
+<body>
+
+<%- include("partials/header") %>
+
+<main class="page-container">
+
+<h1>Submit a New AI Tool</h1>
+
+<p class="page-subtitle">
+Share useful AI tools with the community.
+</p>
+
+<form action="/submit" method="POST" class="submit-form">
+
+<input
+type="text"
+name="name"
+placeholder="AI Tool Name"
+required
+>
+
+<input
+type="text"
+name="category"
+placeholder="Category (Writing AI, Image AI...)"
+required
+>
+
+<input
+type="url"
+name="url"
+placeholder="Official Website URL"
+required
+>
+
+<textarea
+name="description"
+rows="4"
+placeholder="Short description"
+required
+></textarea>
+
+<button type="submit">
+
+Submit Tool 🚀
+
+</button>
+
+</form>
+
+</main>
+
+<%- include("partials/footer") %>
+
+</body>
+</html>

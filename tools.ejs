@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>All AI Tools | AI Directory</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+</head>
+
+  <script>
+  const menuBtn = document.querySelector(".menu-toggle");
+  const mobileMenu = document.querySelector(".mobile-menu");
+  const overlay = document.querySelector(".menu-overlay");
+
+  menuBtn.addEventListener("click", () => {
+    mobileMenu.classList.toggle("active");
+    overlay.classList.toggle("active");
+  });
+
+  overlay.addEventListener("click", () => {
+    mobileMenu.classList.remove("active");
+    overlay.classList.remove("active");
+  });
+  </script>
+
+<body>
+
+<%- include('partials/header') %>
+
+<main class="page-container">
+
+<h1>All AI Tools</h1>
+
+<div class="tools-grid">
+
+<% tools.forEach(tool => { %>
+
+<div class="tool-card">
+
+<h3><%= tool.name %></h3>
+
+<p class="tool-category"><%= tool.category %></p>
+
+<p><%= tool.description %></p>
+
+<a href="<%= tool.url %>" target="_blank">Visit Tool</a>
+
+</div>
+
+<% }) %>
+
+</div>
+
+</main>
+
+<%- include('partials/footer') %>
+
+</body>
+</html>
