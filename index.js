@@ -1,10 +1,5 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const mongoose = require("mongoose");
-const Tool = require("./Tool");
-mongoose.connect(process.env.MONGO_URI)
-.then(() => console.log("MongoDB connected"))
-.catch(err => console.log(err));
 const fs = require("fs");
 const path = require("path");
 
@@ -12,7 +7,6 @@ const app = express();
 
 // ---------- MIDDLEWARE ----------
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.json());
 app.use(express.static("public"));
 app.set("view engine", "ejs");
 
@@ -132,25 +126,28 @@ app.get("/tools", function(req, res) {
   res.render("tools", { tools: aiTools });
 });
 
+// Search
+app.get("/search", function(req, res) {
 
-app.get("/search", (req, res) => {
+  const query = req.query.q.toLowerCase();
 
-const query = req.query.q.toLowerCase();
+  const results = aiTools.filter(function(tool) {
+    return (
+      tool.name.toLowerCase().includes(query) ||
+      tool.category.toLowerCase().includes(query) ||
+      tool.description.toLowerCase().includes(query)
+    );
+  });
 
-  const results = aiTools.filter(tool =>
-  tool.name.toLowerCase().includes(query) ||
-  tool.category.toLowerCase().includes(query) ||
-  tool.description.toLowerCase().includes(query)
-  );
-
-res.render("tools", { tools: results });
-
+  res.render("tools", { tools: results });
 });
+
 // Trending
 app.get("/trending", function(req, res) {
   const trendingTools = aiTools.filter(function(tool) {
     return tool.trending === true;
   });
+
   res.render("trending", { tools: trendingTools });
 });
 
@@ -161,6 +158,7 @@ app.get("/submit", function(req, res) {
 
 // Submit tool
 app.post("/submit", function(req, res) {
+
   const name = req.body.name;
   const category = req.body.category;
   const url = req.body.url;
@@ -193,6 +191,7 @@ app.post("/submit", function(req, res) {
 
   aiTools.push(newTool);
   saveTools();
+
   console.log("New tool added:", name);
 
   res.redirect("/tools");
@@ -205,33 +204,19 @@ app.get("/about", function(req, res) {
 
 // Category filter
 app.get("/tools/category/:name", function(req, res) {
+
   const category = req.params.name.toLowerCase();
+
   const filtered = aiTools.filter(function(tool) {
     return tool.category.toLowerCase() === category;
   });
+
   res.render("tools", { tools: filtered });
 });
 
 // ---------- SERVER ----------
 const PORT = process.env.PORT || 3000;
 
-app.post("/rate/:id", async (req, res) => {
-
-  const tool = await Tool.findById(req.params.id);
-
-  const rating = req.body.rating;
-
-  const total = tool.rating * tool.ratingsCount;
-
-  tool.ratingsCount += 1;
-
-  tool.rating = (total + rating) / tool.ratingsCount;
-
-  await tool.save();
-
-  res.json({ success: true });
-
-});
 app.listen(PORT, function() {
   console.log("Server running on port " + PORT);
 });
