@@ -215,6 +215,23 @@ app.get("/tools/category/:name", function(req, res) {
 // ---------- SERVER ----------
 const PORT = process.env.PORT || 3000;
 
+app.post("/rate/:id", async (req, res) => {
+
+  const tool = await Tool.findById(req.params.id);
+
+  const rating = req.body.rating;
+
+  const total = tool.rating * tool.ratingsCount;
+
+  tool.ratingsCount += 1;
+
+  tool.rating = (total + rating) / tool.ratingsCount;
+
+  await tool.save();
+
+  res.json({ success: true });
+
+});
 app.listen(PORT, function() {
   console.log("Server running on port " + PORT);
 });
