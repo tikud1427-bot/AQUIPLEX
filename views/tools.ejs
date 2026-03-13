@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>All AI Tools | AI Directory</title>
+<title><%= tool.name %> | AIDEX</title>
 
 <link rel="stylesheet" href="/css/styles.css">
 
@@ -16,38 +15,41 @@
 
 <body>
 
-<%- include('partials/header') %>
-
-<main class="page-container">
-
-<h1>All AI Tools</h1>
-
-<div class="tools-grid">
-
-<% tools.forEach(tool => { %>
+<div class="tool-container">
 
 <div class="tool-card">
 
-<h3><%= tool.name %></h3>
+<h1 class="tool-title">
+<%= tool.name %>
+</h1>
 
-<p class="tool-category"><%= tool.category %></p>
+<% if(tool.trending){ %>
+<span class="trending-badge">🔥 Trending Tool</span>
+<% } %>
 
-<p><%= tool.description %></p>
+<p class="tool-category">
+Category: <strong><%= tool.category %></strong>
+</p>
 
-<a href="<%= tool.url %>" target="_blank">Visit Tool</a>
+<p class="tool-description">
+<%= tool.description %>
+</p>
 
+<div class="tool-buttons">
 
+<a href="<%= tool.url %>" target="_blank" class="visit-btn">
+Visit Official Website
+</a>
+
+<a href="/tools" class="back-btn">
+← Back to Tools
+</a>
 
 </div>
 
-<% }) %>
-
 </div>
 
-</main>
-
-<%- include('partials/footer') %>
-
+</div>
 
 </body>
 </html>
