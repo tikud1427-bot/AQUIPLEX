@@ -654,25 +654,4 @@ color:white;
 cursor:pointer;
 font-weight:500;
 }
-/* Rating Section */
 
-.rating{
-  font-size:14px;
-  margin-top:5px;
-  color:#f39c12;
-}
-
-.stars{
-  margin-top:5px;
-}
-
-.star{
-  cursor:pointer;
-  font-size:18px;
-  margin-right:4px;
-  transition:transform 0.2s;
-}
-
-.star:hover{
-  transform:scale(1.2);
-}
