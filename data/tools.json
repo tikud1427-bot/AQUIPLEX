@@ -1,44 +1,71 @@
 [
-  {"id":"chatgpt","name":"ChatGPT","category":"Writing AI","url":"https://chat.openai.com","description":"AI chatbot for writing, coding, and research.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRIg4CnZC_9QQXSUq5q9Fd-QcA_asqCVxEZaA&s"},
-  {"id":"claude","name":"Claude","category":"Writing AI","url":"https://claude.ai","description":"Advanced AI assistant by Anthropic.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://media.licdn.com/dms/image/v2/D4E0BAQFko-zWIZk_pw/company-logo_200_200/B4EZhiRWKvHgAI-/0/1753995371543/claude_logo?e=2147483647&v=beta&t=CVNmFKyWig0Uo78oAr3II6KVLu_o0aXPtnt4S6XgOr8"},
-  {"id":"grammarly","name":"Grammarly","category":"Writing AI","url":"https://grammarly.com","description":"AI grammar and writing assistant.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://play-lh.googleusercontent.com/6Xe9DWiMC76daosOC80Im9gqe25Q9P55LxJIGPTLbcdFkMXOur4mk8jTVxoqOaiAvAG4=w600-h300-pc0xffffff-pd"},
-  {"id":"jasper","name":"Jasper","category":"Writing AI","url":"https://jasper.ai","description":"AI marketing copywriter.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://cdn.prod.website-files.com/6807f44ec8a964d38a705332/683ba90f27d44bc11e5687ea_Jasper%20Logo%20Square.svg"},
-  {"id":"copyai","name":"Copy.ai","category":"Writing AI","url":"https://copy.ai","description":"AI content generator for marketing.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://pbs.twimg.com/profile_images/1882909654545551360/QPAmppjU_400x400.jpg"},
-  {"id":"notionai","name":"Notion AI","category":"Writing AI","url":"https://notion.so","description":"AI writing and productivity assistant.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png"},
-  {"id":"wordtune","name":"Wordtune","category":"Writing AI","url":"https://wordtune.com","description":"AI tool to rewrite sentences.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQw8HisgRfadLLaFV72fAXDsCvydREoGi13zQ&s"},
+{"id":"chatgpt","name":"ChatGPT","category":"Writing AI","url":"https://chat.openai.com","description":"AI chatbot for writing, coding, and research.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRIg4CnZC_9QQXSUq5q9Fd-QcA_asqCVxEZaA&s","clicks":0},
 
-  {"id":"midjourney","name":"Midjourney","category":"Image AI","url":"https://midjourney.com","description":"AI art generator using prompts.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSKjw2R-gQxbBQW4Q61r8zNl-qoJodNDJBchw&s"},
-  {"id":"dalle","name":"DALL-E","category":"Image AI","url":"https://openai.com/dall-e","description":"AI image generation by OpenAI.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://i.pinimg.com/736x/7e/ee/2f/7eee2fc41654561afbe2ded749b06b29.jpg"},
-  {"id":"stablediffusion","name":"Stable Diffusion","category":"Image AI","url":"https://stability.ai","description":"Open-source AI image generator.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://assets.topadvisor.com/media/_solution_logo_04032024_26265377.png"},
-  {"id":"leonardoai","name":"Leonardo AI","category":"Image AI","url":"https://leonardo.ai","description":"AI art generator for creators.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://images.seeklogo.com/logo-png/62/1/leonardo-ai-logo-png_seeklogo-621169.png"},
-  {"id":"canvaai","name":"Canva AI","category":"Image AI","url":"https://canva.com","description":"AI design and image tools.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://miro.medium.com/v2/resize:fit:1400/0*tviVu77uKID2H6Jn.png"},
-  {"id":"playgroundai","name":"Playground AI","category":"Image AI","url":"https://playgroundai.com","description":"Create images using AI.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://gdm-catalog-fmapi-prod.imgix.net/ProductLogo/dcc4ccc7-63ff-4537-8737-91a4b603d489.jpeg?w=90&h=90&fit=max&dpr=3&auto=format&q=50"},
+{"id":"claude","name":"Claude","category":"Writing AI","url":"https://claude.ai","description":"Advanced AI assistant by Anthropic.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://media.licdn.com/dms/image/v2/D4E0BAQFko-zWIZk_pw/company-logo_200_200/B4EZhiRWKvHgAI-/0/1753995371543/claude_logo?e=2147483647&v=beta&t=CVNmFKyWig0Uo78oAr3II6KVLu_o0aXPtnt4S6XgOr8","clicks":0},
 
-  {"id":"runwayml","name":"Runway ML","category":"Video AI","url":"https://runwayml.com","description":"AI video editing platform.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR3qi8ShndOjduTYHfKz6AUPdFI4y5hD9uY8w&s"},
-  {"id":"synthesia","name":"Synthesia","category":"Video AI","url":"https://synthesia.io","description":"Create videos using AI avatars.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://cdn.prod.website-files.com/65e89895c5a4b8d764c0d710/6618fd69d436784c0bba5e9e_webclip.png"},
-  {"id":"pictory","name":"Pictory","category":"Video AI","url":"https://pictory.ai","description":"Convert text into videos.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiqQg9wKLMqfJprupnIZf2j5StSyr7VlD97A&s"},
-  {"id":"lumen5","name":"Lumen5","category":"Video AI","url":"https://lumen5.com","description":"AI video creator for social media.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRfe1BzLmUnDfhaNzQ484EZzoLpRTL6jSIWFQ&s"},
-  {"id":"heygen","name":"HeyGen","category":"Video AI","url":"https://heygen.com","description":"AI avatar video generator.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://img.icons8.com/fluent/1200/heygen.jpg"},
+{"id":"grammarly","name":"Grammarly","category":"Writing AI","url":"https://grammarly.com","description":"AI grammar and writing assistant.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://play-lh.googleusercontent.com/6Xe9DWiMC76daosOC80Im9gqe25Q9P55LxJIGPTLbcdFkMXOur4mk8jTVxoqOaiAvAG4=w600-h300-pc0xffffff-pd","clicks":0},
 
-  {"id":"githubcopilot","name":"GitHub Copilot","category":"Coding AI","url":"https://github.com/features/copilot","description":"AI coding assistant by GitHub.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJ171TqGq21JDajxZwUYBqX9m8zN7SZsMVew&s"},
-  {"id":"tabnine","name":"Tabnine","category":"Coding AI","url":"https://tabnine.com","description":"AI code completion tool.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://tabnine.gallerycdn.vsassets.io/extensions/tabnine/tabnine-visual-studio/1.271.2/1771433033747/Microsoft.VisualStudio.Services.Icons.Default"},
-  {"id":"replitghostwriter","name":"Replit Ghostwriter","category":"Coding AI","url":"https://replit.com","description":"AI coding help inside Replit.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-IljXIq1jDdbXUyw1WtpogV0BuvdENxTnxQ&s"},
-  {"id":"codeium","name":"Codeium","category":"Coding AI","url":"https://codeium.com","description":"Free AI coding assistant.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://res.cloudinary.com/apideck/image/upload/w_196,f_auto/v1674409328/icons/codeium.png"},
-  {"id":"amazoncodewhisperer","name":"Amazon CodeWhisperer","category":"Coding AI","url":"https://aws.amazon.com/codewhisperer","description":"AI coding tool by Amazon.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7QTwZCXP46zZwuXGqHI2I4L-5an1_z1rcqA&s"},
+{"id":"jasper","name":"Jasper","category":"Writing AI","url":"https://jasper.ai","description":"AI marketing copywriter.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://cdn.prod.website-files.com/6807f44ec8a964d38a705332/683ba90f27d44bc11e5687ea_Jasper%20Logo%20Square.svg","clicks":0},
 
-  {"id":"huggingface","name":"Hugging Face","category":"ML AI","url":"https://huggingface.co","description":"Machine learning models and datasets.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://images.seeklogo.com/logo-png/51/1/hugging-face-icon-logo-png_seeklogo-515010.png"},
-  {"id":"tensorflow","name":"TensorFlow","category":"ML AI","url":"https://tensorflow.org","description":"Machine learning framework.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Tensorflow_logo.svg/250px-Tensorflow_logo.svg.png?_=20170429160244"},
-  {"id":"pytorch","name":"PyTorch","category":"ML AI","url":"https://pytorch.org","description":"Deep learning framework.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://blog.christianperone.com/wp-content/uploads/2018/10/pytorch-logo-700x700.png"},
-  {"id":"googlevertexai","name":"Google Vertex AI","category":"ML AI","url":"https://cloud.google.com/vertex-ai","description":"ML development platform.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRKrTg_Ygs_SNsALOCO1-s6-KYS2CKFd0LvfA&s"},
+{"id":"copyai","name":"Copy.ai","category":"Writing AI","url":"https://copy.ai","description":"AI content generator for marketing.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://pbs.twimg.com/profile_images/1882909654545551360/QPAmppjU_400x400.jpg","clicks":0},
 
-  {"id":"perplexity","name":"Perplexity AI","category":"Research AI","url":"https://perplexity.ai","description":"AI powered search engine.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://framerusercontent.com/images/gcMkPKyj2RX8EOEja8A1GWvCb7E.jpg?width=2000&height=2000"},
-  {"id":"elicit","name":"Elicit","category":"Research AI","url":"https://elicit.org","description":"AI research assistant.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6DtJCAbzwl7sYFcAo0xfE78VgsLZICsGYGQ&s"},
-  {"id":"scite","name":"Scite","category":"Research AI","url":"https://scite.ai","description":"AI tool for scientific papers.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDrc_VwLwmKuBiPVUOKD-a69SiTfWa_eE-tw&s"},
+{"id":"notionai","name":"Notion AI","category":"Writing AI","url":"https://notion.so","description":"AI writing and productivity assistant.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png","clicks":0},
 
-  {"id":"elevenlabs","name":"ElevenLabs","category":"Voice AI","url":"https://elevenlabs.io","description":"AI voice generation platform.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://11labs-nonprd-15f22c1d.s3.eu-west-3.amazonaws.com/a2ea339b-8b5e-41bb-b706-24eda8a4c9e3/elevenlabs-symbol.svg"},
-  {"id":"murfai","name":"Murf AI","category":"Voice AI","url":"https://murf.ai","description":"AI voiceover generator.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://avatars.githubusercontent.com/u/83059529?s=200&v=4"},
-  {"id":"playht","name":"PlayHT","category":"Voice AI","url":"https://play.ht","description":"Text to speech AI tool.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://playtht-website-assets.s3.amazonaws.com/img/logos/playCube-DarkMode.svg"},
+{"id":"wordtune","name":"Wordtune","category":"Writing AI","url":"https://wordtune.com","description":"AI tool to rewrite sentences.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQw8HisgRfadLLaFV72fAXDsCvydREoGi13zQ&s","clicks":0},
 
-  {"id":"zapierai","name":"Zapier AI","category":"Automation AI","url":"https://zapier.com","description":"Automation workflows using AI.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQrgJWEcdqjFkUTx9rXbfJcBocvDPxM2aAm_Q&s"},
-  {"id":"makeai","name":"Make AI","category":"Automation AI","url":"https://make.com","description":"AI automation platform.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQM0tgn-mqeJ0ruCsmZ6VGfMafy6iL2ol4Pdg&s"}
+{"id":"midjourney","name":"Midjourney","category":"Image AI","url":"https://midjourney.com","description":"AI art generator using prompts.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSKjw2R-gQxbBQW4Q61r8zNl-qoJodNDJBchw&s","clicks":0},
+
+{"id":"dalle","name":"DALL-E","category":"Image AI","url":"https://openai.com/dall-e","description":"AI image generation by OpenAI.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://i.pinimg.com/736x/7e/ee/2f/7eee2fc41654561afbe2ded749b06b29.jpg","clicks":0},
+
+{"id":"stablediffusion","name":"Stable Diffusion","category":"Image AI","url":"https://stability.ai","description":"Open-source AI image generator.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://assets.topadvisor.com/media/_solution_logo_04032024_26265377.png","clicks":0},
+
+{"id":"leonardoai","name":"Leonardo AI","category":"Image AI","url":"https://leonardo.ai","description":"AI art generator for creators.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://images.seeklogo.com/logo-png/62/1/leonardo-ai-logo-png_seeklogo-621169.png","clicks":0},
+
+{"id":"canvaai","name":"Canva AI","category":"Image AI","url":"https://canva.com","description":"AI design and image tools.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://miro.medium.com/v2/resize:fit:1400/0*tviVu77uKID2H6Jn.png","clicks":0},
+
+{"id":"playgroundai","name":"Playground AI","category":"Image AI","url":"https://playgroundai.com","description":"Create images using AI.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://gdm-catalog-fmapi-prod.imgix.net/ProductLogo/dcc4ccc7-63ff-4537-8737-91a4b603d489.jpeg?w=90&h=90&fit=max&dpr=3&auto=format&q=50","clicks":0},
+
+{"id":"runwayml","name":"Runway ML","category":"Video AI","url":"https://runwayml.com","description":"AI video editing platform.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR3qi8ShndOjduTYHfKz6AUPdFI4y5hD9uY8w&s","clicks":0},
+
+{"id":"synthesia","name":"Synthesia","category":"Video AI","url":"https://synthesia.io","description":"Create videos using AI avatars.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://cdn.prod.website-files.com/65e89895c5a4b8d764c0d710/6618fd69d436784c0bba5e9e_webclip.png","clicks":0},
+
+{"id":"pictory","name":"Pictory","category":"Video AI","url":"https://pictory.ai","description":"Convert text into videos.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTiqQg9wKLMqfJprupnIZf2j5StSyr7VlD97A&s","clicks":0},
+
+{"id":"lumen5","name":"Lumen5","category":"Video AI","url":"https://lumen5.com","description":"AI video creator for social media.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRfe1BzLmUnDfhaNzQ484EZzoLpRTL6jSIWFQ&s","clicks":0},
+
+{"id":"heygen","name":"HeyGen","category":"Video AI","url":"https://heygen.com","description":"AI avatar video generator.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://img.icons8.com/fluent/1200/heygen.jpg","clicks":0},
+
+{"id":"githubcopilot","name":"GitHub Copilot","category":"Coding AI","url":"https://github.com/features/copilot","description":"AI coding assistant by GitHub.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQJ171TqGq21JDajxZwUYBqX9m8zN7SZsMVew&s","clicks":0},
+
+{"id":"tabnine","name":"Tabnine","category":"Coding AI","url":"https://tabnine.com","description":"AI code completion tool.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://tabnine.gallerycdn.vsassets.io/extensions/tabnine/tabnine-visual-studio/1.271.2/1771433033747/Microsoft.VisualStudio.Services.Icons.Default","clicks":0},
+
+{"id":"replitghostwriter","name":"Replit Ghostwriter","category":"Coding AI","url":"https://replit.com","description":"AI coding help inside Replit.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS-IljXIq1jDdbXUyw1WtpogV0BuvdENxTnxQ&s","clicks":0},
+
+{"id":"codeium","name":"Codeium","category":"Coding AI","url":"https://codeium.com","description":"Free AI coding assistant.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://res.cloudinary.com/apideck/image/upload/w_196,f_auto/v1674409328/icons/codeium.png","clicks":0},
+
+{"id":"amazoncodewhisperer","name":"Amazon CodeWhisperer","category":"Coding AI","url":"https://aws.amazon.com/codewhisperer","description":"AI coding tool by Amazon.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7QTwZCXP46zZwuXGqHI2I4L-5an1_z1rcqA&s","clicks":0},
+
+{"id":"huggingface","name":"Hugging Face","category":"ML AI","url":"https://huggingface.co","description":"Machine learning models and datasets.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://images.seeklogo.com/logo-png/51/1/hugging-face-icon-logo-png_seeklogo-515010.png","clicks":0},
+
+{"id":"tensorflow","name":"TensorFlow","category":"ML AI","url":"https://tensorflow.org","description":"Machine learning framework.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/Tensorflow_logo.svg/250px-Tensorflow_logo.svg.png","clicks":0},
+
+{"id":"pytorch","name":"PyTorch","category":"ML AI","url":"https://pytorch.org","description":"Deep learning framework.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://blog.christianperone.com/wp-content/uploads/2018/10/pytorch-logo-700x700.png","clicks":0},
+
+{"id":"googlevertexai","name":"Google Vertex AI","category":"ML AI","url":"https://cloud.google.com/vertex-ai","description":"ML development platform.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRKrTg_Ygs_SNsALOCO1-s6-KYS2CKFd0LvfA&s","clicks":0},
+
+{"id":"perplexity","name":"Perplexity AI","category":"Research AI","url":"https://perplexity.ai","description":"AI powered search engine.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://framerusercontent.com/images/gcMkPKyj2RX8EOEja8A1GWvCb7E.jpg?width=2000&height=2000","clicks":0},
+
+{"id":"elicit","name":"Elicit","category":"Research AI","url":"https://elicit.org","description":"AI research assistant.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6DtJCAbzwl7sYFcAo0xfE78VgsLZICsGYGQ&s","clicks":0},
+
+{"id":"scite","name":"Scite","category":"Research AI","url":"https://scite.ai","description":"AI tool for scientific papers.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDrc_VwLwmKuBiPVUOKD-a69SiTfWa_eE-tw&s","clicks":0},
+
+{"id":"elevenlabs","name":"ElevenLabs","category":"Voice AI","url":"https://elevenlabs.io","description":"AI voice generation platform.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://11labs-nonprd-15f22c1d.s3.eu-west-3.amazonaws.com/a2ea339b-8b5e-41bb-b706-24eda8a4c9e3/elevenlabs-symbol.svg","clicks":0},
+
+{"id":"murfai","name":"Murf AI","category":"Voice AI","url":"https://murf.ai","description":"AI voiceover generator.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://avatars.githubusercontent.com/u/83059529?s=200&v=4","clicks":0},
+
+{"id":"playht","name":"PlayHT","category":"Voice AI","url":"https://play.ht","description":"Text to speech AI tool.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://playtht-website-assets.s3.amazonaws.com/img/logos/playCube-DarkMode.svg","clicks":0},
+
+{"id":"zapierai","name":"Zapier AI","category":"Automation AI","url":"https://zapier.com","description":"Automation workflows using AI.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQrgJWEcdqjFkUTx9rXbfJcBocvDPxM2aAm_Q&s","clicks":0},
+
+{"id":"makeai","name":"Make AI","category":"Automation AI","url":"https://make.com","description":"AI automation platform.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQM0tgn-mqeJ0ruCsmZ6VGfMafy6iL2ol4Pdg&s","clicks":0}
 ]
