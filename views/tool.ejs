@@ -19,6 +19,13 @@
 
 <div class="tool-card">
 
+<!-- TOOL LOGO (NEW ADDITION) -->
+<% if(tool.logo){ %>
+<div class="tool-logo-wrapper">
+<img src="<%= tool.logo %>" alt="<%= tool.name %> Logo" class="tool-logo-large">
+</div>
+<% } %>
+
 <h1 class="tool-title">
 <%= tool.name %>
 </h1>
@@ -31,9 +38,28 @@
 Category: <strong><%= tool.category %></strong>
 </p>
 
+<!-- MAIN DESCRIPTION -->
 <p class="tool-description">
 <%= tool.description %>
 </p>
+
+<!-- EXTRA INFO SECTION (NEW UPGRADE) -->
+<div class="tool-extra-info">
+
+<h3>About this AI Tool</h3>
+
+<p>
+<%= tool.name %> is one of the popular tools in the <strong><%= tool.category %></strong> category.
+It helps users improve productivity using artificial intelligence and modern automation technology.
+Many professionals, creators, and developers use this tool to simplify complex tasks and work faster.
+</p>
+
+<p>
+AIDEX helps you discover tools like <%= tool.name %> so you can explore the best AI platforms available today.
+Click the button below to visit the official website and start using it.
+</p>
+
+</div>
 
 <div class="tool-buttons">
 
