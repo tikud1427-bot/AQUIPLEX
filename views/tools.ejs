@@ -1,49 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>All AI Tools | AIDEX</title>
 
 <link rel="stylesheet" href="/css/styles.css">
+
 </head>
 
 <body>
 
-<h1>All AI Tools</h1>
+<div class="tools-page-container">
+
+<h1 class="page-title">All AI Tools</h1>
+
+<p class="page-subtitle">Discover the best AI tools for productivity, creativity, and automation.</p>
+  <div class="category-filter">
+
+  <a href="/tools" class="category-btn">All</a>
+
+    <% if (typeof categories !== "undefined" && categories.length > 0) { %>
+  <% categories.forEach(function(cat){ %>
+
+  <a href="/tools/category/<%= cat %>" class="category-btn">
+  <%= cat %>
+  </a>
+
+  <% }) %>
+  <% } %>
+
+  </div>
 
 <div class="tools-grid">
 
 <% if (tools && tools.length > 0) { %>
 
-  <% tools.forEach(function(tool){ %>
+<% tools.forEach(function(tool){ %>
 
-    <div class="tool-card">
-      <img src="<%= tool.logo %>" class="tool-logo">
-      <h3>
-        <a href="/tool/<%= tool.id %>">
-          <%= tool.name %>
-        </a>
-      </h3>
+<div class="tool-card">
 
-      <p><%= tool.description %></p>
+<div class="tool-logo-container">
+<img src="<%= tool.logo || '/logos/default.png' %>" alt="<%= tool.name %>">
+</div>
 
-      <a href="<%= tool.url %>" target="_blank">
-        Visit Tool
-      </a>
+<div class="tool-content">
 
-    </div>
+<h3 class="tool-name"><%= tool.name %></h3>
 
-  <% }) %>
+<p class="tool-category"><%= tool.category %></p>
+
+<p class="tool-description"><%= tool.description %></p>
+
+<div class="tool-buttons">
+
+<a href="/tool/<%= tool.id %>" class="details-btn">View Details</a>
+
+<a href="/visit/<%= encodeURIComponent(tool.name) %>" class="visit-btn">Visit</a>
+
+</div>
+
+</div>
+
+</div>
+
+<% }) %>
 
 <% } else { %>
 
-<p>No tools available.</p>
+<p class="no-tools">No tools available.</p>
 
 <% } %>
 
 </div>
 
+</div>
+
 </body>
+
 </html>
