@@ -1,27 +1,18 @@
-entrypoint = "index.js"
-modules = ["nodejs-22"]
-hidden = [".config", "package-lock.json"]
-
-[gitHubImport]
-requiredFiles = [".replit", "replit.nix", "package.json", "package-lock.json"]
+modules = ["nodejs-20", "web", "postgresql-16"]
+run = "npm run dev"
+hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
-channel = "stable-24_11"
-packages = ["nano"]
-
-[deployment]
-run = ["node", "index.js"]
-deploymentTarget = "autoscale"
-ignorePorts = false
-
-[agent]
-expertMode = true
+channel = "stable-24_05"
 
 [[ports]]
-localPort = 3000
+localPort = 5000
 externalPort = 80
 
-[userenv]
+[env]
+PORT = "5000"
 
-[userenv.shared]
-MONGO_URI = "mongodb+srv://tikud1427_db_user:Pr2CEgPogytl1zWD@cluster0.yiukosy.mongodb.net/aidex?retryWrites=true&w=majority"
+[deployment]
+deploymentTarget = "autoscale"
+run = ["node", "./dist/index.cjs"]
+build = ["npm", "run", "build"]
