@@ -1,0 +1,529 @@
+/* =================================
+AIDEX PREMIUM UI SYSTEM
+Improved Layout + Modern AI Design
+================================= */
+
+/* DESIGN TOKENS */
+
+:root{
+
+/* Brand */
+
+--primary:#6366f1;
+--primary-dark:#4f46e5;
+--accent:#22c55e;
+
+/* Gradient */
+
+--ai-gradient:linear-gradient(135deg,#6366f1,#8b5cf6,#ec4899);
+
+/* Text */
+
+--text:#0f172a;
+--text-light:#64748b;
+
+/* Background */
+
+--bg:#f8fafc;
+--card-bg:#ffffff;
+
+/* Border */
+
+--border:#e2e8f0;
+
+/* Shadows */
+
+--shadow-sm:0 2px 10px rgba(0,0,0,0.05);
+--shadow-md:0 10px 30px rgba(0,0,0,0.08);
+--shadow-lg:0 20px 60px rgba(0,0,0,0.15);
+
+}
+
+
+/* ================================= */
+/* HERO SECTION */
+/* ================================= */
+
+.hero{
+
+text-align:center;
+
+padding:130px 20px 150px;
+
+background:linear-gradient(135deg,#6a5cff,#7c4dff,#00c6ff);
+
+background-size:300% 300%;
+
+animation:heroGradient 14s ease infinite;
+
+border-bottom-left-radius:50% 20%;
+border-bottom-right-radius:50% 20%;
+
+color:white;
+
+}
+
+@keyframes heroGradient{
+
+0%{background-position:0% 50%}
+
+50%{background-position:100% 50%}
+
+100%{background-position:0% 50%}
+
+}
+
+.hero h1{
+
+font-size:46px;
+
+font-weight:700;
+
+margin-bottom:12px;
+
+letter-spacing:-0.5px;
+
+}
+
+.hero p{
+
+font-size:19px;
+
+opacity:.9;
+
+margin-bottom:28px;
+
+}
+
+
+/* HERO BUTTON */
+
+.hero-btn{
+
+display:inline-block;
+
+margin-bottom:28px;
+
+padding:15px 34px;
+
+border-radius:14px;
+
+background:linear-gradient(45deg,#ff7a59,#ffb347);
+
+color:white;
+
+font-weight:600;
+
+transition:.3s;
+
+}
+
+.hero-btn:hover{
+
+transform:translateY(-4px);
+
+box-shadow:0 14px 28px rgba(255,120,80,.5);
+
+}
+
+
+/* ================================= */
+/* SEARCH BAR */
+/* ================================= */
+
+.search-form{
+
+display:flex;
+
+justify-content:center;
+
+align-items:center;
+
+gap:12px;
+
+margin-top:15px;
+
+flex-wrap:wrap;
+
+}
+
+.search-form input{
+
+width:320px;
+
+padding:13px 18px;
+
+border-radius:10px;
+
+border:none;
+
+font-size:14px;
+
+box-shadow:var(--shadow-md);
+
+}
+
+.search-form button{
+
+padding:13px 22px;
+
+border:none;
+
+border-radius:10px;
+
+background:var(--primary);
+
+color:white;
+
+font-weight:600;
+
+cursor:pointer;
+
+transition:.25s;
+
+}
+
+.search-form button:hover{
+
+transform:translateY(-2px);
+
+background:var(--primary-dark);
+
+box-shadow:var(--shadow-md);
+
+}
+
+
+/* ================================= */
+/* SECTION TITLES */
+/* ================================= */
+
+h2{
+
+text-align:center;
+
+font-size:30px;
+
+margin-bottom:42px;
+
+position:relative;
+
+}
+
+h2::after{
+
+content:"";
+
+display:block;
+
+width:70px;
+
+height:3px;
+
+background:var(--primary);
+
+margin:10px auto;
+
+border-radius:10px;
+
+}
+
+
+/* ================================= */
+/* FEATURED SECTION */
+/* ================================= */
+
+.featured{
+
+padding:90px 8%;
+
+}
+
+
+/* ================================= */
+/* TOOL GRID */
+/* ================================= */
+
+.tools-grid{
+
+display:grid;
+
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+
+gap:32px;
+
+margin-top:40px;
+
+}
+
+
+/* ================================= */
+/* TOOL CARD */
+/* ================================= */
+
+.tool-card{
+
+background:var(--card-bg);
+
+border-radius:18px;
+
+padding:28px;
+
+text-align:center;
+
+box-shadow:var(--shadow-md);
+
+transition:.3s;
+
+position:relative;
+
+display:flex;
+
+flex-direction:column;
+
+justify-content:space-between;
+
+min-height:220px;
+
+}
+
+.tool-card:hover{
+
+transform:translateY(-10px);
+
+box-shadow:var(--shadow-lg);
+
+}
+
+
+/* LOGO */
+
+.tool-logo-container{
+
+width:90px;
+
+height:90px;
+
+margin:0 auto 16px;
+
+display:flex;
+
+align-items:center;
+
+justify-content:center;
+
+}
+
+.tool-logo-container img{
+
+max-width:100%;
+
+max-height:100%;
+
+object-fit:contain;
+
+}
+
+
+/* TOOL TEXT */
+
+.tool-name{
+
+font-size:20px;
+
+font-weight:600;
+
+margin-bottom:6px;
+
+}
+
+.tool-category{
+
+font-size:13px;
+
+color:var(--primary);
+
+font-weight:600;
+
+margin-bottom:10px;
+
+}
+
+.tool-description{
+
+font-size:14px;
+
+color:#555;
+
+margin-bottom:18px;
+
+line-height:1.5;
+
+}
+
+
+/* BUTTON AREA */
+
+.tool-buttons{
+
+display:flex;
+
+justify-content:center;
+
+gap:10px;
+
+margin-top:auto;
+
+}
+
+
+/* DETAILS BUTTON */
+
+.details-btn{
+
+background:#f1f1f1;
+
+padding:9px 18px;
+
+border-radius:10px;
+
+color:#333;
+
+font-size:14px;
+
+transition:.2s;
+
+}
+
+.details-btn:hover{
+
+background:#e5e5e5;
+
+}
+
+
+/* VISIT BUTTON */
+
+.visit-btn{
+
+background:linear-gradient(135deg,#6c63ff,#7c4dff);
+
+color:white;
+
+padding:9px 18px;
+
+border-radius:10px;
+
+font-size:14px;
+
+transition:.25s;
+
+}
+
+.visit-btn:hover{
+
+transform:translateY(-2px);
+
+box-shadow:0 10px 20px rgba(108,99,255,.35);
+
+}
+
+
+/* ADD WORKSPACE BUTTON */
+
+.add-workspace-btn{
+
+position:absolute;
+
+top:14px;
+right:14px;
+
+width:36px;
+height:36px;
+
+border-radius:50%;
+
+border:none;
+
+background:linear-gradient(135deg,#ff7a59,#ff5e62);
+
+color:white;
+
+display:flex;
+
+align-items:center;
+justify-content:center;
+
+cursor:pointer;
+
+box-shadow:0 6px 16px rgba(0,0,0,.2);
+
+transition:.25s;
+
+}
+
+.add-workspace-btn:hover{
+
+transform:scale(1.15) rotate(90deg);
+
+box-shadow:0 10px 25px rgba(0,0,0,.3);
+
+}
+
+
+/* ================================= */
+/* CATEGORY CARDS */
+/* ================================= */
+
+.category-card{
+
+background:white;
+
+padding:18px 22px;
+
+border-radius:14px;
+
+box-shadow:var(--shadow-sm);
+
+transition:.3s;
+
+}
+
+.category-card:hover{
+
+transform:translateY(-6px);
+
+background:var(--ai-gradient);
+
+color:white;
+
+}
+
+
+/* ================================= */
+/* MOBILE */
+/* ================================= */
+
+@media(max-width:768px){
+
+.hero h1{
+font-size:32px;
+}
+
+.hero p{
+font-size:16px;
+}
+
+.search-form{
+flex-direction:column;
+}
+
+.search-form input{
+width:85%;
+}
+
+.tools-grid{
+grid-template-columns:1fr;
+}
+
+}

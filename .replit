@@ -1,0 +1,27 @@
+entrypoint = "index.js"
+modules = ["nodejs-22"]
+hidden = [".config", "package-lock.json"]
+
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix", "package.json", "package-lock.json"]
+
+[nix]
+channel = "stable-24_11"
+packages = ["nano"]
+
+[deployment]
+run = ["node", "index.js"]
+deploymentTarget = "autoscale"
+ignorePorts = false
+
+[agent]
+expertMode = true
+
+[[ports]]
+localPort = 3000
+externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+MONGO_URI = "mongodb+srv://tikud1427_db_user:Pr2CEgPogytl1zWD@cluster0.yiukosy.mongodb.net/aidex?retryWrites=true&w=majority"

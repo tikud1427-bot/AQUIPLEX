@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>🔥 Trending AI Tools | AIDEX</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+
+<%- include("partials/header") %>
+
+<main class="page-container">
+
+<h1>🔥 Trending AI Tools (Last 24h)</h1>
+
+<div class="tools-grid">
+
+<% if (tools && tools.length > 0) { %>
+
+<% tools.forEach((tool, index) => { %>
+
+<div class="tool-card">
+
+<!-- 🔥 TOP 3 BADGE -->
+<% if(index < 3){ %>
+<span class="trending-badge">🔥 Top <%= index + 1 %></span>
+<% } %>
+
+<h3><%= tool.name %></h3>
+
+<p class="tool-category"><%= tool.category %></p>
+
+<p><%= tool.description %></p>
+
+<!-- ✅ FIXED CLICK COUNT -->
+<p class="click-count">
+🔥 <%= tool.trendingScore || 0 %> clicks (24h)
+</p>
+
+<div class="tool-buttons">
+
+<!-- ✅ FIXED ID -->
+<a href="/tool/<%= tool._id %>" class="details-btn">View Details</a>
+
+<a href="/visit/<%= tool._id %>" class="visit-btn">Visit</a>
+
+</div>
+
+</div>
+
+<% }) %>
+
+<% } else { %>
+
+<p>No trending tools yet.</p>
+
+<% } %>
+
+</div>
+
+</main>
+
+<%- include("partials/footer") %>
+
+<script>
+
+const menuBtn = document.querySelector(".menu-toggle");
+const mobileMenu = document.querySelector(".mobile-menu");
+const overlay = document.querySelector(".menu-overlay");
+
+if(menuBtn){
+menuBtn.addEventListener("click", () => {
+mobileMenu.classList.toggle("active");
+overlay.classList.toggle("active");
+});
+}
+
+if(overlay){
+overlay.addEventListener("click", () => {
+mobileMenu.classList.remove("active");
+overlay.classList.remove("active");
+});
+}
+
+</script>
+
+</body>
+</html>

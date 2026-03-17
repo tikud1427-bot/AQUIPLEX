@@ -1,0 +1,334 @@
+/* ======================================
+🔥 AIDEX ULTRA PREMIUM TOOLS PAGE
+Glass UI + Glow + Smooth UX
+====================================== */
+
+
+/* ============================= */
+/* PAGE CONTAINER */
+/* ============================= */
+
+.page-container{
+max-width:1300px;
+margin:auto;
+padding:40px 20px;
+}
+
+
+/* ============================= */
+/* HEADER */
+/* ============================= */
+
+.tools-header{
+text-align:center;
+margin-bottom:40px;
+}
+
+.tools-header h1{
+font-size:40px;
+font-weight:700;
+background:linear-gradient(90deg,#6366f1,#8b5cf6);
+-webkit-background-clip:text;
+color:transparent;
+margin-bottom:10px;
+}
+
+.tools-header p{
+color:#777;
+font-size:15px;
+}
+
+
+/* ============================= */
+/* CATEGORY FILTERS */
+/* ============================= */
+
+.category-filters{
+display:flex;
+flex-wrap:wrap;
+justify-content:center;
+gap:12px;
+margin-bottom:40px;
+}
+
+.category-chip{
+background:rgba(255,255,255,0.6);
+backdrop-filter:blur(10px);
+border:1px solid rgba(0,0,0,0.05);
+
+padding:10px 18px;
+border-radius:999px;
+font-size:13px;
+cursor:pointer;
+
+transition:all 0.25s ease;
+}
+
+.category-chip:hover{
+background:linear-gradient(135deg,#6366f1,#8b5cf6);
+color:white;
+transform:translateY(-2px);
+box-shadow:0 8px 20px rgba(99,102,241,0.3);
+}
+
+
+/* ============================= */
+/* GRID */
+/* ============================= */
+
+.tools-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+gap:28px;
+}
+
+
+/* ============================= */
+/* TOOL CARD */
+/* ============================= */
+
+.tool-card{
+
+position:relative;
+
+display:flex;
+flex-direction:column;
+justify-content:space-between;
+
+padding:22px;
+
+border-radius:18px;
+
+/* GLASS EFFECT */
+background:rgba(255,255,255,0.65);
+backdrop-filter:blur(14px);
+
+border:1px solid rgba(255,255,255,0.3);
+
+box-shadow:0 10px 35px rgba(0,0,0,0.08);
+
+transition:all 0.3s ease;
+
+overflow:hidden;
+
+min-height:230px;
+
+}
+
+/* ✨ GLOW BORDER */
+.tool-card::before{
+content:"";
+position:absolute;
+inset:0;
+border-radius:18px;
+padding:1px;
+background:linear-gradient(135deg,#6366f1,#8b5cf6);
+-webkit-mask:
+linear-gradient(#fff 0 0) content-box,
+linear-gradient(#fff 0 0);
+-webkit-mask-composite:xor;
+mask-composite:exclude;
+opacity:0;
+transition:0.3s;
+}
+
+.tool-card:hover::before{
+opacity:1;
+}
+
+.tool-card:hover{
+transform:translateY(-8px) scale(1.01);
+box-shadow:0 20px 60px rgba(0,0,0,0.12);
+}
+
+
+/* ============================= */
+/* TRENDING BADGE */
+/* ============================= */
+
+.trending-badge{
+position:absolute;
+top:12px;
+left:12px;
+
+background:linear-gradient(135deg,#ff6a00,#ff3d00);
+color:white;
+
+padding:4px 10px;
+font-size:11px;
+border-radius:20px;
+
+font-weight:600;
+box-shadow:0 5px 15px rgba(255,100,0,0.4);
+}
+
+
+/* ============================= */
+/* LOGO */
+/* ============================= */
+
+.tool-logo-container{
+width:70px;
+height:70px;
+margin:0 auto 12px;
+display:flex;
+align-items:center;
+justify-content:center;
+}
+
+.tool-logo-container img{
+max-width:100%;
+max-height:100%;
+object-fit:contain;
+}
+
+
+/* ============================= */
+/* TEXT */
+/* ============================= */
+
+.tool-name{
+font-size:18px;
+font-weight:600;
+text-align:center;
+margin-bottom:4px;
+}
+
+.tool-category{
+color:#8b5cf6;
+font-size:12px;
+text-align:center;
+margin-bottom:10px;
+font-weight:500;
+}
+
+.tool-description{
+font-size:13px;
+color:#555;
+text-align:center;
+line-height:1.5;
+margin-bottom:16px;
+}
+
+
+/* ============================= */
+/* BUTTONS */
+/* ============================= */
+
+.tool-actions{
+display:flex;
+gap:10px;
+}
+
+/* DETAILS */
+
+.details-btn{
+flex:1;
+background:#f3f4f6;
+color:#111;
+padding:9px;
+border-radius:8px;
+text-align:center;
+font-size:13px;
+text-decoration:none;
+
+transition:all 0.25s;
+}
+
+.details-btn:hover{
+background:#e5e7eb;
+transform:translateY(-2px);
+}
+
+
+/* VISIT */
+
+.visit-btn{
+flex:1;
+background:linear-gradient(135deg,#6366f1,#8b5cf6);
+color:white;
+padding:9px;
+border-radius:8px;
+text-align:center;
+font-size:13px;
+text-decoration:none;
+
+transition:all 0.25s;
+}
+
+.visit-btn:hover{
+transform:translateY(-2px) scale(1.03);
+box-shadow:0 10px 20px rgba(99,102,241,0.4);
+}
+
+
+/* ============================= */
+/* WORKSPACE BUTTON */
+/* ============================= */
+
+.add-workspace-btn{
+position:absolute;
+top:12px;
+right:12px;
+
+width:42px;
+height:42px;
+
+border-radius:50%;
+border:none;
+
+background:linear-gradient(135deg,#ff7a59,#ff5e62);
+
+color:white;
+
+display:flex;
+align-items:center;
+justify-content:center;
+
+cursor:pointer;
+
+transition:all 0.3s;
+box-shadow:0 5px 15px rgba(255,94,98,0.4);
+}
+
+.add-workspace-btn:hover{
+transform:scale(1.2) rotate(90deg);
+}
+
+
+/* ============================= */
+/* EMPTY STATE */
+/* ============================= */
+
+.no-tools{
+text-align:center;
+padding:60px 20px;
+color:#777;
+}
+
+.no-tools i{
+font-size:50px;
+margin-bottom:15px;
+color:#ccc;
+}
+
+
+/* ============================= */
+/* RESPONSIVE */
+/* ============================= */
+
+@media(max-width:768px){
+
+.tools-header h1{
+font-size:28px;
+}
+
+.tools-grid{
+gap:20px;
+}
+
+.tool-card{
+padding:18px;
+}
+
+}

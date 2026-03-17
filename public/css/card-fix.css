@@ -1,0 +1,303 @@
+/* ======================================
+AIDEX PREMIUM TOOL CARDS
+Modern AI Directory Style
+====================================== */
+
+
+/* GRID LAYOUT */
+
+.tools-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+gap:28px;
+
+max-width:1250px;
+margin:auto;
+
+padding:50px 24px;
+}
+
+
+/* TOOL CARD */
+
+.tool-card{
+
+position:relative;
+
+background:rgba(255,255,255,0.85);
+backdrop-filter:blur(12px);
+
+border-radius:20px;
+
+padding:26px;
+
+display:flex;
+flex-direction:column;
+
+justify-content:space-between;
+
+min-height:240px;
+
+border:1px solid rgba(0,0,0,0.05);
+
+box-shadow:
+0 12px 35px rgba(0,0,0,0.08);
+
+transition:all .35s ease;
+}
+
+
+/* CARD HOVER */
+
+.tool-card:hover{
+
+transform:translateY(-8px);
+
+box-shadow:
+0 20px 45px rgba(0,0,0,0.12);
+
+border-color:rgba(108,99,255,.35);
+
+}
+
+
+/* LOGO CONTAINER */
+
+.tool-logo-container{
+
+width:72px;
+height:72px;
+
+border-radius:16px;
+
+background:linear-gradient(135deg,#f6f7fb,#eef1ff);
+
+display:flex;
+align-items:center;
+justify-content:center;
+
+margin:0 auto 16px;
+
+box-shadow:
+0 6px 18px rgba(0,0,0,0.06);
+
+}
+
+
+/* LOGO IMAGE */
+
+.tool-logo-container img{
+
+width:42px;
+height:42px;
+
+object-fit:contain;
+
+transition:.3s;
+}
+
+
+/* LOGO HOVER */
+
+.tool-card:hover .tool-logo-container img{
+transform:scale(1.1);
+}
+
+
+/* TOOL TITLE */
+
+.tool-name{
+
+font-size:18px;
+font-weight:600;
+
+margin-bottom:6px;
+
+color:#111;
+
+}
+
+
+/* TOOL DESCRIPTION */
+
+.tool-description{
+
+font-size:14px;
+line-height:1.55;
+
+color:#666;
+
+margin-bottom:18px;
+
+}
+
+
+/* BUTTON AREA */
+
+.tool-buttons{
+
+display:flex;
+
+gap:10px;
+
+justify-content:center;
+
+margin-top:auto;
+
+flex-wrap:wrap;
+
+}
+
+
+/* DETAILS BUTTON */
+
+.details-btn{
+
+background:#f3f4f7;
+
+padding:9px 16px;
+
+border-radius:10px;
+
+font-size:14px;
+
+color:#333;
+
+font-weight:500;
+
+transition:all .25s;
+
+}
+
+.details-btn:hover{
+
+background:#e9e9ef;
+
+transform:translateY(-2px);
+
+}
+
+
+/* VISIT BUTTON */
+
+.visit-btn{
+
+background:linear-gradient(135deg,#6c63ff,#7c4dff);
+
+color:white;
+
+padding:9px 18px;
+
+border-radius:10px;
+
+font-size:14px;
+
+font-weight:500;
+
+transition:all .25s;
+
+}
+
+.visit-btn:hover{
+
+transform:translateY(-3px);
+
+box-shadow:0 10px 20px rgba(108,99,255,.35);
+
+}
+
+
+/* ADD TO WORKSPACE BUTTON */
+
+.add-workspace-btn{
+
+position:absolute;
+
+top:12px;
+right:12px;
+
+width:34px;
+height:34px;
+
+border-radius:50%;
+
+border:none;
+
+background:linear-gradient(135deg,#ff7a59,#ff5e62);
+
+color:white;
+
+font-size:14px;
+
+display:flex;
+align-items:center;
+justify-content:center;
+
+cursor:pointer;
+
+box-shadow:0 6px 18px rgba(0,0,0,.15);
+
+transition:all .35s;
+
+}
+
+
+/* PLUS BUTTON HOVER */
+
+.add-workspace-btn:hover{
+
+transform:rotate(90deg) scale(1.15);
+
+box-shadow:0 10px 25px rgba(0,0,0,.25);
+
+}
+
+
+/* FEATURED SECTION */
+
+.featured{
+
+max-width:1250px;
+
+margin:auto;
+
+padding:60px 24px;
+
+}
+
+
+/* MOBILE OPTIMIZATION */
+
+@media(max-width:768px){
+
+.tools-grid{
+
+grid-template-columns:1fr;
+
+gap:22px;
+
+padding:30px 18px;
+
+}
+
+.tool-card{
+
+padding:22px;
+
+}
+
+.tool-logo-container{
+
+width:60px;
+height:60px;
+
+}
+
+.tool-logo-container img{
+
+width:34px;
+height:34px;
+
+}
+
+}

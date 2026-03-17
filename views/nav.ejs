@@ -1,0 +1,43 @@
+<header>
+
+<nav class="navbar">
+
+<div class="logo">
+<a href="/">AI Directory</a>
+</div>
+
+<ul class="nav-links">
+
+<li><a href="/">Home</a></li>
+<li><a href="/tools">Tools</a></li>
+<li><a href="/trending">Trending</a></li>
+<li><a href="/submit">Submit</a></li>
+<li><a href="/about">About</a></li>
+
+<% if(userId){ %>
+<li><a href="/workspace">Workspace</a></li>
+<% } %>
+
+</ul>
+
+
+<!-- AUTH BUTTON BOX -->
+
+<div class="auth-nav-box">
+
+<% if(userId){ %>
+
+<a href="/logout" class="logout-btn">Logout</a>
+
+<% } else { %>
+
+<a href="/login" class="login-btn">Login</a>
+<a href="/signup" class="signup-btn">Sign Up</a>
+
+<% } %>
+
+</div>
+
+</nav>
+
+</header>

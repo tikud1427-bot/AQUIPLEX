@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>All AI Tools | AIDEX</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<%- include("nav") %>
+
+<div class="tools-page-container">
+
+<!-- 🔥 HERO HEADER -->
+<div class="tools-hero">
+  <h1>🚀 Explore AI Tools</h1>
+  <p>Discover powerful AI tools for productivity, creativity, automation & growth.</p>
+</div>
+
+<!-- 🔍 SEARCH BAR -->
+<div class="search-bar">
+  <input type="text" id="searchInput" placeholder="Search AI tools...">
+  <i class="fa-solid fa-search"></i>
+</div>
+
+<!-- 🏷 CATEGORY FILTER -->
+<div class="category-filter">
+
+<a href="/tools" class="category-btn active">
+<i class="fa-solid fa-layer-group"></i> All
+</a>
+
+<% if (categories && categories.length > 0) { %>
+<% categories.forEach(function(cat){ %>
+
+<a href="/tools/category/<%= encodeURIComponent(cat) %>" class="category-btn">
+<i class="fa-solid fa-tag"></i> <%= cat %>
+</a>
+
+<% }) %>
+<% } %>
+
+</div>
+
+<!-- 🧠 TOOLS GRID -->
+<div class="tools-grid">
+
+<% if (tools && tools.length > 0) { %>
+
+<% tools.forEach(function(tool){ %>
+
+<div class="tool-card">
+
+<!-- ⭐ SAVE BUTTON -->
+<button class="add-workspace-btn"
+onclick="addToWorkspace(this,'<%= tool._id %>')"
+title="Save to Workspace">
+<i class="fa-solid fa-star"></i>
+</button>
+
+<!-- 🔥 TRENDING TAG -->
+<% if (typeof trendingIds !== "undefined" && trendingIds.includes(tool._id.toString())) { %>
+<span class="trending-badge">🔥 Trending</span>
+<% } %>
+
+<!-- HEADER -->
+<div class="tool-header">
+
+<div class="tool-logo-container">
+<img src="<%= tool.logo || '/logos/default.png' %>"
+alt="<%= tool.name %>"
+onerror="this.src='/logos/default.png'">
+</div>
+
+<div class="tool-title">
+<h3 class="tool-name"><%= tool.name %></h3>
+<p class="tool-category"><%= tool.category %></p>
+</div>
+
+</div>
+
+<!-- DESCRIPTION -->
+<p class="tool-description">
+<%= tool.description %>
+</p>
+
+<!-- ACTIONS -->
+  <div class="tool-buttons">
+
+    <a href="/tool/<%= tool._id.toString() %>" class="details-btn">
+      <i class="fa-solid fa-circle-info"></i> Details
+    </a>
+
+    <a href="/visit/<%= tool._id %>" class="visit-btn">
+      <i class="fa-solid fa-arrow-up-right-from-square"></i> Visit
+    </a>
+
+  </div>
+
+<!-- EMPTY STATE -->
+<div class="no-tools">
+<i class="fa-solid fa-box-open"></i>
+<h3>No AI tools found</h3>
+<p>Try another category or search something else.</p>
+</div>
+
+<% } %>
+
+</div>
+
+</div>
+
+<!-- ⚡ SCRIPT -->
+<script>
+
+// ⭐ ADD TO WORKSPACE
+async function addToWorkspace(button, toolId){
+
+try{
+button.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i>';
+
+const res = await fetch("/workspace/add/"+toolId,{
+method:"POST"
+});
+
+if(res.redirected){
+window.location.href="/login";
+return;
+}
+
+if(res.ok){
+button.innerHTML='<i class="fa-solid fa-check"></i>';
+button.style.background="#22c55e";
+} else {
+button.innerHTML='<i class="fa-solid fa-xmark"></i>';
+}
+
+}catch(err){
+console.log(err);
+button.innerHTML='<i class="fa-solid fa-xmark"></i>';
+}
+
+}
+
+
+// 🔍 LIVE SEARCH (FIXED GRID ISSUE)
+const searchInput = document.getElementById("searchInput");
+
+if(searchInput){
+searchInput.addEventListener("keyup", function(){
+const value = this.value.toLowerCase();
+const cards = document.querySelectorAll(".tool-card");
+
+cards.forEach(card => {
+const text = card.innerText.toLowerCase();
+card.style.display = text.includes(value) ? "" : "none";
+});
+});
+}
+
+</script>
+
+</body>
+</html>

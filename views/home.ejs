@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>AIDEX | Discover the Best AI Tools</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+
+  <%- include("partials/header") %>
+
+
+<!-- HERO -->
+
+<section class="hero">
+
+<h1>Welcome to AIDEX</h1>
+
+<p>Discover the best AI tools in one place</p>
+
+<a href="/tools" class="hero-btn">Explore Tools</a>
+
+<form action="/search" method="GET" class="search-form">
+
+<input type="text" name="q" placeholder="Search AI tools..." required>
+
+<button type="submit">Search</button>
+
+</form>
+
+</section>
+
+
+<!-- CATEGORY SECTION -->
+
+<section class="categories-section">
+
+<h2>Explore by Category</h2>
+
+<div class="categories">
+
+<%
+const categories = [
+"Writing AI",
+"Image AI",
+"Video AI",
+"Coding AI",
+"ML AI"
+];
+
+categories.forEach(function(category){ 
+%>
+
+<a class="category-card"
+href="/tools/category/<%= encodeURIComponent(category) %>">
+
+<%= category %>
+
+</a>
+
+<% }) %>
+
+</div>
+
+</section>
+
+
+<!-- FEATURED TOOLS -->
+
+<section class="featured">
+
+<h2>Featured Tools</h2>
+
+<div class="tools-grid">
+
+<% if (tools && tools.length > 0) { %>
+
+<% tools.forEach(function(tool){ %>
+
+<div class="tool-card">
+
+<div class="logo-box">
+<img src="<%= tool.logo %>" alt="<%= tool.name %>">
+</div>
+
+<a href="/tool/<%= tool.id %>" class="tool-link">
+<h3><%= tool.name %></h3>
+</a>
+
+<p><%= tool.description %></p>
+
+<div class="tool-actions">
+
+<a href="/tool/<%= tool.id %>" class="details-btn">
+View Details
+</a>
+
+<a href="/visit/<%= tool.id %>" target="_blank" class="visit-btn">
+Visit Tool
+</a>
+
+</div>
+
+</div>
+
+<% }) %>
+
+<% } else { %>
+
+<p style="text-align:center;">No tools available yet.</p>
+
+<% } %>
+
+</div>
+
+</section>
+
+
+<!-- FOOTER -->
+
+<footer class="simple-footer">
+
+<p>© <%= new Date().getFullYear() %> AIDEX. All rights reserved.</p>
+
+</footer>
+
+
+<!-- MOBILE MENU SCRIPT -->
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function(){
+
+const menuBtn = document.querySelector(".menu-toggle");
+const mobileMenu = document.querySelector(".mobile-menu");
+const overlay = document.querySelector(".menu-overlay");
+
+menuBtn.addEventListener("click", function(){
+mobileMenu.classList.toggle("active");
+overlay.classList.toggle("active");
+});
+
+overlay.addEventListener("click", function(){
+mobileMenu.classList.remove("active");
+overlay.classList.remove("active");
+});
+
+});
+
+</script>
+
+</body>
+</html>

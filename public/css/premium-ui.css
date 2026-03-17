@@ -1,0 +1,275 @@
+/* ==========================================
+AIDEX ULTRA UI UPGRADE
+World-Class AI Startup Effects
+(Add below existing CSS)
+========================================== */
+
+
+/* ---------- GLOBAL DESIGN SYSTEM ---------- */
+
+:root{
+
+--primary:#6c63ff;
+--primary2:#7c4dff;
+--accent:#00c6ff;
+
+--bg:#f7f8ff;
+--card:#ffffff;
+
+--shadow-soft:0 8px 25px rgba(0,0,0,.08);
+--shadow-strong:0 20px 60px rgba(0,0,0,.15);
+
+}
+
+
+/* ---------- PREMIUM BACKGROUND ---------- */
+
+body{
+
+background:linear-gradient(120deg,#f7f8ff,#f0f2ff);
+
+min-height:100vh;
+
+overflow-x:hidden;
+
+position:relative;
+
+animation:pageFade .6s ease;
+
+}
+
+
+/* glowing blobs */
+
+body::before{
+
+content:"";
+
+position:fixed;
+
+top:-300px;
+left:-300px;
+
+width:700px;
+height:700px;
+
+background:radial-gradient(circle,var(--primary),transparent 60%);
+
+opacity:.15;
+
+filter:blur(50px);
+
+z-index:-1;
+
+}
+
+body::after{
+
+content:"";
+
+position:fixed;
+
+bottom:-300px;
+right:-300px;
+
+width:700px;
+height:700px;
+
+background:radial-gradient(circle,var(--accent),transparent 60%);
+
+opacity:.18;
+
+filter:blur(50px);
+
+z-index:-1;
+
+}
+
+
+/* ---------- GLOBAL SMOOTHNESS ---------- */
+
+*{
+transition:all .25s ease;
+}
+
+html{
+scroll-behavior:smooth;
+}
+
+
+/* ---------- NAVBAR DEPTH ---------- */
+
+.navbar{
+box-shadow:0 10px 40px rgba(0,0,0,.2);
+}
+
+
+/* ---------- HERO POLISH ---------- */
+
+.hero h1{
+font-size:48px;
+letter-spacing:-1px;
+}
+
+.hero p{
+font-size:19px;
+}
+
+
+/* ---------- SEARCH BAR UPGRADE ---------- */
+
+.search-form input{
+
+border-radius:12px;
+
+padding:14px 18px;
+
+box-shadow:0 10px 25px rgba(0,0,0,.15);
+
+}
+
+.search-form button{
+border-radius:12px;
+}
+
+
+/* ---------- CATEGORY BUTTON POLISH ---------- */
+
+.category-card{
+
+border:1px solid rgba(0,0,0,.04);
+
+backdrop-filter:blur(8px);
+
+}
+
+.category-card:hover{
+
+transform:translateY(-5px);
+
+}
+
+
+/* ---------- TOOL CARD PREMIUM HOVER ---------- */
+
+.tool-card{
+overflow:hidden;
+position:relative;
+}
+
+.tool-card::before{
+
+content:"";
+
+position:absolute;
+
+top:-40%;
+left:-40%;
+
+width:180%;
+height:180%;
+
+background:radial-gradient(circle,rgba(108,99,255,.2),transparent 60%);
+
+opacity:0;
+
+transition:.4s;
+
+}
+
+.tool-card:hover::before{
+opacity:1;
+}
+
+
+/* ---------- CARD SHADOW UPGRADE ---------- */
+
+.tool-card:hover{
+
+transform:translateY(-14px) scale(1.03);
+
+box-shadow:
+0 30px 80px rgba(0,0,0,.2),
+0 0 25px rgba(108,99,255,.3);
+
+}
+
+
+/* ---------- LOGO BOX UPGRADE ---------- */
+
+.tool-logo-container{
+
+background:rgba(255,255,255,.8);
+
+backdrop-filter:blur(8px);
+
+}
+
+
+/* ---------- BUTTON MICRO INTERACTIONS ---------- */
+
+.visit-btn:hover{
+
+transform:translateY(-4px) scale(1.05);
+
+box-shadow:0 12px 30px rgba(108,99,255,.45);
+
+}
+
+.details-btn:hover{
+transform:translateY(-3px);
+}
+
+
+/* ---------- ADD BUTTON GLOW ---------- */
+
+.add-workspace-btn:hover{
+
+box-shadow:
+0 15px 35px rgba(0,0,0,.35),
+0 0 15px rgba(255,90,90,.6);
+
+}
+
+
+/* ---------- GRID IMPROVEMENT ---------- */
+
+.tools-grid{
+gap:36px;
+}
+
+
+/* ---------- PREMIUM SCROLLBAR ---------- */
+
+::-webkit-scrollbar{
+width:8px;
+}
+
+::-webkit-scrollbar-thumb{
+
+background:linear-gradient(var(--primary),var(--primary2));
+
+border-radius:20px;
+
+}
+
+::-webkit-scrollbar-track{
+background:#f2f3ff;
+}
+
+
+/* ---------- PAGE LOAD ANIMATION ---------- */
+
+@keyframes pageFade{
+
+from{
+opacity:0;
+transform:translateY(10px);
+}
+
+to{
+opacity:1;
+transform:translateY(0);
+}
+
+}

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Workspace | AIDEX</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+</head>
+
+<body>
+
+<%- include("partials/header") %>
+
+<div class="workspace-container">
+
+<h1 class="workspace-title">Your AI Workspace</h1>
+
+<p class="workspace-subtitle">
+Launch your favourite AI tools instantly.
+</p>
+
+<div class="workspace-grid">
+
+<% if(workspace && workspace.tools.length > 0){ %>
+
+  <% tools.forEach(function(tool){ %>
+
+<div class="workspace-card">
+
+<div class="workspace-logo">
+
+<img src="<%= tool.logo %>" 
+onerror="this.src='/logos/default.png'">
+
+</div>
+
+<h3 class="workspace-tool-name">
+<%= tool.name %>
+</h3>
+
+  <button class="launch-btn" onclick="launchTool('<%= tool.url %>')">
+  Launch Tool
+  </button>
+
+  <button onclick="removeTool('<%= tool._id %>')" class="remove-btn">
+  Remove
+  </button>
+
+</div>
+
+<% }) %>
+
+<% } else { %>
+
+<div class="empty-workspace">
+
+<h2>No tools saved yet</h2>
+
+<p>
+Browse AI tools and click the ➕ button to add them to your workspace.
+</p>
+
+<a href="/tools" class="browse-tools-btn">
+Browse Tools
+</a>
+
+</div>
+
+<% } %>
+
+</div>
+
+</div>
+
+<script>
+
+function launchTool(url){
+window.open(url,"_blank");
+}
+
+</script>
+  <script>
+
+  async function removeTool(id){
+
+  const res = await fetch("/workspace/remove/"+id,{
+  method:"POST"
+  });
+
+  if(res.ok){
+  location.reload();
+  }
+
+  }
+
+  </script>
+
+</body>
+
+</html>

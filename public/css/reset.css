@@ -1,0 +1,122 @@
+/* ======================================
+AIDEX BASE RESET
+Clean + Modern Startup Reset
+====================================== */
+
+
+/* UNIVERSAL RESET */
+
+*,
+*::before,
+*::after{
+margin:0;
+padding:0;
+box-sizing:border-box;
+}
+
+
+/* ROOT */
+
+html{
+
+height:100%;
+
+scroll-behavior:smooth;
+
+-webkit-font-smoothing:antialiased;
+
+-moz-osx-font-smoothing:grayscale;
+
+}
+
+
+/* BODY */
+
+body{
+
+min-height:100%;
+
+font-family:'Poppins',sans-serif;
+
+background:#f8f9fa;
+
+color:#212529;
+
+line-height:1.6;
+
+overflow-x:hidden;
+
+text-rendering:optimizeLegibility;
+
+}
+
+
+/* LINKS */
+
+a{
+
+text-decoration:none;
+
+color:inherit;
+
+}
+
+
+/* IMAGES */
+
+img{
+
+max-width:100%;
+
+display:block;
+
+}
+
+
+/* BUTTON RESET */
+
+button{
+
+border:none;
+
+background:none;
+
+cursor:pointer;
+
+font-family:inherit;
+
+}
+
+
+/* INPUT RESET */
+
+input,
+textarea,
+select{
+
+font-family:inherit;
+
+outline:none;
+
+}
+
+
+/* LIST RESET */
+
+ul,
+ol{
+
+list-style:none;
+
+}
+
+
+/* SELECTION COLOR */
+
+::selection{
+
+background:#6c63ff;
+
+color:white;
+
+}

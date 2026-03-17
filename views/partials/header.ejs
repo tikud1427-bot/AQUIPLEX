@@ -1,0 +1,74 @@
+<header class="site-header">
+
+<nav class="navbar">
+
+<div class="logo">
+<a href="/">AIDEX</a>
+</div>
+
+<button class="menu-toggle">☰</button>
+
+<ul class="nav-links">
+
+<li><a href="/">Home</a></li>
+<li><a href="/tools">Tools</a></li>
+<li><a href="/trending">Trending</a></li>
+
+<% if(userId){ %>
+<li><a href="/workspace">Workspace</a></li>
+<% } %>
+
+<li><a href="/submit">Submit</a></li>
+<li><a href="/about">About</a></li>
+
+
+<!-- AUTH BUTTONS -->
+
+<% if(userId){ %>
+
+<li><a href="/logout" class="logout-btn">Logout</a></li>
+
+<% } else { %>
+
+<li><a href="/login" class="login-btn">Login</a></li>
+<li><a href="/signup" class="signup-btn">Sign Up</a></li>
+
+<% } %>
+
+</ul>
+
+</nav>
+
+
+<!-- MOBILE MENU -->
+
+<div class="mobile-menu">
+
+<a href="/">Home</a>
+<a href="/tools">Tools</a>
+<a href="/trending">Trending</a>
+
+<% if(userId){ %>
+<a href="/workspace">Workspace</a>
+<% } %>
+
+<a href="/submit">Submit</a>
+<a href="/about">About</a>
+
+
+<% if(userId){ %>
+
+<a href="/logout">Logout</a>
+
+<% } else { %>
+
+<a href="/login">Login</a>
+<a href="/signup">Sign Up</a>
+
+<% } %>
+
+</div>
+
+<div class="menu-overlay"></div>
+
+</header>
