@@ -2,14 +2,10 @@
 <html lang="en">
 
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Workspace | AIDEX</title>
-
 <link rel="stylesheet" href="/css/styles.css">
-
 </head>
 
 <body>
@@ -26,50 +22,37 @@ Launch your favourite AI tools instantly.
 
 <div class="workspace-grid">
 
-<% if(workspace && workspace.tools.length > 0){ %>
+<% if(workspace && workspace.tools && workspace.tools.length > 0){ %>
 
-  <% tools.forEach(function(tool){ %>
+  <% workspace.tools.forEach(function(tool){ %>
 
-<div class="workspace-card">
+  <div class="workspace-card">
 
-<div class="workspace-logo">
+    <div class="workspace-logo">
+      <img src="<%= tool.logo %>" onerror="this.src='/logos/default.png'">
+    </div>
 
-<img src="<%= tool.logo %>" 
-onerror="this.src='/logos/default.png'">
+    <h3 class="workspace-tool-name"><%= tool.name %></h3>
 
-</div>
+    <button class="launch-btn" onclick="launchTool('<%= tool.url %>')">
+      Launch Tool
+    </button>
 
-<h3 class="workspace-tool-name">
-<%= tool.name %>
-</h3>
+    <button onclick="removeTool('<%= tool.toolId %>')" class="remove-btn">
+      Remove
+    </button>
 
-  <button class="launch-btn" onclick="launchTool('<%= tool.url %>')">
-  Launch Tool
-  </button>
+  </div>
 
-  <button onclick="removeTool('<%= tool._id %>')" class="remove-btn">
-  Remove
-  </button>
-
-</div>
-
-<% }) %>
+  <% }) %>
 
 <% } else { %>
 
-<div class="empty-workspace">
-
-<h2>No tools saved yet</h2>
-
-<p>
-Browse AI tools and click the ➕ button to add them to your workspace.
-</p>
-
-<a href="/tools" class="browse-tools-btn">
-Browse Tools
-</a>
-
-</div>
+  <div class="empty-workspace">
+    <h2>No tools saved yet</h2>
+    <p>Browse AI tools and click the star button to add them to your workspace.</p>
+    <a href="/tools" class="browse-tools-btn">Browse Tools</a>
+  </div>
 
 <% } %>
 
@@ -78,28 +61,17 @@ Browse Tools
 </div>
 
 <script>
-
 function launchTool(url){
-window.open(url,"_blank");
+  window.open(url, "_blank");
 }
 
-</script>
-  <script>
-
-  async function removeTool(id){
-
-  const res = await fetch("/workspace/remove/"+id,{
-  method:"POST"
-  });
-
+async function removeTool(toolId){
+  const res = await fetch("/workspace/remove/" + toolId, { method: "POST" });
   if(res.ok){
-  location.reload();
+    location.reload();
   }
-
-  }
-
-  </script>
+}
+</script>
 
 </body>
-
 </html>

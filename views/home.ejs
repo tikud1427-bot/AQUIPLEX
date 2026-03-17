@@ -92,7 +92,7 @@ href="/tools/category/<%= encodeURIComponent(category) %>">
 <img src="<%= tool.logo %>" alt="<%= tool.name %>">
 </div>
 
-<a href="/tool/<%= tool.id %>" class="tool-link">
+<a href="/tool/<%= tool._id %>" class="tool-link">
 <h3><%= tool.name %></h3>
 </a>
 
@@ -100,11 +100,11 @@ href="/tools/category/<%= encodeURIComponent(category) %>">
 
 <div class="tool-actions">
 
-<a href="/tool/<%= tool.id %>" class="details-btn">
+<a href="/tool/<%= tool._id %>" class="details-btn">
 View Details
 </a>
 
-<a href="/visit/<%= tool.id %>" target="_blank" class="visit-btn">
+<a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">
 Visit Tool
 </a>
 
