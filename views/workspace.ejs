@@ -5,58 +5,74 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Workspace | AIDEX</title>
+
 <link rel="stylesheet" href="/css/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
-  <%- include('partials/nav') %>ss="workspace-container">
+<%- include('partials/nav') %>
 
-<h1 class="workspace-title">Your AI Workspace</h1>
+<main class="container">
 
-<p class="workspace-subtitle">
-Launch your favourite AI tools instantly.
-</p>
+  <!-- HEADER -->
+  <section class="workspace-header">
+    <h1>Your Workspace</h1>
+    <p>Quick access to your saved AI tools</p>
+  </section>
 
-<div class="workspace-grid">
+  <!-- GRID -->
+  <div class="workspace-grid">
 
-<% if(workspace && workspace.tools && workspace.tools.length > 0){ %>
+  <% if(workspace && workspace.tools && workspace.tools.length > 0){ %>
 
-  <% workspace.tools.forEach(function(tool){ %>
+    <% workspace.tools.forEach(function(tool){ %>
 
-  <div class="workspace-card">
+    <div class="workspace-card">
 
-    <div class="workspace-logo">
-      <img src="<%= tool.logo %>" onerror="this.src='/logos/default.png'">
+      <!-- TOP -->
+      <div class="workspace-top">
+        <img src="<%= tool.logo %>" 
+             onerror="this.src='/logos/default.png'" 
+             class="workspace-logo">
+      </div>
+
+      <!-- CONTENT -->
+      <div class="workspace-content">
+        <h3><%= tool.name %></h3>
+      </div>
+
+      <!-- ACTIONS -->
+      <div class="workspace-actions">
+
+        <button class="launch-btn" onclick="launchTool('<%= tool.url %>')">
+          🚀 Launch
+        </button>
+
+        <button onclick="removeTool('<%= tool.toolId %>')" class="remove-btn">
+          Remove
+        </button>
+
+      </div>
+
     </div>
 
-    <h3 class="workspace-tool-name"><%= tool.name %></h3>
+    <% }) %>
 
-    <button class="launch-btn" onclick="launchTool('<%= tool.url %>')">
-      Launch Tool
-    </button>
+  <% } else { %>
 
-    <button onclick="removeTool('<%= tool.toolId %>')" class="remove-btn">
-      Remove
-    </button>
+    <div class="empty-workspace">
+      <h2>No tools saved</h2>
+      <p>Add tools from the tools page to build your workspace</p>
+      <a href="/tools" class="browse-tools-btn">Browse Tools</a>
+    </div>
+
+  <% } %>
 
   </div>
 
-  <% }) %>
-
-<% } else { %>
-
-  <div class="empty-workspace">
-    <h2>No tools saved yet</h2>
-    <p>Browse AI tools and click the star button to add them to your workspace.</p>
-    <a href="/tools" class="browse-tools-btn">Browse Tools</a>
-  </div>
-
-<% } %>
-
-</div>
-
-</div>
+</main>
 
 <script>
 function launchTool(url){
@@ -70,7 +86,6 @@ async function removeTool(toolId){
   }
 }
 </script>
- 
 
 </body>
 </html>

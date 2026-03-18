@@ -2,96 +2,84 @@
 <html lang="en">
 
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔥 Trending AI Tools | AIDEX</title>
 
-<title>🔥 Trending AI Tools | AIDEX</title>
+  <link rel="stylesheet" href="/css/styles.css">
 
-<link rel="stylesheet" href="/css/styles.css">
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
-  <%- include("nav") %>
+  <!-- HEADER -->
+  <%- include("partials/nav") %>
 
-<main class="page-container">
+  <main class="container">
 
-<h1>🔥 Trending AI Tools (Last 24h)</h1>
+    <!-- PAGE TITLE -->
+    <section class="section">
+      <h1 style="margin-bottom:10px;">🔥 Trending AI Tools</h1>
+      <p style="color:#94a3b8;">Most popular tools in the last 24 hours</p>
+    </section>
 
-<div class="tools-grid">
+    <!-- GRID -->
+    <div class="grid">
 
-<% if (tools && tools.length > 0) { %>
+      <% if (tools && tools.length > 0) { %>
 
-<% tools.forEach((tool, index) => { %>
+        <% tools.forEach((tool, index) => { %>
 
-<div class="tool-card">
+          <div class="tool-card">
 
-<!-- 🔥 TOP 3 BADGE -->
-<% if(index < 3){ %>
-<span class="trending-badge">🔥 Top <%= index + 1 %></span>
-<% } %>
+            <!-- TOP ROW -->
+            <div class="tool-top">
 
-<h3><%= tool.name %></h3>
+              <!-- LOGO -->
+              <img src="<%= tool.logo %>" alt="<%= tool.name %>" class="tool-logo">
 
-<p class="tool-category"><%= tool.category %></p>
+              <!-- RANK -->
+              <div class="rank">#<%= index + 1 %></div>
 
-<p><%= tool.description %></p>
+            </div>
 
-<!-- ✅ FIXED CLICK COUNT -->
-<p class="click-count">
-🔥 <%= tool.trendingScore || 0 %> clicks (24h)
-</p>
+            <!-- CONTENT -->
+            <div class="tool-content">
+              <h3><%= tool.name %></h3>
 
-<div class="tool-buttons">
+              <p class="tool-category"><%= tool.category %></p>
 
-<!-- ✅ FIXED ID -->
-<a href="/tool/<%= tool._id %>" class="details-btn">View Details</a>
+              <p><%= tool.description %></p>
 
-<a href="/visit/<%= tool._id %>" class="visit-btn">Visit</a>
+              <p class="click-count">
+                🔥 <%= tool.trendingScore || 0 %> clicks (24h)
+              </p>
+            </div>
 
-</div>
+            <!-- ACTIONS -->
+            <div class="tool-footer">
+              <a href="/tool/<%= tool._id %>" class="details-btn">Details</a>
+              <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">Visit</a>
+            </div>
 
-</div>
+          </div>
 
-<% }) %>
+        <% }) %>
 
-<% } else { %>
+      <% } else { %>
 
-<p>No trending tools yet.</p>
+        <p style="text-align:center;">No trending tools yet.</p>
 
-<% } %>
+      <% } %>
 
-</div>
+    </div>
 
-</main>
+  </main>
 
-<%- include("partials/footer") %>
-
-<script>
-
-const menuBtn = document.querySelector(".menu-toggle");
-const mobileMenu = document.querySelector(".mobile-menu");
-const overlay = document.querySelector(".menu-overlay");
-
-if(menuBtn){
-menuBtn.addEventListener("click", () => {
-mobileMenu.classList.toggle("active");
-overlay.classList.toggle("active");
-});
-}
-
-if(overlay){
-overlay.addEventListener("click", () => {
-mobileMenu.classList.remove("active");
-overlay.classList.remove("active");
-});
-}
-
-</script>
+  <!-- FOOTER -->
+  <%- include("partials/footer") %>
 
 </body>
 </html>

@@ -2,110 +2,46 @@
 <html lang="en">
 
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>Login | AIDEX</title>
 
 <link rel="stylesheet" href="/css/styles.css">
-
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
 </head>
 
 <body>
 
-  <%- include('partials/nav') %>
+<%- include("partials/nav") %>
+
 <div class="auth-wrapper">
 
-<div class="auth-card">
+  <div class="auth-card">
 
-<h2>Welcome back</h2>
+    <h2>Welcome back</h2>
+    <p class="auth-subtitle">Login to your account</p>
 
-<p class="auth-subtitle">
-Login to access your AI workspace
-</p>
+    <% if (typeof error !== 'undefined' && error) { %>
+      <p class="auth-error"><%= error %></p>
+    <% } %>
 
-<% if (typeof error !== 'undefined' && error) { %>
-<p style="color:red;text-align:center;margin-bottom:10px;"><%= error %></p>
-<% } %>
+    <form action="/login" method="POST" class="auth-form">
 
-<form action="/login" method="POST">
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="password" name="password" placeholder="Password" required>
 
-<!-- EMAIL -->
+      <button type="submit" class="auth-btn">Login</button>
 
-<div class="input-group">
-<i class="fa fa-envelope"></i>
-<input type="email" name="email" placeholder="Email address" required>
-</div>
+    </form>
 
-<!-- PASSWORD -->
+    <p class="auth-switch">
+      Don’t have an account?
+      <a href="/signup">Sign up</a>
+    </p>
 
-<div class="input-group password-group">
-<i class="fa fa-lock"></i>
-<input type="password" id="password" name="password" placeholder="Password" required>
-
-<span class="toggle-password">
-<i class="fa fa-eye"></i>
-</span>
-</div>
-
-<a href="#" class="forgot-password">Forgot password?</a>
-
-<button type="submit" class="auth-btn">
-Login
-</button>
-
-</form>
-
-<!-- DIVIDER -->
-
-<div class="auth-divider">
-<span>OR</span>
-</div>
-
-<!-- GOOGLE LOGIN -->
-
-<button class="google-btn">
-<i class="fa-brands fa-google"></i>
-Continue with Google
-</button>
-
-<p class="auth-switch">
-Don't have an account?
-<a href="/signup">Create one</a>
-</p>
+  </div>
 
 </div>
-
-</div>
-
-<script>
-
-/* PASSWORD TOGGLE */
-
-const toggle = document.querySelector(".toggle-password");
-const password = document.getElementById("password");
-
-toggle.addEventListener("click", () => {
-
-if(password.type === "password"){
-password.type = "text";
-toggle.innerHTML = '<i class="fa fa-eye-slash"></i>';
-}
-else{
-password.type = "password";
-toggle.innerHTML = '<i class="fa fa-eye"></i>';
-}
-
-});
-
-</script>
 
 </body>
-
 </html>

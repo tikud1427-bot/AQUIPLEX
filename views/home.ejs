@@ -16,28 +16,37 @@
 
 <body>
 
-  <%- include("nav") %>
+  <%- include("partials/nav") %>
 
 
 <!-- HERO -->
 
     <section class="hero">
-      <div class="hero-content">
 
-        <h1>Discover the Best AI Tools</h1>
+      <div class="hero-box">
+
+        <h1>
+          Discover the Future of <span>AI Tools</span>
+        </h1>
 
         <p>
-          Explore powerful AI tools for writing, coding, design, and more —             all in one place.
+          Explore the best AI tools for productivity, creativity, and development — all in one place.
         </p>
 
-        <div class="hero-actions">
-          <input type="text" placeholder="Search AI tools..." class="search-             box">
-          <button class="btn btn-primary">Search</button>
-        </div>
+        <!-- SEARCH -->
+        <form action="/tools" method="GET" class="search-bar">
+          <input 
+            type="text" 
+            name="q" 
+            placeholder="Search AI tools like ChatGPT, Midjourney..." 
+            required
+          >
+          <button type="submit">Search</button>
+        </form>
 
       </div>
-    </section>
 
+    </section>
 
     <div class="container">
 
@@ -152,7 +161,14 @@ overlay.classList.remove("active");
 
 });
 
-</script>
-
+  <script>
+  function toggleMenu(){
+    const menu = document.getElementById("mobileMenu");
+    if(menu){
+      menu.classList.toggle("active");
+    }
+  }
+  </script>
+            
 </body>
 </html>

@@ -2,98 +2,49 @@
 <html lang="en">
 
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>Submit AI Tool | AI Directory</title>
+<title>Submit AI Tool | AIDEX</title>
 
 <link rel="stylesheet" href="/css/styles.css">
-
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 </head>
 
 <body>
 
-  
-  <%- include('partials/nav') %>ass="page-container">
+<%- include('partials/nav') %>
 
-<h1>Submit a New AI Tool</h1>
+<main class="container">
 
-<p class="page-subtitle">
-Share useful AI tools with the community.
-</p>
+  <section class="section">
 
-<form action="/submit" method="POST" enctype="multipart/form-data" class="submit-form">
+    <h1>Submit a Tool</h1>
+    <p class="auth-subtitle">Share useful AI tools with the community</p>
 
-<input
-type="text"
-name="name"
-placeholder="AI Tool Name"
-required
->
+    <form action="/submit" method="POST" enctype="multipart/form-data" class="submit-form">
 
-<input
-type="text"
-name="category"
-placeholder="Category (Writing AI, Image AI...)"
-required
->
+      <input type="text" name="name" placeholder="Tool name" required>
 
-<input
-type="url"
-name="url"
-placeholder="Official Website URL"
-required
->
+      <input type="text" name="category" placeholder="Category (e.g. Writing AI)" required>
 
-<textarea
-name="description"
-rows="4"
-placeholder="Short description"
-required
-></textarea>
+      <input type="url" name="url" placeholder="Website URL" required>
 
-<label>Upload Tool Logo</label>
+      <textarea name="description" rows="4" placeholder="Short description" required></textarea>
 
-<input
-type="file"
-name="logo"
-accept="image/*"
-required
->
+      <label>Upload Logo</label>
+      <input type="file" name="logo" accept="image/*" required>
 
-<button type="submit">
-Submit Tool 🚀
-</button>
+      <button type="submit">Submit Tool 🚀</button>
 
-</form>
+    </form>
+
+  </section>
 
 </main>
 
 <%- include("partials/footer") %>
-
-<script>
-const menuBtn = document.querySelector(".menu-toggle");
-const mobileMenu = document.querySelector(".mobile-menu");
-const overlay = document.querySelector(".menu-overlay");
-
-if(menuBtn){
-menuBtn.addEventListener("click", () => {
-mobileMenu.classList.toggle("active");
-overlay.classList.toggle("active");
-});
-}
-
-if(overlay){
-overlay.addEventListener("click", () => {
-mobileMenu.classList.remove("active");
-overlay.classList.remove("active");
-});
-}
-</script>
-
 
 </body>
 </html>

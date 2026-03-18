@@ -72,12 +72,6 @@ app.use(session({
   cookie: { maxAge: 1000 * 60 * 60 * 24 }
 }));
 
-// 🔥 GLOBAL USER
-app.use((req, res, next) => {
-  res.locals.user = req.session.user || null;
-  next();
-});
-
 // ================= UPLOAD =================
 const uploadDir = path.join(__dirname, "public/uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -94,7 +88,11 @@ function requireLogin(req, res, next) {
   if (!req.session.userId) return res.redirect("/login");
   next();
 }
-
+// 🔥 GLOBAL USER
+app.use((req, res, next) => {
+  res.locals.user = req.session.user || null;
+  next();
+});
 // ================= ROUTES =================
 
 // HOME
@@ -112,19 +110,29 @@ app.get("/", async (req, res) => {
 
 // TOOLS
 app.get("/tools", async (req, res) => {
-  try {
-    const tools = await Tool.find().lean();
-    const categories = [...new Set(tools.map(t => t.category))];
+  const query = req.query.q;
 
-    const trendingTools = await getTrendingTools(10);
-    const trendingIds = trendingTools.map(t => t._id.toString());
+  let tools;
 
-    res.render("tools", { tools, categories, trendingIds });
-  } catch {
-    res.send("Error loading tools");
+  if (query) {
+    tools = await Tool.find({
+      $or: [
+        { name: { $regex: query, $options: "i" } },
+        { description: { $regex: query, $options: "i" } }
+      ]
+    }).lean();
+  } else {
+    tools = await Tool.find().lean();
   }
-});
 
+  const allTools = await Tool.find().lean();
+  const categories = [...new Set(allTools.map(t => t.category))];
+
+  const trendingTools = await getTrendingTools(10);
+  const trendingIds = trendingTools.map(t => t._id.toString());
+
+  res.render("tools", { tools, categories, trendingIds });
+});
 // TOOL DETAILS
 app.get("/tool/:id", async (req, res) => {
   try {
