@@ -16,7 +16,7 @@
 
 <body>
 
-  <%- include("partials/header") %>
+  <%- include("nav") %>
 
 
 <!-- HERO -->
@@ -140,19 +140,15 @@ const menuBtn = document.querySelector(".menu-toggle");
 const mobileMenu = document.querySelector(".mobile-menu");
 const overlay = document.querySelector(".menu-overlay");
 
-if(menuBtn && mobileMenu){
-  menuBtn.addEventListener("click", function(){
-    mobileMenu.classList.toggle("active");
-    if(overlay) overlay.classList.toggle("active");
-  });
-}
+menuBtn.addEventListener("click", function(){
+mobileMenu.classList.toggle("active");
+overlay.classList.toggle("active");
+});
 
-if(overlay && mobileMenu){
-  overlay.addEventListener("click", function(){
-    mobileMenu.classList.remove("active");
-    overlay.classList.remove("active");
-  });
-}
+overlay.addEventListener("click", function(){
+mobileMenu.classList.remove("active");
+overlay.classList.remove("active");
+});
 
 });
 
