@@ -69,7 +69,10 @@ app.use(session({
   secret: process.env.SESSION_SECRET || "aidex-secret",
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 24 }
+  cookie: { 
+    maxAge: 1000 * 60 * 60 * 24,
+    secure: false   // ✅ important for Replit / localhost
+  }
 }));
 
 // ================= UPLOAD =================
@@ -243,7 +246,10 @@ app.post("/login", async (req, res) => {
     email: user.email
   };
 
-  res.redirect("/workspace");
+  // 🔥 CRITICAL FIX
+  req.session.save(() => {
+    res.redirect("/workspace");
+  });
 });
 
 // SIGNUP
