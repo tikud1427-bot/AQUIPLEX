@@ -1,74 +1,74 @@
-<header class="site-header">
+<header class="main-header">
+  <div class="header-container">
 
-<nav class="navbar">
+    <!-- LOGO -->
+    <a href="/" class="logo">AIDEX</a>
 
-<div class="logo">
-<a href="/">AIDEX</a>
-</div>
+    <!-- NAV -->
+    <nav class="nav-links">
 
-<button class="menu-toggle">☰</button>
+      <a href="/" class="nav-item">Home</a>
+      <a href="/tools" class="nav-item">Tools</a>
+      <a href="/trending" class="nav-item highlight">🔥 Trending</a>
 
-<ul class="nav-links">
+      <% if (typeof user !== "undefined" && user) { %>
+        <a href="/workspace" class="nav-item">Workspace</a>
+      <% } %>
 
-<li><a href="/">Home</a></li>
-<li><a href="/tools">Tools</a></li>
-<li><a href="/trending">Trending</a></li>
+      <a href="/submit" class="nav-item">Submit</a>
 
-<% if(userId){ %>
-<li><a href="/workspace">Workspace</a></li>
-<% } %>
+    </nav>
 
-<li><a href="/submit">Submit</a></li>
-<li><a href="/about">About</a></li>
+    <!-- ACTIONS -->
+    <div class="header-actions">
 
+      <% if (typeof user !== "undefined" && user) { %>
 
-<!-- AUTH BUTTONS -->
+        <a href="/workspace" class="btn ghost">
+          ⚡ Workspace
+        </a>
 
-<% if(userId){ %>
+        <a href="/logout" class="btn primary">
+          Logout
+        </a>
 
-<li><a href="/logout" class="logout-btn">Logout</a></li>
+      <% } else { %>
 
-<% } else { %>
+        <a href="/login" class="btn ghost">Login</a>
+        <a href="/signup" class="btn primary">Sign Up</a>
 
-<li><a href="/login" class="login-btn">Login</a></li>
-<li><a href="/signup" class="signup-btn">Sign Up</a></li>
+      <% } %>
 
-<% } %>
+    </div>
 
-</ul>
+    <!-- MOBILE TOGGLE -->
+    <div class="menu-toggle" onclick="toggleMenu()">☰</div>
 
-</nav>
+  </div>
 
+  <!-- MOBILE MENU -->
+  <div class="mobile-menu" id="mobileMenu">
 
-<!-- MOBILE MENU -->
+    <a href="/">Home</a>
+    <a href="/tools">Tools</a>
+    <a href="/trending">🔥 Trending</a>
 
-<div class="mobile-menu">
+    <% if (typeof user !== "undefined" && user) { %>
+      <a href="/workspace">Workspace</a>
+      <a href="/logout">Logout</a>
+    <% } else { %>
+      <a href="/login">Login</a>
+      <a href="/signup">Sign Up</a>
+    <% } %>
 
-<a href="/">Home</a>
-<a href="/tools">Tools</a>
-<a href="/trending">Trending</a>
+    <a href="/submit">Submit</a>
 
-<% if(userId){ %>
-<a href="/workspace">Workspace</a>
-<% } %>
-
-<a href="/submit">Submit</a>
-<a href="/about">About</a>
-
-
-<% if(userId){ %>
-
-<a href="/logout">Logout</a>
-
-<% } else { %>
-
-<a href="/login">Login</a>
-<a href="/signup">Sign Up</a>
-
-<% } %>
-
-</div>
-
-<div class="menu-overlay"></div>
+  </div>
 
 </header>
+
+<script>
+function toggleMenu(){
+  document.getElementById("mobileMenu").classList.toggle("active");
+}
+</script>

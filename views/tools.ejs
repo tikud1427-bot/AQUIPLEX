@@ -11,8 +11,7 @@
 </head>
 
 <body>
-
-<%- include("nav") %>
+  <%- include("partials/header") %>
 
 <div class="tools-page-container">
 
@@ -67,11 +66,18 @@
     <% } %>
 
     <!-- HEADER -->
-    <div class="tool-header">
-      <div class="tool-logo-container">
-        <img src="<%= tool.logo || '/logos/default.png' %>"
+      <div class="tool-header">
+
+        <img class="tool-logo"
+        src="<%= tool.logo || '/logos/default.png' %>"
         alt="<%= tool.name %>"
         onerror="this.src='/logos/default.png'">
+
+        <div>
+          <h3 class="tool-name"><%= tool.name %></h3>
+          <p class="tool-category"><%= tool.category %></p>
+        </div>
+
       </div>
       <div class="tool-title">
         <h3 class="tool-name"><%= tool.name %></h3>
@@ -146,6 +152,11 @@ if(searchInput){
 }
 
 </script>
+  <script>
+  function toggleMenu(){
+    document.getElementById("mobileMenu").classList.toggle("active");
+  }
+  </script>
 
 </body>
 </html>

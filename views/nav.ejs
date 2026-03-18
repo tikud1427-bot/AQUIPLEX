@@ -1,43 +1,35 @@
 <header>
+  <nav class="navbar container">
 
-<nav class="navbar">
+    <!-- LEFT -->
+    <div class="nav-left">
+      <a href="/" class="logo">AIDEX</a>
+    </div>
 
-<div class="logo">
-<a href="/">AI Directory</a>
-</div>
+    <!-- CENTER LINKS -->
+    <ul class="nav-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/tools">Tools</a></li>
+      <li><a href="/trending">Trending</a></li>
+      <li><a href="/submit">Submit</a></li>
+      <li><a href="/about">About</a></li>
 
-<ul class="nav-links">
+      <% if(userId){ %>
+      <li><a href="/workspace">Workspace</a></li>
+      <% } %>
+    </ul>
 
-<li><a href="/">Home</a></li>
-<li><a href="/tools">Tools</a></li>
-<li><a href="/trending">Trending</a></li>
-<li><a href="/submit">Submit</a></li>
-<li><a href="/about">About</a></li>
+    <!-- RIGHT AUTH -->
+    <div class="nav-right">
 
-<% if(userId){ %>
-<li><a href="/workspace">Workspace</a></li>
-<% } %>
+      <% if(userId){ %>
+        <a href="/logout" class="btn btn-secondary">Logout</a>
+      <% } else { %>
+        <a href="/login" class="btn btn-secondary">Login</a>
+        <a href="/signup" class="btn btn-primary">Sign Up</a>
+      <% } %>
 
-</ul>
+    </div>
 
-
-<!-- AUTH BUTTON BOX -->
-
-<div class="auth-nav-box">
-
-<% if(userId){ %>
-
-<a href="/logout" class="logout-btn">Logout</a>
-
-<% } else { %>
-
-<a href="/login" class="login-btn">Login</a>
-<a href="/signup" class="signup-btn">Sign Up</a>
-
-<% } %>
-
-</div>
-
-</nav>
-
+  </nav>
 </header>

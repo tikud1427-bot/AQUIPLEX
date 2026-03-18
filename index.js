@@ -20,9 +20,7 @@ const Workspace = require("./models/Workspace");
 async function connectDB() {
   try {
     console.log("⏳ Connecting to MongoDB...");
-
     await mongoose.connect(process.env.MONGO_URI);
-
     console.log("✅ MongoDB connected");
   } catch (err) {
     console.error("❌ MongoDB connection failed:", err.message);
@@ -30,40 +28,32 @@ async function connectDB() {
   }
 }
 
-// ================= TRENDING FUNCTION =================
+// ================= TRENDING =================
 async function getTrendingTools(limit = 10) {
   const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
   const tools = await Tool.find().lean();
 
-  const scored = tools.map(tool => {
-    const recentClicks = (tool.clickHistory || []).filter(
-      c => new Date(c.date) > last24h
-    ).length;
+  return tools
+    .map(tool => {
+      const score = (tool.clickHistory || []).filter(
+        c => new Date(c.date) > last24h
+      ).length;
 
-    return {
-      ...tool,
-      trendingScore: recentClicks
-    };
-  });
-
-  return scored
+      return { ...tool, trendingScore: score };
+    })
     .sort((a, b) => b.trendingScore - a.trendingScore)
     .slice(0, limit);
 }
 
 // ================= IMPORT JSON =================
 let jsonTools = [];
-
 try {
   jsonTools = JSON.parse(fs.readFileSync("./data/tools.json", "utf8"));
-} catch {
-  console.log("No tools.json found");
-}
+} catch {}
 
 async function importTools() {
   const count = await Tool.countDocuments();
-
   if (count === 0 && jsonTools.length > 0) {
     await Tool.insertMany(jsonTools);
     console.log("✅ Default tools imported");
@@ -82,27 +72,24 @@ app.use(session({
   cookie: { maxAge: 1000 * 60 * 60 * 24 }
 }));
 
+// 🔥 GLOBAL USER
 app.use((req, res, next) => {
-  res.locals.userId = req.session.userId;
+  res.locals.user = req.session.user || null;
   next();
 });
 
 // ================= UPLOAD =================
 const uploadDir = path.join(__dirname, "public/uploads");
-
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename: (req, file, cb) =>
     cb(null, Date.now() + "-" + file.originalname)
 });
-
 const upload = multer({ storage });
 
-// ================= LOGIN PROTECTION =================
+// ================= AUTH MIDDLEWARE =================
 function requireLogin(req, res, next) {
   if (!req.session.userId) return res.redirect("/login");
   next();
@@ -110,49 +97,31 @@ function requireLogin(req, res, next) {
 
 // ================= ROUTES =================
 
-// TEST
-app.get("/test", (req, res) => res.send("Server working"));
-
 // HOME
 app.get("/", async (req, res) => {
   try {
     const tools = await Tool.find().limit(12).lean();
-
     const trendingTools = await getTrendingTools(10);
     const trendingIds = trendingTools.map(t => t._id.toString());
 
     res.render("home", { tools, trendingIds });
-
-  } catch (err) {
-    console.log(err);
+  } catch {
     res.send("Error loading home");
   }
 });
 
-// VISIT TOOL
-app.get("/visit/:id", async (req, res) => {
+// TOOLS
+app.get("/tools", async (req, res) => {
   try {
-    const tool = await Tool.findById(req.params.id);
+    const tools = await Tool.find().lean();
+    const categories = [...new Set(tools.map(t => t.category))];
 
-    if (!tool) return res.redirect("/tools");
+    const trendingTools = await getTrendingTools(10);
+    const trendingIds = trendingTools.map(t => t._id.toString());
 
-    // track clicks
-    tool.clicks = (tool.clicks || 0) + 1;
-
-    tool.clickHistory = tool.clickHistory || [];
-    tool.clickHistory.push({ date: new Date() });
-
-    await tool.save();
-
-    // safe URL
-    let url = tool.url || "";
-    if (!url.startsWith("http")) url = "https://" + url;
-
-    res.redirect(url);
-
-  } catch (err) {
-    console.log(err);
-    res.redirect("/tools");
+    res.render("tools", { tools, categories, trendingIds });
+  } catch {
+    res.send("Error loading tools");
   }
 });
 
@@ -160,102 +129,86 @@ app.get("/visit/:id", async (req, res) => {
 app.get("/tool/:id", async (req, res) => {
   try {
     const tool = await Tool.findById(req.params.id).lean();
-
     if (!tool) return res.redirect("/tools");
 
     res.render("tool", { tool });
-
-  } catch (err) {
+  } catch {
     res.redirect("/tools");
   }
 });
 
-// ALL TOOLS
-app.get("/tools", async (req, res) => {
+// VISIT TOOL
+app.get("/visit/:id", async (req, res) => {
   try {
-    const tools = await Tool.find().lean();
+    const tool = await Tool.findById(req.params.id);
+    if (!tool) return res.redirect("/tools");
 
-    const categories = [...new Set(tools.map(t => t.category))];
+    tool.clicks = (tool.clicks || 0) + 1;
+    tool.clickHistory = tool.clickHistory || [];
+    tool.clickHistory.push({ date: new Date() });
 
-    const trendingTools = await getTrendingTools(10);
-    const trendingIds = trendingTools.map(t => t._id.toString());
+    await tool.save();
 
-    res.render("tools", { tools, categories, trendingIds });
+    let url = tool.url;
+    if (!url.startsWith("http")) url = "https://" + url;
 
-  } catch (err) {
-    res.send("Error loading tools");
+    res.redirect(url);
+  } catch {
+    res.redirect("/tools");
   }
 });
 
-// TRENDING PAGE
+// TRENDING
 app.get("/trending", async (req, res) => {
   try {
-    const trendingTools = await getTrendingTools(20);
+    const tools = await getTrendingTools(20);
 
     const allTools = await Tool.find().lean();
     const categories = [...new Set(allTools.map(t => t.category))];
 
-    const trendingIds = trendingTools.map(t => t._id.toString());
+    const trendingIds = tools.map(t => t._id.toString());
 
-    res.render("trending", {
-      tools: trendingTools,
-      categories,
-      trendingIds
-    });
-
-  } catch (err) {
-    console.log(err);
-    res.send("Error loading trending page");
+    res.render("trending", { tools, categories, trendingIds });
+  } catch {
+    res.send("Error loading trending");
   }
 });
 
 // SEARCH
 app.get("/search", async (req, res) => {
-  const query = req.query.q || "";
+  const q = req.query.q || "";
 
-  try {
-    const results = await Tool.find({
-      $or: [
-        { name: { $regex: query, $options: "i" } },
-        { category: { $regex: query, $options: "i" } },
-        { description: { $regex: query, $options: "i" } }
-      ]
-    }).lean();
+  const tools = await Tool.find({
+    $or: [
+      { name: { $regex: q, $options: "i" } },
+      { category: { $regex: q, $options: "i" } },
+      { description: { $regex: q, $options: "i" } }
+    ]
+  }).lean();
 
-    const categories = [...new Set(results.map(t => t.category))];
+  const categories = [...new Set(tools.map(t => t.category))];
 
-    const trendingTools = await getTrendingTools(10);
-    const trendingIds = trendingTools.map(t => t._id.toString());
+  const trendingTools = await getTrendingTools(10);
+  const trendingIds = trendingTools.map(t => t._id.toString());
 
-    res.render("tools", { tools: results, categories, trendingIds });
-
-  } catch (err) {
-    res.send("Search error");
-  }
+  res.render("tools", { tools, categories, trendingIds });
 });
 
-// CATEGORY FILTER
+// CATEGORY
 app.get("/tools/category/:name", async (req, res) => {
-  try {
-    // 🔥 decode URL
-    const category = decodeURIComponent(req.params.name);
+  const category = decodeURIComponent(req.params.name);
 
-    const tools = await Tool.find({
-      category: { $regex: "^" + category + "$", $options: "i" }
-    }).lean();
+  const tools = await Tool.find({
+    category: { $regex: "^" + category + "$", $options: "i" }
+  }).lean();
 
-    const allTools = await Tool.find().lean();
-    const categories = [...new Set(allTools.map(t => t.category))];
+  const allTools = await Tool.find().lean();
+  const categories = [...new Set(allTools.map(t => t.category))];
 
-    const trendingTools = await getTrendingTools(10);
-    const trendingIds = trendingTools.map(t => t._id.toString());
+  const trendingTools = await getTrendingTools(10);
+  const trendingIds = trendingTools.map(t => t._id.toString());
 
-    res.render("tools", { tools, categories, trendingIds });
-
-  } catch (err) {
-    console.log(err);
-    res.send("Category error");
-  }
+  res.render("tools", { tools, categories, trendingIds });
 });
 
 // ================= AUTH =================
@@ -277,6 +230,11 @@ app.post("/login", async (req, res) => {
   if (!match) return res.send("Wrong password");
 
   req.session.userId = user._id;
+  req.session.user = {
+    _id: user._id,
+    email: user.email
+  };
+
   res.redirect("/workspace");
 });
 
@@ -284,12 +242,11 @@ app.post("/login", async (req, res) => {
 app.post("/signup", async (req, res) => {
   const { email, password } = req.body;
 
-  const existingUser = await User.findOne({ email });
-  if (existingUser) return res.send("User exists");
+  const exists = await User.findOne({ email });
+  if (exists) return res.send("User exists");
 
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  await new User({ email, password: hashedPassword }).save();
+  const hash = await bcrypt.hash(password, 10);
+  await new User({ email, password: hash }).save();
 
   res.redirect("/login");
 });
@@ -299,11 +256,48 @@ app.get("/logout", (req, res) => {
   req.session.destroy(() => res.redirect("/"));
 });
 
-// ================= START SERVER =================
+// ================= WORKSPACE =================
+app.get("/workspace", requireLogin, async (req, res) => {
+  let workspace = await Workspace.findOne({ userId: req.session.userId }).populate("tools");
+
+  if (!workspace) {
+    workspace = await new Workspace({
+      userId: req.session.userId,
+      tools: []
+    }).save();
+  }
+
+  res.render("workspace", { workspace });
+});
+
+app.post("/workspace/add/:toolId", requireLogin, async (req, res) => {
+  let workspace = await Workspace.findOne({ userId: req.session.userId });
+
+  if (!workspace) {
+    workspace = new Workspace({ userId: req.session.userId, tools: [] });
+  }
+
+  if (!workspace.tools.includes(req.params.toolId)) {
+    workspace.tools.push(req.params.toolId);
+    await workspace.save();
+  }
+
+  res.sendStatus(200);
+});
+
+app.post("/workspace/remove/:toolId", requireLogin, async (req, res) => {
+  await Workspace.updateOne(
+    { userId: req.session.userId },
+    { $pull: { tools: req.params.toolId } }
+  );
+
+  res.sendStatus(200);
+});
+
+// ================= START =================
 async function startServer() {
   await connectDB();
   await importTools();
-
 
   const PORT = process.env.PORT || 3000;
 
@@ -313,7 +307,3 @@ async function startServer() {
 }
 
 startServer();
-
-// ================= ERRORS =================
-process.on("unhandledRejection", err => console.error(err));
-process.on("uncaughtException", err => console.error(err));

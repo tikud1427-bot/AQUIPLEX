@@ -21,114 +21,110 @@
 
 <!-- HERO -->
 
-<section class="hero">
+    <section class="hero">
+      <div class="hero-content">
 
-<h1>Welcome to AIDEX</h1>
+        <h1>Discover the Best AI Tools</h1>
 
-<p>Discover the best AI tools in one place</p>
+        <p>
+          Explore powerful AI tools for writing, coding, design, and more —             all in one place.
+        </p>
 
-<a href="/tools" class="hero-btn">Explore Tools</a>
+        <div class="hero-actions">
+          <input type="text" placeholder="Search AI tools..." class="search-             box">
+          <button class="btn btn-primary">Search</button>
+        </div>
 
-<form action="/search" method="GET" class="search-form">
-
-<input type="text" name="q" placeholder="Search AI tools..." required>
-
-<button type="submit">Search</button>
-
-</form>
-
-</section>
-
-
-<!-- CATEGORY SECTION -->
-
-<section class="categories-section">
-
-<h2>Explore by Category</h2>
-
-<div class="categories">
-
-<%
-const categories = [
-"Writing AI",
-"Image AI",
-"Video AI",
-"Coding AI",
-"ML AI"
-];
-
-categories.forEach(function(category){ 
-%>
-
-<a class="category-card"
-href="/tools/category/<%= encodeURIComponent(category) %>">
-
-<%= category %>
-
-</a>
-
-<% }) %>
-
-</div>
-
-</section>
+      </div>
+    </section>
 
 
-<!-- FEATURED TOOLS -->
+    <div class="container">
 
-<section class="featured">
+      <!-- CATEGORY SECTION -->
+      <section class="section">
+        <h2>Explore by Category</h2>
 
-<h2>Featured Tools</h2>
+        <div class="categories">
 
-<div class="tools-grid">
+          <%
+          const categories = [
+          "Writing AI",
+          "Image AI",
+          "Video AI",
+          "Coding AI",
+          "ML AI"
+          ];
 
-<% if (tools && tools.length > 0) { %>
+          categories.forEach(function(category){ 
+          %>
 
-<% tools.forEach(function(tool){ %>
+          <a class="category-card"
+          href="/tools/category/<%= encodeURIComponent(category) %>">
+          <%= category %>
+          </a>
 
-<div class="tool-card">
+          <% }) %>
 
-<div class="logo-box">
-<img src="<%= tool.logo %>" alt="<%= tool.name %>">
-</div>
+        </div>
+      </section>
 
-<a href="/tool/<%= tool._id %>" class="tool-link">
-<h3><%= tool.name %></h3>
-</a>
 
-<p><%= tool.description %></p>
+      <!-- FEATURED TOOLS -->
+      <section class="section">
 
-<div class="tool-actions">
+        <h2>Featured Tools</h2>
 
-<a href="/tool/<%= tool._id %>" class="details-btn">
-View Details
-</a>
+        <div class="grid">
 
-<a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">
-Visit Tool
-</a>
+          <% if (tools && tools.length > 0) { %>
 
-</div>
+          <% tools.forEach(function(tool){ %>
 
-</div>
+          <div class="tool-card">
 
-<% }) %>
+            <div class="logo-box">
+              <img src="<%= tool.logo %>" alt="<%= tool.name %>">
+            </div>
 
-<% } else { %>
+            <a href="/tool/<%= tool._id %>" class="tool-link">
+              <h3><%= tool.name %></h3>
+            </a>
 
-<p style="text-align:center;">No tools available yet.</p>
+            <p><%= tool.description %></p>
 
-<% } %>
+            <div class="tool-actions">
 
-</div>
+              <a href="/tool/<%= tool._id %>" class="details-btn">
+                View Details
+              </a>
 
-</section>
+              <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">
+                Visit Tool
+              </a>
+
+            </div>
+
+          </div>
+
+          <% }) %>
+
+          <% } else { %>
+
+          <p style="text-align:center;">No tools available yet.</p>
+
+          <% } %>
+
+        </div>
+
+      </section>
+
+    </div>
 
 
 <!-- FOOTER -->
 
-<footer class="simple-footer">
-
+     <footer class="footer">
 <p>© <%= new Date().getFullYear() %> AIDEX. All rights reserved.</p>
 
 </footer>
@@ -144,15 +140,19 @@ const menuBtn = document.querySelector(".menu-toggle");
 const mobileMenu = document.querySelector(".mobile-menu");
 const overlay = document.querySelector(".menu-overlay");
 
-menuBtn.addEventListener("click", function(){
-mobileMenu.classList.toggle("active");
-overlay.classList.toggle("active");
-});
+if(menuBtn && mobileMenu){
+  menuBtn.addEventListener("click", function(){
+    mobileMenu.classList.toggle("active");
+    if(overlay) overlay.classList.toggle("active");
+  });
+}
 
-overlay.addEventListener("click", function(){
-mobileMenu.classList.remove("active");
-overlay.classList.remove("active");
-});
+if(overlay && mobileMenu){
+  overlay.addEventListener("click", function(){
+    mobileMenu.classList.remove("active");
+    overlay.classList.remove("active");
+  });
+}
 
 });
 
