@@ -1,249 +1,117 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIDEX | About</title>
 
-<title>About | AIDEX</title>
+  <link rel="stylesheet" href="/css/styles.css">
 
-<link rel="stylesheet" href="/css/styles.css">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-<style>
-
-/* HERO */
-.about-hero {
-  background: linear-gradient(135deg, #0f172a, #1e293b);
-  color: white;
-  padding: 80px 20px;
-  text-align: center;
-}
-
-.about-hero h1 {
-  font-size: 2.8rem;
-  margin-bottom: 15px;
-}
-
-.about-hero p {
-  color: #cbd5f5;
-  max-width: 600px;
-  margin: auto;
-}
-
-.hero-buttons {
-  margin-top: 25px;
-}
-
-.hero-buttons a {
-  margin: 0 10px;
-}
-
-/* SECTIONS */
-.page-container {
-  max-width: 1100px;
-  margin: auto;
-  padding: 60px 20px;
-}
-
-section {
-  margin-bottom: 70px;
-}
-
-/* STATS */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 20px;
-  text-align: center;
-}
-
-.stat {
-  background: #0f172a;
-  color: white;
-  padding: 25px;
-  border-radius: 12px;
-}
-
-.stat h2 {
-  font-size: 2rem;
-}
-
-/* FEATURES */
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-}
-
-.feature-card {
-  background: #111827;
-  color: white;
-  padding: 25px;
-  border-radius: 12px;
-  transition: 0.3s;
-}
-
-.feature-card:hover {
-  transform: translateY(-5px);
-}
-
-.feature-icon {
-  font-size: 28px;
-  margin-bottom: 10px;
-}
-
-/* TEAM */
-.team-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-}
-
-.team-card {
-  background: #111827;
-  color: white;
-  padding: 25px;
-  border-radius: 12px;
-  text-align: center;
-}
-
-.avatar {
-  width: 60px;
-  height: 60px;
-  background: #6366f1;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: auto;
-  font-size: 22px;
-  margin-bottom: 10px;
-}
-
-/* CTA */
-.about-cta {
-  text-align: center;
-  background: #0f172a;
-  color: white;
-  padding: 50px;
-  border-radius: 12px;
-}
-
-.primary-btn {
-  background: #6366f1;
-  color: white;
-  padding: 12px 22px;
-  border-radius: 8px;
-  text-decoration: none;
-}
-
-.secondary-btn {
-  border: 1px solid #6366f1;
-  padding: 12px 22px;
-  border-radius: 8px;
-  color: white;
-  text-decoration: none;
-}
-
-</style>
-
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
-<%- include('partials/nav') %>
+  <!-- NAVBAR -->
+  <%- include("nav") %>
 
-<!-- HERO -->
-<section class="about-hero">
-  <h1>Building the Future of AI Discovery</h1>
-  <p>AIDEX helps you discover the best AI tools faster and smarter.</p>
+  <!-- HERO -->
+  <section class="hero premium-hero">
+    <div class="hero-content">
+      <h1>Redefining AI Discovery</h1>
+      <p>
+        AIDEX is building the most powerful platform to explore, discover,
+        and share AI tools — faster, smarter, and beautifully.
+      </p>
 
-  <div class="hero-buttons">
-    <a href="/tools" class="primary-btn">Explore Tools</a>
-    <a href="/submit" class="secondary-btn">Submit Tool</a>
-  </div>
-</section>
-
-<main class="page-container">
-
-<!-- STATS -->
-<section>
-  <div class="stats-grid">
-    <div class="stat"><h2>500+</h2><p>Tools</p></div>
-    <div class="stat"><h2>50+</h2><p>Categories</p></div>
-    <div class="stat"><h2>10k+</h2><p>Users</p></div>
-  </div>
-</section>
-
-<!-- MISSION -->
-<section>
-  <h2>Our Mission</h2>
-  <p>We make AI discovery simple, fast, and accessible to everyone.</p>
-</section>
-
-<!-- FEATURES -->
-<section>
-  <h2>What We Do</h2>
-  <div class="features-grid">
-
-    <div class="feature-card">
-      <div class="feature-icon">🔎</div>
-      <h3>Discover</h3>
-      <p>Find powerful AI tools instantly.</p>
+      <div class="hero-buttons">
+        <a href="/tools" class="btn primary">Explore Tools</a>
+        <a href="/submit" class="btn secondary">Submit Tool</a>
+      </div>
     </div>
+  </section>
 
-    <div class="feature-card">
-      <div class="feature-icon">🔥</div>
-      <h3>Trending</h3>
-      <p>See what's popular right now.</p>
+  <!-- MISSION -->
+  <section class="about-section">
+    <div class="container">
+      <h2>Our Mission</h2>
+      <p>
+        We aim to simplify AI for everyone. AIDEX helps developers,
+        creators, and businesses discover the right tools without
+        wasting time.
+      </p>
+
+      <h2>Our Vision</h2>
+      <p>
+        To become the world's #1 AI discovery platform — where innovation
+        meets simplicity.
+      </p>
     </div>
+  </section>
 
-    <div class="feature-card">
-      <div class="feature-icon">⭐</div>
-      <h3>Workspace</h3>
-      <p>Save your favorite tools.</p>
+  <!-- STATS -->
+  <section class="stats-section">
+    <div class="container stats-grid">
+      <div class="stat-card">
+        <h3>100+</h3>
+        <p>AI Tools</p>
+      </div>
+      <div class="stat-card">
+        <h3>10K+</h3>
+        <p>Users</p>
+      </div>
+      <div class="stat-card">
+        <h3>24/7</h3>
+        <p>Access</p>
+      </div>
     </div>
+  </section>
 
-    <div class="feature-card">
-      <div class="feature-icon">📤</div>
-      <h3>Submit</h3>
-      <p>Share your AI tools.</p>
+  <!-- TEAM -->
+  <section class="team-section">
+    <div class="container">
+
+      <h2>Leadership</h2>
+
+      <div class="team-grid">
+
+        <!-- CEO -->
+        <div class="team-card premium-card">
+          <div class="avatar">A</div>
+          <h3>Ananya Prabal Das</h3>
+          <p class="role">CEO & Co-Founder</p>
+          <p>
+            Leading AIDEX with vision and strategy, focused on making AI
+            accessible and impactful for everyone.
+          </p>
+        </div>
+
+        <!-- CO-FOUNDER -->
+        <div class="team-card premium-card">
+          <div class="avatar">C</div>
+          <h3>Chhanda Prabal Das</h3>
+          <p class="role">Co-Founder & Advisor</p>
+          <p>
+            Driving innovation, product development, and guiding the
+            platform toward excellence.
+          </p>
+        </div>
+
+      </div>
+
     </div>
+  </section>
 
-  </div>
-</section>
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>Join the Future of AI</h2>
+    <a href="/tools" class="btn primary">Start Exploring</a>
+  </section>
 
-<!-- TEAM -->
-<section>
-  <h2>Team</h2>
-  <div class="team-grid">
-
-    <div class="team-card">
-      <div class="avatar">A</div>
-      <h3>Ananya</h3>
-      <p>CEO</p>
-    </div>
-
-    <div class="team-card">
-      <div class="avatar">C</div>
-      <h3>Chhanda</h3>
-      <p>Co-Founder</p>
-    </div>
-
-  </div>
-</section>
-
-<!-- CTA -->
-<section class="about-cta">
-  <h2>Start Exploring</h2>
-  <p>Join thousands discovering AI tools.</p>
-  <a href="/tools" class="primary-btn">Browse Tools</a>
-</section>
-
-</main>
-
-<%- include("partials/footer") %>
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>© <%= new Date().getFullYear() %> AIDEX. All rights reserved.</p>
+  </footer>
 
 </body>
 </html>

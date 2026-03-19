@@ -849,3 +849,87 @@ h2{
   border-radius:8px;
   color:#020617;
 }
+/* PREMIUM HERO */
+.premium-hero {
+  background: linear-gradient(135deg, #0f172a, #1e293b, #312e81);
+}
+
+/* STATS */
+.stats-section {
+  padding: 50px 20px;
+  background: #020617;
+}
+
+.stats-grid {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  background: #1e293b;
+  padding: 20px;
+  border-radius: 12px;
+  width: 120px;
+  text-align: center;
+}
+
+.stat-card h3 {
+  color: #8b5cf6;
+}
+
+/* TEAM */
+.team-section {
+  padding: 60px 20px;
+  background: #0f172a;
+  text-align: center;
+  color: white;
+}
+
+.team-grid {
+  display: flex;
+  gap: 25px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.premium-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(10px);
+  padding: 25px;
+  border-radius: 15px;
+  max-width: 260px;
+  transition: 0.3s;
+}
+
+.premium-card:hover {
+  transform: translateY(-8px);
+}
+
+.avatar {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  font-weight: bold;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.role {
+  color: #a78bfa;
+  margin-bottom: 10px;
+}
+
+/* CTA */
+.cta-section {
+  padding: 60px 20px;
+  text-align: center;
+  background: #020617;
+  color: white;
+}
