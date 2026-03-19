@@ -178,6 +178,55 @@ app.get("/visit/:id", async (req, res) => {
   }
 });
 
+// TRENDING PAGE
+app.get("/trending", async (req, res) => {
+  try {
+    const tools = await getTrendingTools(20);
+    res.render("trending", { tools });
+  } catch (err) {
+    console.error(err);
+    res.send("Error loading trending page");
+  }
+});
+
+// SUBMIT PAGE
+app.get("/submit", (req, res) => {
+  res.render("submit");
+});
+
+// SUBMIT TOOL
+app.post("/submit", upload.single("logo"), async (req, res) => {
+  try {
+    const { name, category, url, description } = req.body;
+
+    if (!name || !category || !url || !description) {
+      return res.send("All fields are required");
+    }
+
+    let logoPath = "/logos/default.png";
+
+    if (req.file) {
+      logoPath = "/uploads/" + req.file.filename;
+    }
+
+    await new Tool({
+      name,
+      category,
+      url,
+      description,
+      logo: logoPath,
+      clicks: 0,
+      clickHistory: []
+    }).save();
+
+    res.redirect("/tools");
+
+  } catch (err) {
+    console.error(err);
+    res.send("Error submitting tool");
+  }
+});
+
 // ================= AUTH =================
 
 // LOGIN PAGE
