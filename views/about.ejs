@@ -2,221 +2,248 @@
 <html lang="en">
 
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>About | AIDEX</title>
 
 <link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/about.css">
-
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+/* HERO */
+.about-hero {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: white;
+  padding: 80px 20px;
+  text-align: center;
+}
+
+.about-hero h1 {
+  font-size: 2.8rem;
+  margin-bottom: 15px;
+}
+
+.about-hero p {
+  color: #cbd5f5;
+  max-width: 600px;
+  margin: auto;
+}
+
+.hero-buttons {
+  margin-top: 25px;
+}
+
+.hero-buttons a {
+  margin: 0 10px;
+}
+
+/* SECTIONS */
+.page-container {
+  max-width: 1100px;
+  margin: auto;
+  padding: 60px 20px;
+}
+
+section {
+  margin-bottom: 70px;
+}
+
+/* STATS */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 20px;
+  text-align: center;
+}
+
+.stat {
+  background: #0f172a;
+  color: white;
+  padding: 25px;
+  border-radius: 12px;
+}
+
+.stat h2 {
+  font-size: 2rem;
+}
+
+/* FEATURES */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.feature-card {
+  background: #111827;
+  color: white;
+  padding: 25px;
+  border-radius: 12px;
+  transition: 0.3s;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+}
+
+.feature-icon {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+/* TEAM */
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.team-card {
+  background: #111827;
+  color: white;
+  padding: 25px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.avatar {
+  width: 60px;
+  height: 60px;
+  background: #6366f1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+/* CTA */
+.about-cta {
+  text-align: center;
+  background: #0f172a;
+  color: white;
+  padding: 50px;
+  border-radius: 12px;
+}
+
+.primary-btn {
+  background: #6366f1;
+  color: white;
+  padding: 12px 22px;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.secondary-btn {
+  border: 1px solid #6366f1;
+  padding: 12px 22px;
+  border-radius: 8px;
+  color: white;
+  text-decoration: none;
+}
+
+</style>
 
 </head>
 
 <body>
 
-  <%- include('partials/nav') %>O -->
+<%- include('partials/nav') %>
 
+<!-- HERO -->
 <section class="about-hero">
+  <h1>Building the Future of AI Discovery</h1>
+  <p>AIDEX helps you discover the best AI tools faster and smarter.</p>
 
-<div class="hero-content">
-
-<h1>Building the Future of AI Discovery</h1>
-
-<p>
-AIDEX is a modern AI tools directory helping creators, developers,
-and businesses discover the best AI tools faster.
-</p>
-
-<div class="hero-buttons">
-
-<a href="/tools" class="primary-btn">Explore AI Tools</a>
-<a href="/submit" class="secondary-btn">Submit Your Tool</a>
-
-</div>
-
-</div>
-
+  <div class="hero-buttons">
+    <a href="/tools" class="primary-btn">Explore Tools</a>
+    <a href="/submit" class="secondary-btn">Submit Tool</a>
+  </div>
 </section>
-
 
 <main class="page-container">
 
 <!-- STATS -->
-
-<section class="stats-section">
-
-<div class="stats-grid">
-
-<div class="stat">
-<h2>500+</h2>
-<p>AI Tools</p>
-</div>
-
-<div class="stat">
-<h2>50+</h2>
-<p>Categories</p>
-</div>
-
-<div class="stat">
-<h2>10k+</h2>
-<p>Monthly Users</p>
-</div>
-
-</div>
-
+<section>
+  <div class="stats-grid">
+    <div class="stat"><h2>500+</h2><p>Tools</p></div>
+    <div class="stat"><h2>50+</h2><p>Categories</p></div>
+    <div class="stat"><h2>10k+</h2><p>Users</p></div>
+  </div>
 </section>
-
 
 <!-- MISSION -->
-
-<section class="about-section">
-
-<h2>Our Mission</h2>
-
-<p>
-AI tools are growing faster than ever. But finding the right one can be difficult.
-</p>
-
-<p>
-AIDEX solves this problem by creating a curated platform where users can explore,
-compare, and launch the best AI tools in seconds.
-</p>
-
-<p>
-Our mission is simple — make AI discovery effortless.
-</p>
-
+<section>
+  <h2>Our Mission</h2>
+  <p>We make AI discovery simple, fast, and accessible to everyone.</p>
 </section>
-
 
 <!-- FEATURES -->
+<section>
+  <h2>What We Do</h2>
+  <div class="features-grid">
 
-<section class="features-section">
+    <div class="feature-card">
+      <div class="feature-icon">🔎</div>
+      <h3>Discover</h3>
+      <p>Find powerful AI tools instantly.</p>
+    </div>
 
-<h2>What We Do</h2>
+    <div class="feature-card">
+      <div class="feature-icon">🔥</div>
+      <h3>Trending</h3>
+      <p>See what's popular right now.</p>
+    </div>
 
-<div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">⭐</div>
+      <h3>Workspace</h3>
+      <p>Save your favorite tools.</p>
+    </div>
 
-<div class="feature-card">
+    <div class="feature-card">
+      <div class="feature-icon">📤</div>
+      <h3>Submit</h3>
+      <p>Share your AI tools.</p>
+    </div>
 
-<div class="feature-icon">🔎</div>
-
-<h3>Discover Tools</h3>
-
-<p>
-Explore hundreds of AI tools across categories like writing, coding,
-image generation, automation, and productivity.
-</p>
-
-</div>
-
-<div class="feature-card">
-
-<div class="feature-icon">🔥</div>
-
-<h3>Trending AI</h3>
-
-<p>
-Our algorithm tracks usage to highlight the most popular AI tools.
-</p>
-
-</div>
-
-<div class="feature-card">
-
-<div class="feature-icon">⭐</div>
-
-<h3>Workspace</h3>
-
-<p>
-Save your favorite AI tools and launch them instantly from your workspace.
-</p>
-
-</div>
-
-<div class="feature-card">
-
-<div class="feature-icon">📤</div>
-
-<h3>Submit Tools</h3>
-
-<p>
-Developers can submit their AI products and reach thousands of users.
-</p>
-
-</div>
-
-</div>
-
+  </div>
 </section>
-
 
 <!-- TEAM -->
+<section>
+  <h2>Team</h2>
+  <div class="team-grid">
 
-<section class="team-section">
+    <div class="team-card">
+      <div class="avatar">A</div>
+      <h3>Ananya</h3>
+      <p>CEO</p>
+    </div>
 
-<h2>Meet the Team</h2>
+    <div class="team-card">
+      <div class="avatar">C</div>
+      <h3>Chhanda</h3>
+      <p>Co-Founder</p>
+    </div>
 
-<p class="team-intro">
-AIDEX is built by passionate innovators who believe AI should be accessible to everyone.
-</p>
-
-<div class="team-grid">
-
-<div class="team-card">
-
-<div class="avatar">A</div>
-
-<h3>Ananya Prabal Das</h3>
-
-<span>CEO & Co-Founder</span>
-
-<p>
-Leading product vision and innovation for the AIDEX platform.
-</p>
-
-</div>
-
-<div class="team-card">
-
-<div class="avatar">C</div>
-
-<h3>Chhanda Prabal Das</h3>
-
-<span>Co-Founder & Adviser</span>
-
-<p>
-Supporting strategy, partnerships, and long-term platform growth.
-</p>
-
-</div>
-
-</div>
-
+  </div>
 </section>
 
-
 <!-- CTA -->
-
 <section class="about-cta">
-
-<h2>Start Exploring AI Tools</h2>
-
-<p>
-Join thousands discovering powerful AI tools every day.
-</p>
-
-<a href="/tools" class="primary-btn">Browse Tools</a>
-
+  <h2>Start Exploring</h2>
+  <p>Join thousands discovering AI tools.</p>
+  <a href="/tools" class="primary-btn">Browse Tools</a>
 </section>
 
 </main>
 
 <%- include("partials/footer") %>
-  
 
 </body>
 </html>

@@ -226,6 +226,10 @@ app.post("/submit", upload.single("logo"), async (req, res) => {
     res.send("Error submitting tool");
   }
 });
+// ABOUT PAGE
+app.get("/about", (req, res) => {
+  res.render("about");
+});
 
 // ================= AUTH =================
 
