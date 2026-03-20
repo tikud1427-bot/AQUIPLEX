@@ -15,56 +15,71 @@
 
 <body>
 
-<div class="tool-container">
+  <%- include('partials/nav') %>
 
-<div class="tool-card">
-
-<!-- TOOL LOGO (NEW ADDITION) -->
-<% if(tool.logo){ %>
+  <div class="container">
+    <div class="tool-card single-tool">
+<!-- LOGO -->
 <div class="tool-logo-wrapper">
-<img src="<%= tool.logo %>" alt="<%= tool.name %> Logo" class="tool-logo-large">
+<img src="<%= tool.logo || '/logos/default.png' %>"
+alt="<%= tool.name %>"
+class="tool-logo-large"
+onerror="this.src='/logos/default.png'">
 </div>
-<% } %>
 
-<h1 class="tool-title">
-<%= tool.name %>
-</h1>
+<!-- TITLE -->
+<h1 class="tool-title"><%= tool.name %></h1>
 
+<!-- CATEGORY -->
+<p class="tool-category">
+🏷 Category: <strong><%= tool.category %></strong>
+</p>
+
+<!-- TRENDING -->
 <% if(tool.trending){ %>
 <span class="trending-badge">🔥 Trending Tool</span>
 <% } %>
 
-<p class="tool-category">
-Category: <strong><%= tool.category %></strong>
-</p>
-
-<!-- MAIN DESCRIPTION -->
+<!-- DESCRIPTION -->
 <p class="tool-description">
 <%= tool.description %>
 </p>
 
-<!-- EXTRA INFO SECTION (NEW UPGRADE) -->
-<div class="tool-extra-info">
-
-<h3>About this AI Tool</h3>
-
+<!-- HOW IT WORKS -->
+<div class="tool-section">
+<h3>⚙️ How it works</h3>
 <p>
-<%= tool.name %> is one of the popular tools in the <strong><%= tool.category %></strong> category.
-It helps users improve productivity using artificial intelligence and modern automation technology.
-Many professionals, creators, and developers use this tool to simplify complex tasks and work faster.
+<%= tool.name %> uses AI technology to assist users in <strong><%= tool.category %></strong>.
+It automates tasks, improves efficiency, and helps users achieve better results faster.
 </p>
-
-<p>
-AIDEX helps you discover tools like <%= tool.name %> so you can explore the best AI platforms available today.
-Click the button below to visit the official website and start using it.
-</p>
-
 </div>
 
+<!-- USE CASES -->
+<div class="tool-section">
+<h3>💡 Use Cases</h3>
+<ul>
+<li>🚀 Increase productivity</li>
+<li>🎯 Automate repetitive tasks</li>
+<li>🧠 Enhance creativity</li>
+<li>⚡ Save time and effort</li>
+</ul>
+</div>
+
+<!-- EXTRA INFO -->
+<div class="tool-section">
+<h3>📌 About this tool</h3>
+<p>
+<%= tool.name %> is a powerful AI tool in the <strong><%= tool.category %></strong> space.
+It is widely used by creators, developers, and businesses to streamline workflows
+and improve performance using artificial intelligence.
+</p>
+</div>
+
+<!-- BUTTONS -->
 <div class="tool-buttons">
 
-<a href="<%= tool.url %>" target="_blank" class="visit-btn">
-Visit Official Website
+<a href="/visit/<%= tool._id %>" class="visit-btn">
+🚀 Visit Tool
 </a>
 
 <a href="/tools" class="back-btn">
