@@ -1,31 +1,62 @@
-<header class="site-header">
+<header class="main-header">
+  <div class="header-container">
 
-<nav class="navbar">
+    <!-- LOGO -->
+    <a href="/" class="logo">AQUIPLEX</a>
 
-<div class="logo">
-<a href="/">AIDEX</a>
-</div>
+    <!-- NAV -->
+    <nav class="nav-links">
+      <a href="/" class="nav-item">Home</a>
+      <a href="/tools" class="nav-item">Tools</a>
+      <a href="/trending" class="nav-item highlight">🔥 Trending</a>
 
-<button class="menu-toggle">☰</button>
+      <% if (typeof user !== "undefined" && user) { %>
+        <a href="/workspace" class="nav-item">Workspace</a>
+      <% } %>
 
-<ul class="nav-links">
-<li><a href="/">Home</a></li>
-<li><a href="/tools">Tools</a></li>
-<li><a href="/trending">Trending</a></li>
-<li><a href="/submit">Submit</a></li>
-<li><a href="/about">About</a></li>
-</ul>
+      <a href="/submit" class="nav-item">Submit</a>
+    </nav>
 
-</nav>
+    <!-- ACTIONS -->
+    <div class="header-actions">
 
-<div class="mobile-menu">
-<a href="/">Home</a>
-<a href="/tools">Tools</a>
-<a href="/trending">Trending</a>
-<a href="/submit">Submit</a>
-<a href="/about">About</a>
-</div>
+      <% if (typeof user !== "undefined" && user) { %>
+        <a href="/workspace" class="btn ghost">⚡ Workspace</a>
+        <a href="/logout" class="btn primary">Logout</a>
+      <% } else { %>
+        <a href="/login" class="btn ghost">Login</a>
+        <a href="/signup" class="btn primary">Sign Up</a>
+      <% } %>
 
-<div class="menu-overlay"></div>
+    </div>
 
+    <!-- MOBILE TOGGLE -->
+    <div class="menu-toggle" onclick="toggleMenu()">☰</div>
+
+  </div>
+
+  <!-- MOBILE MENU -->
+  <div class="mobile-menu" id="mobileMenu">
+
+    <a href="/">Home</a>
+    <a href="/tools">Tools</a>
+    <a href="/trending">🔥 Trending</a>
+
+    <% if (typeof user !== "undefined" && user) { %>
+      <a href="/workspace">Workspace</a>
+      <a href="/logout">Logout</a>
+    <% } else { %>
+      <a href="/login">Login</a>
+      <a href="/signup">Sign Up</a>
+    <% } %>
+
+    <a href="/submit">Submit</a>
+
+  </div>
 </header>
+
+<script>
+function toggleMenu(){
+  document.getElementById("mobileMenu").classList.toggle("active");
+}
+</script>
