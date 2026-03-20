@@ -1,11 +1,11 @@
 [
-{"id":"chatgpt","name":"ChatGPT","category":"Writing AI","url":"https://chat.openai.com","description":"AI chatbot for writing, coding, and research.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRIg4CnZC_9QQXSUq5q9Fd-QcA_asqCVxEZaA&s","clicks":0},
+{"id":"chatgpt","name":"ChatGPT","category":"Writing AI","url":"https://chat.openai.com","description":"AI chatbot for writing, coding, and research.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRIg4CnZC_9QQXSUq5q9Fd-QcA_asqCVxEZaA&s","clicks":200},
 
-{"id":"claude","name":"Claude","category":"Writing AI","url":"https://claude.ai","description":"Advanced AI assistant by Anthropic.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://media.licdn.com/dms/image/v2/D4E0BAQFko-zWIZk_pw/company-logo_200_200/B4EZhiRWKvHgAI-/0/1753995371543/claude_logo?e=2147483647&v=beta&t=CVNmFKyWig0Uo78oAr3II6KVLu_o0aXPtnt4S6XgOr8","clicks":0},
+{"id":"claude","name":"Claude","category":"Writing AI","url":"https://claude.ai","description":"Advanced AI assistant by Anthropic.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://media.licdn.com/dms/image/v2/D4E0BAQFko-zWIZk_pw/company-logo_200_200/B4EZhiRWKvHgAI-/0/1753995371543/claude_logo?e=2147483647&v=beta&t=CVNmFKyWig0Uo78oAr3II6KVLu_o0aXPtnt4S6XgOr8","clicks":120},
 
-{"id":"grammarly","name":"Grammarly","category":"Writing AI","url":"https://grammarly.com","description":"AI grammar and writing assistant.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://play-lh.googleusercontent.com/6Xe9DWiMC76daosOC80Im9gqe25Q9P55LxJIGPTLbcdFkMXOur4mk8jTVxoqOaiAvAG4=w600-h300-pc0xffffff-pd","clicks":0},
+{"id":"grammarly","name":"Grammarly","category":"Writing AI","url":"https://grammarly.com","description":"AI grammar and writing assistant.","trending":true,"rating":0,"ratingsCount":0,"logo":"https://play-lh.googleusercontent.com/6Xe9DWiMC76daosOC80Im9gqe25Q9P55LxJIGPTLbcdFkMXOur4mk8jTVxoqOaiAvAG4=w600-h300-pc0xffffff-pd","clicks":150},
 
-{"id":"jasper","name":"Jasper","category":"Writing AI","url":"https://jasper.ai","description":"AI marketing copywriter.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://cdn.prod.website-files.com/6807f44ec8a964d38a705332/683ba90f27d44bc11e5687ea_Jasper%20Logo%20Square.svg","clicks":0},
+{"id":"jasper","name":"Jasper","category":"Writing AI","url":"https://jasper.ai","description":"AI marketing copywriter.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://cdn.prod.website-files.com/6807f44ec8a964d38a705332/683ba90f27d44bc11e5687ea_Jasper%20Logo%20Square.svg","clicks":130},
 
 {"id":"copyai","name":"Copy.ai","category":"Writing AI","url":"https://copy.ai","description":"AI content generator for marketing.","trending":false,"rating":0,"ratingsCount":0,"logo":"https://pbs.twimg.com/profile_images/1882909654545551360/QPAmppjU_400x400.jpg","clicks":0},
 
