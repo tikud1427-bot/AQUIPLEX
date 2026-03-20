@@ -2,6 +2,7 @@
 <html lang="en">
 
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
@@ -9,158 +10,139 @@
 
 <link rel="stylesheet" href="/css/styles.css">
 
-<!-- Google Font -->
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
 </head>
 
 <body>
 
-<!-- ================= NAVBAR ================= -->
-
-<nav class="navbar">
-
-<div class="logo">AIDEX</div>
-
-<button class="menu-toggle">☰</button>
-
-<ul class="nav-links">
-<li><a href="/">Home</a></li>
-<li><a href="/tools">Tools</a></li>
-<li><a href="/trending">Trending</a></li>
-<li><a href="/submit">Submit</a></li>
-<li><a href="/about">About</a></li>
-</ul>
-
-</nav>
+  <%- include("partials/nav") %>
 
 
-<!-- MOBILE MENU -->
+<!-- HERO -->
 
-<div class="mobile-menu">
-<a href="/">Home</a>
-<a href="/tools">Tools</a>
-<a href="/trending">Trending</a>
-<a href="/submit">Submit</a>
-<a href="/about">About</a>
-</div>
+    <section class="hero">
 
-<div class="menu-overlay"></div>
+      <div class="hero-box">
 
+        <h1>
+          Discover the Future of <span>AI Tools</span>
+        </h1>
 
-<!-- ================= HERO ================= -->
+        <p>
+          Explore the best AI tools for productivity, creativity, and development — all in one place.
+        </p>
 
-<section class="hero">
+        <!-- SEARCH -->
+        <form action="/tools" method="GET" class="search-bar">
+          <input 
+            type="text" 
+            name="q" 
+            placeholder="Search AI tools like ChatGPT, Midjourney..." 
+            required
+          >
+          <button type="submit">Search</button>
+        </form>
 
-<h1>Welcome to the AIDEX</h1>
+      </div>
 
-<p>Discover the best AI tools in one place</p>
+    </section>
 
-<a href="/tools" class="hero-btn">Explore Tools</a>
-  <form action="/search" method="GET" class="search-form">
-    <input type="text" name="q" placeholder="Search AI tools..." required>
-    <button type="submit">Search</button>
-  </form>
+    <div class="container">
 
-  </section>
+      <!-- CATEGORY SECTION -->
+      <section class="section">
+        <h2 class="section-title">Explore by Category</h2>
 
-</section>
+        <div class="categories">
 
+          <%
+          const categories = [
+            { name: "Writing AI", icon: "✍️" },
+            { name: "Image AI", icon: "🎨" },
+            { name: "Video AI", icon: "🎬" },
+            { name: "Coding AI", icon: "💻" },
+            { name: "ML AI", icon: "🤖" }
+          ];
 
-<!-- ================= CATEGORY SECTION ================= -->
+          categories.forEach(function(category){ 
+          %>
 
-<section class="categories-section">
+          <a class="category-card"
+             href="/tools/category/<%= encodeURIComponent(category.name) %>">
 
-<h2>Explore by Category</h2>
+            <div class="category-icon"><%= category.icon %></div>
+            <div class="category-name"><%= category.name %></div>
 
-<div class="categories">
+          </a>
 
-<%
-const categories = [
-"Writing AI",
-"Image AI",
-"Video AI",
-"Coding AI",
-"ML AI"
-];
+          <% }) %>
 
-categories.forEach(function(category){ 
-%>
-
-<a class="category-card"
-href="/tools/category/<%= encodeURIComponent(category) %>">
-
-<%= category %>
-
-</a>
-
-<% }) %>
-
-</div>
-
-</section>
+        </div>
+      </section>
 
 
-<!-- ================= FEATURED TOOLS ================= -->
+      <!-- FEATURED TOOLS -->
+      <section class="section">
 
-<section class="featured">
+        <h2>Featured Tools</h2>
 
-<h2>Featured Tools</h2>
+        <div class="grid">
 
-<div class="tools-grid">
+          <% if (tools && tools.length > 0) { %>
 
-<% if (tools && tools.length > 0) { %>
+          <% tools.forEach(function(tool){ %>
 
-<% tools.forEach(function(tool){ %>
+          <div class="tool-card">
 
-  <div class="tool-card">
+            <div class="logo-box">
+              <img src="<%= tool.logo %>" alt="<%= tool.name %>">
+            </div>
 
-  <div class="logo-box">
-  <img src="<%= tool.logo %>" alt="<%= tool.name %>">
-  </div>
+            <a href="/tool/<%= tool._id %>" class="tool-link">
+              <h3><%= tool.name %></h3>
+            </a>
 
-  <a href="/tool/<%= tool.id %>" class="tool-link">
-  <h3><%= tool.name %></h3>
-  </a>
+            <p><%= tool.description %></p>
 
-  <p><%= tool.description %></p>
+            <div class="tool-actions">
 
-  <div class="tool-actions">
+              <a href="/tool/<%= tool._id %>" class="details-btn">
+                View Details
+              </a>
 
-  <a href="/tool/<%= tool.id %>" class="details-btn">
-  View Details
-  </a>
+              <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">
+                Visit Tool
+              </a>
 
-  <a href="<%= tool.url %>" target="_blank" class="visit-btn">
-  Visit Tool
-  </a>
+            </div>
 
-  </div>
+          </div>
 
-  </div>
-<% }) %>
+          <% }) %>
 
-<% } else { %>
+          <% } else { %>
 
-<p style="text-align:center;">No tools available yet.</p>
+          <p style="text-align:center;">No tools available yet.</p>
 
-<% } %>
+          <% } %>
 
-</div>
+        </div>
 
-</section>
+      </section>
+
+    </div>
 
 
-<!-- ================= FOOTER ================= -->
+<!-- FOOTER -->
 
-<footer class="simple-footer">
-
-<p>© <%= new Date().getFullYear() %> AI Directory. All rights reserved.</p>
+     <footer class="footer">
+<p>© <%= new Date().getFullYear() %> AIDEX. All rights reserved.</p>
 
 </footer>
 
 
-<!-- MOBILE MENU SCRIPT (MUST BE AT BOTTOM) -->
+<!-- MOBILE MENU SCRIPT -->
 
 <script>
 
@@ -182,7 +164,14 @@ overlay.classList.remove("active");
 
 });
 
-</script>
-
+  <script>
+  function toggleMenu(){
+    const menu = document.getElementById("mobileMenu");
+    if(menu){
+      menu.classList.toggle("active");
+    }
+  }
+  </script>
+            
 </body>
 </html>
