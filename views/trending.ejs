@@ -2,69 +2,84 @@
 <html lang="en">
 
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔥 Trending AI Tools | AIDEX</title>
 
-<title>Trending AI Tools | AI Directory</title>
+  <link rel="stylesheet" href="/css/styles.css">
 
-<link rel="stylesheet" href="/css/styles.css">
-
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
- 
+
 <body>
 
-<%- include("partials/header") %>
+  <!-- HEADER -->
+  <%- include("partials/nav") %>
 
-<main class="page-container">
+  <main class="container">
 
-<h1>🔥 Trending AI Tools</h1>
+    <!-- PAGE TITLE -->
+    <section class="section">
+      <h1 style="margin-bottom:10px;">🔥 Trending AI Tools</h1>
+      <p style="color:#94a3b8;">Most popular tools in the last 24 hours</p>
+    </section>
 
-<div class="tools-grid">
+    <!-- GRID -->
+    <div class="grid">
 
-<% tools.forEach(tool => { %>
+      <% if (tools && tools.length > 0) { %>
 
-  <div class="tool-card">
+        <% tools.forEach((tool, index) => { %>
 
-  <h3><%= tool.name %></h3>
+          <div class="tool-card">
 
-  <p class="tool-category"><%= tool.category %></p>
+            <!-- TOP ROW -->
+            <div class="tool-top">
 
-  <p><%= tool.description %></p>
+              <!-- LOGO -->
+              <img src="<%= tool.logo %>" alt="<%= tool.name %>" class="tool-logo">
 
-  <div class="tool-buttons">
+              <!-- RANK -->
+              <div class="rank">#<%= index + 1 %></div>
 
-  <a href="/tool/<%= tool.id %>" class="details-btn">View Details</a>
+            </div>
 
-  <a href="/visit/<%= tool.id %>" class="visit-btn">Visit</a>
+            <!-- CONTENT -->
+            <div class="tool-content">
+              <h3><%= tool.name %></h3>
 
-  </div>
+              <p class="tool-category"><%= tool.category %></p>
 
-  </div>
+              <p><%= tool.description %></p>
 
-<% }) %>
+              <p class="click-count">
+                🔥 <%= tool.trendingScore || 0 %> clicks (24h)
+              </p>
+            </div>
 
-</div>
+            <!-- ACTIONS -->
+            <div class="tool-footer">
+              <a href="/tool/<%= tool._id %>" class="details-btn">Details</a>
+              <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">Visit</a>
+            </div>
 
-</main>
+          </div>
 
-<%- include("partials/footer") %>
-   <script>
-    const menuBtn = document.querySelector(".menu-toggle");
-    const mobileMenu = document.querySelector(".mobile-menu");
-    const overlay = document.querySelector(".menu-overlay");
+        <% }) %>
 
-    menuBtn.addEventListener("click", () => {
-      mobileMenu.classList.toggle("active");
-      overlay.classList.toggle("active");
-    });
+      <% } else { %>
 
-    overlay.addEventListener("click", () => {
-      mobileMenu.classList.remove("active");
-      overlay.classList.remove("active");
-    });
-    </script>
+        <p style="text-align:center;">No trending tools yet.</p>
+
+      <% } %>
+
+    </div>
+
+  </main>
+
+  <!-- FOOTER -->
+  <%- include("partials/footer") %>
+
 </body>
 </html>
