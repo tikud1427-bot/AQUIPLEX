@@ -53,11 +53,17 @@ try {
 } catch {}
 
 async function importTools() {
-  const count = await Tool.countDocuments();
-  if (count === 0 && jsonTools.length > 0) {
-    await Tool.insertMany(jsonTools);
-    console.log("✅ Default tools imported");
+  if (jsonTools.length === 0) return;
+
+  for (let tool of jsonTools) {
+    await Tool.updateOne(
+      { name: tool.name },   // find by name
+      { $set: tool },        // update data
+      { upsert: true }       // create if not exists
+    );
   }
+
+  console.log("✅ Tools synced");
 }
 
 // ================= MIDDLEWARE =================
