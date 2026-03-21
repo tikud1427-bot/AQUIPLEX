@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AQUIPLEX | About</title>
+
+  <link rel="stylesheet" href="/css/styles.css">
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+  <!-- NAVBAR -->
+  <%- include("partials/nav") %>
+
+  <!-- HERO -->
+  <section class="hero premium-hero">
+    <div class="hero-content">
+      <h1>Redefining AI Discovery</h1>
+      <p>
+        AIDEX is building the most powerful platform to explore, discover,
+        and share AI tools — faster, smarter, and beautifully.
+      </p>
+
+      <div class="hero-buttons">
+        <a href="/tools" class="btn primary">Explore Tools</a>
+        <a href="/submit" class="btn secondary">Submit Tool</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- MISSION -->
+  <section class="about-section">
+    <div class="container">
+      <h2>Our Mission</h2>
+      <p>
+        We aim to simplify AI for everyone. AIDEX helps developers,
+        creators, and businesses discover the right tools without
+        wasting time.
+      </p>
+
+      <h2>Our Vision</h2>
+      <p>
+        To become the world's #1 AI discovery platform — where innovation
+        meets simplicity.
+      </p>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats-section">
+    <div class="container stats-grid">
+      <div class="stat-card">
+        <h3>100+</h3>
+        <p>AI Tools</p>
+      </div>
+      <div class="stat-card">
+        <h3>10K+</h3>
+        <p>Users</p>
+      </div>
+      <div class="stat-card">
+        <h3>24/7</h3>
+        <p>Access</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEAM -->
+  <section class="team-section">
+    <div class="container">
+
+      <h2>Leadership</h2>
+
+      <div class="team-grid">
+
+        <!-- CEO -->
+        <div class="team-card premium-card">
+          <div class="avatar">A</div>
+          <h3>Ananya Prabal Das</h3>
+          <p class="role">CEO & Co-Founder</p>
+          <p>
+            Leading AIDEX with vision and strategy, focused on making AI
+            accessible and impactful for everyone.
+          </p>
+        </div>
+
+        <!-- CO-FOUNDER -->
+        <div class="team-card premium-card">
+          <div class="avatar">C</div>
+          <h3>Chhanda Prabal Das</h3>
+          <p class="role">Co-Founder & Advisor</p>
+          <p>
+            Driving innovation, product development, and guiding the
+            platform toward excellence.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>Join the Future of AI</h2>
+    <a href="/tools" class="btn primary">Start Exploring</a>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>© <%= new Date().getFullYear() %> AQUIPLEX. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

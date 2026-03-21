@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title><%= tool.name %> | AIDEX</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+
+  <%- include('partials/nav') %>
+
+  <div class="container">
+    <div class="tool-card single-tool">
+<!-- LOGO -->
+<div class="tool-logo-wrapper">
+<img src="<%= tool.logo || '/logos/default.png' %>"
+alt="<%= tool.name %>"
+class="tool-logo-large"
+onerror="this.src='/logos/default.png'">
+</div>
+
+<!-- TITLE -->
+<h1 class="tool-title"><%= tool.name %></h1>
+
+<!-- CATEGORY -->
+<p class="tool-category">
+🏷 Category: <strong><%= tool.category %></strong>
+</p>
+
+<!-- TRENDING -->
+<% if(tool.trending){ %>
+<span class="trending-badge">🔥 Trending Tool</span>
+<% } %>
+
+<!-- DESCRIPTION -->
+<p class="tool-description">
+<%= tool.description %>
+</p>
+
+<!-- HOW IT WORKS -->
+<div class="tool-section">
+<h3>⚙️ How it works</h3>
+<p>
+<%= tool.name %> uses AI technology to assist users in <strong><%= tool.category %></strong>.
+It automates tasks, improves efficiency, and helps users achieve better results faster.
+</p>
+</div>
+
+<!-- USE CASES -->
+<div class="tool-section">
+<h3>💡 Use Cases</h3>
+<ul>
+<li>🚀 Increase productivity</li>
+<li>🎯 Automate repetitive tasks</li>
+<li>🧠 Enhance creativity</li>
+<li>⚡ Save time and effort</li>
+</ul>
+</div>
+
+<!-- EXTRA INFO -->
+<div class="tool-section">
+<h3>📌 About this tool</h3>
+<p>
+<%= tool.name %> is a powerful AI tool in the <strong><%= tool.category %></strong> space.
+It is widely used by creators, developers, and businesses to streamline workflows
+and improve performance using artificial intelligence.
+</p>
+</div>
+
+<!-- BUTTONS -->
+<div class="tool-buttons">
+
+<a href="/visit/<%= tool._id %>" class="visit-btn">
+🚀 Visit Tool
+</a>
+
+<a href="/tools" class="back-btn">
+← Back to Tools
+</a>
+
+</div>
+
+</div>
+
+</div>
+
+</body>
+</html>

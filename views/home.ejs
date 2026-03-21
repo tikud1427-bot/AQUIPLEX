@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>AQUIPLEX | Discover the Best AI Tools</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+
+  <%- include("partials/nav") %>
+
+
+<!-- HERO -->
+
+    <section class="hero">
+
+      <div class="hero-box">
+
+        <h1>
+          Discover the Future of <span>AI Tools</span>
+        </h1>
+
+        <p>
+          Explore the best AI tools for productivity, creativity, and development — all in one place.
+        </p>
+
+        <!-- SEARCH -->
+        <form action="/tools" method="GET" class="search-bar">
+          <input 
+            type="text" 
+            name="q" 
+            placeholder="Search AI tools like ChatGPT, Midjourney..." 
+            required
+          >
+          <button type="submit">Search</button>
+        </form>
+
+      </div>
+
+    </section>
+
+    <div class="container">
+
+      <!-- CATEGORY SECTION -->
+      <section class="section">
+        <h2 class="section-title">Explore by Category</h2>
+
+        <div class="categories">
+
+          <%
+          const categories = [
+            { name: "Writing AI", icon: "✍️" },
+            { name: "Image AI", icon: "🎨" },
+            { name: "Video AI", icon: "🎬" },
+            { name: "Coding AI", icon: "💻" },
+            { name: "ML AI", icon: "🤖" }
+          ];
+
+          categories.forEach(function(category){ 
+          %>
+
+          <a class="category-card"
+             href="/tools/category/<%= encodeURIComponent(category.name) %>">
+
+            <div class="category-icon"><%= category.icon %></div>
+            <div class="category-name"><%= category.name %></div>
+
+          </a>
+
+          <% }) %>
+
+        </div>
+      </section>
+
+
+      <!-- FEATURED TOOLS -->
+      <section class="section">
+
+        <h2>Featured Tools</h2>
+
+        <div class="grid">
+
+          <% if (tools && tools.length > 0) { %>
+
+          <% tools.forEach(function(tool){ %>
+
+          <div class="tool-card">
+
+            <div class="logo-box">
+              <img src="<%= tool.logo %>" alt="<%= tool.name %>">
+            </div>
+
+            <a href="/tool/<%= tool._id %>" class="tool-link">
+              <h3><%= tool.name %></h3>
+            </a>
+
+            <p><%= tool.description %></p>
+
+            <div class="tool-actions">
+
+              <a href="/tool/<%= tool._id %>" class="details-btn">
+                View Details
+              </a>
+
+              <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">
+                Visit Tool
+              </a>
+
+            </div>
+
+          </div>
+
+          <% }) %>
+
+          <% } else { %>
+
+          <p style="text-align:center;">No tools available yet.</p>
+
+          <% } %>
+
+        </div>
+
+      </section>
+
+    </div>
+
+
+<!-- FOOTER -->
+
+     <footer class="footer">
+<p>© <%= new Date().getFullYear() %> AQUIPLEX All rights reserved.</p>
+
+</footer>
+
+
+<!-- MOBILE MENU SCRIPT -->
+
+<script>
+
+document.addEventListener("DOMContentLoaded", function(){
+
+const menuBtn = document.querySelector(".menu-toggle");
+const mobileMenu = document.querySelector(".mobile-menu");
+const overlay = document.querySelector(".menu-overlay");
+
+menuBtn.addEventListener("click", function(){
+mobileMenu.classList.toggle("active");
+overlay.classList.toggle("active");
+});
+
+overlay.addEventListener("click", function(){
+mobileMenu.classList.remove("active");
+overlay.classList.remove("active");
+});
+
+});
+
+  <script>
+  function toggleMenu(){
+    const menu = document.getElementById("mobileMenu");
+    if(menu){
+      menu.classList.toggle("active");
+    }
+  }
+  </script>
+            
+</body>
+</html>

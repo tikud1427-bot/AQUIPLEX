@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>All AI Tools | AIDEX</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+</head>
+
+<body>
+
+<%- include("partials/nav") %>
+
+<main class="container">
+
+  <!-- HERO -->
+  <section class="tools-hero">
+    <h1>Explore AI Tools</h1>
+    <p>Find the best tools for productivity, coding, design & more</p>
+  </section>
+
+  <!-- SEARCH -->
+  <form action="/tools" method="GET" class="search-bar">
+    <input 
+      type="text" 
+      name="q" 
+      placeholder="Search ChatGPT, Midjourney, Notion AI..."
+    >
+    <button><i class="fa-solid fa-search"></i></button>
+  </form>
+
+  <!-- CATEGORY -->
+  <div class="category-filter">
+
+    <a href="/tools" class="category-btn active">All</a>
+
+    <% if (categories && categories.length > 0) { %>
+      <% categories.forEach(function(cat){ %>
+        <a href="/tools/category/<%= encodeURIComponent(cat) %>" class="category-btn">
+          <%= cat %>
+        </a>
+      <% }) %>
+    <% } %>
+
+  </div>
+
+  <!-- GRID -->
+  <div class="grid">
+
+  <% if (tools && tools.length > 0) { %>
+
+    <% tools.forEach(function(tool){ %>
+
+    <div class="tool-card">
+
+      <!-- TOP -->
+      <div class="tool-top">
+
+        <img 
+          src="<%= tool.logo || '/logos/default.png' %>" 
+          class="tool-logo"
+          onerror="this.src='/logos/default.png'"
+        >
+
+        <button class="favorite-btn"
+        onclick="addToWorkspace(this,'<%= tool._id %>')">
+          <i class="fa-solid fa-star"></i>
+        </button>
+
+      </div>
+
+      <!-- CONTENT -->
+      <div class="tool-content">
+
+        <h3><%= tool.name %></h3>
+
+        <p class="tool-category"><%= tool.category %></p>
+
+        <p class="tool-description">
+          <%= tool.description %>
+        </p>
+
+      </div>
+
+      <!-- FOOTER -->
+      <div class="tool-footer">
+
+        <a href="/tool/<%= tool._id %>" class="details-btn">
+          Details
+        </a>
+
+        <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">
+          Visit
+        </a>
+
+      </div>
+
+    </div>
+
+    <% }) %>
+
+  <% } else { %>
+
+    <div class="no-tools">
+      <h3>No tools found</h3>
+      <p>Try a different search or category</p>
+    </div>
+
+  <% } %>
+
+  </div>
+
+</main>
+
+<%- include("partials/footer") %>
+
+<script>
+async function addToWorkspace(button, toolId){
+  try {
+    button.innerHTML='<i class="fa-solid fa-spinner fa-spin"></i>';
+
+    const res = await fetch("/workspace/add/"+toolId, { method:"POST" });
+
+    if(res.redirected){
+      window.location.href="/login";
+      return;
+    }
+
+    if(res.ok){
+      button.innerHTML='<i class="fa-solid fa-check"></i>';
+      button.style.color="#22c55e";
+    } else {
+      button.innerHTML='<i class="fa-solid fa-xmark"></i>';
+    }
+
+  } catch(err){
+    console.log(err);
+    button.innerHTML='<i class="fa-solid fa-xmark"></i>';
+  }
+}
+</script>
+
+</body>
+</html>
