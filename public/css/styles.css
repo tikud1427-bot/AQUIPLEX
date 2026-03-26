@@ -1228,3 +1228,60 @@ h1 {
   font-size: 15px;
   color: #00cec9;
 }
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 60px 8%;
+  gap: 50px;
+  min-height: 80vh;
+}
+
+/* LEFT SIDE */
+.hero-box {
+  flex: 1;
+}
+
+/* RIGHT SIDE */
+.ai-box {
+  flex: 1;
+  max-width: 500px;
+}
+
+.ai-results {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 15px;
+  margin-top: 20px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+#aiForm {
+  display: flex;
+  gap: 10px;
+}
+
+#aiPrompt {
+  flex: 1;
+}
+
+.ai-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: white;
+  transition: 0.3s;
+}
+
+.ai-card:hover {
+  transform: translateY(-3px);
+}
+
+.recommended {
+  border: 2px solid #00f5ff;
+  box-shadow: 0 0 15px rgba(0,245,255,0.6);
+}
