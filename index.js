@@ -68,6 +68,7 @@ async function importTools() {
 
 // ================= MIDDLEWARE =================
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json());
 app.use(express.static("public"));
 app.set("view engine", "ejs");
 

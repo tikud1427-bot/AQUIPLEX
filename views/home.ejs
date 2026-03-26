@@ -142,36 +142,6 @@
 </footer>
 
 
-<!-- MOBILE MENU SCRIPT -->
 
-<script>
-
-document.addEventListener("DOMContentLoaded", function(){
-
-const menuBtn = document.querySelector(".menu-toggle");
-const mobileMenu = document.querySelector(".mobile-menu");
-const overlay = document.querySelector(".menu-overlay");
-
-menuBtn.addEventListener("click", function(){
-mobileMenu.classList.toggle("active");
-overlay.classList.toggle("active");
-});
-
-overlay.addEventListener("click", function(){
-mobileMenu.classList.remove("active");
-overlay.classList.remove("active");
-});
-
-});
-
-  <script>
-  function toggleMenu(){
-    const menu = document.getElementById("mobileMenu");
-    if(menu){
-      menu.classList.toggle("active");
-    }
-  }
-  </script>
-            
 </body>
 </html>
