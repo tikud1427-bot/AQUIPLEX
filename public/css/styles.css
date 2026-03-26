@@ -1394,3 +1394,140 @@ h1 {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================
+🔥 FINAL MOBILE + FIX PATCH (SAFE)
+DO NOT REMOVE
+========================= */
+
+/* Fix container conflicts */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: auto;
+}
+
+/* HERO FIX */
+.hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+/* AI BOX FIX */
+.ai-box {
+  width: 100%;
+  max-width: 500px;
+}
+
+/* FORM FIX */
+#aiForm {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+}
+
+#aiForm input {
+  flex: 1;
+  width: 100%;
+  min-width: 0; /* prevents overflow */
+}
+
+#aiForm button {
+  white-space: nowrap;
+}
+
+/* RESULTS FIX */
+#aiResults,
+.ai-results {
+  width: 100%;
+}
+
+/* FIX RANDOM FLOATING CARD */
+.ai-card.fast {
+  align-self: stretch !important;
+}
+
+/* =========================
+🔥 MOBILE RESPONSIVE FIX
+========================= */
+
+@media (max-width: 768px) {
+
+  /* MAIN LAYOUT */
+  .main-container,
+  .hero {
+    flex-direction: column !important;
+    align-items: center;
+    text-align: center;
+    padding: 20px;
+  }
+
+  /* HERO TEXT */
+  .hero h1 {
+    font-size: 26px !important;
+    line-height: 1.3;
+  }
+
+  .hero p {
+    font-size: 14px;
+  }
+
+  /* AI SECTION FULL WIDTH */
+  .ai-box {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* FORM STACK */
+  #aiForm {
+    flex-direction: column;
+  }
+
+  #aiForm input,
+  #aiForm button {
+    width: 100%;
+  }
+
+  /* AI RESULTS */
+  .ai-results {
+    max-height: none;
+    overflow: visible;
+  }
+
+  /* CARDS FULL WIDTH */
+  .ai-card {
+    width: 100%;
+  }
+
+  /* CATEGORY FIX */
+  .categories {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* GRID FIX */
+  .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+}
+
+/* EXTRA SMALL DEVICES */
+@media (max-width: 480px) {
+
+  .hero h1 {
+    font-size: 22px !important;
+  }
+
+  .prompt-box {
+    flex-direction: column;
+  }
+
+  .prompt-box input,
+  .prompt-box button {
+    width: 100%;
+  }
+
+}
