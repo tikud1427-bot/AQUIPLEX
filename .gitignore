@@ -1,6 +1,27 @@
-node_modules
-dist
+# Dependencies
+node_modules/
+
+# Build files
+dist/
+build/
+
+# Environment variables (VERY IMPORTANT)
+.env
+.env.*
+
+# Replit secrets (CRITICAL for you)
+.replit
+
+# OS files
 .DS_Store
-server/public
-vite.config.ts.*
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Archives
 *.tar.gz
+
+# Vite (optional safe ignore)
+vite.config.ts.*
