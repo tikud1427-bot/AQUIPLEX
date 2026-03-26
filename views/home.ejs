@@ -46,6 +46,14 @@
 
       </div>
 
+      <div class="ai-box">
+        <form id="aiForm">
+          <input type="text" id="aiPrompt" placeholder="Ask multiple AIs at once..." required>
+          <button type="submit">Generate</button>
+        </form>
+
+        <div id="aiResults"></div>
+      </div>
     </section>
 
     <div class="container">
@@ -141,7 +149,58 @@
 
 </footer>
 
+            <script>
+            document.getElementById("aiForm").addEventListener("submit", async (e) => {
+              e.preventDefault();
 
+              const prompt = document.getElementById("aiPrompt").value;
+              const resultsDiv = document.getElementById("aiResults");
 
+              resultsDiv.innerHTML = "⏳ Generating responses from multiple AIs...";
+
+              try {
+                const res = await fetch("/multi-generate", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ prompt })
+                });
+
+                const data = await res.json();
+
+                resultsDiv.innerHTML = "";
+
+                // ❌ Safety check
+                if (!data.responses) {
+                  resultsDiv.innerHTML = "❌ Failed to get AI responses";
+                  return;
+                }
+
+                data.responses.forEach(r => {
+                  const div = document.createElement("div");
+                  div.classList.add("ai-card");
+
+                  // 🧠 Clean names instead of ugly model names
+                  let modelName = "🤖 AI";
+                  if (r.model.includes("llama")) modelName = "🧠 Smart AI";
+                  else if (r.model.includes("mistral")) modelName = "🎨 Creative AI";
+                  else if (r.model.includes("openchat")) modelName = "📚 Detailed AI";
+
+                  div.innerHTML = `
+                    <h3>
+                      ${modelName}
+                      ${r.model === data.recommended ? "🔥 AQUIPLEX Recommended" : ""}
+                    </h3>
+                    <p>${r.output}</p>
+                  `;
+
+                  resultsDiv.appendChild(div);
+                });
+
+              } catch (err) {
+                console.error(err);
+                resultsDiv.innerHTML = "❌ Something went wrong";
+              }
+            });
+            </script>
 </body>
 </html>

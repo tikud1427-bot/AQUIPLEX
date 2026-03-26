@@ -18,52 +18,53 @@ const Workspace = require("./models/Workspace");
 
 // ================= DATABASE =================
 async function connectDB() {
-  try {
-    console.log("⏳ Connecting to MongoDB...");
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log("✅ MongoDB connected");
-  } catch (err) {
-    console.error("❌ MongoDB connection failed:", err.message);
-    process.exit(1);
-  }
+try {
+console.log("⏳ Connecting to MongoDB...");
+await mongoose.connect(process.env.MONGO_URI);
+console.log("✅ MongoDB connected");
+} catch (err) {
+console.error("❌ MongoDB connection failed:", err.message);
+process.exit(1);
+}
 }
 
 // ================= TRENDING =================
 async function getTrendingTools(limit = 10) {
-  const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-  const tools = await Tool.find().lean();
+const tools = await Tool.find().lean();
 
-  return tools
-    .map(tool => {
-      const score = (tool.clickHistory || []).filter(
-        c => new Date(c.date) > last24h
-      ).length;
+return tools
+.map(tool => {
+const score = (tool.clickHistory || []).filter(
+c => new Date(c.date) > last24h
+).length;
 
-      return { ...tool, trendingScore: score };
-    })
-    .sort((a, b) => b.trendingScore - a.trendingScore)
-    .slice(0, limit);
+return { ...tool, trendingScore: score };  
+})  
+.sort((a, b) => b.trendingScore - a.trendingScore)  
+.slice(0, limit);
+
 }
 
 // ================= IMPORT JSON =================
 let jsonTools = [];
 try {
-  jsonTools = JSON.parse(fs.readFileSync("./data/tools.json", "utf8"));
+jsonTools = JSON.parse(fs.readFileSync("./data/tools.json", "utf8"));
 } catch {}
 
 async function importTools() {
-  if (jsonTools.length === 0) return;
+if (jsonTools.length === 0) return;
 
-  for (let tool of jsonTools) {
-    await Tool.updateOne(
-      { name: tool.name },   // find by name
-      { $set: tool },        // update data
-      { upsert: true }       // create if not exists
-    );
-  }
+for (let tool of jsonTools) {
+await Tool.updateOne(
+{ name: tool.name },   // find by name
+{ $set: tool },        // update data
+{ upsert: true }       // create if not exists
+);
+}
 
-  console.log("✅ Tools synced");
+console.log("✅ Tools synced");
 }
 
 // ================= MIDDLEWARE =================
@@ -74,23 +75,23 @@ app.set("view engine", "ejs");
 
 // ✅ SESSION (IMPROVED)
 app.use(
-  session({
-    name: "aidex_session",
-    secret: process.env.SESSION_SECRET || "super-secret-key",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
-      httpOnly: true,
-      secure: false,
-    },
-  })
+session({
+name: "aidex_session",
+secret: process.env.SESSION_SECRET || "super-secret-key",
+resave: false,
+saveUninitialized: false,
+cookie: {
+maxAge: 1000 * 60 * 60 * 24, // 1 day
+httpOnly: true,
+secure: false,
+},
+})
 );
 
 // ✅ GLOBAL USER (IMPORTANT)
 app.use((req, res, next) => {
-  res.locals.user = req.session.user || null;
-  next();
+res.locals.user = req.session.user || null;
+next();
 });
 
 // ================= UPLOAD =================
@@ -98,350 +99,402 @@ const uploadDir = path.join(__dirname, "public/uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) =>
-    cb(null, Date.now() + "-" + file.originalname),
+destination: (req, file, cb) => cb(null, uploadDir),
+filename: (req, file, cb) =>
+cb(null, Date.now() + "-" + file.originalname),
 });
 
 const upload = multer({ storage });
 
 // ================= AUTH MIDDLEWARE =================
 function requireLogin(req, res, next) {
-  if (!req.session.userId) return res.redirect("/login");
-  next();
+if (!req.session.userId) return res.redirect("/login");
+next();
 }
 
 // ================= ROUTES =================
 
 // HOME
 app.get("/", async (req, res) => {
-  try {
-    const tools = await Tool.find().limit(12).lean();
-    const trendingTools = await getTrendingTools(10);
-    const trendingIds = trendingTools.map(t => t._id.toString());
+try {
+const tools = await Tool.find().limit(12).lean();
+const trendingTools = await getTrendingTools(10);
+const trendingIds = trendingTools.map(t => t._id.toString());
 
-    res.render("home", { tools, trendingIds });
-  } catch {
-    res.send("Error loading home");
-  }
+res.render("home", { tools, trendingIds });
+
+} catch {
+res.send("Error loading home");
+}
 });
 
 // TOOLS
 app.get("/tools", async (req, res) => {
-  const query = req.query.q;
+const query = req.query.q;
 
-  let tools;
+let tools;
 
-  if (query) {
-    tools = await Tool.find({
-      $or: [
-        { name: { $regex: query, $options: "i" } },
-        { description: { $regex: query, $options: "i" } },
-      ],
-    }).lean();
-  } else {
-    tools = await Tool.find().lean();
-  }
+if (query) {
+tools = await Tool.find({
+$or: [
+{ name: { $regex: query, $options: "i" } },
+{ description: { $regex: query, $options: "i" } },
+],
+}).lean();
+} else {
+tools = await Tool.find().lean();
+}
 
-  const allTools = await Tool.find().lean();
-  const categories = [...new Set(allTools.map(t => t.category))];
+const allTools = await Tool.find().lean();
+const categories = [...new Set(allTools.map(t => t.category))];
 
-  const trendingTools = await getTrendingTools(10);
-  const trendingIds = trendingTools.map(t => t._id.toString());
+const trendingTools = await getTrendingTools(10);
+const trendingIds = trendingTools.map(t => t._id.toString());
 
-  res.render("tools", { tools, categories, trendingIds });
+res.render("tools", { tools, categories, trendingIds });
 });
 
 // TOOL DETAILS
 app.get("/tool/:id", async (req, res) => {
-  try {
-    const tool = await Tool.findById(req.params.id).lean();
-    if (!tool) return res.redirect("/tools");
+try {
+const tool = await Tool.findById(req.params.id).lean();
+if (!tool) return res.redirect("/tools");
 
-    res.render("tool", { tool });
-  } catch {
-    res.redirect("/tools");
-  }
+res.render("tool", { tool });
+
+} catch {
+res.redirect("/tools");
+}
 });
 
 // VISIT TOOL
 app.get("/visit/:id", async (req, res) => {
-  try {
-    const tool = await Tool.findById(req.params.id);
-    if (!tool) return res.redirect("/tools");
+try {
+const tool = await Tool.findById(req.params.id);
+if (!tool) return res.redirect("/tools");
 
-    tool.clicks = (tool.clicks || 0) + 1;
-    tool.clickHistory = tool.clickHistory || [];
-    tool.clickHistory.push({ date: new Date() });
+tool.clicks = (tool.clicks || 0) + 1;  
+tool.clickHistory = tool.clickHistory || [];  
+tool.clickHistory.push({ date: new Date() });  
 
-    await tool.save();
+await tool.save();  
 
-    let url = tool.url;
-    if (!url.startsWith("http")) url = "https://" + url;
+let url = tool.url;  
+if (!url.startsWith("http")) url = "https://" + url;  
 
-    res.redirect(url);
-  } catch {
-    res.redirect("/tools");
-  }
+res.redirect(url);
+
+} catch {
+res.redirect("/tools");
+}
 });
 
 // TRENDING PAGE
 app.get("/trending", async (req, res) => {
-  try {
-    const tools = await getTrendingTools(20);
-    res.render("trending", { tools });
-  } catch (err) {
-    console.error(err);
-    res.send("Error loading trending page");
-  }
+try {
+const tools = await getTrendingTools(20);
+res.render("trending", { tools });
+} catch (err) {
+console.error(err);
+res.send("Error loading trending page");
+}
 });
 
 // SUBMIT PAGE
 app.get("/submit", (req, res) => {
-  res.render("submit");
+res.render("submit");
 });
 
 // SUBMIT TOOL
 app.post("/submit", upload.single("logo"), async (req, res) => {
-  try {
-    const { name, category, url, description } = req.body;
+try {
+const { name, category, url, description } = req.body;
 
-    if (!name || !category || !url || !description) {
-      return res.send("All fields are required");
-    }
+if (!name || !category || !url || !description) {  
+  return res.send("All fields are required");  
+}  
 
-    let logoPath = "/logos/default.png";
+let logoPath = "/logos/default.png";  
 
-    if (req.file) {
-      logoPath = "/uploads/" + req.file.filename;
-    }
+if (req.file) {  
+  logoPath = "/uploads/" + req.file.filename;  
+}  
 
-    await new Tool({
-      name,
-      category,
-      url,
-      description,
-      logo: logoPath,
-      clicks: 0,
-      clickHistory: []
-    }).save();
+await new Tool({  
+  name,  
+  category,  
+  url,  
+  description,  
+  logo: logoPath,  
+  clicks: 0,  
+  clickHistory: []  
+}).save();  
 
-    res.redirect("/tools");
+res.redirect("/tools");
 
-  } catch (err) {
-    console.error(err);
-    res.send("Error submitting tool");
-  }
+} catch (err) {
+console.error(err);
+res.send("Error submitting tool");
+}
 });
 // ABOUT PAGE
 app.get("/about", (req, res) => {
-  res.render("about");
+res.render("about");
 });
 
 // CATEGORY FILTER
 app.get("/tools/category/:category", async (req, res) => {
+try {
+const category = decodeURIComponent(req.params.category);
+
+const tools = await Tool.find({
+category: { $regex: new RegExp("^" + category + "$", "i") }
+}).lean();
+const allTools = await Tool.find().lean();
+const categories = [...new Set(allTools.map(t => t.category))];
+
+const trendingTools = await getTrendingTools(10);  
+const trendingIds = trendingTools.map(t => t._id.toString());  
+
+res.render("tools", { tools, categories, trendingIds });
+
+} catch (err) {
+console.error(err);
+res.redirect("/tools");
+}
+});
+app.get("/lab", (req, res) => {
+res.render("lab");
+});
+
+const axios = require("axios");
+
+
+
+//MULTI AI GENERATION
+console.log("🔥 ROUTE HIT");
+console.log("PROMPT:", prompt);
+
+app.post("/multi-generate", async (req, res) => {
+  const { prompt } = req.body;
+
+  if (!prompt) return res.status(400).send("Prompt required");
+
+  const models = [
+    "mistralai/mistral-7b-instruct",
+    "meta-llama/llama-3-8b-instruct",
+    "openchat/openchat-7b"
+  ];
+
   try {
-    const category = decodeURIComponent(req.params.category);
+    const responses = await Promise.all(
+      models.map(async (model) => {
+        try {
+          const result = await axios.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            {
+              model,
+              messages: [{ role: "user", content: prompt }]
+            },
+            {
+              headers: {
+                Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://replit.com",
+                "X-Title": "Aquiplex"
+              }
+            }
+          );
 
-  const tools = await Tool.find({
-      category: { $regex: new RegExp("^" + category + "$", "i") }
-    }).lean();
-    const allTools = await Tool.find().lean();
-    const categories = [...new Set(allTools.map(t => t.category))];
+          return {
+            model,
+            output: result.data.choices[0].message.content
+          };
 
-    const trendingTools = await getTrendingTools(10);
-    const trendingIds = trendingTools.map(t => t._id.toString());
+        } catch (err) {
+          console.error("❌ MODEL ERROR:", model);
+          console.error(err.response?.data || err.message);
 
-    res.render("tools", { tools, categories, trendingIds });
+          return {
+            model,
+            output: "⚠️ Error generating response"
+          };
+        }
+      })
+    );
+
+    const best = responses.reduce((prev, current) =>
+      current.output.length > prev.output.length ? current : prev
+    );
+
+    res.json({
+      responses,
+      recommended: best.model
+    });
 
   } catch (err) {
     console.error(err);
-    res.redirect("/tools");
+    res.status(500).send("AI generation failed");
   }
 });
-app.get("/lab", (req, res) => {
-  res.render("lab");
-});
-app.post("/generate", async (req, res) => {
-  const { prompt } = req.body;
-
-  console.log("PROMPT:", prompt);
-
-  // ⏳ Simulate AI thinking delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-
-  // 🧠 Better fake AI logic
-  const responses = {
-    smart: `🧠 Smart Answer:\n\n"${prompt}" can be approached strategically. Start by understanding the core concept, break it into smaller steps, and execute with clarity and consistency.`,
-
-    creative: `🎨 Creative Take:\n\nImagine "${prompt}" as something completely new — combine ideas, experiment freely, and don’t be afraid to break traditional patterns.`,
-
-    fast: `⚡ Quick Answer:\n\n${prompt}? → Start simple, take action, improve as you go.`,
-
-    detailed: `📚 Detailed Explanation:\n\nTo fully understand "${prompt}", you need a structured approach:\n\n1. Understand the basics\n2. Break into steps\n3. Apply practically\n4. Iterate and improve\n\nThis method ensures long-term success.`,
-  };
-
-  res.json(responses);
-});
-    
-
-  
-
 // ================= AUTH =================
 
 // LOGIN PAGE
 app.get("/login", (req, res) => {
-  if (req.session.userId) return res.redirect("/workspace");
-  res.render("login");
+if (req.session.userId) return res.redirect("/workspace");
+res.render("login");
 });
 
 // SIGNUP PAGE
 app.get("/signup", (req, res) => {
-  if (req.session.userId) return res.redirect("/workspace");
-  res.render("signup");
+if (req.session.userId) return res.redirect("/workspace");
+res.render("signup");
 });
 
 // LOGIN
 app.post("/login", async (req, res) => {
-  try {
-    const { email, password } = req.body;
+try {
+const { email, password } = req.body;
 
-    if (!email || !password)
-      return res.send("All fields are required");
+if (!email || !password)  
+  return res.send("All fields are required");  
 
-    const user = await User.findOne({ email });
-    if (!user) return res.send("User not found");
+const user = await User.findOne({ email });  
+if (!user) return res.send("User not found");  
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.send("Invalid credentials");
+const isMatch = await bcrypt.compare(password, user.password);  
+if (!isMatch) return res.send("Invalid credentials");  
 
-    req.session.user = {
-      _id: user._id,
-      email: user.email,
-      username: user.email.split("@")[0]
-    };
+req.session.user = {  
+  _id: user._id,  
+  email: user.email,  
+  username: user.email.split("@")[0]  
+};  
 
-    req.session.userId = user._id; // 🔥 ADD THIS
-    req.session.save(() => {
-      res.redirect("/workspace");
-    });
-  } catch (err) {
-    console.error(err);
-    res.send("Login error");
-  }
+req.session.userId = user._id; // 🔥 ADD THIS  
+req.session.save(() => {  
+  res.redirect("/workspace");  
+});
+
+} catch (err) {
+console.error(err);
+res.send("Login error");
+}
 });
 
 // SIGNUP
 app.post("/signup", async (req, res) => {
-  try {
-    const { email, password } = req.body;
+try {
+const { email, password } = req.body;
 
-    if (!email || !password)
-      return res.send("All fields are required");
+if (!email || !password)  
+  return res.send("All fields are required");  
 
-    const exists = await User.findOne({ email });
-    if (exists) return res.send("User already exists");
+const exists = await User.findOne({ email });  
+if (exists) return res.send("User already exists");  
 
-    const hashedPassword = await bcrypt.hash(password, 12);
+const hashedPassword = await bcrypt.hash(password, 12);  
 
-    const newUser = await new User({
-      email,
-      password: hashedPassword,
-    }).save();
+const newUser = await new User({  
+  email,  
+  password: hashedPassword,  
+}).save();  
 
-    // 🔥 AUTO LOGIN AFTER SIGNUP
-    req.session.user = {
-      _id: newUser._id,
-      email: newUser.email,
-      username: newUser.email.split("@")[0]
-    };
+// 🔥 AUTO LOGIN AFTER SIGNUP  
+req.session.user = {  
+  _id: newUser._id,  
+  email: newUser.email,  
+  username: newUser.email.split("@")[0]  
+};  
 
-    req.session.userId = newUser._id; // 🔥 ADD THIS
-    req.session.save(() => {
-      res.redirect("/workspace");
-    });
-  } catch (err) {
-    console.error(err);
-    res.send("Signup error");
-  }
+req.session.userId = newUser._id; // 🔥 ADD THIS  
+req.session.save(() => {  
+  res.redirect("/workspace");  
+});
+
+} catch (err) {
+console.error(err);
+res.send("Signup error");
+}
 });
 
 // LOGOUT
 app.get("/logout", (req, res) => {
-  req.session.destroy(() => {
-    res.clearCookie("aidex_session");
-    res.redirect("/");
-  });
+req.session.destroy(() => {
+res.clearCookie("aidex_session");
+res.redirect("/");
+});
 });
 
 // ================= WORKSPACE =================
 
 // VIEW
 app.get("/workspace", requireLogin, async (req, res) => {
-  let workspace = await Workspace.findOne({
-    userId: req.session.userId,
-  })
-    .populate("tools")
-    .lean();
+let workspace = await Workspace.findOne({
+userId: req.session.userId,
+})
+.populate("tools")
+.lean();
 
-  if (!workspace) {
-    workspace = await new Workspace({
-      userId: req.session.userId,
-      tools: [],
-    }).save();
-  }
+if (!workspace) {
+workspace = await new Workspace({
+userId: req.session.userId,
+tools: [],
+}).save();
+}
 
-  res.render("workspace", { workspace });
+res.render("workspace", { workspace });
 });
 
 // ADD
 app.post("/workspace/add/:toolId", requireLogin, async (req, res) => {
-  let workspace = await Workspace.findOne({
-    userId: req.session.userId,
-  });
+let workspace = await Workspace.findOne({
+userId: req.session.userId,
+});
 
-  if (!workspace) {
-    workspace = new Workspace({
-      userId: req.session.userId,
-      tools: [],
-    });
-  }
+if (!workspace) {
+workspace = new Workspace({
+userId: req.session.userId,
+tools: [],
+});
+}
 
-  if (!workspace.tools.includes(req.params.toolId)) {
-    workspace.tools.push(req.params.toolId);
-    await workspace.save();
-  }
+if (!workspace.tools.includes(req.params.toolId)) {
+workspace.tools.push(req.params.toolId);
+await workspace.save();
+}
 
-  res.sendStatus(200);
+res.sendStatus(200);
 });
 
 // REMOVE
 app.post("/workspace/remove/:toolId", requireLogin, async (req, res) => {
-  try {
-    const toolId = new mongoose.Types.ObjectId(req.params.toolId);
+try {
+const toolId = new mongoose.Types.ObjectId(req.params.toolId);
 
-    await Workspace.updateOne(
-      { userId: req.session.userId },
-      { $pull: { tools: toolId } }
-    );
+await Workspace.updateOne(  
+  { userId: req.session.userId },  
+  { $pull: { tools: toolId } }  
+);  
 
-    res.sendStatus(200);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error removing tool");
-  }
+res.sendStatus(200);
+
+} catch (err) {
+console.error(err);
+res.status(500).send("Error removing tool");
+}
 });
 
 // ================= START =================
 async function startServer() {
-  await connectDB();
-  await importTools();
+await connectDB();
+await importTools();
 
-  const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log("🚀 Server running on port " + PORT);
-  });
+app.listen(PORT, "0.0.0.0", () => {
+console.log("🚀 Server running on port " + PORT);
+});
 }
 
 startServer();

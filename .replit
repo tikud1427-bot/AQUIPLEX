@@ -46,3 +46,8 @@ outputType = "webview"
 
 [agent]
 expertMode = true
+
+[userenv]
+
+[userenv.shared]
+OPENROUTER_API_KEY = "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"

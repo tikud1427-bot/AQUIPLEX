@@ -1130,3 +1130,101 @@ h1 {
   border: 2px solid #4CAF50;
   background: #162116;
 }
+
+.ai-box {
+  margin-top: 30px;
+  text-align: center;
+}
+
+#aiForm {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+#aiForm input {
+  width: 60%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+}
+
+#aiForm button {
+  padding: 12px 20px;
+  border: none;
+  background: #6c5ce7;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.ai-card {
+  background: #111;
+  color: white;
+  padding: 15px;
+  margin: 15px auto;
+  max-width: 700px;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.ai-box {
+  margin-top: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#aiForm {
+  display: flex;
+  gap: 10px;
+}
+
+#aiForm input {
+  padding: 12px;
+  width: 320px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+}
+
+#aiForm button {
+  padding: 12px 20px;
+  background: linear-gradient(135deg, #6c5ce7, #00cec9);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#aiForm button:hover {
+  opacity: 0.9;
+}
+
+#aiResults {
+  margin-top: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  width: 85%;
+}
+
+.ai-card {
+  background: rgba(255,255,255,0.05);
+  padding: 20px;
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: 0.3s;
+}
+
+.ai-card:hover {
+  transform: translateY(-5px);
+}
+
+.ai-card h3 {
+  margin-bottom: 10px;
+  font-size: 15px;
+  color: #00cec9;
+}
