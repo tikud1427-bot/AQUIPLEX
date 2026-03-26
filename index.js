@@ -273,30 +273,38 @@ const axios = require("axios");
 
 //MULTI AI GENERATION
 
+const models = [
+  {
+    name: "🧠 Smart AI",
+    system: "You are a highly intelligent AI. Give deep, clear, and well-structured answers."
+  },
+  {
+    name: "🎨 Creative AI",
+    system: "You are a creative and imaginative AI. Make answers engaging, unique, and expressive."
+  },
+  {
+    name: "⚡ Fast AI",
+    system: "You are a concise AI. Give short, direct, and fast answers."
+  }
+];
+
 app.post("/multi-generate", async (req, res) => {
-  console.log("🔥 ROUTE HIT");
-
   const { prompt } = req.body;
-
-  console.log("PROMPT:", prompt); // ✅ NOW SAFE
 
   if (!prompt) return res.status(400).send("Prompt required");
 
-  const models = [
-    "meta-llama/llama-3-8b-instruct",
-    "mistralai/mistral-7b-instruct:free",
-    "google/gemma-7b-it:free"
-  ];
-
   try {
     const responses = await Promise.all(
-      models.map(async (model) => {
+      models.map(async (ai) => {
         try {
           const result = await axios.post(
             "https://openrouter.ai/api/v1/chat/completions",
             {
-              model,
-              messages: [{ role: "user", content: prompt }]
+              model: "meta-llama/llama-3-8b-instruct",
+              messages: [
+                { role: "system", content: ai.system },
+                { role: "user", content: prompt }
+              ]
             },
             {
               headers: {
@@ -307,25 +315,27 @@ app.post("/multi-generate", async (req, res) => {
           );
 
           return {
-            model,
-            output: result.data.choices[0].message.content
+            model: ai.name,
+            output:
+              result?.data?.choices?.[0]?.message?.content ||
+              "⚠️ Empty response"
           };
 
         } catch (err) {
-          console.error("❌ MODEL ERROR:", model);
+          console.error("❌ ERROR:", ai.name);
           console.error(err.response?.data || err.message);
 
           return {
-            model,
+            model: ai.name,
             output: "⚠️ Error generating response"
           };
         }
       })
     );
 
-    const best = responses.reduce((prev, current) =>
-      current.output.length > prev.output.length ? current : prev
-    );
+    // ✅ Smart recommendation (first successful)
+    const best =
+      responses.find(r => !r.output.includes("⚠️")) || responses[0];
 
     res.json({
       responses,

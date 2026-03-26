@@ -183,12 +183,17 @@
 
                 resultsDiv.innerHTML = "";
 
-                data.responses.forEach(r => {
+                data.responses
+                .filter(r => !r.output.includes("⚠️"))
+                .forEach(r => {
                   const div = document.createElement("div");
                   div.classList.add("ai-card");
 
                   div.innerHTML = `
-                    <h3>${r.model}</h3>
+                    <h3>
+                      ${r.model}
+                      ${r.model === data.recommended ? "🔥 Recommended" : ""}
+                    </h3>
                     <p>${r.output}</p>
                   `;
 
