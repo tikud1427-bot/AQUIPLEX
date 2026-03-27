@@ -53,6 +53,10 @@
         </form>
 
         <div id="aiResults"></div>
+        <div id="history-container">
+          <h3>🕘 Recent Prompts</h3>
+          <div id="history"></div>
+        </div>
       </div>
     </section>
 
@@ -182,6 +186,7 @@
                 }
 
                 resultsDiv.innerHTML = "";
+                loadHistory();
 
                 data.responses
                 .filter(r => !r.output.includes("⚠️"))
@@ -210,6 +215,43 @@
                 resultsDiv.innerHTML = "❌ Frontend error";
               }
             });
+              async function loadHistory() {
+                try {
+                  const res = await fetch("/history");
+
+                  if (!res.ok) return; // user not logged in
+
+                  const data = await res.json();
+
+                  const container = document.getElementById("history");
+
+                  if (!data.length) {
+                    container.innerHTML = "<p>No history yet</p>";
+                    return;
+                  }
+
+                  container.innerHTML = data.map(item => `
+                    <div class="history-item">
+                      <p class="prompt">${item.prompt}</p>
+                      <p class="response">${item.response}</p>
+                      <button onclick="reusePrompt('${item.prompt.replace(/'/g, "\\'")}')">
+                        Reuse
+                      </button>
+                    </div>
+                  `).join("");
+
+                } catch (err) {
+                  console.error("History load error", err);
+                }
+              }
+
+              // load when page opens
+              loadHistory();
+
+              function reusePrompt(text) {
+                document.getElementById("aiPrompt").value = text;
+                document.getElementById("aiPrompt").focus();
+              }
             </script>
 </body>
 </html>

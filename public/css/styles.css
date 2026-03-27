@@ -1677,3 +1677,41 @@ SAFE – NO BREAKING
   width: 400px;
   max-width: 100%;
 }
+
+#history-container {
+  margin-top: 20px;
+}
+
+.history-item {
+  background: #020617;
+  border: 1px solid #1e293b;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  transition: 0.2s;
+}
+
+.history-item:hover {
+  border-color: #3b82f6;
+}
+
+.history-item .prompt {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.history-item .response {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.history-item button {
+  margin-top: 5px;
+  font-size: 12px;
+  background: #3b82f6;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}

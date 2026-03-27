@@ -15,7 +15,7 @@ const app = express();
 const User = require("./models/User");
 const Tool = require("./models/Tool");
 const Workspace = require("./models/Workspace");
-
+const History = require("./models/History");
 // ================= DATABASE =================
 async function connectDB() {
 try {
@@ -345,6 +345,16 @@ app.post("/multi-generate", async (req, res) => {
     const best =
       responses.find(r => !r.output.includes("⚠️")) || responses[0];
 
+    // ✅ SAVE HISTORY
+    if (req.session.userId) {
+      await History.create({
+        userId: req.session.userId,
+        prompt,
+        response: best.output, // store all AI outputs
+        model: best.model
+      });
+    }
+
     res.json({
       responses,
       recommended: best.model
@@ -353,6 +363,24 @@ app.post("/multi-generate", async (req, res) => {
   } catch (err) {
     console.error("❌ GLOBAL ERROR:", err);
     res.status(500).send("AI generation failed");
+  }
+});
+
+// HISTORY PAGE
+app.get("/history", requireLogin, async (req, res) => {
+  try {
+    const history = await History.find({
+      userId: req.session.userId
+    })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
+
+    res.json(history);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error fetching history");
   }
 });
 // ================= AUTH =================
