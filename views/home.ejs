@@ -1,18 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<head>
+  <head>
 
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>AQUIPLEX | Discover the Best AI Tools</title>
+  <title>AQUIPLEX | Discover the Best AI Tools</title>
 
-<link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css">
 
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-</head>
+  <!-- ✅ PWA CONFIG (ADD THIS) -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#020617">
+
+  <!-- ✅ ICONS -->
+  <link rel="icon" href="/logo/logo.png">
+  <link rel="apple-touch-icon" href="/logo/icon-192.png">
+
+  </head>
 
 <body>
 
@@ -252,6 +260,15 @@
                 document.getElementById("aiPrompt").value = text;
                 document.getElementById("aiPrompt").focus();
               }
+              </script>
+
+            <script>
+            if ("serviceWorker" in navigator) {
+              navigator.serviceWorker.register("/service-worker.js")
+                .then(() => console.log("SW registered"))
+                .catch(err => console.log("SW failed", err));
+            }
             </script>
-</body>
+          
+  </body>
 </html>
