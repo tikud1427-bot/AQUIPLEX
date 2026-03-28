@@ -63,16 +63,19 @@
           <div class="ai-card smart">
             <h3>🧠 Smart</h3>
             <p id="smartText">Waiting...</p>
+            <button onclick="copyText('smartText')">Copy</button>
           </div>
 
           <div class="ai-card creative">
             <h3>🎨 Creative</h3>
             <p id="creativeText">Waiting...</p>
+            <button onclick="copyText('creativeText')">Copy</button>
           </div>
 
           <div class="ai-card fast">
             <h3>⚡ Fast</h3>
             <p id="fastText">Waiting...</p>
+            <button onclick="copyText('creativeText')">Copy</button>
           </div>
         </div>
         <div id="history-container">
@@ -177,38 +180,51 @@
 
 
             <script>
-            document.getElementById("aiForm").addEventListener("submit", async (e) => {
-              e.preventDefault();
+              document.getElementById("aiForm").addEventListener("submit", async (e) => {
+                e.preventDefault();
 
-              const prompt = document.getElementById("aiPrompt").value;
-              const resultsDiv = document.getElementById("aiResults");
+                const prompt = document.getElementById("aiPrompt").value;
 
-              // Set loading states
-              document.getElementById("smartText").innerText = "🧠 Thinking...";
-              document.getElementById("creativeText").innerText = "🎨 Creating...";
-              document.getElementById("fastText").innerText = "⚡ Answering...";
+                // Loading states
+                document.getElementById("smartText").innerText = "🧠 Thinking...";
+                document.getElementById("creativeText").innerText = "🎨 Creating...";
+                document.getElementById("fastText").innerText = "⚡ Answering...";
 
-              loadHistory();
+                try {
+                  const res = await fetch("/multi-generate", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ prompt })
+                  });
 
-              // Fill fixed UI cards
-              data.responses.forEach(r => {
-                if (r.model.includes("Smart")) {
-                  document.getElementById("smartText").innerText = r.output;
-                }
+                  const data = await res.json();
 
-                if (r.model.includes("Creative")) {
-                  document.getElementById("creativeText").innerText = r.output;
-                }
+                  loadHistory();
 
-                if (r.model.includes("Fast")) {
-                  document.getElementById("fastText").innerText = r.output;
+                  data.responses.forEach(r => {
+                    if (r.model.includes("Smart")) {
+                      document.getElementById("smartText").innerText = r.output;
+                    }
+
+                    if (r.model.includes("Creative")) {
+                      document.getElementById("creativeText").innerText = r.output;
+                    }
+
+                    if (r.model.includes("Fast")) {
+                      document.getElementById("fastText").innerText = r.output;
+                    }
+                  });
+
+                } catch (err) {
+                  console.error("FRONTEND ERROR:", err);
+
+                  document.getElementById("smartText").innerText = "❌ Error";
+                  document.getElementById("creativeText").innerText = "❌ Error";
+                  document.getElementById("fastText").innerText = "❌ Error";
                 }
               });
-              } catch (err) {
-                console.error("FRONTEND ERROR:", err);
-                resultsDiv.innerHTML = "❌ Frontend error";
-              }
-            });
               async function loadHistory() {
                 try {
                   const res = await fetch("/history");
@@ -245,6 +261,12 @@
               function reusePrompt(text) {
                 document.getElementById("aiPrompt").value = text;
                 document.getElementById("aiPrompt").focus();
+                function copyText(id) {
+                  const text = document.getElementById(id).innerText;
+                  navigator.clipboard.writeText(text);
+
+                  alert("Copied!");
+                }
               }
               </script>
 
@@ -254,9 +276,7 @@
                 .then(() => console.log("SW registered"))
                 .catch(err => console.log("SW failed", err));
             }
-              smartText.innerText = "Analyzing...";
-              creativeText.innerText = "Imagining...";
-              fastText.innerText = "Quick answer...";
+          
             </script>
           
   </body>

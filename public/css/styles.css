@@ -1784,3 +1784,9 @@ SAFE – NO BREAKING
 .smart { border-top: 3px solid #22c55e; }
 .creative { border-top: 3px solid #f59e0b; }
 .fast { border-top: 3px solid #3b82f6; }
+
+@media (max-width: 768px) {
+  .ai-grid {
+    grid-template-columns: 1fr;
+  }
+}
