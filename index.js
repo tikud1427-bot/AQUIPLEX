@@ -11,6 +11,19 @@ const path = require("path");
 
 const app = express();
 
+// ✅ TRUST PROXY (IMPORTANT for Render/Replit)
+app.set("trust proxy", 1);
+
+app.use((req, res, next) => {
+  const proto = req.headers["x-forwarded-proto"];
+
+  // If header exists AND not https → redirect
+  if (proto && proto !== "https") {
+    return res.redirect("https://" + req.headers.host + req.url);
+  }
+
+  next();
+});
 // ================= MODELS =================
 const User = require("./models/User");
 const Tool = require("./models/Tool");
