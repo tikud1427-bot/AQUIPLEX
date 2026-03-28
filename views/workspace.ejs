@@ -98,6 +98,7 @@
 
     <!-- 🔥 FAKE BROWSER -->
     <div id="workspace-browser" class="browser hidden">
+
       <div class="browser-top">
         <span class="dot red"></span>
         <span class="dot yellow"></span>
@@ -106,22 +107,23 @@
       </div>
 
       <div class="browser-body">
-        <div class="loader">Opening tool...</div>
+        <div class="browser-loading">
+          <div class="spinner"></div>
+          <p>Launching AI tool...</p>
+        </div>
       </div>
-    </div>
+
+    </div> <!-- ✅ THIS LINE WAS MISSING -->
 
     <!-- ✅ SCRIPT STARTS HERE -->
-    <script>
+      <script>
 
-    const activeTools = {};
-      window.onload = () => {
-        updateWorkspaceUI();
-      };
+      const activeTools = {};
 
-    // 🚀 Launch Tool
+      // 🚀 Launch Tool
       function launchTool(name, url){
         if(!url){
-          alert("No URL found for this tool");
+          alert("No URL found");
           return;
         }
 
@@ -132,24 +134,71 @@
         const browser = document.getElementById("workspace-browser");
         const urlBar = document.getElementById("browser-url");
 
-        // Show fake browser
         browser.classList.remove("hidden");
         urlBar.innerText = url;
 
-        // Save tool
         activeTools[name] = { url };
+        saveTools(); // ✅ persist
 
-        // OPEN TOOL
-        window.open(url, "_blank");
-
-        // 🔥 FORCE HIDE AFTER 1s (IMPORTANT)
         setTimeout(() => {
+          window.open(url, "_blank");
           browser.classList.add("hidden");
           updateWorkspaceUI();
-        }, 1000);
+        }, 500);
       }
 
-      // 🗑️ Remove Tool
+      // 🔁 Resume tool
+      function resumeTool(url){
+        window.open(url, "_blank");
+      }
+
+      // ❌ Close tool
+      function closeTool(name){
+        delete activeTools[name];
+        saveTools(); // ✅ persist
+        updateWorkspaceUI();
+      }
+
+      // 🧠 Render active tools (TABS UI)
+      function updateWorkspaceUI(){
+        const container = document.getElementById("active-tools");
+        container.innerHTML = "";
+
+        Object.keys(activeTools).forEach(name => {
+          const tool = activeTools[name];
+
+          const div = document.createElement("div");
+          div.className = "active-tool";
+
+          div.innerHTML = `
+            <span>🧠 ${name}</span>
+            <div class="tab-actions">
+              <button onclick="resumeTool('${tool.url}')">Open</button>
+              <button onclick="closeTool('${name}')">✕</button>
+            </div>
+          `;
+
+          container.appendChild(div);
+        });
+      }
+
+      // 💾 Save tools
+      function saveTools(){
+        localStorage.setItem("activeTools", JSON.stringify(activeTools));
+      }
+
+      // 🔄 Load tools on refresh
+      window.addEventListener("load", () => {
+        const saved = localStorage.getItem("activeTools");
+
+        if(saved){
+          Object.assign(activeTools, JSON.parse(saved));
+        }
+
+        updateWorkspaceUI();
+      });
+
+      // 🗑️ Remove Tool (your existing feature)
       async function removeTool(toolId){
         try {
           const res = await fetch("/workspace/remove/" + toolId, {
@@ -157,11 +206,9 @@
           });
 
           if(res.ok){
-
             const card = document.getElementById("tool-" + toolId);
 
             if(card){
-              // animation
               card.style.transition = "all 0.3s ease";
               card.style.opacity = "0";
               card.style.transform = "scale(0.8)";
@@ -169,7 +216,6 @@
               setTimeout(() => {
                 card.remove();
 
-                // check empty state
                 const grid = document.getElementById("workspaceGrid");
                 const remaining = grid.querySelectorAll(".workspace-card");
 
@@ -195,32 +241,8 @@
           alert("Error removing tool");
         }
       }
-    // 🔥 Render active tools
-    function updateWorkspaceUI(){
-      const container = document.getElementById("active-tools");
-      container.innerHTML = "";
 
-      Object.keys(activeTools).forEach(name => {
-        const tool = activeTools[name];
-
-        const div = document.createElement("div");
-        div.className = "active-tool";
-
-        div.innerHTML = `
-          <span>🧠 ${name}</span>
-          <button onclick="resumeTool('${tool.url}')">Resume</button>
-        `;
-
-        container.appendChild(div);
-      });
-    }
-
-    // 🔥 Resume tool
-    function resumeTool(url){
-      window.open(url, "_blank");
-    }
-
-    </script>
+      </script>
 
     </body>
     </html>

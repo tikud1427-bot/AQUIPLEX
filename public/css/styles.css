@@ -1890,3 +1890,74 @@ SAFE – NO BREAKING
 .workspace-card {
   transition: all 0.3s ease;
 }
+
+.active-tools-panel {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  margin-bottom: 25px;
+
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+
+  overflow-x: auto;
+}
+
+.active-tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  background: #0f172a;
+  padding: 8px 12px;
+  border-radius: 8px;
+
+  border: 1px solid rgba(255,255,255,0.05);
+  transition: 0.2s;
+}
+
+.active-tool:hover {
+  border-color: #3b82f6;
+  transform: translateY(-2px);
+}
+
+.tab-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.tab-actions button {
+  background: transparent;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.tab-actions button:hover {
+  color: white;
+}
+
+.browser-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+/* 🔥 Spinner */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255,255,255,0.1);
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
