@@ -22,7 +22,11 @@
     <p>Quick access to your saved AI tools</p>
   </section>    
 
-  <!-- GRID -->    
+  <div id="active-tools" class="active-tools-panel"></div>
+
+  
+
+ <!-- GRID -->    
   <div class="workspace-grid" id="workspaceGrid">    
 
   <% if (workspace && workspace.tools && workspace.tools.length > 0) { %>    
@@ -58,9 +62,9 @@
       <div class="workspace-actions">    
 
         <button     
-          class="launch-btn"     
-          onclick="launchTool('<%= tool.url || '' %>')"    
-        >    
+          class="launch-btn"   
+          onclick="launchTool('<%= tool.name %>', '<%= tool.url || '' %>')"
+         >    
           🚀 Launch    
         </button>    
 
@@ -91,69 +95,84 @@
 
 </main>    
 
-<script>    
 
-// 🚀 Launch Tool
-function launchTool(url){    
-  if(!url){
-    alert("No URL found for this tool");
-    return;
-  }
+    <!-- 🔥 FAKE BROWSER -->
+    <div id="workspace-browser" class="browser hidden">
+      <div class="browser-top">
+        <span class="dot red"></span>
+        <span class="dot yellow"></span>
+        <span class="dot green"></span>
+        <div class="address-bar" id="browser-url">Loading...</div>
+      </div>
 
-  if(!url.startsWith("http")){    
-    url = "https://" + url;    
-  }    
+      <div class="browser-body">
+        <div class="loader">Opening tool...</div>
+      </div>
+    </div>
 
-  window.open(url, "_blank");    
-}    
+    <!-- ✅ SCRIPT STARTS HERE -->
+    <script>
 
-// 🗑️ Remove Tool (Smooth + Smart UI)
-async function removeTool(toolId){    
-  try {    
-    const res = await fetch("/workspace/remove/" + toolId, {    
-      method: "POST"    
-    });    
+    const activeTools = {};
 
-    if(res.ok){    
-      const card = document.getElementById("tool-" + toolId);
-
-      if(card){
-        card.style.transition = "all 0.25s ease";
-        card.style.opacity = "0";
-        card.style.transform = "scale(0.85)";
-
-        setTimeout(() => {
-          card.remove();
-
-          const grid = document.getElementById("workspaceGrid");
-
-          // 🔥 Check remaining cards (ignore empty state)
-          const remainingCards = grid.querySelectorAll(".workspace-card");
-
-          if(remainingCards.length === 0){
-            grid.innerHTML = `
-              <div class="empty-workspace">
-                <h2>No tools saved</h2>
-                <p>Add tools from the tools page to build your workspace</p>
-                <a href="/tools" class="browse-tools-btn">Browse Tools</a>
-              </div>
-            `;
-          }
-
-        }, 250);
+    // 🚀 Launch Tool
+    function launchTool(name, url){
+      if(!url){
+        alert("No URL found for this tool");
+        return;
       }
 
-    } else {    
-      alert("Failed to remove tool");    
-    }    
+      if(!url.startsWith("http")){
+        url = "https://" + url;
+      }
 
-  } catch (err){    
-    console.error(err);    
-    alert("Error removing tool");    
-  }    
-}    
+      const browser = document.getElementById("workspace-browser");
+      const urlBar = document.getElementById("browser-url");
 
-</script>    
+      // Show fake browser
+      browser.classList.remove("hidden");
+      urlBar.innerText = url;
 
-</body>    
-</html>
+      // Save active tool
+      activeTools[name] = {
+        url,
+        openedAt: new Date()
+      };
+
+      // Open real tool
+      setTimeout(() => {
+        window.open(url, "_blank");
+        browser.classList.add("hidden");
+        updateWorkspaceUI();
+      }, 800);
+    }
+
+    // 🔥 Render active tools
+    function updateWorkspaceUI(){
+      const container = document.getElementById("active-tools");
+      container.innerHTML = "";
+
+      Object.keys(activeTools).forEach(name => {
+        const tool = activeTools[name];
+
+        const div = document.createElement("div");
+        div.className = "active-tool";
+
+        div.innerHTML = `
+          <span>${name}</span>
+          <button onclick="resumeTool('${tool.url}')">Resume</button>
+        `;
+
+        container.appendChild(div);
+      });
+    }
+
+    // 🔥 Resume tool
+    function resumeTool(url){
+      window.open(url, "_blank");
+    }
+
+    </script>
+
+    </body>
+    </html>
