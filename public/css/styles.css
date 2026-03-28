@@ -1885,3 +1885,70 @@ SAFE – NO BREAKING
     top: 0;
     background: #0f172a;
   }
+
+  /* Target your existing buttons inside AI cards */
+  .ai-card button {
+    margin-top: 15px;
+    width: 100%;
+    padding: 10px;
+
+    border: none;
+    border-radius: 10px;
+
+    font-size: 14px;
+    font-weight: 500;
+
+    color: white;
+    background: linear-gradient(135deg, #4f46e5, #06b6d4);
+
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Hover effect */
+  .ai-card button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(6, 182, 212, 0.3);
+  }
+
+  /* Click press */
+  .ai-card button:active {
+    transform: scale(0.95);
+  }
+
+  /* ✨ Shine animation */
+  .ai-card button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      120deg,
+      transparent,
+      rgba(255, 255, 255, 0.4),
+      transparent
+    );
+    transition: all 0.5s;
+  }
+
+  .ai-card button:hover::before {
+    left: 100%;
+  }
+
+  /* Optional subtle glow */
+  .ai-card button {
+    box-shadow: 0 0 0 rgba(0,0,0,0);
+  }
+
+  .ai-card button:hover {
+    box-shadow: 0 0 15px rgba(79, 70, 229, 0.4);
+  }
+
+  .ai-card button {
+    backdrop-filter: blur(6px);
+  }
