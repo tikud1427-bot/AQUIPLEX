@@ -1763,18 +1763,21 @@ SAFE – NO BREAKING
 }
 
 .ai-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
-  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scroll-snap-type: x mandatory;
 }
 
 .ai-card {
+  min-width: 85%;   /* important */
+  flex-shrink: 0;
+  scroll-snap-align: start;
+
   background: #0f172a;
   padding: 15px;
   border-radius: 12px;
-  min-height: 150px;
-  transition: 0.3s;
 }
 
 .ai-card:hover {
@@ -1788,5 +1791,29 @@ SAFE – NO BREAKING
 @media (max-width: 768px) {
   .ai-grid {
     grid-template-columns: 1fr;
+  }
+}
+.ai-card {
+  min-width: 80%;
+}
+
+.ai-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.ai-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+}
+
+@media (max-width: 768px) {
+  .ai-grid {
+    display: flex;
+    overflow-x: auto;
+  }
+
+  .ai-card {
+    min-width: 80%;
   }
 }
