@@ -2203,3 +2203,154 @@ button:hover {
 .copy-btn:hover {
   background: linear-gradient(135deg, #2563eb, #22d3ee);
 }
+
+
+/* =========================
+AQUIPLEX FINAL OVERRIDE (VERCEL STYLE)
+Paste at VERY BOTTOM
+========================= */
+
+/* Ensure hero positioning */
+.hero {
+  position: relative;
+  isolation: isolate;
+}
+
+/* ===== HERO GLOW (CONTROLLED, PREMIUM) ===== */
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    600px circle at 50% 15%,
+    rgba(59, 130, 246, 0.18),
+    rgba(37, 99, 235, 0.08) 30%,
+    transparent 65%
+  );
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* ===== GLOBAL TEXT ===== */
+body {
+  color: #e5e7eb;
+}
+
+/* ===== INPUTS (GLASS + CLEAR) ===== */
+input, textarea {
+  background: rgba(15, 23, 42, 0.75) !important;
+  border: 1px solid rgba(148, 163, 184, 0.18) !important;
+  color: #e5e7eb !important;
+  border-radius: 10px;
+  padding: 12px 16px;
+  transition: all 0.25s ease;
+}
+
+input::placeholder {
+  color: #64748b !important;
+}
+
+input:focus, textarea:focus {
+  border-color: rgba(56, 189, 248, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+  outline: none;
+}
+
+/* ===== SEARCH BAR ===== */
+.search-bar input {
+  background: rgba(2, 6, 23, 0.75) !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+}
+
+/* ===== PROMPT BAR (FIX DARK LOOK) ===== */
+.prompt-bar input {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+}
+
+/* ===== BUTTONS (VERCEL STYLE SOFT GLOW) ===== */
+button {
+  background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-weight: 500;
+  padding: 10px 18px;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 18px rgba(37, 99, 235, 0.25);
+}
+
+button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 28px rgba(14, 165, 233, 0.35);
+}
+
+/* ===== AI CARDS (DEPTH + PREMIUM GLASS) ===== */
+.ai-card {
+  background: linear-gradient(
+    145deg,
+    rgba(15, 23, 42, 0.75),
+    rgba(2, 6, 23, 0.95)
+  ) !important;
+  border: 1px solid rgba(59, 130, 246, 0.12) !important;
+  border-radius: 16px;
+  backdrop-filter: blur(12px);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* subtle hover (NOT overglow) */
+.ai-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+/* soft top glow */
+.ai-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at top,
+    rgba(56, 189, 248, 0.08),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: 0.3s;
+}
+
+.ai-card:hover::after {
+  opacity: 1;
+}
+
+/* ===== TEXT IMPROVEMENTS ===== */
+.ai-card p {
+  color: #cbd5f5 !important;
+}
+
+.ai-card h3 {
+  color: #38bdf8 !important;
+}
+
+/* ===== COPY BUTTON FIX ===== */
+.copy-btn {
+  background: linear-gradient(135deg, #1d4ed8, #06b6d4) !important;
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 6px 10px;
+  box-shadow: none !important;
+}
+
+.copy-btn:hover {
+  background: linear-gradient(135deg, #2563eb, #22d3ee) !important;
+}
+
+/* ===== HEADING POLISH ===== */
+h1 {
+  letter-spacing: -0.5px;
+}
+
+p {
+  color: #94a3b8;
+}
