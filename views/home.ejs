@@ -63,19 +63,20 @@
           <div class="ai-card smart">
             <h3>🧠 Smart</h3>
             <p id="smartText">Waiting...</p>
-            <button onclick="copyText('smartText')">Copy</button>
+            <button onclick="copyText('smartText', this)">Copy</button>
           </div>
 
           <div class="ai-card creative">
             <h3>🎨 Creative</h3>
             <p id="creativeText">Waiting...</p>
-            <button onclick="copyText('creativeText')">Copy</button>
+            <button onclick="copyText('creativeText', this)">Copy</button>
           </div>
 
           <div class="ai-card fast">
             <h3>⚡ Fast</h3>
             <p id="fastText">Waiting...</p>
-            <button onclick="copyText('creativeText')">Copy</button>
+            <button onclick="copyText('fastText', this)">Copy</button>
+
           </div>
         </div>
         <div id="history-container">
@@ -261,13 +262,19 @@
               function reusePrompt(text) {
                 document.getElementById("aiPrompt").value = text;
                 document.getElementById("aiPrompt").focus();
-                function copyText(id) {
-                  const text = document.getElementById(id).innerText;
-                  navigator.clipboard.writeText(text);
-
-                  alert("Copied!");
-                }
               }
+
+                  
+                function copyText(id, btn) {
+                  const text = document.getElementById(id).innerText;
+
+                  navigator.clipboard.writeText(text).then(() => {
+                    btn.innerText = "Copied!";
+                    setTimeout(() => {
+                      btn.innerText = "Copy";
+                    }, 2000);
+                  });
+                }
               </script>
 
             <script>
