@@ -2928,3 +2928,57 @@ HOOKED HERO (NEXT LEVEL UI)
   color: white;
   border: none;
 }
+
+/* =========================
+🔥 HARD FIX (DO NOT REMOVE)
+========================= */
+
+/* FIX AI GRID */
+#aiResults {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 20px !important;
+}
+
+/* MOBILE FIX */
+@media (max-width: 768px) {
+  #aiResults {
+    display: flex !important;
+    overflow-x: auto;
+    gap: 12px;
+  }
+
+  .ai-card {
+    min-width: 85%;
+  }
+}
+
+/* FIX BUTTON CLICK ISSUE */
+button {
+  pointer-events: auto !important;
+}
+
+/* FIX NAV OVERLAY ISSUE */
+.main-header {
+  z-index: 9999;
+}
+
+/* FIX MOBILE MENU CLICK */
+.mobile-menu {
+  z-index: 9999;
+}
+
+/* FIX HISTORY VISIBILITY */
+.history-list {
+  display: none;
+}
+
+.history-show .history-list {
+  display: block;
+}
+
+/* PREVENT CSS CONFLICT */
+.ai-card {
+  max-width: 100% !important;
+  min-width: 0 !important;
+}

@@ -249,85 +249,99 @@
 
 
             <script>
-            document.getElementById("aiForm").addEventListener("submit", async (e) => {
-              e.preventDefault();
+            document.addEventListener("DOMContentLoaded", () => {
 
-              const prompt = document.getElementById("aiPrompt").value;
+              const form = document.getElementById("aiForm");
 
-              document.getElementById("smartText").innerText = "🧠 Thinking...";
-              document.getElementById("creativeText").innerText = "🎨 Creating...";
-              document.getElementById("fastText").innerText = "⚡ Answering...";
+              if (form) {
+                form.addEventListener("submit", async (e) => {
+                  e.preventDefault();
 
-              try {
-                const res = await fetch("/multi-generate", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json"
-                  },
-                  body: JSON.stringify({ prompt })
+                  const prompt = document.getElementById("aiPrompt").value;
+
+                  document.getElementById("smartText").innerText = "🧠 Thinking...";
+                  document.getElementById("creativeText").innerText = "🎨 Creating...";
+                  document.getElementById("fastText").innerText = "⚡ Answering...";
+
+                  try {
+                    const res = await fetch("/multi-generate", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ prompt })
+                    });
+
+                    const data = await res.json();
+
+                    data.responses.forEach(r => {
+                      if (r.model.includes("Smart")) {
+                        document.getElementById("smartText").innerText = r.output;
+                      }
+                      if (r.model.includes("Creative")) {
+                        document.getElementById("creativeText").innerText = r.output;
+                      }
+                      if (r.model.includes("Fast")) {
+                        document.getElementById("fastText").innerText = r.output;
+                      }
+                    });
+
+                    loadHistory();
+
+                  } catch (err) {
+                    document.getElementById("smartText").innerText = "❌ Error";
+                    document.getElementById("creativeText").innerText = "❌ Error";
+                    document.getElementById("fastText").innerText = "❌ Error";
+                  }
                 });
-
-                const data = await res.json();
-
-                loadHistory();
-
-                data.responses.forEach(r => {
-                  if (r.model.includes("Smart")) {
-                    document.getElementById("smartText").innerText = r.output;
-                  }
-
-                  if (r.model.includes("Creative")) {
-                    document.getElementById("creativeText").innerText = r.output;
-                  }
-
-                  if (r.model.includes("Fast")) {
-                    document.getElementById("fastText").innerText = r.output;
-                  }
-                });
-
-              } catch (err) {
-                document.getElementById("smartText").innerText = "❌ Error";
-                document.getElementById("creativeText").innerText = "❌ Error";
-                document.getElementById("fastText").innerText = "❌ Error";
               }
+
+              async function loadHistory() {
+                try {
+                  const res = await fetch("/history");
+                  if (!res.ok) return;
+
+                  const data = await res.json();
+                  const container = document.getElementById("history");
+
+                  if (!container) return;
+
+                  if (!data.length) {
+                    container.innerHTML = "<p>No history yet</p>";
+                    return;
+                  }
+
+                  container.innerHTML = data.slice(0, 5).map(item => `
+                    <div class="history-item">
+                      <p class="prompt">${item.prompt}</p>
+                      <button onclick="reusePrompt('${item.prompt.replace(/'/g, "\\'")}')">
+                        Reuse
+                      </button>
+                    </div>
+                  `).join("");
+
+                } catch (err) {
+                  console.log(err);
+                }
+              }
+
+              loadHistory();
+
             });
 
-            /* HISTORY */
-            async function loadHistory() {
-              try {
-                const res = await fetch("/history");
-                if (!res.ok) return;
-
-                const data = await res.json();
-                const container = document.getElementById("history");
-
-                if (!data.length) {
-                  container.innerHTML = "<p>No history yet</p>";
-                  return;
-                }
-
-                container.innerHTML = data.slice(0, 5).map(item => `
-                  <div class="history-item">
-                    <p class="prompt">${item.prompt}</p>
-                    <button onclick="reusePrompt('${item.prompt.replace(/'/g, "\\'")}')">
-                      Reuse
-                    </button>
-                  </div>
-                `).join("");
-
-              } catch {}
-            }
-
-            loadHistory();
-
+            /* REUSE */
             function reusePrompt(text) {
-              document.getElementById("aiPrompt").value = text;
+              const input = document.getElementById("aiPrompt");
+              if (input) {
+                input.value = text;
+                input.focus();
+              }
             }
 
-            /* TOGGLE */
+            /* TOGGLE HISTORY */
             function toggleHistory() {
               const section = document.getElementById("history-container");
               const button = document.querySelector(".history-toggle");
+
+              if (!section || !button) return;
 
               section.classList.toggle("history-show");
 
@@ -338,7 +352,10 @@
 
             /* COPY */
             async function copyText(id, btn) {
-              const text = document.getElementById(id).innerText;
+              const el = document.getElementById(id);
+              if (!el) return;
+
+              const text = el.innerText;
 
               try {
                 await navigator.clipboard.writeText(text);
@@ -351,33 +368,38 @@
                 document.body.removeChild(textarea);
               }
 
-              btn.innerText = "Copied!";
-              setTimeout(() => btn.innerText = "Copy", 2000);
+              if (btn) {
+                btn.innerText = "Copied!";
+                setTimeout(() => btn.innerText = "Copy", 2000);
+              }
             }
 
             /* SHARE */
             async function shareText(id) {
-              const text = document.getElementById(id).innerText;
+              const el = document.getElementById(id);
+              if (!el) return;
+
+              const text = el.innerText;
 
               if (navigator.share) {
-                await navigator.share({
-                  title: "Aquiplex AI Result",
-                  text
-                });
+                try {
+                  await navigator.share({
+                    title: "Aquiplex AI Result",
+                    text
+                  });
+                } catch {}
               } else {
                 await navigator.clipboard.writeText(text);
                 alert("Copied! Share it 🚀");
               }
             }
-            </script>
 
-            <script>
+            /* MOBILE MENU FIX */
             function toggleMenu() {
               const menu = document.getElementById("mobileMenu");
-
-              if (!menu) return;
-
-              menu.classList.toggle("active");
+              if (menu) {
+                menu.classList.toggle("active");
+              }
             }
             </script>
   </body>    
