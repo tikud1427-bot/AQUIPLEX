@@ -83,7 +83,9 @@
       <h2 class="section-title">⚡ AI Results</h2>
 
       <div id="aiResults" class="ai-grid">
-        <div class="ai-card smart">
+
+        <!-- SMART -->
+        <div class="ai-card">
           <h3>🧠 Smart</h3>
           <p id="smartText">Waiting...</p>
 
@@ -93,29 +95,29 @@
           </div>
         </div>
 
-        <div id="aiResults" class="ai-grid">
-          <div class="ai-card smart">
-            <h3>🎨 Creative</h3>
-            <p id="smartText">Waiting...</p>
+        <!-- CREATIVE -->
+        <div class="ai-card">
+          <h3>🎨 Creative</h3>
+          <p id="creativeText">Waiting...</p>
 
-            <div class="ai-actions">
-              <button onclick="copyText('smartText', this)">Copy</button>
-              <button onclick="shareText('smartText')">Share</button>
-            </div>
+          <div class="ai-actions">
+            <button onclick="copyText('creativeText', this)">Copy</button>
+            <button onclick="shareText('creativeText')">Share</button>
           </div>
-        
-        
+        </div>
 
-          <div id="aiResults" class="ai-grid">
-            <div class="ai-card smart">
-              <h3>"⚡Fast</h3>
-              <p id="smartText">Waiting...</p>
+        <!-- FAST -->
+        <div class="ai-card">
+          <h3>⚡ Fast</h3>
+          <p id="fastText">Waiting...</p>
 
-              <div class="ai-actions">
-                <button onclick="copyText('smartText', this)">Copy</button>
-                <button onclick="shareText('smartText')">Share</button>
-              </div>
-            </div>
+          <div class="ai-actions">
+            <button onclick="copyText('fastText', this)">Copy</button>
+            <button onclick="shareText('fastText')">Share</button>
+          </div>
+        </div>
+
+      </div>
     </section>
 
     <section class="section">
@@ -246,130 +248,101 @@
 </footer>    
 
 
-            <script>    
-              document.getElementById("aiForm").addEventListener("submit", async (e) => {    
-                e.preventDefault();    
-
-                const prompt = document.getElementById("aiPrompt").value;    
-
-                // Loading states    
-                document.getElementById("smartText").innerText = "🧠 Thinking...";    
-                document.getElementById("creativeText").innerText = "🎨 Creating...";    
-                document.getElementById("fastText").innerText = "⚡ Answering...";    
-
-                try {    
-                  const res = await fetch("/multi-generate", {    
-                    method: "POST",    
-                    headers: {    
-                      "Content-Type": "application/json"    
-                    },    
-                    body: JSON.stringify({ prompt })    
-                  });    
-
-                  const data = await res.json();    
-
-                  loadHistory();    
-
-                  data.responses.forEach(r => {    
-                    if (r.model.includes("Smart")) {    
-                      document.getElementById("smartText").innerText = r.output;    
-                    }    
-
-                    if (r.model.includes("Creative")) {    
-                      document.getElementById("creativeText").innerText = r.output;    
-                    }    
-
-                    if (r.model.includes("Fast")) {    
-                      document.getElementById("fastText").innerText = r.output;    
-                    }    
-                  });    
-
-                } catch (err) {    
-                  console.error("FRONTEND ERROR:", err);    
-
-                  document.getElementById("smartText").innerText = "❌ Error";    
-                  document.getElementById("creativeText").innerText = "❌ Error";    
-                  document.getElementById("fastText").innerText = "❌ Error";    
-                }    
-              });    
-              async function loadHistory() {    
-                try {    
-                  const res = await fetch("/history");    
-
-                  if (!res.ok) return; // user not logged in    
-
-                  const data = await res.json();    
-
-                  const container = document.getElementById("history");    
-
-                  if (!data.length) {    
-                    container.innerHTML = "<p>No history yet</p>";    
-                    return;    
-                  }    
-
-                  container.innerHTML = data.slice(0, 5).map(item => `    
-                    <div class="history-item">    
-                      <p class="prompt">${item.prompt}</p>    
-                      <button onclick="reusePrompt('${item.prompt.replace(/'/g, "\\'")}')">    
-                        Reuse    
-                      </button>    
-                    </div>    
-                  `).join("");    
-
-                } catch (err) {    
-                  console.error("History load error", err);    
-                }    
-              }    
-
-              // load when page opens    
-              loadHistory();    
-
-              function reusePrompt(text) {    
-                document.getElementById("aiPrompt").value = text;    
-                document.getElementById("aiPrompt").focus();    
-              }    
-
-
-                  
-                }    
-              function toggleHistory() {
-                const section = document.getElementById("history-container");
-                const button = document.querySelector(".history-toggle");
-
-                section.classList.toggle("history-show");
-
-                if (section.classList.contains("history-show")) {
-                  button.innerText = "❌ Hide Recent Prompts";
-                } else {
-                  button.innerText = "🕘 Show Recent Prompts";
-                }
-              }
-              </script>    
-
-            <script>    
-            if ("serviceWorker" in navigator) {    
-              navigator.serviceWorker.register("/service-worker.js")    
-                .then(() => console.log("SW registered"))    
-                .catch(err => console.log("SW failed", err));    
-            }    
-
-            </script>    
-
-            <script>    
-              const apk = document.querySelector(".apk-section");
-              if (apk && !/Android/i.test(navigator.userAgent)) {
-                apk.style.display = "none";
-              }
-            </script>    
-
             <script>
+            document.getElementById("aiForm").addEventListener("submit", async (e) => {
+              e.preventDefault();
+
+              const prompt = document.getElementById("aiPrompt").value;
+
+              document.getElementById("smartText").innerText = "🧠 Thinking...";
+              document.getElementById("creativeText").innerText = "🎨 Creating...";
+              document.getElementById("fastText").innerText = "⚡ Answering...";
+
+              try {
+                const res = await fetch("/multi-generate", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json"
+                  },
+                  body: JSON.stringify({ prompt })
+                });
+
+                const data = await res.json();
+
+                loadHistory();
+
+                data.responses.forEach(r => {
+                  if (r.model.includes("Smart")) {
+                    document.getElementById("smartText").innerText = r.output;
+                  }
+
+                  if (r.model.includes("Creative")) {
+                    document.getElementById("creativeText").innerText = r.output;
+                  }
+
+                  if (r.model.includes("Fast")) {
+                    document.getElementById("fastText").innerText = r.output;
+                  }
+                });
+
+              } catch (err) {
+                document.getElementById("smartText").innerText = "❌ Error";
+                document.getElementById("creativeText").innerText = "❌ Error";
+                document.getElementById("fastText").innerText = "❌ Error";
+              }
+            });
+
+            /* HISTORY */
+            async function loadHistory() {
+              try {
+                const res = await fetch("/history");
+                if (!res.ok) return;
+
+                const data = await res.json();
+                const container = document.getElementById("history");
+
+                if (!data.length) {
+                  container.innerHTML = "<p>No history yet</p>";
+                  return;
+                }
+
+                container.innerHTML = data.slice(0, 5).map(item => `
+                  <div class="history-item">
+                    <p class="prompt">${item.prompt}</p>
+                    <button onclick="reusePrompt('${item.prompt.replace(/'/g, "\\'")}')">
+                      Reuse
+                    </button>
+                  </div>
+                `).join("");
+
+              } catch {}
+            }
+
+            loadHistory();
+
+            function reusePrompt(text) {
+              document.getElementById("aiPrompt").value = text;
+            }
+
+            /* TOGGLE */
+            function toggleHistory() {
+              const section = document.getElementById("history-container");
+              const button = document.querySelector(".history-toggle");
+
+              section.classList.toggle("history-show");
+
+              button.innerText = section.classList.contains("history-show")
+                ? "❌ Hide Recent Prompts"
+                : "🕘 Show Recent Prompts";
+            }
+
+            /* COPY */
             async function copyText(id, btn) {
               const text = document.getElementById(id).innerText;
 
               try {
                 await navigator.clipboard.writeText(text);
               } catch {
-                // fallback (important)
                 const textarea = document.createElement("textarea");
                 textarea.value = text;
                 document.body.appendChild(textarea);
@@ -379,32 +352,23 @@
               }
 
               btn.innerText = "Copied!";
-              setTimeout(() => {
-                btn.innerText = "Copy";
-              }, 2000);
+              setTimeout(() => btn.innerText = "Copy", 2000);
             }
-            </script>
 
-            <script>
+            /* SHARE */
             async function shareText(id) {
               const text = document.getElementById(id).innerText;
 
               if (navigator.share) {
-                try {
-                  await navigator.share({
-                    title: "Aquiplex AI Result",
-                    text: text
-                  });
-                } catch (err) {
-                  console.log("Share cancelled");
-                }
+                await navigator.share({
+                  title: "Aquiplex AI Result",
+                  text
+                });
               } else {
-                // fallback → copy instead
                 await navigator.clipboard.writeText(text);
-                alert("Copied! Share it anywhere 🚀");
+                alert("Copied! Share it 🚀");
               }
             }
             </script>
-
   </body>    
 </html>
