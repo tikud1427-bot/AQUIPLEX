@@ -1,326 +1,343 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- SEO -->
-  <title>Aquiplex | Discover the Best AI Tools</title>
-  <meta name="description" content="Discover, explore and use the best AI tools in one place. Aquiplex helps you find AI tools for writing, coding, images and more.">
-  <meta name="keywords" content="AI tools, ChatGPT alternatives, AI directory, Aquiplex">
-  <meta name="author" content="Aquiplex">
-
-  <!-- Open Graph -->
-  <meta property="og:title" content="Aquiplex - Discover AI Tools">
-  <meta property="og:description" content="Explore the best AI tools in one place.">
-  <meta property="og:image" content="/logo/logo.png">
-  <meta property="og:url" content="https://www.aquiplex.com">
-  <meta property="og:type" content="website">
-
-  <link rel="stylesheet" href="/css/styles.css">
-
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
-  <!-- PWA -->
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#020617">
-
-  <!-- Icons -->
-  <link rel="icon" href="/logo/logo.png">
-  <link rel="apple-touch-icon" href="/logo/icon-192.png">
-</head>
-
-<body>
-
-  <%- include("partials/nav") %>
-
-  <!-- HERO -->
-  <section class="hero">
-
-    <div class="hero-box">
-
-      <h1>
-        Discover the Future of <span>AI Tools</span>
-      </h1>
-
-      <p>
-        Find, compare, and use the best AI tools — all in one powerful platform.
-      </p>
-
-      <!-- CTA BUTTONS -->
-      <div class="hero-buttons">
-        <a href="/tools" class="btn primary">Explore Tools</a>
-        <a href="/submit" class="btn secondary">Submit Tool</a>
-      </div>
-
-      <!-- APK DOWNLOAD -->
-      <div class="apk-section">
-        <a href="/uploads/Aquiplex.apk" class="apk-btn" download>
-          📲 Download Aquiplex App
-        </a>
-
-        <p class="apk-info">🚀 Early Access • Android APK • Safe Install</p>
-        <p class="apk-info">Version 1.0 • 12MB</p>
-        <p style="opacity:0.6;">Coming soon to Play Store</p>
-      </div>
-
-      <!-- SEARCH -->
-      <form action="/tools" method="GET" class="search-bar">
-        <input
-          type="text"
-          name="q"
-          placeholder="Search AI tools like ChatGPT, Midjourney..."
-          required>
-        <button type="submit">Search</button>
-      </form>
-
-    </div>
-
-    <!-- AI BOX -->
-    <div class="ai-box">
-
-      <form id="aiForm">
-        <input type="text" id="aiPrompt" placeholder="Ask multiple AIs at once..." required>
-        <button type="submit">Generate</button>
-      </form>
-
-      <div id="aiResults" class="ai-grid">
-
-        <div class="ai-card smart">
-          <h3>🧠 Smart</h3>
-          <p id="smartText">Waiting...</p>
-          <button onclick="copyText('smartText', this)">Copy</button>
-        </div>
+home.ejs-    
 
-        <div class="ai-card creative">
-          <h3>🎨 Creative</h3>
-          <p id="creativeText">Waiting...</p>
-          <button onclick="copyText('creativeText', this)">Copy</button>
-        </div>
+<!DOCTYPE html>    
+<html lang="en">    
 
-        <div class="ai-card fast">
-          <h3>⚡ Fast</h3>
-          <p id="fastText">Waiting...</p>
-          <button onclick="copyText('fastText', this)">Copy</button>
-        </div>
+  <head>    
 
-      </div>
+  <meta charset="UTF-8">    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    
+  <title>AQUIPLEX | Discover the Best AI Tools</title>    
 
-      <button class="history-toggle" onclick="toggleHistory()">
-        🕘 Show Recent Prompts
-      </button>
+  <link rel="stylesheet" href="/css/styles.css">    
 
-      <div id="history-container" class="history-hidden">
-        <h3>🕘 Recent Prompts</h3>
-        <div id="history"></div>
-      </div>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">    
 
-    </div>
+  <!-- ✅ PWA CONFIG (ADD THIS) -->    
+  <link rel="manifest" href="/manifest.json">    
+  <meta name="theme-color" content="#020617">    
 
-  </section>
+  <!-- ✅ ICONS -->    
+  <link rel="icon" href="/logo/logo.png">    
+  <link rel="apple-touch-icon" href="/logo/icon-192.png">    
 
-  <!-- WHY AQUIPLEX (NEW 🔥) -->
-  <section class="section">
-    <h2 class="section-title">Why Aquiplex?</h2>
+  </head>    
 
-    <div style="max-width:700px; margin:auto; text-align:center; opacity:0.9;">
-      <p>
-        Aquiplex is not just another AI directory. It lets you discover,
-        compare, and actually use multiple AI tools in one place —
-        saving time and boosting productivity.
-      </p>
-    </div>
-  </section>
+<body>    
 
-  <!-- INSTALL -->
-  <section class="section">
-    <h2 class="section-title">📲 How to Install</h2>
+  <%- include("partials/nav") %>    
 
-    <div style="max-width:600px; margin:auto; text-align:center; opacity:0.9;">
-      <p>1. Download the APK</p>
-      <p>2. Open the file</p>
-      <p>3. Allow "Install from unknown sources"</p>
-      <p>4. Install & enjoy 🚀</p>
-    </div>
-  </section>
 
-  <div class="container">
+<!-- HERO -->    
 
-    <!-- CATEGORIES -->
-    <section class="section">
-      <h2 class="section-title">Explore by Category</h2>
+    <!-- HERO -->    
+    <section class="hero">    
 
-      <div class="categories">
+      <div class="hero-box">    
 
-        <%
-        const categories = [
-          { name: "Writing AI", icon: "✍️" },
-          { name: "Image AI", icon: "🎨" },
-          { name: "Video AI", icon: "🎬" },
-          { name: "Coding AI", icon: "💻" },
-          { name: "ML AI", icon: "🤖" }
-        ];
+        <h1>    
+          Discover the Future of <span>AI Tools</span>    
+        </h1>    
 
-        categories.forEach(function(category){
-        %>
+        <p>    
+          Explore the best AI tools for productivity, creativity, and development — all in one place.    
+        </p>    
 
-        <a class="category-card"
-           href="/tools/category/<%= encodeURIComponent(category.name) %>">
+        <!-- DOWNLOAD BUTTON -->    
+        <div class="apk-section">    
+          <a href="/uploads/Aquiplex.apk" class="apk-btn" download>    
+            📲 Download Aquiplex App    
+          </a>    
 
-          <div class="category-icon"><%= category.icon %></div>
-          <div class="category-name"><%= category.name %></div>
+          <p class="apk-info">    
+            🚀 Early Access • Android APK • Safe Install    
+          </p>    
 
-        </a>
+          <p class="apk-info">Version 1.0 • 12MB</p>    
+          <p style="opacity:0.6;">Coming soon to Play Store</p>    
+        </div>    
 
-        <% }) %>
+        <!-- SEARCH -->    
+        <form action="/tools" method="GET" class="search-bar">    
+          <input     
+            type="text"     
+            name="q"     
+            placeholder="Search AI tools like ChatGPT, Midjourney..."     
+            required    
+          >    
+          <button type="submit">Search</button>    
+        </form>    
 
-      </div>
-    </section>
+      </div>    
 
-    <!-- FEATURED TOOLS -->
-    <section class="section">
+      <!-- AI BOX (YOUR ORIGINAL FULL CODE) -->    
+      <div class="ai-box">    
+        <form id="aiForm">    
+          <input type="text" id="aiPrompt" placeholder="Ask multiple AIs at once..." required>    
+          <button type="submit">Generate</button>    
+        </form>    
 
-      <h2>Featured Tools</h2>
+        <div id="aiResults" class="ai-grid">    
+          <div class="ai-card smart">    
+            <h3>🧠 Smart</h3>    
+            <p id="smartText">Waiting...</p>    
+            <button onclick="copyText('smartText', this)">Copy</button>    
+          </div>    
 
-      <div class="grid">
+          <div class="ai-card creative">    
+            <h3>🎨 Creative</h3>    
+            <p id="creativeText">Waiting...</p>    
+            <button onclick="copyText('creativeText', this)">Copy</button>    
+          </div>    
 
-        <% if (tools && tools.length > 0) { %>
+          <div class="ai-card fast">    
+            <h3>⚡ Fast</h3>    
+            <p id="fastText">Waiting...</p>    
+            <button onclick="copyText('fastText', this)">Copy</button>    
+          </div>    
+        </div>    
 
-        <% tools.forEach(function(tool){ %>
+        <button class="history-toggle" onclick="toggleHistory()">    
+          🕘 Show Recent Prompts    
+        </button>    
 
-        <div class="tool-card">
+        <div id="history-container" class="history-hidden">    
+          <h3>🕘 Recent Prompts</h3>    
+          <div id="history"></div>    
+        </div>    
+      </div>    
 
-          <div class="logo-box">
-            <img src="<%= tool.logo %>" alt="<%= tool.name %>">
-          </div>
+    </section>    
 
-          <a href="/tool/<%= tool._id %>" class="tool-link">
-            <h3><%= tool.name %></h3>
-          </a>
 
-          <p><%= tool.description %></p>
+    <!-- INSTALL SECTION -->    
+    <section class="section">    
+      <h2 class="section-title">📲 How to Install</h2>    
 
-          <div class="tool-actions">
-            <a href="/tool/<%= tool._id %>" class="details-btn">View Details</a>
-            <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">Visit Tool</a>
-          </div>
+      <div style="max-width:600px; margin:auto; text-align:center; opacity:0.9;">    
+        <p>1. Download the APK</p>    
+        <p>2. Open the file</p>    
+        <p>3. Allow "Install from unknown sources"</p>    
+        <p>4. Install & enjoy 🚀</p>    
+      </div>    
+    </section>    
 
-        </div>
+    <div class="container">    
 
-        <% }) %>
+      <!-- CATEGORY SECTION -->    
+      <section class="section">    
+        <h2 class="section-title">Explore by Category</h2>    
 
-        <% } else { %>
+        <div class="categories">    
 
-        <p style="text-align:center;">No tools available yet.</p>
+          <%    
+          const categories = [    
+            { name: "Writing AI", icon: "✍️" },    
+            { name: "Image AI", icon: "🎨" },    
+            { name: "Video AI", icon: "🎬" },    
+            { name: "Coding AI", icon: "💻" },    
+            { name: "ML AI", icon: "🤖" }    
+          ];    
 
-        <% } %>
+          categories.forEach(function(category){     
+          %>    
 
-      </div>
+          <a class="category-card"    
+             href="/tools/category/<%= encodeURIComponent(category.name) %>">    
 
-    </section>
+            <div class="category-icon"><%= category.icon %></div>    
+            <div class="category-name"><%= category.name %></div>    
 
-  </div>
+          </a>    
 
-  <!-- FOOTER -->
-  <footer class="footer">
-    <p>© <%= new Date().getFullYear() %> AQUIPLEX. All rights reserved.</p>
-  </footer>
+          <% }) %>    
 
-  <!-- SCRIPTS -->
-  <script>
-    document.getElementById("aiForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
+        </div>    
+      </section>    
 
-      const prompt = document.getElementById("aiPrompt").value;
 
-      document.getElementById("smartText").innerText = "🧠 Thinking...";
-      document.getElementById("creativeText").innerText = "🎨 Creating...";
-      document.getElementById("fastText").innerText = "⚡ Answering...";
+      <!-- FEATURED TOOLS -->    
+      <section class="section">    
 
-      try {
-        const res = await fetch("/multi-generate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt })
-        });
+        <h2>Featured Tools</h2>    
 
-        const data = await res.json();
+        <div class="grid">    
 
-        loadHistory();
+          <% if (tools && tools.length > 0) { %>    
 
-        data.responses.forEach(r => {
-          if (r.model.includes("Smart")) document.getElementById("smartText").innerText = r.output;
-          if (r.model.includes("Creative")) document.getElementById("creativeText").innerText = r.output;
-          if (r.model.includes("Fast")) document.getElementById("fastText").innerText = r.output;
-        });
+          <% tools.forEach(function(tool){ %>    
 
-      } catch {
-        document.getElementById("smartText").innerText = "❌ Error";
-        document.getElementById("creativeText").innerText = "❌ Error";
-        document.getElementById("fastText").innerText = "❌ Error";
-      }
-    });
+          <div class="tool-card">    
 
-    async function loadHistory() {
-      try {
-        const res = await fetch("/history");
-        if (!res.ok) return;
+            <div class="logo-box">    
+              <img src="<%= tool.logo %>" alt="<%= tool.name %>">    
+            </div>    
 
-        const data = await res.json();
-        const container = document.getElementById("history");
+            <a href="/tool/<%= tool._id %>" class="tool-link">    
+              <h3><%= tool.name %></h3>    
+            </a>    
 
-        if (!data.length) {
-          container.innerHTML = "<p>No history yet</p>";
-          return;
-        }
+            <p><%= tool.description %></p>    
 
-        container.innerHTML = data.slice(0, 5).map(item => `
-          <div class="history-item">
-            <p class="prompt">${item.prompt}</p>
-            <button onclick="reusePrompt('${item.prompt.replace(/'/g, "\\'")}')">
-              Reuse
-            </button>
-          </div>
-        `).join("");
+            <div class="tool-actions">    
 
-      } catch {}
-    }
+              <a href="/tool/<%= tool._id %>" class="details-btn">    
+                View Details    
+              </a>    
 
-    loadHistory();
+              <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">    
+                Visit Tool    
+              </a>    
 
-    function reusePrompt(text) {
-      document.getElementById("aiPrompt").value = text;
-    }
+            </div>    
 
-    function copyText(id, btn) {
-      const text = document.getElementById(id).innerText;
-      navigator.clipboard.writeText(text).then(() => {
-        btn.innerText = "Copied!";
-        setTimeout(() => btn.innerText = "Copy", 2000);
-      });
-    }
+          </div>    
 
-    function toggleHistory() {
-      const section = document.getElementById("history-container");
-      const button = document.querySelector(".history-toggle");
+          <% }) %>    
 
-      section.classList.toggle("history-show");
+          <% } else { %>    
 
-      button.innerText = section.classList.contains("history-show")
-        ? "❌ Hide Recent Prompts"
-        : "🕘 Show Recent Prompts";
-    }
+          <p style="text-align:center;">No tools available yet.</p>    
 
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("/service-worker.js");
-    }
+          <% } %>    
 
-    if (!/Android/i.test(navigator.userAgent)) {
-      document.querySelector(".apk-section").style.display = "none";
-    }
-  </script>
+        </div>    
 
-</body>
+      </section>    
+
+    </div>    
+
+
+<!-- FOOTER -->    
+
+     <footer class="footer">    
+<p>© <%= new Date().getFullYear() %> AQUIPLEX All rights reserved.</p>    
+
+</footer>    
+
+
+            <script>    
+              document.getElementById("aiForm").addEventListener("submit", async (e) => {    
+                e.preventDefault();    
+
+                const prompt = document.getElementById("aiPrompt").value;    
+
+                // Loading states    
+                document.getElementById("smartText").innerText = "🧠 Thinking...";    
+                document.getElementById("creativeText").innerText = "🎨 Creating...";    
+                document.getElementById("fastText").innerText = "⚡ Answering...";    
+
+                try {    
+                  const res = await fetch("/multi-generate", {    
+                    method: "POST",    
+                    headers: {    
+                      "Content-Type": "application/json"    
+                    },    
+                    body: JSON.stringify({ prompt })    
+                  });    
+
+                  const data = await res.json();    
+
+                  loadHistory();    
+
+                  data.responses.forEach(r => {    
+                    if (r.model.includes("Smart")) {    
+                      document.getElementById("smartText").innerText = r.output;    
+                    }    
+
+                    if (r.model.includes("Creative")) {    
+                      document.getElementById("creativeText").innerText = r.output;    
+                    }    
+
+                    if (r.model.includes("Fast")) {    
+                      document.getElementById("fastText").innerText = r.output;    
+                    }    
+                  });    
+
+                } catch (err) {    
+                  console.error("FRONTEND ERROR:", err);    
+
+                  document.getElementById("smartText").innerText = "❌ Error";    
+                  document.getElementById("creativeText").innerText = "❌ Error";    
+                  document.getElementById("fastText").innerText = "❌ Error";    
+                }    
+              });    
+              async function loadHistory() {    
+                try {    
+                  const res = await fetch("/history");    
+
+                  if (!res.ok) return; // user not logged in    
+
+                  const data = await res.json();    
+
+                  const container = document.getElementById("history");    
+
+                  if (!data.length) {    
+                    container.innerHTML = "<p>No history yet</p>";    
+                    return;    
+                  }    
+
+                  container.innerHTML = data.slice(0, 5).map(item => `    
+                    <div class="history-item">    
+                      <p class="prompt">${item.prompt}</p>    
+                      <button onclick="reusePrompt('${item.prompt.replace(/'/g, "\\'")}')">    
+                        Reuse    
+                      </button>    
+                    </div>    
+                  `).join("");    
+
+                } catch (err) {    
+                  console.error("History load error", err);    
+                }    
+              }    
+
+              // load when page opens    
+              loadHistory();    
+
+              function reusePrompt(text) {    
+                document.getElementById("aiPrompt").value = text;    
+                document.getElementById("aiPrompt").focus();    
+              }    
+
+
+                function copyText(id, btn) {    
+                  const text = document.getElementById(id).innerText;    
+
+                  navigator.clipboard.writeText(text).then(() => {    
+                    btn.innerText = "Copied!";    
+                    setTimeout(() => {    
+                      btn.innerText = "Copy";    
+                    }, 2000);    
+                  });    
+                }    
+              function toggleHistory() {    
+                const section = document.getElementById("history-container");    
+                const button = document.querySelector(".history-toggle");    
+
+                section.classList.toggle("history-show");    
+
+                if (section.classList.contains("history-show")) {    
+                  button.innerText = "❌ Hide Recent Prompts";    
+                } else {    
+                  button.innerText = "🕘 Show Recent Prompts";    
+                }    
+              }    
+              </script>    
+
+            <script>    
+            if ("serviceWorker" in navigator) {    
+              navigator.serviceWorker.register("/service-worker.js")    
+                .then(() => console.log("SW registered"))    
+                .catch(err => console.log("SW failed", err));    
+            }    
+
+            </script>    
+
+            <script>    
+              if (!/Android/i.test(navigator.userAgent)) {    
+                document.querySelector(".apk-section").style.display = "none";    
+              }    
+            </script>    
+
+  </body>    
 </html>
