@@ -401,26 +401,30 @@
                   return;
                 }
 
+                // ✅ TRY NATIVE SHARE
                 if (navigator.share) {
                   try {
                     await navigator.share({
                       title: "Aquiplex AI Result",
-                      text
+                      text: text,
+                      url: window.location.href
                     });
+                    return;
                   } catch (err) {
-                    console.log("Share cancelled");
-                  }
-                } else {
-                  // fallback → copy + feedback
-                  try {
-                    await navigator.clipboard.writeText(text);
-                    alert("Copied! Now paste & share 🚀");
-                  } catch {
-                    alert("Sharing not supported");
+                    console.log("Share cancelled or failed");
                   }
                 }
-              }
 
+                // ✅ FALLBACK 1 → COPY
+                try {
+                  await navigator.clipboard.writeText(text);
+                  alert("📋 Copied! Now paste & share 🚀");
+                } catch {
+                  // ✅ FALLBACK 2 → WHATSAPP SHARE
+                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                  window.open(whatsappUrl, "_blank");
+                }
+              }
           
             </script>
   </body>    
