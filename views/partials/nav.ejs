@@ -7,7 +7,7 @@
       <span class="logo-text">AQUIPLEX</span>
     </a>
 
-    <!-- NAV LINKS -->
+    <!-- NAV LINKS (DESKTOP ONLY) -->
     <nav class="nav-links">
       <a href="/">Home</a>
       <a href="/tools">Tools</a>
@@ -33,14 +33,24 @@
 
     <!-- ACTION BUTTONS -->
     <div class="header-actions">
+
       <% if (typeof user !== "undefined" && user) { %>
-        <span class="user-greet">Hi, <%= user.username || "User" %></span>
+
+        <!-- ✅ Username only on desktop -->
+        <span class="user-greet desktop-only">
+          Hi, <%= user.username || "User" %>
+        </span>
+
         <a href="/workspace" class="btn ghost">⚡ Workspace</a>
         <a href="/logout" class="btn primary">Logout</a>
+
       <% } else { %>
+
         <a href="/login" class="btn ghost">Login</a>
         <a href="/signup" class="btn primary">Sign Up</a>
+
       <% } %>
+
     </div>
 
     <!-- MOBILE MENU BUTTON -->
@@ -48,7 +58,7 @@
 
   </div>
 
-  <!-- ✅ MOBILE MENU (PUT SEARCH HERE, NOT ABOVE) -->
+  <!-- ✅ MOBILE MENU -->
   <div class="mobile-menu" id="mobileMenu">
 
     <!-- 🔍 MOBILE SEARCH -->
@@ -76,14 +86,15 @@
     <a href="/submit">Submit</a>
     <a href="/about">About</a>
 
-      <script>
-      function toggleMenu(){
-        const menu = document.getElementById("mobileMenu");
-        if(menu){
-          menu.classList.toggle("active");
-        }
-      }
-      </script>
-
   </div>
 </header>
+
+<!-- ✅ GLOBAL SCRIPT (IMPORTANT - OUTSIDE HEADER) -->
+<script>
+function toggleMenu() {
+  const menu = document.getElementById("mobileMenu");
+  if (menu) {
+    menu.classList.toggle("active");
+  }
+}
+</script>

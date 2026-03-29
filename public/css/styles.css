@@ -3029,3 +3029,60 @@ ADD AT VERY BOTTOM
     display: block;
   }
 }
+
+/* ===== NAV FIX ===== */
+
+.desktop-only {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .desktop-only {
+    display: inline;
+  }
+}
+
+/* Prevent overflow */
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  overflow: hidden;
+}
+
+/* Search flexible */
+.nav-search {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.nav-search input {
+  width: 100%;
+  max-width: 260px;
+}
+
+/* Actions safe */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+
+  .nav-links {
+    display: none !important;
+  }
+
+  .nav-search {
+    display: none !important;
+  }
+
+  .menu-toggle {
+    display: block;
+  }
+}
