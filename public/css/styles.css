@@ -2982,3 +2982,50 @@ button {
   max-width: 100% !important;
   min-width: 0 !important;
 }
+
+/* =========================
+🔥 NAVBAR FIX (FINAL PATCH)
+ADD AT VERY BOTTOM
+========================= */
+
+/* Prevent header breaking */
+.header-container {
+  flex-wrap: nowrap;
+}
+
+/* Keep buttons visible */
+.header-actions {
+  display: flex !important;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Hide username on mobile (prevents overflow) */
+.user-greet {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .user-greet {
+    display: inline;
+  }
+}
+
+/* Mobile behavior */
+@media (max-width: 768px) {
+
+  /* Hide only nav links */
+  .nav-links {
+    display: none !important;
+  }
+
+  /* Keep actions visible */
+  .header-actions {
+    display: flex !important;
+  }
+
+  /* Show menu button */
+  .menu-toggle {
+    display: block;
+  }
+}
