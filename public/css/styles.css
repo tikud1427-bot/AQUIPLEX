@@ -2645,3 +2645,12 @@ PASTE AT VERY BOTTOM ONLY
   max-width: 1000px;
   margin: auto;
 }
+
+.ai-actions button:active {
+  transform: scale(0.95);
+}
+
+.ai-actions button {
+  transition: 0.2s;
+}
+
