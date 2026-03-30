@@ -90,12 +90,14 @@
           <p id="smartText">Waiting...</p>
 
           <div class="ai-actions">
-            <button type="button" onclick="copyText('smartText', this)">Copy</button>
-            <button type="button" onclick="shareText('smartText')">Share</button>
-            <input id="smartInput" placeholder="Continue chat..." />
-            <button type="button" onclick="continueChat('smart')">Send</button>
+            <button onclick="copyText('smartText', this)">📋</button>
+            <button onclick="shareText('smartText')">🔗</button>
+
+            <div class="chat-box">
+              <input id="smartInput" placeholder="Continue chat..." />
+              <button onclick="continueChat('smart')">➤</button>
+            </div>
           </div>
-        </div>
 
         <!-- CREATIVE -->
         <div class="ai-card">
@@ -103,13 +105,14 @@
           <p id="creativeText">Waiting...</p>
 
           <div class="ai-actions">
-            <button type="button" onclick="copyText('creativeText', this)">Copy</button>
-            <button type="button" onclick="shareText('creativeText')">Share</button>
-            <input id="creativeInput" placeholder="Continue chat..." />
-            <button type="button" onclick="continueChat('creative')">Send</button>
+            <button onclick="copyText('creativeText', this)">📋</button>
+            <button onclick="shareText('creativeText')">🔗</button>
 
+            <div class="chat-box">
+              <input id="creativeInput" placeholder="Continue chat..." />
+              <button type="button" onclick="continueChat('creative')">➤</button>
+            </div>
           </div>
-        </div>
 
         <!-- FAST -->
         <div class="ai-card">
@@ -117,12 +120,14 @@
           <p id="fastText">Waiting...</p>
 
           <div class="ai-actions">
-            <button type="button" onclick="copyText('fastText', this)">Copy</button>
-            <button type="button" onclick="shareText('fastText')">Share</button>
-            <input id="fastInput" placeholder="Continue chat..." />
-            <button type="button" onclick="continueChat('fast')">Send</button>
+            <button onclick="copyText('fastText', this)">📋</button>
+            <button onclick="shareText('fastText')">🔗</button>
+
+            <div class="chat-box">
+              <input id="fastInput" placeholder="Continue chat..." />
+              <button type="button" onclick="continueChat('fast')">➤</button>
+            </div>
           </div>
-        </div>
 
       </div>
     </section>

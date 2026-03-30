@@ -2799,3 +2799,47 @@ PASTE AT VERY BOTTOM ONLY
 .hero::before {
   pointer-events: none;
 }
+
+/* FIX AI ACTIONS LAYOUT */
+.ai-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* INPUT SHOULD NOT OVERFLOW */
+.ai-actions input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+/* SEND BUTTON ALWAYS VISIBLE */
+.ai-actions button:last-child {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  white-space: nowrap;
+}
+
+.ai-actions {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 6px;
+}
+
+.chat-box {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+}
+
+.chat-box input {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-box button {
+  padding: 8px 12px;
+  white-space: nowrap;
+}
