@@ -1,215 +1,2952 @@
 /* =========================
-AQUIPLEX CLEAN STABLE CSS
-(NO UI CHANGE)
+AIDEX CLEAN FINAL CSS
 ========================= */
 
 /* RESET */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+.container {
+max-width: 1200px;
+margin: auto;
+padding: 20px;
 }
 
-body {
-  font-family: 'Poppins', sans-serif;
-  background: #020617;
-  color: #e2e8f0;
-  line-height: 1.6;
-  padding-top: 70px;
+*{
+margin:0;
+padding:0;
+box-sizing:border-box;
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
+body{
+font-family:'Poppins',sans-serif;
+background:#020617;
+color:#e2e8f0;
+line-height:1.6;
+padding-top:70px;
+}
+
+a{
+text-decoration:none;
+color:inherit;
 }
 
 /* ================= HEADER ================= */
 
-.main-header {
-  position: fixed;
-  top: 0;
-  width: 100%;
-  height: 70px;
-  z-index: 9999;
-  background: rgba(2,6,23,0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+.main-header{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:70px;
+z-index:9999;
+
+background:rgba(2,6,23,0.95);
+backdrop-filter:blur(10px);
+border-bottom:1px solid rgba(255,255,255,0.05);
 }
 
-.header-container {
-  max-width: 1200px;
-  margin: auto;
-  height: 100%;
-  padding: 0 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.header-container{
+max-width:1200px;
+margin:auto;
+height:100%;
+padding:0 20px;
+
+display:flex;
+align-items:center;
+justify-content:space-between;
+}
+
+/* LOGO */
+.logo{
+font-size:20px;
+font-weight:700;
+color:#38bdf8;
 }
 
 /* NAV */
-.nav-links {
-  display: flex;
-  gap: 25px;
+.nav-links{
+display:flex;
+gap:25px;
 }
 
-.nav-item {
-  color: #cbd5f5;
-  font-size: 14px;
+.nav-item{
+color:#cbd5f5;
+font-size:14px;
+transition:0.2s;
 }
 
-.nav-item:hover { color: #38bdf8; }
-.nav-item.highlight { color: #f59e0b; }
+.nav-item:hover{
+color:#38bdf8;
+}
+
+.nav-item.highlight{
+color:#f59e0b;
+}
+
+/* BUTTONS */
+.header-actions{
+display:flex;
+gap:10px;
+}
+
+.btn{
+padding:8px 14px;
+border-radius:8px;
+font-size:13px;
+}
+
+.btn.primary{
+background:#38bdf8;
+color:#020617;
+}
+
+.btn.ghost{
+border:1px solid rgba(255,255,255,0.2);
+}
+
+/* MOBILE */
+.menu-toggle{
+display:none;
+font-size:22px;
+cursor:pointer;
+}
+
+.mobile-menu{
+display:none;
+flex-direction:column;
+background:#020617;
+padding:15px;
+}
+
+.mobile-menu a{
+padding:10px 0;
+border-bottom:1px solid rgba(255,255,255,0.05);
+}
+
+.mobile-menu.active{
+display:flex;
+}
+
+@media(max-width:768px){
+.nav-links,
+.header-actions{
+display:none;
+}
+
+.menu-toggle{
+display:block;
+}
+}
 
 /* ================= HERO ================= */
 
-.hero {
-  text-align: center;
-  padding: 120px 20px 60px;
-  max-width: 900px;
-  margin: auto;
+.hero{
+text-align:center;
+padding:100px 20px 60px;
 }
 
-.hero h1 {
-  font-size: 48px;
-  margin-bottom: 15px;
+.hero h1{
+font-size:40px;
+margin-bottom:10px;
 }
 
-.hero p {
-  color: #94a3b8;
-  margin-bottom: 25px;
+.hero p{
+color:#94a3b8;
+margin-bottom:20px;
+}
+
+.search-box{
+padding:10px;
+border-radius:8px;
+border:1px solid rgba(255,255,255,0.1);
+background:#020617;
+color:#fff;
 }
 
 /* ================= GRID ================= */
 
-.container {
-  max-width: 1200px;
-  margin: auto;
-  padding: 20px;
+.container{
+max-width:1200px;
+margin:auto;
+padding:20px;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px,1fr));
-  gap: 20px;
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+gap:20px;
 }
 
 /* ================= TOOL CARD ================= */
 
-.tool-card {
-  background: #0f172a;
-  border-radius: 16px;
-  padding: 16px;
-  border: 1px solid rgba(255,255,255,0.05);
-  transition: 0.25s;
+.tool-card{
+background:#0f172a;
+border-radius:12px;
+padding:16px;
+border:1px solid rgba(255,255,255,0.05);
+transition:0.2s;
 }
 
-.tool-card:hover {
-  transform: translateY(-5px);
-  border-color: #38bdf8;
+.tool-card:hover{
+transform:translateY(-4px);
+border-color:#38bdf8;
 }
 
-/* ================= AI SECTION ================= */
+.tool-card img{
+width:40px;
+height:40px;
+object-fit:contain;
+}
 
-.ai-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
+.tool-card h3{
+margin-top:10px;
+}
+
+.tool-card p{
+font-size:13px;
+color:#94a3b8;
+margin:10px 0;
+}
+
+.tool-actions{
+display:flex;
+gap:10px;
+}
+
+/* BUTTONS INSIDE CARDS */
+.details-btn,
+.visit-btn{
+padding:6px 10px;
+font-size:12px;
+border-radius:6px;
+}
+
+.details-btn{
+border:1px solid rgba(255,255,255,0.2);
+}
+
+.visit-btn{
+background:#38bdf8;
+color:#020617;
+}
+
+/* ================= SECTION ================= */
+
+.section{
+margin-top:40px;
+}
+
+.section h2{
+margin-bottom:20px;
+}
+
+/* ================= FOOTER ================= */
+
+.footer{
+text-align:center;
+padding:20px;
+color:#94a3b8;
+border-top:1px solid rgba(255,255,255,0.05);
+}
+
+/* =========================
+🔥 TOOL PAGE PREMIUM
+========================= */
+
+.tool-page{
+max-width:900px;
+margin:auto;
+padding:40px 20px;
+}
+
+/* HERO */
+.tool-hero{
+text-align:center;
+margin-bottom:40px;
+}
+
+.tool-logo-large{
+width:90px;
+height:90px;
+object-fit:contain;
+margin-bottom:15px;
+}
+
+.tool-hero h1{
+font-size:28px;
+margin-bottom:6px;
+}
+
+.tool-category{
+color:#94a3b8;
+font-size:14px;
+margin-bottom:10px;
+}
+
+.tool-description{
+max-width:600px;
+margin:auto;
+color:#94a3b8;
+font-size:14px;
+}
+
+/* CTA */
+.tool-cta{
+margin-top:20px;
+display:flex;
+gap:10px;
+justify-content:center;
+}
+
+.back-btn{
+border:1px solid rgba(255,255,255,0.2);
+padding:8px 14px;
+border-radius:8px;
+font-size:13px;
+}
+
+/* DETAILS */
+.tool-details{
+display:grid;
+gap:20px;
+}
+
+.tool-box{
+background:#0f172a;
+padding:20px;
+border-radius:12px;
+border:1px solid rgba(255,255,255,0.05);
+}
+
+.tool-box h3{
+margin-bottom:10px;
+}
+
+.tool-box p,
+.tool-box li{
+font-size:13px;
+color:#94a3b8;
+}
+
+/* =========================
+🔥 TRENDING PREMIUM UI
+========================= */
+
+.grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+gap:24px;
+}
+
+/* CARD */
+.tool-card{
+background:#0f172a;
+border:1px solid rgba(255,255,255,0.05);
+border-radius:16px;
+padding:16px;
+
+display:flex;
+flex-direction:column;
+justify-content:space-between;
+
+transition:0.25s;
+}
+
+.tool-card:hover{
+transform:translateY(-6px);
+border-color:#38bdf8;
+box-shadow:0 20px 40px rgba(0,0,0,0.4);
+}
+
+/* TOP */
+.tool-top{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:12px;
+}
+
+.tool-logo{
+width:42px;
+height:42px;
+border-radius:8px;
+object-fit:contain;
+}
+
+/* RANK BADGE */
+.rank{
+background:#f59e0b;
+color:#020617;
+font-size:12px;
+padding:4px 8px;
+border-radius:6px;
+font-weight:600;
+}
+
+/* CONTENT */
+.tool-content h3{
+font-size:16px;
+margin-bottom:4px;
+}
+
+.tool-category{
+font-size:12px;
+color:#94a3b8;
+margin-bottom:6px;
+}
+
+.tool-content p{
+font-size:13px;
+color:#94a3b8;
+}
+
+/* CLICK COUNT */
+.click-count{
+margin-top:6px;
+font-size:12px;
+color:#f59e0b;
+}
+
+/* FOOTER */
+.tool-footer{
+display:flex;
+gap:10px;
+margin-top:14px;
+}
+
+.details-btn,
+.visit-btn{
+flex:1;
+text-align:center;
+padding:8px;
+border-radius:8px;
+font-size:12px;
+}
+
+.details-btn{
+border:1px solid rgba(255,255,255,0.2);
+}
+
+.details-btn:hover{
+background:#1e293b;
+}
+
+.visit-btn{
+background:#38bdf8;
+color:#020617;
+}
+
+.visit-btn:hover{
+background:#0ea5e9;
+}
+
+/* =========================
+🔥 SPACING SYSTEM
+========================= */
+
+.section{
+padding:60px 20px;
+}
+
+.container{
+max-width:1100px;
+}
+
+h2{
+font-size:24px;
+margin-bottom:20px;
+}
+
+/* =========================
+🔥 PREMIUM HERO
+========================= */
+
+.hero{
+min-height:85vh;
+display:flex;
+justify-content:center;
+align-items:center;
+text-align:center;
+padding:40px 20px;
+
+background:radial-gradient(circle at top, rgba(56,189,248,0.15), transparent 60%);
+}
+
+.hero-box{
+max-width:700px;
+}
+
+.hero h1{
+font-size:48px;
+font-weight:700;
+line-height:1.2;
+margin-bottom:15px;
+}
+
+.hero h1 span{
+color:#38bdf8;
+}
+
+.hero p{
+color:#94a3b8;
+margin-bottom:25px;
+font-size:16px;
+}
+
+/* SEARCH BAR */
+.search-bar{
+display:flex;
+justify-content:center;
+gap:10px;
+flex-wrap:wrap;
+}
+
+.search-bar input{
+width:300px;
+padding:12px;
+border-radius:10px;
+border:1px solid rgba(255,255,255,0.1);
+background:#020617;
+color:#fff;
+}
+
+.search-bar button{
+padding:12px 18px;
+border-radius:10px;
+border:none;
+background:#38bdf8;
+color:#020617;
+cursor:pointer;
+font-weight:500;
+}
+
+.search-bar button:hover{
+background:#0ea5e9;
+}
+
+/* =========================
+🔥 TOOLS PAGE PREMIUM
+========================= */
+
+/* HERO */
+.tools-hero{
+text-align:center;
+margin-bottom:30px;
+}
+
+.tools-hero h1{
+font-size:32px;
+}
+
+.tools-hero p{
+color:#94a3b8;
+}
+
+/* SEARCH */
+.search-bar{
+display:flex;
+justify-content:center;
+gap:10px;
+margin-bottom:20px;
+}
+
+.search-bar input{
+width:300px;
+padding:12px;
+border-radius:10px;
+border:1px solid rgba(255,255,255,0.1);
+background:#020617;
+color:#fff;
+}
+
+.search-bar button{
+padding:12px 16px;
+border-radius:10px;
+border:none;
+background:#38bdf8;
+cursor:pointer;
+}
+
+/* CATEGORY */
+.category-filter{
+display:flex;
+flex-wrap:wrap;
+gap:10px;
+justify-content:center;
+margin-bottom:30px;
+}
+
+.category-btn{
+padding:6px 12px;
+border-radius:20px;
+background:#020617;
+border:1px solid rgba(255,255,255,0.1);
+font-size:13px;
+}
+
+.category-btn:hover{
+border-color:#38bdf8;
+}
+
+/* CARD */
+.tool-card{
+background:#0f172a;
+border:1px solid rgba(255,255,255,0.05);
+border-radius:16px;
+padding:16px;
+transition:0.25s;
+position:relative;
+}
+
+.tool-card:hover{
+transform:translateY(-5px);
+border-color:#38bdf8;
+box-shadow:0 15px 35px rgba(0,0,0,0.4);
+}
+
+/* TOP */
+.tool-top{
+display:flex;
+justify-content:space-between;
+align-items:center;
+margin-bottom:10px;
+}
+
+.tool-logo{
+width:42px;
+height:42px;
+object-fit:contain;
+}
+
+/* STAR BUTTON */
+.favorite-btn{
+background:rgba(255,255,255,0.05);
+border:none;
+border-radius:8px;
+padding:6px;
+cursor:pointer;
+}
+
+.favorite-btn:hover{
+background:#1e293b;
+}
+
+/* TEXT */
+.tool-content h3{
+font-size:16px;
+}
+
+.tool-category{
+font-size:12px;
+color:#94a3b8;
+}
+
+.tool-description{
+font-size:13px;
+color:#94a3b8;
+margin-top:6px;
+}
+
+/* FOOTER */
+.tool-footer{
+display:flex;
+gap:10px;
+margin-top:12px;
+}
+
+.details-btn,
+.visit-btn{
+flex:1;
+text-align:center;
+padding:8px;
+border-radius:8px;
+font-size:12px;
+}
+
+.details-btn{
+border:1px solid rgba(255,255,255,0.2);
+}
+
+.visit-btn{
+background:#38bdf8;
+color:#020617;
+}
+
+/* =========================
+🔥 AUTH + SUBMIT UI
+========================= */
+
+.auth-wrapper{
+min-height:80vh;
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+.auth-card{
+width:100%;
+max-width:400px;
+background:#0f172a;
+padding:25px;
+border-radius:16px;
+border:1px solid rgba(255,255,255,0.05);
+}
+
+.auth-card h2{
+margin-bottom:5px;
+}
+
+.auth-subtitle{
+color:#94a3b8;
+margin-bottom:15px;
+}
+
+.auth-error{
+color:#ef4444;
+text-align:center;
+margin-bottom:10px;
+}
+
+.auth-form input,
+.submit-form input,
+.submit-form textarea{
+width:100%;
+padding:10px;
+margin-bottom:12px;
+border-radius:8px;
+border:1px solid rgba(255,255,255,0.1);
+background:#020617;
+color:#fff;
+}
+
+.auth-btn,
+.submit-form button{
+width:100%;
+padding:10px;
+border-radius:8px;
+border:none;
+background:#38bdf8;
+color:#020617;
+cursor:pointer;
+}
+
+.auth-btn:hover,
+.submit-form button:hover{
+background:#0ea5e9;
+}
+
+.auth-switch{
+text-align:center;
+margin-top:10px;
+font-size:14px;
+}
+
+.auth-switch a{
+color:#38bdf8;
+}
+
+/* =========================
+🔥 WORKSPACE UI
+========================= */
+
+.workspace-header{
+text-align:center;
+margin-bottom:30px;
+}
+
+.workspace-header h1{
+font-size:30px;
+}
+
+.workspace-header p{
+color:#94a3b8;
+}
+
+/* GRID */
+.workspace-grid{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:20px;
+}
+
+/* CARD */
+.workspace-card{
+background:#0f172a;
+border:1px solid rgba(255,255,255,0.05);
+border-radius:16px;
+padding:16px;
+
+display:flex;
+flex-direction:column;
+justify-content:space-between;
+
+transition:0.25s;
+}
+
+.workspace-card:hover{
+transform:translateY(-5px);
+border-color:#38bdf8;
+box-shadow:0 15px 35px rgba(0,0,0,0.4);
+}
+
+/* LOGO */
+.workspace-top{
+display:flex;
+justify-content:center;
+margin-bottom:10px;
+}
+
+.workspace-logo{
+width:50px;
+height:50px;
+object-fit:contain;
+}
+
+/* TEXT */
+.workspace-content h3{
+text-align:center;
+font-size:15px;
+}
+
+/* BUTTONS */
+.workspace-actions{
+display:flex;
+gap:10px;
+margin-top:12px;
+}
+
+.launch-btn{
+flex:1;
+background:#38bdf8;
+color:#020617;
+border:none;
+padding:8px;
+border-radius:8px;
+cursor:pointer;
+}
+
+.launch-btn:hover{
+background:#0ea5e9;
+}
+
+.remove-btn{
+flex:1;
+background:#1e293b;
+border:none;
+color:#fff;
+border-radius:8px;
+padding:8px;
+cursor:pointer;
+}
+
+.remove-btn:hover{
+background:#ef4444;
+}
+
+/* EMPTY STATE */
+.empty-workspace{
+text-align:center;
+padding:40px;
+}
+
+.browse-tools-btn{
+display:inline-block;
+margin-top:10px;
+background:#38bdf8;
+padding:10px 16px;
+border-radius:8px;
+color:#020617;
+}
+/* PREMIUM HERO */
+.premium-hero {
+background: linear-gradient(135deg, #0f172a, #1e293b, #312e81);
+}
+
+/* STATS */
+.stats-section {
+padding: 50px 20px;
+background: #020617;
+}
+
+.stats-grid {
+display: flex;
+justify-content: center;
+gap: 20px;
+flex-wrap: wrap;
+}
+
+.stat-card {
+background: #1e293b;
+padding: 20px;
+border-radius: 12px;
+width: 120px;
+text-align: center;
+}
+
+.stat-card h3 {
+color: #8b5cf6;
+}
+
+/* TEAM */
+.team-section {
+padding: 60px 20px;
+background: #0f172a;
+text-align: center;
+color: white;
+}
+
+.team-grid {
+display: flex;
+gap: 25px;
+justify-content: center;
+flex-wrap: wrap;
+}
+
+.premium-card {
+background: rgba(255,255,255,0.05);
+backdrop-filter: blur(10px);
+padding: 25px;
+border-radius: 15px;
+max-width: 260px;
+transition: 0.3s;
+}
+
+.premium-card:hover {
+transform: translateY(-8px);
+}
+
+.avatar {
+width: 60px;
+height: 60px;
+background: linear-gradient(135deg, #6366f1, #8b5cf6);
+border-radius: 50%;
+display: flex;
+align-items: center;
+justify-content: center;
+margin: auto;
+font-weight: bold;
+font-size: 20px;
+margin-bottom: 10px;
+}
+
+.role {
+color: #a78bfa;
+margin-bottom: 10px;
+}
+
+/* CTA */
+.cta-section {
+padding: 60px 20px;
+text-align: center;
+background: #020617;
+color: white;
+}
+
+/* SECTION TITLE */
+.section-title {
+font-size: 28px;
+margin-bottom: 25px;
+font-weight: 600;
+color: #ffffff;
+}
+
+/* CATEGORY GRID */
+.categories {
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+gap: 20px;
+}
+
+/* CATEGORY CARD */
+.category-card {
+background: linear-gradient(145deg, #0f172a, #1e293b);
+border: 1px solid rgba(255,255,255,0.05);
+padding: 25px;
+border-radius: 16px;
+text-align: center;
+text-decoration: none;
+color: white;
+transition: all 0.3s ease;
+position: relative;
+overflow: hidden;
+}
+
+/* HOVER EFFECT */
+.category-card:hover {
+transform: translateY(-6px) scale(1.02);
+border-color: #38bdf8;
+box-shadow: 0 10px 30px rgba(56, 189, 248, 0.2);
+}
+
+/* ICON */
+.category-icon {
+font-size: 32px;
+margin-bottom: 12px;
+}
+
+/* NAME */
+.category-name {
+font-size: 16px;
+font-weight: 500;
+}
+
+/* OPTIONAL GLOW EFFECT */
+.category-card::before {
+content: "";
+position: absolute;
+inset: 0;
+background: radial-gradient(circle at top, rgba(56,189,248,0.15), transparent);
+opacity: 0;
+transition: 0.3s;
+}
+
+.category-card:hover::before {
+opacity: 1;
+}
+
+.prompt-box {
+display: flex;
+gap: 10px;
+margin: 20px;
+}
+
+.prompt-box input {
+flex: 1;
+padding: 12px;
+font-size: 16px;
+}
+
+.prompt-box button {
+padding: 12px 20px;
+background: black;
+color: white;
+border: none;
+cursor: pointer;
+}
+
+.results {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 20px;
+padding: 20px;
+}
+
+.card {
+padding: 20px;
+background: #f5f5f5;
+border-radius: 10px;
+}
+
+.recommended {
+border: 2px solid gold;
+}
+body {
+margin: 0;
+font-family: 'Segoe UI', sans-serif;
+background: #0f0f0f;
+color: #fff;
+}
+
+.container {
+max-width: 900px;
+margin: auto;
+padding: 40px 20px;
+}
+
+h1 {
+text-align: center;
+margin-bottom: 30px;
+font-size: 28px;
+}
+
+/* Prompt Box */
+.prompt-box {
+display: flex;
+gap: 10px;
+margin-bottom: 20px;
+}
+
+.prompt-box input {
+flex: 1;
+padding: 14px;
+border-radius: 10px;
+border: none;
+background: #1c1c1c;
+color: white;
+font-size: 16px;
+}
+
+.prompt-box input:focus {
+outline: 2px solid #4CAF50;
+}
+
+.prompt-box button {
+padding: 14px 20px;
+border: none;
+border-radius: 10px;
+background: #4CAF50;
+color: white;
+cursor: pointer;
+font-weight: bold;
+transition: 0.2s;
+}
+
+.prompt-box button:hover {
+background: #45a049;
+}
+
+/* Loading */
+.loading {
+text-align: center;
+margin: 20px;
+font-size: 16px;
+opacity: 0.7;
+}
+
+/* Results Grid */
+.results {
+display: grid;
+grid-template-columns: 1fr;
+gap: 15px;
+}
+
+/* Cards */
+.card {
+background: #1c1c1c;
+padding: 20px;
+border-radius: 14px;
+transition: 0.3s;
+border: 1px solid transparent;
+}
+
+.card:hover {
+transform: translateY(-3px);
+border: 1px solid #333;
+}
+
+.card h3 {
+margin-bottom: 10px;
+}
+
+.card p {
+line-height: 1.5;
+opacity: 0.9;
+}
+
+/* Highlight Card */
+.highlight {
+border: 2px solid #4CAF50;
+background: #162116;
+}
+
+.ai-box {
+margin-top: 30px;
+text-align: center;
+}
+
+#aiForm {
+display: flex;
+justify-content: center;
+gap: 10px;
+}
+
+#aiForm input {
+width: 60%;
+padding: 12px;
+border-radius: 8px;
+border: none;
+}
+
+#aiForm button {
+padding: 12px 20px;
+border: none;
+background: #6c5ce7;
+color: white;
+border-radius: 8px;
+cursor: pointer;
 }
 
 .ai-card {
-  background: #0f172a;
-  border-radius: 16px;
-  padding: 18px;
-  min-height: 250px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+background: #111;
+color: white;
+padding: 15px;
+margin: 15px auto;
+max-width: 700px;
+border-radius: 10px;
+text-align: left;
+}
+
+.ai-box {
+margin-top: 30px;
+display: flex;
+flex-direction: column;
+align-items: center;
+}
+
+#aiForm {
+display: flex;
+gap: 10px;
+}
+
+#aiForm input {
+padding: 12px;
+width: 320px;
+border-radius: 10px;
+border: none;
+outline: none;
+}
+
+#aiForm button {
+padding: 12px 20px;
+background: linear-gradient(135deg, #6c5ce7, #00cec9);
+border: none;
+border-radius: 10px;
+color: white;
+font-weight: bold;
+cursor: pointer;
+}
+
+#aiForm button:hover {
+opacity: 0.9;
+}
+
+#aiResults {
+margin-top: 30px;
+display: grid;
+grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+gap: 20px;
+width: 85%;
+}
+
+.ai-card {
+background: rgba(255,255,255,0.05);
+padding: 20px;
+border-radius: 15px;
+backdrop-filter: blur(10px);
+border: 1px solid rgba(255,255,255,0.1);
+transition: 0.3s;
+}
+
+.ai-card:hover {
+transform: translateY(-5px);
 }
 
 .ai-card h3 {
-  color: #38bdf8;
+margin-bottom: 10px;
+font-size: 15px;
+color: #00cec9;
 }
 
-.ai-card p {
-  color: #cbd5f5;
+.hero {
+display: flex;
+justify-content: space-between;
+align-items: center;
+padding: 60px 8%;
+gap: 50px;
+min-height: 80vh;
 }
 
-/* ================= AI ACTIONS (FINAL FIX) ================= */
-
-.ai-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 10px;
+/* LEFT SIDE */
+.hero-box {
+flex: 1;
 }
 
-.chat-box {
-  display: flex;
-  flex: 1;
-  gap: 6px;
+/* RIGHT SIDE */
+.ai-box {
+flex: 1;
+max-width: 500px;
 }
 
-.chat-box input {
-  flex: 1;
-  padding: 8px;
-  border-radius: 8px;
-  background: #020617;
-  border: 1px solid rgba(255,255,255,0.1);
-  color: white;
+.ai-results {
+display: grid;
+grid-template-columns: 1fr;
+gap: 15px;
+margin-top: 20px;
+max-height: 400px;
+overflow-y: auto;
 }
 
-.chat-box button {
-  padding: 8px 12px;
-  border-radius: 8px;
+#aiForm {
+display: flex;
+gap: 10px;
 }
 
-/* ================= BUTTONS ================= */
-
-button {
-  background: linear-gradient(135deg, #2563eb, #0ea5e9);
-  border: none;
-  border-radius: 10px;
-  color: white;
-  padding: 8px 14px;
-  cursor: pointer;
-  transition: 0.2s;
+#aiPrompt {
+flex: 1;
 }
 
-button:hover {
-  transform: translateY(-1px);
+.ai-card {
+background: rgba(255, 255, 255, 0.05);
+backdrop-filter: blur(10px);
+padding: 16px;
+border-radius: 12px;
+border: 1px solid rgba(255,255,255,0.1);
+color: white;
+transition: 0.3s;
 }
 
-/* ================= HISTORY ================= */
-
-.history-item {
-  display: flex;
-  justify-content: space-between;
-  background: rgba(15,23,42,0.6);
-  padding: 10px;
-  border-radius: 10px;
-  margin-bottom: 8px;
+.ai-card:hover {
+transform: translateY(-3px);
 }
 
-/* ================= MOBILE ================= */
+.recommended {
+border: 2px solid #00f5ff;
+box-shadow: 0 0 15px rgba(0,245,255,0.6);
+}
+
+.main-container {
+display: flex;
+gap: 40px;
+}
+
+/* MOBILE FIX */
+@media (max-width: 768px) {
+.main-container {
+flex-direction: column;
+padding: 20px;
+}
+}
+
+.hero {
+flex: 1;
+}
+
+@media (max-width: 768px) {
+.hero {
+text-align: center;
+}
+
+.hero h1 {
+font-size: 28px;
+line-height: 1.3;
+}
+
+.hero p {
+font-size: 14px;
+}
+}
+
+.ai-section {
+flex: 1;
+display: flex;
+flex-direction: column;
+gap: 15px;
+}
+
+/* Make all cards full width */
+.ai-card {
+width: 100%;
+}
+
+/* Remove weird floating */
+.ai-card.fast {
+align-self: stretch;
+}
+
+.prompt-box {
+display: flex;
+gap: 10px;
+}
+
+.prompt-box input {
+flex: 1;
+padding: 12px;
+border-radius: 8px;
+}
+
+.prompt-box button {
+padding: 12px 16px;
+border-radius: 8px;
+}
+
+/* Mobile stacking */
+@media (max-width: 500px) {
+.prompt-box {
+flex-direction: column;
+}
+
+.prompt-box button {
+width: 100%;
+}
+}
+
+.ai-card {
+background: #0f172a;
+padding: 16px;
+border-radius: 14px;
+border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Recommended glow */
+.ai-card.recommended {
+border: 1px solid #22d3ee;
+box-shadow: 0 0 15px rgba(34, 211, 238, 0.2);
+}
+
+.categories {
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 15px;
+}
+
+@media (max-width: 500px) {
+.categories {
+grid-template-columns: 1fr;
+}
+}
+
+/* =========================
+🔥 FINAL MOBILE + FIX PATCH (SAFE)
+DO NOT REMOVE
+========================= */
+
+/* Fix container conflicts */
+.container {
+width: 100%;
+max-width: 1200px;
+margin: auto;
+}
+
+/* HERO FIX */
+.hero {
+display: flex;
+justify-content: space-between;
+align-items: center;
+gap: 40px;
+flex-wrap: wrap;
+}
+
+/* AI BOX FIX */
+.ai-box {
+width: 100%;
+max-width: 500px;
+}
+
+/* FORM FIX */
+#aiForm {
+display: flex;
+gap: 10px;
+width: 100%;
+}
+
+#aiForm input {
+flex: 1;
+width: 100%;
+min-width: 0; /* prevents overflow */
+}
+
+#aiForm button {
+white-space: nowrap;
+}
+
+/* RESULTS FIX */
+#aiResults,
+.ai-results {
+width: 100%;
+}
+
+/* FIX RANDOM FLOATING CARD */
+.ai-card.fast {
+align-self: stretch !important;
+}
+
+/* =========================
+🔥 MOBILE RESPONSIVE FIX
+========================= */
 
 @media (max-width: 768px) {
 
-  .nav-links {
-    display: none;
-  }
+/* MAIN LAYOUT */
+.main-container,
+.hero {
+flex-direction: column !important;
+align-items: center;
+text-align: center;
+padding: 20px;
+}
 
-  .ai-grid {
-    display: flex;
-    overflow-x: auto;
-    gap: 12px;
-  }
+/* HERO TEXT */
+.hero h1 {
+font-size: 26px !important;
+line-height: 1.3;
+}
 
-  .ai-card {
-    min-width: 85%;
-  }
+.hero p {
+font-size: 14px;
+}
 
-  .hero h1 {
-    font-size: 28px;
-  }
+/* AI SECTION FULL WIDTH */
+.ai-box {
+width: 100%;
+max-width: 100%;
+}
+
+/* FORM STACK */
+#aiForm {
+flex-direction: column;
+}
+
+#aiForm input,
+#aiForm button {
+width: 100%;
+}
+
+/* AI RESULTS */
+.ai-results {
+max-height: none;
+overflow: visible;
+}
+
+/* CARDS FULL WIDTH */
+.ai-card {
+width: 100%;
+}
+
+/* CATEGORY FIX */
+.categories {
+grid-template-columns: 1fr !important;
+}
+
+/* GRID FIX */
+.grid {
+grid-template-columns: 1fr !important;
+}
 
 }
+
+/* EXTRA SMALL DEVICES */
+@media (max-width: 480px) {
+
+.hero h1 {
+font-size: 22px !important;
+}
+
+.prompt-box {
+flex-direction: column;
+}
+
+.prompt-box input,
+.prompt-box button {
+width: 100%;
+}
+
+}
+
+/* =========================
+🔥 DESKTOP OPTIMIZATION PATCH
+SAFE – NO BREAKING
+========================= */
+
+/* CENTER EVERYTHING */
+.main-container {
+max-width: 1200px;
+margin: auto;
+align-items: center;
+}
+
+/* HERO + AI SIDE BALANCE */
+.hero {
+display: flex;
+justify-content: space-between;
+align-items: center;
+gap: 60px;
+}
+
+/* LEFT SIDE (TEXT) */
+.hero-box {
+flex: 1;
+max-width: 550px;
+}
+
+/* RIGHT SIDE (AI) */
+.ai-box {
+flex: 1;
+max-width: 500px;
+}
+
+/* BETTER TEXT SCALING */
+.hero h1 {
+font-size: 44px;
+line-height: 1.2;
+}
+
+.hero p {
+font-size: 16px;
+max-width: 500px;
+}
+
+/* AI RESULTS SCROLL AREA */
+.ai-results {
+max-height: 420px;
+overflow-y: auto;
+padding-right: 5px;
+}
+
+/* SCROLLBAR (OPTIONAL PREMIUM LOOK) */
+.ai-results::-webkit-scrollbar {
+width: 6px;
+}
+.ai-results::-webkit-scrollbar-thumb {
+background: rgba(255,255,255,0.2);
+border-radius: 10px;
+}
+
+/* CARD SPACING IMPROVEMENT */
+.ai-card {
+margin-bottom: 10px;
+}
+
+/* GRID IMPROVEMENT */
+.grid {
+grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+/* CATEGORY SECTION ALIGNMENT */
+.categories {
+max-width: 900px;
+margin: auto;
+}
+
+/* PREVENT TOO MUCH STRETCH ON ULTRA-WIDE */
+@media (min-width: 1400px) {
+.main-container {
+max-width: 1300px;
+}
+}
+
+/* =========================
+🔥 HERO LAYOUT FIX (DESKTOP + MOBILE SAFE)
+========================= */
+
+/* STACK HERO CONTENT */
+.hero {
+flex-direction: column !important;
+align-items: center;
+text-align: center;
+}
+
+/* REMOVE SIDE WIDTH LIMIT */
+.hero-box {
+max-width: 700px;
+width: 100%;
+}
+
+/* AI BOX BELOW */
+.ai-box {
+max-width: 600px;
+width: 100%;
+margin-top: 20px;
+}
+
+/* SEARCH BAR CENTER */
+.search-bar {
+justify-content: center;
+}
+
+/* AI FORM FULL WIDTH */
+#aiForm {
+width: 100%;
+justify-content: center;
+}
+
+/* INPUT + BUTTON BALANCE */
+#aiForm input {
+flex: 1;
+}
+
+#aiForm button {
+min-width: 120px;
+}
+
+/* BETTER SPACING */
+.hero h1 {
+margin-bottom: 15px;
+}
+
+.hero p {
+margin-bottom: 25px;
+}
+
+/* OPTIONAL: LIMIT WIDTH FOR CLEAN LOOK */
+.hero {
+max-width: 900px;
+margin: auto;
+}
+
+.search-bar input {
+width: 400px;
+max-width: 100%;
+}
+
+#history-container {
+margin-top: 20px;
+}
+
+.history-item {
+background: #020617;
+border: 1px solid #1e293b;
+padding: 10px;
+border-radius: 10px;
+margin-bottom: 8px;
+transition: 0.2s;
+}
+
+.history-item:hover {
+border-color: #3b82f6;
+}
+
+.history-item .prompt {
+font-weight: 600;
+font-size: 14px;
+}
+
+.history-item .response {
+font-size: 13px;
+color: #94a3b8;
+}
+
+.history-item button {
+margin-top: 5px;
+font-size: 12px;
+background: #3b82f6;
+border: none;
+padding: 5px 10px;
+border-radius: 6px;
+color: white;
+cursor: pointer;
+}
+
+/* 🔥 LOGO STYLING */
+.logo {
+display: flex;
+align-items: center;
+gap: 10px;
+text-decoration: none;
+}
+
+.logo-img {
+width: 36px;
+height: 36px;
+border-radius: 10px;
+box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+}
+
+.logo-text {
+font-size: 18px;
+font-weight: 700;
+color: #fff;
+letter-spacing: 0.5px;
+}
+
+.logo-text {
+font-size: 18px;
+font-weight: 700;
+background: linear-gradient(90deg, #22d3ee, #3b82f6);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+}
+
+.logo-img:hover {
+transform: scale(1.05);
+transition: 0.2s ease;
+}
+
+@media (max-width: 768px) {
+.logo-img {
+width: 30px;
+height: 30px;
+}
+
+.logo-text {
+font-size: 16px;
+}
+}
+
+/* =========================
+🔥 AI GRID (CLEAN FIX)
+========================= */
+
+/* DESKTOP */
+.ai-grid {
+display: grid;
+grid-template-columns: repeat(3, 1fr);
+gap: 20px;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+.ai-grid {
+display: flex;
+overflow-x: auto;
+gap: 12px;
+scroll-snap-type: x mandatory;
+}
+
+.ai-card {
+min-width: 80%;
+flex-shrink: 0;
+scroll-snap-align: start;
+}
+
+.ai-grid::-webkit-scrollbar {
+display: none;
+}
+}
+
+/* AI CARD (single clean version) */
+.ai-card {
+background: #0f172a;
+padding: 18px;
+border-radius: 16px;
+min-height: 250px;
+box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+display: flex;
+flex-direction: column;
+transition: 0.3s;
+}
+
+.ai-card:hover {
+transform: translateY(-4px);
+}
+
+/* =========================
+🔥 WORKSPACE FINAL FIX
+========================= */
+
+.active-tools-panel {
+display: flex;
+gap: 12px;
+flex-wrap: wrap;
+margin: 20px 0 30px;
+}
+
+.active-tool {
+background: linear-gradient(135deg, #0f172a, #111827);
+border: 1px solid rgba(255,255,255,0.08);
+padding: 12px 16px;
+border-radius: 12px;
+display: flex;
+align-items: center;
+gap: 12px;
+color: #e5e7eb;
+min-width: 200px;
+}
+
+.active-tool button {
+margin-left: auto;
+background: #2563eb;
+border: none;
+padding: 6px 12px;
+border-radius: 6px;
+color: white;
+cursor: pointer;
+}
+
+/* =========================
+🔥 FAKE BROWSER FIX
+========================= */
+
+.browser {
+position: fixed;
+inset: 0;
+background: #0b0f1a;
+z-index: 9999;
+display: flex;
+flex-direction: column;
+backdrop-filter: blur(10px);
+}
+
+/* =========================
+🔥 WORKSPACE CARD UPGRADE
+========================= */
+
+.workspace-card {
+background: linear-gradient(145deg, #0b1220, #0f172a);
+border-radius: 16px;
+padding: 20px;
+border: 1px solid rgba(255,255,255,0.05);
+transition: 0.25s;
+}
+
+.workspace-card:hover {
+transform: translateY(-6px);
+border-color: #3b82f6;
+}
+
+.launch-btn {
+background: linear-gradient(135deg, #3b82f6, #2563eb);
+color: white;
+}
+
+.remove-btn {
+background: #1f2937;
+color: #9ca3af;
+}
+
+.browser.hidden {
+display: none !important;
+}
+
+.workspace-card {
+transition: all 0.3s ease;
+}
+
+.active-tools-panel {
+display: flex;
+gap: 10px;
+padding: 10px;
+margin-bottom: 25px;
+
+background: rgba(255,255,255,0.03);
+border-radius: 12px;
+border: 1px solid rgba(255,255,255,0.08);
+
+overflow-x: auto;
+}
+
+.active-tool {
+display: flex;
+align-items: center;
+gap: 10px;
+
+background: #0f172a;
+padding: 8px 12px;
+border-radius: 8px;
+
+border: 1px solid rgba(255,255,255,0.05);
+transition: 0.2s;
+}
+
+.active-tool:hover {
+border-color: #3b82f6;
+transform: translateY(-2px);
+}
+
+.tab-actions {
+display: flex;
+gap: 6px;
+}
+
+.tab-actions button {
+background: transparent;
+border: none;
+color: #9ca3af;
+cursor: pointer;
+font-size: 12px;
+}
+
+.tab-actions button:hover {
+color: white;
+}
+
+.browser-body {
+display: flex;
+align-items: center;
+justify-content: center;
+flex-direction: column;
+}
+
+/* 🔥 Spinner */
+.spinner {
+width: 40px;
+height: 40px;
+border: 3px solid rgba(255,255,255,0.1);
+border-top: 3px solid #3b82f6;
+border-radius: 50%;
+animation: spin 0.8s linear infinite;
+margin-bottom: 10px;
+}
+
+@keyframes spin {
+to { transform: rotate(360deg); }
+}
+
+/* Toggle Button */
+.history-toggle {
+width: 100%;
+padding: 12px;
+margin-top: 15px;
+border-radius: 12px;
+border: none;
+background: rgba(255,255,255,0.05);
+color: #fff;
+font-size: 14px;
+cursor: pointer;
+transition: 0.3s;
+}
+
+.history-toggle:hover {
+background: rgba(255,255,255,0.1);
+}
+
+/* Hidden state */
+.history-hidden {
+max-height: 0;
+overflow: hidden;
+opacity: 0;
+transition: all 0.4s ease;
+}
+
+/* Visible state */
+.history-show {
+max-height: 500px;
+opacity: 1;
+margin-top: 10px;
+}
+
+.history-item {
+padding: 10px;
+border-radius: 10px;
+background: rgba(255,255,255,0.03);
+border: 1px solid rgba(255,255,255,0.05);
+margin-bottom: 8px;
+}
+
+.history-item .prompt {
+font-size: 13px;
+color: #fff;
+}
+
+.history-item button {
+margin-top: 6px;
+padding: 6px 10px;
+border-radius: 6px;
+border: none;
+background: #0ea5e9;
+color: white;
+cursor: pointer;
+}
+
+/* =========================
+🔥 AI RESPONSE LAYOUT FIX (FINAL SAFE OVERRIDE)
+========================= */
+
+/* Force horizontal layout on desktop */
+.ai-results,
+#aiResults,
+.ai-grid {
+display: grid !important;
+grid-template-columns: repeat(3, 1fr) !important;
+gap: 20px !important;
+align-items: stretch;
+}
+
+/* Make all cards equal height */
+.ai-card {
+height: 100%;
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+}
+
+/* Remove width restrictions that break grid */
+.ai-card {
+min-width: 0 !important;
+max-width: 100% !important;
+}
+
+/* 🔥 MOBILE KEEP CLEAN STACK */
+@media (max-width: 768px) {
+.ai-results,
+#aiResults,
+.ai-grid {
+grid-template-columns: 1fr !important;
+}
+}
+
+/* =========================
+🔥 AI MOBILE HORIZONTAL SCROLL (FINAL)
+========================= */
+
+/* MOBILE: horizontal scroll instead of vertical */
+@media (max-width: 768px) {
+
+.ai-results,
+#aiResults,
+.ai-grid {
+display: flex !important;
+overflow-x: auto;
+gap: 15px;
+padding-bottom: 10px;
+scroll-snap-type: x mandatory;
+}
+
+/* Each card behaves like slide */
+.ai-card {
+min-width: 85% !important;
+flex-shrink: 0;
+scroll-snap-align: start;
+}
+
+/* Hide scrollbar for clean UI */
+.ai-results::-webkit-scrollbar,
+#aiResults::-webkit-scrollbar,
+.ai-grid::-webkit-scrollbar {
+display: none;
+}
+}
+
+.ai-results,
+#aiResults,
+.ai-grid {
+scroll-behavior: smooth;
+}
+
+/* ===== GLOBAL DARK THEME ===== */
+body {
+color: #e5e7eb;
+background: #020617;
+}
+
+/* ===== HERO SECTION SHADOW FIX ===== */
+.hero {
+position: relative;
+}
+
+.hero::before {
+content: "";
+position: absolute;
+inset: 0;
+background: radial-gradient(
+circle at 50% 30%,
+rgba(59, 130, 246, 0.15),
+transparent 60%
+);
+z-index: 0;
+}
+
+.hero > * {
+position: relative;
+z-index: 1;
+}
+
+/* ===== INPUT (GLASS STYLE) ===== */
+input, textarea {
+background: rgba(15, 23, 42, 0.6);
+border: 1px solid rgba(148, 163, 184, 0.15);
+color: #e5e7eb;
+border-radius: 10px;
+padding: 12px 16px;
+transition: all 0.25s ease;
+}
+
+input:focus {
+border-color: rgba(56, 189, 248, 0.6);
+box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+outline: none;
+}
+
+input::placeholder {
+color: #64748b;
+}
+
+/* ===== SEARCH BAR (BETTER BLEND) ===== */
+.search-bar input {
+background: rgba(2, 6, 23, 0.7);
+border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* ===== BUTTON (NO OVERGLOW) ===== */
+button {
+background: linear-gradient(135deg, #2563eb, #0ea5e9);
+border: none;
+border-radius: 10px;
+color: white;
+padding: 10px 18px;
+font-weight: 500;
+transition: all 0.25s ease;
+box-shadow: 0 4px 20px rgba(37, 99, 235, 0.25);
+}
+
+button:hover {
+transform: translateY(-1px);
+box-shadow: 0 6px 25px rgba(14, 165, 233, 0.35);
+}
+
+/* ===== CARDS (DEPTH + GLASS) ===== */
+.ai-card {
+background: linear-gradient(
+145deg,
+rgba(15, 23, 42, 0.7),
+rgba(2, 6, 23, 0.9)
+);
+border: 1px solid rgba(59, 130, 246, 0.12);
+border-radius: 16px;
+backdrop-filter: blur(12px);
+transition: all 0.3s ease;
+}
+
+/* subtle hover instead of glow bomb */
+.ai-card:hover {
+transform: translateY(-4px);
+border-color: rgba(56, 189, 248, 0.3);
+}
+
+/* TEXT FIX */
+.ai-card p {
+color: #cbd5f5;
+}
+
+.ai-card h3 {
+color: #38bdf8;
+}
+
+/* ===== COPY BUTTON FIX ===== */
+.copy-btn {
+background: linear-gradient(135deg, #1d4ed8, #06b6d4);
+border-radius: 8px;
+font-size: 13px;
+padding: 6px 10px;
+box-shadow: none;
+}
+
+.copy-btn:hover {
+background: linear-gradient(135deg, #2563eb, #22d3ee);
+}
+
+/* =========================
+AQUIPLEX FINAL OVERRIDE (VERCEL STYLE)
+Paste at VERY BOTTOM
+========================= */
+
+/* Ensure hero positioning */
+.hero {
+position: relative;
+isolation: isolate;
+}
+
+/* ===== HERO GLOW (CONTROLLED, PREMIUM) ===== */
+.hero::before {
+content: "";
+position: absolute;
+inset: 0;
+background: radial-gradient(
+600px circle at 50% 15%,
+rgba(59, 130, 246, 0.18),
+rgba(37, 99, 235, 0.08) 30%,
+transparent 65%
+);
+z-index: -1;
+pointer-events: none;
+}
+
+/* ===== GLOBAL TEXT ===== */
+body {
+color: #e5e7eb;
+}
+
+/* ===== INPUTS (GLASS + CLEAR) ===== */
+input, textarea {
+background: rgba(15, 23, 42, 0.75) !important;
+border: 1px solid rgba(148, 163, 184, 0.18) !important;
+color: #e5e7eb !important;
+border-radius: 10px;
+padding: 12px 16px;
+transition: all 0.25s ease;
+}
+
+input::placeholder {
+color: #64748b !important;
+}
+
+input:focus, textarea:focus {
+border-color: rgba(56, 189, 248, 0.6) !important;
+box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+outline: none;
+}
+
+/* ===== SEARCH BAR ===== */
+.search-bar input {
+background: rgba(2, 6, 23, 0.75) !important;
+border: 1px solid rgba(59, 130, 246, 0.25) !important;
+}
+
+/* ===== PROMPT BAR (FIX DARK LOOK) ===== */
+.prompt-bar input {
+background: rgba(15, 23, 42, 0.8) !important;
+border: 1px solid rgba(56, 189, 248, 0.25) !important;
+}
+
+/* ===== BUTTONS (VERCEL STYLE SOFT GLOW) ===== */
+button {
+background: linear-gradient(135deg, #2563eb, #0ea5e9) !important;
+border: none;
+border-radius: 10px;
+color: white;
+font-weight: 500;
+padding: 10px 18px;
+transition: all 0.25s ease;
+box-shadow: 0 4px 18px rgba(37, 99, 235, 0.25);
+}
+
+button:hover {
+transform: translateY(-1px);
+box-shadow: 0 6px 28px rgba(14, 165, 233, 0.35);
+}
+
+/* ===== AI CARDS (DEPTH + PREMIUM GLASS) ===== */
+.ai-card {
+background: linear-gradient(
+145deg,
+rgba(15, 23, 42, 0.75),
+rgba(2, 6, 23, 0.95)
+) !important;
+border: 1px solid rgba(59, 130, 246, 0.12) !important;
+border-radius: 16px;
+backdrop-filter: blur(12px);
+transition: all 0.3s ease;
+position: relative;
+overflow: hidden;
+}
+
+/* subtle hover (NOT overglow) */
+.ai-card:hover {
+transform: translateY(-4px);
+border-color: rgba(56, 189, 248, 0.35);
+}
+
+/* soft top glow */
+.ai-card::after {
+content: "";
+position: absolute;
+inset: 0;
+background: radial-gradient(
+circle at top,
+rgba(56, 189, 248, 0.08),
+transparent 60%
+);
+opacity: 0;
+transition: 0.3s;
+}
+
+.ai-card:hover::after {
+opacity: 1;
+}
+
+/* ===== TEXT IMPROVEMENTS ===== */
+.ai-card p {
+color: #cbd5f5 !important;
+}
+
+.ai-card h3 {
+color: #38bdf8 !important;
+}
+
+/* ===== COPY BUTTON FIX ===== */
+.copy-btn {
+background: linear-gradient(135deg, #1d4ed8, #06b6d4) !important;
+border-radius: 8px;
+font-size: 13px;
+padding: 6px 10px;
+box-shadow: none !important;
+}
+
+.copy-btn:hover {
+background: linear-gradient(135deg, #2563eb, #22d3ee) !important;
+}
+
+/* ===== HEADING POLISH ===== */
+h1 {
+letter-spacing: -0.5px;
+}
+
+p {
+color: #94a3b8;
+}
+
+/* APK DOWNLOAD SECTION */
+.apk-section {
+margin-top: 20px;
+text-align: center;
+}
+
+.apk-btn {
+display: inline-block;
+padding: 14px 26px;
+background: linear-gradient(135deg, #3b82f6, #6366f1);
+color: #fff;
+font-weight: 600;
+border-radius: 14px;
+text-decoration: none;
+box-shadow: 0 10px 30px rgba(59,130,246,0.4);
+transition: all 0.3s ease;
+}
+
+.apk-btn:hover {
+transform: translateY(-3px) scale(1.03);
+box-shadow: 0 15px 40px rgba(99,102,241,0.6);
+}
+
+.apk-info {
+margin-top: 8px;
+font-size: 13px;
+opacity: 0.7;
+}
+
+/* =========================
+🚀 AQUIPLEX FINAL FIX (HOME + NAV CLEAN)
+PASTE AT VERY BOTTOM ONLY
+========================= */
+
+/* ===== NAVBAR FIX ===== */
+.nav-links a {
+color: #cbd5f5;
+font-size: 14px;
+transition: 0.2s;
+}
+
+.nav-links a:hover {
+color: #38bdf8;
+}
+
+.nav-links .highlight {
+color: #f59e0b;
+}
+
+/* SEARCH BAR NAV */
+.nav-search input {
+padding: 8px 12px;
+border-radius: 8px;
+border: 1px solid rgba(255,255,255,0.1);
+background: #020617;
+color: white;
+width: 180px;
+}
+
+/* MOBILE MENU FIX */
+.mobile-menu {
+position: absolute;
+top: 70px;
+left: 0;
+width: 100%;
+background: #020617;
+border-top: 1px solid rgba(255,255,255,0.05);
+z-index: 999;
+}
+
+/* ===== HERO FIX (NEW STRUCTURE) ===== */
+.hooked-hero {
+display: flex !important;
+justify-content: center;
+align-items: center;
+text-align: center;
+padding: 120px 20px 60px;
+}
+
+.hero-main {
+max-width: 800px;
+width: 100%;
+}
+
+/* TITLE */
+.hero h1 {
+font-size: 48px;
+font-weight: 700;
+line-height: 1.2;
+}
+
+.hero h1 span {
+color: #38bdf8;
+}
+
+/* SUBTEXT */
+.hero-sub {
+font-size: 16px;
+color: #94a3b8;
+margin-top: 10px;
+}
+
+/* CTA */
+.hero-cta {
+margin-top: 25px;
+display: flex;
+justify-content: center;
+gap: 12px;
+flex-wrap: wrap;
+}
+
+/* ===== AI INPUT BOX ===== */
+.hero-ai {
+margin-top: 25px;
+}
+
+#aiForm {
+display: flex;
+gap: 10px;
+width: 100%;
+}
+
+#aiForm input {
+flex: 1;
+padding: 14px;
+border-radius: 12px;
+border: 1px solid rgba(255,255,255,0.1);
+background: #020617;
+color: white;
+}
+
+#aiForm button {
+padding: 14px 22px;
+border-radius: 12px;
+font-weight: 500;
+}
+
+/* ===== HISTORY SECTION ===== */
+#history-container {
+margin-top: 25px;
+text-align: left;
+}
+
+#history {
+margin-top: 10px;
+}
+
+.history-item {
+display: flex;
+justify-content: space-between;
+align-items: center;
+}
+
+/* ===== AI RESULTS GRID FIX ===== */
+#aiResults {
+margin-top: 30px;
+}
+
+.ai-grid {
+display: grid !important;
+grid-template-columns: repeat(3, 1fr);
+gap: 20px;
+}
+
+/* CARD CLEAN */
+.ai-card {
+min-height: 260px;
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+}
+
+/* ACTION BUTTONS */
+.ai-actions {
+display: flex;
+gap: 8px;
+margin-top: 10px;
+}
+
+.ai-actions button {
+flex: 1;
+font-size: 12px;
+padding: 8px;
+border-radius: 8px;
+}
+
+/* ===== CATEGORY SECTION ===== */
+.categories {
+margin-top: 20px;
+}
+
+/* ===== FEATURED GRID ===== */
+.grid {
+grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+}
+
+/* ===== TOOL CARD CLEAN ===== */
+.tool-card {
+padding: 18px;
+}
+
+.logo-box img {
+width: 42px;
+height: 42px;
+}
+
+/* ===== APK SECTION ===== */
+.apk-section {
+text-align: center;
+}
+
+/* ===== MOBILE FIX ===== */
+@media (max-width: 768px) {
+
+/* HERO */
+.hero h1 {
+font-size: 28px;
+}
+
+/* FORM STACK */
+#aiForm {
+flex-direction: column;
+}
+
+#aiForm input,
+#aiForm button {
+width: 100%;
+}
+
+/* AI CARDS SCROLL */
+.ai-grid {
+display: flex !important;
+overflow-x: auto;
+gap: 12px;
+scroll-snap-type: x mandatory;
+}
+
+.ai-card {
+min-width: 85%;
+flex-shrink: 0;
+scroll-snap-align: start;
+}
+
+.ai-grid::-webkit-scrollbar {
+display: none;
+}
+
+/* NAV SEARCH HIDE */
+.nav-search {
+display: none;
+}
+}
+
+/* FIX CLICK BLOCKING */
+.hero::before {
+pointer-events: none;
+}
+
+.hero,
+.hero * {
+position: relative;
+z-index: 1;
+}
+
+/* CENTER EVERYTHING PROPERLY */
+.hero-main {
+max-width: 700px;
+margin: auto;
+}
+
+/* FIX HISTORY HEADER */
+#history-container > div {
+flex-wrap: wrap;
+gap: 10px;
+}
+
+/* FIX BUTTON SIZE */
+.history-toggle {
+padding: 10px 18px;
+width: auto;
+border-radius: 10px;
+}
+
+/* ALIGN AI SECTION */
+.section {
+max-width: 1000px;
+margin: auto;
+}
+
+.ai-actions button:active {
+transform: scale(0.95);
+}
+
+.ai-actions button {
+transition: 0.2s;
+}
+
+/* 🔥 BUTTON UPGRADE */
+.ai-actions button {
+background: linear-gradient(135deg, #3b82f6, #06b6d4);
+border: none;
+padding: 10px 18px;
+border-radius: 10px;
+color: white;
+font-weight: 500;
+cursor: pointer;
+transition: all 0.25s ease;
+position: relative;
+overflow: hidden;
+}
+
+/* Hover glow */
+.ai-actions button:hover {
+transform: translateY(-2px) scale(1.03);
+box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+}
+
+/* Click press */
+.ai-actions button:active {
+transform: scale(0.95);
+}
+
+/* Shine effect */
+.ai-actions button::after {
+content: "";
+position: absolute;
+top: 0;
+left: -100%;
+width: 120%;
+height: 100%;
+background: linear-gradient(
+120deg,
+transparent,
+rgba(255,255,255,0.3),
+transparent
+);
+transition: 0.5s;
+}
+
+.ai-actions button:hover::after {
+left: 100%;
+}
+
+/* 🔥 COMPACT HISTORY UI */
+.history-list {
+margin-top: 15px;
+max-height: 200px;
+overflow-y: auto;
+padding-right: 5px;
+}
+
+/* Scrollbar */
+.history-list::-webkit-scrollbar {
+width: 4px;
+}
+.history-list::-webkit-scrollbar-thumb {
+background: #3b82f6;
+border-radius: 10px;
+}
+
+/* Item */
+.history-item {
+display: flex;
+justify-content: space-between;
+align-items: center;
+background: rgba(15, 23, 42, 0.6);
+border: 1px solid rgba(59, 130, 246, 0.2);
+padding: 10px 14px;
+border-radius: 10px;
+margin-bottom: 8px;
+transition: 0.2s;
+}
+
+/* Hover */
+.history-item:hover {
+background: rgba(30, 41, 59, 0.8);
+transform: translateX(4px);
+}
+
+/* Prompt text */
+.history-item .prompt {
+font-size: 14px;
+opacity: 0.9;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+max-width: 75%;
+}
+
+/* Reuse button */
+.history-item button {
+background: transparent;
+border: 1px solid #3b82f6;
+color: #3b82f6;
+padding: 5px 10px;
+border-radius: 8px;
+cursor: pointer;
+transition: 0.2s;
+}
+
+.history-item button:hover {
+background: #3b82f6;
+color: white;
+}
+
+.history-hidden {
+display: none;
+}
+
+.history-show {
+display: block;
+animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+from { opacity: 0; transform: translateY(10px); }
+to { opacity: 1; transform: translateY(0); }
+}
+
+/* 🚨 FIX CLICK ISSUE (CRITICAL) */
+
+.ai-card,
+.ai-actions,
+.ai-actions button,
+.ai-actions input {
+position: relative;
+z-index: 10;
+pointer-events: auto;
+}
+
+/* remove accidental blocking */
+.section,
+.ai-grid {
+position: relative;
+z-index: 5;
+}
+
+/* make sure nothing overlays */
+.hero::before {
+pointer-events: none;
+}
+
+/* FIX AI ACTIONS LAYOUT */
+.ai-actions {
+display: flex;
+gap: 6px;
+align-items: center;
+}
+
+/* INPUT SHOULD NOT OVERFLOW */
+.ai-actions input {
+flex: 1;
+min-width: 0;
+padding: 8px;
+border-radius: 8px;
+}
+
+/* SEND BUTTON ALWAYS VISIBLE */
+.ai-actions button:last-child {
+flex: 0 0 auto;
+padding: 8px 12px;
+white-space: nowrap;
+}
+
+.ai-actions {
+display: grid;
+grid-template-columns: auto auto 1fr auto;
+gap: 6px;
+}
+
+.chat-box {
+display: flex;
+flex: 1;
+gap: 6px;
+}
+
+.chat-box input {
+flex: 1;
+min-width: 0;
+}
+
+.chat-box button {
+padding: 8px 12px;
+white-space: nowrap;
+}
+
+/* =========================
+🚀 AQUIPLEX SAFE FIX (NO BREAK METHOD)
+========================= */
+
+/* FORCE CLEAN AI LAYOUT */
+.ai-grid,
+.ai-results,
+#aiResults {
+display: grid !important;
+grid-template-columns: repeat(3, 1fr) !important;
+gap: 18px !important;
+}
+
+/* MOBILE FIX */
+@media (max-width: 768px) {
+.ai-grid,
+.ai-results,
+#aiResults {
+display: flex !important;
+overflow-x: auto;
+gap: 12px;
+}
+
+.ai-card {
+min-width: 85% !important;
+}
+}
+
+/* CLEAN CARD */
+.ai-card {
+display: flex !important;
+flex-direction: column;
+justify-content: space-between;
+min-height: 250px;
+}
+
+/* FIX ACTION BAR */
+.ai-actions {
+display: flex !important;
+align-items: center;
+gap: 6px;
+margin-top: 10px;
+}
+
+/* CHAT BOX */
+.chat-box {
+display: flex !important;
+flex: 1;
+gap: 6px;
+}
+
+/* INPUT FIX */
+.chat-box input {
+flex: 1;
+min-width: 0;
+}
+
+/* SEND BUTTON FIX */
+.chat-box button {
+flex: 0 0 auto;
+padding: 8px 12px;
+}
+
+/* REMOVE BROKEN GRID SYSTEM */
+.ai-actions {
+grid-template-columns: none !important;
+}
+
+/* FIX CLICK ISSUES */
+.ai-card,
+.ai-actions,
+.ai-actions button,
+.ai-actions input {
+position: relative;
+z-index: 10;
+}
+
+
+
+
+
+/* 🚀 SEND BUTTON VISIBILITY FIX (SAFE) */
+
+.ai-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* Chat container */
+.chat-box {
+  display: flex !important;
+  flex: 1 !important;
+  gap: 6px !important;
+}
+
+/* Input should shrink properly */
+.chat-box input {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+/* 🔥 SEND BUTTON FIX */
+.chat-box button {
+  flex: 0 0 auto !important;
+  display: inline-block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  white-space: nowrap;
+  padding: 8px 14px;
+}
+
