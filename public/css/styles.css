@@ -3182,3 +3182,11 @@ MOBILE SAFE (no break)
   background: #38bdf8;
   transform: scale(1.3);
 }
+
+.ai-grid {
+  scroll-snap-type: x mandatory;
+}
+
+.ai-card {
+  scroll-snap-align: center;
+}

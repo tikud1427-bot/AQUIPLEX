@@ -513,6 +513,24 @@
                   el.innerText += "\n❌ Error";
                 }
               }
+
+              const slider = document.getElementById("aiResults");
+              const dots = document.querySelectorAll(".card-dots span");
+
+              if (slider && dots.length) {
+                slider.addEventListener("scroll", () => {
+                  const scrollLeft = slider.scrollLeft;
+                  const cardWidth = slider.offsetWidth;
+
+                  const index = Math.round(scrollLeft / cardWidth);
+
+                  dots.forEach(dot => dot.classList.remove("active"));
+
+                  if (dots[index]) {
+                    dots[index].classList.add("active");
+                  }
+                });
+              }
           
             </script>
   </body>    
