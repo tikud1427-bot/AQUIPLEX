@@ -466,25 +466,24 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                      messages: chats[type]
+                      messages: chats[type],
+                      aiType: type
                     })
                   });
 
                   const data = await res.json();
-
-                  const aiResponse = data.responses.find(r =>
-                    r.model.toLowerCase().includes(type)
-                  );
-
+                  const aiResponse = data.responses[0];
                   if (aiResponse) {
                     chats[type].push({
                       role: "assistant",
                       content: aiResponse.output
                     });
 
-                    document.getElementById(type + "Text").innerText =
-                      aiResponse.output;
-                  }
+                    const el = document.getElementById(type + "Text");
+
+                    el.innerText += "\n\nYou: " + input;
+                    el.innerText += "\nAI: " + aiResponse.output;
+                   }
 
                   document.getElementById(type + "Input").value = "";
 

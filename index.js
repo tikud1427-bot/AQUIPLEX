@@ -296,6 +296,7 @@ res.render("lab");
 const axios = require("axios");
 
 // MULTI AI GENERATION
+
 const models = [
   {
     name: "🧠 Smart AI",
@@ -312,15 +313,20 @@ const models = [
 ];
 
 app.post("/multi-generate", async (req, res) => {
-  const { prompt, messages } = req.body;
+  const { prompt, messages, aiType } = req.body;
 
   if (!prompt && (!messages || messages.length === 0)) {
     return res.status(400).send("Input required");
   }
 
   try {
+    const selectedModels = aiType
+    ? models.filter(m =>
+        m.name.toLowerCase().includes(aiType.toLowerCase())
+      )
+    : models;
     const responses = await Promise.all(
-      models.map(async (ai) => {
+      selectedModels.map(async (ai) => {
         try {
           const result = await axios.post(
             "https://openrouter.ai/api/v1/chat/completions",
