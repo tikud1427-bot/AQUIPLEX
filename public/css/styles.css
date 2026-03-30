@@ -2950,3 +2950,6 @@ z-index: 10;
   padding: 8px 14px;
 }
 
+.chat-box {
+  overflow: visible !important;
+}
