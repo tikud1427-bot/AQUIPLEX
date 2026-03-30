@@ -2953,3 +2953,89 @@ z-index: 10;
 .chat-box {
   overflow: visible !important;
 }
+
+
+
+/* =========================
+🚀 AQUIPLEX SAFE PRO CLEANUP PATCH
+NO UI CHANGE GUARANTEED
+========================= */
+
+/* ✅ Fix invalid grid rule */
+.ai-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+/* ✅ Ensure chat layout never breaks */
+.chat-box {
+  display: flex !important;
+  flex: 1 !important;
+  gap: 6px !important;
+}
+
+.chat-box input {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+}
+
+.chat-box button {
+  flex: 0 0 auto !important;
+  white-space: nowrap;
+}
+
+/* ✅ Fix media query closure issue */
+@media (min-width: 1400px) {
+  .main-container {
+    max-width: 1300px;
+  }
+}
+
+/* ✅ Fix gradient text cross-browser */
+.logo-text {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ✅ Normalize container (prevents conflicts) */
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: auto;
+}
+
+/* ✅ Prevent hidden button / click bugs */
+.ai-card,
+.ai-actions,
+.ai-actions button,
+.ai-actions input {
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+/* ✅ Ensure AI grid stability */
+.ai-grid,
+.ai-results,
+#aiResults {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 20px !important;
+}
+
+/* ✅ Mobile safe */
+@media (max-width: 768px) {
+  .ai-grid,
+  .ai-results,
+  #aiResults {
+    display: flex !important;
+    overflow-x: auto;
+    gap: 12px;
+  }
+
+  .ai-card {
+    min-width: 85% !important;
+  }
+}
