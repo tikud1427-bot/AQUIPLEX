@@ -3119,3 +3119,32 @@ MOBILE SAFE (no break)
     font-size: 12px;
   }
 }
+
+.ai-cards-wrapper {
+  display: flex;
+  overflow-x: auto;
+  gap: 15px;
+  padding-right: 40px; /* important */
+}
+
+.ai-card {
+  min-width: 90%;
+}
+
+.card-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.card-dots span {
+  width: 6px;
+  height: 6px;
+  background: #475569;
+  border-radius: 50%;
+}
+
+.card-dots .active {
+  background: #38bdf8;
+}
