@@ -92,6 +92,8 @@
           <div class="ai-actions">
             <button type="button" onclick="copyText('smartText', this)">Copy</button>
             <button type="button" onclick="shareText('smartText')">Share</button>
+            <input id="smartInput" placeholder="Continue chat..." />
+            <button onclick="continueChat('smart')">Send</button>
           </div>
         </div>
 
@@ -103,6 +105,8 @@
           <div class="ai-actions">
             <button type="button" onclick="copyText('creativeText', this)">Copy</button>
             <button type="button" onclick="shareText('creativeText')">Share</button>
+            <input id="creativeInput" placeholder="Continue chat..." />
+            <button onclick="continueChat('creative')">Send</button>
           </div>
         </div>
 
@@ -114,6 +118,8 @@
           <div class="ai-actions">
             <button type="button" onclick="copyText('fastText', this)">Copy</button>
             <button type="button" onclick="shareText('fastText')">Share</button>
+            <input id="creativeInput" placeholder="Continue chat..." />
+            <button onclick="continueChat('creative')">Send</button>
           </div>
         </div>
 
@@ -249,7 +255,14 @@
 
 
             <script>
-            document.addEventListener("DOMContentLoaded", () => {
+              const chats = {
+                smart: [],
+                creative: [],
+                fast: []
+              };
+
+          
+              document.addEventListener("DOMContentLoaded", () => {
 
               const form = document.getElementById("aiForm");
 
@@ -267,24 +280,34 @@
                     const res = await fetch("/multi-generate", {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ prompt })
+                      // reset chats
+                      chats.smart = [{ role: "user", content: prompt }];
+                      chats.creative = [{ role: "user", content: prompt }];
+                      chats.fast = [{ role: "user", content: prompt }];
+
+                      body: JSON.stringify({
+                        messages: chats.smart // temporary, we only need one call
+                      })
                     });
 
                     const data = await res.json();
 
-                    data.responses.forEach(r => {
-                      if (r.model.includes("Smart")) {
-                        document.getElementById("smartText").innerText = r.output;
-                      }
-                      if (r.model.includes("Creative")) {
-                        document.getElementById("creativeText").innerText = r.output;
-                      }
-                      if (r.model.includes("Fast")) {
-                        document.getElementById("fastText").innerText = r.output;
-                      }
-                    });
-                    document.getElementById("aiPrompt").value = "";
+                   data.responses.forEach(r => {
+                     if (r.model.includes("Smart")) {
+                       chats.smart.push({ role: "assistant", content: r.output });
+                       document.getElementById("smartText").innerText = r.output;
+                     }
 
+                     if (r.model.includes("Creative")) {
+                       chats.creative.push({ role: "assistant", content: r.output });
+                       document.getElementById("creativeText").innerText = r.output;
+                     }
+
+                     if (r.model.includes("Fast")) {
+                       chats.fast.push({ role: "assistant", content: r.output });
+                       document.getElementById("fastText").innerText = r.output;
+                     }
+                   });
 
                     loadHistory();
 
@@ -423,6 +446,51 @@
                   // ✅ FALLBACK 2 → WHATSAPP SHARE
                   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
                   window.open(whatsappUrl, "_blank");
+                }
+              }
+
+              async function continueChat(type) {
+                const input = document.getElementById(type + "Input").value;
+
+                if (!input) return;
+
+                chats[type].push({
+                  role: "user",
+                  content: input
+                });
+
+                // loading
+                document.getElementById(type + "Text").innerText = "⏳ Thinking...";
+
+                try {
+                  const res = await fetch("/multi-generate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      messages: chats[type]
+                    })
+                  });
+
+                  const data = await res.json();
+
+                  const aiResponse = data.responses.find(r =>
+                    r.model.toLowerCase().includes(type)
+                  );
+
+                  if (aiResponse) {
+                    chats[type].push({
+                      role: "assistant",
+                      content: aiResponse.output
+                    });
+
+                    document.getElementById(type + "Text").innerText =
+                      aiResponse.output;
+                  }
+
+                  document.getElementById(type + "Input").value = "";
+
+                } catch {
+                  document.getElementById(type + "Text").innerText = "❌ Error";
                 }
               }
           

@@ -312,7 +312,7 @@ const models = [
 ];
 
 app.post("/multi-generate", async (req, res) => {
-  const { prompt } = req.body;
+  const { prompt, messages } = req.body;
 
   if (!prompt) return res.status(400).send("Prompt required");
 
@@ -328,7 +328,7 @@ app.post("/multi-generate", async (req, res) => {
 
               messages: [
                 { role: "system", content: ai.system },
-                { role: "user", content: prompt }
+                ...(messages && messages.length ? messages : [{ role: "user", content: prompt }])
               ]
             },
             {
