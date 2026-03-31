@@ -296,12 +296,13 @@
                     chats.creative = [{ role: "user", content: prompt }];
                     chats.fast = [{ role: "user", content: prompt }];
 
-                    const res = await fetch("/multi-generate", {
+                    fetch("/multi-generate", {
                       method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      credentials: "include", // ✅ ADD THIS LINE
+                      headers: {
+                        "Content-Type": "application/json"
+                      },
                       body: JSON.stringify({
-                        messages: chats.smart
+                        prompt: document.getElementById("aiPrompt").value
                       })
                     });
                     const data = await res.json();

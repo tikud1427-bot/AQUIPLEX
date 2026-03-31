@@ -296,7 +296,6 @@ res.render("lab");
 const axios = require("axios");
 
 // MULTI AI GENERATION
-
 const models = [
   {
     name: "🧠 Smart AI",
@@ -316,7 +315,13 @@ app.post("/multi-generate", async (req, res) => {
   const { prompt, messages, aiType } = req.body;
 
   if (!prompt && (!messages || messages.length === 0)) {
-    return res.status(400).send("Input required");
+    return res.json({
+      responses: [{
+        model: "Error",
+        output: "⚠️ No input received"
+      }],
+      recommended: "Error"
+    });
   }
 
   try {
@@ -328,27 +333,23 @@ app.post("/multi-generate", async (req, res) => {
     const responses = await Promise.all(
       selectedModels.map(async (ai) => {
         try {
+          const finalMessages = messages?.length
+            ? messages
+            : [{ role: "user", content: prompt || "Hello" }];
+
           const result = await axios.post(
             "https://openrouter.ai/api/v1/chat/completions",
             {
-              // ✅ FIXED MODEL (stable)
               model: "mistralai/mistral-7b-instruct",
-
               messages: [
                 { role: "system", content: ai.system },
-                ...(messages?.length
-                  ? messages
-                  : prompt
-                    ? [{ role: "user", content: prompt }]
-                    : [])
+                ...finalMessages
               ]
             },
             {
               headers: {
                 Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
                 "Content-Type": "application/json",
-
-                // ✅ IMPORTANT HEADERS
                 "HTTP-Referer": req.headers.origin || "https://aquiplex.com",
                 "X-Title": "AQUIPLEX"
               }
