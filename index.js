@@ -332,7 +332,7 @@ app.post("/multi-generate", async (req, res) => {
             "https://openrouter.ai/api/v1/chat/completions",
             {
               // ✅ FIXED MODEL (stable)
-              model: "openai/gpt-3.5-turbo",
+              model: "mistralai/mistral-7b-instruct",
 
               messages: [
                 { role: "system", content: ai.system },
@@ -349,7 +349,7 @@ app.post("/multi-generate", async (req, res) => {
                 "Content-Type": "application/json",
 
                 // ✅ IMPORTANT HEADERS
-                "HTTP-Referer": "https://ai-directory--tikud1427.replit.app/",
+                "HTTP-Referer": req.headers.origin || "https://aquiplex.com",
                 "X-Title": "AQUIPLEX"
               }
             }
