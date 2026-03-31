@@ -151,18 +151,21 @@ res.send("Error loading home");
 app.get("/test-ai", async (req, res) => {
   try {
     const r = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "mixtral-8x7b-32768",
-        messages: [{ role: "user", content: "hello" }]
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-          "Content-Type": "application/json"
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          model: "llama3-70b-8192",
+          messages: [
+            { role: "system", content: ai.system },
+            ...finalMessages
+          ]
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            "Content-Type": "application/json"
+          }
         }
-      }
-    );
+      );
 
     res.json(r.data);
   } catch (e) {
@@ -364,7 +367,7 @@ app.post("/multi-generate", async (req, res) => {
           const result = await axios.post(
             "https://api.groq.com/openai/v1/chat/completions",
             {
-              model: "mixtral-8x7b-32768",
+              model: "llama3-70b-8192",
               messages: [
                 { role: "system", content: ai.system },
                 ...finalMessages
@@ -377,6 +380,7 @@ app.post("/multi-generate", async (req, res) => {
               }
             }
           );
+                
 
           return {
             model: ai.name,
@@ -590,14 +594,20 @@ res.status(500).send("Error removing tool");
 
 // ================= START =================
 async function startServer() {
-await connectDB();
-await importTools();
 
-const PORT = process.env.PORT || 5000;
+  // 🔥 DEBUG LOGS
+  console.log("GROQ:", process.env.GROQ_API_KEY ? "OK" : "MISSING");
+  console.log("MONGO:", process.env.MONGO_URI ? "OK" : "MISSING");
+  console.log("SESSION:", process.env.SESSION_SECRET ? "OK" : "MISSING");
 
-app.listen(PORT, "0.0.0.0", () => {
-console.log("🚀 Server running on port " + PORT);
-});
+  await connectDB();
+  await importTools();
+
+  const PORT = process.env.PORT || 5000;
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log("🚀 Server running on port " + PORT);
+  });
 }
 
 startServer();
