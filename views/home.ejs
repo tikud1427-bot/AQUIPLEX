@@ -488,14 +488,14 @@
                 try {
                   const res = await fetch("/multi-generate", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    credentials: "include", // ✅ ADD THIS LINE
+                    headers: {
+                      "Content-Type": "application/json"
+                    },
+                    credentials: "include",
                     body: JSON.stringify({
-                      messages: chats[type],
-                      aiType: type
+                      prompt: document.getElementById("aiPrompt").value
                     })
                   });
-
                   const data = await res.json();
                   const aiResponse = data.responses[0];
 
