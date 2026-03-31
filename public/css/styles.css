@@ -3190,3 +3190,19 @@ MOBILE SAFE (no break)
 .ai-card {
   scroll-snap-align: center;
 }
+
+.tool-btn {
+  display: inline-block;
+  margin: 5px 5px 0 0;
+  padding: 6px 12px;
+  background: #6366f1;
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 13px;
+  transition: 0.2s;
+}
+
+.tool-btn:hover {
+  background: #4f46e5;
+}

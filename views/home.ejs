@@ -311,17 +311,17 @@
                    data.responses.forEach(r => {
                      if (r.model.includes("Smart")) {
                        chats.smart.push({ role: "assistant", content: r.output });
-                       document.getElementById("smartText").innerText = r.output;
+                       document.getElementById("smartText").innerHTML = renderWithTools(r.output);
                      }
 
                      if (r.model.includes("Creative")) {
                        chats.creative.push({ role: "assistant", content: r.output });
-                       document.getElementById("creativeText").innerText = r.output;
+                       document.getElementById("Creative").innerHTML = renderWithTools(r.output);
                      }
 
                      if (r.model.includes("Fast")) {
                        chats.fast.push({ role: "assistant", content: r.output });
-                       document.getElementById("fastText").innerText = r.output;
+                       document.getElementById("Fast").innerHTML = renderWithTools(r.output);
                      }
                    });
 
@@ -509,9 +509,9 @@
                     });
 
                     // replace last "Thinking..." with actual response
-                    el.innerText = el.innerText.replace(
+                    el.innerHTML = el.innerHTML.replace(
                       "⏳ Thinking...",
-                      aiResponse.output
+                      renderWithTools(aiResponse.output)
                     );
                   }
 
@@ -539,6 +539,34 @@
                   }
                 });
               }
+              
+               function renderWithTools(text) {
+                if (!text) return "";
+
+                // detect recommendation line
+                const parts = text.split("🔧 Recommended Tools:");
+
+                if (parts.length < 2) return text;
+
+                const answer = parts[0];
+                const toolsRaw = parts[1];
+
+                const tools = toolsRaw.split(",").map(t => t.trim());
+
+                const buttons = tools.map(tool => {
+                  return `<a href="/tools?q=${encodeURIComponent(tool)}" class="tool-btn">${tool}</a>`;
+                }).join(" ");
+
+                return `
+                  <div>${answer}</div>
+                  <div style="margin-top:10px;">
+                    <strong>🔧 Recommended Tools:</strong><br/>
+                    ${buttons}
+                  </div>
+                `;
+              }
+
+          
           
             </script>
   </body>    
