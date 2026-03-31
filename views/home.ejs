@@ -595,15 +595,14 @@
                  `;
                }
               function findToolByName(name) {
-                const cleanName = name.toLowerCase().trim();
+                const clean = name.toLowerCase().replace(/\s+/g, "");
 
                 return ALL_TOOLS.find(t =>
-                  t.name.toLowerCase() === cleanName
+                  t.name.toLowerCase().replace(/\s+/g, "") === clean
                 ) || ALL_TOOLS.find(t =>
-                  t.name.toLowerCase().includes(cleanName)
+                  t.name.toLowerCase().replace(/\s+/g, "").includes(clean)
                 );
               }
-          
           
             </script>
   </body>    
