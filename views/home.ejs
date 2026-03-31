@@ -267,6 +267,9 @@
 
 </footer>    
 
+            <script>
+              const ALL_TOOLS = <%- JSON.stringify(allTools) %>;
+            </script>
 
             <script>
               const chats = {
@@ -541,35 +544,50 @@
               }
               
                function renderWithTools(text) {
-                if (!text) return "";
+                 if (!text) return "";
 
-                // detect recommendation line
-                const parts = text.split("🔧 Recommended Tools:");
+                 const match = text.match(/🔧 Recommended Tools:(.*)/);
 
-                if (parts.length < 2) return text;
+                 if (!match) return text;
 
-                const answer = parts[0];
-                const toolsRaw = parts[1];
+                 const toolsRaw = match[1];
+
+                 // REMOVE recommendation part from main text
+                 const cleanText = text.replace(match[0], "");
 
                  const tools = toolsRaw
-                 .replace(/\n/g, "")
-                 .split(",")
-                 .map(t => t.replace(/[^\w\s]/g, "").trim())
-                 .filter(Boolean);
+                   .split(",")
+                   .map(t => t.replace(/[^\w\s]/g, "").trim())
+                   .filter(Boolean)
+                   .slice(0, 3); // limit (optional but clean)
 
-                const buttons = tools.map(tool => {
-                  return `<a href="/tools?q=${encodeURIComponent(tool)}" class="tool-btn">${tool}</a>`;
-                }).join(" ");
+                 const buttons = tools.map(toolName => {
+                   const match = findToolByName(toolName);
 
-                return `
-                  <div>${answer}</div>
-                  <div style="margin-top:10px;">
-                    <strong>🔧 Recommended Tools:</strong><br/>
-                    ${buttons}
-                  </div>
-                `;
+                   if (match) {
+                     return `<a href="/tool/${match._id}" class="tool-btn">${match.name}</a>`;
+                   } else {
+                     return `<a href="/tools?q=${encodeURIComponent(toolName)}" class="tool-btn">${toolName}</a>`;
+                   }
+                 }).join(" ");
+
+                 return `
+                   <div>${cleanText}</div>
+                   <div style="margin-top:10px;">
+                     <strong>🔧 Recommended Tools:</strong><br/>
+                     ${buttons}
+                   </div>
+                 `;
+               }
+              function findToolByName(name) {
+                const cleanName = name.toLowerCase().trim();
+
+                return ALL_TOOLS.find(t =>
+                  t.name.toLowerCase() === cleanName
+                ) || ALL_TOOLS.find(t =>
+                  t.name.toLowerCase().includes(cleanName)
+                );
               }
-
           
           
             </script>

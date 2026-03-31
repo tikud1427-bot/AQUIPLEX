@@ -135,16 +135,18 @@ next();
 
 // HOME
 app.get("/", async (req, res) => {
-try {
-const tools = await Tool.find().limit(12).lean();
-const trendingTools = await getTrendingTools(10);
-const trendingIds = trendingTools.map(t => t._id.toString());
+  try {
+    const tools = await Tool.find().limit(12).lean(); // for UI
+    const allTools = await Tool.find().lean(); // 🔥 FULL DB
 
-res.render("home", { tools, trendingIds });
+    const trendingTools = await getTrendingTools(10);
+    const trendingIds = trendingTools.map(t => t._id.toString());
 
-} catch {
-res.send("Error loading home");
-}
+    res.render("home", { tools, trendingIds, allTools });
+
+  } catch {
+    res.send("Error loading home");
+  }
 });
 
 // TEST AI (DEBUG ROUTE)
