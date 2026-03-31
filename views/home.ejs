@@ -565,9 +565,24 @@
                    const match = findToolByName(toolName);
 
                    if (match) {
-                     return `<a href="/tool/${match._id}" class="tool-btn">${match.name}</a>`;
+                     return `
+                       <div class="tool-card-mini">
+                         <img src="${match.logo}" alt="${match.name}" />
+                         <div class="tool-info">
+                           <span>${match.name}</span>
+                           <a href="/tool/${match._id}" class="use-btn">Use</a>
+                         </div>
+                       </div>
+                     `;
                    } else {
-                     return `<a href="/tools?q=${encodeURIComponent(toolName)}" class="tool-btn">${toolName}</a>`;
+                     return `
+                       <div class="tool-card-mini">
+                         <div class="tool-info">
+                           <span>${toolName}</span>
+                           <a href="/tools?q=${encodeURIComponent(toolName)}" class="use-btn">Search</a>
+                         </div>
+                       </div>
+                     `;
                    }
                  }).join(" ");
 
