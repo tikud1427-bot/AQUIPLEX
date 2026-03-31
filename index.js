@@ -8,6 +8,7 @@ const bodyParser = require("body-parser");
 const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
+const axios = require("axios");
 
 const app = express();
 app.use(express.static("public"));
@@ -146,6 +147,30 @@ res.send("Error loading home");
 }
 });
 
+// TEST AI (DEBUG ROUTE)
+app.get("/test-ai", async (req, res) => {
+  try {
+    const r = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "mixtral-8x7b-32768",
+        messages: [{ role: "user", content: "hello" }]
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    res.json(r.data);
+  } catch (e) {
+    res.json({
+      error: e.response?.data || e.message
+    });
+  }
+});
 // Download APK
 app.get("/download", (req, res) => {
   console.log("APK downloaded");
@@ -293,7 +318,6 @@ app.get("/lab", (req, res) => {
 res.render("lab");
 });
 
-const axios = require("axios");
 
 // MULTI AI GENERATION
 const models = [
@@ -340,7 +364,7 @@ app.post("/multi-generate", async (req, res) => {
           const result = await axios.post(
             "https://api.groq.com/openai/v1/chat/completions",
             {
-              model: "llama3-8b-8192",
+              model: "mixtral-8x7b-32768",
               messages: [
                 { role: "system", content: ai.system },
                 ...finalMessages
