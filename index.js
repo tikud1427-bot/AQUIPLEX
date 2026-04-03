@@ -703,6 +703,22 @@ app.get("/workspace", requireLogin, async (req, res) => {
   res.render("workspace", { workspace, bundles });
 });
 
+// DELETE BUNDLE
+app.post("/bundle/remove/:id", requireLogin, async (req, res) => {
+  try {
+    await Bundle.deleteOne({
+      _id: req.params.id,
+      userId: req.session.userId
+    });
+
+    res.sendStatus(200);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error removing bundle");
+  }
+});
+
 // ADD
 app.post("/workspace/add/:toolId", requireLogin, async (req, res) => {
 let workspace = await Workspace.findOne({

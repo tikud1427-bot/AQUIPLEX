@@ -25,20 +25,24 @@
   <div id="active-tools" class="active-tools-panel"></div>
 
   <section class="bundle-section">
-    <h2>📦 Saved Bundles</h2>
+    <h2 class="section-title">Your AI Workflows</h2>
 
     <% if (bundles && bundles.length > 0) { %>
       <div class="bundle-grid">
         <% bundles.forEach(bundle => { %>
-          <div class="bundle-card">
+          <div class="bundle-card" id="bundle-<%= bundle._id %>">
             <h3><%= bundle.title %></h3>
 
-            <button onclick='viewBundle(<%- JSON.stringify(bundle) %>)'>
-              👀 View
-            </button>
+            <div class="bundle-actions">
+              <button onclick='viewBundle(<%- JSON.stringify(bundle) %>)'>
+                👀 View
+              </button>
+
+              <button onclick="removeBundle('<%= bundle._id %>')" class="remove-btn">
+                ✖ Remove
+              </button>
+            </div>
           </div>
-        <% }) %>
-      </div>
     <% } else { %>
       <p class="muted">No bundles saved yet</p>
     <% } %>
@@ -277,6 +281,32 @@
               ${html}
             </div>
           `;// later upgrade to modal UI
+        }
+
+        async function removeBundle(id){
+          if(!confirm("Remove this bundle?")) return;
+
+          try {
+            const res = await fetch("/bundle/remove/" + id, {
+              method: "POST"
+            });
+
+            if(res.ok){
+              const card = document.getElementById("bundle-" + id);
+
+              card.style.opacity = "0";
+              card.style.transform = "scale(0.9)";
+
+              setTimeout(() => card.remove(), 300);
+
+            } else {
+              alert("Failed to remove bundle");
+            }
+
+          } catch(err){
+            console.error(err);
+            alert("Error removing bundle");
+          }
         }
 
       </script>
