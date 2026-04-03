@@ -3437,3 +3437,7 @@ MOBILE SAFE (no break)
   flex-direction: column;
   gap: 10px;
 }
+
+.bundle-page h1 {
+  margin-top: 80px;
+}

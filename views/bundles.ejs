@@ -8,30 +8,8 @@
   </head>
   <body class="bundle-page">
 
-    <header class="main-header">
-      <div class="header-container">
+    <%- include('partials/nav') %>
 
-        <a href="/" class="logo">
-          <img src="/images/logo.png" class="logo-img">
-          <span class="logo-text">Aquiplex</span>
-        </a>
-
-        <nav class="nav-links">
-          <a href="/" class="nav-item">Home</a>
-          <a href="/tools" class="nav-item">Tools</a>
-          <a href="/bundles" class="nav-item highlight">Bundles</a>
-        </nav>
-
-        <div class="menu-toggle" onclick="toggleMenu()">☰</div>
-      </div>
-
-      <!-- Mobile Menu -->
-      <div class="mobile-menu" id="mobileMenu">
-        <a href="/">Home</a>
-        <a href="/tools">Tools</a>
-        <a href="/bundles">Bundles</a>
-      </div>
-    </header>
 
 <h1>✨ AI Bundles</h1>
 
@@ -165,12 +143,7 @@ function render(data) {
 }
 </script>
 
-    <script>
-    function toggleMenu() {
-      document.getElementById("mobileMenu").classList.toggle("active");
-    }
-    </script>
-
+  
     <script>
     function openTool(url) {
       window.open(url, "_blank");
