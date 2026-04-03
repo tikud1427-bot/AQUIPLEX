@@ -37,7 +37,7 @@ async function generateBundle() {
   document.getElementById("result").innerHTML = "⏳ Generating bundle...";
 
   try {
-    const res = await fetch("/generate-bundle", {
+    const res = await fetch(window.location.origin + "/generate-bundle", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ goal })

@@ -152,7 +152,118 @@ app.get("/", async (req, res) => {
 app.get("/bundles", (req, res) => {
   res.render("bundles");
 });
+//
+// GENERATE AI BUNDLE (FIXED)
+app.post("/generate-bundle", async (req, res) => {
+  console.log("🔥 Bundle API called");
 
+  const { goal } = req.body;
+
+  if (!goal) {
+    return res.json({ error: "No goal provided" });
+  }
+
+  try {
+    const result = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      {
+        model: "llama-3.1-8b-instant",
+        messages: [
+          {
+            role: "system",
+            content: `
+You are an AI that ONLY returns valid JSON.
+
+DO NOT explain anything.
+DO NOT add text before or after.
+DO NOT use markdown.
+
+STRICT FORMAT:
+
+{
+  "title": "Short bundle name",
+  "steps": [
+    {
+      "step": 1,
+      "title": "Step name",
+      "description": "What to do",
+      "tools": ["Tool1", "Tool2"]
+    }
+  ]
+}
+
+Rules:
+- Max 5 steps
+- Keep steps practical
+- Use real AI tools like ChatGPT, Canva, Runway, etc.
+- Output MUST be valid JSON
+`
+          },
+          {
+            role: "user",
+            content: goal
+          }
+        ]
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        timeout: 10000
+      }
+    );
+
+    const text = result?.data?.choices?.[0]?.message?.content || "";
+
+    console.log("🧠 AI RAW:", text);
+
+    // ✅ SAFE JSON PARSE
+    let parsed;
+    try {
+      const match = text.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error("No JSON");
+
+      parsed = JSON.parse(match[0]);
+    } catch (err) {
+      return res.json({
+        error: "Invalid AI format",
+        raw: text
+      });
+    }
+
+    if (!parsed.steps) {
+      return res.json({
+        error: "Invalid structure",
+        raw: parsed
+      });
+    }
+
+    res.json(parsed);
+
+  } catch (err) {
+    console.error("❌ API ERROR:", err.response?.data || err.message);
+
+    // ✅ FALLBACK (always works)
+    res.json({
+      title: "Basic AI Bundle",
+      steps: [
+        {
+          step: 1,
+          title: "Understand your goal",
+          description: goal,
+          tools: ["ChatGPT"]
+        },
+        {
+          step: 2,
+          title: "Use AI tools",
+          description: "Execute using recommended tools",
+          tools: ["Canva", "Google"]
+        }
+      ]
+    });
+  }
+});
 // TEST AI (DEBUG ROUTE)
 app.get("/test-ai", async (req, res) => {
   try {
@@ -344,7 +455,7 @@ const models = [
     system: "You are a concise AI. Give short, direct, and fast answers."
   }
 ];
-
+//
 app.post("/multi-generate", async (req, res) => {
   const { prompt, messages, aiType } = req.body;
 
@@ -357,88 +468,17 @@ app.post("/multi-generate", async (req, res) => {
       recommended: "Error"
     });
   }
-//
-  // GENERATE AI BUNDLE
-  app.post("/generate-bundle", async (req, res) => {
-    const { goal } = req.body;
 
-    if (!goal) {
-      return res.json({ error: "No goal provided" });
-    }
-
-    try {
-      const result = await axios.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        {
-          model: "llama-3.1-8b-instant",
-          messages: [
-            {
-              role: "system",
-              content: `
-  You are AQUIPLEX AI Bundle Generator.
-
-  Convert user goals into structured step-by-step AI workflows.
-
-  Return ONLY JSON:
-
-  {
-    "title": "",
-    "steps": [
-      {
-        "step": 1,
-        "title": "",
-        "description": "",
-        "tools": ["", ""]
-      }
-    ]
-  }
-
-  Rules:
-  - Max 5 steps
-  - Keep it practical
-  - Use real AI tools
-  - No explanation outside JSON
-  `
-            },
-            {
-              role: "user",
-              content: goal
-            }
-          ]
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
-      const text = result.data.choices[0].message.content;
-
-      let parsed;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        return res.json({ error: "Invalid AI response", raw: text });
-      }
-
-      res.json(parsed);
-
-    } catch (err) {
-      console.error(err.response?.data || err.message);
-      res.status(500).json({ error: "Bundle generation failed" });
-    }
-  });
   try {
     const selectedModels = aiType
-    ? models.filter(m =>
-        m.name.toLowerCase().includes(aiType.toLowerCase())
-      )
-    : models;
-    // ✅ GET TOP TOOLS (SAFE)
+      ? models.filter(m =>
+          m.name.toLowerCase().includes(aiType.toLowerCase())
+        )
+      : models;
+
     const topTools = await Tool.find().limit(5).lean();
     const toolList = topTools.map(t => t.name).join(", ");
+
     const responses = await Promise.all(
       selectedModels.map(async (ai) => {
         try {
@@ -446,40 +486,14 @@ app.post("/multi-generate", async (req, res) => {
             ? messages
             : [{ role: "user", content: prompt || "Hello" }];
 
-           const result = await axios.post(
+          const result = await axios.post(
             "https://api.groq.com/openai/v1/chat/completions",
             {
               model: "llama-3.1-8b-instant",
               messages: [
                 {
                   role: "system",
-                  content: `
-              You are AQUIPLEX AI — a smart assistant that not only answers questions but also guides users to the best AI tools.
-              Available tools on this platform:
-              ${toolList}
-
-              Your tasks:
-              1. Answer clearly
-              2. Suggest relevant AI tools if helpful
-              3. Keep answers clean and useful
-              4. ALWAYS suggest at least one relevant tool when possible
-
-              Available tool categories:
-              - Writing AI (ChatGPT, Jasper)
-              - Image AI (Midjourney, DALL·E)
-              - Video AI (Runway, Pika)
-              - Coding AI (Copilot, Codeium)
-
-              If user asks something like:
-              - "write blog" → suggest writing tools
-              - "generate image" → suggest image tools
-              - "build app" → suggest coding tools
-
-              Keep suggestions SHORT at the end like:
-              "🔧 Recommended Tools: ChatGPT, Jasper"
-
-              Tone: helpful, modern, not robotic.
-              `
+                  content: `You are AQUIPLEX AI. Suggest tools when needed: ${toolList}`
                 },
                 { role: "system", content: ai.system },
                 ...finalMessages
@@ -493,7 +507,6 @@ app.post("/multi-generate", async (req, res) => {
               timeout: 10000
             }
           );
-                
 
           return {
             model: ai.name,
@@ -502,11 +515,7 @@ app.post("/multi-generate", async (req, res) => {
               "⚠️ Empty response"
           };
 
-        } catch (err) {
-          console.error("❌ ERROR:", ai.name);
-          console.error("STATUS:", err.response?.status);
-          console.error("DATA:", err.response?.data || err.message);
-
+        } catch {
           return {
             model: ai.name,
             output: "⚠️ Error generating response"
@@ -515,23 +524,8 @@ app.post("/multi-generate", async (req, res) => {
       })
     );
 
-    // ✅ Smart recommendation
     const best =
       responses.find(r => !r.output.includes("⚠️")) || responses[0];
-
-    // ✅ SAVE HISTORY (SAFE)
-    if (req.session?.userId) {
-      try {
-        await History.create({
-          userId: req.session.userId,
-          prompt: prompt || "chat",
-          response: best.output,
-          model: best.model
-        });
-      } catch (err) {
-        console.log("History save failed:", err.message);
-      }
-    }
 
     res.json({
       responses,
@@ -543,7 +537,6 @@ app.post("/multi-generate", async (req, res) => {
     res.status(500).send("AI generation failed");
   }
 });
-
 // HISTORY PAGE
 app.get("/history", requireLogin, async (req, res) => {
   try {
