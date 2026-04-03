@@ -3432,3 +3432,70 @@ h1 {
 #result {
   margin-top: 40px;
 }
+
+/* =========================
+🔥 AI BUNDLE MOBILE CLEAN FIX
+========================= */
+
+@media (max-width: 768px) {
+
+  /* Page spacing */
+  body {
+    justify-content: flex-start;
+    padding-top: 80px;
+  }
+
+  /* Card */
+  .bundle-box {
+    width: 92%;
+    padding: 16px;
+    border-radius: 14px;
+    gap: 10px;
+  }
+
+  /* Title */
+  h1 {
+    font-size: 22px;
+    margin-bottom: 15px;
+  }
+
+  /* Input */
+  .bundle-box input {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  /* Main button */
+  .bundle-box > button {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  /* 🔥 FIX CATEGORY BUTTONS (BIG ISSUE) */
+  .category-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr; /* 2 per row */
+    gap: 8px;
+    width: 100%;
+  }
+
+  .category-buttons button {
+    width: 100%;
+    padding: 10px;
+    font-size: 12px;
+    border-radius: 10px;
+  }
+
+  /* Description text */
+  .bundle-box p {
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  /* Result spacing */
+  #result {
+    width: 92%;
+    margin-top: 25px;
+  }
+
+}
