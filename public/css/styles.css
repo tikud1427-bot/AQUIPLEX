@@ -3486,3 +3486,43 @@ body .bundle-box * {
     width: 100% !important;
   }
 }
+
+/* =========================
+🔥 BUNDLE PAGE CLEAN FIX
+========================= */
+
+.bundle-box {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 500px;
+  margin: 20px auto;
+}
+
+.bundle-box input,
+.bundle-box button {
+  width: 100%;
+}
+
+/* Category buttons */
+.category-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.category-buttons button {
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+
+/* Result cards spacing */
+#result {
+  max-width: 700px;
+  margin: 20px auto;
+}
+
+.step {
+  width: 100%;
+}
