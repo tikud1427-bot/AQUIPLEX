@@ -3311,3 +3311,45 @@ MOBILE SAFE (no break)
     justify-content: center;
   }
 }
+
+/* ===== FORCE MOBILE FIX (OVERRIDE EVERYTHING) ===== */
+
+/* Force vertical layout */
+.bundle-box {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  max-width: 500px !important;
+  margin: auto !important;
+}
+
+/* Input full width */
+.bundle-box input {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Button full width */
+.bundle-box > button {
+  width: 100% !important;
+}
+
+/* Fix category buttons container */
+.category-buttons {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  margin-top: 10px !important;
+}
+
+/* Fix category buttons */
+.category-buttons button {
+  flex: 1 1 auto !important;
+  white-space: nowrap !important;
+}
+
+/* 🔥 EXTRA: fix if old .suggestions still affects layout */
+.suggestions {
+  display: none !important;
+}
