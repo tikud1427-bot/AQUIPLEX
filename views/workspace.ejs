@@ -30,14 +30,15 @@
     <% if (bundles && bundles.length > 0) { %>
       <div class="bundle-grid">
         <% bundles.forEach(bundle => { %>
-          <p class="bundle-preview">
-            <%= bundle.steps.length %> steps • AI workflow
-          </p>
           <div class="bundle-card" id="bundle-<%= bundle._id %>">
             <h3><%= bundle.title %></h3>
 
+            <p class="bundle-preview">
+              <%= bundle.steps.length %> steps • AI workflow
+            </p>
+
             <div class="bundle-actions">
-              <button onclick='viewBundle(<%- JSON.stringify(bundle) %>)'>
+              <button onclick='viewBundle(<%- JSON.stringify(bundle).replace(/"/g, "&quot;") %>)'>
                 👀 View
               </button>
 
@@ -46,7 +47,7 @@
               </button>
             </div>
           </div>
-    <% } else { %>
+        <% }) %> <!-- ✅ THIS WAS MISSING -->
       <p class="muted">No bundles saved yet</p>
     <% } %>
   </section>
