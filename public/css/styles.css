@@ -3255,29 +3255,20 @@ MOBILE SAFE (no break)
 }
 
 /* =========================
-🔥 AI BUNDLE PAGE FIX (FINAL)
+🔥 AI BUNDLES FINAL SAFE FIX (NO BREAK)
 ========================= */
 
-/* Center everything */
-
-
-/* Title */
-h1 {
-  margin-top: 100px;
-  margin-bottom: 20px;
-  font-size: 28px;
-  text-align: center;
-}
-
-/* Main box */
-.bundle-box {
-  width: 90%;
+/* Scope everything to bundle page ONLY */
+.bundle-page .bundle-box {
+  width: 92%;
   max-width: 600px;
+  margin: 40px auto;
+  padding: 20px;
+  border-radius: 16px;
+
   background: rgba(15, 23, 42, 0.7);
   border: 1px solid rgba(255,255,255,0.08);
   backdrop-filter: blur(12px);
-  padding: 20px;
-  border-radius: 16px;
 
   display: flex;
   flex-direction: column;
@@ -3285,222 +3276,73 @@ h1 {
   align-items: center;
 }
 
-/* Input */
-.bundle-box input {
-  width: 100%;
-  padding: 14px;
-  border-radius: 12px;
-  font-size: 14px;
+/* Title spacing */
+.bundle-page h1 {
+  text-align: center;
+  margin-top: 90px;
 }
 
-/* Generate button */
-.bundle-box button {
+/* Input */
+.bundle-page .bundle-box input {
   width: 100%;
   padding: 14px;
   border-radius: 12px;
-  font-size: 14px;
-  font-weight: 500;
+}
+
+/* Main button */
+.bundle-page .bundle-box > button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
 }
 
 /* Category buttons */
-.category-buttons {
+.bundle-page .category-buttons {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
 }
 
-.category-buttons button {
+.bundle-page .category-buttons button {
   padding: 8px 14px;
-  font-size: 13px;
   border-radius: 20px;
-  background: rgba(255,255,255,0.05);
 }
 
-/* RESULT SECTION */
-#result {
-  width: 90%;
-  max-width: 700px;
-  margin-top: 30px;
-}
-
-/* Each step */
-.step {
-  background: #0f172a;
-  border: 1px solid rgba(255,255,255,0.05);
-  padding: 18px;
-  border-radius: 14px;
-  margin-bottom: 15px;
-}
-
-.step h3 {
-  margin-bottom: 8px;
-  color: #38bdf8;
-}
-
-.step p {
-  font-size: 14px;
-  color: #94a3b8;
-}
-
-/* Tools */
-.tools {
-  margin-top: 10px;
-}
-
-.tools span {
-  display: inline-block;
-  margin: 4px;
-  padding: 6px 10px;
-  background: #1e293b;
-  border-radius: 8px;
-  font-size: 12px;
-}
-
-/* MOBILE */
-@media (max-width: 768px) {
-  h1 {
-    font-size: 22px;
-  }
-
-  .bundle-box {
-    padding: 15px;
-  }
-}
-
-/* =========================
-🔥 AI BUNDLE FINAL POLISH (CENTER + FULLSCREEN)
-========================= */
-
-/* Make page vertically centered */
-body {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  justify-content: center; /* 🔥 this fixes top-heavy issue */
-  align-items: center;
-}
-
-/* Push content slightly down (header safe) */
-h1 {
-  margin-top: 20px;
-}
-
-/* Bigger main card */
-.bundle-box {
+/* Result section */
+.bundle-page #result {
   width: 92%;
-  max-width: 650px;
-  padding: 24px;
-  border-radius: 18px;
+  max-width: 700px;
+  margin: 30px auto;
 }
 
-/* Bigger input */
-.bundle-box input {
-  padding: 16px;
-  font-size: 15px;
-}
-
-/* Bigger main button */
-.bundle-box > button {
-  padding: 16px;
-  font-size: 15px;
-}
-
-/* Make category buttons full width (clean mobile UX) */
-.category-buttons {
-  width: 100%;
-  flex-direction: column;
-}
-
-.category-buttons button {
-  width: 100%;
-  padding: 12px;
-  border-radius: 12px;
-}
-
-/* Description spacing */
-.bundle-box + p {
-  margin-top: 12px;
-  font-size: 13px;
-}
-
-/* RESULT spacing */
-#result {
-  margin-top: 40px;
-}
-
-/* =========================
-🔥 AI BUNDLE MOBILE CLEAN FIX
-========================= */
-
+/* ================= MOBILE FIX ================= */
 @media (max-width: 768px) {
 
-  /* Page spacing */
-  body {
-    justify-content: flex-start;
-    padding-top: 80px;
-  }
-
-  /* Card */
-  .bundle-box {
+  .bundle-page .bundle-box {
     width: 92%;
     padding: 16px;
-    border-radius: 14px;
-    gap: 10px;
   }
 
-  /* Title */
-  h1 {
-    font-size: 22px;
-    margin-bottom: 15px;
-  }
-
-  /* Input */
-  .bundle-box input {
-    padding: 12px;
-    font-size: 14px;
-  }
-
-  /* Main button */
-  .bundle-box > button {
-    padding: 12px;
-    font-size: 14px;
-  }
-
-  /* 🔥 FIX CATEGORY BUTTONS (BIG ISSUE) */
-  .category-buttons {
+  /* 🔥 KEY FIX: buttons layout */
+  .bundle-page .category-buttons {
     display: grid;
-    grid-template-columns: 1fr 1fr; /* 2 per row */
+    grid-template-columns: 1fr 1fr;
     gap: 8px;
     width: 100%;
   }
 
-  .category-buttons button {
+  .bundle-page .category-buttons button {
     width: 100%;
     padding: 10px;
-    font-size: 12px;
+    font-size: 13px;
     border-radius: 10px;
   }
 
-  /* Description text */
-  .bundle-box p {
+  /* Text */
+  .bundle-page .bundle-box p {
     font-size: 12px;
-    line-height: 1.4;
+    text-align: center;
   }
 
-  /* Result spacing */
-  #result {
-    width: 92%;
-    margin-top: 25px;
-  }
-
-}
-
-/* ONLY bundle page */
-.bundle-page {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
 }
