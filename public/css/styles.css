@@ -3253,3 +3253,121 @@ MOBILE SAFE (no break)
   transform: scale(1.03);
   transition: 0.2s;
 }
+
+/* =========================
+🔥 AI BUNDLE PAGE FIX (FINAL)
+========================= */
+
+/* Center everything */
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Title */
+h1 {
+  margin-top: 100px;
+  margin-bottom: 20px;
+  font-size: 28px;
+  text-align: center;
+}
+
+/* Main box */
+.bundle-box {
+  width: 90%;
+  max-width: 600px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255,255,255,0.08);
+  backdrop-filter: blur(12px);
+  padding: 20px;
+  border-radius: 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Input */
+.bundle-box input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+/* Generate button */
+.bundle-box button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Category buttons */
+.category-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.category-buttons button {
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.05);
+}
+
+/* RESULT SECTION */
+#result {
+  width: 90%;
+  max-width: 700px;
+  margin-top: 30px;
+}
+
+/* Each step */
+.step {
+  background: #0f172a;
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 18px;
+  border-radius: 14px;
+  margin-bottom: 15px;
+}
+
+.step h3 {
+  margin-bottom: 8px;
+  color: #38bdf8;
+}
+
+.step p {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+/* Tools */
+.tools {
+  margin-top: 10px;
+}
+
+.tools span {
+  display: inline-block;
+  margin: 4px;
+  padding: 6px 10px;
+  background: #1e293b;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 22px;
+  }
+
+  .bundle-box {
+    padding: 15px;
+  }
+}
