@@ -3345,4 +3345,40 @@ MOBILE SAFE (no break)
     text-align: center;
   }
 
+}/* Bundle result card upgrade */
+.bundle-page .step {
+  background: linear-gradient(145deg, #0f172a, #020617);
+  border: 1px solid rgba(255,255,255,0.05);
+  padding: 18px;
+  border-radius: 14px;
+  margin-bottom: 15px;
+  transition: 0.3s;
+}
+
+.bundle-page .step:hover {
+  transform: translateY(-3px);
+  border-color: #38bdf8;
+}
+
+.bundle-page .step h3 {
+  color: #38bdf8;
+  margin-bottom: 6px;
+}
+
+.bundle-page .tools span {
+  display: inline-block;
+  margin: 4px;
+  padding: 6px 10px;
+  background: #1e293b;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.bundle-page .category-buttons button {
+  transition: 0.2s;
+}
+
+.bundle-page .category-buttons button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
 }

@@ -45,7 +45,12 @@ async function generateBundle() {
   console.log("Sending goal:", goal);
 
   // 🔄 Loading UI
-  document.getElementById("result").innerHTML = "⏳ Generating bundle...";
+  document.getElementById("result").innerHTML = `
+    <div style="text-align:center; padding:30px;">
+      <div class="spinner"></div>
+      <p style="margin-top:10px; color:#94a3b8;">Generating your AI bundle...</p>
+    </div>
+  `;
 
   try {
     const res = await fetch(window.location.origin + "/generate-bundle", {
