@@ -30,6 +30,9 @@
     <% if (bundles && bundles.length > 0) { %>
       <div class="bundle-grid">
         <% bundles.forEach(bundle => { %>
+          <p class="bundle-preview">
+            <%= bundle.steps.length %> steps • AI workflow
+          </p>
           <div class="bundle-card" id="bundle-<%= bundle._id %>">
             <h3><%= bundle.title %></h3>
 
