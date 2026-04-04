@@ -567,3 +567,115 @@ body.landing-page::before {
 .landing-page a:active {
   transform: scale(0.96);
 }
+
+/* =========================
+📱 MOBILE OPTIMIZATION FIX
+========================= */
+
+@media (max-width: 768px) {
+
+  body {
+    overflow-x: hidden;
+  }
+
+  /* HERO SECTION */
+  .hero {
+    padding: 40px 20px 30px;
+    text-align: center;
+  }
+
+  .hero h1 {
+    font-size: 26px;
+    line-height: 1.3;
+    margin-bottom: 12px;
+  }
+
+  .hero p {
+    font-size: 15px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    color: #6b7280;
+  }
+
+  /* BUTTONS */
+  .hero-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .btn-primary {
+    width: 100%;
+    max-width: 280px;
+    padding: 14px;
+    font-size: 15px;
+    border-radius: 30px;
+  }
+
+  .btn-secondary {
+    width: 100%;
+    max-width: 280px;
+    padding: 12px;
+    font-size: 14px;
+    border-radius: 30px;
+  }
+
+  /* INPUT BOX */
+  .input-box {
+    margin-top: 30px;
+    padding: 6px;
+    border-radius: 30px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .input-box input {
+    flex: 1;
+    font-size: 14px;
+    padding: 10px 12px;
+    border-radius: 20px;
+  }
+
+  .input-box button {
+    padding: 10px 14px;
+    font-size: 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* NAVBAR */
+  .navbar {
+    padding: 10px 15px;
+  }
+
+  .logo span {
+    font-size: 18px;
+  }
+
+  .nav-buttons {
+    gap: 8px;
+  }
+
+  .nav-buttons a {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+.hero {
+  animation: fadeUp 0.8s ease;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

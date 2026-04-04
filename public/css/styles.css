@@ -3509,3 +3509,78 @@ MOBILE SAFE (no break)
   margin-bottom: 10px;
 }
 
+/* =========================
+🔥 CLEAN DESKTOP NAV FIX
+========================= */
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.nav-links a {
+  font-size: 14px;
+  color: #cbd5e1;
+  text-decoration: none;
+  transition: 0.2s;
+}
+
+.nav-links a:hover {
+  color: #60a5fa;
+}
+
+/* MORE DROPDOWN */
+.nav-more {
+  position: relative;
+  cursor: pointer;
+  color: #cbd5e1;
+  font-size: 14px;
+}
+
+.nav-more:hover .dropdown {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.dropdown {
+  position: absolute;
+  top: 30px;
+  left: 0;
+  background: #0f172a;
+  border-radius: 10px;
+  padding: 10px;
+  min-width: 160px;
+
+  opacity: 0;
+  transform: translateY(10px);
+  pointer-events: none;
+
+  transition: 0.25s ease;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.dropdown a {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
+.dropdown a:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.nav-search input {
+  width: 180px;
+}
+
+@media (max-width: 1200px) {
+  .user-greet {
+    display: none;
+  }
+}
+
+.header-container {
+  gap: 20px;
+}
