@@ -31,7 +31,6 @@
     <div class="floating-shape shape2"></div>
     <div class="floating-shape shape3"></div>
 
-    <!-- ✅ FIXED TEXT BREAK -->
     <h1>
       Build the Perfect  
       <span class="gradient-text">AI Workflow</span><br>
@@ -42,23 +41,23 @@
       Tell us your goal — Aquiplex builds your perfect set of AI tools instantly.
     </p>
 
+    <!-- ✅ UPDATED BUTTONS -->
     <div class="hero-buttons">
-      <a href="/app" class="primary-btn">
-        🚀 Use Now — No Signup
+      <a href="/signup" class="primary-btn">
+        🚀 Get Started Free
       </a>
 
-      <a href="#how-it-works" class="secondary-btn">
-        ▶ See How It Works
+      <a href="/login" class="secondary-btn">
+        🔑 Login
       </a>
     </div>
 
-    <!-- 🔥 FIXED INPUT -->
+    <!-- DEMO INPUT -->
     <div class="demo-box">
       <input id="demoInput" type="text" placeholder="Create a YouTube video..." readonly>
       <button>Generate</button>
     </div>
 
-    <!-- ✅ FIXED WRAP -->
     <div class="examples">
       <span>Write an essay</span>
       <span>Start a business</span>
@@ -138,7 +137,6 @@
   <!-- 🚀 CTA -->
   <section class="final-cta">
 
-    <!-- ✅ BETTER BREAK -->
     <h2>
       Stop Searching.<br>
       Start Creating.
@@ -146,8 +144,9 @@
 
     <p>Build your AI workflow in seconds.</p>
 
-    <a href="/app" class="primary-btn big-btn">
-      🚀 Use Now
+    <!-- ✅ FIXED CTA -->
+    <a href="/signup" class="primary-btn big-btn">
+      🚀 Get Started Free
     </a>
 
   </section>
@@ -167,87 +166,36 @@
     ];
 
     let i = 0;
+    let j = 0;
+    let current = "";
+    let isDeleting = false;
+
     const input = document.getElementById("demoInput");
 
-    setInterval(() => {
-      input.placeholder = texts[i];
-      i = (i + 1) % texts.length;
-    }, 2000);
-  </script>
-  <script>
+    function typeEffect() {
+      current = texts[i];
 
-  /* =========================
-  🔥 CURSOR GLOW
-  ========================= */
-  const glow = document.createElement("div");
-  glow.classList.add("cursor-glow");
-  document.body.appendChild(glow);
-
-  document.addEventListener("mousemove", (e) => {
-    glow.style.left = e.clientX + "px";
-    glow.style.top = e.clientY + "px";
-  });
-
-  /* =========================
-  🔥 SCROLL REVEAL
-  ========================= */
-  const reveals = document.querySelectorAll(".hero, section");
-
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("active");
+      if (isDeleting) {
+        input.placeholder = current.substring(0, j--);
+      } else {
+        input.placeholder = current.substring(0, j++);
       }
-    });
-  }, { threshold: 0.15 });
 
-  reveals.forEach(el => {
-    el.classList.add("reveal");
-    observer.observe(el);
-  });
+      if (!isDeleting && j === current.length) {
+        isDeleting = true;
+        setTimeout(typeEffect, 1200);
+        return;
+      }
 
-  /* =========================
-  🔥 SMART TYPING INPUT (UPGRADE)
-  ========================= */
-  const texts = [
-    "Create a YouTube video...",
-    "Write an essay...",
-    "Start an online business...",
-    "Grow on Instagram..."
-  ];
+      if (isDeleting && j === 0) {
+        isDeleting = false;
+        i = (i + 1) % texts.length;
+      }
 
-  let i = 0;
-  let j = 0;
-  let current = "";
-  let isDeleting = false;
-
-  const input = document.getElementById("demoInput");
-
-  function typeEffect() {
-    current = texts[i];
-
-    if (isDeleting) {
-      input.placeholder = current.substring(0, j--);
-    } else {
-      input.placeholder = current.substring(0, j++);
+      setTimeout(typeEffect, isDeleting ? 40 : 70);
     }
 
-    if (!isDeleting && j === current.length) {
-      isDeleting = true;
-      setTimeout(typeEffect, 1200);
-      return;
-    }
-
-    if (isDeleting && j === 0) {
-      isDeleting = false;
-      i = (i + 1) % texts.length;
-    }
-
-    setTimeout(typeEffect, isDeleting ? 40 : 70);
-  }
-
-  typeEffect();
-
+    typeEffect();
   </script>
 
 </body>
