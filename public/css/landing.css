@@ -395,3 +395,137 @@ footer {
     max-width: 350px !important;
   }
 }
+
+/* =========================
+🔥 SECTION SPACING
+========================= */
+
+section {
+  padding: 60px 20px;
+}
+
+h2 {
+  text-align: center;
+  font-size: 28px;
+  margin-bottom: 20px;
+}
+
+/* =========================
+🔥 HOW IT WORKS (CARDS)
+========================= */
+
+.steps {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  max-width: 900px;
+  margin: auto;
+}
+
+.step {
+  background: rgba(15, 23, 42, 0.9);
+  color: white;
+  padding: 20px;
+  border-radius: 16px;
+  transition: 0.3s;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.step:hover {
+  transform: translateY(-5px);
+}
+
+.step-icon {
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+/* =========================
+💻 DESKTOP GRID
+========================= */
+
+@media (min-width: 768px) {
+  .steps {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* =========================
+🔥 WHY SECTION
+========================= */
+
+.features {
+  display: grid;
+  gap: 20px;
+  max-width: 900px;
+  margin: auto;
+}
+
+.feature-card {
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(12px);
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  transition: 0.3s;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .features {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* =========================
+🔥 USE CASES
+========================= */
+
+.use-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  max-width: 700px;
+  margin: auto;
+}
+
+.use-grid div {
+  padding: 12px 18px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.7);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+  transition: 0.25s;
+}
+
+.use-grid div:hover {
+  transform: translateY(-3px);
+}
+
+/* =========================
+🔥 FINAL CTA
+========================= */
+
+.final-cta {
+  text-align: center;
+}
+
+.final-cta h2 {
+  font-size: 32px;
+  margin-bottom: 10px;
+}
+
+.final-cta p {
+  opacity: 0.7;
+  margin-bottom: 20px;
+}
+
+.final-cta .btn-primary {
+  padding: 16px 30px;
+  font-size: 16px;
+}
