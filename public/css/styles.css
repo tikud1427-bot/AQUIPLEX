@@ -3786,3 +3786,56 @@ section h2 {
   }
 
 }
+
+
+
+.gradient-text {
+  background: linear-gradient(90deg, #3b82f6, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* floating orbs */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.4;
+}
+
+.orb1 {
+  width: 300px;
+  height: 300px;
+  background: #3b82f6;
+  top: 10%;
+  left: 10%;
+  animation: floatOrb 10s infinite alternate;
+}
+
+.orb2 {
+  width: 300px;
+  height: 300px;
+  background: #7c3aed;
+  bottom: 10%;
+  right: 10%;
+  animation: floatOrb 12s infinite alternate;
+}
+
+@keyframes floatOrb {
+  from { transform: translateY(0px); }
+  to { transform: translateY(-40px); }
+}
+
+/* use grid */
+.use-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+}
+
+.use-grid div {
+  background: rgba(255,255,255,0.05);
+  padding: 12px 18px;
+  border-radius: 10px;
+}

@@ -12,34 +12,48 @@
   <!-- 🔝 NAVBAR -->
   <header class="navbar">
     <div class="logo">⚡ Aquiplex</div>
-    <a href="/app" class="nav-btn">Use Now</a>
+
+    <div class="nav-right">
+      <a href="/app" class="nav-btn">Use Now</a>
+    </div>
   </header>
 
-  <!-- 🚀 HERO SECTION -->
+  <!-- 🚀 HERO -->
   <section class="hero">
-    <h1>Build the Perfect AI Workflow for Anything</h1>
+
+    <!-- floating blur orbs -->
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+
+    <h1>
+      Build the Perfect <br>
+      <span class="gradient-text">AI Workflow</span> for Anything
+    </h1>
 
     <p>
-      Tell us your goal — Aquiplex instantly gives you the exact AI tools 
-      you need to get it done faster.
+      Tell us your goal — Aquiplex builds your perfect set of AI tools instantly.
     </p>
 
     <div class="hero-buttons">
-      <a href="/app"><button class="primary-btn">🚀 Use Now</button></a>
-      <button class="secondary-btn">▶️ See How It Works</button>
+      <a href="/app">
+        <button class="primary-btn">🚀 Use Now — No Signup</button>
+      </a>
+
+      <button class="secondary-btn">▶ See How It Works</button>
     </div>
 
-    <!-- Fake input demo -->
+    <!-- 🔥 INTERACTIVE INPUT -->
     <div class="demo-box">
-      <input type="text" placeholder="Create a YouTube video..." disabled>
+      <input id="demoInput" type="text" placeholder="Create a YouTube video..." readonly>
       <button>Generate</button>
     </div>
 
     <div class="examples">
-      <span>“Write an essay”</span>
-      <span>“Start an online business”</span>
-      <span>“Grow on Instagram”</span>
+      <span>Write an essay</span>
+      <span>Start a business</span>
+      <span>Grow on Instagram</span>
     </div>
+
   </section>
 
   <!-- 💡 HOW IT WORKS -->
@@ -47,42 +61,49 @@
     <h2>How It Works</h2>
 
     <div class="steps">
+
       <div class="step">
-        <h3>1. Tell Your Goal</h3>
-        <p>Describe what you want to do in simple words.</p>
+        <div class="step-icon">🎯</div>
+        <h3>Tell Your Goal</h3>
+        <p>Describe what you want to achieve in simple words.</p>
       </div>
 
       <div class="step">
-        <h3>2. Get Your AI Bundle</h3>
-        <p>We generate the best tools for your task.</p>
+        <div class="step-icon">⚙️</div>
+        <h3>Get AI Bundle</h3>
+        <p>We generate the best tools for your exact task.</p>
       </div>
 
       <div class="step">
-        <h3>3. Start Creating</h3>
-        <p>Use the tools instantly and get results faster.</p>
+        <div class="step-icon">🚀</div>
+        <h3>Start Creating</h3>
+        <p>Use tools instantly and get results faster.</p>
       </div>
+
     </div>
   </section>
 
-  <!-- ✨ WHY AQUIPLEX -->
+  <!-- ✨ WHY -->
   <section class="why">
     <h2>Why Aquiplex?</h2>
 
     <div class="features">
-      <div>
+
+      <div class="feature-card">
         <h3>⚡ Save Hours</h3>
-        <p>No more searching for tools — we do it for you.</p>
+        <p>No more searching. We do the work for you.</p>
       </div>
 
-      <div>
+      <div class="feature-card">
         <h3>🧠 Smart AI</h3>
-        <p>Curated bundles based on real use cases.</p>
+        <p>Real workflows, not random tool lists.</p>
       </div>
 
-      <div>
+      <div class="feature-card">
         <h3>🧰 Workspace</h3>
-        <p>Save and reuse your AI workflows anytime.</p>
+        <p>Save and reuse your workflows anytime.</p>
       </div>
+
     </div>
   </section>
 
@@ -90,29 +111,49 @@
   <section class="use-cases">
     <h2>Use Cases</h2>
 
-    <ul>
-      <li>🎥 Create YouTube Content</li>
-      <li>📚 Study & Write Essays</li>
-      <li>💼 Build Online Income</li>
-      <li>📱 Grow on Social Media</li>
-      <li>🧑‍💻 Code & Build Projects</li>
-    </ul>
+    <div class="use-grid">
+      <div>🎥 YouTube Content</div>
+      <div>📚 Study & Essays</div>
+      <div>💼 Online Income</div>
+      <div>📱 Social Growth</div>
+      <div>🧑‍💻 Coding Projects</div>
+    </div>
   </section>
 
-  <!-- 🚀 FINAL CTA -->
+  <!-- 🚀 CTA -->
   <section class="final-cta">
+
     <h2>Stop Searching. Start Creating.</h2>
-    <p>Build your perfect AI workflow in seconds.</p>
+    <p>Build your AI workflow in seconds.</p>
 
     <a href="/app">
-      <button class="primary-btn">🚀 Use Now</button>
+      <button class="primary-btn big-btn">🚀 Use Now</button>
     </a>
+
   </section>
 
   <!-- 🧭 FOOTER -->
   <footer class="footer">
     <p>© 2026 Aquiplex</p>
   </footer>
+
+  <!-- ✨ JS (TYPING EFFECT) -->
+  <script>
+    const texts = [
+      "Create a YouTube video...",
+      "Write an essay...",
+      "Start an online business...",
+      "Grow on Instagram..."
+    ];
+
+    let i = 0;
+    const input = document.getElementById("demoInput");
+
+    setInterval(() => {
+      input.placeholder = texts[i];
+      i = (i + 1) % texts.length;
+    }, 2000);
+  </script>
 
 </body>
 </html>
