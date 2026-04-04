@@ -3767,3 +3767,59 @@ MOBILE SAFE (no break)
 body:not(.landing-page) .logo span {
   color: white;
 }
+
+/* ===== LANDING PAGE SHADOW FIX ===== */
+
+.landing-page * {
+  box-shadow: none !important;
+}
+
+/* Hero container soft ambient glow */
+.landing-page .hero,
+.landing-page .hero-section {
+  box-shadow: 
+    0 10px 40px rgba(0, 0, 0, 0.08),
+    0 0 120px rgba(0, 123, 255, 0.15);
+}
+
+/* Buttons (modern soft shadow) */
+.landing-page button,
+.landing-page .btn {
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.08),
+    0 0 20px rgba(0, 123, 255, 0.12);
+  transition: all 0.3s ease;
+}
+
+.landing-page button:hover,
+.landing-page .btn:hover {
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.12),
+    0 0 40px rgba(0, 123, 255, 0.25);
+}
+
+/* Cards / sections */
+.landing-page .card,
+.landing-page .box,
+.landing-page .container {
+  box-shadow: 
+    0 8px 30px rgba(0, 0, 0, 0.06);
+  border-radius: 16px;
+}
+
+/* Remove ugly edge shadow feel */
+.landing-page .hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at center,
+    rgba(255,255,255,0.6),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.landing-page {
+  background: linear-gradient(135deg, #eef3ff, #f8fbff);
+}
