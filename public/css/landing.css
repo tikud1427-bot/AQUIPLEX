@@ -267,3 +267,195 @@ body.landing-page {
   }
 
 }
+.auth-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-btn.secondary {
+  background: transparent;
+  border: 1px solid #3b82f6;
+  color: #3b82f6;
+}
+
+.nav-btn.primary {
+  background: #3b82f6;
+  color: #fff;
+}
+
+/* =========================
+🚀 PREMIUM ANIMATION UPGRADE
+SAFE ADD-ON (NO BREAK)
+========================= */
+
+/* ===== FADE IN ANIMATION ===== */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(25px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Apply to sections */
+.landing-page .hero,
+.landing-page section {
+  animation: fadeUp 0.8s ease forwards;
+}
+
+/* Stagger effect */
+.landing-page .hero h1 { animation-delay: 0.1s; }
+.landing-page .hero p { animation-delay: 0.2s; }
+.landing-page .hero-buttons { animation-delay: 0.3s; }
+.landing-page .demo-box { animation-delay: 0.4s; }
+
+/* ===== BACKGROUND GLOW (AI FEEL) ===== */
+.landing-page .hero::before {
+  content: "";
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(59,130,246,0.25), transparent 70%);
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  filter: blur(80px);
+  z-index: 0;
+}
+
+/* Keep content above */
+.landing-page .hero * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== FLOATING GRADIENT ANIMATION ===== */
+@keyframes floatGlow {
+  0% { transform: translate(-50%, 0px); }
+  50% { transform: translate(-50%, 20px); }
+  100% { transform: translate(-50%, 0px); }
+}
+
+.landing-page .hero::before {
+  animation: floatGlow 6s ease-in-out infinite;
+}
+
+/* ===== BUTTON HOVER (PREMIUM) ===== */
+.landing-page .primary-btn {
+  transition: all 0.25s ease;
+  box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+}
+
+.landing-page .primary-btn:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 15px 40px rgba(37, 99, 235, 0.5);
+}
+
+/* Secondary button */
+.landing-page .secondary-btn {
+  transition: all 0.25s ease;
+}
+
+.landing-page .secondary-btn:hover {
+  background: #f1f5f9;
+  transform: translateY(-2px);
+}
+
+/* ===== INPUT INTERACTION ===== */
+.landing-page .demo-box {
+  transition: all 0.3s ease;
+}
+
+.landing-page .demo-box:hover {
+  transform: scale(1.02);
+  box-shadow: 0 12px 35px rgba(0,0,0,0.12);
+}
+
+/* ===== CARDS HOVER ===== */
+.landing-page .step,
+.landing-page .feature-card {
+  transition: all 0.3s ease;
+}
+
+.landing-page .step:hover,
+.landing-page .feature-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+
+/* ===== USE CASE PILLS ===== */
+.landing-page .use-grid div {
+  transition: all 0.25s ease;
+}
+
+.landing-page .use-grid div:hover {
+  transform: translateY(-2px);
+  background: #f1f5f9;
+}
+
+/* ===== CTA BUTTON BIG GLOW ===== */
+.landing-page .big-btn {
+  font-size: 16px;
+  padding: 16px 28px;
+  box-shadow: 0 12px 35px rgba(37, 99, 235, 0.4);
+}
+
+/* ===== SMOOTH SCROLL ===== */
+html {
+  scroll-behavior: smooth;
+}
+
+/* =========================
+🚀 NEXT LEVEL PREMIUM UI
+========================= */
+
+/* ===== GLASSMORPHISM ===== */
+.landing-page .step,
+.landing-page .feature-card,
+.landing-page .use-grid div {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.4);
+}
+
+/* ===== CURSOR GLOW ===== */
+.cursor-glow {
+  position: fixed;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(59,130,246,0.25), transparent 70%);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  filter: blur(80px);
+}
+
+/* ===== SCROLL REVEAL ===== */
+.reveal {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: all 0.7s ease;
+}
+
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ===== HERO TEXT POLISH ===== */
+.landing-page .hero h1 {
+  letter-spacing: -0.5px;
+}
+
+/* ===== SUBTLE BACKGROUND DEPTH ===== */
+body.landing-page::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 20% 20%, rgba(59,130,246,0.1), transparent 40%),
+              radial-gradient(circle at 80% 60%, rgba(14,165,233,0.1), transparent 40%);
+  z-index: -1;
+}

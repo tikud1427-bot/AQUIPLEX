@@ -17,8 +17,9 @@
       <span>Aquiplex</span>
     </div>
 
-    <div class="nav-right">
-      <a href="/app" class="nav-btn">Use Now</a>
+    <div class="auth-buttons">
+      <a href="/login" class="nav-btn secondary">Login</a>
+      <a href="/signup" class="nav-btn primary">Sign Up</a>
     </div>
   </header>
 
@@ -172,6 +173,81 @@
       input.placeholder = texts[i];
       i = (i + 1) % texts.length;
     }, 2000);
+  </script>
+  <script>
+
+  /* =========================
+  🔥 CURSOR GLOW
+  ========================= */
+  const glow = document.createElement("div");
+  glow.classList.add("cursor-glow");
+  document.body.appendChild(glow);
+
+  document.addEventListener("mousemove", (e) => {
+    glow.style.left = e.clientX + "px";
+    glow.style.top = e.clientY + "px";
+  });
+
+  /* =========================
+  🔥 SCROLL REVEAL
+  ========================= */
+  const reveals = document.querySelectorAll(".hero, section");
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("active");
+      }
+    });
+  }, { threshold: 0.15 });
+
+  reveals.forEach(el => {
+    el.classList.add("reveal");
+    observer.observe(el);
+  });
+
+  /* =========================
+  🔥 SMART TYPING INPUT (UPGRADE)
+  ========================= */
+  const texts = [
+    "Create a YouTube video...",
+    "Write an essay...",
+    "Start an online business...",
+    "Grow on Instagram..."
+  ];
+
+  let i = 0;
+  let j = 0;
+  let current = "";
+  let isDeleting = false;
+
+  const input = document.getElementById("demoInput");
+
+  function typeEffect() {
+    current = texts[i];
+
+    if (isDeleting) {
+      input.placeholder = current.substring(0, j--);
+    } else {
+      input.placeholder = current.substring(0, j++);
+    }
+
+    if (!isDeleting && j === current.length) {
+      isDeleting = true;
+      setTimeout(typeEffect, 1200);
+      return;
+    }
+
+    if (isDeleting && j === 0) {
+      isDeleting = false;
+      i = (i + 1) % texts.length;
+    }
+
+    setTimeout(typeEffect, isDeleting ? 40 : 70);
+  }
+
+  typeEffect();
+
   </script>
 
 </body>
