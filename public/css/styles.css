@@ -4308,3 +4308,127 @@ html {
   }
 
 }
+
+/* ============================= */
+/* 🚨 FINAL LANDING PAGE FIX */
+/* ============================= */
+
+/* FIX HERO LAYOUT (FORCE CENTER) */
+.landing-page .hero {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+
+  padding: 120px 20px 60px !important;
+  max-width: 100% !important;
+}
+
+/* FIX WIDTH ISSUE */
+.landing-page .hero > * {
+  max-width: 700px !important;
+  width: 100% !important;
+}
+
+/* FIX HEADING */
+.landing-page .hero h1 {
+  font-size: 34px !important;
+  line-height: 1.3 !important;
+}
+
+/* FIX TEXT */
+.landing-page .hero p {
+  font-size: 14px !important;
+  margin: 10px auto 20px !important;
+}
+
+/* ============================= */
+/* 🔍 DEMO INPUT (YOUR SEARCH BAR) */
+/* ============================= */
+
+.landing-page .demo-box {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 420px !important;
+  margin: 20px auto !important;
+  padding: 6px !important;
+
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+
+  box-shadow: 0 8px 25px rgba(0,0,0,0.08) !important;
+}
+
+/* INPUT FIX */
+.landing-page .demo-box input {
+  flex: 1 !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+
+  color: #111 !important;
+  font-size: 14px !important;
+  padding: 12px 14px !important;
+}
+
+/* PLACEHOLDER */
+.landing-page .demo-box input::placeholder {
+  color: #666 !important;
+}
+
+/* BUTTON FIX */
+.landing-page .demo-box button {
+  border: none !important;
+  border-radius: 999px !important;
+
+  padding: 10px 16px !important;
+  font-size: 13px !important;
+
+  background: linear-gradient(135deg, #3b82f6, #06b6d4) !important;
+  color: white !important;
+
+  box-shadow: none !important;
+}
+
+/* ============================= */
+/* 📱 MOBILE HARD FIX */
+/* ============================= */
+
+@media (max-width: 768px) {
+
+  .landing-page .hero {
+    padding: 100px 15px 40px !important;
+  }
+
+  .landing-page .hero h1 {
+    font-size: 26px !important;
+  }
+
+  .landing-page .hero-buttons {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+
+  .landing-page .hero-buttons a {
+    width: 100% !important;
+    max-width: 280px !important;
+  }
+
+  /* SEARCH BAR STACK FIX */
+  .landing-page .demo-box {
+    flex-direction: row !important;
+    width: 100% !important;
+  }
+
+  .landing-page .demo-box input {
+    font-size: 13px !important;
+  }
+
+  .landing-page .demo-box button {
+    font-size: 12px !important;
+    padding: 10px 12px !important;
+  }
+
+}
