@@ -529,3 +529,109 @@ h2 {
   padding: 16px 30px;
   font-size: 16px;
 }
+
+/* =========================
+🔥 HERO UPGRADE
+========================= */
+
+.hero img {
+  max-width: 160px;
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+  margin-top: 10px;
+}
+
+/* Add glow behind logo */
+.hero img {
+  position: relative;
+}
+
+.hero img::after {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle, rgba(59,130,246,0.4), transparent);
+  filter: blur(40px);
+  z-index: -1;
+}
+
+/* =========================
+🔥 BUTTON UPGRADE
+========================= */
+
+.btn-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+/* subtle glow pulse */
+.btn-primary::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,0.4), transparent);
+  opacity: 0;
+  transition: 0.3s;
+}
+
+.btn-primary:hover::after {
+  opacity: 1;
+}
+
+/* =========================
+🔥 SECTION SEPARATION
+========================= */
+
+.how-it-works {
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,0.03));
+}
+
+.why {
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+}
+
+.use-cases {
+  background: linear-gradient(180deg, rgba(0,0,0,0.02), transparent);
+}
+
+/* =========================
+🔥 CARD DEPTH BOOST
+========================= */
+
+.step {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.feature-card {
+  border: 1px solid rgba(0,0,0,0.05);
+}
+
+/* =========================
+🔥 TYPOGRAPHY BOOST
+========================= */
+
+h1 {
+  letter-spacing: -0.5px;
+}
+
+h2 {
+  font-weight: 700;
+}
+
+/* =========================
+🔥 MICRO ANIMATIONS
+========================= */
+
+.step,
+.feature-card,
+.use-grid div {
+  transition: all 0.3s ease;
+}
+
+.step:hover,
+.feature-card:hover,
+.use-grid div:hover {
+  transform: translateY(-6px) scale(1.02);
+}
