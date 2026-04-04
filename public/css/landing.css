@@ -635,3 +635,68 @@ h2 {
 .use-grid div:hover {
   transform: translateY(-6px) scale(1.02);
 }
+
+/* =========================
+🔥 HERO CLEAN (NO IMAGE)
+========================= */
+
+.hero {
+  flex-direction: column !important;
+  text-align: center !important;
+  max-width: 700px;
+  margin: auto;
+}
+
+.hero-text {
+  width: 100%;
+}
+
+/* Remove any leftover image space */
+.hero img {
+  display: none !important;
+}
+
+/* =========================
+🔥 HERO CENTER UPGRADE
+========================= */
+
+.hero {
+  gap: 25px;
+}
+
+/* Bigger, stronger heading */
+.hero h1 {
+  font-size: 40px;
+  line-height: 1.2;
+}
+
+/* Better paragraph */
+.hero p {
+  font-size: 17px;
+  opacity: 0.8;
+}
+
+/* Center buttons properly */
+.hero-buttons {
+  justify-content: center;
+}
+
+/* Examples styling */
+.examples {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+@media (max-width: 768px) {
+  .hero h1 {
+    font-size: 28px;
+  }
+
+  .hero p {
+    font-size: 15px;
+  }
+}
