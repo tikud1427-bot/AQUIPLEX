@@ -372,3 +372,65 @@ Fix blur, contrast, spacing
   }
 
 }
+
+/* =========================
+🔥 REAL MOBILE FIX (CRITICAL)
+Kills fog + fixes layout
+========================= */
+
+@media (max-width: 768px) {
+
+  /* ❌ REMOVE GLOW COMPLETELY */
+  .landing-page .hero::before {
+    display: none !important;
+  }
+
+  /* ✅ CLEAN HERO */
+  .landing-page .hero {
+    padding: 70px 16px 40px !important;
+  }
+
+  /* ✅ TEXT FIX */
+  .landing-page .hero h1 {
+    font-size: 26px !important;
+    line-height: 1.3;
+    color: #0f172a !important;
+  }
+
+  .landing-page .hero p {
+    font-size: 14px !important;
+    color: #334155 !important;
+  }
+
+  /* ✅ BUTTON FIX (YOUR CLASSES) */
+  .landing-page .primary-btn,
+  .landing-page .secondary-btn {
+    width: 100% !important;
+    max-width: 280px;
+    margin: auto;
+  }
+
+  /* ✅ INPUT FIX (IMPORTANT — your class is demo-box, NOT hero-input) */
+  .landing-page .demo-box {
+    flex-direction: column !important;
+    border-radius: 16px;
+    padding: 10px;
+  }
+
+  .landing-page .demo-box input {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .landing-page .demo-box button {
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  /* ✅ CARDS FIX */
+  .landing-page .step {
+    width: 100% !important;
+    max-width: 100%;
+  }
+
+}
