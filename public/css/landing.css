@@ -1,15 +1,26 @@
 /* =========================
-🚀 AQUIPLEX PREMIUM LANDING (FINAL)
-Mobile Perfect • Desktop Clean • Modern SaaS UI
+🚀 AQUIPLEX NEXT-LEVEL PREMIUM UI
+Stripe + OpenAI Inspired
 ========================= */
 
 /* ===== BASE ===== */
 body.landing-page {
   font-family: 'Poppins', sans-serif;
-  background: linear-gradient(180deg, #f8fafc, #eef2ff);
+  margin: 0;
   color: #0f172a;
   overflow-x: hidden;
-  margin: 0;
+
+  /* Animated gradient */
+  background: linear-gradient(-45deg, #eef2ff, #f8fafc, #e0f2fe, #eef2ff);
+  background-size: 400% 400%;
+  animation: gradientShift 12s ease infinite;
+}
+
+/* Gradient animation */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 /* ===== NAVBAR ===== */
@@ -17,13 +28,15 @@ body.landing-page {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(255,255,255,0.7);
-  backdrop-filter: blur(12px);
+
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(16px);
   border-bottom: 1px solid rgba(0,0,0,0.05);
+
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
+  padding: 14px 20px;
 }
 
 .logo {
@@ -35,7 +48,7 @@ body.landing-page {
   color: #2563eb;
 }
 
-/* Buttons */
+/* ===== NAV BUTTONS ===== */
 .nav-buttons {
   display: flex;
   gap: 10px;
@@ -44,10 +57,14 @@ body.landing-page {
 .btn-outline {
   padding: 8px 16px;
   border-radius: 999px;
-  border: 1px solid #2563eb;
+  border: 1px solid rgba(37,99,235,0.4);
   background: transparent;
   color: #2563eb;
-  font-size: 14px;
+  transition: 0.3s;
+}
+
+.btn-outline:hover {
+  background: rgba(37,99,235,0.08);
 }
 
 .btn-primary {
@@ -56,32 +73,57 @@ body.landing-page {
   background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: white;
   border: none;
-  font-size: 14px;
-  box-shadow: 0 6px 18px rgba(37,99,235,0.3);
+  box-shadow: 0 8px 20px rgba(37,99,235,0.35);
+  transition: 0.3s;
 }
 
-/* ===== HERO SECTION ===== */
+.btn-primary:hover {
+  transform: translateY(-2px);
+}
+
+/* ===== HERO ===== */
 .hero {
   min-height: calc(100vh - 70px);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 25px;
+  gap: 30px;
   padding: 20px;
   text-align: center;
-  animation: fadeUp 0.8s ease;
+  position: relative;
 }
 
-/* Gradient glow background */
-.hero::before {
+/* ===== FLOATING ORBS (AI EFFECT) ===== */
+.hero::before,
+.hero::after {
   content: "";
   position: absolute;
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, rgba(59,130,246,0.2), transparent);
-  filter: blur(80px);
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.6;
   z-index: -1;
+}
+
+.hero::before {
+  background: #3b82f6;
+  top: 10%;
+  left: 10%;
+  animation: float 8s ease-in-out infinite;
+}
+
+.hero::after {
+  background: #06b6d4;
+  bottom: 10%;
+  right: 10%;
+  animation: float 10s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-30px); }
 }
 
 /* ===== USE CASES ===== */
@@ -89,30 +131,32 @@ body.landing-page {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 10px;
+  gap: 12px;
   max-width: 600px;
 }
 
 .use-cases button {
-  padding: 10px 16px;
+  padding: 10px 18px;
   border-radius: 999px;
-  border: none;
-  background: rgba(255,255,255,0.7);
-  backdrop-filter: blur(10px);
-  font-size: 14px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(12px);
+
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+
   transition: 0.25s;
 }
 
 .use-cases button:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px) scale(1.03);
 }
 
 /* ===== HEADINGS ===== */
 .hero h1 {
-  font-size: 30px;
-  line-height: 1.3;
+  font-size: 32px;
   font-weight: 700;
+  line-height: 1.3;
 }
 
 .hero h1 span {
@@ -123,25 +167,25 @@ body.landing-page {
 
 .hero p {
   font-size: 15px;
-  opacity: 0.7;
+  opacity: 0.75;
   max-width: 500px;
 }
 
 /* ===== CTA BUTTON ===== */
 .cta-button {
-  padding: 16px 28px;
+  padding: 16px 30px;
   border-radius: 999px;
   background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: white;
   font-weight: 500;
-  border: none;
   font-size: 16px;
-  box-shadow: 0 10px 25px rgba(37,99,235,0.35);
-  transition: 0.3s ease;
+
+  box-shadow: 0 12px 30px rgba(37,99,235,0.4);
+  transition: 0.3s;
 }
 
 .cta-button:hover {
-  transform: translateY(-3px);
+  transform: translateY(-4px) scale(1.02);
 }
 
 .cta-button:active {
@@ -156,26 +200,10 @@ footer {
   opacity: 0.6;
 }
 
-/* ===== ANIMATION ===== */
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(25px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 /* =========================
-📱 MOBILE IMPROVEMENTS
+📱 MOBILE
 ========================= */
 @media (max-width: 768px) {
-
-  .hero {
-    gap: 20px;
-  }
 
   .hero h1 {
     font-size: 26px;
@@ -189,16 +217,16 @@ footer {
 }
 
 /* =========================
-💻 DESKTOP IMPROVEMENTS
+💻 DESKTOP
 ========================= */
 @media (min-width: 1024px) {
 
   .hero {
-    padding: 60px 20px;
+    padding: 80px 20px;
   }
 
   .hero h1 {
-    font-size: 42px;
+    font-size: 48px;
   }
 
   .hero p {
@@ -207,7 +235,7 @@ footer {
 
   .cta-button {
     font-size: 18px;
-    padding: 18px 36px;
+    padding: 18px 40px;
   }
 
 }
