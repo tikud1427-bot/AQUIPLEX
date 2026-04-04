@@ -2,14 +2,14 @@ require("dotenv").config();
 const express = require("express");
 const fetch = require("node-fetch");
 const cors = require("cors");
-const path = require("path"); // ✅ IMPORTANT
+const path = require("path");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// ✅ Serve static files
+// ✅ Serve static frontend
 app.use(express.static(path.join(__dirname, "public")));
 
 const PORT = process.env.PORT || 3000;
@@ -94,7 +94,7 @@ function generateImage(prompt) {
 }
 
 /* =========================
-💬 CHAT ROUTE
+💬 CHAT API
 ========================= */
 app.post("/chat", async (req, res) => {
   const { message } = req.body;
@@ -108,8 +108,8 @@ app.post("/chat", async (req, res) => {
 
     try {
       reply = await chatWithGroq(message);
-    } catch (err) {
-      console.log("⚠️ Groq failed → switching to OpenRouter");
+    } catch {
+      console.log("⚠️ Groq failed → using OpenRouter");
       reply = await chatWithOpenRouter(message);
     }
 
@@ -121,7 +121,7 @@ app.post("/chat", async (req, res) => {
 });
 
 /* =========================
-🔍 SEARCH ROUTE
+🔍 SEARCH API
 ========================= */
 app.post("/search", async (req, res) => {
   const { query } = req.body;
@@ -133,13 +133,13 @@ app.post("/search", async (req, res) => {
   try {
     const results = await searchWeb(query);
     res.json(results);
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Search failed" });
   }
 });
 
 /* =========================
-🖼 IMAGE ROUTE
+🖼 IMAGE API
 ========================= */
 app.get("/image", (req, res) => {
   const { prompt } = req.query;
@@ -148,21 +148,21 @@ app.get("/image", (req, res) => {
     return res.status(400).json({ error: "Prompt is required" });
   }
 
-  const url = generateImage(prompt);
-  res.json({ url });
-});
-//
-const path = require("path");
-
-app.get("/mychatbot", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.json({ url: generateImage(prompt) });
 });
 
 /* =========================
-🏠 OPTIONAL HOME REDIRECT
+📄 ROUTES (FRONTEND)
 ========================= */
+
+// Home page
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "chatbot.html"));
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// Optional custom route
+app.get("/mychatbot", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 /* =========================
