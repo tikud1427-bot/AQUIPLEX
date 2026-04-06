@@ -602,7 +602,10 @@ app.get("/bundle/:id", async (req, res) => {
     res.send("Error loading bundle");
   }
 });
-
+// ================= CHATBOT PAGE =================
+app.get("/chatbot", requireLogin, (req, res) => {
+  res.render("chatbot");
+});
 // ================= CHATBOT =================
 app.post("/chat", async (req, res) => {
   const { message, history, mode, chatId } = req.body;
