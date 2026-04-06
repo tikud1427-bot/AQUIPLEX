@@ -774,6 +774,15 @@ app.get("/history/:id", requireLogin, async (req, res) => {
     res.status(500).json({ error: "Error loading chat" });
   }
 });
+//delete history
+app.delete("/history/:id", requireLogin, async (req, res) => {
+  await History.deleteOne({
+    _id: req.params.id,
+    userId: req.session.userId
+  });
+
+  res.sendStatus(200);
+});
 // ================= AUTH =================
 
 // LOGIN PAGE

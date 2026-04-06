@@ -18,74 +18,87 @@
       color: #38bdf8;
     }
 
-    /* MODE BUTTONS */
-    .modes {
-      margin: 10px;
+    .main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 20px;
     }
 
-    .modes button {
-      background: #0f172a;
-      color: #e2e8f0;
-      border: 1px solid #334155;
-      padding: 8px 12px;
+    .chat-container {
+      display: flex;
+      width: 95%;
+      max-width: 1000px;
+      gap: 10px;
+    }
+
+    .sidebar {
+      width: 220px;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .new-chat-btn {
+      width: 100%;
+      padding: 10px;
       border-radius: 8px;
-      margin: 3px;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .modes button:hover {
+      border: none;
       background: #38bdf8;
       color: black;
-    }
-
-    #modeLabel {
+      font-weight: bold;
+      cursor: pointer;
       margin-bottom: 10px;
-      font-size: 14px;
-      color: #94a3b8;
     }
 
-    /* CHAT BOX */
+    #historyList div {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px;
+      border-bottom: 1px solid #1e293b;
+      cursor: pointer;
+    }
+
+    #historyList button {
+      background: none;
+      border: none;
+      color: red;
+      cursor: pointer;
+    }
+
     #chat {
-      width: 95%;
-      max-width: 500px;
+      flex: 1;
       height: 500px;
       overflow-y: auto;
       border: 1px solid #1e293b;
       border-radius: 12px;
       padding: 10px;
-      background: #020617;
-      box-shadow: 0 0 20px rgba(0,0,0,0.4);
     }
 
-    /* CHAT BUBBLES */
     .msg {
-      padding: 10px 14px;
-      border-radius: 12px;
-      margin: 8px 0;
-      max-width: 75%;
-      word-wrap: break-word;
+      padding: 10px;
+      border-radius: 10px;
+      margin: 5px 0;
+      max-width: 70%;
     }
 
     .user {
       background: #38bdf8;
       color: black;
-      align-self: flex-end;
       margin-left: auto;
     }
 
     .bot {
       background: #1e293b;
-      color: #22c55e;
-      align-self: flex-start;
+      color: #e2e8f0;
     }
 
-    /* INPUT AREA */
     .input-area {
       display: flex;
       width: 95%;
-      max-width: 500px;
-      margin: 10px 0;
+      max-width: 1000px;
+      margin-top: 10px;
     }
 
     input {
@@ -93,114 +106,66 @@
       padding: 12px;
       border-radius: 8px;
       border: none;
-      outline: none;
       background: #0f172a;
       color: white;
     }
 
     button.send-btn {
-      padding: 12px 16px;
+      padding: 12px;
       margin-left: 8px;
-      border: none;
       border-radius: 8px;
+      border: none;
       background: #22c55e;
-      color: black;
       cursor: pointer;
-      font-weight: bold;
     }
-
-    button.send-btn:hover {
-      background: #16a34a;
-    }
-
-    img {
-      border-radius: 10px;
-      margin-top: 5px;
-      max-width: 100%;
-    }
-    .main {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-top: 20px;
-    }
-    nav {
-      width: 100%;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-    }
-    
   </style>
 </head>
 
 <body>
-  
-  <%- include('partials/nav') %>
+
+<%- include('partials/nav') %>
 
   <div class="main">
 
-<h2> 🌊 AQUA by Aquiplex</h2>
+  <!-- 🔥 MOBILE MENU BUTTON -->
+  <button class="menu-btn" onclick="toggleSidebar()">☰</button>
 
-<div class="modes">
-  <button onclick="setMode('chat')">💬 Chat</button>
-  <button onclick="setMode('search')">🌐 Search</button>
-  <button onclick="setMode('image')">🎨 Image</button>
+  <h2>🌊 AQUA by Aquiplex</h2>
+
+<div class="chat-container">
+
+  <div class="sidebar">
+    <button class="new-chat-btn" onclick="newChat()">➕ New Chat</button>
+    <div id="historyList"></div>
+  </div>
+
+  <div id="chat"></div>
+
 </div>
-
-<p id="modeLabel">Mode: chat</p>
-
-    <div class="chat-container">
-
-      <!-- 🧠 HISTORY SIDEBAR -->
-      <div id="historyList" style="
-        width:200px;
-        height:500px;
-        overflow-y:auto;
-        border:1px solid #1e293b;
-        border-radius:10px;
-        padding:10px;
-        background:#020617;
-      ">
-        <b>Chats</b>
-      </div>
-
-      <!-- 💬 CHAT AREA -->
-      <div id="chat" style="flex:1; max-width:unset;"></div>
-
-    </div>
 
 <div class="input-area">
   <input id="msg" placeholder="Ask something..." />
   <button class="send-btn" onclick="send()">Send</button>
-  </div>
+</div>
 
-  </div> <!-- ✅ CLOSE IT HERE -->
-
-  <footer class="footer">
-    <p>© <%= new Date().getFullYear() %> AQUIPLEX All rights reserved.</p>
-  </footer>
+</div>
 
 <script>
-  let messages = [];
-  let currentChatId = null;
-let mode = "chat";
+let messages = [];
+let currentChatId = null;
 
-  function setMode(m) {
-    mode = m;
-    document.getElementById("modeLabel").innerText = "Mode: " + m;
-  }
-
+// ✅ SEND MESSAGE
 async function send() {
   const input = document.getElementById("msg");
   const chat = document.getElementById("chat");
-  if (!currentChatId) {
-    messages = []; // new chat
-  }
 
-  const message = input.value;
-  if (!message.trim()) return;
+  const message = input.value.trim();
+  if (!message) return;
 
+  if (!currentChatId) messages = [];
+
+  // ✅ SHOW USER MESSAGE INSTANTLY
+  chat.innerHTML += `<div class="msg user">${message}</div>`;
   input.value = "";
 
   const loading = document.createElement("div");
@@ -214,98 +179,17 @@ async function send() {
   try {
     const res = await fetch("/chat", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         message,
         history: messages,
-        chatId: currentChatId,
-        mode
+        chatId: currentChatId
       })
     });
 
-    const data = await res.json(); // ✅ FIXED
-
-    document.getElementById("loading")?.remove();
-
-    if (data.image) {
-      chat.innerHTML = `
-        <div class="msg bot">
-          ${data.reply}
-          <br/>
-          <img src="${data.image}" />
-        </div>`;
-    } else {
-      chat.innerHTML = "";
-
-      data.messages.forEach(m => {
-        chat.innerHTML += `
-          <div class="msg ${m.role === "user" ? "user" : "bot"}">
-            ${m.content}
-          </div>`;
-      });
-    }
-
-    messages = data.messages;
-    currentChatId = data.chatId; // 🔥 VERY IMPORTANT
-
-    chat.scrollTop = chat.scrollHeight;
-
-  } catch (err) {
-    document.getElementById("loading")?.remove();
-    chat.innerHTML += `<div class="msg bot">⚠️ Error connecting to server</div>`;
-  }
-}
-
-document.getElementById("msg").addEventListener("keypress", function(e) {
-  if (e.key === "Enter") send();
-});
-
-  async function loadHistoryList() {
-    const res = await fetch("/history");
-    const chats = await res.json();
-
-    const list = document.getElementById("historyList");
-    list.innerHTML = "";
-
-    chats.forEach(chat => {
-      const div = document.createElement("div");
-      div.innerText = chat.title || "Chat";
-
-      div.style.cursor = "pointer";
-      div.style.padding = "8px";
-      div.style.borderBottom = "1px solid #1e293b";
-      div.style.marginBottom = "5px";
-
-      div.onmouseover = () => div.style.background = "#0f172a";
-      div.onmouseout = () => div.style.background = "transparent";
-
-      div.onclick = (e) => loadChat(chat._id, e);// 🔥 THIS CALLS IT
-
-      list.appendChild(div);
-    });
-  }
-
-  loadHistoryList();
-
-  
-  async function loadChat(id, event) {
-    // 🔥 highlight selected chat
-    document.querySelectorAll("#historyList div").forEach(d => {
-      d.style.background = "transparent";
-    });
-
-    if (event) {
-      event.currentTarget.style.background = "#1e293b";
-    }
-    const res = await fetch("/history/" + id);
     const data = await res.json();
+    document.getElementById("loading")?.remove();
 
-    currentChatId = id;
-    messages = data.messages;
-
-    const chat = document.getElementById("chat");
     chat.innerHTML = "";
 
     data.messages.forEach(m => {
@@ -314,6 +198,93 @@ document.getElementById("msg").addEventListener("keypress", function(e) {
           ${m.content}
         </div>`;
     });
+
+    messages = data.messages;
+    currentChatId = data.chatId;
+
+    chat.scrollTop = chat.scrollHeight;
+
+    loadHistoryList(); // 🔥 refresh sidebar
+
+  } catch {
+    document.getElementById("loading")?.remove();
+    chat.innerHTML += `<div class="msg bot">⚠️ Error</div>`;
+  }
+}
+
+// ✅ ENTER KEY
+document.getElementById("msg").addEventListener("keypress", e => {
+  if (e.key === "Enter") send();
+});
+
+// ✅ LOAD HISTORY LIST
+async function loadHistoryList() {
+  const res = await fetch("/history");
+  const chats = await res.json();
+
+  const list = document.getElementById("historyList");
+  list.innerHTML = "";
+
+  chats.forEach(chat => {
+    const div = document.createElement("div");
+
+    div.innerHTML = `
+      <span>${chat.title || "Chat"}</span>
+      <button onclick="event.stopPropagation(); deleteChat('${chat._id}')">🗑️</button>
+    `;
+
+    div.onclick = (e) => loadChat(chat._id, e);
+
+    list.appendChild(div);
+  });
+}
+
+// ✅ DELETE CHAT
+async function deleteChat(id) {
+  await fetch("/history/" + id, { method: "DELETE" });
+  loadHistoryList();
+  document.getElementById("chat").innerHTML = "";
+}
+
+// ✅ LOAD CHAT
+async function loadChat(id, event) {
+
+  document.querySelectorAll("#historyList div").forEach(d => {
+    d.style.background = "transparent";
+  });
+
+  if (event) event.currentTarget.style.background = "#1e293b";
+
+  const res = await fetch("/history/" + id);
+  const data = await res.json();
+
+  currentChatId = id;
+  messages = data.messages;
+
+  const chat = document.getElementById("chat");
+  chat.innerHTML = "";
+
+  data.messages.forEach(m => {
+    chat.innerHTML += `
+      <div class="msg ${m.role === "user" ? "user" : "bot"}">
+        ${m.content}
+      </div>`;
+  });
+
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// ✅ NEW CHAT
+function newChat() {
+  currentChatId = null;
+  messages = [];
+  document.getElementById("chat").innerHTML = "";
+}
+
+// INIT
+loadHistoryList();
+  function toggleSidebar() {
+    document.querySelector(".sidebar").classList.toggle("active");
   }
 </script>
 
