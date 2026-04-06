@@ -2,69 +2,154 @@
 <html>
 <head>
   <title>Aquiplex AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <style>
     body {
-      background: #0f172a;
-      color: white;
-      font-family: Arial;
+      background: #020617;
+      color: #e2e8f0;
+      font-family: 'Segoe UI', sans-serif;
       display: flex;
       flex-direction: column;
       align-items: center;
+      margin: 0;
     }
 
+    h2 {
+      margin-top: 20px;
+      color: #38bdf8;
+    }
+
+    /* MODE BUTTONS */
+    .modes {
+      margin: 10px;
+    }
+
+    .modes button {
+      background: #0f172a;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin: 3px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .modes button:hover {
+      background: #38bdf8;
+      color: black;
+    }
+
+    #modeLabel {
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: #94a3b8;
+    }
+
+    /* CHAT BOX */
     #chat {
-      width: 400px;
+      width: 95%;
+      max-width: 500px;
       height: 500px;
       overflow-y: auto;
-      border: 1px solid #334155;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
       padding: 10px;
-      margin-bottom: 10px;
       background: #020617;
+      box-shadow: 0 0 20px rgba(0,0,0,0.4);
     }
 
-    .user { color: #38bdf8; }
-    .bot { color: #22c55e; }
+    /* CHAT BUBBLES */
+    .msg {
+      padding: 10px 14px;
+      border-radius: 12px;
+      margin: 8px 0;
+      max-width: 75%;
+      word-wrap: break-word;
+    }
+
+    .user {
+      background: #38bdf8;
+      color: black;
+      align-self: flex-end;
+      margin-left: auto;
+    }
+
+    .bot {
+      background: #1e293b;
+      color: #22c55e;
+      align-self: flex-start;
+    }
+
+    /* INPUT AREA */
+    .input-area {
+      display: flex;
+      width: 95%;
+      max-width: 500px;
+      margin: 10px 0;
+    }
 
     input {
-      width: 300px;
-      padding: 10px;
+      flex: 1;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      background: #0f172a;
+      color: white;
     }
 
-    button {
-      padding: 10px;
+    button.send-btn {
+      padding: 12px 16px;
+      margin-left: 8px;
+      border: none;
+      border-radius: 8px;
+      background: #22c55e;
+      color: black;
       cursor: pointer;
-      margin: 5px;
+      font-weight: bold;
+    }
+
+    button.send-btn:hover {
+      background: #16a34a;
+    }
+
+    img {
+      border-radius: 10px;
+      margin-top: 5px;
+      max-width: 100%;
     }
   </style>
 </head>
 
 <body>
 
-<h2>Aquiplex AI Chat</h2>
+<h2>🤖 Aquiplex AI</h2>
 
-<!-- ✅ MODE BUTTONS -->
+<div class="modes">
+  <button onclick="setMode('chat')">💬 Chat</button>
+  <button onclick="setMode('search')">🌐 Search</button>
+  <button onclick="setMode('image')">🎨 Image</button>
+</div>
 
-  <div class="modes">
-    <button onclick="setMode('chat')">💬 Chat</button>
-    <button onclick="setMode('search')">🌐 Search</button>
-    <button onclick="setMode('image')">🎨 Image</button>
-  </div>
+<p id="modeLabel">Mode: chat</p>
 
-  <p id="modeLabel">Mode: chat</p>
+<div id="chat"></div>
 
-  <div id="chat"></div>
-<input id="msg" placeholder="Ask something..." />
-<button onclick="send()">Send</button>
+<div class="input-area">
+  <input id="msg" placeholder="Ask something..." />
+  <button class="send-btn" onclick="send()">Send</button>
+</div>
 
 <script>
 let history = [];
 let mode = "chat";
 
-  function setMode(m) {
-    mode = m;
-    document.getElementById("modeLabel").innerText = "Mode: " + m;
-  }
-  alert("Mode: " + m); // optional feedback
+function setMode(m) {
+  mode = m;
+  document.getElementById("modeLabel").innerText = "Mode: " + m;
+  alert("Mode: " + m);
 }
 
 async function send() {
@@ -74,42 +159,59 @@ async function send() {
   const message = input.value;
   if (!message.trim()) return;
 
-  chat.innerHTML += `<p class="user"><b>You:</b> ${message}</p>`;
+  chat.innerHTML += `<div class="msg user">${message}</div>`;
   input.value = "";
-  const loading = `<div class="msg bot" id="loading">Typing...</div>`;
-  chat.innerHTML += loading;
 
-  const res = await fetch("/chat", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      message,
-      history,
-      mode
-    })
-  });
-
-  document.getElementById("loading")?.remove();
-
-  // ✅ IMAGE SUPPORT
-  if (data.image) {
-    chat.innerHTML += `<p class="bot"><b>AI:</b> ${data.reply}</p>
-                       <img src="${data.image}" width="200" />`;
-  } else {
-    chat.innerHTML += `<p class="bot"><b>AI:</b> ${data.reply}</p>`;
-  }
-
-  // ✅ MEMORY
-  history.push({ role: "user", content: message });
-  history.push({ role: "assistant", content: data.reply });
+  const loading = document.createElement("div");
+  loading.className = "msg bot";
+  loading.id = "loading";
+  loading.innerText = "Typing...";
+  chat.appendChild(loading);
 
   chat.scrollTop = chat.scrollHeight;
+
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message,
+        history,
+        mode
+      })
+    });
+
+    const data = await res.json(); // ✅ FIXED
+
+    document.getElementById("loading")?.remove();
+
+    if (data.image) {
+      chat.innerHTML += `
+        <div class="msg bot">
+          ${data.reply}
+          <br/>
+          <img src="${data.image}" />
+        </div>`;
+    } else {
+      chat.innerHTML += `<div class="msg bot">${data.reply}</div>`;
+    }
+
+    history.push({ role: "user", content: message });
+    history.push({ role: "assistant", content: data.reply });
+
+    chat.scrollTop = chat.scrollHeight;
+
+  } catch (err) {
+    document.getElementById("loading")?.remove();
+    chat.innerHTML += `<div class="msg bot">⚠️ Error connecting to server</div>`;
+  }
 }
-  document.getElementById("msg").addEventListener("keypress", function(e) {
-    if (e.key === "Enter") send();
-  });
+
+document.getElementById("msg").addEventListener("keypress", function(e) {
+  if (e.key === "Enter") send();
+});
 </script>
 
 </body>
