@@ -121,3 +121,80 @@
 .aqua-popup {
   transition: all 0.3s ease;
 }
+
+/* ===== GOAT HERO UPGRADE ===== */
+
+.new-hero {
+  background: radial-gradient(
+    circle at 50% 30%,
+    rgba(14,165,233,0.35) 0%,
+    rgba(14,165,233,0.18) 18%,
+    rgba(2,6,23,0.85) 50%,
+    #020617 80%
+  ) !important;
+}
+
+/* Main glow */
+.hero-glow {
+  position: absolute;
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, #38bdf8 0%, transparent 70%);
+  filter: blur(160px);
+  opacity: 0.35;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  animation: floatGlow 6s ease-in-out infinite alternate;
+}
+
+/* Secondary glow layer (depth) */
+.hero-glow::after {
+  content: "";
+  position: absolute;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, #0ea5e9, transparent 70%);
+  filter: blur(120px);
+  opacity: 0.4;
+  top: 30%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Edge blending (fix harsh borders) */
+.new-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle,
+    transparent 40%,
+    rgba(2,6,23,0.6) 75%,
+    #020617 100%
+  );
+  pointer-events: none;
+}
+
+/* Smooth floating animation */
+@keyframes floatGlow {
+  from {
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    transform: translateX(-50%) translateY(20px);
+  }
+}
+/* Cursor light effect */
+.cursor-glow {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(56,189,248,0.25), transparent 70%);
+  pointer-events: none;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+}
+
+rgba(56,189,248,0.15)

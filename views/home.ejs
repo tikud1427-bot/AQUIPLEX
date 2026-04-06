@@ -75,6 +75,7 @@
         <span>⚡ Instant AI Answers</span>
         <span>🌍 Global Users</span>
       </div>
+      <div class="cursor-glow"></div>
     </div>
   </section>
  
@@ -227,6 +228,16 @@
 </script>
         <script>
           document.addEventListener("touchstart", function(){}, true);
+        </script>
+        <script>
+        const glow = document.querySelector(".cursor-glow");
+        const hero = document.querySelector(".new-hero");
+
+        hero.addEventListener("mousemove", (e) => {
+          const rect = hero.getBoundingClientRect();
+          glow.style.left = (e.clientX - rect.left) + "px";
+          glow.style.top = (e.clientY - rect.top) + "px";
+        });
         </script>
 
 
