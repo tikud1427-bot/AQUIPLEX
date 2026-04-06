@@ -45,31 +45,41 @@
 <input id="msg" placeholder="Ask something..." />
 <button onclick="send()">Send</button>
 
-<script>
-async function send() {
-  const input = document.getElementById("msg");
-  const chat = document.getElementById("chat");
+  <script>
+  let history = [];
 
-  const message = input.value;
-  if (!message) return;
+  async function send() {
+    const input = document.getElementById("msg");
+    const chat = document.getElementById("chat");
 
-  chat.innerHTML += `<p class="user"><b>You:</b> ${message}</p>`;
-  input.value = "";
+    const message = input.value;
+    if (!message) return;
 
-  const res = await fetch("/chat", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ message })
-  });
+    chat.innerHTML += `<p class="user"><b>You:</b> ${message}</p>`;
+    input.value = "";
 
-  const data = await res.json();
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message,
+        history
+      })
+    });
 
-  chat.innerHTML += `<p class="bot"><b>AI:</b> ${data.reply}</p>`;
-  chat.scrollTop = chat.scrollHeight;
-}
-</script>
+    const data = await res.json();
+
+    chat.innerHTML += `<p class="bot"><b>AI:</b> ${data.reply}</p>`;
+
+    // 🔥 ADD MEMORY
+    history.push({ role: "user", content: message });
+    history.push({ role: "assistant", content: data.reply });
+
+    chat.scrollTop = chat.scrollHeight;
+  }
+  </script>
 
 </body>
 </html>
