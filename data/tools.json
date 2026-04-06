@@ -682,7 +682,7 @@
     "description": "AI for scientific research insights",
     "trending": false,
     "rating": 0,
-    "ratingsCount": 0
+    "ratingsCount": 0,
     "likes": 0,
     "dislikes": 0,
     "comments": [],
@@ -695,6 +695,9 @@
     "category": "Research AI",
     "url": "https://scispace.com",
     "description": "AI research paper assistant",
+    "trending": false,
+    "rating": 0,
+    "ratingsCount": 0,
     "likes": 0,
     "dislikes": 0,
     "comments": [],
