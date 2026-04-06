@@ -93,3 +93,31 @@
   box-shadow: 0 0 20px #0ea5e9;
 }
 
+.aqua-popup {
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  width: 300px;
+  z-index: 9999; /* VERY IMPORTANT */
+}
+
+.popup-header button {
+  z-index: 10000;
+  position: relative;
+}
+
+.aqua-popup * {
+  pointer-events: auto;
+}
+
+@media (max-width: 768px) {
+  .aqua-popup {
+    width: 90%;
+    right: 5%;
+    bottom: 80px;
+  }
+}
+
+.aqua-popup {
+  transition: all 0.3s ease;
+}

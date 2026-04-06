@@ -34,7 +34,7 @@
 <div id="aquaPopup" class="aqua-popup hidden">
   <div class="popup-header">
     <span>🌊 Aqua AI</span>
-    <button onclick="closeAquaAI()">✖</button>
+    <button onclick="closeAquaAI()" ontouchstart="closeAquaAI()">✖</button>
   </div>
 
   <div class="popup-body">
@@ -61,6 +61,7 @@
 
       <div class="hero-buttons">
         <button onclick="openAquaAI()" class="btn primary">
+          
           🚀 Start with Aqua AI
         </button>
 
@@ -210,7 +211,13 @@
   }
 
   function closeAquaAI() {
-    document.getElementById("aquaPopup").classList.add("hidden");
+    const popup = document.getElementById("aquaPopup");
+    popup.style.opacity = "0";
+    popup.style.transform = "translateY(20px)";
+
+    setTimeout(() => {
+      popup.classList.add("hidden");
+    }, 200);
   }
 
   // AUTO POPUP (conversion boost)
