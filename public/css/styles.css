@@ -3667,3 +3667,12 @@ MOBILE SAFE (no break)
   color: #facc15;
   font-weight: 500;
 }
+
+.ai-link {
+  color: #818cf8;
+  font-weight: 600;
+}
+
+.ai-link:hover {
+  color: #6366f1;
+}

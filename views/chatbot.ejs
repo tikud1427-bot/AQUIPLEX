@@ -43,14 +43,16 @@
 <h2>Aquiplex AI Chat</h2>
 
 <!-- ✅ MODE BUTTONS -->
-<div>
-  <button onclick="setMode('chat')">💬 Chat</button>
-  <button onclick="setMode('search')">🌐 Search</button>
-  <button onclick="setMode('image')">🎨 Image</button>
-</div>
 
-<div id="chat"></div>
+  <div class="modes">
+    <button onclick="setMode('chat')">💬 Chat</button>
+    <button onclick="setMode('search')">🌐 Search</button>
+    <button onclick="setMode('image')">🎨 Image</button>
+  </div>
 
+  <p id="modeLabel">Mode: chat</p>
+
+  <div id="chat"></div>
 <input id="msg" placeholder="Ask something..." />
 <button onclick="send()">Send</button>
 
@@ -58,8 +60,10 @@
 let history = [];
 let mode = "chat";
 
-function setMode(m) {
-  mode = m;
+  function setMode(m) {
+    mode = m;
+    document.getElementById("modeLabel").innerText = "Mode: " + m;
+  }
   alert("Mode: " + m); // optional feedback
 }
 
@@ -68,10 +72,12 @@ async function send() {
   const chat = document.getElementById("chat");
 
   const message = input.value;
-  if (!message) return;
+  if (!message.trim()) return;
 
   chat.innerHTML += `<p class="user"><b>You:</b> ${message}</p>`;
   input.value = "";
+  const loading = `<div class="msg bot" id="loading">Typing...</div>`;
+  chat.innerHTML += loading;
 
   const res = await fetch("/chat", {
     method: "POST",
@@ -85,7 +91,7 @@ async function send() {
     })
   });
 
-  const data = await res.json();
+  document.getElementById("loading")?.remove();
 
   // ✅ IMAGE SUPPORT
   if (data.image) {
@@ -101,6 +107,9 @@ async function send() {
 
   chat.scrollTop = chat.scrollHeight;
 }
+  document.getElementById("msg").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") send();
+  });
 </script>
 
 </body>
