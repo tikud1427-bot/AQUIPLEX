@@ -615,7 +615,10 @@ app.post("/chat", async (req, res) => {
   }
 
   try {
-    let messages = history || [];
+    let messages = (history || []).map(m => ({
+      role: m.role === "bot" ? "assistant" : m.role,
+      content: m.content
+    }));
 
     // 🧠 Add user message
     messages.push({
@@ -701,7 +704,7 @@ app.post("/chat", async (req, res) => {
               role: "system",
               content: "You are Aqua AI by Aquiplex."
             },
-            ...messages
+            ...messages.filter(m => m.role && m.content)
           ]
         },
         {

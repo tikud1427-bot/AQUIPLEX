@@ -267,7 +267,10 @@ async function send() {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         message,
-        history: messages,
+        history: messages.map(m => ({
+          role: m.role === "bot" ? "assistant" : m.role,
+          content: m.content
+        })),
         chatId: currentChatId,
         mode
       })
