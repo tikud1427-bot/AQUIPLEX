@@ -754,6 +754,26 @@ app.post("/chat", async (req, res) => {
     res.json({ reply: "⚠️ AI failed" });
   }
 });
+
+//history id
+app.get("/history/:id", requireLogin, async (req, res) => {
+  try {
+    const chat = await History.findOne({
+      _id: req.params.id,
+      userId: req.session.userId
+    }).lean();
+
+    if (!chat) {
+      return res.status(404).json({ error: "Chat not found" });
+    }
+
+    res.json(chat);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error loading chat" });
+  }
+});
 // ================= AUTH =================
 
 // LOGIN PAGE

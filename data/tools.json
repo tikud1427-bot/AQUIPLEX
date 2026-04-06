@@ -215,15 +215,25 @@
     "dislikes": 0,
     "comments": [],"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTrwQfjxYHgFGWPe6kpIwq3xWtlcSrBgjqfbA&s","clicks":0},
 
-  {"id":"ideogram","name":"Ideogram","category":"Image AI","url":"https://ideogram.ai","description":"AI image generation with text support","logo":"https://media.licdn.com/dms/image/v2/D560BAQF4rUwQNvB7nw/company-logo_200_200/company-logo_200_200/0/1692715755916/ideogram_ai_logo?e=2147483647&v=beta&t=ipEbq2v4XGpUnUqWoFjr1dmB2vkVbWlA9WmqiLmJaZ4","clicks":0},
+  {"id":"ideogram","name":"Ideogram","category":"Image AI","url":"https://ideogram.ai","description":"AI image generation with text support","likes": 0,
+    "dislikes": 0,
+    "comments": [],"logo":"https://media.licdn.com/dms/image/v2/D560BAQF4rUwQNvB7nw/company-logo_200_200/company-logo_200_200/0/1692715755916/ideogram_ai_logo?e=2147483647&v=beta&t=ipEbq2v4XGpUnUqWoFjr1dmB2vkVbWlA9WmqiLmJaZ4","clicks":0},
 
-  {"id":"clipdrop","name":"Clipdrop","category":"Image AI","url":"https://clipdrop.co","description":"AI image editing tools","logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR7tMp9UyrEZHQSMp7abAPe0blA7ce7WQa_Uw&s","clicks":0},
+  {"id":"clipdrop","name":"Clipdrop","category":"Image AI","url":"https://clipdrop.co","description":"AI image editing tools","likes": 0,
+    "dislikes": 0,
+    "comments": [],"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR7tMp9UyrEZHQSMp7abAPe0blA7ce7WQa_Uw&s","clicks":0},
 
-  {"id":"removebg","name":"Remove.bg","category":"Image AI","url":"https://remove.bg","description":"AI background remover","logo":"https://play-lh.googleusercontent.com/4kF2IUQxdLs86iAVsmnHA1B34uO-dvtszKM8qzscc1InZb-2_JI0WANyOiWiV3qyNg","clicks":0},
+  {"id":"removebg","name":"Remove.bg","category":"Image AI","url":"https://remove.bg","description":"AI background remover","likes": 0,
+    "dislikes": 0,
+    "comments": [],"logo":"https://play-lh.googleusercontent.com/4kF2IUQxdLs86iAVsmnHA1B34uO-dvtszKM8qzscc1InZb-2_JI0WANyOiWiV3qyNg","clicks":0},
 
-  {"id":"looka","name":"Looka","category":"Design AI","url":"https://looka.com","description":"AI logo maker","logo":"https://s3-eu-west-1.amazonaws.com/tpd/logos/5bad5723084d880001bdc9eb/0x0.png","clicks":0},
+  {"id":"looka","name":"Looka","category":"Design AI","url":"https://looka.com","description":"AI logo maker","likes": 0,
+    "dislikes": 0,
+    "comments": [],"logo":"https://s3-eu-west-1.amazonaws.com/tpd/logos/5bad5723084d880001bdc9eb/0x0.png","clicks":0},
 
-  {"id":"designsai","name":"Designs.ai","category":"Design AI","url":"https://designs.ai","description":"AI design suite","logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQF-YflBT1kHmPv-rla5LuC-L6LhkLkz7A76w&s","clicks":0},
+  {"id":"designsai","name":"Designs.ai","category":"Design AI","url":"https://designs.ai","description":"AI design suite","likes": 0,
+    "dislikes": 0,
+    "comments": [],"logo":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQF-YflBT1kHmPv-rla5LuC-L6LhkLkz7A76w&s","clicks":0},
 
   {"id":"uizard","name":"Uizard","category":"Design AI","url":"https://uizard.io","description":"AI UI/UX design tool","logo":"https://cdn2.futurepedia.io/2026-02-26T18-58-37.134Z-A3PKgWU9mlZHWvu7pL7KZK3gFxNzsy92M.png?w=256","clicks":0},
 

@@ -194,11 +194,13 @@ let mode = "chat";
 async function send() {
   const input = document.getElementById("msg");
   const chat = document.getElementById("chat");
+  if (!currentChatId) {
+    messages = []; // new chat
+  }
 
   const message = input.value;
   if (!message.trim()) return;
 
-  chat.innerHTML += `<div class="msg user">${message}</div>`;
   input.value = "";
 
   const loading = document.createElement("div");
@@ -228,14 +230,21 @@ async function send() {
     document.getElementById("loading")?.remove();
 
     if (data.image) {
-      chat.innerHTML += `
+      chat.innerHTML = `
         <div class="msg bot">
           ${data.reply}
           <br/>
           <img src="${data.image}" />
         </div>`;
     } else {
-      chat.innerHTML += `<div class="msg bot">${data.reply}</div>`;
+      chat.innerHTML = "";
+
+      data.messages.forEach(m => {
+        chat.innerHTML += `
+          <div class="msg ${m.role === "user" ? "user" : "bot"}">
+            ${m.content}
+          </div>`;
+      });
     }
 
     messages = data.messages;
@@ -272,14 +281,24 @@ document.getElementById("msg").addEventListener("keypress", function(e) {
       div.onmouseover = () => div.style.background = "#0f172a";
       div.onmouseout = () => div.style.background = "transparent";
 
-      div.onclick = () => loadChat(chat._id); // 🔥 THIS CALLS IT
+      div.onclick = (e) => loadChat(chat._id, e);// 🔥 THIS CALLS IT
 
       list.appendChild(div);
     });
   }
 
   loadHistoryList();
-  async function loadChat(id) {
+
+  
+  async function loadChat(id, event) {
+    // 🔥 highlight selected chat
+    document.querySelectorAll("#historyList div").forEach(d => {
+      d.style.background = "transparent";
+    });
+
+    if (event) {
+      event.currentTarget.style.background = "#1e293b";
+    }
     const res = await fetch("/history/" + id);
     const data = await res.json();
 
