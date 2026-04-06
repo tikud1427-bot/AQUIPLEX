@@ -1,612 +1,195 @@
-<!DOCTYPE html>    
-<html lang="en">    
+<!DOCTYPE html>
+<html lang="en">
 
-  <head>    
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AQUIPLEX | Discover the Best AI Tools</title>
 
-  <meta charset="UTF-8">    
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">    
-  <title>AQUIPLEX | Discover the Best AI Tools</title>    
+  <link rel="stylesheet" href="/css/styles.css">
 
-  <link rel="stylesheet" href="/css/styles.css">    
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">    
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#020617">
 
-  <!-- ✅ PWA CONFIG (ADD THIS) -->    
-  <link rel="manifest" href="/manifest.json">    
-  <meta name="theme-color" content="#020617">    
+  <!-- ICONS -->
+  <link rel="icon" href="/logo/logo.png">
+  <link rel="apple-touch-icon" href="/logo/icon-192.png">
+</head>
 
-  <!-- ✅ ICONS -->    
-  <link rel="icon" href="/logo/logo.png">    
-  <link rel="apple-touch-icon" href="/logo/icon-192.png">    
+<body>
 
-  </head>    
+<%- include("partials/nav") %>
 
-<body>    
+<!-- 🤖 FLOATING BUTTON -->
+<div class="aqua-float" onclick="openAquaAI()">🤖</div>
 
-  <%- include("partials/nav") %>    
+<!-- 💬 AQUA AI POPUP -->
+<div id="aquaPopup" class="aqua-popup hidden">
+  <div class="popup-header">
+    <span>🌊 Aqua AI</span>
+    <button onclick="closeAquaAI()">✖</button>
+  </div>
 
+  <div class="popup-body">
+    <p>Ask anything. Get powerful answers instantly ⚡</p>
 
-<!-- HERO -->    
+    <a href="/chatbot" class="btn primary">
+      Open Aqua AI
+    </a>
+  </div>
+</div>
 
-    <section class="hero hooked-hero">
+<!-- HERO -->
+<section class="hero new-hero">
+  <div class="hero-content">
 
-      <div class="hero-main">
+    <h1>
+      Stop Searching. Start Using AI ⚡
+    </h1>
 
-        <h1>
-          Stop Searching. <span>Start Using AI.</span>
-        </h1>
+    <p>
+      One place. All AI tools. Or just ask Aqua AI.
+    </p>
 
-        <p class="hero-sub">
-          One prompt → Multiple AI answers instantly ⚡
-        </p>
+    <div class="hero-buttons">
+      <button onclick="openAquaAI()" class="btn primary">
+        🤖 Try Aqua AI
+      </button>
 
-        <!-- 🔥 MAIN AI BOX -->
-        <div class="ai-box hero-ai">
+      <a href="/tools" class="btn ghost">
+        🔍 Explore Tools
+      </a>
+    </div>
 
-          <form id="aiForm">
-            <input 
-              type="text" 
-              id="aiPrompt" 
-              placeholder="Ask anything... (e.g. startup idea)" 
-              required
-            >
-            <button type="submit">Generate</button>
-          </form>
+    <p class="trust-text">
+      🚀 Used by AI explorers worldwide
+    </p>
 
+  </div>
+</section>
+
+<!-- 🔥 TRENDING -->
+<section class="section">
+  <h2 class="section-title">🔥 Trending AI Tools</h2>
+  <p class="section-sub">
+    Discover what people are using right now
+  </p>
+</section>
+
+<!-- MAIN CONTENT -->
+<div class="container">
+
+  <!-- CATEGORIES -->
+  <section class="section">
+    <h2 class="section-title">Explore by Category</h2>
+
+    <div class="categories">
+
+      <%    
+      const categories = [    
+        { name: "Writing AI", icon: "✍️" },    
+        { name: "Image AI", icon: "🎨" },    
+        { name: "Video AI", icon: "🎬" },    
+        { name: "Coding AI", icon: "💻" },    
+        { name: "ML AI", icon: "🤖" }    
+      ];    
+
+      categories.forEach(function(category){     
+      %>    
+
+      <a class="category-card" href="/tools/category/<%= encodeURIComponent(category.name) %>">
+        <div class="category-icon"><%= category.icon %></div>
+        <div class="category-name"><%= category.name %></div>
+      </a>
+
+      <% }) %>
+
+    </div>
+  </section>
+
+  <!-- FEATURED TOOLS -->
+  <section class="section">
+    <h2 class="section-title">⭐ Featured Tools</h2>
+
+    <div class="grid">
+
+      <% if (tools && tools.length > 0) { %>
+
+      <% tools.forEach(function(tool){ %>
+
+      <div class="tool-card">
+
+        <div class="logo-box">
+          <img src="<%= tool.logo %>" alt="<%= tool.name %>">
         </div>
-        <div style="text-align:center; margin-top:12px;">
-          <a href="/bundles" class="bundle-btn">✨ Find AI Bundles</a>
-        </div>
 
-    
-        <section class="section" id="history-container">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2 class="section-title">🕘 Recent Prompts</h2>
-            <button class="history-toggle" onclick="toggleHistory()">
-              🕘 View History
-            </button>
-          </div>
+        <a href="/tool/<%= tool._id %>" class="tool-link">
+          <h3><%= tool.name %></h3>
+        </a>
 
-          <div id="history" class="history-list history-hidden">
-            <p>Loading...</p>
-          </div>
-        </section>
+        <p><%= tool.description %></p>
 
-        <!-- 🔥 CTA -->
-        <div class="hero-cta">
-          <a href="/tools" class="btn primary">Explore Tools</a>
-          <a href="/trending" class="btn ghost">🔥 Trending</a>
+        <div class="tool-actions">
+          <a href="/tool/<%= tool._id %>" class="details-btn">
+            View Details
+          </a>
+
+          <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">
+            Visit Tool
+          </a>
         </div>
 
       </div>
 
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">⚡ AI Results</h2>
-
-      <div id="aiResults" class="ai-grid">
-
-        <!-- SMART -->
-        <div class="ai-card">
-          <h3>🧠 Smart</h3>
-          <p id="smartText">Waiting...</p>
-
-          <div class="ai-actions">
-            <button onclick="copyText('smartText', this)">📋</button>
-            <button onclick="shareText('smartText')">🔗</button>
-
-            <div class="chat-box">
-              <input id="smartInput" placeholder="Continue chat..." />
-              <button onclick="continueChat('smart')">➤</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- CREATIVE -->
-        <div class="ai-card">
-          <h3>🎨 Creative</h3>
-          <p id="creativeText">Waiting...</p>
-
-          <div class="ai-actions">
-            <button onclick="copyText('creativeText', this)">📋</button>
-            <button onclick="shareText('creativeText')">🔗</button>
-
-            <div class="chat-box">
-              <input id="creativeInput" placeholder="Continue chat..." />
-              <button onclick="continueChat('creative')">➤</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- FAST -->
-        <div class="ai-card">
-          <h3>⚡ Fast</h3>
-          <p id="fastText">Waiting...</p>
-
-          <div class="ai-actions">
-            <button onclick="copyText('fastText', this)">📋</button>
-            <button onclick="shareText('fastText')">🔗</button>
-
-            <div class="chat-box">
-              <input id="fastInput" placeholder="Continue chat..." />
-              <button onclick="continueChat('fast')">➤</button>
-            </div>
-          </div>
-        </div>
-
-      </div>
-      <div class="card-dots">
-        <span class="active"></span>
-        <span></span>
-        <span></span>
-      </div>
-    </section>
-
-    <section class="section">
-      <h2 class="section-title">🔥 Trending AI Tools</h2>
-      <p style="text-align:center; opacity:0.7;">
-        Discover what everyone is using right now
-      </p>
-    </section>
-
-    
-    <div class="container">    
-
-      <!-- CATEGORY SECTION -->    
-      <section class="section">    
-        <h2 class="section-title">Explore by Category</h2>    
-
-        <div class="categories">    
-
-          <%    
-          const categories = [    
-            { name: "Writing AI", icon: "✍️" },    
-            { name: "Image AI", icon: "🎨" },    
-            { name: "Video AI", icon: "🎬" },    
-            { name: "Coding AI", icon: "💻" },    
-            { name: "ML AI", icon: "🤖" }    
-          ];    
-
-          categories.forEach(function(category){     
-          %>    
-
-          <a class="category-card"    
-             href="/tools/category/<%= encodeURIComponent(category.name) %>">    
-
-            <div class="category-icon"><%= category.icon %></div>    
-            <div class="category-name"><%= category.name %></div>    
-
-          </a>    
-
-          <% }) %>    
-
-        </div>    
-      </section>    
-
-
-      <!-- FEATURED TOOLS -->    
-      <section class="section">    
-
-        <h2>Featured Tools</h2>    
-
-        <div class="grid">    
-
-          <% if (tools && tools.length > 0) { %>    
-
-          <% tools.forEach(function(tool){ %>    
-
-          <div class="tool-card">    
-
-            <div class="logo-box">    
-              <img src="<%= tool.logo %>" alt="<%= tool.name %>">    
-            </div>    
-
-            <a href="/tool/<%= tool._id %>" class="tool-link">    
-              <h3><%= tool.name %></h3>    
-            </a>    
-
-            <p><%= tool.description %></p>    
-
-            <div class="tool-actions">    
-
-              <a href="/tool/<%= tool._id %>" class="details-btn">    
-                View Details    
-              </a>    
-
-              <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">    
-                Visit Tool    
-              </a>    
-
-            </div>    
-
-          </div>    
-
-          <% }) %>    
-
-          <% } else { %>    
-
-          <p style="text-align:center;">No tools available yet.</p>    
-
-          <% } %>    
-
-        </div>    
-
-      </section>    
-
-    </div>    
-
-            <!-- INSTALL SECTION -->    
-            <section class="section">    
-              <h2 class="section-title">📲 How to Install</h2>    
-
-              <div style="max-width:600px; margin:auto; text-align:center; opacity:0.9;">    
-                <p>1. Download the APK</p>    
-                <p>2. Open the file</p>    
-                <p>3. Allow "Install from unknown sources"</p>    
-                <p>4. Install & enjoy 🚀</p>    
-              </div>    
-            </section>    
-
-            <!-- 📲 DOWNLOAD APP CTA -->
-            <section class="section apk-section">
-              <h2 class="section-title">🚀 Get AQUIPLEX App</h2>
-
-              <div style="text-align:center; margin-top:20px;">
-                <a href="/download" class="btn primary" style="font-size:18px; padding:14px 28px;">
-                  📥 Download APK
-                </a>
-
-                <p style="margin-top:10px; opacity:0.7;">
-                  Fast. Lightweight. Built for AI explorers.
-                </p>
-              </div>
-            </section>
-
-<!-- FOOTER -->    
-
-     <footer class="footer">    
-<p>© <%= new Date().getFullYear() %> AQUIPLEX All rights reserved.</p>    
-
-</footer>    
-
-            <script>
-              const ALL_TOOLS = <%- JSON.stringify(allTools) %>;
-            </script>
-
-            <script>
-              const chats = {
-                smart: [],
-                creative: [],
-                fast: []
-              };
-
-          
-              document.addEventListener("DOMContentLoaded", () => {
-
-              const form = document.getElementById("aiForm");
-
-              if (form) {
-                form.addEventListener("submit", async (e) => {
-                  e.preventDefault();
-
-                  const prompt = document.getElementById("aiPrompt").value;
-
-                  document.getElementById("smartText").innerText = "🧠 Thinking...";
-                  document.getElementById("creativeText").innerText = "🎨 Creating...";
-                  document.getElementById("fastText").innerText = "⚡ Answering...";
-
-                  try {
-                    // ✅ reset chats FIRST
-                    chats.smart = [{ role: "user", content: prompt }];
-                    chats.creative = [{ role: "user", content: prompt }];
-                    chats.fast = [{ role: "user", content: prompt }];
-
-                    const res = await fetch("/multi-generate", {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json"
-                      },
-                      credentials: "include",
-                      body: JSON.stringify({
-                        prompt: document.getElementById("aiPrompt").value
-                      })
-                    });
-
-                    const data = await res.json();
-                   data.responses.forEach(r => {
-                     if (r.model.includes("Smart")) {
-                       chats.smart.push({ role: "assistant", content: r.output });
-                       document.getElementById("smartText").innerHTML = renderWithTools(r.output);
-                     }
-
-                     if (r.model.includes("Creative")) {
-                       chats.creative.push({ role: "assistant", content: r.output });
-                       document.getElementById("creativeText").innerHTML = renderWithTools(r.output);
-                     }
-
-                     if (r.model.includes("Fast")) {
-                       chats.fast.push({ role: "assistant", content: r.output });
-                       document.getElementById("fastText").innerHTML = renderWithTools(r.output);
-                     }
-                   });
-
-                    loadHistory();
-
-                  } catch (err) {
-                    document.getElementById("smartText").innerText = "❌ Error";
-                    document.getElementById("creativeText").innerText = "❌ Error";
-                    document.getElementById("fastText").innerText = "❌ Error";
-                  }
-                });
-              }
-
-              async function loadHistory() {
-                try {
-                  const res = await fetch("/history", {
-                    credentials: "include" // ✅ ADD THIS
-                  });
-                  const container = document.getElementById("history");
-
-                  if (!container) return;
-
-                  const text = await res.text();
-
-                  // detect HTML (login page)
-                  if (text.startsWith("<!DOCTYPE")) {
-                    container.innerHTML = "<p>Login to see history</p>";
-                    return;
-                  }
-
-                  const data = JSON.parse(text);
-
-                  if (!data.length) {
-                    container.innerHTML = "<p>No history yet</p>";
-                    return;
-                  }
-
-                  container.innerHTML = data.slice(0, 5).map(item => `
-                    <div class="history-item">
-                      <p class="prompt">${item.prompt}</p>
-                      <button onclick="reusePrompt('${item.prompt.replace(/'/g, "\\'")}')">
-                        Reuse
-                      </button>
-                    </div>
-                  `).join("");
-
-                } catch (err) {
-                  console.log(err);
-                }
-              }
-              loadHistory();
-
-            });
-
-            /* REUSE */
-            function reusePrompt(text) {
-              const input = document.getElementById("aiPrompt");
-              if (input) {
-                input.value = text;
-                input.focus();
-              }
-            }
-
-            /* TOGGLE HISTORY */
-              function toggleHistory() {
-                const history = document.getElementById("history");
-                const button = document.querySelector(".history-toggle");
-
-                if (!history || !button) return;
-
-                history.classList.toggle("history-show");
-                history.classList.toggle("history-hidden");
-
-                button.innerText = history.classList.contains("history-show")
-                  ? "❌ Hide Recent Prompts"
-                  : "🕘 Show Recent Prompts";
-              }
-
-            /* COPY */
-              async function copyText(id, btn) {
-                const el = document.getElementById(id);
-                if (!el) return;
-
-                const text = el.innerText.trim();
-
-                if (!text || text === "Waiting...") {
-                  alert("Nothing to copy yet!");
-                  return;
-                }
-
-                try {
-                  await navigator.clipboard.writeText(text);
-                } catch {
-                  // fallback
-                  const textarea = document.createElement("textarea");
-                  textarea.value = text;
-                  document.body.appendChild(textarea);
-                  textarea.select();
-                  document.execCommand("copy");
-                  document.body.removeChild(textarea);
-                }
-
-                if (btn) {
-                  btn.innerText = "✅ Copied";
-                  setTimeout(() => (btn.innerText = "Copy"), 2000);
-                }
-              }
-
-            /* SHARE */
-              async function shareText(id) {
-                const el = document.getElementById(id);
-                if (!el) return;
-
-                const text = el.innerText.trim();
-
-                if (!text || text === "Waiting...") {
-                  alert("Nothing to share yet!");
-                  return;
-                }
-
-                // ✅ TRY NATIVE SHARE
-                if (navigator.share) {
-                  try {
-                    await navigator.share({
-                      title: "Aquiplex AI Result",
-                      text: text,
-                      url: window.location.href
-                    });
-                    return;
-                  } catch (err) {
-                    console.log("Share cancelled or failed");
-                  }
-                }
-
-                // ✅ FALLBACK 1 → COPY
-                try {
-                  await navigator.clipboard.writeText(text);
-                  alert("📋 Copied! Now paste & share 🚀");
-                } catch {
-                  // ✅ FALLBACK 2 → WHATSAPP SHARE
-                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-                  window.open(whatsappUrl, "_blank");
-                }
-              }
-
-              async function continueChat(type) {
-                const inputEl = document.getElementById(type + "Input");
-                const input = inputEl.value;
-
-                if (!input) return;
-
-                const el = document.getElementById(type + "Text");
-
-                // show user message immediately
-                el.innerHTML += `<br><br><strong>You:</strong> ${input}`;
-
-                chats[type].push({
-                  role: "user",
-                  content: input
-                });
-
-                // show loading
-                el.innerHTML += `<br><strong>AI:</strong> ⏳ Thinking...`;
-
-                try {
-                  const res = await fetch("/multi-generate", {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json"
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({
-                      messages: chats[type],
-                      aiType: type
-                    })
-                  });
-
-                  const data = await res.json();
-                  const aiResponse = data.responses[0];
-
-                  if (aiResponse) {
-                    chats[type].push({
-                      role: "assistant",
-                      content: aiResponse.output
-                    });
-
-                    // replace last "Thinking..." with actual response
-                    el.innerHTML = el.innerHTML.replace(
-                      "⏳ Thinking...",
-                      renderWithTools(aiResponse.output)
-                    );
-                  }
-
-                  inputEl.value = "";
-
-                } catch {
-                  el.innerText += "\n❌ Error";
-                }
-              }
-
-              const slider = document.getElementById("aiResults");
-              const dots = document.querySelectorAll(".card-dots span");
-
-              if (slider && dots.length) {
-                slider.addEventListener("scroll", () => {
-                  const scrollLeft = slider.scrollLeft;
-                  const cardWidth = slider.offsetWidth;
-
-                  const index = Math.round(scrollLeft / cardWidth);
-
-                  dots.forEach(dot => dot.classList.remove("active"));
-
-                  if (dots[index]) {
-                    dots[index].classList.add("active");
-                  }
-                });
-              }
-              
-               function renderWithTools(text) {
-                 if (!text) return "";
-
-                 const match = text.match(/🔧 Recommended Tools:(.*)/);
-
-                 if (!match) return text;
-
-                 const toolsRaw = match[1];
-
-                 // REMOVE recommendation part from main text
-                 const cleanText = text.replace(match[0], "");
-
-                 const tools = toolsRaw
-                   .split(",")
-                   .map(t => t.replace(/[^\w\s]/g, "").trim())
-                   .filter(Boolean)
-                   .slice(0, 3); // limit (optional but clean)
-
-                 const buttons = tools.map(toolName => {
-                   const match = findToolByName(toolName);
-
-                   if (match) {
-                     return `
-                       <div class="tool-card-mini">
-                         <img src="${match.logo}" alt="${match.name}" />
-                         <div class="tool-info">
-                           <span>${match.name}</span>
-                           <a href="/tool/${match._id}" class="use-btn">Use</a>
-                         </div>
-                       </div>
-                     `;
-                   } else {
-                     return `
-                       <div class="tool-card-mini">
-                         <div class="tool-info">
-                           <span>${toolName}</span>
-                           <a href="/tools?q=${encodeURIComponent(toolName)}" class="use-btn">Search</a>
-                         </div>
-                       </div>
-                     `;
-                   }
-                 }).join(" ");
-
-                 return `
-                   <div>${cleanText}</div>
-                   <div style="margin-top:10px;">
-                     <strong>🔧 Recommended Tools:</strong><br/>
-                     ${buttons}
-                   </div>
-                 `;
-               }
-              function findToolByName(name) {
-                const clean = name.toLowerCase().replace(/\s+/g, "");
-
-                return ALL_TOOLS.find(t =>
-                  t.name.toLowerCase().replace(/\s+/g, "") === clean
-                ) || ALL_TOOLS.find(t =>
-                  t.name.toLowerCase().replace(/\s+/g, "").includes(clean)
-                );
-              }
-          
-            </script>
-  </body>    
+      <% }) %>
+
+      <% } else { %>
+      <p style="text-align:center;">No tools available yet.</p>
+      <% } %>
+
+    </div>
+  </section>
+
+</div>
+
+<!-- 📲 DOWNLOAD -->
+<section class="section apk-section">
+  <h2 class="section-title">🚀 Get AQUIPLEX App</h2>
+
+  <div style="text-align:center; margin-top:20px;">
+    <a href="/download" class="btn primary big-btn">
+      📥 Download APK
+    </a>
+
+    <p class="section-sub">
+      Fast. Lightweight. Built for AI explorers.
+    </p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <p>© <%= new Date().getFullYear() %> AQUIPLEX All rights reserved.</p>
+</footer>
+
+<!-- JS -->
+<script>
+  function openAquaAI() {
+    document.getElementById("aquaPopup").classList.remove("hidden");
+  }
+
+  function closeAquaAI() {
+    document.getElementById("aquaPopup").classList.add("hidden");
+  }
+
+  // AUTO POPUP (conversion boost)
+  setTimeout(() => {
+    openAquaAI();
+  }, 4000);
+</script>
+
+</body>
 </html>
