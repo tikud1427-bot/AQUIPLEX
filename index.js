@@ -71,11 +71,11 @@ async function importTools() {
 if (jsonTools.length === 0) return;
 
 for (let tool of jsonTools) {
-await Tool.updateOne(
-{ name: tool.name },   // find by name
-{ $set: tool },        // update data
-{ upsert: true }       // create if not exists
-);
+  await Tool.updateOne(
+    { name: tool.name },
+    { $setOnInsert: tool }, // 🔥 FIXED
+    { upsert: true }
+  );
 }
 
 console.log("✅ Tools synced");
@@ -139,7 +139,12 @@ function redirectIfLoggedIn(req, res, next) {
 // ================= ROUTES =================
 
 // Landing page
-
+app.get("/", (req, res) => {
+  if (req.session.userId) {
+    return res.redirect("/home");
+  }
+  return res.redirect("/landing");
+});
 //
 
 app.post("/api/tools/:id/like", async (req, res) => {
