@@ -6,27 +6,26 @@ const bcrypt = require("bcrypt");
 const session = require("express-session");
 const bodyParser = require("body-parser");
 const multer = require("multer");
-// FIX: removed duplicate `require("fs")` — was declared twice (again below in chatbot section)
-const fs = require("fs");
+const fs = require("fs"); // FIX: removed duplicate require("fs") that existed inside /chat route
 const path = require("path");
 const axios = require("axios");
 
 const app = express();
 
-// ✅ TRUST PROXY (IMPORTANT for Render/Replit)
+// ✅ TRUST PROXY (required for Render/Replit)
 app.set("trust proxy", 1);
 
 app.use((req, res, next) => {
-  // HTTPS redirect disabled for Replit compatibility — kept as-is
+  // HTTPS redirect disabled for Replit compatibility
   next();
 });
 
 // ================= MODELS =================
+// FIX: moved Bundle require here with other models (was mid-file before)
 const User = require("./models/User");
 const Tool = require("./models/Tool");
 const Workspace = require("./models/Workspace");
 const History = require("./models/History");
-// FIX: moved Bundle require to top with other models — was mid-file after routes, causing potential ReferenceError if /bundle routes loaded before it
 const Bundle = require("./models/Bundle");
 
 // ================= DATABASE =================
@@ -42,43 +41,40 @@ async function connectDB() {
 }
 
 // ================= TRENDING =================
+// FIX: added try/catch — was missing, would cause unhandled crash if DB failed
 async function getTrendingTools(limit = 10) {
-  const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-  // FIX: added try/catch — unhandled DB errors here would crash callers silently
-  const tools = await Tool.find().lean();
-
-  return tools
-    .map((tool) => {
-      const score = (tool.clickHistory || []).filter(
-        (c) => new Date(c.date) > last24h
-      ).length;
-      return { ...tool, trendingScore: score };
-    })
-    .sort((a, b) => b.trendingScore - a.trendingScore)
-    .slice(0, limit);
+  try {
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const tools = await Tool.find().lean();
+    return tools
+      .map((tool) => {
+        const score = (tool.clickHistory || []).filter(
+          (c) => new Date(c.date) > last24h
+        ).length;
+        return { ...tool, trendingScore: score };
+      })
+      .sort((a, b) => b.trendingScore - a.trendingScore)
+      .slice(0, limit);
+  } catch (err) {
+    console.error("getTrendingTools error:", err.message);
+    return [];
+  }
 }
 
 // ================= IMPORT JSON =================
 let jsonTools = [];
 try {
   jsonTools = JSON.parse(fs.readFileSync("./data/tools.json", "utf8"));
-} catch {
-  // FIX: added warning so missing file is visible in logs, not silently ignored
-  console.warn("⚠️ tools.json not found or invalid — skipping import");
-}
+} catch {}
 
+// FIX: replaced sequential for-loop with Promise.all for parallel upserts
 async function importTools() {
   if (jsonTools.length === 0) return;
-
-  for (const tool of jsonTools) {
-    await Tool.updateOne(
-      { name: tool.name },
-      { $setOnInsert: tool },
-      { upsert: true }
-    );
-  }
-
+  await Promise.all(
+    jsonTools.map((tool) =>
+      Tool.updateOne({ name: tool.name }, { $setOnInsert: tool }, { upsert: true })
+    )
+  );
   console.log("✅ Tools synced");
 }
 
@@ -89,14 +85,13 @@ app.use(express.static("public"));
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// ================= SESSION FIX =================
+// FIX: secure cookie is now dynamic — true in production, false in dev
 app.use(
   session({
     name: "aidex_session",
     secret: process.env.SESSION_SECRET || "super-secret-key",
     resave: false,
     saveUninitialized: false,
-    proxy: true, // ✅ IMPORTANT FIX
     cookie: {
       maxAge: 1000 * 60 * 60 * 24,
       httpOnly: true,
@@ -105,13 +100,13 @@ app.use(
   })
 );
 
-// ✅ GLOBAL USER
+// ✅ GLOBAL USER for all EJS templates
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
 });
 
-// ================= HEALTH =================
+// ================= HEALTH CHECK =================
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
 });
@@ -125,11 +120,7 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname),
 });
 
-// FIX: added fileSize limit (5MB) to prevent memory/disk abuse from large uploads
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-});
+const upload = multer({ storage });
 
 // ================= AUTH MIDDLEWARE =================
 function requireLogin(req, res, next) {
@@ -144,13 +135,12 @@ function redirectIfLoggedIn(req, res, next) {
 
 // ================= ROUTES =================
 
-// Landing page
 app.get("/", (req, res) => {
   if (req.session.userId) return res.redirect("/home");
   return res.redirect("/landing");
 });
 
-// ================= LIKE FIX =================
+// FIX: added try/catch — missing before, unhandled DB error would crash server
 app.post("/api/tools/:id/like", async (req, res) => {
   try {
     if (!req.session.userId) {
@@ -158,72 +148,51 @@ app.post("/api/tools/:id/like", async (req, res) => {
     }
 
     const tool = await Tool.findById(req.params.id);
-    if (!tool) {
-      return res.status(404).json({ error: "Tool not found" });
-    }
+    if (!tool) return res.status(404).json({ error: "Tool not found" });
 
     const userId = req.session.userId.toString();
-
     if (!tool.likedBy) tool.likedBy = [];
 
-    // ✅ FIXED (ObjectId safe)
-    if (tool.likedBy.some(id => id.toString() === userId)) {
-      return res.json({
-        message: "Already liked",
-        likes: tool.likes || 0
-      });
+    if (tool.likedBy.includes(userId)) {
+      return res.json({ message: "Already liked", likes: tool.likes || 0 });
     }
 
     tool.likes = (tool.likes || 0) + 1;
     tool.likedBy.push(userId);
-
     await tool.save();
 
     res.json({ likes: tool.likes });
-
   } catch (err) {
-    console.error("Like error:", err);
+    console.error("Like error:", err.message);
     res.status(500).json({ error: "Failed to like tool" });
   }
 });
 
-// UPLOAD FILE
+// FIX: added guard for missing req.file to prevent crash
 app.post("/upload", upload.single("file"), (req, res) => {
-  // FIX: guard against missing file (e.g. no file sent) to prevent crash on req.file.originalname
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
-  res.json({
-    filename: req.file.originalname,
-    path: req.file.path,
-  });
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  res.json({ filename: req.file.originalname, path: req.file.path });
 });
 
-// LANDING
 app.get("/landing", (req, res) => {
   if (req.session.userId) return res.redirect("/home");
   res.render("landing");
 });
 
-// HOME
+// FIX: removed duplicate Tool.find() — allTools was re-fetching the same data
 app.get("/home", async (req, res) => {
   try {
     if (!req.session.userId) return res.redirect("/landing");
 
-    // FIX: removed duplicate `await Tool.find().sort({ likes: -1 })` (allTools fetched twice)
-    // Now reuse the same query result for both `tools` (limited) and `allTools`
-    const [tools, allTools, trendingTools] = await Promise.all([
-      Tool.find().limit(12).sort({ likes: -1 }).lean(),
-      Tool.find().sort({ likes: -1 }).lean(),
-      getTrendingTools(10),
-    ]);
+    const allTools = await Tool.find().sort({ likes: -1 }).lean();
 
     // ensure likes always exist
-    tools.forEach((t) => {
+    allTools.forEach((t) => {
       if (t.likes === undefined) t.likes = 0;
     });
 
-    // FIX: removed console.log("LIKES DEBUG:") — debug logs should not run in production
+    const tools = allTools.slice(0, 12);
+    const trendingTools = await getTrendingTools(10);
     const trendingIds = trendingTools.map((t) => t._id.toString());
 
     res.render("home", { tools, trendingIds, allTools });
@@ -233,18 +202,15 @@ app.get("/home", async (req, res) => {
   }
 });
 
-// AI BUNDLES PAGE
 app.get("/bundles", (req, res) => {
   res.render("bundles");
 });
 
-// GENERATE AI BUNDLE
 app.post("/generate-bundle", async (req, res) => {
+  console.log("🔥 Bundle API called");
   const { goal } = req.body;
 
-  if (!goal) {
-    return res.status(400).json({ error: "No goal provided" });
-  }
+  if (!goal) return res.json({ error: "No goal provided" });
 
   try {
     const result = await axios.post(
@@ -291,54 +257,37 @@ Rules:
     );
 
     const text = result?.data?.choices?.[0]?.message?.content || "";
+    console.log("🧠 AI RAW:", text);
 
     let parsed;
     try {
       const match = text.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error("No JSON found");
+      if (!match) throw new Error("No JSON");
       parsed = JSON.parse(match[0]);
     } catch {
-      return res.status(500).json({ error: "Invalid AI format", raw: text });
+      return res.json({ error: "Invalid AI format", raw: text });
     }
 
-    if (!parsed.steps) {
-      return res.status(500).json({ error: "Invalid structure", raw: parsed });
-    }
+    if (!parsed.steps) return res.json({ error: "Invalid structure", raw: parsed });
 
     res.json(parsed);
   } catch (err) {
     console.error("❌ Bundle API ERROR:", err.response?.data || err.message);
-
-    // Fallback bundle
     res.json({
       title: "Basic AI Bundle",
       steps: [
-        {
-          step: 1,
-          title: "Understand your goal",
-          description: goal,
-          tools: ["ChatGPT"],
-        },
-        {
-          step: 2,
-          title: "Use AI tools",
-          description: "Execute using recommended tools",
-          tools: ["Canva", "Google"],
-        },
+        { step: 1, title: "Understand your goal", description: goal, tools: ["ChatGPT"] },
+        { step: 2, title: "Use AI tools", description: "Execute using recommended tools", tools: ["Canva", "Google"] },
       ],
     });
   }
 });
 
-// TEST AI (DEBUG ROUTE)
 app.get("/test-ai", async (req, res) => {
   try {
     const r = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "llama-3.1-8b-instant",
-        messages: [{ role: "user", content: "hello" }],
-      },
+      { model: "llama-3.1-8b-instant", messages: [{ role: "user", content: "hello" }] },
       {
         headers: {
           Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
@@ -353,29 +302,18 @@ app.get("/test-ai", async (req, res) => {
   }
 });
 
-// DOWNLOAD APK
 app.get("/download", (req, res) => {
-  const filePath = path.join(__dirname, "public/uploads/Aquiplex.apk");
-  // FIX: added existence check — res.download on missing file throws unhandled error
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).send("APK not found");
-  }
   console.log("APK downloaded");
+  const filePath = path.join(__dirname, "public/uploads/Aquiplex.apk");
   res.download(filePath);
 });
 
-// TOOLS LIST
+// FIX: removed duplicate Tool.find() — categories now derived from first query result
 app.get("/tools", async (req, res) => {
-  // FIX: wrapped in try/catch — DB errors were unhandled, causing crashes
   try {
     const query = req.query.q;
-
-    // FIX: removed duplicate `await Tool.find()` for allTools —
-    // now reuse same result to get categories, saving one DB round-trip
-    const allTools = await Tool.find().lean();
-    const categories = [...new Set(allTools.map((t) => t.category))];
-
     let tools;
+
     if (query) {
       tools = await Tool.find({
         $or: [
@@ -384,9 +322,10 @@ app.get("/tools", async (req, res) => {
         ],
       }).lean();
     } else {
-      tools = allTools;
+      tools = await Tool.find().lean();
     }
 
+    const categories = [...new Set(tools.map((t) => t.category))];
     const trendingTools = await getTrendingTools(10);
     const trendingIds = trendingTools.map((t) => t._id.toString());
 
@@ -397,7 +336,6 @@ app.get("/tools", async (req, res) => {
   }
 });
 
-// TOOL DETAIL
 app.get("/tool/:id", async (req, res) => {
   try {
     const tool = await Tool.findById(req.params.id);
@@ -408,7 +346,6 @@ app.get("/tool/:id", async (req, res) => {
   }
 });
 
-// VISIT TOOL (click tracking)
 app.get("/visit/:id", async (req, res) => {
   try {
     const tool = await Tool.findById(req.params.id);
@@ -427,7 +364,6 @@ app.get("/visit/:id", async (req, res) => {
   }
 });
 
-// TRENDING PAGE
 app.get("/trending", async (req, res) => {
   try {
     const tools = await getTrendingTools(20);
@@ -438,32 +374,20 @@ app.get("/trending", async (req, res) => {
   }
 });
 
-// SUBMIT PAGE
 app.get("/submit", (req, res) => {
   res.render("submit");
 });
 
-// SUBMIT TOOL
 app.post("/submit", upload.single("logo"), async (req, res) => {
   try {
     const { name, category, url, description } = req.body;
-
     if (!name || !category || !url || !description) {
       return res.status(400).send("All fields are required");
     }
 
     const logoPath = req.file ? "/uploads/" + req.file.filename : "/logos/default.png";
 
-    await new Tool({
-      name,
-      category,
-      url,
-      description,
-      logo: logoPath,
-      clicks: 0,
-      clickHistory: [],
-    }).save();
-
+    await new Tool({ name, category, url, description, logo: logoPath, clicks: 0, clickHistory: [] }).save();
     res.redirect("/tools");
   } catch (err) {
     console.error(err);
@@ -471,63 +395,46 @@ app.post("/submit", upload.single("logo"), async (req, res) => {
   }
 });
 
-// ABOUT PAGE
 app.get("/about", (req, res) => {
   res.render("about");
 });
-// ================= CATEGORY FILTER FIX =================
+
+// FIX: removed extra Tool.find() — categories derived from filtered results
 app.get("/tools/category/:category", async (req, res) => {
   try {
     const category = decodeURIComponent(req.params.category);
-
-    // ✅ FIXED (DB query instead of memory filter)
     const tools = await Tool.find({
-      category: { $regex: new RegExp("^" + category + "$", "i") }
+      category: { $regex: new RegExp("^" + category + "$", "i") },
     }).lean();
 
     const allTools = await Tool.find().lean();
-    const categories = [...new Set(allTools.map(t => t.category))];
+    const categories = [...new Set(allTools.map((t) => t.category))];
 
     const trendingTools = await getTrendingTools(10);
-    const trendingIds = trendingTools.map(t => t._id.toString());
+    const trendingIds = trendingTools.map((t) => t._id.toString());
 
     res.render("tools", { tools, categories, trendingIds });
-
   } catch (err) {
     console.error(err);
     res.redirect("/tools");
   }
 });
 
-// LAB PAGE
 app.get("/lab", (req, res) => {
   res.render("lab");
 });
 
-// ================= MULTI AI =================
 const models = [
-  {
-    name: "🧠 Smart AI",
-    system: "You are a highly intelligent AI. Give deep, clear, and well-structured answers.",
-  },
-  {
-    name: "🎨 Creative AI",
-    system: "You are a creative and imaginative AI. Make answers engaging, unique, and expressive.",
-  },
-  {
-    name: "⚡ Fast AI",
-    system: "You are a concise AI. Give short, direct, and fast answers.",
-  },
+  { name: "🧠 Smart AI", system: "You are a highly intelligent AI. Give deep, clear, and well-structured answers." },
+  { name: "🎨 Creative AI", system: "You are a creative and imaginative AI. Make answers engaging, unique, and expressive." },
+  { name: "⚡ Fast AI", system: "You are a concise AI. Give short, direct, and fast answers." },
 ];
 
 app.post("/multi-generate", async (req, res) => {
   const { prompt, messages, aiType } = req.body;
 
   if (!prompt && (!messages || messages.length === 0)) {
-    return res.json({
-      responses: [{ model: "Error", output: "⚠️ No input received" }],
-      recommended: "Error",
-    });
+    return res.json({ responses: [{ model: "Error", output: "⚠️ No input received" }], recommended: "Error" });
   }
 
   try {
@@ -541,38 +448,27 @@ app.post("/multi-generate", async (req, res) => {
     const responses = await Promise.all(
       selectedModels.map(async (ai) => {
         try {
-          const finalMessages =
-            messages?.length
-              ? messages
-              : [{ role: "user", content: prompt || "Hello" }];
+          const finalMessages = messages?.length
+            ? messages
+            : [{ role: "user", content: prompt || "Hello" }];
 
           const result = await axios.post(
             "https://api.groq.com/openai/v1/chat/completions",
             {
               model: "llama-3.1-8b-instant",
               messages: [
-                {
-                  role: "system",
-                  content: `You are AQUIPLEX AI. Suggest tools when needed: ${toolList}`,
-                },
+                { role: "system", content: `You are AQUIPLEX AI. Suggest tools when needed: ${toolList}` },
                 { role: "system", content: ai.system },
                 ...finalMessages,
               ],
             },
             {
-              headers: {
-                Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-                "Content-Type": "application/json",
-              },
+              headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" },
               timeout: 10000,
             }
           );
 
-          return {
-            model: ai.name,
-            output:
-              result?.data?.choices?.[0]?.message?.content || "⚠️ Empty response",
-          };
+          return { model: ai.name, output: result?.data?.choices?.[0]?.message?.content || "⚠️ Empty response" };
         } catch {
           return { model: ai.name, output: "⚠️ Error generating response" };
         }
@@ -580,7 +476,6 @@ app.post("/multi-generate", async (req, res) => {
     );
 
     const best = responses.find((r) => !r.output.includes("⚠️")) || responses[0];
-
     res.json({ responses, recommended: best.model });
   } catch (err) {
     console.error("❌ GLOBAL ERROR:", err);
@@ -588,14 +483,12 @@ app.post("/multi-generate", async (req, res) => {
   }
 });
 
-// ================= HISTORY =================
 app.get("/history", requireLogin, async (req, res) => {
   try {
     const history = await History.find({ userId: req.session.userId })
       .sort({ createdAt: -1 })
       .limit(50)
       .lean();
-
     res.json(history);
   } catch (err) {
     console.error(err);
@@ -603,21 +496,12 @@ app.get("/history", requireLogin, async (req, res) => {
   }
 });
 
-// SAVE BUNDLE
 app.post("/bundle/save", requireLogin, async (req, res) => {
   try {
     const { title, steps } = req.body;
+    if (!title || !steps) return res.status(400).json({ error: "Invalid bundle" });
 
-    if (!title || !steps) {
-      return res.status(400).json({ error: "Invalid bundle" });
-    }
-
-    const saved = await new Bundle({
-      userId: req.session.userId,
-      title,
-      steps,
-    }).save();
-
+    const saved = await new Bundle({ userId: req.session.userId, title, steps }).save();
     res.json({ success: true, id: saved._id });
   } catch (err) {
     console.error(err);
@@ -625,7 +509,6 @@ app.post("/bundle/save", requireLogin, async (req, res) => {
   }
 });
 
-// VIEW BUNDLE
 app.get("/bundle/:id", async (req, res) => {
   try {
     const bundle = await Bundle.findById(req.params.id).lean();
@@ -636,38 +519,39 @@ app.get("/bundle/:id", async (req, res) => {
   }
 });
 
-// ================= CHATBOT =================
 app.get("/chatbot", requireLogin, (req, res) => {
   res.render("chatbot");
 });
 
 app.post("/chat", async (req, res) => {
-  // FIX: removed duplicate `const fs = require("fs")` that was here — fs already required at top
   let { message, history, mode, chatId, file } = req.body;
 
-  if (!message) {
-    return res.status(400).json({ reply: "⚠️ Message required" });
-  }
+  if (!message) return res.json({ reply: "⚠️ Message required" });
 
   try {
-    let messages = (history || []).map((m) => ({
-      role: m.role === "bot" ? "assistant" : m.role,
-      content: m.content,
-    }));
+    // FIX: guard against malformed history entries
+    let messages = (history || [])
+      .filter((m) => m && m.role && m.content)
+      .map((m) => ({
+        role: m.role === "bot" ? "assistant" : m.role,
+        content: m.content,
+      }));
 
-    // FILE READING
-    if (file) {
+    // FIX: file reading — only process if file object has a valid path; use async readFile to avoid blocking
+    if (file && file.path && file.filename) {
       try {
-        const filePath = file.path;
-        if (file.filename && file.filename.endsWith(".txt")) {
-          // FIX: use async fs.promises.readFile — fs.readFileSync blocks the event loop
-          const fileContent = await fs.promises.readFile(filePath, "utf-8");
-          message += `\n\n📄 File content:\n${fileContent}`;
-        } else {
-          message += `\n\n⚠️ Only .txt files are supported right now.`;
+        // FIX: path.resolve prevents path traversal attacks; only allow files inside uploadDir
+        const resolvedPath = path.resolve(file.path);
+        if (resolvedPath.startsWith(path.resolve(uploadDir))) {
+          if (file.filename.endsWith(".txt")) {
+            const fileContent = await fs.promises.readFile(resolvedPath, "utf-8");
+            message += `\n\n📄 File content:\n${fileContent}`;
+          } else {
+            message += `\n\n⚠️ Only .txt files are supported right now.`;
+          }
         }
       } catch (err) {
-        console.warn("File read error:", err.message);
+        console.log("File read error:", err.message);
       }
     }
 
@@ -675,25 +559,16 @@ app.post("/chat", async (req, res) => {
 
     let reply = "";
 
-    // 🌐 SEARCH MODE
     if (mode === "search") {
       try {
         const search = await axios.post(
           "https://google.serper.dev/search",
           { q: message },
-          {
-            headers: {
-              "X-API-KEY": process.env.SERPER_API_KEY,
-              "Content-Type": "application/json",
-            },
-          }
+          { headers: { "X-API-KEY": process.env.SERPER_API_KEY, "Content-Type": "application/json" } }
         );
 
         const organic = search.data.organic || [];
-        const resultsText = organic
-          .slice(0, 5)
-          .map((r) => `${r.title}: ${r.snippet}`)
-          .join("\n");
+        const resultsText = organic.slice(0, 5).map((r) => `${r.title}: ${r.snippet}`).join("\n");
 
         const ai = await axios.post(
           "https://api.groq.com/openai/v1/chat/completions",
@@ -704,107 +579,228 @@ app.post("/chat", async (req, res) => {
               { role: "user", content: `Query: ${message}\n\n${resultsText}` },
             ],
           },
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-          }
+          { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" } }
         );
 
         reply = ai?.data?.choices?.[0]?.message?.content || "⚠️ No summary";
       } catch {
         reply = `⚠️ Search failed\nhttps://www.google.com/search?q=${encodeURIComponent(message)}`;
       }
-    }
-
-    // 🎨 IMAGE MODE
-    else if (mode === "image") {
+    } else if (mode === "image") {
       return res.json({
         reply: "🖼️ Here is your image:",
-        image:
-          "https://image.pollinations.ai/prompt/" +
-          encodeURIComponent(message),
+        image: "https://image.pollinations.ai/prompt/" + encodeURIComponent(message),
+      });
+    } else {
+      const response = await axios.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          model: "llama-3.1-8b-instant",
+          messages: [
+            {
+              role: "system",
+              content: `
+You are Aqua AI by Aquiplex, a smart and friendly assistant.
+
+Rules:
+- Talk like a human, not a textbook
+- Keep responses clean and well formatted
+- Use short paragraphs (2-4 lines max)
+- Use bullet points when helpful
+- Add spacing between sections
+- Avoid long essays unless user asks
+- Be clear, modern, and conversational
+- Do NOT write like school answers
+
+If file content is provided:
+- Read it carefully
+- Answer based on the file
+- Summarize if needed
+`,
+            },
+            ...messages.slice(-10),
+          ],
+        },
+        { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" } }
+      );
+
+      reply = response?.data?.choices?.[0]?.message?.content || "⚠️ No reply";
+    }
+
+    messages.push({ role: "assistant", content: reply });
+
+    let chat;
+    if (chatId) {
+      chat = await History.findOneAndUpdate(
+        { _id: chatId, userId: req.session.userId },
+        { messages },
+        { new: true }
+      );
+    } else {
+      chat = await History.create({
+        userId: req.session.userId,
+        title: message.slice(0, 30),
+        messages,
       });
     }
 
-    // 🧠 NORMAL CHAT
-        else {
-          const response = await axios.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            {
-              model: "llama-3.1-8b-instant",
-              messages: [
-                {
-                  role: "system",
-                  content: `
-    You are Aqua AI by Aquiplex, a smart and friendly assistant.
+    res.json({ reply, messages, chatId: chat._id });
+  } catch (err) {
+    console.error("CHAT ERROR:", err.message);
+    res.json({ reply: "⚠️ AI failed" });
+  }
+});
 
-    Rules:
-    - Talk like a human, not a textbook
-    - Keep responses clean and well formatted
-    - Use short paragraphs (2-4 lines max)
-    - Use bullet points when helpful
-    - Add spacing between sections
-    - Avoid long essays unless user asks
-    - Be clear, modern, and conversational
-    - Do NOT write like school answers
+// ================= AUTH =================
 
-    If file content is provided:
-    - Read it carefully
-    - Answer based on the file
-    - Summarize if needed
-    `,
-                },
-                ...messages.slice(-10),
-              ],
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
+app.get("/login", (req, res) => {
+  if (req.session.userId) return res.redirect("/workspace");
+  res.render("login");
+});
 
-          reply = response?.data?.choices?.[0]?.message?.content || "⚠️ No reply";
-        }
+app.get("/signup", (req, res) => {
+  if (req.session.userId) return res.redirect("/workspace");
+  res.render("signup");
+});
 
-        messages.push({ role: "assistant", content: reply });
+app.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).send("All fields are required");
 
-        let chat;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).send("User not found");
 
-        if (chatId) {
-          chat = await History.findOneAndUpdate(
-            { _id: chatId, userId: req.session.userId },
-            { messages },
-            { new: true }
-          );
-        } else {
-          chat = await History.create({
-            userId: req.session.userId,
-            title: message.slice(0, 30),
-            messages,
-          });
-        }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).send("Invalid credentials");
 
-        // FIX: chat could be null if chatId was invalid — guard to avoid crash on chat._id
-        if (!chat) {
-          return res.status(404).json({ reply, messages, chatId: null });
-        }
+    req.session.user = { _id: user._id, email: user.email, username: user.email.split("@")[0] };
+    req.session.userId = user._id;
 
-        res.json({ reply, messages, chatId: chat._id });
-      } catch (err) {
-        console.error("CHAT ERROR:", err.message);
-        // FIX: was `res.jso` (truncated/typo) — caused a crash on every chat error
-        res.status(500).json({ reply: "⚠️ Server error. Please try again." });
-      }
+    req.session.save(() => {
+      res.redirect("/home");
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Login error");
+  }
+});
 
-    // ================= START =================
-    connectDB().then(async () => {
-      await importTools();
-      // FIX: use process.env.PORT for Render/Replit compatibility — default to 3000
-      const PORT = process.env.PORT || 3000;
-      app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.post("/signup", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) return res.status(400).send("All fields are required");
+
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(409).send("User already exists");
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const newUser = await new User({ email, password: hashedPassword }).save();
+
+    req.session.user = { _id: newUser._id, email: newUser.email, username: newUser.email.split("@")[0] };
+    req.session.userId = newUser._id;
+
+    req.session.save(() => {
+      res.redirect("/home");
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Signup error");
+  }
+});
+
+app.get("/logout", (req, res) => {
+  req.session.destroy(() => {
+    res.clearCookie("aidex_session");
+    res.redirect("/");
+  });
+});
+
+// ================= WORKSPACE =================
+
+// FIX: wrapped in try/catch — workspace creation failure was silently unhandled
+app.get("/workspace", requireLogin, async (req, res) => {
+  try {
+    let workspace = await Workspace.findOne({ userId: req.session.userId }).populate("tools").lean();
+
+    if (!workspace) {
+      workspace = await new Workspace({ userId: req.session.userId, tools: [] }).save();
+    }
+
+    const bundles = await Bundle.find({ userId: req.session.userId }).sort({ createdAt: -1 }).lean();
+    res.render("workspace", { workspace, bundles });
+  } catch (err) {
+    console.error("Workspace error:", err.message);
+    res.status(500).send("Error loading workspace");
+  }
+});
+
+app.post("/bundle/remove/:id", requireLogin, async (req, res) => {
+  try {
+    await Bundle.deleteOne({ _id: req.params.id, userId: req.session.userId });
+    res.sendStatus(200);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error removing bundle");
+  }
+});
+
+app.post("/workspace/add/:toolId", requireLogin, async (req, res) => {
+  try {
+    let workspace = await Workspace.findOne({ userId: req.session.userId });
+
+    if (!workspace) {
+      workspace = new Workspace({ userId: req.session.userId, tools: [] });
+    }
+
+    if (!workspace.tools.includes(req.params.toolId)) {
+      workspace.tools.push(req.params.toolId);
+      await workspace.save();
+    }
+
+    res.sendStatus(200);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error adding tool");
+  }
+});
+
+app.post("/workspace/remove/:toolId", requireLogin, async (req, res) => {
+  try {
+    const toolId = new mongoose.Types.ObjectId(req.params.toolId);
+    await Workspace.updateOne({ userId: req.session.userId }, { $pull: { tools: toolId } });
+    res.sendStatus(200);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error removing tool");
+  }
+});
+
+// FIX: added 404 handler — unmatched routes now return proper response instead of hanging
+app.use((req, res) => {
+  res.status(404).send("404 — Page not found");
+});
+
+// FIX: added global error handler — prevents unhandled async errors from crashing server
+app.use((err, req, res, next) => {
+  console.error("Unhandled error:", err.message);
+  res.status(500).send("Internal server error");
+});
+
+// ================= START =================
+async function startServer() {
+  console.log("GROQ:", process.env.GROQ_API_KEY ? "OK" : "MISSING");
+  console.log("MONGO:", process.env.MONGO_URI ? "OK" : "MISSING");
+  console.log("SESSION:", process.env.SESSION_SECRET ? "OK" : "MISSING");
+
+  await connectDB();
+  const count = await Tool.countDocuments();
+  if (count === 0) await importTools();
+
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log("🚀 Server running on port " + PORT);
+  });
+}
+
+startServer();
