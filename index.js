@@ -139,12 +139,7 @@ function redirectIfLoggedIn(req, res, next) {
 // ================= ROUTES =================
 
 // Landing page
-app.get("/", (req, res) => {
-  if (req.session.userId) {
-    return res.redirect("/home"); // ✅ logged in → home
-  }
-  return res.redirect("/landing"); // ✅ not logged in → landing
-});
+
 //
 
 app.post("/api/tools/:id/like", async (req, res) => {
