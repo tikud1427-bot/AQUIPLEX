@@ -218,7 +218,9 @@ async function send() {
   const chat = document.getElementById("chat");
   chat.innerHTML = "";
   const message = input.value.trim();
-  if (!message) return;
+  const fileInput = document.getElementById("fileUpload");
+
+  if (!message && !fileInput.files[0]) return;
 
   chat.innerHTML += `<div class="msg user">${message}</div>`;
   input.value = "";
@@ -232,17 +234,27 @@ async function send() {
   chat.scrollTop = chat.scrollHeight;
 
   try {
+    const formData = new FormData();
+
+    formData.append("message", message);
+    formData.append("chatId", currentChatId);
+    formData.append("mode", mode);
+
+    // send history (IMPORTANT)
+    formData.append("history", JSON.stringify(messages));
+
+    // get file
+    const fileInput = document.getElementById("fileUpload");
+    if (fileInput.files[0]) {
+      formData.append("file", fileInput.files[0]);
+    }
+
     const res = await fetch("/chat", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        message,
-        history: messages,
-        chatId: currentChatId,
-        mode
-      })
+      body: formData
     });
 
+    const data = await res.json();
     const data = await res.json();
     document.getElementById("loading")?.remove();
 
@@ -338,39 +350,49 @@ async function loadHistoryList() {
   });
 }
 
-async function deleteChat(id) {
-  await fetch("/history/" + id, { method: "DELETE" });
-  loadHistoryList();
-  document.getElementById("chat").innerHTML = "";
-}
+  async function deleteChat(id) {
+    await fetch("/history/" + id, { method: "DELETE" });
 
-async function loadChat(id, event) {
-  const res = await fetch("/history/" + id);
-  const data = await res.json();
-
-  currentChatId = id;
-  messages = data.messages;
-
-  const chat = document.getElementById("chat");
-
-  data.messages.forEach(m => {
-
-    if (m.role === "user") {
-      chat.innerHTML += `
-        <div class="msg user">
-          ${marked.parse(m.content)}
-        </div>`;
-    } else {
-      chat.innerHTML += `
-        <div class="msg bot">
-          <div class="bot-text">${marked.parse(m.content)}</div>
-          <button onclick="copyText(this)">📋</button>
-        </div>`;
+    // ✅ if currently open chat is deleted → reset everything
+    if (currentChatId === id) {
+      currentChatId = null;
+      messages = [];
+      document.getElementById("chat").innerHTML = "";
     }
 
-  });
-  chat.scrollTop = chat.scrollHeight;
-}
+    loadHistoryList();
+  }
+
+  async function loadChat(id, event) {
+    const res = await fetch("/history/" + id);
+    const data = await res.json();
+
+    currentChatId = id;
+    messages = data.messages;
+
+    const chat = document.getElementById("chat");
+    chat.innerHTML = ""; // ✅ THIS LINE YOU ADD
+
+    data.messages.forEach(m => {
+
+      if (m.role === "user") {
+        chat.innerHTML += `
+          <div class="msg user">
+            ${marked.parse(m.content)}
+          </div>`;
+      } else {
+        chat.innerHTML += `
+          <div class="msg bot">
+            <div class="bot-text">${marked.parse(m.content)}</div>
+            <button onclick="copyText(this)">📋</button>
+          </div>`;
+      }
+
+    });
+
+    chat.scrollTop = chat.scrollHeight;
+  }
+  
 
 function newChat() {
   currentChatId = null;

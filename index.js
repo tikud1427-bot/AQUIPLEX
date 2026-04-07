@@ -482,7 +482,7 @@ app.post("/multi-generate", async (req, res) => {
     res.status(500).send("AI generation failed");
   }
 });
-
+//
 app.get("/history", requireLogin, async (req, res) => {
   try {
     const history = await History.find({ userId: req.session.userId })
@@ -496,6 +496,37 @@ app.get("/history", requireLogin, async (req, res) => {
   }
 });
 
+//
+app.delete("/history/:id", requireLogin, async (req, res) => {
+  try {
+    await History.deleteOne({
+      _id: req.params.id,
+      userId: req.session.userId
+    });
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Delete failed" });
+  }
+});
+//
+app.get("/history/:id", requireLogin, async (req, res) => {
+  try {
+    const chat = await History.findOne({
+      _id: req.params.id,
+      userId: req.session.userId
+    });
+
+    if (!chat) return res.status(404).json({ error: "Chat not found" });
+
+    res.json(chat);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to load chat" });
+  }
+});
+//
 app.post("/bundle/save", requireLogin, async (req, res) => {
   try {
     const { title, steps } = req.body;
@@ -523,10 +554,13 @@ app.get("/chatbot", requireLogin, (req, res) => {
   res.render("chatbot");
 });
 
-app.post("/chat", async (req, res) => {
-  let { message, history, mode, chatId, file } = req.body;
+app.post("/chat", upload.single("file"), async (req, res) => {
+  let { message, history, mode, chatId } = req.body;
+  const file = req.file;
 
-  if (!message) return res.json({ reply: "⚠️ Message required" });
+  if (!message && !file) {
+    return res.json({ reply: "⚠️ Message or file required" });
+  }
 
   try {
     // FIX: guard against malformed history entries
