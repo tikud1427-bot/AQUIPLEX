@@ -183,17 +183,23 @@ app.get("/landing", (req, res) => {
 // HOME (main app - public)
 app.get("/home", async (req, res) => {
   try {
-    const tools = await Tool.find().limit(12).lean();
+    if (!req.session.userId) {
+      return res.redirect("/landing");
+    }
+
+    const tools = await Tool.find().limit(12).sort({ likes: -1 });
+
     console.log("LIKES DEBUG:", tools.map(t => t.likes));
-    const allTools = await Tool.find().lean();
+
+    const allTools = await Tool.find().sort({ likes: -1 });
 
     const trendingTools = await getTrendingTools(10);
     const trendingIds = trendingTools.map(t => t._id.toString());
 
     res.render("home", {
-      tools: tools || [],
-      trendingIds: trendingIds || [],
-      allTools: allTools || []
+      tools,
+      trendingIds,
+      allTools
     });
 
   } catch (err) {
@@ -356,34 +362,34 @@ app.get("/download", (req, res) => {
 
 // TOOLS
 app.get("/tools", async (req, res) => {
-const query = req.query.q;
+  const query = req.query.q;
 
-let tools;
+  let tools;
 
-if (query) {
-tools = await Tool.find({
-$or: [
-{ name: { $regex: query, $options: "i" } },
-{ description: { $regex: query, $options: "i" } },
-],
-}).lean();
-} else {
-tools = await Tool.find().lean();
-}
+  if (query) {
+    tools = await Tool.find({
+      $or: [
+        { name: { $regex: query, $options: "i" } },
+        { description: { $regex: query, $options: "i" } },
+      ],
+    });
+  } else {
+    tools = await Tool.find();
+  }
 
-const allTools = await Tool.find().lean();
-const categories = [...new Set(allTools.map(t => t.category))];
+  const allTools = await Tool.find();
+  const categories = [...new Set(allTools.map(t => t.category))];
 
-const trendingTools = await getTrendingTools(10);
-const trendingIds = trendingTools.map(t => t._id.toString());
+  const trendingTools = await getTrendingTools(10);
+  const trendingIds = trendingTools.map(t => t._id.toString());
 
-res.render("tools", { tools, categories, trendingIds });
+  res.render("tools", { tools, categories, trendingIds });
 });
 
 // TOOL DETAILS
 app.get("/tool/:id", async (req, res) => {
 try {
-const tool = await Tool.findById(req.params.id).lean();
+  const tool = await Tool.findById(req.params.id);
 if (!tool) return res.redirect("/tools");
 
 res.render("tool", { tool });
@@ -473,10 +479,11 @@ app.get("/tools/category/:category", async (req, res) => {
 try {
 const category = decodeURIComponent(req.params.category);
 
-const tools = await Tool.find({
-category: { $regex: new RegExp("^" + category + "$", "i") }
-}).lean();
-const allTools = await Tool.find().lean();
+  const tools = await Tool.find({
+    category: { $regex: new RegExp("^" + category + "$", "i") }
+  });
+
+  const allTools = await Tool.find();
 const categories = [...new Set(allTools.map(t => t.category))];
 
 const trendingTools = await getTrendingTools(10);  
