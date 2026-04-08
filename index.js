@@ -206,7 +206,7 @@ app.get("/bundles", (req, res) => {
   res.render("bundles");
 });
 //
-// GENERATE AI BUNDLE (FIXED)
+// ================= GENERATE AI BUILDER =================
 app.post("/generate-bundle", async (req, res) => {
   const { goal } = req.body;
 
@@ -226,7 +226,15 @@ app.post("/generate-bundle", async (req, res) => {
   // ================= YOUTUBE =================
   if (type === "youtube") {
     prompt = `
-Return JSON only:
+You are an AI that ONLY returns valid JSON.
+
+STRICT RULES:
+- Do NOT explain anything
+- Do NOT write steps
+- Do NOT add text before or after JSON
+- Output MUST start with { and end with }
+
+FORMAT:
 
 {
  "type":"youtube",
@@ -235,13 +243,15 @@ Return JSON only:
  "description":"",
  "videoIdeas":["","",""]
 }
+
+Return ONLY JSON.
 `;
   }
 
   // ================= INSTAGRAM =================
   else if (type === "instagram") {
     prompt = `
-Return JSON only:
+You are an AI that ONLY returns valid JSON.
 
 {
  "type":"instagram",
@@ -249,13 +259,15 @@ Return JSON only:
  "bio":"",
  "ideas":["","",""]
 }
+
+Return ONLY JSON.
 `;
   }
 
   // ================= WEBSITE =================
   else if (type === "website") {
     prompt = `
-Return JSON only:
+You are an AI that ONLY returns valid JSON.
 
 {
  "type":"website",
@@ -263,13 +275,15 @@ Return JSON only:
  "tagline":"",
  "html":"<html><body><h1>Hello</h1></body></html>"
 }
+
+Return ONLY JSON.
 `;
   }
 
   // ================= STARTUP =================
   else if (type === "startup") {
     prompt = `
-Return JSON only:
+You are an AI that ONLY returns valid JSON.
 
 {
  "type":"startup",
@@ -278,6 +292,8 @@ Return JSON only:
  "tagline":"",
  "html":"<html><body><h1>Startup</h1></body></html>"
 }
+
+Return ONLY JSON.
 `;
   }
 
@@ -301,21 +317,34 @@ Return JSON only:
 
     const text = response.data.choices[0].message.content;
 
+    // ✅ CLEAN JSON EXTRACTION
     let parsed;
     try {
-      parsed = JSON.parse(text.match(/\{[\s\S]*\}/)[0]);
-    } catch {
-      return res.json({ error: "Parse error", raw: text });
+      const match = text.match(/\{[\s\S]*\}/);
+
+      if (!match) {
+        return res.json({
+          error: "No JSON found",
+          raw: text
+        });
+      }
+
+      parsed = JSON.parse(match[0]);
+
+    } catch (err) {
+      return res.json({
+        error: "Parse error",
+        raw: text
+      });
     }
 
     res.json(parsed);
 
   } catch (err) {
-    console.error(err.message);
+    console.error("AI ERROR:", err.message);
     res.json({ error: "AI failed" });
   }
 });
-   
 // TEST AI (DEBUG ROUTE)
 app.get("/test-ai", async (req, res) => {
   try {
