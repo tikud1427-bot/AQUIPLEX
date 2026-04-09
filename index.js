@@ -270,7 +270,7 @@ Return ONLY JSON.
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: "llama-3.1-8b-instant",
+        model: "llama-3.1-70b-versatile",
         messages: [
           { role: "system", content: prompt },
           { role: "user", content: `Build this project: ${goal}` }
@@ -284,7 +284,17 @@ Return ONLY JSON.
       }
     );
 
-    const text = response.data.choices[0].message.content;
+    const text =
+      response?.data?.choices?.[0]?.message?.content;
+
+    if (!text) {
+      console.log("❌ FULL AI RESPONSE:", response.data);
+
+      return res.json({
+        error: "Invalid AI response",
+        raw: response.data
+      });
+    }
     console.log("AI RAW RESPONSE:\n", text); // 🔥 ADD THIS HERE
     // ✅ CLEAN TEXT
     let cleanText = text
