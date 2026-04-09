@@ -308,7 +308,16 @@ Return ONLY JSON.
 
       const jsonString = cleanText.substring(firstBrace, lastBrace + 1);
 
-      parsed = JSON.parse(jsonString);
+      try {
+        parsed = JSON.parse(jsonString);
+      } catch (parseErr) {
+        console.log("JSON BROKEN:", jsonString);
+
+        return res.json({
+          error: "AI returned invalid JSON",
+          raw: jsonString
+        });
+      }
 
     } catch (err) {
       console.log("RAW AI:", cleanText);
@@ -319,6 +328,7 @@ Return ONLY JSON.
       });
     }
 
+    
     // ✅ FINAL RESPONSE
     return res.json(parsed);
 
@@ -327,8 +337,7 @@ Return ONLY JSON.
       return res.json({ error: "AI failed" });
     }
 
-    }); // ✅ VERY IMPORTANT — closes /generate-bundle route
-  
+    }); // ✅ CLOSE ROUTE PROPERLY
 // TEST AI (DEBUG ROUTE)
 app.get("/test-ai", async (req, res) => {
   try {
