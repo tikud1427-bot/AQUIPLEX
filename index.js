@@ -270,10 +270,18 @@ Return ONLY JSON.
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
-        model: "llama3-70b-8192",
+        model: "llama-3.1-8b-instant",
+        response_format: { type: "json_object" }, // ⭐ IMPORTANT
+
         messages: [
-          { role: "system", content: prompt },
-          { role: "user", content: `Build this project: ${goal}` }
+          {
+            role: "system",
+            content: prompt + "\n\nReturn ONLY JSON. No explanation. No text."
+          },
+          {
+            role: "user",
+            content: `Build this project: ${goal}`
+          }
         ]
       },
       {
