@@ -6,21 +6,20 @@
   <title>Aquiplex — AI Workflows Made Simple</title>
 
   <link rel="stylesheet" href="/css/landing.css">
-
   <style>
-    html {
-      scroll-behavior: smooth;
-    }
+  html {
+    scroll-behavior: smooth;
+  }
   </style>
 </head>
 
 <body>
-
   <div class="particles"></div>
   <div class="cursor-glow"></div>
 
   <!-- NAVBAR -->
   <header class="navbar">
+
     <div class="logo">
       <img src="/logo/logo.png" alt="Aquiplex Logo" style="height:30px;">
     </div>
@@ -29,133 +28,116 @@
       <a href="/login" class="btn-outline">Login</a>
       <a href="/signup" class="btn-primary">Sign Up</a>
     </div>
+
   </header>
 
-  <!-- HERO -->
-  <section class="hero">
+<!-- HERO -->
+<section class="hero">
 
-    <h1>
-      Tell Us What You Want.<br>
-      <span class="typing">We Give You The Exact AI Tools ⚡</span>
-    </h1>
+  <h1>
+    Tell Us What You Want.<br>
+    <span class="typing">We Give You The Exact AI Tools ⚡</span>
+  </h1>
 
-    <p>
-      No more searching. Just type your goal and get everything instantly.
-    </p>
+  <p>
+    No more searching. Just type your goal and get everything instantly.
+  </p>
 
-    <!-- INPUT -->
-    <div class="input-box">
-      <input id="goalInput" type="text" placeholder="Create a YouTube video...">
-      <button onclick="goNext()">⚡ Generate</button>
+  <!-- INPUT -->
+  <div class="input-box">
+    <input id="goalInput" type="text" placeholder="Create a YouTube video...">
+    <button onclick="goToHome()">⚡ Generate</button>
+  </div>
+
+  <!-- EXAMPLES -->
+  <div class="examples">
+    <span onclick="setGoal('Write an essay')">Write essay</span>
+    <span onclick="setGoal('Start a business')">Start business</span>
+    <span onclick="setGoal('Grow Instagram')">Grow Instagram</span>
+  </div>
+
+</section>
+
+<!-- HOW -->
+<section class="how">
+
+  <h2>How It Works</h2>
+
+  <div class="grid">
+
+    <div class="card">
+      <h3>🎯 Type Goal</h3>
+      <p>Just tell what you want</p>
     </div>
 
-    <!-- EXAMPLES -->
-    <div class="examples">
-      <span onclick="setGoal('Write an essay')">Write essay</span>
-      <span onclick="setGoal('Start a business')">Start business</span>
-      <span onclick="setGoal('Grow Instagram')">Grow Instagram</span>
+    <div class="card">
+      <h3>⚙️ AI Builds</h3>
+      <p>We pick best tools</p>
     </div>
 
-  </section>
-
-  <!-- HOW -->
-  <section class="how">
-    <h2>How It Works</h2>
-
-    <div class="grid">
-      <div class="card">
-        <h3>🎯 Type Goal</h3>
-        <p>Just tell what you want</p>
-      </div>
-
-      <div class="card">
-        <h3>⚙️ AI Builds</h3>
-        <p>We pick best tools</p>
-      </div>
-
-      <div class="card">
-        <h3>🚀 Execute</h3>
-        <p>Start instantly</p>
-      </div>
+    <div class="card">
+      <h3>🚀 Execute</h3>
+      <p>Start instantly</p>
     </div>
-  </section>
 
-  <!-- CTA -->
-  <section class="cta">
-    <h2>Stop Searching. Start Creating.</h2>
-    <button class="btn-primary" onclick="goNext()">Try Now →</button>
-  </section>
+  </div>
 
-  <!-- SCRIPTS -->
+</section>
 
+<!-- CTA -->
+<section class="cta">
+  <h2>Stop Searching. Start Creating.</h2>
+  <a href="/home" class="btn-primary">Try Now →</a>
+</section>
+
+<script>
+function goToHome() {
+  const value = document.getElementById("goalInput").value;
+  window.location.href = "/home?goal=" + encodeURIComponent(value);
+}
+
+function setGoal(text) {
+  document.getElementById("goalInput").value = text;
+}
+</script>
   <script>
-    function setGoal(text) {
-      document.getElementById("goalInput").value = text;
-    }
+  const input = document.getElementById("goalInput");
 
-    // ✅ SMART REDIRECT
-    function goNext() {
-      const value = document.getElementById("goalInput").value;
+  const suggestions = [
+    "Start a SaaS business",
+    "Grow Instagram fast",
+    "Make money online",
+    "Build a startup",
+    "Create YouTube content"
+  ];
 
-      fetch("/check-auth")
-        .then(res => res.json())
-        .then(data => {
-          if (data.loggedIn) {
-            window.location.href = "/home?goal=" + encodeURIComponent(value);
-          } else {
-            window.location.href = "/login";
-          }
-        });
-    }
+  let i = 0;
 
-    // ✅ ENTER KEY SUPPORT
-    document.getElementById("goalInput").addEventListener("keypress", function(e) {
-      if (e.key === "Enter") {
-        goNext();
-      }
-    });
+  setInterval(() => {
+    input.placeholder = suggestions[i];
+    i = (i + 1) % suggestions.length;
+  }, 2000);
   </script>
-
   <script>
-    const input = document.getElementById("goalInput");
+  const particles = document.querySelector(".particles");
 
-    const suggestions = [
-      "Start a SaaS business",
-      "Grow Instagram fast",
-      "Make money online",
-      "Build a startup",
-      "Create YouTube content"
-    ];
+  for (let i = 0; i < 40; i++) {
+    const span = document.createElement("span");
 
-    let i = 0;
+    span.style.left = Math.random() * 100 + "%";
+    span.style.animationDuration = (5 + Math.random() * 10) + "s";
+    span.style.animationDelay = Math.random() * 5 + "s";
 
-    setInterval(() => {
-      input.placeholder = suggestions[i];
-      i = (i + 1) % suggestions.length;
-    }, 2000);
+    particles.appendChild(span);
+  }
   </script>
-
   <script>
-    const particles = document.querySelector(".particles");
+  const glow = document.querySelector(".cursor-glow");
 
-    for (let i = 0; i < 40; i++) {
-      const span = document.createElement("span");
-
-      span.style.left = Math.random() * 100 + "%";
-      span.style.animationDuration = (5 + Math.random() * 10) + "s";
-      span.style.animationDelay = Math.random() * 5 + "s";
-
-      particles.appendChild(span);
-    }
-  </script>
-
-  <script>
-    const glow = document.querySelector(".cursor-glow");
-
-    document.addEventListener("mousemove", (e) => {
-      glow.style.left = e.clientX + "px";
-      glow.style.top = e.clientY + "px";
-    });
+  document.addEventListener("mousemove", (e) => {
+    glow.style.left = e.clientX + "px";
+    glow.style.top = e.clientY + "px";
+  });
   </script>
 
 </body>
