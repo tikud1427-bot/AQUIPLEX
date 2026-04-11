@@ -216,13 +216,12 @@ function setMode(m) {
 async function send() {
   const input = document.getElementById("messageInput");
   const chat = document.getElementById("chat");
-  chat.innerHTML = "";
   const message = input.value.trim();
   const fileInput = document.getElementById("fileUpload");
 
   if (!message && !fileInput.files[0]) return;
 
-  chat.innerHTML += `<div class="msg user">${message}</div>`;
+  
   input.value = "";
 
   const loading = document.createElement("div");
@@ -254,11 +253,12 @@ async function send() {
       body: formData
     });
 
-    const data = await res.json();
+
     const data = await res.json();
     document.getElementById("loading")?.remove();
-
+    // ✅ CLEAR FIRST
     chat.innerHTML = "";
+    
     if (data.image) {
       chat.innerHTML += `
         <div class="msg bot">
@@ -371,7 +371,7 @@ async function loadHistoryList() {
     messages = data.messages;
 
     const chat = document.getElementById("chat");
-    chat.innerHTML = ""; // ✅ THIS LINE YOU ADD
+ 
 
     data.messages.forEach(m => {
 
@@ -412,6 +412,6 @@ loadHistoryList();
     setTimeout(() => btn.innerText = "📋", 1500);
   }
 </script>
-
+  
 </body>
 </html>

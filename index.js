@@ -204,7 +204,12 @@ app.get("/home", async (req, res) => {
 app.get("/tools", async (req, res) => {
   try {
     const tools = await Tool.find().lean();
-    res.render("tools", { tools });
+
+    // ✅ CREATE CATEGORIES
+    const categories = [...new Set(tools.map(t => t.category))];
+
+    res.render("tools", { tools, categories });
+
   } catch (err) {
     console.error(err);
     res.send("Error loading tools");
