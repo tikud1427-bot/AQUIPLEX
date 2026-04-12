@@ -45,8 +45,10 @@
 
 
 <script>
-async function generateBundle() {
-  const goal = document.getElementById("goalInput").value.trim();
+
+  
+  async function generateBundle(step = 1) {
+  const goal = document.getElementById("goalInput").value.trim(); // ✅ MOVED HERE
 
   if (!goal) {
     alert("Please enter a goal");
@@ -67,7 +69,7 @@ async function generateBundle() {
     const res = await fetch(window.location.origin + "/generate-bundle", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ goal })
+      body: JSON.stringify({ goal, step, answers })
     });
 
     const data = await res.json();
@@ -82,7 +84,11 @@ async function generateBundle() {
       return;
     }
 
-    render(data);
+    if (data.type === "questions") {
+      renderQuestions(data.questions);
+    } else {
+      render(data);
+    }
 
   } catch (err) {
     console.error(err);
@@ -187,6 +193,42 @@ function render(data) {
       console.error(err);
       alert("❌ Error saving bundle");
     }
+  }
+  function renderQuestions(questions) {
+    let html = "";
+
+    for (let i = 0; i < questions.length; i++) {
+      html += `
+        <div style="margin: 15px 0;">
+          <p style="color: white;">${questions[i]}</p>
+          <input id="q${i}" placeholder="Your answer..." style="width:100%; padding:10px;" />
+        </div>
+      `;
+    }
+
+    html += `
+      <button onclick="submitAnswers(${questions.length})">
+        Continue 🚀
+      </button>
+    `;
+
+    document.getElementById("result").innerHTML = html;
+  }
+
+  let answers = [];
+
+  function submitAnswers(count) {
+    answers = [];
+
+    for (let i = 0; i < count; i++) {
+      const value = document.getElementById(`q${i}`).value;
+      answers.push(value);
+    }
+
+    console.log("Answers:", answers);
+
+    // send again with step 2
+    generateBundle(2);
   }
 </script>
 
