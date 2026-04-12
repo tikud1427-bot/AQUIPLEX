@@ -4290,3 +4290,32 @@ input {
   }
 }
 
+nav {
+  z-index: 1000; /* lower than menu */
+}
+
+.mobile-menu {
+  display: none;
+}
+.mobile-menu.active {
+  display: block;
+}
+.mobile-menu {
+  pointer-events: none; /* 🔥 allow clicks through */
+}
+
+.mobile-menu.active {
+  pointer-events: auto; /* only clickable when open */
+}
+.mobile-menu {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  width: 100%;
+  background: #020617;
+  z-index: 1500;
+}
+#menuToggle {
+  position: fixed;
+  z-index: 99999;
+}
