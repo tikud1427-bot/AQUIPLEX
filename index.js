@@ -270,20 +270,6 @@ app.post("/generate-bundle", async (req, res) => {
     }
     `;
 
-    parsed.steps.forEach(step => {
-      step.tools = (step.tools || []).map(t => {
-        if (typeof t === "object" && t.name && t.url) return t;
-
-        // fallback: match from DB
-        const found = tools.find(tool =>
-          tool.name.toLowerCase().includes((t.name || t).toLowerCase())
-        );
-
-        return found
-          ? { name: found.name, url: found.url }
-          : { name: t.name || t, url: "https://www.google.com/search?q=" + encodeURIComponent(t.name || t) };
-      });
-    });
     
     const ai = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
