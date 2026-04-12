@@ -4205,3 +4205,87 @@ input {
   color: white;
   text-decoration: none;
 }
+
+/* 🌊 HERO SECTION FIX */
+.hero {
+  min-height: 80vh; /* reduce from full screen */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+/* TITLE */
+.hero h1 {
+  font-size: 42px;
+  margin-bottom: 10px;
+}
+
+/* SUBTEXT */
+.hero p {
+  color: #94a3b8;
+  margin-bottom: 30px;
+}
+
+/* INPUT BOX */
+.hero .input-box {
+  width: 100%;
+  max-width: 600px;
+  margin-top: 10px;
+}
+
+/* INPUT */
+.hero input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid #1e293b;
+  background: #0f172a;
+  color: white;
+}
+
+/* BUTTON */
+.hero button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(90deg, #2563eb, #38bdf8);
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* 🔻 MOBILE FIX */
+@media (max-width: 768px) {
+  .hero {
+    min-height: auto; /* 🔥 REMOVE HUGE GAP */
+    padding: 30px 15px;
+  }
+
+  .hero h1 {
+    font-size: 26px;
+  }
+
+  .hero p {
+    font-size: 14px;
+  }
+
+  .hero .input-box {
+    max-width: 100%;
+  }
+}
+
+/* 🔻 SMALL MOBILE */
+@media (max-width: 480px) {
+  .hero h1 {
+    font-size: 22px;
+  }
+
+  .hero p {
+    font-size: 13px;
+  }
+}
