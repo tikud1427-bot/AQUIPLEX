@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- 🔥 THIS -->
-    <title>AI Bundles | Aquiplex</title>
+    <title>Aqua Project Engine | Aquiplex</title>
     <link rel="stylesheet" href="/css/styles.css">
   </head>
   <body class="bundle-page">
@@ -11,16 +11,18 @@
     <%- include('partials/nav') %>
 
 
-<h1>✨ AI Bundles</h1>
-
+      <div class="hero">
+        <h1>🌊 Aqua Project Engine</h1>
+        <p>Turn any idea into a step-by-step AI-powered project plan 🚀</p>
+      </div>
   <div class="bundle-box">
 
     <p style="font-size:13px; color:#94a3b8; text-align:center;">
       Enter any goal — like "start freelancing", "grow Instagram", or "learn coding"
     </p>
 
-    <input id="goalInput" placeholder="e.g. Start a YouTube channel..." />
-    <button onclick="generateBundle()">Generate Bundle</button>
+    <input id="goalInput" placeholder="What do you want to build? (e.g. YouTube channel, SaaS app, freelancing business)" />
+    <button onclick="generateBundle()">🚀 Build Project</button>
 
     <div class="category-buttons">
       <button onclick="quick('Start a YouTube channel')">🎥 YouTuber</button>
@@ -30,7 +32,7 @@
 
     <!-- 🔥 MOVE THIS HERE -->
     <p style="font-size:12px; color:#64748b; text-align:center; margin-top:10px;">
-      Aquiplex will generate a step-by-step AI tool bundle to help you achieve it faster 🚀
+      Aquiplex will generate a step-by-step AI-powered project plan to help you achieve it faster 🚀
     </p>
 
   </div>
@@ -108,7 +110,7 @@ function quick(text) {
 
     let html = `
       <div class="bundle-header">
-        <h2>${data.title || "AI Bundle"}</h2>
+        <h2>${data.title || "Project Plan"}</h2>
 
         <div style="background:#1e293b; border-radius:10px; height:10px; margin:10px 0;">
           <div id="progressFill" style="height:10px; width:0%; background:#22c55e; border-radius:10px;"></div>
