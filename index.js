@@ -495,7 +495,11 @@ app.post("/bundle/save", requireLogin, async (req, res) => {
     const saved = await new Bundle({
       userId: req.session.userId,
       title,
-      steps
+      steps,
+      progress: steps.map(s => ({
+        step: s.step,
+        status: "pending"
+      }))
     }).save();
 
     res.json({ success: true, id: saved._id });

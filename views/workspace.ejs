@@ -1,381 +1,323 @@
-<!DOCTYPE html>    
-<html lang="en">    
+<!DOCTYPE html>
+<html lang="en">
 
-<head>    
-<meta charset="UTF-8">    
-<meta name="viewport" content="width=device-width, initial-scale=1.0">    
-<title>Workspace | AIDEX</title>    
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workspace | AIDEX</title>
 
-<link rel="stylesheet" href="/css/styles.css">    
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">    
-</head>    
+<link rel="stylesheet" href="/css/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
-<body>    
+<style>
+.hidden { display: none; }
 
-<%- include('partials/nav') %>    
+.workspace-tabs {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
+}
 
-<main class="container">    
+.workspace-tabs button {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  padding: 10px 16px;
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+}
 
-  <!-- HEADER -->    
+.workspace-tabs button:hover {
+  background: #1e293b;
+}
+</style>
+
+</head>
+
+<body>
+
+<%- include('partials/nav') %>
+
+<main class="container">
+
+  <!-- HEADER -->
   <section class="workspace-header">
     <h1>Your Workspace</h1>
-    <p>Quick access to your saved AI tools</p>
-  </section>    
-
-  <div id="active-tools" class="active-tools-panel"></div>
-
-  <section class="bundle-section">
-    <h2 class="section-title">Your AI Workflows</h2>
-
-    <% if (bundles && bundles.length > 0) { %>
-      <div class="bundle-grid">
-        <% bundles.forEach(bundle => { %>
-          <div class="bundle-card" id="bundle-<%= bundle._id %>">
-            <h3><%= bundle.title %></h3>
-
-            <%
-              const completed = bundle.progress.filter(p => p.status === "completed").length;
-              const total = bundle.steps.length;
-            %>
-
-            <p class="bundle-preview">
-              <%= completed %>/<%= total %> steps completed
-            </p>
-                <div style="background:#1e293b; height:6px; border-radius:5px; margin-top:6px;">
-                  <div style="
-                    width:<%= total > 0 ? (completed / total) * 100 : 0 %>%;
-                    height:100%;
-                    background:limegreen;
-                    border-radius:5px;
-                  "></div>
-                </div>
-
-            <div class="bundle-actions">
-              <button onclick='viewBundle(<%- JSON.stringify(bundle).replace(/"/g, "&quot;") %>)'>
-                👀 View
-              </button>
-
-              <button onclick="removeBundle('<%= bundle._id %>')" class="remove-btn">
-                ✖ Remove
-              </button>
-            </div>
-          </div>
-                <% }) %>
-                  </div>
-                <% } else { %>
-                  <p class="muted">No bundles saved yet</p>
-                <% } %>
-      
+    <p>Manage tools, workflows & active sessions</p>
   </section>
 
- <!-- GRID -->    
-  <div class="workspace-grid" id="workspaceGrid">    
+  <!-- 🔥 TABS -->
+  <div class="workspace-tabs">
+    <button onclick="showTab('tools')">🧰 Tools</button>
+    <button onclick="showTab('bundles')">⚡ Workflows</button>
+    <button onclick="showTab('active')">🧠 Active</button>
+    <button onclick="showTab('favorites')">⭐ Favorites</button>
+  </div>
 
-  <% if (workspace && workspace.tools && workspace.tools.length > 0) { %>    
+  <!-- ================= TOOLS TAB ================= -->
+  <div id="tab-tools" class="tab-content">
 
-    <% workspace.tools.forEach(function(tool){ %>    
+    <div class="workspace-grid" id="workspaceGrid">
 
-    <div class="workspace-card" id="tool-<%= tool._id %>">    
+      <% if (workspace && workspace.tools && workspace.tools.length > 0) { %>
 
-      <!-- TOP -->    
-      <div class="workspace-top">    
-        <img     
-          src="<%= tool.logo || '/logos/default.png' %>"     
-          onerror="this.src='/logos/default.png'"     
-          class="workspace-logo"    
-          alt="<%= tool.name || 'Tool logo' %>"    
-        >    
-      </div>    
+        <% workspace.tools.forEach(function(tool){ %>
 
-      <!-- CONTENT -->    
-      <div class="workspace-content">    
-        <h3><%= tool.name || 'Unnamed Tool' %></h3>
+        <div class="workspace-card" id="tool-<%= tool._id %>">
 
-        <% if (tool.description) { %>
-          <p class="tool-desc">
-            <%= tool.description.substring(0, 80) %>...
-          </p>
-        <% } else { %>
-          <p class="tool-desc muted">No description available</p>
-        <% } %>
-      </div>    
+          <div class="workspace-top">
+            <img
+              src="<%= tool.logo || '/logos/default.png' %>"
+              onerror="this.src='/logos/default.png'"
+              class="workspace-logo"
+            >
+          </div>
 
-      <!-- ACTIONS -->    
-      <div class="workspace-actions">    
+          <div class="workspace-content">
+            <h3><%= tool.name || 'Unnamed Tool' %></h3>
 
-        <button     
-          class="launch-btn"   
-          onclick="launchTool('<%= tool.name %>', '<%= tool.url || '' %>')"
-         >    
-          🚀 Launch    
-        </button>    
+            <% if (tool.description) { %>
+              <p class="tool-desc">
+                <%= tool.description.substring(0, 80) %>...
+              </p>
+            <% } else { %>
+              <p class="tool-desc muted">No description available</p>
+            <% } %>
+          </div>
 
-        <button     
-          onclick="removeTool('<%= tool._id %>')"     
-          class="remove-btn"    
-        >    
-          ✖ Remove    
-        </button>    
+          <div class="workspace-actions">
+            <button class="launch-btn"
+              onclick="launchTool('<%= tool.name %>', '<%= tool.url || '' %>')">
+              🚀 Launch
+            </button>
 
-      </div>    
+            <button onclick="removeTool('<%= tool._id %>')" class="remove-btn">
+              ✖ Remove
+            </button>
+          </div>
 
-    </div>    
-
-    <% }) %>    
-
-  <% } else { %>    
-
-    <div class="empty-workspace" id="emptyState">    
-      <h2>No tools saved</h2>    
-      <p>Add tools from the tools page to build your workspace</p>    
-      <a href="/tools" class="browse-tools-btn">Browse Tools</a>    
-    </div>    
-
-  <% } %>    
-
-  </div>    
-
-</main>    
-
-
-    <!-- 🔥 FAKE BROWSER -->
-    <div id="workspace-browser" class="browser hidden">
-
-      <div class="browser-top">
-        <span class="dot red"></span>
-        <span class="dot yellow"></span>
-        <span class="dot green"></span>
-        <div class="address-bar" id="browser-url">Loading...</div>
-      </div>
-
-      <div class="browser-body">
-        <div class="browser-loading">
-          <div class="spinner"></div>
-          <p>Launching AI tool...</p>
         </div>
+
+        <% }) %>
+
+      <% } else { %>
+
+        <div class="empty-workspace">
+          <h2>No tools saved</h2>
+          <p>Add tools from the tools page</p>
+          <a href="/tools" class="browse-tools-btn">Browse Tools</a>
+        </div>
+
+      <% } %>
+
+    </div>
+
+  </div>
+
+  <!-- ================= BUNDLES TAB ================= -->
+  <div id="tab-bundles" class="tab-content hidden">
+
+    <% if (bundles && bundles.length > 0) { %>
+
+      <div class="bundle-grid">
+
+        <% bundles.forEach(bundle => { %>
+
+        <div class="bundle-card" id="bundle-<%= bundle._id %>">
+
+          <h3><%= bundle.title %></h3>
+
+          <%
+            const progress = bundle.progress || [];
+            const completed = progress.filter(p => p.status === "completed").length;
+            const total = bundle.steps ? bundle.steps.length : 0;
+          %>
+
+          <p><%= completed %>/<%= total %> steps completed</p>
+
+          <div style="background:#1e293b;height:6px;border-radius:5px;">
+            <div style="
+              width:<%= total > 0 ? (completed / total) * 100 : 0 %>%;
+              height:100%;
+              background:limegreen;
+              border-radius:5px;
+            "></div>
+          </div>
+
+          <div class="bundle-actions">
+            <button onclick='viewBundle(<%- JSON.stringify(bundle).replace(/"/g, "&quot;") %>)'>
+              👀 View
+            </button>
+
+            <button onclick="removeBundle('<%= bundle._id %>')" class="remove-btn">
+              ✖ Remove
+            </button>
+          </div>
+
+        </div>
+
+        <% }) %>
+
       </div>
 
-    </div> <!-- ✅ THIS LINE WAS MISSING -->
+    <% } else { %>
 
-    <!-- ✅ SCRIPT STARTS HERE -->
-      <script>
+      <p class="muted">No workflows yet</p>
 
-      const activeTools = {};
+    <% } %>
 
-      // 🚀 Launch Tool
-      function launchTool(name, url){
-        if(!url){
-          alert("No URL found");
-          return;
-        }
+  </div>
 
-        if(!url.startsWith("http")){
-          url = "https://" + url;
-        }
+  <!-- ================= ACTIVE TAB ================= -->
+  <div id="tab-active" class="tab-content hidden">
+    <div id="active-tools" class="active-tools-panel"></div>
+  </div>
 
-        const browser = document.getElementById("workspace-browser");
-        const urlBar = document.getElementById("browser-url");
+  <!-- ================= FAVORITES TAB ================= -->
+  <div id="tab-favorites" class="tab-content hidden">
+    <h3>⭐ Favorite tools coming soon</h3>
+  </div>
 
-        browser.classList.remove("hidden");
-        urlBar.innerText = url;
+</main>
 
-        activeTools[name] = { url };
-        saveTools(); // ✅ persist
+<!-- FAKE BROWSER -->
+<div id="workspace-browser" class="browser hidden">
+  <div class="browser-top">
+    <span class="dot red"></span>
+    <span class="dot yellow"></span>
+    <span class="dot green"></span>
+    <div class="address-bar" id="browser-url">Loading...</div>
+  </div>
 
-        setTimeout(() => {
-          window.open(url, "_blank");
-          browser.classList.add("hidden");
-          updateWorkspaceUI();
-        }, 500);
-      }
+  <div class="browser-body">
+    <div class="browser-loading">
+      <div class="spinner"></div>
+      <p>Launching AI tool...</p>
+    </div>
+  </div>
+</div>
 
-      // 🔁 Resume tool
-      function resumeTool(url){
-        window.open(url, "_blank");
-      }
+<script>
 
-      // ❌ Close tool
-      function closeTool(name){
-        delete activeTools[name];
-        saveTools(); // ✅ persist
-        updateWorkspaceUI();
-      }
+const activeTools = {};
 
-      // 🧠 Render active tools (TABS UI)
-      function updateWorkspaceUI(){
-        const container = document.getElementById("active-tools");
-        container.innerHTML = "";
+// TAB SWITCH
+function showTab(tab){
+  document.querySelectorAll(".tab-content").forEach(el => {
+    el.classList.add("hidden");
+  });
+  document.getElementById("tab-" + tab).classList.remove("hidden");
+}
 
-        Object.keys(activeTools).forEach(name => {
-          const tool = activeTools[name];
+// LAUNCH TOOL
+function launchTool(name, url){
+  if(!url) return alert("No URL");
 
-          const div = document.createElement("div");
-          div.className = "active-tool";
+  if(!url.startsWith("http")){
+    url = "https://" + url;
+  }
 
-          div.innerHTML = `
-            <span>🧠 ${name}</span>
-            <div class="tab-actions">
-              <button onclick="resumeTool('${tool.url}')">Open</button>
-              <button onclick="closeTool('${name}')">✕</button>
-            </div>
-          `;
+  const browser = document.getElementById("workspace-browser");
+  document.getElementById("browser-url").innerText = url;
 
-          container.appendChild(div);
-        });
-      }
+  browser.classList.remove("hidden");
 
-      // 💾 Save tools
-      function saveTools(){
-        localStorage.setItem("activeTools", JSON.stringify(activeTools));
-      }
+  activeTools[name] = { url };
+  saveTools();
 
-      // 🔄 Load tools on refresh
-      window.addEventListener("load", () => {
-        const saved = localStorage.getItem("activeTools");
+  setTimeout(() => {
+    window.open(url, "_blank");
+    browser.classList.add("hidden");
+    updateWorkspaceUI();
+  }, 500);
+}
 
-        if(saved){
-          Object.assign(activeTools, JSON.parse(saved));
-        }
+// ACTIVE UI
+function updateWorkspaceUI(){
+  const container = document.getElementById("active-tools");
+  container.innerHTML = "";
 
-        updateWorkspaceUI();
-      });
+  Object.keys(activeTools).forEach(name => {
+    const tool = activeTools[name];
 
-      // 🗑️ Remove Tool (your existing feature)
-      async function removeTool(toolId){
-        try {
-          const res = await fetch("/workspace/remove/" + toolId, {
-            method: "POST"
-          });
+    const div = document.createElement("div");
+    div.innerHTML = `
+      <span>🧠 ${name}</span>
+      <button onclick="window.open('${tool.url}','_blank')">Open</button>
+      <button onclick="closeTool('${name}')">✕</button>
+    `;
 
-          if(res.ok){
-            const card = document.getElementById("tool-" + toolId);
+    container.appendChild(div);
+  });
+}
 
-            if(card){
-              card.style.transition = "all 0.3s ease";
-              card.style.opacity = "0";
-              card.style.transform = "scale(0.8)";
+function closeTool(name){
+  delete activeTools[name];
+  saveTools();
+  updateWorkspaceUI();
+}
 
-              setTimeout(() => {
-                card.remove();
+function saveTools(){
+  localStorage.setItem("activeTools", JSON.stringify(activeTools));
+}
 
-                const grid = document.getElementById("workspaceGrid");
-                const remaining = grid.querySelectorAll(".workspace-card");
+window.onload = () => {
+  const saved = localStorage.getItem("activeTools");
+  if(saved) Object.assign(activeTools, JSON.parse(saved));
+  updateWorkspaceUI();
+};
 
-                if(remaining.length === 0){
-                  grid.innerHTML = `
-                    <div class="empty-workspace">
-                      <h2>No tools saved</h2>
-                      <p>Add tools from the tools page</p>
-                      <a href="/tools" class="browse-tools-btn">Browse Tools</a>
-                    </div>
-                  `;
-                }
+// REMOVE TOOL
+async function removeTool(id){
+  await fetch("/workspace/remove/" + id, { method:"POST" });
+  document.getElementById("tool-"+id)?.remove();
+}
 
-              }, 300);
-            }
+// REMOVE BUNDLE
+async function removeBundle(id){
+  await fetch("/bundle/remove/" + id, { method:"POST" });
+  document.getElementById("bundle-"+id)?.remove();
+}
 
-          } else {
-            alert("Failed to remove tool");
-          }
+// VIEW BUNDLE
+function viewBundle(bundle){
 
-        } catch (err){
-          console.error(err);
-          alert("Error removing tool");
-        }
-      }
+  const progressList = bundle.progress || [];
 
-        
+  let html = `<h2>${bundle.title}</h2>`;
 
-        
+  bundle.steps.forEach(step => {
 
-        async function removeBundle(id){
-          if(!confirm("Remove this bundle?")) return;
+    const progress = progressList.find(p => p.step === step.step);
+    const status = progress ? progress.status : "pending";
 
-          try {
-            const res = await fetch("/bundle/remove/" + id, {
-              method: "POST"
-            });
+    html += `
+      <div style="margin:10px 0;">
+        <h3>Step ${step.step}: ${step.title}</h3>
+        <p>${step.description}</p>
+        <button onclick="updateStep('${bundle._id}', ${step.step}, 'completed')">✅ Done</button>
+      </div>
+    `;
+  });
 
-            if(res.ok){
-              const card = document.getElementById("bundle-" + id);
+  html += `<button onclick="closeModal()">Close</button>`;
 
-              card.style.opacity = "0";
-              card.style.transform = "scale(0.9)";
+  document.body.innerHTML += `<div id="bundle-modal">${html}</div>`;
+}
 
-              setTimeout(() => card.remove(), 300);
+function closeModal(){
+  document.getElementById("bundle-modal")?.remove();
+}
 
-            } else {
-              alert("Failed to remove bundle");
-            }
+async function updateStep(id, step, status){
+  await fetch("/bundle/progress/" + id, {
+    method:"POST",
+    headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ step, status })
+  });
+}
 
-          } catch(err){
-            console.error(err);
-            alert("Error removing bundle");
-          }
-        }
-        function viewBundle(bundle){
-          let html = `<h2>${bundle.title}</h2>`;
+</script>
 
-          bundle.steps.forEach(step => {
-
-            const progress = bundle.progress.find(p => p.step === step.step);
-            const status = progress ? progress.status : "pending";
-
-            let style = "";
-
-            if(status === "in-progress"){
-              style = "border:2px solid orange;";
-            }
-
-            if(status === "completed"){
-              style = "border:2px solid green; opacity:0.6;";
-            }
-
-            html += `
-              <div class="step" id="modal-step-${step.step}" style="${style}">
-                <h3>Step ${step.step}: ${step.title}</h3>
-                <p>${step.description}</p>
-
-                <button onclick="updateStep('${bundle._id}', ${step.step}, 'in-progress')">▶ Start</button>
-                <button onclick="updateStep('${bundle._id}', ${step.step}, 'completed')">✅ Done</button>
-              </div>
-            `;
-          });
-
-          html += `<br><button onclick="closeModal()">❌ Close</button>`;
-
-          document.body.innerHTML += `
-            <div class="modal" id="bundle-modal">
-              ${html}
-            </div>
-          `;
-        }
-
-        async function updateStep(bundleId, step, status){
-          const el = document.getElementById("modal-step-" + step);
-
-          if(status === "in-progress"){
-            el.style.border = "2px solid orange";
-          }
-
-          if(status === "completed"){
-            el.style.border = "2px solid green";
-            el.style.opacity = "0.6";
-          }
-
-          await fetch("/bundle/progress/" + bundleId, {
-            method:"POST",
-            headers: {"Content-Type":"application/json"},
-            body: JSON.stringify({ step, status })
-          });
-        }
-
-        function closeModal(){
-          const modal = document.getElementById("bundle-modal");
-          if(modal) modal.remove();
-        }
-
-      </script>
-
-    </body>
-    </html>
+</body>
+</html>
