@@ -157,6 +157,49 @@
       border-radius: 10px;
       margin-top: 5px;
     }
+    /* ☰ BUTTON */
+    #menuToggle {
+      display: none;
+      position: fixed;
+      top: 70px;
+      left: 10px;
+      z-index: 1000;
+      background: #38bdf8;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 18px;
+    }
+
+    /* MOBILE */
+    @media (max-width: 768px) {
+
+      #menuToggle {
+        display: block;
+      }
+
+      .chat-container {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: -260px;
+        width: 240px;
+        height: 100%;
+        z-index: 999;
+        transition: 0.3s;
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      #chat {
+        height: 65vh;
+      }
+    }
   </style>
 </head>
 
@@ -176,16 +219,21 @@
 
 <p id="modeLabel">Mode: chat</p>
 
-<div class="chat-container">
+  <!-- ☰ MENU BUTTON -->
+  <button id="menuToggle" onclick="toggleSidebar()">☰</button>
 
-  <div class="sidebar">
-    <button class="new-chat-btn" onclick="newChat()">➕ New Chat</button>
-    <div id="historyList"></div>
+  <div class="chat-container">
+
+    <!-- ✅ SIDEBAR -->
+    <div class="sidebar" id="sidebar">
+      <button class="new-chat-btn" onclick="newChat()">➕ New Chat</button>
+      <div id="historyList"></div>
+    </div>
+
+    <!-- ✅ CHAT AREA -->
+    <div id="chat"></div>
+
   </div>
-
-  <div id="chat"></div>
-
-</div>
 
 <!-- ✅ INPUT AREA -->
 <div class="chat-input">
@@ -339,15 +387,11 @@ async function loadHistoryList() {
     messages = data.messages;
 
     const chat = document.getElementById("chat");
- 
+    chat.innerHTML = "";
 
     data.messages.forEach(m => {
-
       if (m.role === "user") {
-        chat.innerHTML += `
-          <div class="msg user">
-            ${marked.parse(m.content)}
-          </div>`;
+        chat.innerHTML += `<div class="msg user">${marked.parse(m.content)}</div>`;
       } else {
         chat.innerHTML += `
           <div class="msg bot">
@@ -355,10 +399,12 @@ async function loadHistoryList() {
             <button onclick="copyText(this)">📋</button>
           </div>`;
       }
-
     });
 
     chat.scrollTop = chat.scrollHeight;
+
+    // 🔥 CLOSE SIDEBAR ON MOBILE
+    document.getElementById("sidebar").classList.remove("open");
   }
   
 
@@ -378,6 +424,10 @@ loadHistoryList();
 
     btn.innerText = "✅";
     setTimeout(() => btn.innerText = "📋", 1500);
+  }
+  function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    sidebar.classList.toggle("open");
   }
 </script>
   

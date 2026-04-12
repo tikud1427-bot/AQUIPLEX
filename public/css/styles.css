@@ -4289,3 +4289,51 @@ input {
     font-size: 13px;
   }
 }
+
+/* ☰ MENU BUTTON */
+#menuToggle {
+  display: none;
+  position: fixed;
+  top: 70px;
+  left: 10px;
+  z-index: 1000;
+  background: #38bdf8;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* MOBILE SIDEBAR */
+@media (max-width: 768px) {
+
+  #menuToggle {
+    display: block;
+  }
+
+  .chat-container {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -260px; /* hidden */
+    width: 240px;
+    height: 100%;
+    background: #020617;
+    z-index: 999;
+    transition: 0.3s;
+    overflow-y: auto;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  #chat {
+    width: 100%;
+    height: 60vh;
+  }
+}
