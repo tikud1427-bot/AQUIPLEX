@@ -204,12 +204,66 @@ app.get("/home", async (req, res) => {
 //Tool page
 app.get("/tools", async (req, res) => {
   try {
-    const tools = await Tool.find().lean();
+    const searchQuery = req.query.q;
 
-    // ✅ CREATE CATEGORIES
-    const categories = [...new Set(tools.map(t => t.category))];
+    let tools;
 
-    res.render("tools", { tools, categories });
+    if (searchQuery) {
+
+      // 🧠 STEP 1: Ask AI to expand the query
+      let expandedQuery = searchQuery;
+
+      try {
+        const ai = await axios.post(
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
+            model: "llama-3.1-8b-instant",
+            messages: [
+              {
+                role: "system",
+                content: "Convert this into related search keywords only"
+              },
+              {
+                role: "user",
+                content: searchQuery
+              }
+            ]
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+              "Content-Type": "application/json"
+            }
+          }
+        );
+
+        expandedQuery = ai.data.choices[0].message.content;
+
+      } catch (err) {
+        console.log("AI failed, using normal search");
+      }
+
+      // 🔍 STEP 2: Search using expanded query
+      tools = await Tool.find({
+        $or: [
+          { name: { $regex: expandedQuery, $options: "i" } },
+          { category: { $regex: expandedQuery, $options: "i" } },
+          { description: { $regex: expandedQuery, $options: "i" } }
+        ]
+      }).lean();
+
+    } else {
+      tools = await Tool.find().lean();
+    }
+
+    const allTools = await Tool.find().lean();
+    const categories = [...new Set(allTools.map(t => t.category))];
+
+    res.render("tools", {
+      tools,
+      categories,
+      searchQuery: searchQuery || ""
+    });
 
   } catch (err) {
     console.error(err);

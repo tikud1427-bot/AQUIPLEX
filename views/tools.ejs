@@ -25,13 +25,27 @@
   </section>
 
   <!-- SEARCH -->
-  <form action="/tools" method="GET" class="search-bar">
-    <input 
-      type="text" 
-      name="q" 
-      placeholder="Search ChatGPT, Midjourney, Notion AI..."
-    >
-    <button><i class="fa-solid fa-search"></i></button>
+  <form action="/tools" method="GET" class="search-bar advanced-search">
+
+    <div class="search-wrapper">
+
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+
+      <input 
+        type="text" 
+        name="q" 
+        id="searchInput"
+        placeholder="🔍 Ask anything... e.g. 'AI for startups', 'video editing tools'"
+        value="<%= searchQuery %>"
+        autocomplete="off"
+      >
+
+      <button type="submit" class="search-btn">
+        Search
+      </button>
+
+    </div>
+
   </form>
 
   <!-- CATEGORY -->
@@ -156,6 +170,21 @@ async function addToWorkspace(button, toolId){
 
     document.getElementById(`likes-${id}`).innerText = data.likes;
   }
+  </script>
+  <script>
+  let timeout;
+
+  document.getElementById("searchInput").addEventListener("keyup", function() {
+    clearTimeout(timeout);
+
+    const query = this.value;
+
+    timeout = setTimeout(() => {
+      if (query.length > 2) {
+        window.location.href = "/tools?q=" + encodeURIComponent(query);
+      }
+    }, 500);
+  });
   </script>
 </body>
 </html>

@@ -882,12 +882,7 @@
     "dislikes": 0,
     "comments": [],
     "clicks": 0
-  }
-  
-]
-
-
-[
+  },
   {
     "id": "writesonic",
     "name": "Writesonic",
@@ -928,7 +923,7 @@
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQMLlqQYPDGm-65F4iCqVDEGHonAnr2_TOTbw&s",
     "clicks": 70
   },
-  
+
   {
     "id": "phind",
     "name": "Phind",
@@ -939,7 +934,7 @@
     "logo": "https://i1.wp.com/ph-files.imgix.net/8c1aaefe-2ff2-4dad-ac9f-22c7c1fa6992.png?w=439&q=75",
     "clicks": 190
   },
-  
+
   {
     "id": "sourcegraphcody",
     "name": "Cody",
@@ -982,7 +977,7 @@
     "clicks": 180
   },
 
-  
+
   {
     "id": "boomy",
     "name": "Boomy",
@@ -993,7 +988,7 @@
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRWCjq63GAm0TopNNOwzWlRy4-0xxl2Nn1bfw&s",
     "clicks": 160
   },
-  
+
 
   {
     "id": "cleanupai",
@@ -1067,7 +1062,7 @@
     "logo": "https://gptbot.b-cdn.net/favicons/motion_ai_favicon.png",
     "clicks": 190
   },
- 
+
   {
     "id": "browseai",
     "name": "Browse AI",
@@ -1172,4 +1167,9 @@
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcThiEJOmPB-jvQlteqUTx4tWHPOjfTh2HmnQA&s",
     "clicks": 100
   }
+
+
+  
 ]
+
+

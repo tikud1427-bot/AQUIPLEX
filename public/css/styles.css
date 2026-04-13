@@ -4290,3 +4290,61 @@ input {
   }
 }
 
+
+
+
+.search-bar {
+  display: flex;
+  justify-content: center;
+  margin: 30px 0;
+}
+
+.search-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 600px;
+}
+
+.search-wrapper input {
+  width: 100%;
+  padding: 14px 50px 14px 45px;
+  border-radius: 12px;
+  border: 1px solid #1e293b;
+  background: #020617;
+  color: #e2e8f0;
+  font-size: 15px;
+  outline: none;
+  transition: 0.2s;
+}
+
+.search-wrapper input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56,189,248,0.2);
+}
+
+.search-icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+}
+
+.search-btn {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  bottom: 5px;
+  padding: 0 15px;
+  border: none;
+  border-radius: 10px;
+  background: #38bdf8;
+  color: black;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.search-btn:hover {
+  background: #0ea5e9;
+}
