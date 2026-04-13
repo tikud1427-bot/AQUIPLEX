@@ -82,39 +82,49 @@ async function generateAI(messages) {
 }
 
 async function generateImage(prompt) {
+
+  // 🥇 1. TOGETHER AI (HIGH QUALITY)
   try {
     const res = await axios.post(
-      "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
-      { inputs: prompt },
+      "https://api.together.xyz/v1/images/generations",
+      {
+        prompt,
+        model: "black-forest-labs/FLUX.1-schnell",
+        width: 512,
+        height: 512
+      },
       {
         headers: {
-          Authorization: `Bearer ${process.env.HF_API_KEY}`,
+          Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`,
+          "Content-Type": "application/json"
         },
-        responseType: "arraybuffer",
-        timeout: 60000
+        timeout: 15000
       }
     );
 
-    // ✅ CHECK: if response is NOT image
-    const contentType = res.headers["content-type"];
+    const imageUrl = res.data?.data?.[0]?.url;
 
-    if (!contentType.includes("image")) {
-      const errorText = Buffer.from(res.data).toString();
-      console.log("❌ HF NOT IMAGE:", errorText);
-
-      return {
-        url: "https://via.placeholder.com/512?text=HF+Model+Loading"
-      };
+    if (imageUrl) {
+      console.log("✅ Together AI success");
+      return { url: imageUrl };
     }
 
-    const base64 = Buffer.from(res.data).toString("base64");
-
-    return {
-      url: `data:image/png;base64,${base64}`
-    };
+    throw new Error("No image from Together");
 
   } catch (err) {
-    console.log("❌ HF ERROR:", err.response?.data || err.message);
+    console.log("⚠️ Together failed → switching to Pollinations");
+  }
+
+  // 🥈 2. POLLINATIONS (UNLIMITED FALLBACK)
+  try {
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}`;
+
+    console.log("✅ Pollinations fallback used");
+
+    return { url };
+
+  } catch (err) {
+    console.log("❌ Pollinations failed:", err.message);
 
     return {
       url: "https://via.placeholder.com/512?text=Image+Failed"
