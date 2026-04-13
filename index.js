@@ -360,7 +360,43 @@ app.get("/tools/category/:category", async (req, res) => {
     res.send("Error loading category");
   }
 });
+//
+app.get("/visit/:id", async (req, res) => {
+  try {
+    const tool = await Tool.findById(req.params.id);
 
+    if (!tool) return res.send("Tool not found");
+
+    // 🔥 Track click (for trending)
+    tool.clicks = (tool.clicks || 0) + 1;
+
+    if (!tool.clickHistory) tool.clickHistory = [];
+    tool.clickHistory.push({ date: new Date() });
+
+    await tool.save();
+
+    // 🔥 Redirect to actual tool URL
+    res.redirect(tool.url);
+
+  } catch (err) {
+    console.error(err);
+    res.send("Error visiting tool");
+  }
+});
+//
+app.get("/tool/:id", async (req, res) => {
+  try {
+    const tool = await Tool.findById(req.params.id).lean();
+
+    if (!tool) return res.send("Tool not found");
+
+    res.render("tool-details", { tool });
+
+  } catch (err) {
+    console.error(err);
+    res.send("Error loading tool");
+  }
+});
 // AI BUNDLES PAGE
 app.get("/bundles", (req, res) => {
   res.render("bundles");

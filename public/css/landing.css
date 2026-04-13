@@ -322,3 +322,30 @@ body::after {
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+
+/* ===== FIX BAD MOBILE EXAMPLES UI ===== */
+@media (max-width: 768px) {
+
+  .examples {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .examples span {
+    display: inline-block !important;
+    padding: 8px 12px;
+    font-size: 12px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.06);
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  .examples span:empty {
+    display: none !important; /* 🔥 removes broken empty boxes */
+  }
+
+}
