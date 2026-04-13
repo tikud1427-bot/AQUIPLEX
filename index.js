@@ -206,12 +206,13 @@ app.get("/tools", async (req, res) => {
   try {
     const searchQuery = req.query.q;
 
+    console.log("Search:", searchQuery);
+
     let tools;
 
     if (searchQuery) {
 
-      // 🧠 STEP 1: Ask AI to expand the query
-      let expandedQuery = searchQuery;
+      let keywords = [searchQuery]; // fallback
 
       try {
         const ai = await axios.post(
@@ -221,7 +222,7 @@ app.get("/tools", async (req, res) => {
             messages: [
               {
                 role: "system",
-                content: "Convert this into related search keywords only"
+                content: "Give only keywords separated by comma"
               },
               {
                 role: "user",
@@ -237,24 +238,30 @@ app.get("/tools", async (req, res) => {
           }
         );
 
-        expandedQuery = ai.data.choices[0].message.content;
+        const expanded = ai.data.choices[0].message.content;
+
+        keywords = expanded
+          .split(",")
+          .map(k => k.trim())
+          .filter(k => k.length > 0);
 
       } catch (err) {
-        console.log("AI failed, using normal search");
+        console.log("AI failed");
       }
 
-      // 🔍 STEP 2: Search using expanded query
       tools = await Tool.find({
-        $or: [
-          { name: { $regex: expandedQuery, $options: "i" } },
-          { category: { $regex: expandedQuery, $options: "i" } },
-          { description: { $regex: expandedQuery, $options: "i" } }
-        ]
+        $or: keywords.flatMap(k => ([
+          { name: { $regex: k, $options: "i" } },
+          { category: { $regex: k, $options: "i" } },
+          { description: { $regex: k, $options: "i" } }
+        ]))
       }).lean();
 
     } else {
       tools = await Tool.find().lean();
     }
+
+    console.log("Results count:", tools.length);
 
     const allTools = await Tool.find().lean();
     const categories = [...new Set(allTools.map(t => t.category))];
@@ -274,17 +281,33 @@ app.get("/tools", async (req, res) => {
 app.get("/tools/category/:category", async (req, res) => {
   try {
     const category = decodeURIComponent(req.params.category);
+    const searchQuery = req.query.q;
 
-    const tools = await Tool.find({ category }).lean();
+    let tools;
 
-    // get all categories again (for sidebar/menu)
+    if (searchQuery) {
+      // 🔍 Search INSIDE category
+      tools = await Tool.find({
+        category,
+        $or: [
+          { name: { $regex: searchQuery, $options: "i" } },
+          { description: { $regex: searchQuery, $options: "i" } }
+        ]
+      }).lean();
+    } else {
+      // 📂 Normal category filter
+      tools = await Tool.find({ category }).lean();
+    }
+
+    // get all categories again
     const allTools = await Tool.find().lean();
     const categories = [...new Set(allTools.map(t => t.category))];
 
     res.render("tools", {
       tools,
       categories,
-      selectedCategory: category
+      selectedCategory: category,
+      searchQuery: searchQuery || "" // ✅ FIXED
     });
 
   } catch (err) {
