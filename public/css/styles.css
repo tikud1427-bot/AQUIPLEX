@@ -4348,3 +4348,46 @@ input {
 .search-btn:hover {
   background: #0ea5e9;
 }
+
+
+.ai-recommend-box {
+  background: #020617;
+  padding: 20px;
+  border-radius: 16px;
+  margin-bottom: 30px;
+  border: 1px solid #1e293b;
+}
+
+.ai-recommend-box h2 {
+  color: #38bdf8;
+}
+
+.ai-recommend-grid {
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.ai-tool {
+  flex: 1;
+  background: #0f172a;
+  padding: 10px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-tool img {
+  width: 40px;
+  height: 40px;
+}
+
+.ai-tool a {
+  margin-left: auto;
+  background: #38bdf8;
+  padding: 5px 10px;
+  border-radius: 6px;
+  text-decoration: none;
+  color: black;
+}

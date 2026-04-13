@@ -208,11 +208,12 @@ app.get("/tools", async (req, res) => {
 
     console.log("Search:", searchQuery);
 
-    let tools;
+    // ✅ ADD IT HERE 👇
+    let tools = await Tool.find().lean();
 
     if (searchQuery) {
 
-      let keywords = [searchQuery]; // fallback
+      let aiData;
 
       try {
         const ai = await axios.post(
@@ -222,12 +223,20 @@ app.get("/tools", async (req, res) => {
             messages: [
               {
                 role: "system",
-                content: "Give only keywords separated by comma"
+                content: `
+You are an AI search engine brain.
+
+Convert user query into JSON:
+{
+  "intent": "",
+  "keywords": [],
+  "categories": []
+}
+
+Return ONLY JSON.
+                `
               },
-              {
-                role: "user",
-                content: searchQuery
-              }
+              { role: "user", content: searchQuery }
             ]
           },
           {
@@ -238,34 +247,58 @@ app.get("/tools", async (req, res) => {
           }
         );
 
-        const expanded = ai.data.choices[0].message.content;
+        let text = ai.data.choices[0].message.content;
+        text = text.replace(/```json/g, "").replace(/```/g, "").trim();
 
-        keywords = expanded
-          .split(",")
-          .map(k => k.trim())
-          .filter(k => k.length > 0);
+        aiData = JSON.parse(text);
 
       } catch (err) {
-        console.log("AI failed");
+        console.log("AI failed → fallback");
+
+        aiData = {
+          intent: searchQuery,
+          keywords: [searchQuery],
+          categories: []
+        };
       }
 
-      tools = await Tool.find({
-        $or: keywords.flatMap(k => ([
-          { name: { $regex: k, $options: "i" } },
-          { category: { $regex: k, $options: "i" } },
-          { description: { $regex: k, $options: "i" } }
-        ]))
-      }).lean();
+      // ✅ AI SCORING
+      tools = tools.map(tool => {
+        let score = 0;
 
-    } else {
-      tools = await Tool.find().lean();
+        const name = tool.name.toLowerCase();
+        const desc = tool.description.toLowerCase();
+        const cat = tool.category.toLowerCase();
+
+        const keywords = [
+          ...(aiData.keywords || []),
+          aiData.intent
+        ].map(k => k.toLowerCase());
+
+        keywords.forEach(k => {
+          if (name.includes(k)) score += 5;
+          if (desc.includes(k)) score += 3;
+          if (cat.includes(k)) score += 4;
+        });
+
+        (aiData.categories || []).forEach(c => {
+          if (cat.includes(c.toLowerCase())) score += 6;
+        });
+
+        score += (tool.clickHistory || []).length * 0.5;
+
+        return { ...tool, score };
+      });
+
+      tools = tools
+        .filter(t => t.score > 0)
+        .sort((a, b) => b.score - a.score);
     }
-
-    console.log("Results count:", tools.length);
-
-    const allTools = await Tool.find().lean();
+    const allTools = tools;
     const categories = [...new Set(allTools.map(t => t.category))];
 
+    console.log("Results count:", tools.length);
+    const recommended = tools.slice(0, 3);
     res.render("tools", {
       tools,
       categories,
@@ -287,13 +320,24 @@ app.get("/tools/category/:category", async (req, res) => {
 
     if (searchQuery) {
       // 🔍 Search INSIDE category
-      tools = await Tool.find({
-        category,
-        $or: [
-          { name: { $regex: searchQuery, $options: "i" } },
-          { description: { $regex: searchQuery, $options: "i" } }
-        ]
-      }).lean();
+      let tools = await Tool.find({ category }).lean();
+
+      if (searchQuery) {
+        tools = tools.map(tool => {
+          let score = 0;
+
+          const text = (tool.name + tool.description).toLowerCase();
+          const query = searchQuery.toLowerCase();
+
+          if (text.includes(query)) score += 5;
+
+          return { ...tool, score };
+        });
+
+        tools = tools
+          .filter(t => t.score > 0)
+          .sort((a, b) => b.score - a.score);
+      }
     } else {
       // 📂 Normal category filter
       tools = await Tool.find({ category }).lean();

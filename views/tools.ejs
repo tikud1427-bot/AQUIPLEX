@@ -62,7 +62,37 @@
     <% } %>
 
   </div>
+      <% if (recommended && recommended.length > 0 && searchQuery) { %>
 
+        <div class="ai-recommend-box">
+
+          <h2>🔥 Aqua AI recommends</h2>
+          <p>Best tools for "<%= searchQuery %>"</p>
+
+          <div class="ai-recommend-grid">
+
+            <% recommended.forEach(tool => { %>
+
+              <div class="ai-tool">
+
+                <img src="<%= tool.logo %>" onerror="this.src='/logos/default.png'">
+
+                <div>
+                  <h4><%= tool.name %></h4>
+                  <p><%= tool.category %></p>
+                </div>
+
+                <a href="/visit/<%= tool._id %>" target="_blank">Use</a>
+
+              </div>
+
+            <% }) %>
+
+          </div>
+
+        </div>
+
+      <% } %>
   <!-- GRID -->
   <div class="grid">
 
