@@ -390,7 +390,63 @@ app.get("/tool/:id", async (req, res) => {
 
     if (!tool) return res.send("Tool not found");
 
-    res.render("tool-details", { tool });
+    let aiInsights = null;
+
+    try {
+      const ai = await axios.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          model: "llama-3.1-8b-instant",
+          messages: [
+            {
+              role: "system",
+              content: `
+You are an AI product expert.
+
+Analyze the tool and return JSON:
+{
+  "why": "",
+  "bestFor": [],
+  "pros": [],
+  "cons": []
+}
+
+Keep it short and practical.
+              `
+            },
+            {
+              role: "user",
+              content: `
+Name: ${tool.name}
+Category: ${tool.category}
+Description: ${tool.description}
+              `
+            }
+          ]
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      let text = ai.data.choices[0].message.content;
+
+      text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) aiInsights = JSON.parse(match[0]);
+
+    } catch (err) {
+      console.log("AI failed");
+    }
+
+    res.render("tool-details", {
+      tool,
+      aiInsights
+    });
 
   } catch (err) {
     console.error(err);

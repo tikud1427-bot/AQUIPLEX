@@ -4409,3 +4409,160 @@ input {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ===== TOOL DETAILS PAGE ===== */
+.tool-page {
+  max-width: 800px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* ===== HEADER ===== */
+.tool-header {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.tool-logo-large {
+  width: 70px;
+  height: 70px;
+  border-radius: 12px;
+  background: #0f172a;
+  padding: 5px;
+}
+
+/* ===== TITLE ===== */
+.tool-header h1 {
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.tool-category {
+  font-size: 13px;
+  color: #38bdf8;
+}
+
+/* ===== SECTION ===== */
+.tool-section {
+  margin-bottom: 25px;
+}
+
+.tool-section h2 {
+  font-size: 18px;
+  margin-bottom: 10px;
+  color: #38bdf8;
+}
+
+.tool-section p {
+  color: #94a3b8;
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+/* ===== HIGHLIGHT BOX ===== */
+.highlight {
+  background: linear-gradient(135deg, #020617, #0f172a);
+  border: 1px solid #1e293b;
+  padding: 15px;
+  border-radius: 12px;
+}
+
+/* ===== LIST ===== */
+.tool-section ul {
+  padding-left: 18px;
+}
+
+.tool-section li {
+  margin-bottom: 6px;
+  color: #cbd5f5;
+  font-size: 14px;
+}
+
+/* ===== TAGS ===== */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  background: #0f172a;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  border: 1px solid #1e293b;
+}
+
+/* ===== BUTTON ===== */
+.tool-actions {
+  margin-top: 30px;
+  text-align: center;
+}
+
+.visit-btn.big {
+  background: #38bdf8;
+  color: black;
+  padding: 12px 25px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-block;
+  transition: 0.2s;
+}
+
+.visit-btn.big:hover {
+  transform: translateY(-2px);
+  background: #0ea5e9;
+}
+
+/* ================= MOBILE FIX ================= */
+@media (max-width: 768px) {
+
+  .tool-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tool-logo-large {
+    width: 60px;
+    height: 60px;
+  }
+
+  .tool-header h1 {
+    font-size: 20px;
+  }
+
+  .tool-section h2 {
+    font-size: 16px;
+  }
+
+  .tool-section p,
+  .tool-section li {
+    font-size: 13px;
+  }
+
+  .visit-btn.big {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ===== EXTRA SMALL ===== */
+@media (max-width: 480px) {
+
+  .tool-page {
+    padding: 15px;
+  }
+
+  .tool-logo-large {
+    width: 50px;
+    height: 50px;
+  }
+
+  .tool-header h1 {
+    font-size: 18px;
+  }
+}

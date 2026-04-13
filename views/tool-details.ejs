@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= tool.name %> | Aquiplex</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+
+<div class="container tool-page">
+
+  <!-- HEADER -->
+  <div class="tool-header">
+    <img src="<%= tool.logo %>" class="tool-logo-large" onerror="this.src='/logos/default.png'">
+
+    <div>
+      <h1><%= tool.name %></h1>
+      <p class="tool-category"><%= tool.category %></p>
+    </div>
+  </div>
+
+  <!-- DESCRIPTION -->
+  <div class="tool-section">
+    <h2>🧠 About this tool</h2>
+    <p><%= tool.description %></p>
+  </div>
+  <% if (aiInsights) { %>
+
+    <!-- WHY -->
+    <div class="tool-section highlight">
+      <h2>🔥 Why use this tool?</h2>
+      <p><%= aiInsights.why %></p>
+    </div>
+
+    <!-- BEST FOR -->
+    <div class="tool-section">
+      <h2>🎯 Best For</h2>
+      <div class="tags">
+        <% aiInsights.bestFor.forEach(item => { %>
+          <span class="tag"><%= item %></span>
+        <% }) %>
+      </div>
+    </div>
+
+    <!-- PROS -->
+    <div class="tool-section">
+      <h2>✅ Pros</h2>
+      <ul>
+        <% aiInsights.pros.forEach(p => { %>
+          <li><%= p %></li>
+        <% }) %>
+      </ul>
+    </div>
+
+    <!-- CONS -->
+    <div class="tool-section">
+      <h2>⚠️ Cons</h2>
+      <ul>
+        <% aiInsights.cons.forEach(c => { %>
+          <li><%= c %></li>
+        <% }) %>
+      </ul>
+    </div>
+
+  <% } %>
+
+  <!-- AI GENERATED INSIGHT (FAKE FOR NOW, UPGRADE LATER) -->
+  <div class="tool-section highlight">
+    <h2>🔥 Why use this tool?</h2>
+    <p>
+      This tool is useful for improving productivity and automating tasks efficiently.
+      It helps users achieve better results with less effort using AI.
+    </p>
+  </div>
+
+  <!-- FEATURES -->
+  <div class="tool-section">
+    <h2>⚙️ Key Features</h2>
+    <ul>
+      <li>AI-powered automation</li>
+      <li>Easy to use interface</li>
+      <li>Fast and efficient</li>
+      <li>Works for beginners and professionals</li>
+    </ul>
+  </div>
+
+  <!-- CTA -->
+  <div class="tool-actions">
+    <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn big">
+      🚀 Visit Tool
+    </a>
+  </div>
+
+</div>
+
+</body>
+</html>
