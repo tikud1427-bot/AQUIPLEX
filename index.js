@@ -9,6 +9,8 @@ const multer = require("multer");
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
 // ================= AI ENGINE (FALLBACK SYSTEM) =================
 
 async function generateAI(messages) {
@@ -223,6 +225,8 @@ secure: false,
 },
 })
 );
+app.use(passport.initialize());
+app.use(passport.session());
 
 // ✅ GLOBAL USER (IMPORTANT)
 app.use((req, res, next) => {
@@ -1111,6 +1115,25 @@ console.error(err);
 res.send("Login error");
 }
 });
+app.get("/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
+
+app.get("/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: "/login" }),
+  (req, res) => {
+
+    req.session.user = {
+      _id: req.user._id,
+      email: req.user.email,
+      username: req.user.email.split("@")[0]
+    };
+
+    req.session.userId = req.user._id;
+
+    res.redirect("/home");
+  }
+);
 //signup
 app.post("/signup", async (req, res) => {
   try {
