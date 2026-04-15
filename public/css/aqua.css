@@ -245,3 +245,98 @@ body.sidebar-open::after {
   border-radius: 10px;
   overflow-x: auto;
 }
+
+/* =========================
+   🔥 AQUA PREMIUM OVERRIDE
+   Paste this at bottom ONLY
+========================= */
+
+/* 🌌 Background upgrade */
+body {
+  background: radial-gradient(circle at top, #020617, #000);
+}
+
+/* 💬 Glass chat container */
+#chat {
+  background: rgba(15, 23, 42, 0.6) !important;
+  backdrop-filter: blur(12px);
+
+  border: 1px solid rgba(56, 189, 248, 0.2) !important;
+  border-radius: 16px !important;
+
+  padding: 16px !important;
+  scroll-behavior: smooth;
+}
+
+/* 💬 Message bubbles */
+.msg {
+  padding: 12px 16px !important;
+  border-radius: 16px !important;
+  margin: 10px 0 !important;
+  max-width: 75% !important;
+  width: fit-content;
+  word-break: break-word;
+  line-height: 1.6;
+  animation: fadeIn 0.25s ease;
+}
+
+/* 👤 User bubble */
+.user {
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9) !important;
+  color: black !important;
+  margin-left: auto;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4);
+}
+
+/* 🤖 Bot bubble */
+.bot {
+  background: rgba(30, 41, 59, 0.8) !important;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  color: #e2e8f0 !important;
+}
+
+/* ✨ Input bar glass */
+.chat-input {
+  background: rgba(15, 23, 42, 0.7) !important;
+  backdrop-filter: blur(10px);
+
+  border: 1px solid rgba(56, 189, 248, 0.2) !important;
+  border-radius: 14px !important;
+  padding: 8px !important;
+}
+
+/* ✍️ Input clean */
+input {
+  background: transparent !important;
+  outline: none;
+}
+
+/* 🚀 Send button glow */
+.send-btn {
+  background: linear-gradient(135deg, #22c55e, #16a34a) !important;
+  transition: 0.2s;
+}
+
+.send-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.6);
+}
+
+/* ✨ Sidebar glass */
+.sidebar {
+  background: rgba(2, 6, 23, 0.8) !important;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(56, 189, 248, 0.15) !important;
+}
+
+/* 🎬 Smooth animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
