@@ -938,11 +938,7 @@ app.post("/chat", upload.single("file"), async (req, res) => {
   }
 
   try {
-    let messages = history.map(m => ({
-      role: m.role === "assistant" ? "assistant" : "user",
-      content: m.content
-    }));
-
+    let messages = [...history];
     let fileText = "";
 
     // ================= FILE PROCESS =================
@@ -1010,7 +1006,7 @@ app.post("/chat", upload.single("file"), async (req, res) => {
     // ✅ push refined message (clean, no duplication)
     messages.push({
       role: "user",
-      content: refinedMessage
+      content: req.body.refiner === "true" ? refinedMessage : message
     });
     // ================= IMAGE MODE =================
     if (mode === "image") {

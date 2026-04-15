@@ -80,24 +80,21 @@ function setMode(m) {
 
     input.value = "";
     
-    if (message) {
-      messages.push({
-        role: "user",
-        content: message
-      });
-    }
+  
 
     const formData = new FormData();
+
     formData.append("message", message);
     formData.append("mode", mode);
     formData.append("chatId", currentChatId || "");
-    formData.append("history",
-    JSON.stringify(messages));
+
+    // ✅ ONLY THIS (clean history control)
+    formData.append("history", JSON.stringify(messages.slice(-10)));
+
     formData.append("refiner", useRefiner ? "true" : "false");
-    formData.append("stream", true); // 🔥 important
+    formData.append("stream", "true");
 
     if (file) formData.append("file", file);
-
     // show user message
     if (message) {
       chat.innerHTML += `
