@@ -85,7 +85,7 @@ function setMode(m) {
     formData.append("mode", mode);
     formData.append("chatId", currentChatId || "");
     formData.append("history", JSON.stringify(messages));
-    formData.append("refiner", useRefiner);
+    formData.append("refiner", useRefiner ? "true" : "false");
     formData.append("stream", true); // 🔥 important
 
     if (file) formData.append("file", file);
@@ -169,7 +169,7 @@ function setMode(m) {
           fullText += data + " ";
 
           // ✨ typing effect
-          botText.innerHTML = marked.parse(fullText + "▌");
+          botText.innerHTML = marked.parse(fullText) + "▌";
           chat.scrollTop = chat.scrollHeight;
         }
 
@@ -180,10 +180,17 @@ function setMode(m) {
       botText.innerHTML = marked.parse(fullText);
 
       // ✅ SAVE ONCE (IMPORTANT)
+      if (message) {
+        messages.push({
+          role: "user",
+          content: message
+        });
+      }
       messages.push({
         role: "assistant",
         content: fullText
       });
+      if (!message && !file) return;
 
       // optional temp id
       currentChatId = currentChatId || Date.now();
