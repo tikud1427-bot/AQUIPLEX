@@ -79,12 +79,20 @@ function setMode(m) {
     if (!message && !file) return;
 
     input.value = "";
+    
+    if (message) {
+      messages.push({
+        role: "user",
+        content: message
+      });
+    }
 
     const formData = new FormData();
     formData.append("message", message);
     formData.append("mode", mode);
     formData.append("chatId", currentChatId || "");
-    formData.append("history", JSON.stringify(messages));
+    formData.append("history",
+    JSON.stringify(messages));
     formData.append("refiner", useRefiner ? "true" : "false");
     formData.append("stream", true); // 🔥 important
 
@@ -99,15 +107,23 @@ function setMode(m) {
       `;
     }
 
-    chat.scrollTop = chat.scrollHeight;
+    chat.scrollTo({
+      top: chat.scrollHeight,
+      behavior: "smooth"
+    });
 
     // loading
     const loading = document.createElement("div");
     loading.className = "msg bot";
     loading.id = "loading";
-    loading.innerHTML = mode === "image"
-      ? "🎨 Generating image..."
-      : "💬 Thinking...";
+    loading.innerHTML = `
+      <div class="typing">
+        <span></span>
+        <span></span>
+        <span></span>
+        <span class="typing-text">Thinking...</span>
+      </div>
+    `;
     chat.appendChild(loading);
 
     try {
@@ -131,7 +147,10 @@ function setMode(m) {
           </div>
         `;
 
-        chat.scrollTop = chat.scrollHeight;
+        chat.scrollTo({
+          top: chat.scrollHeight,
+          behavior: "smooth"
+        });
         return;
       }
 
@@ -166,11 +185,14 @@ function setMode(m) {
             break;
           }
 
-          fullText += data + " ";
+          fullText += data;
 
           // ✨ typing effect
-          botText.innerHTML = marked.parse(fullText) + "▌";
-          chat.scrollTop = chat.scrollHeight;
+          botText.innerHTML = marked.parse(fullText) + "<span class='cursor'>▌</span>";
+          chat.scrollTo({
+            top: chat.scrollHeight,
+            behavior: "smooth"
+          });
         }
 
         if (chunk.includes("[DONE]")) break;
@@ -180,20 +202,13 @@ function setMode(m) {
       botText.innerHTML = marked.parse(fullText);
 
       // ✅ SAVE ONCE (IMPORTANT)
-      if (message) {
-        messages.push({
-          role: "user",
-          content: message
-        });
-      }
+      
       messages.push({
         role: "assistant",
         content: fullText
       });
-      if (!message && !file) return;
 
       // optional temp id
-      currentChatId = currentChatId || Date.now();
 
       } catch (err) {
         console.error(err);
@@ -234,7 +249,10 @@ fileInput.addEventListener("change", () => {
     </div>
   `;
 
-  chat.scrollTop = chat.scrollHeight;
+  chat.scrollTo({
+    top: chat.scrollHeight,
+    behavior: "smooth"
+  });
 });
 
 /* HISTORY */
@@ -298,7 +316,10 @@ async function loadHistoryList() {
       }
     });
 
-    chat.scrollTop = chat.scrollHeight;
+    chat.scrollTo({
+      top: chat.scrollHeight,
+      behavior: "smooth"
+    });
 
     // 🔥 CLOSE SIDEBAR ON MOBILE
     document.getElementById("sidebar").classList.remove("open");

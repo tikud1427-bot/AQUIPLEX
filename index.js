@@ -1071,7 +1071,21 @@ app.post("/chat", upload.single("file"), async (req, res) => {
           url: "https://api.groq.com/openai/v1/chat/completions",
           data: {
             model: "llama-3.1-8b-instant",
-            messages,
+            messages: [
+              {
+                role: "system",
+                content: `
+        You are Aqua AI.
+
+        - Always format responses properly
+        - Use headings (##, ###)
+        - Use bullet points
+        - Use clean spacing
+        - Make answers structured and readable
+                `
+              },
+              ...messages.slice(-10)
+            ],
             stream: true
           },
           responseType: "stream",
