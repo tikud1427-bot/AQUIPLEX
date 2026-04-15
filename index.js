@@ -1060,11 +1060,15 @@ app.post("/chat", upload.single("file"), async (req, res) => {
     // ================= STREAM MODE =================
     if (stream) {
       res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+
+      // OPTIONAL but best practice
+      res.flushHeaders?.();
+
       if (req.body.refiner === "true") {
         res.write(`data: ${JSON.stringify({ refined: refinedMessage })}\n\n`);
       }
-      res.setHeader("Cache-Control", "no-cache");
-      res.setHeader("Connection", "keep-alive");
 
       let fullReply = "";
       let response;

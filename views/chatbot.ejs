@@ -179,12 +179,8 @@ async function send() {
 
     // ── STREAM MODE ─────────────────────────────
     const reader = res.body.getReader();
-
-    // FIX: Pass {stream: true} so the decoder correctly handles
-    // multi-byte UTF-8 characters that are split across network chunks.
     const decoder = new TextDecoder("utf-8", { fatal: false });
 
-    // Build the bot message bubble
     const botMsg = document.createElement("div");
     botMsg.className = "msg bot";
 
@@ -195,140 +191,42 @@ async function send() {
     chat.appendChild(botMsg);
 
     let fullText = "";
-
-    // SSE line buffer — holds incomplete lines between network chunks.
-    // Network chunks do NOT align with SSE event boundaries, so we must
-    // accumulate text and split on the SSE double-newline delimiter.
     let buffer = "";
-
-    // FIX: Track whether stream has finished for the final flush.
     let streamDone = false;
 
     while (true) {
       const { done, value } = await reader.read();
 
-      if (done) {
-        // ── End of stream flush ──────────────────
-        // Anything left in the buffer after the last \n\n is a final
-        // partial event. Process it now so no tokens are lost.
-        if (buffer.trim()) {
-          const lines = buffer.split("\n");
+      if (done || streamDone) break;
 
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed.startsWith("data:")) continue;
-
-            const payload = trimmed.slice(5).trim();
-            if (!payload || payload === "[DONE]") continue;
-
-            let parsed;
-
-            try {
-              parsed = JSON.parse(payload);
-            } catch {
-              continue;
-            }
-
-            // ✅ refined
-            if (parsed && parsed.refined) {
-              let refBox = document.getElementById("refinedBox");
-
-              if (!refBox) {
-                refBox = document.createElement("div");
-                refBox.id = "refinedBox";
-                refBox.className = "msg bot";
-                chat.appendChild(refBox);
-              }
-
-              refBox.innerHTML = `
-                <div class="bot-text markdown-body">
-                  ✨ <b>Refined Prompt:</b><br>
-                  ${marked.parse(parsed.refined)}
-                </div>
-              `;
-
-              continue;
-            }
-
-            // ✅ token
-            if (typeof parsed === "string") {
-              fullText += parsed;
-            }
-          }
-        }
-            } catch {
-              continue;
-            }
-
-            // ✅ HANDLE REFINED PROMPT
-            if (parsed && parsed.refined) {
-              // Create or update UI
-              let refBox = document.getElementById("refinedBox");
-
-              if (!refBox) {
-                refBox = document.createElement("div");
-                refBox.id = "refinedBox";
-                refBox.className = "msg bot";
-                chat.appendChild(refBox);
-              }
-
-              refBox.innerHTML = `
-                <div class="bot-text markdown-body">
-                  ✨ <b>Refined Prompt:</b><br>
-                  ${marked.parse(parsed.refined)}
-                </div>
-              `;
-
-              continue;
-            }
-
-            // ✅ HANDLE TOKEN
-            if (typeof parsed === "string") {
-              fullText += parsed;
-            }
-            if (!payload || payload === "[DONE]") continue;
-            
-          }
-        }
-        streamDone = true;
-        break;
-      }
-
-      // FIX: {stream: true} tells the decoder this is an ongoing stream.
-      // Without it, a multi-byte char split across chunks becomes U+FFFD.
       buffer += decoder.decode(value, { stream: true });
 
-      // SSE events are delimited by \n\n.
-      // parts = all complete events; the last element is an incomplete tail.
       const parts = buffer.split("\n\n");
-      buffer = parts.pop(); // keep the incomplete tail for the next chunk
+      buffer = parts.pop();
 
       for (const part of parts) {
-        // An SSE event may have multiple lines (e.g. "event:\ndata:\n").
-        // We only care about data lines.
         const lines = part.split("\n");
 
         for (const line of lines) {
           const trimmed = line.trim();
-
           if (!trimmed.startsWith("data:")) continue;
 
-          // FIX: Use slice(5) instead of replace("data: ", "") to safely
-          // strip the "data:" prefix regardless of spacing variations.
           const payload = trimmed.slice(5).trim();
           if (!payload) continue;
 
-          let parsed;
+          if (payload === "[DONE]") {
+            streamDone = true;
+            break;
+          }
 
+          let parsed;
           try {
             parsed = JSON.parse(payload);
           } catch {
             continue;
           }
 
-          // ✅ HANDLE REFINED PROMPT
           if (parsed && parsed.refined) {
-            // Create or update UI
             let refBox = document.getElementById("refinedBox");
 
             if (!refBox) {
@@ -344,51 +242,39 @@ async function send() {
                 ${marked.parse(parsed.refined)}
               </div>
             `;
-
             continue;
           }
 
-          // ✅ HANDLE TOKEN
           if (typeof parsed === "string") {
             fullText += parsed;
+
+            botText.innerHTML =
+              marked.parse(fullText) + "<span class='cursor'>▌</span>";
+
+            chat.scrollTo({
+              top: chat.scrollHeight,
+              behavior: "smooth"
+            });
           }
-
-          if (!payload) continue;
-
-          if (payload === "[DONE]") {
-            streamDone = true;
-            break;
-          }
-
-          
         }
 
         if (streamDone) break;
-
-        // Re-render with cursor only if we got new content
-        if (fullText) {
-          botText.innerHTML = marked.parse(fullText) + "<span class='cursor'>▌</span>";
-          chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
-        }
       }
-
-      if (streamDone) break;
     }
-
-    // ── Final render (no cursor) ─────────────────
-    botText.innerHTML = marked.parse(fullText);
-
+    // ✅ FINAL RENDER
+    botText.innerHTML = marked.parse(fullText.trim());
+    // ✅ COPY BUTTON
     const copyBtn = document.createElement("button");
     copyBtn.innerText = "📋";
     copyBtn.onclick = () => {
       navigator.clipboard.writeText(fullText);
       copyBtn.innerText = "✅";
-      setTimeout(() => copyBtn.innerText = "📋", 1500);
+      setTimeout(() => (copyBtn.innerText = "📋"), 1500);
     };
 
     botMsg.appendChild(copyBtn);
 
-    // Save assistant reply to local history
+    // ✅ SAVE HISTORY
     messages.push({ role: "assistant", content: fullText });
 
     chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
