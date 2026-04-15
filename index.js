@@ -11,6 +11,8 @@ const path = require("path");
 const axios = require("axios");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const pdfParse = require("pdf-parse");
+const mammoth = require("mammoth");
 // ================= AI ENGINE (FALLBACK SYSTEM) =================
 
 async function generateAI(messages) {
@@ -664,7 +666,7 @@ app.post("/generate-bundle", async (req, res) => {
     }
     `;
 
-    
+
     const ai = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
       {
@@ -921,9 +923,9 @@ app.get("/chatbot", requireLogin, (req, res) => {
 });
 // ===============catch (err) {BOT =================
 app.post("/chat", upload.single("file"), async (req, res) => {
-  console.log("📩 BODY:", req.body);
+  let { message, history, mode, chatId, stream } = req.body;
 
-  let { message, history, mode, chatId } = req.body;
+  stream = stream === "true";
 
   try {
     history = JSON.parse(history || "[]");
@@ -943,23 +945,84 @@ app.post("/chat", upload.single("file"), async (req, res) => {
 
     let fileText = "";
 
+    // ================= FILE PROCESS =================
     if (req.file) {
+      const ext = path.extname(req.file.originalname).toLowerCase();
+
       try {
-        fileText = fs.readFileSync(req.file.path, "utf8");
+        if (ext === ".txt") {
+          fileText = fs.readFileSync(req.file.path, "utf8");
+        } 
+        else if (ext === ".pdf") {
+          const buffer = fs.readFileSync(req.file.path);
+          const data = await pdfParse(buffer);
+          fileText = data.text;
+        } 
+        else if (ext === ".docx") {
+          const result = await mammoth.extractRawText({ path: req.file.path });
+          fileText = result.value;
+        } 
+        else {
+          fileText = `Unsupported file type: ${ext}`;
+        }
       } catch {
-        fileText = "Uploaded file (unsupported)";
+        fileText = "⚠️ Failed to read file";
       }
+
+      // 🧹 DELETE FILE AFTER READ (IMPORTANT)
+      fs.unlink(req.file.path, () => {});
     }
 
-    // 👤 user message
+    if (fileText.length > 10000) {
+      fileText = fileText.slice(0, 10000);
+    }
+
+    if (fileText) {
+      messages.push({
+        role: "system",
+        content: `User uploaded file:\n${fileText}`
+      });
+    }
+
+    // ================= REFINER =================
+    let refinedMessage = message;
+
+    // ✅ include file in refinement
+    const refinerInput = fileText
+      ? message + "\n\nFile:\n" + fileText
+      : message;
+
+    if (req.body.refiner === "true") {
+      try {
+        refinedMessage = await generateAI([
+          {
+            role: "system",
+            content: "Rewrite user input into a clear AI prompt. Return ONLY prompt."
+          },
+          {
+            role: "user",
+            content: refinerInput // ✅ FIXED
+          }
+        ]);
+      } catch {}
+    }
+
+    // ✅ push refined message (clean, no duplication)
     messages.push({
       role: "user",
-      content: message + (fileText ? `\n\n📎 File:\n${fileText}` : "")
+      content: refinedMessage
     });
+    // ================= IMAGE MODE =================
+    if (mode === "image") {
+      const result = await generateImage(message);
 
-    let reply = "";
+      return res.json({
+        reply: "🖼️ Here is your image:",
+        image: result.url
+      });
+    }
 
-    // 🌐 SEARCH
+    // ================= SEARCH MODE =================
     if (mode === "search") {
       try {
         const search = await axios.post(
@@ -980,62 +1043,126 @@ app.post("/chat", upload.single("file"), async (req, res) => {
           .map(r => `${r.title}: ${r.snippet}`)
           .join("\n");
 
-        reply = await generateAI([
+        const reply = await generateAI([
           { role: "system", content: "Summarize clearly" },
           { role: "user", content: resultsText }
         ]);
 
+        return res.json({ reply });
       } catch {
-        reply = `🔎 https://www.google.com/search?q=${encodeURIComponent(message)}`;
+        return res.json({
+          reply: `🔎 https://www.google.com/search?q=${encodeURIComponent(message)}`
+        });
       }
     }
 
-    // 🎨 IMAGE
-    else if (mode === "image") {
-      const result = await generateImage(message);
+    // ================= STREAM MODE =================
+    if (stream) {
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
 
-      return res.json({
-        reply: "🖼️ Here is your image:",
-        image: result.url
+      let fullReply = "";
+      let response;
+
+      try {
+        response = await axios({
+          method: "post",
+          url: "https://api.groq.com/openai/v1/chat/completions",
+          data: {
+            model: "llama-3.1-8b-instant",
+            messages,
+            stream: true
+          },
+          responseType: "stream",
+          headers: {
+            Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+            "Content-Type": "application/json"
+          }
+        });
+
+        response.data.on("data", chunk => {
+          const lines = chunk.toString().split("\n");
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const data = line.replace("data: ", "");
+
+              if (data === "[DONE]") {
+                // ✅ SAVE CHAT AFTER STREAM
+                messages.push({
+                  role: "assistant",
+                  content: fullReply
+                });
+
+                (async () => {
+                  await saveChat(messages, chatId, req.session.userId, message);
+                })();
+
+                res.write("data: [DONE]\n\n");
+                res.end();
+                return;
+              }
+
+              try {
+                const parsed = JSON.parse(data);
+                const token = parsed.choices[0]?.delta?.content;
+
+                if (token) {
+                  fullReply += token;
+                  res.write(`data: ${token}\n\n`);
+                }
+              } catch {}
+            }
+          }
+        });
+
+      } catch (err) {
+        console.log("❌ Stream failed → fallback");
+
+        const reply = await generateAI(messages);
+
+        messages.push({
+          role: "assistant",
+          content: reply
+        });
+
+        const chat = await saveChat(messages, chatId, req.session.userId, message);
+
+        return res.json({
+          reply,
+          messages,
+          chatId: chat._id
+        });
+      }
+
+      req.on("close", () => {
+        if (response) response.data.destroy();
       });
-    }
 
-    // 💬 NORMAL CHAT
-    else {
-      reply = await generateAI([
-        {
-          role: "system",
-          content: `
-You are Aqua AI by Aquiplex.
-Help with coding, startups, AI tools, and problem solving.
-Be clear, smart, and helpful.
-          `
-        },
-        ...messages.slice(-10)
-      ]);
+      return;
     }
+    // ================= NORMAL MODE =================
+    const reply = await generateAI([
+      {
+        role: "system",
+        content: `
+You are Aqua AI.
 
-    // ✅ SAVE RESPONSE (THIS IS THE PART YOU ASKED ABOUT)
+- Use headings
+- Be structured
+- Be clear
+        `
+      },
+      ...messages.slice(-10)
+    ]);
+
     messages.push({
       role: "assistant",
       content: reply
     });
 
-    let chat;
-
-    if (chatId) {
-      chat = await History.findOneAndUpdate(
-        { _id: chatId, userId: req.session.userId },
-        { messages },
-        { new: true }
-      );
-    } else {
-      chat = await History.create({
-        userId: req.session.userId,
-        title: message.slice(0, 30),
-        messages
-      });
-    }
+    const chat = await saveChat(messages, chatId, req.session.userId, message);
 
     res.json({
       reply,
@@ -1049,61 +1176,32 @@ Be clear, smart, and helpful.
   }
 });
 
-app.post("/bundle/progress/:id", requireLogin, async (req, res) => {
-  try {
-    const { step, status } = req.body;
-
-    const bundle = await Bundle.findOne({
-      _id: req.params.id,
-      userId: req.session.userId
-    });
-
-    if (!bundle) return res.status(404).send("Bundle not found");
-
-    const item = bundle.progress.find(p => p.step === step);
-
-    if (item) {
-      item.status = status;
-    }
-
-    await bundle.save();
-
-    res.json({ success: true });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error");
-  }
-});
-
-    
-//history id
+// GET SINGLE CHAT
 app.get("/history/:id", requireLogin, async (req, res) => {
   try {
     const chat = await History.findOne({
       _id: req.params.id,
       userId: req.session.userId
-    }).lean();
-
-    if (!chat) {
-      return res.status(404).json({ error: "Chat not found" });
-    }
+    });
 
     res.json(chat);
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error loading chat" });
+  } catch {
+    res.status(500).send("Error loading chat");
   }
 });
-//delete history
-app.delete("/history/:id", requireLogin, async (req, res) => {
-  await History.deleteOne({
-    _id: req.params.id,
-    userId: req.session.userId
-  });
 
-  res.sendStatus(200);
+// DELETE CHAT
+app.delete("/history/:id", requireLogin, async (req, res) => {
+  try {
+    await History.deleteOne({
+      _id: req.params.id,
+      userId: req.session.userId
+    });
+
+    res.sendStatus(200);
+  } catch {
+    res.status(500).send("Error deleting chat");
+  }
 });
 // ================= AUTH =================
 
@@ -1291,6 +1389,22 @@ res.status(500).send("Error removing tool");
 }
 });
 
+// ================= HELPER =================
+async function saveChat(messages, chatId, userId, message) {
+  if (chatId) {
+    return await History.findOneAndUpdate(
+      { _id: chatId, userId },
+      { messages },
+      { new: true }
+    );
+  } else {
+    return await History.create({
+      userId,
+      title: message.slice(0, 30),
+      messages
+    });
+  }
+}
 
 // ================= START =================
 async function startServer() {

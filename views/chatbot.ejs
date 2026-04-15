@@ -21,6 +21,7 @@
   <button onclick="setMode('chat')">💬 Chat</button>
   <button onclick="setMode('search')">🌐 Search</button>
   <button onclick="setMode('image')">🎨 Image</button>
+  <button onclick="toggleRefiner(this)">✨ Refiner OFF</button>
 </div>
 
 <p id="modeLabel">Mode: chat</p>
@@ -84,12 +85,12 @@ function setMode(m) {
     formData.append("mode", mode);
     formData.append("chatId", currentChatId || "");
     formData.append("history", JSON.stringify(messages));
+    formData.append("refiner", useRefiner);
+    formData.append("stream", true); // 🔥 important
 
-    if (file) {
-      formData.append("file", file);
-    }
+    if (file) formData.append("file", file);
 
-    // show user message instantly (ONLY text)
+    // show user message
     if (message) {
       chat.innerHTML += `
         <div class="msg user">
@@ -100,71 +101,96 @@ function setMode(m) {
 
     chat.scrollTop = chat.scrollHeight;
 
+    // loading
     const loading = document.createElement("div");
     loading.className = "msg bot";
     loading.id = "loading";
     loading.innerHTML = mode === "image"
-    ? "🎨 Generating image..."
-    : "💬 Thinking...";
+      ? "🎨 Generating image..."
+      : "💬 Thinking...";
     chat.appendChild(loading);
-    
+
     try {
       const res = await fetch("/chat", {
         method: "POST",
-        body: formData   // ❗ NO JSON HEADERS
+        body: formData
       });
 
-      const data = await res.json();
       document.getElementById("loading")?.remove();
 
-      
+      // 🎨 IMAGE MODE
+      if (mode === "image") {
+        const data = await res.json();
 
-      // 🧠 IMAGE MODE HANDLING
-      if (mode === "image" && data.image) {
         chat.innerHTML += `
           <div class="msg bot">
             <div class="bot-text">${data.reply}</div>
             <img src="${data.image}" style="max-width:100%; border-radius:10px; margin-top:10px;" />
           </div>
         `;
+
+        chat.scrollTop = chat.scrollHeight;
+        return;
       }
 
-      // 💬 NORMAL CHAT
-      else if (data.messages) {
-        const lastMsg = data.messages[data.messages.length - 1];
+      // 💬 STREAM MODE
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
 
-        if (lastMsg.role === "assistant") {
-          chat.innerHTML += `
-            <div class="msg bot">
-              <div class="bot-text">${marked.parse(lastMsg.content)}</div>
-              <button onclick="copyText(this)">📋</button>
-            </div>`;
+      let botMsg = document.createElement("div");
+      botMsg.className = "msg bot";
+
+      let botText = document.createElement("div");
+      botText.className = "bot-text markdown-body";
+
+      botMsg.appendChild(botText);
+      chat.appendChild(botMsg);
+
+      let fullText = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (let line of lines) {
+          if (!line.startsWith("data: ")) continue;
+
+          const data = line.replace("data: ", "").trim();
+
+          if (data === "[DONE]") {
+            break;
+          }
+
+          fullText += data;
+
+          // ✨ typing effect
+          botText.innerHTML = marked.parse(fullText + "▌");
+          chat.scrollTop = chat.scrollHeight;
         }
 
-        messages = data.messages;
-        currentChatId = data.chatId;
+        if (chunk.includes("[DONE]")) break;
       }
 
-      // ⚠️ FALLBACK
-      else {
-        chat.innerHTML += `
-          <div class="msg bot">
-            <div class="bot-text">${data.reply || "⚠️ Failed"}</div>
-          </div>
-        `;
-      }
+      // remove cursor after done
+      botText.innerHTML = marked.parse(fullText);
 
-
-      chat.scrollTo({
-        top: chat.scrollHeight,
-        behavior: "smooth"
+      // ✅ SAVE ONCE (IMPORTANT)
+      messages.push({
+        role: "assistant",
+        content: fullText
       });
-      
-      messages = data.messages;
-      currentChatId = data.chatId;
 
-      } catch {
+      // optional temp id
+      currentChatId = currentChatId || Date.now();
+
+      } catch (err) {
+        console.error(err);
+
         document.getElementById("loading")?.remove();
+
         chat.innerHTML += `
           <div class="msg bot">
             <div class="bot-text">⚠️ Something went wrong</div>
@@ -174,8 +200,8 @@ function setMode(m) {
 
       fileInput.value = "";
       input.focus();
-  }
-    
+      }
+  
 /* ENTER KEY */
   document.getElementById("messageInput").addEventListener("keydown", e => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -308,6 +334,13 @@ loadHistoryList();
     sidebar.classList.toggle("active");
     document.body.classList.toggle("sidebar-open");
   });
+  let useRefiner = false;
+
+  function toggleRefiner(btn) {
+    useRefiner = !useRefiner;
+    btn.innerText = useRefiner ? "✨ Refiner ON" : "✨ Refiner OFF";
+  }
+  
 </script>
   
 </body>
