@@ -29,7 +29,9 @@
 <%- include("partials/nav") %>
 
 <!-- 🌊 FLOATING BUTTON -->
-<div class="aqua-float" onclick="openAquaAI()">🌊</div>
+  <div class="aqua-float pulse" onclick="openAquaAI()">
+    💬 Ask AI
+  </div>
 
 <!-- 💬 AQUA AI POPUP -->
 <div id="aquaPopup" class="aqua-popup hidden">
@@ -60,17 +62,22 @@
         Discover. Compare. Use AI tools — or just ask Aqua AI.
       </p>
 
-      <div class="hero-buttons">
-        <button onclick="openAquaAI()" class="btn primary">
-
-          🚀 Start with Aqua AI
-        </button>
-
-        <a href="/tools" class="btn ghost">
-          Explore 100+ Tools
-        </a>
+      <div class="hero-input-box">
+        <input 
+          type="text" 
+          placeholder="Try: Build a startup, create an app, grow Instagram..."
+          id="heroPrompt"
+        >
+        <button onclick="runHeroAI()">⚡ Generate</button>
       </div>
 
+      <div id="hero-output" class="hero-output hidden"></div>
+
+      <div class="hero-buttons">
+        <button onclick="openAquaAI()" class="btn ghost">
+          💬 Open Chat
+        </button>
+      </div>
       <div class="hero-stats">
         <span>🔥 100+ Tools</span>
         <span>⚡ Instant AI Answers</span>
@@ -78,6 +85,30 @@
       </div>
       <div class="cursor-glow"></div>
     </div>
+  </section>
+  <section class="section core-powers">
+
+    <h2 class="section-title">⚡ Your AI Superpowers</h2>
+
+    <div class="features">
+
+      <div class="feature-card highlight">
+        <h3>💬 Aqua AI Chat</h3>
+        <p>Multi-model AI answers instantly.</p>
+      </div>
+
+      <div class="feature-card highlight">
+        <h3>✨ Prompt Refiner</h3>
+        <p>Turn basic ideas into powerful prompts.</p>
+      </div>
+
+      <div class="feature-card highlight">
+        <h3>🏗️ Project Engine</h3>
+        <p>Generate full workflows with tools.</p>
+      </div>
+
+    </div>
+
   </section>
   <!-- 🔥 TRUST STRIP -->
   <section class="trust-strip">
@@ -110,6 +141,36 @@
       </div>
 
     </div>
+  </section>
+  <!-- 🔥 USE CASES -->
+  <section class="section use-cases">
+
+    <h2 class="section-title">🔥 What You Can Do</h2>
+
+    <div class="grid">
+
+      <div class="tool-card">
+        <h3>🚀 Build a Startup</h3>
+        <p>Get full roadmap + tools in seconds.</p>
+      </div>
+
+      <div class="tool-card">
+        <h3>🎬 Create Content</h3>
+        <p>Scripts, posts, videos — instantly.</p>
+      </div>
+
+      <div class="tool-card">
+        <h3>💻 Build Apps</h3>
+        <p>Generate code + workflows.</p>
+      </div>
+
+      <div class="tool-card">
+        <h3>📈 Grow Online</h3>
+        <p>Marketing strategies powered by AI.</p>
+      </div>
+
+    </div>
+
   </section>
   <!-- 🔥 TRENDING -->
   <section class="section">
@@ -242,17 +303,29 @@
         </section>
 <!-- 📲 DOWNLOAD -->
         <section class="section final-cta">
-          <h2>Start Using AI Smarter Today ⚡</h2>
+
+          <h1>
+            Stop Searching. Start Building ⚡
+          </h1>
+
+          <p class="hero-sub">
+            Join thousands using AI to build startups, apps, and content — instantly.
+          </p>
 
           <div class="cta-buttons">
-            <button onclick="openAquaAI()" class="btn primary big-btn">
-              Try Aqua AI
+            <button onclick="openAquaAI()" class="btn primary big-btn pulse">
+              🚀 Try Aqua AI Now
             </button>
 
-            <a href="/download" class="btn ghost big-btn">
-              Download App
+            <a href="/download" class="btn ghost big-btn secondary">
+              📲 Download App
             </a>
           </div>
+
+          <p style="margin-top:10px; opacity:0.7;">
+            ⚡ Takes 10 seconds. No setup required.
+          </p>
+
         </section>
 
 <!-- FOOTER -->
@@ -295,6 +368,42 @@
         });
         </script>
 
+        <script>
+        async function runHeroAI() {
+          const input = document.getElementById("heroPrompt").value;
+          const output = document.getElementById("hero-output");
 
+          if (!input) return;
+
+          output.classList.remove("hidden");
+          output.innerHTML = "⚡ Generating...";
+
+          const res = await fetch("/generate-bundle", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              goal: input,
+              step: 2,
+              answers: []
+            })
+          });
+
+          const data = await res.json();
+
+          if (data.steps) {
+            output.innerHTML = `
+              <h3>${data.title}</h3>
+              ${data.steps.map(s => `
+                <div class="step">
+                  <b>${s.step}. ${s.title}</b>
+                  <p>${s.description}</p>
+                </div>
+              `).join("")}
+            `;
+          } else {
+            output.innerHTML = "⚠️ Failed. Try again.";
+          }
+        }
+        </script>
 </body>
 </html>
