@@ -79,7 +79,16 @@
       <div class="cursor-glow"></div>
     </div>
   </section>
-
+  <!-- 🔥 TRUST STRIP -->
+  <section class="trust-strip">
+    <p>Trusted by 10,000+ users worldwide 🌍</p>
+    <div class="trust-icons">
+      <span>🚀 Fast</span>
+      <span>🔒 Secure</span>
+      <span>⚡ AI Powered</span>
+      <span>💡 Smart Results</span>
+    </div>
+  </section>
   <section class="section">
     <h2 class="section-title">Why AQUIPLEX?</h2>
 
@@ -102,13 +111,36 @@
 
     </div>
   </section>
-<!-- 🔥 TRENDING -->
-<section class="section">
-  <h2 class="section-title">🔥 Trending AI Tools</h2>
-  <p class="section-sub">
-    Discover what people are using right now
-  </p>
-</section>
+  <!-- 🔥 TRENDING -->
+  <section class="section">
+    <h2 class="section-title">🔥 Trending AI Tools</h2>
+    <p class="section-sub">
+      Discover what people are using right now
+    </p>
+
+    <div class="grid">
+
+      <% if (tools && tools.length > 0) { %>
+
+        <% tools.slice(0, 4).forEach(function(tool){ %>
+
+          <div class="tool-card">
+
+            <div class="logo-box">
+              <img src="<%= tool.logo %>" alt="<%= tool.name %>">
+            </div>
+
+            <h3><%= tool.name %></h3>
+            <p><%= tool.description %></p>
+
+          </div>
+
+        <% }) %>
+
+      <% } %>
+
+    </div>
+  </section>
 
 <!-- MAIN CONTENT -->
 <div class="container">
@@ -185,7 +217,29 @@
   </section>
 
 </div>
+        <!-- ⚙️ HOW IT WORKS -->
+        <section class="section">
+          <h2 class="section-title">How It Works</h2>
 
+          <div class="features">
+
+            <div class="feature-card">
+              <h3>1. Search or Ask</h3>
+              <p>Use Aqua AI or explore tools.</p>
+            </div>
+
+            <div class="feature-card">
+              <h3>2. Discover</h3>
+              <p>Find the best AI tools instantly.</p>
+            </div>
+
+            <div class="feature-card">
+              <h3>3. Use & Grow</h3>
+              <p>Boost productivity with AI.</p>
+            </div>
+
+          </div>
+        </section>
 <!-- 📲 DOWNLOAD -->
         <section class="section final-cta">
           <h2>Start Using AI Smarter Today ⚡</h2>
