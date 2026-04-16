@@ -631,3 +631,34 @@ html {
 .pulse {
   animation: pulse 2.5s infinite;
 }
+
+/* ===== TRUST STRIP FIX ===== */
+
+.trust-strip {
+  text-align: center;
+  padding: 25px 15px;
+}
+
+.trust-strip p {
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  color: #94a3b8;
+}
+
+/* FIX ICON ROW */
+.trust-icons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap; /* important for mobile */
+}
+
+.trust-icons span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  white-space: nowrap; /* prevents breaking */
+}
