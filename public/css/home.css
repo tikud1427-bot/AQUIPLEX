@@ -530,3 +530,104 @@ html {
   border-color: #38bdf8;
   box-shadow: 0 0 12px rgba(56,189,248,0.4);
 }
+
+/* ===== HERO IMPROVEMENT ===== */
+
+.hero-content h1 {
+  font-size: 2.8rem;
+  line-height: 1.2;
+}
+
+.hero-content p {
+  font-size: 1rem;
+  opacity: 0.85;
+}
+
+/* Input container = premium bar */
+.hero-input-box {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  max-width: 520px;
+  margin: 25px auto 0;
+
+  background: rgba(255,255,255,0.05);
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+  padding: 4px;
+}
+
+/* Input */
+.hero-input-box input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 12px 14px;
+  font-size: 14px;
+}
+
+/* Button attached to input */
+.hero-input-box button {
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-left: 4px;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  font-size: 13px;
+}
+
+.hero-input-box button:hover {
+  transform: scale(1.05);
+}
+
+.hero-stats {
+  margin-top: 20px;
+  gap: 15px;
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+/* Better depth */
+.feature-card,
+.tool-card,
+.category-card {
+  transition: all 0.25s ease;
+}
+
+/* Hover = premium feel */
+.feature-card:hover,
+.tool-card:hover,
+.category-card:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+}
+
+.section {
+  padding: 70px 20px;
+}
+
+.section-title {
+  margin-bottom: 25px;
+  font-size: 1.8rem;
+}
+
+.final-cta {
+  padding: 80px 20px;
+}
+
+.final-cta h1 {
+  font-size: 2.2rem;
+}
+
+.final-cta .btn {
+  font-size: 15px;
+}
+
+.aqua-float {
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.pulse {
+  animation: pulse 2.5s infinite;
+}
