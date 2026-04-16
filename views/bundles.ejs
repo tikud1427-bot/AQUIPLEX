@@ -566,6 +566,20 @@ function quick(text) {
 
         document.querySelector(".bundle-box").appendChild(div);
       }
+      // 🔥 AUTO RUN FROM HOME PAGE
+      window.addEventListener("load", () => {
+        const savedGoal = localStorage.getItem("aqua_goal");
+
+        if (savedGoal) {
+          document.getElementById("goalInput").value = savedGoal;
+
+          // clear so it doesn't repeat
+          localStorage.removeItem("aqua_goal");
+
+          // 🚀 auto generate
+          generateBundle();
+        }
+      });
       
     </script>
       

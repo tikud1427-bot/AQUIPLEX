@@ -71,7 +71,7 @@
         <button onclick="runHeroAI()">⚡ Generate</button>
       </div>
 
-      <div id="hero-output" class="hero-output hidden"></div>
+      
 
       <div class="hero-buttons">
         <button onclick="openAquaAI()" class="btn ghost">
@@ -367,43 +367,22 @@
           glow.style.top = (e.clientY - rect.top) + "px";
         });
         </script>
-
         <script>
-        async function runHeroAI() {
-          const input = document.getElementById("heroPrompt").value;
-          const output = document.getElementById("hero-output");
-
+        function runHeroAI() {
+          const input = document.getElementById("heroPrompt").value.trim();
           if (!input) return;
 
-          output.classList.remove("hidden");
-          output.innerHTML = "⚡ Generating...";
+          const btn = document.querySelector(".hero-input-box button");
+          btn.innerText = "Redirecting...";
 
-          const res = await fetch("/generate-bundle", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              goal: input,
-              step: 2,
-              answers: []
-            })
-          });
+          localStorage.setItem("aqua_goal", input);
 
-          const data = await res.json();
-
-          if (data.steps) {
-            output.innerHTML = `
-              <h3>${data.title}</h3>
-              ${data.steps.map(s => `
-                <div class="step">
-                  <b>${s.step}. ${s.title}</b>
-                  <p>${s.description}</p>
-                </div>
-              `).join("")}
-            `;
-          } else {
-            output.innerHTML = "⚠️ Failed. Try again.";
-          }
+          setTimeout(() => {
+            window.location.href = "/bundles";
+          }, 300);
         }
         </script>
+
+        
 </body>
 </html>
