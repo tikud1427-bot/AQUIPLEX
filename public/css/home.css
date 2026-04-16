@@ -3,7 +3,6 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  transition: all 0.25s ease;
 }
 
 html {
@@ -13,7 +12,9 @@ html {
 /* ===== HERO SECTION ===== */
 .new-hero {
   position: relative;
-  height: 90vh;
+  min-height: 90vh;
+  height: auto;
+  padding: 80px 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -268,19 +269,6 @@ html {
   }
 }
 
-.aqua-float {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: linear-gradient(135deg, #0ea5e9, #6366f1);
-  color: white;
-  padding: 14px 18px;
-  border-radius: 50px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-}
-
 .secondary {
   opacity: 0.7;
 }
@@ -301,7 +289,8 @@ html {
 
 .hero-input-box input {
   padding: 16px;
-  width: 340px;
+  width: 100%;
+  max-width: 320px;
   border-radius: 12px;
   border: 1px solid rgba(255,255,255,0.08);
   background: rgba(255,255,255,0.04);
@@ -339,6 +328,7 @@ html {
   padding: 20px;
   border-radius: 14px;
   max-width: 600px;
+  width: 100%;
   backdrop-filter: blur(12px);
   border: 1px solid rgba(255,255,255,0.08);
   animation: fadeIn 0.4s ease;
@@ -392,7 +382,7 @@ html {
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-  z-index: 999;
+  z-index: 9999;
 }
 
 /* ================= PULSE ANIMATION ================= */
@@ -443,4 +433,30 @@ html {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.hero-content {
+  max-width: 700px;
+  margin: auto;
+  z-index: 2;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #e2e8f0;
+}
+
+.btn.ghost:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.hero-output {
+  margin: 25px auto 0;
+  word-wrap: break-word;
+}
+
+.tool-card,
+.feature-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
