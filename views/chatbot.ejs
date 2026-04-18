@@ -85,7 +85,6 @@
 
 <body>
 
-
 <!-- Mobile sidebar overlay -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
@@ -114,6 +113,7 @@
     </div>
 
   </div>
+
   <!-- ── BODY ── -->
   <div class="aqua-body">
 
@@ -225,37 +225,27 @@ function isMobile() {
   return window.innerWidth <= 768;
 }
 
-// FIX: Track sidebar open/collapsed state to reposition desktop input bar
-function updateDesktopInputOffset() {
-  if (!isMobile()) {
-    const sidebar = document.getElementById("sidebar");
-    const isCollapsed = sidebar.classList.contains("collapsed");
-    document.body.classList.toggle("sidebar-collapsed", isCollapsed);
+function toggleSidebar() {
+  const s = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebarOverlay");
+
+  if (isMobile()) {
+    s.classList.toggle("mobile-open");
+    overlay.classList.toggle("visible");
+    document.body.classList.toggle("sidebar-open");
+  } else {
+    s.classList.toggle("collapsed");
   }
 }
 
-  function toggleSidebar() {
-    const s = document.getElementById("sidebar");
-    const overlay = document.getElementById("sidebarOverlay");
+function closeSidebar() {
+  const s = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebarOverlay");
 
-    if (isMobile()) {
-      s.classList.toggle("mobile-open");
-      overlay.classList.toggle("visible");
-      document.body.classList.toggle("sidebar-open");
-    } else {
-      s.classList.toggle("collapsed");
-      updateDesktopInputOffset();
-    }
-  }
-
-  function closeSidebar() {
-    const s = document.getElementById("sidebar");
-    const overlay = document.getElementById("sidebarOverlay");
-
-    s.classList.remove("mobile-open");
-    overlay.classList.remove("visible");
-    document.body.classList.remove("sidebar-open");
-  }
+  s.classList.remove("mobile-open");
+  overlay.classList.remove("visible");
+  document.body.classList.remove("sidebar-open");
+}
 
 // ── EMPTY STATE ──
 const STARTERS = [
@@ -319,7 +309,7 @@ async function send() {
 
   if (!message && !file) return;
 
-  // FIX: Only auto-detect mode from typed message (not file-only sends)
+  // Only auto-detect mode from typed message (not file-only sends)
   if (message) {
     const detected = autoDetectMode(message);
     if (detected !== mode) setMode(detected);
@@ -338,7 +328,7 @@ async function send() {
   formData.append("chatId",  currentChatId || "");
   formData.append("history", JSON.stringify(messages.slice(-10)));
   formData.append("refiner", useRefiner ? "true" : "false");
-  // FIX: stream only in chat mode and not compare mode
+  // stream only in chat mode and not compare mode
   formData.append("stream",  (mode === "chat" && !useCompare) ? "true" : "false");
   if (file) formData.append("file", file);
 
@@ -382,7 +372,7 @@ async function send() {
       return;
     }
 
-    // FIX: Use correct fetch options — FormData sets content-type automatically
+    // Use correct fetch options — FormData sets content-type automatically
     const res = await fetch("/chat", { method: "POST", body: formData });
     document.getElementById("loading")?.remove();
 
@@ -842,17 +832,14 @@ document.getElementById("fileUpload").addEventListener("change", () => {
   chat.scrollTop = chat.scrollHeight;
 });
 
-// FIX: Handle window resize — if desktop is resized to mobile, close sidebar properly
+// Handle window resize — if desktop is resized to mobile, close sidebar properly
 window.addEventListener("resize", () => {
   if (!isMobile()) {
-    // Switched to desktop: remove mobile-specific state
     const overlay = document.getElementById("sidebarOverlay");
     overlay.classList.remove("visible");
     document.body.classList.remove("sidebar-open");
-    // Don't force close the sidebar — it may be in "collapsed" state intentionally
     const s = document.getElementById("sidebar");
     s.classList.remove("mobile-open");
-    updateDesktopInputOffset();
   }
 });
 
