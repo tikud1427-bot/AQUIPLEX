@@ -1335,3 +1335,43 @@ input[type="file"] {
     grid-template-columns: 1fr 1fr !important;
   }
 }
+
+/* ===== FIX: SIDEBAR ABOVE NAV ===== */
+.main-header {
+  z-index: 10 !important;
+  position: relative;
+}
+
+.aqua-sidebar {
+  z-index: 999999 !important;
+}
+
+.sidebar-overlay {
+  z-index: 999998 !important;
+}
+
+/* ===== FIX: REMOVE BLUR INTERFERENCE ===== */
+.aqua-sidebar,
+.sidebar-overlay {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ===== FIX: PREVENT BACKGROUND FROM BLOCKING ===== */
+.aqua-body,
+.aqua-main {
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== FINAL HARD FIX ===== */
+.aqua-sidebar.mobile-open {
+  transform: translateX(0) !important;
+  pointer-events: auto !important;
+  opacity: 1 !important;
+}
+
+.sidebar-overlay.visible {
+  display: block !important;
+  pointer-events: auto !important;
+}
