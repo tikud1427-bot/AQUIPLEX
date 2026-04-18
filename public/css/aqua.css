@@ -1,9 +1,9 @@
 /* ============================================================
-   AQUA AI — Production CSS
+   AQUA AI — Final Production CSS
    Architecture: Reset → Variables → Layout → Components → Responsive
    Mobile-first. Sticky header + contained input. No hacks.
-   ============================================================ */
-
+   Chat history toggle works on all screen sizes.
+============================================================ */
 
 /* ── RESET ── */
 
@@ -15,7 +15,7 @@
 
 html {
   height: 100%;
-  overflow: hidden; /* prevent html-level scroll; only #chat scrolls */
+  overflow: hidden;
 }
 
 body {
@@ -23,7 +23,6 @@ body {
   overflow: hidden;
   max-width: 100vw;
 }
-
 
 /* ── VARIABLES ── */
 
@@ -61,7 +60,6 @@ body {
   --font-mono: monospace;
 }
 
-
 /* ── BASE ── */
 
 body {
@@ -83,25 +81,23 @@ nav { display: none; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 
-
 /* ============================================================
    SHELL — Full viewport, no scroll at this level
-   ============================================================ */
+============================================================ */
 
 .aqua-shell {
   display: flex;
   flex-direction: column;
-  height: 100%; /* fills body which is 100vh */
+  height: 100%;
   overflow: hidden;
 }
 
-
 /* ============================================================
    HEADER — sticky at top of shell, never fixed
-   ============================================================ */
+============================================================ */
 
 .aqua-header {
-  flex-shrink: 0; /* never compress */
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -135,6 +131,11 @@ button:disabled { cursor: not-allowed; }
   flex-shrink: 0;
 }
 
+/* ── Menu Toggle Button ──
+   Visible on ALL screen sizes so user can always show/hide sidebar.
+   On desktop it collapses the sidebar in-flow.
+   On mobile it opens the fixed drawer.
+*/
 #menuToggle {
   display: flex;
   align-items: center;
@@ -166,22 +167,20 @@ button:disabled { cursor: not-allowed; }
   flex-wrap: nowrap;
 }
 
-
 /* ============================================================
    BODY ROW — fills remaining shell height, no overflow here
-   ============================================================ */
+============================================================ */
 
 .aqua-body {
   display: flex;
   flex: 1;
-  min-height: 0; /* critical: lets flex children shrink below content size */
+  min-height: 0;
   overflow: hidden;
 }
 
-
 /* ============================================================
    SIDEBAR
-   ============================================================ */
+============================================================ */
 
 .aqua-sidebar {
   width: var(--sidebar-w);
@@ -195,6 +194,7 @@ button:disabled { cursor: not-allowed; }
   transition: width 0.3s ease, min-width 0.3s ease;
 }
 
+/* Desktop collapse: sidebar shrinks to zero in-flow */
 .aqua-sidebar.collapsed {
   width: 0;
   min-width: 0;
@@ -305,35 +305,37 @@ button:disabled { cursor: not-allowed; }
   color: #fff;
 }
 
-/* Overlay — mobile only */
+/* ── Overlay — mobile only ──
+   Appears behind the drawer, above the main content.
+   Tapping it closes the sidebar.
+*/
 .sidebar-overlay {
   display: none;
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: var(--z-overlay);
   animation: overlayFade 0.25s ease both;
 }
 .sidebar-overlay.visible { display: block; }
 
-
 /* ============================================================
    MAIN COLUMN — flex column, only #chat scrolls
-   ============================================================ */
+============================================================ */
 
 .aqua-main {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-width: 0; /* prevent overflow blowout */
+  min-width: 0;
   overflow: hidden;
 }
 
-
 /* ============================================================
    EXPORT TOOLBAR
-   ============================================================ */
+============================================================ */
 
 .export-toolbar {
   display: flex;
@@ -361,24 +363,27 @@ button:disabled { cursor: not-allowed; }
 }
 .export-btn:active { transform: scale(0.95); }
 
-
 /* ============================================================
    CHAT AREA — the ONLY scrollable region
-   ============================================================ */
+============================================================ */
 
 #chat {
   flex: 1;
-  min-height: 0; /* critical for flex scroll */
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 20px 16px;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 
-  /* Center content within chat column */
   display: flex;
   flex-direction: column;
   align-items: stretch;
+
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 /* Inner content max-width centering */
@@ -389,15 +394,13 @@ button:disabled { cursor: not-allowed; }
   margin-right: auto;
 }
 
-/* Messages fill width naturally; override max-width for compare */
 #chat > .msg {
   max-width: 860px;
 }
 
-
 /* ============================================================
    EMPTY STATE
-   ============================================================ */
+============================================================ */
 
 .empty-state {
   display: flex;
@@ -409,7 +412,6 @@ button:disabled { cursor: not-allowed; }
   padding: 40px 20px;
   text-align: center;
   animation: fadeUp 0.5s ease both;
-  /* override the #chat > * max-width for centering */
   max-width: 100% !important;
 }
 
@@ -467,10 +469,9 @@ button:disabled { cursor: not-allowed; }
   box-shadow: none;
 }
 
-
 /* ============================================================
    MESSAGES
-   ============================================================ */
+============================================================ */
 
 .msg {
   display: flex;
@@ -515,13 +516,14 @@ button:disabled { cursor: not-allowed; }
   transition: transform 0.15s ease;
 }
 .msg.user .msg-bubble {
-  background: #2563eb;
-  color: #fff;
+  background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+  color: #000;
   border-top-right-radius: 4px;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.5);
 }
 .msg.bot .msg-bubble {
-  background: var(--surface);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.2);
   color: var(--text);
   transition: border-color 0.2s, transform 0.15s ease;
   max-width: 720px;
@@ -531,12 +533,12 @@ button:disabled { cursor: not-allowed; }
   transform: translateY(-1px);
 }
 
-
 /* ── Markdown ── */
 
 .markdown-body {
   line-height: 1.6;
   font-size: 0.9rem;
+  will-change: contents;
 }
 .markdown-body h1,
 .markdown-body h2,
@@ -586,7 +588,6 @@ button:disabled { cursor: not-allowed; }
   font-style: italic;
 }
 
-
 /* ── Message Actions ── */
 
 .msg-actions {
@@ -616,7 +617,6 @@ button:disabled { cursor: not-allowed; }
 }
 .msg-action-btn:active { transform: scale(0.95); }
 
-
 /* ── Streaming Cursor ── */
 
 .stream-cursor {
@@ -628,7 +628,6 @@ button:disabled { cursor: not-allowed; }
   vertical-align: text-bottom;
   animation: blink 0.7s step-end infinite;
 }
-
 
 /* ── Typing Indicator ── */
 
@@ -654,6 +653,32 @@ button:disabled { cursor: not-allowed; }
   color: var(--muted);
 }
 
+/* Legacy .typing support */
+.typing {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  align-items: center;
+}
+.typing span {
+  width: 8px;
+  height: 8px;
+  background: #38bdf8;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite;
+}
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+.typing-text {
+  margin-left: 8px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.cursor {
+  animation: blink 1s infinite;
+}
 
 /* ── Refined Box ── */
 
@@ -666,7 +691,6 @@ button:disabled { cursor: not-allowed; }
   color: #d4a800;
   margin-bottom: 6px;
 }
-
 
 /* ── Tool Suggestions ── */
 
@@ -699,7 +723,6 @@ button:disabled { cursor: not-allowed; }
 }
 .tool-chip:hover { border-color: var(--accent); color: var(--accent); }
 
-
 /* ── Compare Grid ── */
 
 .compare-grid {
@@ -724,10 +747,18 @@ button:disabled { cursor: not-allowed; }
   margin-bottom: 6px;
 }
 
+/* ── Image loading ── */
+
+.img-loading {
+  color: #38bdf8;
+  font-size: 14px;
+  padding: 10px;
+  opacity: 0.9;
+}
 
 /* ============================================================
    BUTTONS — Pills
-   ============================================================ */
+============================================================ */
 
 .pill-btn {
   display: inline-flex;
@@ -781,10 +812,9 @@ button:disabled { cursor: not-allowed; }
   border: none;
 }
 
-
 /* ============================================================
    INPUT AREA — sticky at bottom of .aqua-main, never fixed
-   ============================================================ */
+============================================================ */
 
 .aqua-input-wrap {
   flex-shrink: 0;
@@ -918,21 +948,25 @@ button:disabled { cursor: not-allowed; }
   font-size: 0.71rem;
 }
 
-
 /* ============================================================
    ANIMATIONS
-   ============================================================ */
+============================================================ */
 
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes blink { 50% { opacity: 0; } }
 
 @keyframes bounce {
-  0%, 80%, 100% { transform: translateY(0); }
-  40%           { transform: translateY(-5px); }
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.3; }
+  40%           { transform: translateY(-5px); opacity: 1; }
 }
 
 @keyframes overlayFade {
@@ -940,16 +974,16 @@ button:disabled { cursor: not-allowed; }
   to   { opacity: 1; }
 }
 
-
 /* ============================================================
    RESPONSIVE — DESKTOP (≥ 769px)
-   Sidebar is in-flow; overlay never shown
-   ============================================================ */
+   Sidebar is in-flow; toggle collapses it in-flow.
+   Overlay never shown.
+============================================================ */
 
 @media (min-width: 769px) {
   .aqua-sidebar {
     position: relative;
-    transform: none;
+    transform: none !important; /* never slide on desktop */
     z-index: auto;
   }
   .aqua-sidebar.collapsed {
@@ -961,11 +995,11 @@ button:disabled { cursor: not-allowed; }
   .sidebar-overlay { display: none !important; }
 }
 
-
 /* ============================================================
    RESPONSIVE — TABLET & MOBILE (≤ 768px)
-   Sidebar becomes a fixed drawer; overlay appears
-   ============================================================ */
+   Sidebar becomes a fixed drawer; overlay appears on open.
+   Toggle class: .mobile-open (added by JS on #menuToggle click)
+============================================================ */
 
 @media (max-width: 768px) {
 
@@ -981,13 +1015,17 @@ button:disabled { cursor: not-allowed; }
     transition: transform 0.3s ease;
     z-index: var(--z-sidebar);
     will-change: transform;
+    /* Reset desktop collapsed state */
+    overflow: visible;
   }
 
+  /* Open state — JS adds .mobile-open to .aqua-sidebar */
   .aqua-sidebar.mobile-open {
     transform: translateX(0);
     box-shadow: 0 0 40px rgba(0,0,0,0.6);
   }
 
+  /* Overlay sits just below sidebar */
   .sidebar-overlay {
     z-index: calc(var(--z-sidebar) - 1);
   }
@@ -1007,10 +1045,9 @@ body.sidebar-open {
   overflow: hidden;
 }
 
-
 /* ============================================================
    RESPONSIVE — MOBILE ONLY (≤ 640px)
-   ============================================================ */
+============================================================ */
 
 @media (max-width: 640px) {
 
