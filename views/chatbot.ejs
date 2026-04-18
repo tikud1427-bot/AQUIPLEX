@@ -234,31 +234,19 @@ function updateDesktopInputOffset() {
   }
 }
 
-function toggleSidebar() {
-  const s = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
+  function toggleSidebar() {
+    const s = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
 
-  if (isMobile()) {
-    s.classList.toggle("mobile-open");
-    overlay.classList.toggle("visible");
-    document.body.classList.toggle("sidebar-open");
-  }
-
-    if (isOpen) {
-      s.classList.remove("mobile-open");
-      overlay.classList.remove("visible");
-      document.body.style.overflow = "";
+    if (isMobile()) {
+      s.classList.toggle("mobile-open");
+      overlay.classList.toggle("visible");
+      document.body.classList.toggle("sidebar-open");
     } else {
-      s.classList.add("mobile-open");
-      overlay.classList.add("visible");
-      document.body.style.overflow = "hidden";
+      s.classList.toggle("collapsed");
+      updateDesktopInputOffset();
     }
-  } else {
-    s.classList.toggle("collapsed");
-    // FIX: update input bar offset on desktop
-    updateDesktopInputOffset();
   }
-}
 
   function closeSidebar() {
     const s = document.getElementById("sidebar");
@@ -860,7 +848,7 @@ window.addEventListener("resize", () => {
     // Switched to desktop: remove mobile-specific state
     const overlay = document.getElementById("sidebarOverlay");
     overlay.classList.remove("visible");
-    document.body.style.overflow = "";
+    document.body.classList.remove("sidebar-open");
     // Don't force close the sidebar — it may be in "collapsed" state intentionally
     const s = document.getElementById("sidebar");
     s.classList.remove("mobile-open");
