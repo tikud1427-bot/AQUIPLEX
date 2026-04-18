@@ -9,10 +9,6 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 
   <style>
-    /* ============================================================
-       AQUA AI – UPGRADED STYLES
-       NEW FEATURE: Full design system overhaul
-    ============================================================ */
     :root {
       --bg:        #0b0f1a;
       --surface:   #111827;
@@ -24,7 +20,6 @@
       --muted:     #6b7fa3;
       --user-bg:   #162032;
       --bot-bg:    #111827;
-      --glow:      0 0 40px rgba(0,200,255,0.08);
       --radius:    14px;
       --font-body: 'DM Sans', sans-serif;
       --font-head: 'Syne', sans-serif;
@@ -40,7 +35,6 @@
       overflow-x: hidden;
     }
 
-    /* Ambient background glow */
     body::before {
       content: '';
       position: fixed;
@@ -64,7 +58,6 @@
       z-index: 0;
     }
 
-    /* ── LAYOUT ── */
     .aqua-shell {
       display: flex;
       flex-direction: column;
@@ -85,6 +78,7 @@
       position: sticky;
       top: 0;
       z-index: 100;
+      flex-wrap: wrap;
     }
     .aqua-logo {
       font-family: var(--font-head);
@@ -128,7 +122,7 @@
       background: rgba(167,139,250,0.08);
     }
 
-    /* ── BODY FLEX ── */
+    /* ── BODY ── */
     .aqua-body {
       display: flex;
       flex: 1;
@@ -143,7 +137,7 @@
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease, width 0.3s ease, min-width 0.3s ease;
       overflow: hidden;
     }
     .aqua-sidebar.collapsed {
@@ -211,7 +205,7 @@
     }
     #historyList div:hover button { opacity: 1; }
 
-    /* ── MAIN CHAT ── */
+    /* ── MAIN ── */
     .aqua-main {
       flex: 1;
       display: flex;
@@ -232,7 +226,6 @@
     #chat::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
     /* ── EMPTY STATE ── */
-    /* NEW FEATURE: Starter prompts */
     .empty-state {
       display: flex;
       flex-direction: column;
@@ -304,7 +297,6 @@
       flex-shrink: 0;
       margin-top: 2px;
     }
-    /* NEW FEATURE: Avatars */
     .msg.user .msg-avatar {
       background: linear-gradient(135deg, #162032, #1e3050);
       border: 1px solid var(--border);
@@ -332,7 +324,7 @@
       border-top-left-radius: 4px;
     }
 
-    /* NEW FEATURE: Markdown body styles */
+    /* ── MARKDOWN ── */
     .markdown-body h1, .markdown-body h2, .markdown-body h3 {
       font-family: var(--font-head);
       margin: 12px 0 6px;
@@ -375,7 +367,7 @@
       font-style: italic;
     }
 
-    /* NEW FEATURE: Message action buttons */
+    /* ── MESSAGE ACTIONS ── */
     .msg-actions {
       display: flex;
       gap: 5px;
@@ -395,8 +387,8 @@
     }
     .msg-action-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-    /* NEW FEATURE: Typing cursor */
-    .cursor {
+    /* ── STREAMING CURSOR ── */
+    .stream-cursor {
       display: inline-block;
       width: 2px;
       height: 1em;
@@ -407,7 +399,7 @@
     }
     @keyframes blink { 50% { opacity: 0; } }
 
-    /* Typing indicator */
+    /* ── TYPING INDICATOR ── */
     .typing-indicator {
       display: flex;
       align-items: center;
@@ -433,7 +425,7 @@
       40% { transform: translateY(-5px); }
     }
 
-    /* NEW FEATURE: Refined prompt box */
+    /* ── REFINED BOX ── */
     .refined-box {
       background: rgba(255,215,0,0.05);
       border: 1px solid rgba(255,215,0,0.18);
@@ -444,7 +436,7 @@
       margin-bottom: 6px;
     }
 
-    /* NEW FEATURE: Tool suggestions */
+    /* ── TOOL SUGGESTIONS ── */
     .tool-suggestions {
       background: rgba(0,200,255,0.04);
       border: 1px solid rgba(0,200,255,0.14);
@@ -473,7 +465,7 @@
     }
     .tool-chip:hover { border-color: var(--accent); color: var(--accent); }
 
-    /* NEW FEATURE: Multi AI compare */
+    /* ── COMPARE GRID ── */
     .compare-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -559,6 +551,7 @@
     }
     .send-btn:hover { opacity: 0.88; }
     .send-btn:active { transform: scale(0.97); }
+    .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .input-meta {
       display: flex;
@@ -586,8 +579,7 @@
       font-size: 0.71rem;
     }
 
-    /* ── EXPORT/SHARE TOOLBAR ── */
-    /* NEW FEATURE: Export buttons */
+    /* ── EXPORT TOOLBAR ── */
     .export-toolbar {
       display: flex;
       gap: 8px;
@@ -615,14 +607,16 @@
 
     /* ── MOBILE ── */
     @media (max-width: 640px) {
-      .aqua-sidebar { position: absolute; left: 0; top: 0; height: 100%; z-index: 200; transform: translateX(-100%); }
+      .aqua-sidebar {
+        position: absolute; left: 0; top: 0;
+        height: 100%; z-index: 200;
+        transform: translateX(-100%);
+      }
       .aqua-sidebar.mobile-open { transform: translateX(0); }
       .aqua-sidebar.collapsed { transform: translateX(-100%); }
     }
 
     input[type="file"] { display: none; }
-
-    /* Mode label hidden; indicator in input meta used instead */
     #modeLabel { display: none; }
   </style>
 </head>
@@ -638,13 +632,10 @@
     <span class="aqua-logo">🌊 Aqua AI</span>
 
     <div class="aqua-header-pills">
-      <!-- NEW FEATURE: Auto-mode buttons (still allow manual override) -->
       <button class="pill-btn active" id="modeChatBtn"   onclick="setMode('chat')">💬 Chat</button>
       <button class="pill-btn"        id="modeSearchBtn" onclick="setMode('search')">🌐 Search</button>
       <button class="pill-btn"        id="modeImageBtn"  onclick="setMode('image')">🎨 Image</button>
-      <!-- UPDATED: Renamed Refiner → Enhance Prompt, default ON -->
       <button class="pill-btn refiner-on" id="refinerBtn" onclick="toggleRefiner(this)">✨ Enhance Prompt ON</button>
-      <!-- NEW FEATURE: Compare AI toggle -->
       <button class="pill-btn" id="compareBtn" onclick="toggleCompare(this)">⚖️ Compare AI</button>
     </div>
   </div>
@@ -664,7 +655,7 @@
     <!-- ── MAIN ── -->
     <div class="aqua-main">
 
-      <!-- NEW FEATURE: Export toolbar -->
+      <!-- Export toolbar -->
       <div class="export-toolbar">
         <button class="export-btn" onclick="copyFullConversation()">📋 Copy Chat</button>
         <button class="export-btn" onclick="exportAsText()">⬇ Export .txt</button>
@@ -679,9 +670,8 @@
         <div class="aqua-input-row">
           <button class="input-icon-btn" onclick="document.getElementById('fileUpload').click()" title="Attach file">📎</button>
           <input type="file" id="fileUpload" />
-          <!-- UPDATED: textarea for multi-line support -->
           <textarea id="messageInput" rows="1" placeholder="Ask anything..."></textarea>
-          <button class="send-btn" onclick="send()">Send ↑</button>
+          <button class="send-btn" id="sendBtn" onclick="send()">Send ↑</button>
         </div>
         <div class="input-meta">
           <span id="modeIndicator">MODE: CHAT</span>
@@ -695,7 +685,7 @@
 
 <script>
 // ============================================================
-// AQUA AI – UPGRADED FRONTEND
+// AQUA AI – FIXED FRONTEND
 // ============================================================
 
 // ── MARKED CONFIG ──
@@ -705,10 +695,11 @@ marked.setOptions({ gfm: true, breaks: true });
 let messages      = [];
 let currentChatId = null;
 let mode          = "chat";
-let useRefiner    = true;   // UPDATED: default ON
-let useCompare    = false;  // NEW FEATURE
+let useRefiner    = true;
+let useCompare    = false;
+let isSending     = false; // FIX: prevent double-sends
 
-// ── PLACEHOLDERS (NEW FEATURE: rotating) ──
+// ── ROTATING PLACEHOLDERS ──
 const placeholders = [
   "Ask anything...",
   "Generate a startup idea 💡",
@@ -735,22 +726,20 @@ function setMode(m) {
   document.getElementById(map[m])?.classList.add("active");
 }
 
-// NEW FEATURE: Auto-detect mode from prompt
+// Auto-detect mode from prompt
 function autoDetectMode(text) {
   const t = text.toLowerCase();
-  if (/^(generate|create|draw).*(image|photo|art|logo)/.test(t))return "image";
-  if (/\b(latest|news|search|find|who is|current|today|2024|2025)\b/.test(t)) return "search";
+  if (/^(generate|create|draw).*(image|photo|art|logo)/.test(t)) return "image";
+  if (/\b(latest|news|search|find|who is|current|today|2024|2025|2026)\b/.test(t)) return "search";
   return "chat";
 }
 
-// UPDATED: Rename + default ON
 function toggleRefiner(btn) {
   useRefiner = !useRefiner;
   btn.textContent = useRefiner ? "✨ Enhance Prompt ON" : "✨ Enhance Prompt OFF";
   btn.classList.toggle("refiner-on", useRefiner);
 }
 
-// NEW FEATURE: Compare toggle
 function toggleCompare(btn) {
   useCompare = !useCompare;
   btn.classList.toggle("compare-on", useCompare);
@@ -763,7 +752,7 @@ function toggleSidebar() {
   s.classList.toggle("mobile-open");
 }
 
-// ── EMPTY STATE (NEW FEATURE) ──
+// ── EMPTY STATE ──
 const STARTERS = [
   { icon:"🚀", text:"Build a startup idea",        prompt:"Help me brainstorm a startup idea with market validation and a go-to-market strategy." },
   { icon:"📸", text:"Create Instagram content",    prompt:"Create a week of Instagram content ideas for a lifestyle brand with captions and hashtags." },
@@ -804,22 +793,34 @@ document.getElementById("messageInput").addEventListener("input", function() {
   this.style.height = Math.min(this.scrollHeight, 140) + "px";
 });
 
-// ── SEND ──
-async function send() {
-  const input    = document.getElementById("messageInput");
-  const chat     = document.getElementById("chat");
-  const fileInput= document.getElementById("fileUpload");
+// ── LOCK / UNLOCK SEND BUTTON ──
+function setSending(val) {
+  isSending = val;
+  const btn = document.getElementById("sendBtn");
+  btn.disabled = val;
+  btn.textContent = val ? "..." : "Send ↑";
+}
 
-  const message  = input.value.trim();
-  const file     = fileInput.files[0];
+// ── MAIN SEND FUNCTION ──
+async function send() {
+  if (isSending) return; // FIX: prevent double sends
+
+  const input     = document.getElementById("messageInput");
+  const chat      = document.getElementById("chat");
+  const fileInput = document.getElementById("fileUpload");
+
+  const message = input.value.trim();
+  const file    = fileInput.files[0];
 
   if (!message && !file) return;
 
-  // NEW FEATURE: Auto-detect mode before sending
+  // Auto-detect mode
   if (message) {
     const detected = autoDetectMode(message);
     if (detected !== mode) setMode(detected);
   }
+
+  setSending(true);
 
   input.value = "";
   input.style.height = "auto";
@@ -827,25 +828,23 @@ async function send() {
   if (message) messages.push({ role: "user", content: message });
 
   const formData = new FormData();
-  formData.append("message",  message);
-  formData.append("mode",     mode);
-  formData.append("chatId",   currentChatId || "");
-  formData.append("history",  JSON.stringify(messages.slice(-10)));
-  formData.append("refiner",  useRefiner ? "true" : "false");
-  formData.append("stream",   mode === "chat" && !useCompare ? "true" : "false");
+  formData.append("message", message);
+  formData.append("mode",    mode);
+  formData.append("chatId",  currentChatId || "");
+  formData.append("history", JSON.stringify(messages.slice(-10)));
+  formData.append("refiner", useRefiner ? "true" : "false");
+  formData.append("stream",  (mode === "chat" && !useCompare) ? "true" : "false");
   if (file) formData.append("file", file);
 
-  // Clear empty state if needed
+  // Clear empty state
   document.querySelector(".empty-state")?.remove();
 
   // User bubble
-  if (message) {
-    appendMessage("user", message);
-  }
+  if (message) appendMessage("user", message);
 
   chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
 
-  // UPDATED: "Aqua is thinking..." indicator
+  // Typing indicator
   const loading = document.createElement("div");
   loading.className = "msg bot";
   loading.id = "loading";
@@ -862,56 +861,100 @@ async function send() {
   chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
 
   try {
-    // NEW FEATURE: Compare AI mode
+    // ── COMPARE AI MODE ──
     if (useCompare) {
       const res  = await fetch("/multi-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: message, messages: messages.slice(-10) })
       });
+
+      if (!res.ok) throw new Error("Compare request failed: " + res.status);
+
       const data = await res.json();
       document.getElementById("loading")?.remove();
       appendCompareResult(data);
+      setSending(false);
+      fileInput.value = "";
       return;
     }
 
     const res = await fetch("/chat", { method: "POST", body: formData });
     document.getElementById("loading")?.remove();
 
+    if (!res.ok) {
+      throw new Error("Chat request failed: " + res.status);
+    }
+
     // ── IMAGE MODE ──
     if (mode === "image") {
       const data = await res.json();
       const div  = createBotBubble();
+      const imgHtml = data.image
+        ? `<img src="${data.image}" style="max-width:100%;border-radius:10px;margin-top:10px;" onerror="this.style.display='none'" />
+           <div class="msg-actions">
+             <a href="${data.image}" target="_blank" class="msg-action-btn">⬇ Download</a>
+           </div>`
+        : "";
       div.querySelector(".msg-bubble").innerHTML = `
-        <div class="markdown-body">${marked.parse(data.reply)}</div>
-        <img src="${data.image}" style="max-width:100%;border-radius:10px;margin-top:10px;" />
-        <div class="msg-actions">
-          <a href="${data.image}" download="aqua-image.png" class="msg-action-btn">⬇ Download</a>
-        </div>
+        <div class="markdown-body">${marked.parse(data.reply || "Image generated.")}</div>
+        ${imgHtml}
       `;
       chat.appendChild(div);
       chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+      const replyContent = data.reply || "Image generated.";
+      messages.push({ role: "assistant", content: replyContent });
+      setSending(false);
       fileInput.value = "";
+      document.getElementById("fileNameTag").style.display = "none";
       return;
     }
 
-    // ── NON-STREAM MODES (search) ──
+    // ── SEARCH / NON-STREAM MODES ──
     if (mode !== "chat") {
       const data = await res.json();
+      const replyContent = data.reply || "⚠️ No response received.";
       const div  = createBotBubble();
       div.querySelector(".msg-bubble").innerHTML = `
-        <div class="markdown-body">${marked.parse(data.reply)}</div>
-        ${buildActions(data.reply)}
+        <div class="markdown-body">${marked.parse(replyContent)}</div>
+        ${buildActions(replyContent)}
       `;
       chat.appendChild(div);
-      messages.push({ role: "assistant", content: data.reply });
+      messages.push({ role: "assistant", content: replyContent });
+      if (data.chatId) currentChatId = data.chatId;
       chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+      setSending(false);
       fileInput.value = "";
+      document.getElementById("fileNameTag").style.display = "none";
       await loadHistoryList();
       return;
     }
 
     // ── STREAM MODE ──
+    // FIX: Check response content-type — server may fallback to JSON
+    const contentType = res.headers.get("content-type") || "";
+
+    if (!contentType.includes("text/event-stream")) {
+      // Server sent JSON fallback instead of SSE
+      const data = await res.json();
+      const replyContent = data.reply || "⚠️ No response received.";
+      const div = createBotBubble();
+      div.querySelector(".msg-bubble").innerHTML = `
+        <div class="markdown-body">${marked.parse(replyContent)}</div>
+        ${buildActions(replyContent)}
+      `;
+      chat.appendChild(div);
+      messages.push({ role: "assistant", content: replyContent });
+      if (data.chatId) currentChatId = data.chatId;
+      chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+      setSending(false);
+      fileInput.value = "";
+      document.getElementById("fileNameTag").style.display = "none";
+      await loadHistoryList();
+      return;
+    }
+
+    // True SSE stream
     const reader  = res.body.getReader();
     const decoder = new TextDecoder("utf-8", { fatal: false });
 
@@ -922,62 +965,81 @@ async function send() {
     bubble.appendChild(textDiv);
     chat.appendChild(botDiv);
 
+    // FIX: cursor is a real DOM element, not embedded in innerHTML
+    const cursorEl = document.createElement("span");
+    cursorEl.className = "stream-cursor";
+    cursorEl.textContent = "▌";
+    textDiv.appendChild(cursorEl);
+
     let fullText   = "";
     let buffer     = "";
     let streamDone = false;
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done || streamDone) break;
+    while (!streamDone) {
+      let done, value;
+      try {
+        ({ done, value } = await reader.read());
+      } catch {
+        break; // reader closed (e.g., user navigated away)
+      }
+      if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
       const parts = buffer.split("\n\n");
-      buffer = parts.pop();
+      buffer = parts.pop() || "";
 
       for (const part of parts) {
+        if (streamDone) break;
         const lines = part.split("\n");
+
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed.startsWith("data:")) continue;
           const payload = trimmed.slice(5).trim();
           if (!payload) continue;
 
-          if (payload === "[DONE]") { streamDone = true; break; }
+          if (payload === "[DONE]") {
+            streamDone = true;
+            break;
+          }
 
           let parsed;
           try { parsed = JSON.parse(payload); } catch { continue; }
 
-          // UPDATED: Refined prompt preview
-          if (parsed && parsed.refined) {
+          // Refined prompt preview
+          if (parsed && typeof parsed === "object" && parsed.refined) {
             let refBox = bubble.querySelector(".refined-box");
             if (!refBox) {
               refBox = document.createElement("div");
-              refBox.id = "refinedBox";
               refBox.className = "refined-box";
               bubble.insertBefore(refBox, textDiv);
             }
-            refBox.innerHTML = `✨ <b>Optimized prompt:</b> ${marked.parse(parsed.refined)}`;
+            refBox.innerHTML = `✨ <b>Optimized prompt:</b> ${parsed.refined}`;
             continue;
           }
 
-          if (typeof parsed === "string") {
+          // Token string
+          if (typeof parsed === "string" && parsed) {
             fullText += parsed;
-            textDiv.innerHTML = marked.parse(fullText) + "<span class='cursor'>▌</span>";
+            // FIX: Update innerHTML then re-append cursor separately
+            textDiv.innerHTML = marked.parse(fullText);
+            textDiv.appendChild(cursorEl);
             chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
           }
         }
-        if (streamDone) break;
       }
     }
 
-    // Final render + actions
-    textDiv.innerHTML = marked.parse(fullText.trim());
+    // Remove cursor and render final text
+    cursorEl.remove();
+    textDiv.innerHTML = marked.parse(fullText.trim() || "⚠️ Empty response received.");
 
-    // NEW FEATURE: Tool suggestions
-    const toolSugg = await fetchToolSuggestions(fullText);
-    if (toolSugg) bubble.appendChild(toolSugg);
+    // Tool suggestions (async, non-blocking)
+    fetchToolSuggestions(fullText).then(toolSugg => {
+      if (toolSugg) bubble.appendChild(toolSugg);
+    });
 
-    // Message actions (copy, regenerate, improve, workspace)
+    // Message actions
     bubble.insertAdjacentHTML("beforeend", buildActions(fullText));
 
     messages.push({ role: "assistant", content: fullText });
@@ -985,17 +1047,28 @@ async function send() {
     await loadHistoryList();
 
   } catch (err) {
-    console.error("Stream error:", err);
+    console.error("Send error:", err);
     document.getElementById("loading")?.remove();
-    const div = createBotBubble();
-    div.querySelector(".msg-bubble").innerHTML = `<div class="markdown-body">⚠️ Something went wrong. Please try again.</div>`;
-    chat.appendChild(div);
-    if (messages.length && messages[messages.length - 1].role === "user") messages.pop();
-  }
 
-  fileInput.value = "";
-  document.getElementById("fileNameTag").style.display = "none";
-  input.focus();
+    // Show error bubble
+    const div = createBotBubble();
+    div.querySelector(".msg-bubble").innerHTML = `
+      <div class="markdown-body">⚠️ Something went wrong. Please try again.</div>
+    `;
+    chat.appendChild(div);
+
+    // Remove last user message from local state if AI failed
+    if (messages.length && messages[messages.length - 1].role === "user") {
+      messages.pop();
+    }
+
+  } finally {
+    setSending(false);
+    const fileInput2 = document.getElementById("fileUpload");
+    fileInput2.value = "";
+    document.getElementById("fileNameTag").style.display = "none";
+    document.getElementById("messageInput").focus();
+  }
 }
 
 // ── HELPERS ──
@@ -1013,135 +1086,149 @@ function appendMessage(role, content) {
   const chat = document.getElementById("chat");
   const div  = document.createElement("div");
   div.className = `msg ${role}`;
+
+  // FIX: sanitize content before passing to marked
+  const safeContent = (content || "").toString();
+
   div.innerHTML = `
     <div class="msg-avatar">${role === "user" ? "👤" : "🌊"}</div>
     <div class="msg-bubble">
-      <div class="markdown-body">${marked.parse(content)}</div>
+      <div class="markdown-body">${marked.parse(safeContent)}</div>
     </div>
   `;
   chat.appendChild(div);
 }
 
-// NEW FEATURE: Message action buttons
+// FIX: buildActions uses a data attribute to avoid JSON-in-onclick escaping issues
 function buildActions(text) {
-  const escaped = JSON.stringify(text).replace(/'/g, "\\'");
+  // Store text in a global map keyed by a random id
+  const id = "act_" + Math.random().toString(36).slice(2);
+  window.__actionTexts = window.__actionTexts || {};
+  window.__actionTexts[id] = text;
+
   return `
     <div class="msg-actions">
-      <button class="msg-action-btn" onclick="copyText(${escaped})">📋 Copy</button>
+      <button class="msg-action-btn" onclick="copyText('${id}')">📋 Copy</button>
       <button class="msg-action-btn" onclick="regenerate()">🔄 Regenerate</button>
-      <button class="msg-action-btn" onclick="improveResponse(${escaped})">✨ Improve</button>
+      <button class="msg-action-btn" onclick="improveResponse('${id}')">✨ Improve</button>
       <button class="msg-action-btn" onclick="addToWorkspace()">➕ Workspace</button>
     </div>
   `;
 }
 
-function copyText(text) {
-  navigator.clipboard.writeText(text);
+function copyText(id) {
+  const text = (window.__actionTexts || {})[id] || "";
+  navigator.clipboard.writeText(text).catch(() => {});
 }
 
-// NEW FEATURE: Regenerate
-  function regenerate() {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") {
-        const lastUser = messages[i];
+function regenerate() {
+  if (isSending) return;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    if (messages[i].role === "user") {
+      const lastUser = messages[i];
+      messages = messages.slice(0, i + 1);
+      document.getElementById("messageInput").value = lastUser.content;
 
-        messages = messages.slice(0, i + 1);
+      const chat = document.getElementById("chat");
+      const botMsgs = chat.querySelectorAll(".msg.bot");
+      botMsgs[botMsgs.length - 1]?.remove();
 
-        document.getElementById("messageInput").value = lastUser.content;
-
-        const chat = document.getElementById("chat");
-        const msgs = chat.querySelectorAll(".msg.bot");
-        msgs[msgs.length - 1]?.remove();
-
-        send();
-        return;
-      }
+      send();
+      return;
     }
   }
-// NEW FEATURE: Improve response
-function improveResponse(text) {
+}
+
+function improveResponse(id) {
+  if (isSending) return;
+  const text = (window.__actionTexts || {})[id] || "";
   document.getElementById("messageInput").value = `Improve and expand on this response:\n\n${text}`;
   send();
 }
 
-// NEW FEATURE: Add to workspace
-async function addToWorkspace() {
-  // Uses first tool in the suggested tools or shows confirmation
+function addToWorkspace() {
   alert("Content noted! Add specific tools from the 🔧 Tool Suggestions above to your Workspace.");
 }
 
-// NEW FEATURE: Fetch tool suggestions from /tools (read-only)
-  async function fetchToolSuggestions(responseText) {
-    try {
-      const res = await fetch("/api/tools/suggest?q=" + encodeURIComponent(responseText.slice(0, 60)));
-      const tools = await res.json();
+async function fetchToolSuggestions(responseText) {
+  try {
+    const q = encodeURIComponent((responseText || "").slice(0, 60));
+    const res = await fetch("/api/tools/suggest?q=" + q);
+    if (!res.ok) return null;
+    const tools = await res.json();
 
-      if (!tools.length) return null;
+    if (!Array.isArray(tools) || !tools.length) return null;
 
-      const div = document.createElement("div");
-      div.className = "tool-suggestions";
+    const div = document.createElement("div");
+    div.className = "tool-suggestions";
+    div.innerHTML = `
+      <span class="ts-label">🔧 Recommended Tools:</span>
+      ${tools.map(t => `
+        <a href="/visit/${t._id}" target="_blank" class="tool-chip">${t.name}</a>
+      `).join("")}
+    `;
+    return div;
 
-      div.innerHTML = `
-        <span class="ts-label">🔧 Recommended Tools:</span>
-        ${tools.map(t => `
-          <a href="/visit/${t._id}" target="_blank" class="tool-chip">${t.name}</a>
-        `).join("")}
-      `;
+  } catch {
+    return null;
+  }
+}
 
-      return div;
-
-    } catch {
-      return null;
-    }
+// FIX: appendCompareResult — was broken (messages.push was OUTSIDE the function body)
+function appendCompareResult(data) {
+  // Save best response to messages
+  const bestOutput = data.responses?.[0]?.output || "";
+  if (bestOutput) {
+    messages.push({ role: "assistant", content: bestOutput });
   }
 
-// NEW FEATURE: Compare AI results display
-function appendCompareResult(data) 
-  messages.push({
-    role: "assistant",
-    content: data.responses?.[0]?.output || ""
-  });
-
-{
   const chat = document.getElementById("chat");
   const div  = document.createElement("div");
   div.className = "msg bot";
   div.style.maxWidth = "100%";
+
+  const responsesHtml = (data.responses || []).map(r => `
+    <div class="compare-card">
+      <div class="model-name">${r.model || "Model"}</div>
+      <div class="markdown-body">${marked.parse(r.output || "")}</div>
+    </div>
+  `).join("");
+
   div.innerHTML = `
     <div class="msg-avatar">⚖️</div>
     <div class="msg-bubble" style="flex:1;">
       <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">
         ⭐ Recommended: <b style="color:var(--accent)">${data.recommended || "—"}</b>
       </div>
-      <div class="compare-grid">
-        ${(data.responses || []).map(r => `
-          <div class="compare-card">
-            <div class="model-name">${r.model}</div>
-            <div class="markdown-body">${marked.parse(r.output || "")}</div>
-          </div>
-        `).join("")}
-      </div>
+      <div class="compare-grid">${responsesHtml}</div>
     </div>
   `;
+
   chat.appendChild(div);
   chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+
+  loadHistoryList().catch(() => {});
 }
 
 // ── HISTORY ──
 async function loadHistoryList() {
   try {
     const res   = await fetch("/history");
+    if (!res.ok) return;
     const chats = await res.json();
+    if (!Array.isArray(chats)) return;
+
     const list  = document.getElementById("historyList");
     list.innerHTML = "";
-    chats.forEach(chat => {
+
+    chats.forEach(c => {
       const div = document.createElement("div");
-      div.setAttribute("data-id", chat._id);
+      div.setAttribute("data-id", c._id);
       div.innerHTML = `
-        <span>${chat.title || "Chat"}</span>
-        <button onclick="event.stopPropagation(); deleteChat('${chat._id}')">🗑️</button>
+        <span>${c.title || "Chat"}</span>
+        <button onclick="event.stopPropagation(); deleteChat('${c._id}')">🗑️</button>
       `;
-      div.onclick = () => loadChat(chat._id);
+      div.onclick = () => loadChat(c._id);
       list.appendChild(div);
     });
   } catch {}
@@ -1149,35 +1236,46 @@ async function loadHistoryList() {
 
 async function deleteChat(id) {
   if (!confirm("Delete this chat?")) return;
-  await fetch("/history/" + id, { method: "DELETE" });
-  document.querySelector(`[data-id='${id}']`)?.remove();
-  if (currentChatId === id) { currentChatId = null; messages = []; renderEmptyState(); }
+  try {
+    await fetch("/history/" + id, { method: "DELETE" });
+    document.querySelector(`[data-id='${id}']`)?.remove();
+    if (currentChatId === id) {
+      currentChatId = null;
+      messages = [];
+      renderEmptyState();
+    }
+  } catch {}
 }
 
 async function loadChat(id) {
-  const res  = await fetch("/history/" + id);
-  const data = await res.json();
-  currentChatId = id;
-  messages = data.messages;
+  try {
+    const res  = await fetch("/history/" + id);
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data) return;
 
-  const chat = document.getElementById("chat");
-  chat.innerHTML = "";
+    currentChatId = id;
+    messages = data.messages || [];
 
-  data.messages.forEach(m => {
-    if (m.role === "system") return;
-    appendMessage(m.role, m.content);
-  });
+    const chat = document.getElementById("chat");
+    chat.innerHTML = "";
 
-  // Add action buttons to last bot message
-  const botMsgs = chat.querySelectorAll(".msg.bot");
-  const lastBot  = botMsgs[botMsgs.length - 1];
-  if (lastBot && messages.find(m => m.role === "assistant")) {
-    const lastBotContent = [...messages].reverse().find(m => m.role === "assistant")?.content || "";
-    lastBot.querySelector(".msg-bubble")?.insertAdjacentHTML("beforeend", buildActions(lastBotContent));
-  }
+    messages.forEach(m => {
+      if (m.role === "system") return;
+      appendMessage(m.role, m.content);
+    });
 
-  chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
-  document.getElementById("sidebar").classList.add("collapsed");
+    // Add action buttons to last bot message
+    const lastBotContent = [...messages].reverse().find(m => m.role === "assistant")?.content;
+    if (lastBotContent) {
+      const botMsgs = chat.querySelectorAll(".msg.bot");
+      const lastBot = botMsgs[botMsgs.length - 1];
+      lastBot?.querySelector(".msg-bubble")?.insertAdjacentHTML("beforeend", buildActions(lastBotContent));
+    }
+
+    chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+    document.getElementById("sidebar").classList.add("collapsed");
+  } catch {}
 }
 
 function newChat() {
@@ -1186,13 +1284,13 @@ function newChat() {
   renderEmptyState();
 }
 
-// ── EXPORT / SHARE (NEW FEATURE) ──
+// ── EXPORT / SHARE ──
 function copyFullConversation() {
   const text = messages
     .filter(m => m.role !== "system")
     .map(m => `${m.role === "user" ? "You" : "Aqua AI"}: ${m.content}`)
     .join("\n\n");
-  navigator.clipboard.writeText(text || "No messages yet.");
+  navigator.clipboard.writeText(text || "No messages yet.").catch(() => {});
 }
 
 function exportAsText() {
@@ -1203,14 +1301,16 @@ function exportAsText() {
   const blob = new Blob([text], { type: "text/plain" });
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
-  a.href = url; a.download = "aqua-chat.txt"; a.click();
+  a.href = url;
+  a.download = "aqua-chat.txt";
+  a.click();
   URL.revokeObjectURL(url);
 }
 
 function shareChat() {
   if (currentChatId) {
     const url = window.location.origin + "/history/" + currentChatId;
-    navigator.clipboard.writeText(url);
+    navigator.clipboard.writeText(url).catch(() => {});
     alert("Link copied! (Note: recipient must be logged in to view)");
   } else {
     alert("Save or send a message first to generate a shareable link.");
@@ -1219,7 +1319,10 @@ function shareChat() {
 
 // ── INPUT EVENTS ──
 document.getElementById("messageInput").addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    send();
+  }
 });
 
 // File name preview
@@ -1229,6 +1332,7 @@ document.getElementById("fileUpload").addEventListener("change", () => {
   const tag = document.getElementById("fileNameTag");
   tag.textContent = "📎 " + file.name;
   tag.style.display = "inline-block";
+
   // Show in chat too
   const chat = document.getElementById("chat");
   document.querySelector(".empty-state")?.remove();
