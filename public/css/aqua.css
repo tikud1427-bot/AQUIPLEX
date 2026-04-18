@@ -86,11 +86,8 @@ nav { display: none; }
 .aqua-shell {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
-  position: relative;
-  z-index: var(--z-base);
+  min-height: 100dvh; /* allow growth */
+  height: auto;
 }
 
 /* Body row — pushed below the fixed header */
@@ -98,12 +95,8 @@ nav { display: none; }
   display: flex;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
-  position: relative;
-  z-index: var(--z-base);
-  /* FIX START — push content below fixed header */
+  overflow: visible; /* IMPORTANT */
   padding-top: var(--header-h);
-  /* FIX END */
 }
 
 /* Main content column */
@@ -112,11 +105,9 @@ nav { display: none; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  /* FIX START — constrain width, centered */
   max-width: 1000px;
   margin: 0 auto;
   width: 100%;
-  /* FIX END */
 }
 
 
@@ -362,7 +353,7 @@ nav { display: none; }
 #chat {
   flex: 1;
   overflow-y: auto;
-  /* FIX START — removed extra padding-top (header offset now handled by .aqua-body padding-top) */
+  min-height: 0; /* 🔥 VERY IMPORTANT */
   padding: 20px 16px;
   padding-bottom: calc(var(--input-h) + 20px);
   /* FIX END */
@@ -1192,4 +1183,37 @@ body.sidebar-open {
     flex-wrap: wrap;
   }
 
+}
+
+/* =========================
+   REAL FINAL FIX
+========================= */
+
+/* Allow proper height */
+.aqua-shell {
+  min-height: 100dvh;
+  height: auto;
+}
+
+/* Allow scrolling */
+.aqua-body {
+  overflow: visible;
+}
+
+/* Fix chat scroll inside flex */
+#chat {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Mobile stacking */
+@media (max-width: 768px) {
+  .aqua-body {
+    flex-direction: column;
+  }
+
+  .aqua-main {
+    width: 100%;
+    max-width: 100%;
+  }
 }

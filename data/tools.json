@@ -1378,7 +1378,7 @@
       "likes": 0,
       "dislikes": 0,
       "comments": [],
-      "logo": "https://superhuman.com/favicon.ico",
+      "logo": "https://superhumanstatic.com/super-funnel/main/public/images/v1/social-share.png",
       "clicks": 0
     },
     {
@@ -1393,24 +1393,10 @@
       "likes": 0,
       "dislikes": 0,
       "comments": [],
-      "logo": "https://mem.ai/favicon.ico",
+      "logo": "https://media.licdn.com/dms/image/v2/D560BAQHjtHSYajos9w/company-logo_200_200/B56Zmei9eVHQAM-/0/1759301589320/memdotai_logo?e=2147483647&v=beta&t=__wYdNsh2QIiPmPsQQThqm50UteztYUzbQ4pTsr_iNY",
       "clicks": 0
     },
-    {
-      "id": "rewindai",
-      "name": "Rewind AI",
-      "category": "Productivity AI",
-      "url": "https://rewind.ai",
-      "description": "AI memory tool to search everything on your device.",
-      "trending": true,
-      "rating": 0,
-      "ratingsCount": 0,
-      "likes": 0,
-      "dislikes": 0,
-      "comments": [],
-      "logo": "https://rewind.ai/favicon.ico",
-      "clicks": 0
-    },
+  
     {
       "id": "andisearch",
       "name": "Andi Search",
@@ -1423,7 +1409,7 @@
       "likes": 0,
       "dislikes": 0,
       "comments": [],
-      "logo": "https://andi.ai/favicon.ico",
+      "logo": "https://andiai.com/images/andi-logo-white.png0",
       "clicks": 0
     },
     {
@@ -1438,7 +1424,7 @@
       "likes": 0,
       "dislikes": 0,
       "comments": [],
-      "logo": "https://phantombuster.com/favicon.ico",
+      "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcROWwURWoatgYSN2DfQNyhKxjnuqdBQZwlzIg&s",
       "clicks": 0
     }
   ]
