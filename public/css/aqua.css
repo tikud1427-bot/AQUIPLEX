@@ -1112,3 +1112,226 @@ input[type="file"] {
     bottom: 0;
   }
 }
+
+/* ============================================================
+   🔥 FINAL BUG FIX PATCH (SIDEBAR + VISIBILITY)
+   ============================================================ */
+
+@media (max-width: 640px) {
+
+  /* ───────── FIX SIDEBAR CLICK ISSUE ───────── */
+  .aqua-sidebar {
+    position: fixed !important;
+    z-index: 9999 !important; /* bring to front */
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    width: 260px !important;
+    transform: translateX(-100%);
+  }
+
+  .aqua-sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+
+  .sidebar-overlay {
+    z-index: 9998 !important;
+  }
+
+  /* ───────── FIX MENU BUTTON CLICK ───────── */
+  #menuToggle {
+    z-index: 10000 !important;
+    position: relative;
+  }
+
+  /* ───────── FIX HEADER BUTTON VISIBILITY ───────── */
+  .pill-btn {
+    color: #ffffff !important; /* force white text */
+    background: linear-gradient(135deg, #1e40af, #2563eb) !important;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  .pill-btn.active {
+    background: linear-gradient(135deg, #00c8ff, #7b5ea7) !important;
+    color: #fff !important;
+    box-shadow: 0 0 10px rgba(0,200,255,0.6);
+  }
+
+  .pill-btn.refiner-on {
+    background: linear-gradient(135deg, #ffd700, #f59e0b) !important;
+    color: #000 !important;
+  }
+
+  .pill-btn.compare-on {
+    background: linear-gradient(135deg, #a78bfa, #7c3aed) !important;
+    color: #fff !important;
+  }
+
+  /* ───────── EXPORT BUTTONS VISIBILITY ───────── */
+  .export-btn {
+    color: #fff !important;
+    background: linear-gradient(135deg, #1e293b, #334155) !important;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  /* ───────── FIX LOW CONTRAST TEXT ───────── */
+  .aqua-header,
+  .aqua-header * {
+    color: #ffffff !important;
+  }
+
+  /* ───────── FIX STARTER CARD TEXT ───────── */
+  .starter-card {
+    color: #ffffff !important;
+  }
+
+  /* ───────── FIX BUTTON TAP FEEDBACK ───────── */
+  .pill-btn:active,
+  .export-btn:active,
+  .send-btn:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+  }
+
+}
+
+.aqua-sidebar {
+  z-index: 9999 !important;
+  position: fixed !important;
+}
+
+.sidebar-overlay {
+  z-index: 9998 !important;
+}
+
+
+
+/* ============================================================
+   🚀 FINAL HARD FIX — SIDEBAR + BUTTON VISIBILITY
+   (authoritative override — no conflicts)
+   ============================================================ */
+
+/* ===== SIDEBAR: ALWAYS CLICKABLE ===== */
+.aqua-sidebar {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  height: 100dvh !important;
+  width: 260px !important;
+  transform: translateX(-100%);
+  z-index: 99999 !important;
+  transition: transform 0.3s ease !important;
+}
+
+/* OPEN STATE */
+.aqua-sidebar.mobile-open {
+  transform: translateX(0) !important;
+}
+
+/* DESKTOP RESET */
+@media (min-width: 769px) {
+  .aqua-sidebar {
+    position: relative !important;
+    transform: none !important;
+    width: 240px !important;
+    z-index: auto !important;
+  }
+
+  .aqua-sidebar.collapsed {
+    width: 0 !important;
+  }
+}
+
+/* ===== OVERLAY ===== */
+.sidebar-overlay {
+  position: fixed !important;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 99998 !important;
+}
+
+/* ===== FIX HEADER BLOCKING ===== */
+.aqua-header {
+  z-index: 100 !important;
+  position: relative;
+}
+
+/* ===== MENU BUTTON ALWAYS CLICKABLE ===== */
+#menuToggle {
+  position: relative;
+  z-index: 100000 !important;
+}
+
+/* ============================================================
+   🎨 BUTTON VISIBILITY FIX
+   ============================================================ */
+
+/* MAIN PILLS */
+.pill-btn {
+  color: #ffffff !important;
+  background: linear-gradient(135deg, #2563eb, #1e3a8a) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+}
+
+/* ACTIVE */
+.pill-btn.active {
+  background: linear-gradient(135deg, #00c8ff, #7b5ea7) !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(0,200,255,0.6);
+}
+
+/* SPECIAL STATES */
+.pill-btn.refiner-on {
+  background: linear-gradient(135deg, #ffd700, #f59e0b) !important;
+  color: #000 !important;
+}
+
+.pill-btn.compare-on {
+  background: linear-gradient(135deg, #8b5cf6, #6d28d9) !important;
+  color: #fff !important;
+}
+
+/* EXPORT BUTTONS */
+.export-btn {
+  color: #fff !important;
+  background: linear-gradient(135deg, #1e293b, #334155) !important;
+  border: 1px solid rgba(255,255,255,0.2) !important;
+}
+
+/* TEXT VISIBILITY FIX */
+.aqua-header * {
+  color: #fff !important;
+}
+
+/* ============================================================
+   📱 MOBILE GRID FIX (clean layout)
+   ============================================================ */
+
+@media (max-width: 640px) {
+
+  .aqua-header {
+    flex-wrap: wrap !important;
+  }
+
+  .aqua-header-pills {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .pill-btn {
+    width: 100%;
+    font-size: 0.7rem;
+    justify-content: center;
+  }
+
+  .msg {
+    max-width: 100% !important;
+  }
+
+  .starter-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}

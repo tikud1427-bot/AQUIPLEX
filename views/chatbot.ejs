@@ -191,35 +191,35 @@ function isMobile() {
   return window.innerWidth <= 768;
 }
 
-function toggleSidebar() {
-  const s = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
+  function toggleSidebar() {
+    const s = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
 
-  if (isMobile()) {
-    const isOpen = s.classList.contains("mobile-open");
-    if (isOpen) {
-      s.classList.remove("mobile-open");
-      overlay.classList.remove("visible");
+    if (isMobile()) {
+      const isOpen = s.classList.contains("mobile-open");
+
+      if (isOpen) {
+        s.classList.remove("mobile-open");
+        overlay.classList.remove("visible");
+        document.body.style.overflow = ""; // restore scroll
+      } else {
+        s.classList.add("mobile-open");
+        overlay.classList.add("visible");
+        document.body.style.overflow = "hidden"; // prevent background scroll
+      }
     } else {
-      s.classList.remove("collapsed");
-      s.classList.add("mobile-open");
-      overlay.classList.add("visible");
+      s.classList.toggle("collapsed");
     }
-  } else {
-    s.classList.toggle("collapsed");
   }
-}
 
-function closeSidebar() {
-  const s = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
-  if (isMobile()) {
+  function closeSidebar() {
+    const s = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+
     s.classList.remove("mobile-open");
     overlay.classList.remove("visible");
-  } else {
-    s.classList.add("collapsed");
+    document.body.style.overflow = "";
   }
-}
 
 // ── EMPTY STATE ──
 const STARTERS = [
