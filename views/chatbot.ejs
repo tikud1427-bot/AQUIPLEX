@@ -342,7 +342,7 @@ async function send() {
 
   if (message) appendMessage("user", message);
 
-  chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+  chat.scrollTop = chat.scrollHeight;
 
   const loading = document.createElement("div");
   loading.className = "msg bot";
@@ -357,7 +357,7 @@ async function send() {
     </div>
   `;
   chat.appendChild(loading);
-  chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+  chat.scrollTop = chat.scrollHeight;
 
   try {
     // ── COMPARE AI MODE ──
@@ -400,7 +400,7 @@ async function send() {
         ${imgHtml}
       `;
       chat.appendChild(div);
-      chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+      chat.scrollTop = chat.scrollHeight;
       const replyContent = data.reply || "Image generated.";
       messages.push({ role: "assistant", content: replyContent });
       setSending(false);
@@ -421,7 +421,7 @@ async function send() {
       chat.appendChild(div);
       messages.push({ role: "assistant", content: replyContent });
       if (data.chatId) currentChatId = data.chatId;
-      chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+      chat.scrollTop = chat.scrollHeight;
       setSending(false);
       fileInput.value = "";
       document.getElementById("fileNameTag").style.display = "none";
@@ -443,7 +443,7 @@ async function send() {
       chat.appendChild(div);
       messages.push({ role: "assistant", content: replyContent });
       if (data.chatId) currentChatId = data.chatId;
-      chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+      chat.scrollTop = chat.scrollHeight;
       setSending(false);
       fileInput.value = "";
       document.getElementById("fileNameTag").style.display = "none";
@@ -517,7 +517,9 @@ async function send() {
             fullText += parsed;
             textDiv.innerHTML = marked.parse(fullText);
             textDiv.appendChild(cursorEl);
-            chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+
+            // ✅ FIX
+            chat.scrollTop = chat.scrollHeight;
           }
         }
       }
@@ -533,7 +535,7 @@ async function send() {
     bubble.insertAdjacentHTML("beforeend", buildActions(fullText));
 
     messages.push({ role: "assistant", content: fullText });
-    chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+    chat.scrollTop = chat.scrollHeight;
     await loadHistoryList();
 
   } catch (err) {
@@ -584,6 +586,7 @@ function appendMessage(role, content) {
     </div>
   `;
   chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
 }
 
 function buildActions(text) {
@@ -688,34 +691,49 @@ function appendCompareResult(data) {
   `;
 
   chat.appendChild(div);
-  chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+  chat.scrollTop = chat.scrollHeight;
 
   loadHistoryList().catch(() => {});
 }
 
 // ── HISTORY ──
-async function loadHistoryList() {
-  try {
-    const res   = await fetch("/history");
-    if (!res.ok) return;
-    const chats = await res.json();
-    if (!Array.isArray(chats)) return;
+  async function loadHistoryList() {
+    try {
+      const res = await fetch("/history");
+      if (!res.ok) return;
 
-    const list  = document.getElementById("historyList");
-    list.innerHTML = "";
+      const chats = await res.json();
+      if (!Array.isArray(chats)) return;
 
-    chats.forEach(c => {
-      const div = document.createElement("div");
-      div.setAttribute("data-id", c._id);
-      div.innerHTML = `
-        <span>${c.title || "Chat"}</span>
-        <button onclick="event.stopPropagation(); deleteChat('${c._id}')">🗑️</button>
-      `;
-      div.onclick = () => loadChat(c._id);
-      list.appendChild(div);
-    });
-  } catch {}
-}
+      const list = document.getElementById("historyList");
+      list.innerHTML = "";
+
+      chats.forEach(c => {
+        const div = document.createElement("div");
+        div.setAttribute("data-id", c._id);
+
+        if (c._id === currentChatId) {
+          div.classList.add("active-chat");
+        }
+
+        div.innerHTML = `
+          <span>${c.title || "Chat"}</span>
+          <button onclick="event.stopPropagation(); deleteChat('${c._id}')">🗑️</button>
+        `;
+
+        div.onclick = () => {
+          document.querySelectorAll("#historyList div").forEach(d => d.classList.remove("active-chat"));
+          div.classList.add("active-chat");
+          loadChat(c._id);
+        };
+
+        list.appendChild(div);
+      });
+
+    } catch (err) {
+      console.error("History load failed", err);
+    }
+  }
 
 async function deleteChat(id) {
   if (!confirm("Delete this chat?")) return;
@@ -755,7 +773,7 @@ async function loadChat(id) {
       lastBot?.querySelector(".msg-bubble")?.insertAdjacentHTML("beforeend", buildActions(lastBotContent));
     }
 
-    chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+    chat.scrollTop = chat.scrollHeight;
     closeSidebar();
   } catch {}
 }
@@ -818,7 +836,7 @@ document.getElementById("fileUpload").addEventListener("change", () => {
   const chat = document.getElementById("chat");
   document.querySelector(".empty-state")?.remove();
   appendMessage("user", `📎 Attached: **${file.name}**`);
-  chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+  chat.scrollTop = chat.scrollHeight;
 });
 
 // ── INIT ──
