@@ -55,11 +55,36 @@
       position: relative;
       z-index: 1;
     }
+    .aqua-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .aqua-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .back-home-btn {
+      text-decoration: none;
+      font-size: 0.9rem;
+      color: var(--muted);
+      padding: 6px 10px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .back-home-btn:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+    }
   </style>
 </head>
 
 <body>
-<%- include('partials/nav') %>
+
 
 <!-- Mobile sidebar overlay -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
@@ -68,18 +93,27 @@
 
   <!-- ── HEADER ── -->
   <div class="aqua-header">
-    <button id="menuToggle" title="Toggle sidebar" onclick="toggleSidebar()">☰</button>
-    <span class="aqua-logo">🌊 Aqua AI</span>
 
+    <!-- LEFT SECTION -->
+    <div class="aqua-header-left">
+      <button id="menuToggle" onclick="toggleSidebar()">☰</button>
+
+      <!-- 🔥 NEW: Back to Home -->
+      <a href="<%= user ? '/home' : '/' %>" class="back-home-btn">← Home</a>
+
+      <span class="aqua-logo">🌊 Aqua AI</span>
+    </div>
+
+    <!-- RIGHT SECTION -->
     <div class="aqua-header-pills">
-      <button class="pill-btn active" id="modeChatBtn"   onclick="setMode('chat')">💬 Chat</button>
-      <button class="pill-btn"        id="modeSearchBtn" onclick="setMode('search')">🌐 Search</button>
-      <button class="pill-btn"        id="modeImageBtn"  onclick="setMode('image')">🎨 Image</button>
+      <button class="pill-btn active" id="modeChatBtn" onclick="setMode('chat')">💬 Chat</button>
+      <button class="pill-btn" id="modeSearchBtn" onclick="setMode('search')">🌐 Search</button>
+      <button class="pill-btn" id="modeImageBtn" onclick="setMode('image')">🎨 Image</button>
       <button class="pill-btn refiner-on" id="refinerBtn" onclick="toggleRefiner(this)">✨ Enhance ON</button>
       <button class="pill-btn" id="compareBtn" onclick="toggleCompare(this)">⚖️ Compare</button>
     </div>
-  </div>
 
+  </div>
   <!-- ── BODY ── -->
   <div class="aqua-body">
 
