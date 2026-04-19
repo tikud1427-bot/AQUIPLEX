@@ -124,60 +124,56 @@
      CSS only provides the transition and fixed positioning on mobile.
   ══════════════════════════════════════════════ */
 
-  /* ── Sidebar helpers: always clear ALL mode-specific properties ── */
-
-  function _sidebarReset(sidebar) {
-    /* Wipe every property either mode could have set, so nothing bleeds across */
-    sidebar.style.transform  = "";
-    sidebar.style.boxShadow  = "";
-    sidebar.style.width      = "";
-    sidebar.style.minWidth   = "";
+  /*
+   * _applySidebarState — single source of truth for all sidebar styling.
+   * Sets EVERY relevant property so no stale inline style from a
+   * previous mode can ever leak through.
+   */
+  function _applySidebarState(sidebar, overlay, isOpen) {
+    if (isMobile()) {
+      /* Mobile: sidebar is position:fixed (CSS), so out of normal flow.
+         We still explicitly set width/minWidth so the inline style always
+         wins over the base CSS rule (which has no !important for width
+         in the non-media-query context that loads first). */
+      sidebar.style.width     = "260px";
+      sidebar.style.minWidth  = "260px";
+      sidebar.style.transform = isOpen ? "translateX(0px)" : "translateX(-100%)";
+      sidebar.style.boxShadow = isOpen ? "4px 0 32px rgba(0,0,0,0.6)" : "none";
+      if (isOpen) {
+        overlay.classList.add("visible");
+        document.body.style.overflow = "hidden";
+      } else {
+        overlay.classList.remove("visible");
+        document.body.style.overflow = "";
+      }
+    } else {
+      /* Desktop: sidebar is position:relative, in-flow.
+         Width drives show/hide; transform is irrelevant — always clear it. */
+      sidebar.style.width     = isOpen ? "260px" : "0";
+      sidebar.style.minWidth  = isOpen ? "260px" : "0";
+      sidebar.style.transform = "";
+      sidebar.style.boxShadow = "";
+      overlay.classList.remove("visible");
+      document.body.style.overflow = "";
+    }
   }
 
   function openSidebar() {
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("sidebarOverlay");
     const toggle  = document.getElementById("menuToggle");
-
     sidebarOpen = true;
     toggle.setAttribute("aria-expanded", "true");
-    _sidebarReset(sidebar);
-
-    if (isMobile()) {
-      sidebar.style.transform = "translateX(0px)";
-      sidebar.style.boxShadow = "4px 0 32px rgba(0,0,0,0.6)";
-      overlay.classList.add("visible");
-      document.body.style.overflow = "hidden";
-    } else {
-      /* Desktop: let CSS width/minWidth from the rule take effect;
-         override with explicit values so the transition fires */
-      sidebar.style.width    = "260px";
-      sidebar.style.minWidth = "260px";
-      overlay.classList.remove("visible");
-      document.body.style.overflow = "";
-    }
+    _applySidebarState(sidebar, overlay, true);
   }
 
   function closeSidebar() {
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("sidebarOverlay");
     const toggle  = document.getElementById("menuToggle");
-
     sidebarOpen = false;
     toggle.setAttribute("aria-expanded", "false");
-    _sidebarReset(sidebar);
-
-    if (isMobile()) {
-      sidebar.style.transform = "translateX(-100%)";
-      sidebar.style.boxShadow = "none";
-      overlay.classList.remove("visible");
-      document.body.style.overflow = "";
-    } else {
-      sidebar.style.width    = "0";
-      sidebar.style.minWidth = "0";
-      overlay.classList.remove("visible");
-      document.body.style.overflow = "";
-    }
+    _applySidebarState(sidebar, overlay, false);
   }
 
   function toggleSidebar() {
@@ -186,28 +182,16 @@
 
   /* ── INIT ── */
   document.addEventListener("DOMContentLoaded", () => {
-    const sidebar  = document.getElementById("sidebar");
-    const overlay  = document.getElementById("sidebarOverlay");
-    const menuBtn  = document.getElementById("menuToggle");
-    const closeBtn = document.getElementById("closeSidebarBtn");
-    const input    = document.getElementById("messageInput");
+    const sidebar    = document.getElementById("sidebar");
+    const overlay    = document.getElementById("sidebarOverlay");
+    const menuBtn    = document.getElementById("menuToggle");
+    const closeBtn   = document.getElementById("closeSidebarBtn");
+    const input      = document.getElementById("messageInput");
     const fileUpload = document.getElementById("fileUpload");
 
-    /* Always wipe all inline styles first so no stale values persist */
-    _sidebarReset(sidebar);
-
-    /* Set correct initial state for current viewport */
-    if (isMobile()) {
-      /* Mobile: start hidden off-screen */
-      sidebar.style.transform = "translateX(-100%)";
-      sidebar.style.boxShadow = "none";
-      sidebarOpen = false;
-    } else {
-      /* Desktop: start open, in-flow */
-      sidebar.style.width    = "260px";
-      sidebar.style.minWidth = "260px";
-      sidebarOpen = true;
-    }
+    /* Mobile starts closed; desktop starts open */
+    sidebarOpen = !isMobile();
+    _applySidebarState(sidebar, overlay, sidebarOpen);
 
     menuBtn.addEventListener("click", function(e) {
       e.stopPropagation();
@@ -224,30 +208,10 @@
       closeSidebar();
     });
 
-    /* Re-init on resize / device rotation */
+    /* Re-apply correct state on resize / device rotation */
     window.addEventListener("resize", function() {
-      /* Always re-apply correct state for new viewport size */
-      _sidebarReset(sidebar);
-      if (isMobile()) {
-        if (sidebarOpen) {
-          sidebar.style.transform = "translateX(0px)";
-          sidebar.style.boxShadow = "4px 0 32px rgba(0,0,0,0.6)";
-          overlay.classList.add("visible");
-          document.body.style.overflow = "hidden";
-        } else {
-          sidebar.style.transform = "translateX(-100%)";
-          sidebar.style.boxShadow = "none";
-          overlay.classList.remove("visible");
-          document.body.style.overflow = "";
-        }
-      } else {
-        /* On desktop, always open */
-        sidebar.style.width    = "260px";
-        sidebar.style.minWidth = "260px";
-        overlay.classList.remove("visible");
-        document.body.style.overflow = "";
-        sidebarOpen = true;
-      }
+      if (!isMobile()) sidebarOpen = true; /* desktop always starts open */
+      _applySidebarState(sidebar, overlay, sidebarOpen);
     });
 
     /* ── Textarea auto-resize ── */
