@@ -1074,15 +1074,17 @@ body.sidebar-open {
    ========================= */
 
 /* Sidebar must be ABOVE everything */
-.aqua-sidebar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100%;
-  z-index: 9999; /* highest layer */
-  pointer-events: auto;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+@media (max-width: 768px) {
+  .aqua-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    z-index: 9999;
+    pointer-events: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Overlay sits BELOW sidebar */
