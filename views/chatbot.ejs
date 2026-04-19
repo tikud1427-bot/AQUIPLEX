@@ -41,29 +41,7 @@
        No .mobile-open, no .collapsed — nothing that styles.css can hijack.
     ── */
 
-    /* Mobile sidebar: always fixed, starts hidden via transform */
-    @media (max-width: 768px) {
-      #sidebar {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        height: 100vh !important;
-        height: 100dvh !important;
-        width: 240px !important;
-        min-width: 240px !important;
-        z-index: 9999 !important;
-        background: #0b1628 !important;
-        display: flex !important;
-        flex-direction: column !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        transition: transform 0.28s cubic-bezier(0.4,0,0.2,1) !important;
-        transform: translateX(-100%) !important;
-        box-shadow: none;
-        border-right: 1px solid #1f2937 !important;
-        pointer-events: auto !important;
-      }
-    }
+ 
 
     /* Desktop sidebar: in-flow, driven by width */
     @media (min-width: 769px) {
@@ -273,6 +251,10 @@
     const overlay  = document.getElementById("sidebarOverlay");
     const menuBtn  = document.getElementById("menuToggle");
     const closeBtn = document.getElementById("closeSidebarBtn");
+    // Initialize sidebar transform explicitly on mobile
+    if (isMobile()) {
+      document.getElementById("sidebar").style.transform = "translateX(-100%)";
+    }
 
     // Direct onclick on close button — most reliable possible approach
     closeBtn.addEventListener("click", closeSidebar);
