@@ -1,32 +1,17 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <link rel="stylesheet" href="/css/styles.css">
-  <link rel="stylesheet" href="/css/aqua.css">
-  <title>🌊 Aqua AI</title>
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <title>🌊 Aqua AI</title>
+
+  <link rel="stylesheet" href="/css/aqua.css">
+
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
   <style>
-    /* ── CSS CUSTOM PROPERTIES ── */
-    :root {
-      --bg:        #0b0f1a;
-      --surface:   #111827;
-      --surface2:  #1a2235;
-      --border:    #1e2d45;
-      --accent:    #00c8ff;
-      --accent2:   #7b5ea7;
-      --text:      #e2eaf4;
-      --muted:     #6b7fa3;
-      --user-bg:   #162032;
-      --bot-bg:    #111827;
-      --radius:    14px;
-      --font-body: 'DM Sans', sans-serif;
-      --font-head: 'Syne', sans-serif;
-    }
-
-    /* ── DECORATIVE BACKGROUND GLOWS (page-specific) ── */
+    /* ── Page-level decorative glows ── */
     body::before {
       content: '';
       position: fixed;
@@ -34,7 +19,7 @@
       left: -20%;
       width: 70%;
       height: 70%;
-      background: radial-gradient(ellipse, rgba(0,200,255,0.05) 0%, transparent 70%);
+      background: radial-gradient(ellipse, rgba(0,200,255,0.04) 0%, transparent 70%);
       pointer-events: none;
       z-index: 0;
     }
@@ -45,89 +30,62 @@
       right: -10%;
       width: 50%;
       height: 50%;
-      background: radial-gradient(ellipse, rgba(123,94,167,0.06) 0%, transparent 70%);
+      background: radial-gradient(ellipse, rgba(123,94,167,0.05) 0%, transparent 70%);
       pointer-events: none;
       z-index: 0;
     }
 
-    /* Ensure shell sits above decorative glows */
+    /* Shell above decorative glows */
     .aqua-shell {
       position: relative;
       z-index: 1;
-    }
-    .aqua-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .aqua-header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .back-home-btn {
-      text-decoration: none;
-      font-size: 0.9rem;
-      color: var(--muted);
-      padding: 6px 10px;
-      border-radius: 8px;
-      transition: all 0.2s ease;
-    }
-
-    .back-home-btn:hover {
-      color: var(--text);
-      background: rgba(255,255,255,0.05);
     }
   </style>
 </head>
 
 <body>
 
-<!-- Mobile sidebar overlay -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
+<!-- ── SIDEBAR OVERLAY (mobile only) ── -->
+<div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
 
 <div class="aqua-shell">
 
   <!-- ── HEADER ── -->
-  <div class="aqua-header">
+  <header class="aqua-header">
 
-    <!-- LEFT SECTION -->
     <div class="aqua-header-left">
-      <button id="menuToggle">☰</button>
+      <!-- Menu toggle — always visible, works on all screen sizes -->
+      <button id="menuToggle" aria-label="Toggle sidebar" aria-expanded="false">☰</button>
 
-      <!-- Back to Home -->
-      <a href="/" class="back-home-btn">← Back to Home</a>
+      <a href="/" class="back-home-btn">← Home</a>
 
       <span class="aqua-logo">🌊 Aqua AI</span>
     </div>
 
-    <!-- RIGHT SECTION -->
     <div class="aqua-header-pills">
-      <button class="pill-btn active" id="modeChatBtn" onclick="setMode('chat')">💬 Chat</button>
-      <button class="pill-btn" id="modeSearchBtn" onclick="setMode('search')">🌐 Search</button>
-      <button class="pill-btn" id="modeImageBtn" onclick="setMode('image')">🎨 Image</button>
+      <button class="pill-btn active" id="modeChatBtn"   onclick="setMode('chat')">💬 Chat</button>
+      <button class="pill-btn"        id="modeSearchBtn" onclick="setMode('search')">🌐 Search</button>
+      <button class="pill-btn"        id="modeImageBtn"  onclick="setMode('image')">🎨 Image</button>
       <button class="pill-btn refiner-on" id="refinerBtn" onclick="toggleRefiner(this)">✨ Enhance ON</button>
-      <button class="pill-btn" id="compareBtn" onclick="toggleCompare(this)">⚖️ Compare</button>
+      <button class="pill-btn"        id="compareBtn"    onclick="toggleCompare(this)">⚖️ Compare</button>
     </div>
 
-  </div>
+  </header>
 
   <!-- ── BODY ── -->
   <div class="aqua-body">
 
     <!-- ── SIDEBAR ── -->
-    <div class="aqua-sidebar" id="sidebar">
+    <aside class="aqua-sidebar" id="sidebar" aria-label="Chat history">
       <div class="sidebar-header">
         <button class="new-chat-btn" onclick="newChat()">➕ New Chat</button>
-        <button class="sidebar-toggle-btn" onclick="closeSidebar()" title="Close">✕</button>
+        <button class="sidebar-toggle-btn" onclick="closeSidebar()" title="Close sidebar" aria-label="Close sidebar">✕</button>
       </div>
-      <div id="historyList"></div>
-    </div>
+      <div id="historyList" role="list"></div>
+    </aside>
 
     <!-- ── MAIN ── -->
-    <div class="aqua-main">
+    <main class="aqua-main">
 
       <!-- Export toolbar -->
       <div class="export-toolbar">
@@ -137,29 +95,38 @@
       </div>
 
       <!-- Chat messages -->
-      <div id="chat"></div>
+      <div id="chat" role="log" aria-live="polite" aria-label="Chat messages"></div>
 
       <!-- ── INPUT ── -->
       <div class="aqua-input-wrap">
         <div class="aqua-input-row">
-          <button class="input-icon-btn" onclick="document.getElementById('fileUpload').click()" title="Attach file">📎</button>
-          <input type="file" id="fileUpload" />
-          <textarea id="messageInput" rows="1" placeholder="Ask anything..."></textarea>
-          <button class="send-btn" id="sendBtn" onclick="send()">Send ↑</button>
+          <button class="input-icon-btn" onclick="document.getElementById('fileUpload').click()" title="Attach file" aria-label="Attach file">📎</button>
+          <input type="file" id="fileUpload" aria-label="File upload" />
+          <textarea
+            id="messageInput"
+            rows="1"
+            placeholder="Ask anything..."
+            aria-label="Message input"
+            autocomplete="off"
+            autocorrect="on"
+            spellcheck="true"
+          ></textarea>
+          <button class="send-btn" id="sendBtn" onclick="send()" aria-label="Send message">Send ↑</button>
         </div>
         <div class="input-meta">
           <span id="modeIndicator">MODE: CHAT</span>
-          <span id="fileNameTag" class="file-name-tag" style="display:none;"></span>
-          <span id="modeLabel"></span>
+          <span id="fileNameTag" class="file-name-tag" style="display:none;" aria-live="polite"></span>
         </div>
       </div>
-    </div>
+
+    </main>
   </div>
 </div>
 
 <script>
 // ============================================================
-// AQUA AI – FRONTEND (PRODUCTION STABLE)
+// AQUA AI — FRONTEND
+// Clean, production-grade. No hacks.
 // ============================================================
 
 // ── MARKED CONFIG ──
@@ -172,6 +139,87 @@ let mode          = "chat";
 let useRefiner    = true;
 let useCompare    = false;
 let isSending     = false;
+let sidebarOpen   = false;
+
+// ── UTILITY: is viewport mobile-sized? ──
+function isMobile() {
+  return window.matchMedia("(max-width: 768px)").matches;
+}
+
+// ── SIDEBAR ──
+function openSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebarOverlay");
+  const toggle  = document.getElementById("menuToggle");
+
+  sidebarOpen = true;
+  toggle.setAttribute("aria-expanded", "true");
+
+  if (isMobile()) {
+    sidebar.classList.add("mobile-open");
+    overlay.classList.add("visible");
+    document.body.classList.add("sidebar-open");
+  } else {
+    sidebar.classList.remove("collapsed");
+  }
+}
+
+function closeSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebarOverlay");
+  const toggle  = document.getElementById("menuToggle");
+
+  sidebarOpen = false;
+  toggle.setAttribute("aria-expanded", "false");
+
+  // Always remove both classes — safe on both breakpoints
+  sidebar.classList.remove("mobile-open");
+  overlay.classList.remove("visible");
+  document.body.classList.remove("sidebar-open");
+}
+
+function toggleSidebar() {
+  sidebarOpen ? closeSidebar() : openSidebar();
+}
+
+// ── INIT SIDEBAR EVENTS ──
+// All event wiring happens in DOMContentLoaded — no inline handlers for sidebar
+document.addEventListener("DOMContentLoaded", () => {
+
+  const menuToggle = document.getElementById("menuToggle");
+  const overlay    = document.getElementById("sidebarOverlay");
+
+  // Menu toggle — prefer click; touchstart for 300ms delay fix
+  menuToggle.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleSidebar();
+  });
+
+  // Overlay tap/click closes sidebar
+  overlay.addEventListener("click", closeSidebar);
+
+  // Also handle touchend on overlay for iOS reliability
+  overlay.addEventListener("touchend", (e) => {
+    // Only close if it was a simple tap (not a scroll)
+    e.preventDefault();
+    closeSidebar();
+  }, { passive: false });
+
+  // Resize: if switching from mobile → desktop, clean up mobile classes
+  window.addEventListener("resize", () => {
+    if (!isMobile() && sidebarOpen) {
+      // On desktop: just ensure no mobile classes linger
+      document.getElementById("sidebar").classList.remove("mobile-open");
+      document.getElementById("sidebarOverlay").classList.remove("visible");
+      document.body.classList.remove("sidebar-open");
+      // Keep sidebarOpen=true so desktop state is preserved
+    }
+  });
+
+  // Init
+  renderEmptyState();
+  loadHistoryList();
+});
 
 // ── ROTATING PLACEHOLDERS ──
 const placeholders = [
@@ -186,21 +234,22 @@ let phIdx = 0;
 setInterval(() => {
   phIdx = (phIdx + 1) % placeholders.length;
   const inp = document.getElementById("messageInput");
-  if (document.activeElement !== inp) inp.placeholder = placeholders[phIdx];
+  if (inp && document.activeElement !== inp) {
+    inp.placeholder = placeholders[phIdx];
+  }
 }, 3500);
 
 // ── MODE ──
 function setMode(m) {
   mode = m;
   document.getElementById("modeIndicator").textContent = "MODE: " + m.toUpperCase();
-  ["modeChatBtn","modeSearchBtn","modeImageBtn"].forEach(id => {
-    document.getElementById(id).classList.remove("active");
+  ["modeChatBtn", "modeSearchBtn", "modeImageBtn"].forEach(id => {
+    document.getElementById(id)?.classList.remove("active");
   });
-  const map = { chat:"modeChatBtn", search:"modeSearchBtn", image:"modeImageBtn" };
+  const map = { chat: "modeChatBtn", search: "modeSearchBtn", image: "modeImageBtn" };
   document.getElementById(map[m])?.classList.add("active");
 }
 
-// Auto-detect mode from prompt
 function autoDetectMode(text) {
   const t = text.toLowerCase();
   if (/^(generate|create|draw).*(image|photo|art|logo)/.test(t)) return "image";
@@ -220,81 +269,14 @@ function toggleCompare(btn) {
   btn.textContent = useCompare ? "⚖️ Compare ON" : "⚖️ Compare";
 }
 
-// ── SIDEBAR (ROCK SOLID) ──
-let sidebarOpen = false;
-
-function isMobile() {
-  return window.matchMedia("(max-width: 768px)").matches;
-}
-
-function openSidebar() {
-  const s = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
-  sidebarOpen = true;
-
-  if (isMobile()) {
-    s.classList.add("mobile-open");
-    overlay.classList.add("visible");
-    document.body.classList.add("sidebar-open");
-  } else {
-    s.classList.remove("collapsed");
-  }
-}
-
-function closeSidebar() {
-  const s = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
-  sidebarOpen = false;
-
-  if (isMobile()) {
-    s.classList.remove("mobile-open");
-    overlay.classList.remove("visible");
-    document.body.classList.remove("sidebar-open");
-  } else {
-    s.classList.add("collapsed");
-  }
-}
-
-function toggleSidebar() {
-  sidebarOpen ? closeSidebar() : openSidebar();
-}
-
-// ── EVENT LISTENERS (TOUCH FRIENDLY) ──
-document.addEventListener("DOMContentLoaded", () => {
-  const overlay = document.getElementById("sidebarOverlay");
-  const menuBtn = document.getElementById("menuToggle");
-
-  // Overlay close (click / touch)
-  overlay.addEventListener("click", closeSidebar);
-  overlay.addEventListener("touchend", (e) => {
-    e.preventDefault();
-    closeSidebar();
-  }, { passive: false });
-
-  // Menu button
-  menuBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    toggleSidebar();
-  });
-  menuBtn.addEventListener("touchend", (e) => {
-    e.preventDefault();
-    toggleSidebar();
-  }, { passive: false });
-
-  // Ensure sidebar starts collapsed on desktop by default (no class needed if not open)
-  if (!isMobile()) {
-    document.getElementById("sidebar").classList.add("collapsed");
-  }
-});
-
 // ── EMPTY STATE ──
 const STARTERS = [
-  { icon:"🚀", text:"Build a startup idea",        prompt:"Help me brainstorm a startup idea with market validation and a go-to-market strategy." },
-  { icon:"📸", text:"Create Instagram content",    prompt:"Create a week of Instagram content ideas for a lifestyle brand with captions and hashtags." },
-  { icon:"🧠", text:"Explain a concept simply",    prompt:"Explain quantum computing like I'm 10 years old with a fun analogy." },
-  { icon:"🎨", text:"Generate an image",           prompt:"Generate an image of a futuristic city at night with neon lights." },
-  { icon:"🛠️", text:"Fix my code",                prompt:"Here is my code. Please review it, find bugs, and suggest improvements:" },
-  { icon:"📊", text:"Summarize research",          prompt:"Summarize the key findings of the latest research on AI and productivity." },
+  { icon: "🚀", text: "Build a startup idea",     prompt: "Help me brainstorm a startup idea with market validation and a go-to-market strategy." },
+  { icon: "📸", text: "Create Instagram content", prompt: "Create a week of Instagram content ideas for a lifestyle brand with captions and hashtags." },
+  { icon: "🧠", text: "Explain a concept",        prompt: "Explain quantum computing like I'm 10 years old with a fun analogy." },
+  { icon: "🎨", text: "Generate an image",        prompt: "Generate an image of a futuristic city at night with neon lights." },
+  { icon: "🛠️", text: "Fix my code",             prompt: "Here is my code. Please review it, find bugs, and suggest improvements:" },
+  { icon: "📊", text: "Summarize research",       prompt: "Summarize the key findings of the latest research on AI and productivity." },
 ];
 
 function renderEmptyState() {
@@ -323,20 +305,21 @@ function sendStarter(prompt) {
 }
 
 // ── AUTO-RESIZE TEXTAREA ──
-document.getElementById("messageInput").addEventListener("input", function() {
+document.getElementById("messageInput")?.addEventListener("input", function () {
   this.style.height = "auto";
   this.style.height = Math.min(this.scrollHeight, 140) + "px";
 });
 
-// ── LOCK / UNLOCK SEND BUTTON ──
+// ── SEND LOCK ──
 function setSending(val) {
   isSending = val;
   const btn = document.getElementById("sendBtn");
+  if (!btn) return;
   btn.disabled = val;
   btn.textContent = val ? "..." : "Send ↑";
 }
 
-// ── MAIN SEND FUNCTION ──
+// ── MAIN SEND ──
 async function send() {
   if (isSending) return;
 
@@ -349,7 +332,6 @@ async function send() {
 
   if (!message && !file) return;
 
-  // Only auto-detect mode from typed message (not file-only sends)
   if (message) {
     const detected = autoDetectMode(message);
     if (detected !== mode) setMode(detected);
@@ -368,7 +350,6 @@ async function send() {
   formData.append("chatId",  currentChatId || "");
   formData.append("history", JSON.stringify(messages.slice(-10)));
   formData.append("refiner", useRefiner ? "true" : "false");
-  // stream only in chat mode and not compare mode
   formData.append("stream",  (mode === "chat" && !useCompare) ? "true" : "false");
   if (file) formData.append("file", file);
 
@@ -378,6 +359,7 @@ async function send() {
 
   chat.scrollTop = chat.scrollHeight;
 
+  // Typing indicator
   const loading = document.createElement("div");
   loading.className = "msg bot";
   loading.id = "loading";
@@ -394,9 +376,10 @@ async function send() {
   chat.scrollTop = chat.scrollHeight;
 
   try {
-    // ── COMPARE AI MODE ──
+
+    // ── COMPARE MODE ──
     if (useCompare) {
-      const res  = await fetch("/multi-generate", {
+      const res = await fetch("/multi-generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: message, messages: messages.slice(-10) })
@@ -412,20 +395,17 @@ async function send() {
       return;
     }
 
-    // Use correct fetch options — FormData sets content-type automatically
     const res = await fetch("/chat", { method: "POST", body: formData });
     document.getElementById("loading")?.remove();
 
-    if (!res.ok) {
-      throw new Error("Chat request failed: " + res.status);
-    }
+    if (!res.ok) throw new Error("Chat request failed: " + res.status);
 
     // ── IMAGE MODE ──
     if (mode === "image") {
       const data = await res.json();
       const div  = createBotBubble();
       const imgHtml = data.image
-        ? `<img src="${data.image}" style="max-width:100%;border-radius:10px;margin-top:10px;" onerror="this.style.display='none'" />
+        ? `<img src="${data.image}" alt="Generated image" style="max-width:100%;border-radius:10px;margin-top:10px;" onerror="this.style.display='none'" />
            <div class="msg-actions">
              <a href="${data.image}" target="_blank" class="msg-action-btn">⬇ Download</a>
            </div>`
@@ -436,19 +416,18 @@ async function send() {
       `;
       chat.appendChild(div);
       chat.scrollTop = chat.scrollHeight;
-      const replyContent = data.reply || "Image generated.";
-      messages.push({ role: "assistant", content: replyContent });
+      messages.push({ role: "assistant", content: data.reply || "Image generated." });
       setSending(false);
       fileInput.value = "";
       document.getElementById("fileNameTag").style.display = "none";
       return;
     }
 
-    // ── SEARCH / NON-STREAM MODES ──
+    // ── SEARCH / NON-STREAM ──
     if (mode !== "chat") {
       const data = await res.json();
       const replyContent = data.reply || "⚠️ No response received.";
-      const div  = createBotBubble();
+      const div = createBotBubble();
       div.querySelector(".msg-bubble").innerHTML = `
         <div class="markdown-body">${marked.parse(replyContent)}</div>
         ${buildActions(replyContent)}
@@ -468,6 +447,7 @@ async function send() {
     const contentType = res.headers.get("content-type") || "";
 
     if (!contentType.includes("text/event-stream")) {
+      // Server returned JSON even though stream was requested
       const data = await res.json();
       const replyContent = data.reply || "⚠️ No response received.";
       const div = createBotBubble();
@@ -529,10 +509,7 @@ async function send() {
           const payload = trimmed.slice(5).trim();
           if (!payload) continue;
 
-          if (payload === "[DONE]") {
-            streamDone = true;
-            break;
-          }
+          if (payload === "[DONE]") { streamDone = true; break; }
 
           let parsed;
           try { parsed = JSON.parse(payload); } catch { continue; }
@@ -566,7 +543,6 @@ async function send() {
     });
 
     bubble.insertAdjacentHTML("beforeend", buildActions(fullText));
-
     messages.push({ role: "assistant", content: fullText });
     chat.scrollTop = chat.scrollHeight;
     await loadHistoryList();
@@ -581,20 +557,21 @@ async function send() {
     `;
     chat.appendChild(div);
 
+    // Roll back user message if it was added
     if (messages.length && messages[messages.length - 1].role === "user") {
       messages.pop();
     }
 
   } finally {
     setSending(false);
-    const fileInput2 = document.getElementById("fileUpload");
-    fileInput2.value = "";
+    document.getElementById("fileUpload").value = "";
     document.getElementById("fileNameTag").style.display = "none";
-    document.getElementById("messageInput").focus();
+    document.getElementById("messageInput")?.focus();
   }
 }
 
 // ── HELPERS ──
+
 function createBotBubble() {
   const div = document.createElement("div");
   div.className = "msg bot";
@@ -609,9 +586,7 @@ function appendMessage(role, content) {
   const chat = document.getElementById("chat");
   const div  = document.createElement("div");
   div.className = `msg ${role}`;
-
   const safeContent = (content || "").toString();
-
   div.innerHTML = `
     <div class="msg-avatar">${role === "user" ? "👤" : "🌊"}</div>
     <div class="msg-bubble">
@@ -623,10 +598,9 @@ function appendMessage(role, content) {
 }
 
 function buildActions(text) {
-  const id = "act_" + Math.random().toString(36).slice(2);
+  const id = "act_" + Math.random().toString(36).slice(2, 9);
   window.__actionTexts = window.__actionTexts || {};
   window.__actionTexts[id] = text;
-
   return `
     <div class="msg-actions">
       <button class="msg-action-btn" onclick="copyText('${id}')">📋 Copy</button>
@@ -639,7 +613,7 @@ function buildActions(text) {
 
 function copyText(id) {
   const text = (window.__actionTexts || {})[id] || "";
-  navigator.clipboard.writeText(text).catch(() => {});
+  navigator.clipboard?.writeText(text).catch(() => {});
 }
 
 function regenerate() {
@@ -649,11 +623,9 @@ function regenerate() {
       const lastUser = messages[i];
       messages = messages.slice(0, i + 1);
       document.getElementById("messageInput").value = lastUser.content;
-
       const chat = document.getElementById("chat");
       const botMsgs = chat.querySelectorAll(".msg.bot");
       botMsgs[botMsgs.length - 1]?.remove();
-
       send();
       return;
     }
@@ -677,19 +649,14 @@ async function fetchToolSuggestions(responseText) {
     const res = await fetch("/api/tools/suggest?q=" + q);
     if (!res.ok) return null;
     const tools = await res.json();
-
     if (!Array.isArray(tools) || !tools.length) return null;
-
     const div = document.createElement("div");
     div.className = "tool-suggestions";
     div.innerHTML = `
       <span class="ts-label">🔧 Recommended Tools:</span>
-      ${tools.map(t => `
-        <a href="/visit/${t._id}" target="_blank" class="tool-chip">${t.name}</a>
-      `).join("")}
+      ${tools.map(t => `<a href="/visit/${t._id}" target="_blank" class="tool-chip">${t.name}</a>`).join("")}
     `;
     return div;
-
   } catch {
     return null;
   }
@@ -697,9 +664,7 @@ async function fetchToolSuggestions(responseText) {
 
 function appendCompareResult(data) {
   const bestOutput = data.responses?.[0]?.output || "";
-  if (bestOutput) {
-    messages.push({ role: "assistant", content: bestOutput });
-  }
+  if (bestOutput) messages.push({ role: "assistant", content: bestOutput });
 
   const chat = document.getElementById("chat");
   const div  = document.createElement("div");
@@ -725,16 +690,15 @@ function appendCompareResult(data) {
 
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
-
   loadHistoryList().catch(() => {});
 }
 
 // ── HISTORY ──
+
 async function loadHistoryList() {
   try {
     const res = await fetch("/history");
     if (!res.ok) return;
-
     const chats = await res.json();
     if (!Array.isArray(chats)) return;
 
@@ -744,27 +708,24 @@ async function loadHistoryList() {
     chats.forEach(c => {
       const div = document.createElement("div");
       div.setAttribute("data-id", c._id);
-
-      if (c._id === currentChatId) {
-        div.classList.add("active-chat");
-      }
+      div.setAttribute("role", "listitem");
+      if (c._id === currentChatId) div.classList.add("active-chat");
 
       div.innerHTML = `
         <span>${c.title || "Chat"}</span>
-        <button onclick="event.stopPropagation(); deleteChat('${c._id}')">🗑️</button>
+        <button onclick="event.stopPropagation(); deleteChat('${c._id}')" aria-label="Delete chat">🗑️</button>
       `;
 
-      div.onclick = () => {
+      div.addEventListener("click", () => {
         document.querySelectorAll("#historyList div").forEach(d => d.classList.remove("active-chat"));
         div.classList.add("active-chat");
         loadChat(c._id);
-      };
+      });
 
       list.appendChild(div);
     });
-
   } catch (err) {
-    console.error("History load failed", err);
+    console.error("History load failed:", err);
   }
 }
 
@@ -808,22 +769,26 @@ async function loadChat(id) {
 
     chat.scrollTop = chat.scrollHeight;
     closeSidebar();
-  } catch {}
+  } catch (err) {
+    console.error("Load chat failed:", err);
+  }
 }
 
 function newChat() {
   currentChatId = null;
   messages = [];
   renderEmptyState();
+  closeSidebar();
 }
 
 // ── EXPORT / SHARE ──
+
 function copyFullConversation() {
   const text = messages
     .filter(m => m.role !== "system")
     .map(m => `${m.role === "user" ? "You" : "Aqua AI"}: ${m.content}`)
     .join("\n\n");
-  navigator.clipboard.writeText(text || "No messages yet.").catch(() => {});
+  navigator.clipboard?.writeText(text || "No messages yet.").catch(() => {});
 }
 
 function exportAsText() {
@@ -843,39 +808,34 @@ function exportAsText() {
 function shareChat() {
   if (currentChatId) {
     const url = window.location.origin + "/history/" + currentChatId;
-    navigator.clipboard.writeText(url).catch(() => {});
+    navigator.clipboard?.writeText(url).catch(() => {});
     alert("Link copied! (Note: recipient must be logged in to view)");
   } else {
-    alert("Save or send a message first to generate a shareable link.");
+    alert("Send a message first to generate a shareable link.");
   }
 }
 
 // ── INPUT EVENTS ──
-document.getElementById("messageInput").addEventListener("keydown", e => {
+
+document.getElementById("messageInput")?.addEventListener("keydown", e => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     send();
   }
 });
 
-// File name preview
-document.getElementById("fileUpload").addEventListener("change", () => {
+document.getElementById("fileUpload")?.addEventListener("change", () => {
   const file = document.getElementById("fileUpload").files[0];
   if (!file) return;
   const tag = document.getElementById("fileNameTag");
   tag.textContent = "📎 " + file.name;
   tag.style.display = "inline-block";
 
-  const chat = document.getElementById("chat");
   document.querySelector(".empty-state")?.remove();
   appendMessage("user", `📎 Attached: **${file.name}**`);
-  chat.scrollTop = chat.scrollHeight;
+  document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
 });
-
-
-// ── INIT ──
-renderEmptyState();
-loadHistoryList();
 </script>
+
 </body>
 </html>
