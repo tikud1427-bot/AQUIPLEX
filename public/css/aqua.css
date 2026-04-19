@@ -1144,3 +1144,8 @@ body.sidebar-open {
   position: relative;
   z-index: 1;
 }
+
+.aqua-sidebar,
+.aqua-sidebar * {
+  pointer-events: auto !important;
+}
