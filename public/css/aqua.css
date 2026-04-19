@@ -1136,26 +1136,3 @@ body.sidebar-open {
   flex-direction: row !important;
 }
 
-/* Better mobile pill buttons */
-@media (max-width: 768px) {
-  .aqua-header-pills {
-    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
-    gap: 6px;
-  }
-
-  .pill-btn {
-    font-size: 0.72rem;
-    padding: 6px 8px;
-  }
-}
-
-/* Improve focus states */
-.aqua-input-row:focus-within {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
-}
-
-/* Smoother scrolling on iOS */
-#chat, #historyList {
-  -webkit-overflow-scrolling: touch;
-}
