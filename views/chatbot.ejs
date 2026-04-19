@@ -153,44 +153,8 @@ function toggleSidebar() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  let isLoadingChat = false;
-  const historyList = document.getElementById("historyList");
-  const overlay     = document.getElementById("sidebarOverlay");
-  const menuBtn     = document.getElementById("menuToggle");
-
-  // Use touchend for instant mobile response, fallback to click
-  const tapEvent = ('ontouchend' in window) ? 'touchend' : 'click';
-
-  historyList.addEventListener(tapEvent, (e) => {
-    e.preventDefault();
-
-    const deleteBtn = e.target.closest(".delete-btn");
-    if (deleteBtn) {
-      const id = deleteBtn.getAttribute("data-delete-id");
-      if (id) deleteChat(id);
-      return;
-    }
-
-    const item = e.target.closest("[data-id]");
-    if (!item) return;
-
-    const id = item.getAttribute("data-id");
-    if (!id) return;
-
-    document.querySelectorAll("#historyList [data-id]").forEach(d => {
-      d.classList.remove("active-chat");
-    });
-    item.classList.add("active-chat");
-
-    if (isLoadingChat) return;
-    isLoadingChat = true;
-
-    loadChat(id).then(() => {
-      isLoadingChat = false;
-    }).catch(() => {
-      isLoadingChat = false;
-    });
-  });
+  const overlay = document.getElementById("sidebarOverlay");
+  const menuBtn = document.getElementById("menuToggle");
 
   menuBtn.addEventListener("click", (e) => {
     e.stopPropagation();
@@ -641,25 +605,31 @@ async function loadHistoryList() {
     list.innerHTML = "";
 
     chats.forEach(c => {
+      const id = c._id;
+
       const div = document.createElement("div");
-      div.setAttribute("data-id", c._id);
+      div.setAttribute("data-id", id);
       div.setAttribute("role", "listitem");
-      if (c._id === currentChatId) div.classList.add("active-chat");
+      if (id === currentChatId) div.classList.add("active-chat");
+
+      // Direct onclick — no event delegation, works on all mobile browsers
+      div.onclick = function() {
+        document.querySelectorAll("#historyList [data-id]").forEach(d => d.classList.remove("active-chat"));
+        div.classList.add("active-chat");
+        loadChat(id);
+      };
 
       const span = document.createElement("span");
       span.textContent = c.title || "Chat";
+      span.style.pointerEvents = "none"; // taps pass through to div.onclick
 
-      // delete button: class="delete-btn", data-delete-id for identification
       const btn = document.createElement("button");
       btn.textContent = "🗑️";
       btn.className = "delete-btn";
-      btn.setAttribute("data-delete-id", c._id);
-      // stopPropagation so the div click doesn't also fire
-      btn.addEventListener("click", (e) => {
+      btn.onclick = function(e) {
         e.stopPropagation();
-        e.preventDefault();
-        deleteChat(c._id);
-      });
+        deleteChat(id);
+      };
 
       div.appendChild(span);
       div.appendChild(btn);
