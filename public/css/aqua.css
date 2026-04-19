@@ -1127,3 +1127,7 @@ body {
   overflow-x: hidden;
   overflow-y: auto;
 }
+
+#historyList div {
+  color: #94a3b8;  /* was inheriting near-invisible dark color */
+}

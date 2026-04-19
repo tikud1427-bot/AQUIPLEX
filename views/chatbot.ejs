@@ -728,6 +728,7 @@ async function loadHistoryList() {
 
       const btn = document.createElement("button");
       btn.textContent = "🗑️";
+      btn.className = "delete-btn";
 
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
