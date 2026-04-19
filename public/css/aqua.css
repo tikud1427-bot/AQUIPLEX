@@ -1067,3 +1067,41 @@ body.sidebar-open {
 .sidebar-overlay.visible {
   pointer-events: auto;
 }
+
+/* =========================
+   MOBILE SIDEBAR CLICK FIX
+   ========================= */
+
+/* Force proper stacking order */
+.aqua-sidebar {
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+.sidebar-overlay {
+  z-index: 9998;
+}
+
+/* Ensure sidebar content is always clickable */
+#historyList {
+  position: relative;
+  z-index: 2;
+}
+
+/* Prevent overlay from blocking sidebar */
+.sidebar-overlay.visible {
+  pointer-events: auto;
+}
+
+.sidebar-overlay {
+  pointer-events: none;
+}
+
+/* Extra safety for mobile browsers (Chrome/Android/iOS) */
+@media (max-width: 768px) {
+  .aqua-sidebar {
+    position: fixed;
+    z-index: 9999;
+    will-change: transform;
+  }
+}
