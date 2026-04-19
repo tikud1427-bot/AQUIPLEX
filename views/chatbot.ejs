@@ -86,7 +86,7 @@
 <body>
 
 <!-- Mobile sidebar overlay -->
-<div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <div class="aqua-shell">
 
@@ -95,7 +95,7 @@
 
     <!-- LEFT SECTION -->
     <div class="aqua-header-left">
-      <button id="menuToggle" onclick="toggleSidebar()">☰</button>
+      <button id="menuToggle">☰</button>
 
       <!-- Back to Home -->
       <a href="/" class="back-home-btn">← Back to Home</a>
@@ -221,32 +221,59 @@ function toggleCompare(btn) {
 }
 
 // ── SIDEBAR ──
-function isMobile() {
-  return window.innerWidth <= 768;
-}
+  let sidebarOpen = false;
 
-function toggleSidebar() {
-  const s = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
-
-  if (isMobile()) {
-    s.classList.toggle("mobile-open");
-    overlay.classList.toggle("visible");
-    document.body.classList.toggle("sidebar-open");
-  } else {
-    s.classList.toggle("collapsed");
+  function isMobile() {
+    return window.matchMedia("(max-width: 768px)").matches;
   }
-}
 
-function closeSidebar() {
-  const s = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
+  function openSidebar() {
+    const s = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
 
-  s.classList.remove("mobile-open");
-  overlay.classList.remove("visible");
-  document.body.classList.remove("sidebar-open");
-}
+    sidebarOpen = true;
 
+    if (isMobile()) {
+      s.classList.add("mobile-open");
+      overlay.classList.add("visible");
+      document.body.classList.add("sidebar-open");
+    } else {
+      s.classList.remove("collapsed");
+    }
+  }
+
+  function closeSidebar() {
+    const s = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+
+    sidebarOpen = false;
+
+    s.classList.remove("mobile-open");
+    overlay.classList.remove("visible");
+    document.body.classList.remove("sidebar-open");
+  }
+
+  function toggleSidebar() {
+    sidebarOpen ? closeSidebar() : openSidebar();
+  }
+
+  // overlay fix
+  document.addEventListener("DOMContentLoaded", () => {
+    const overlay = document.getElementById("sidebarOverlay");
+    const btn = document.getElementById("menuToggle");
+
+    overlay.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      closeSidebar();
+    }, { passive: false });
+
+    overlay.addEventListener("click", closeSidebar);
+
+    btn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      toggleSidebar();
+    }, { passive: false });
+  });
 // ── EMPTY STATE ──
 const STARTERS = [
   { icon:"🚀", text:"Build a startup idea",        prompt:"Help me brainstorm a startup idea with market validation and a go-to-market strategy." },
@@ -832,45 +859,10 @@ document.getElementById("fileUpload").addEventListener("change", () => {
   chat.scrollTop = chat.scrollHeight;
 });
 
-// Handle window resize — if desktop is resized to mobile, close sidebar properly
-window.addEventListener("resize", () => {
-  if (!isMobile()) {
-    const overlay = document.getElementById("sidebarOverlay");
-    overlay.classList.remove("visible");
-    document.body.classList.remove("sidebar-open");
-    const s = document.getElementById("sidebar");
-    s.classList.remove("mobile-open");
-  }
-});
 
 // ── INIT ──
 renderEmptyState();
 loadHistoryList();
-
-  const menuToggle = document.getElementById("menuToggle");
-  const sidebar = document.querySelector(".aqua-sidebar");
-  const overlay = document.querySelector(".sidebar-overlay");
-
-  function isMobile() {
-    return window.innerWidth <= 768;
-  }
-
-  menuToggle.addEventListener("click", () => {
-    if (isMobile()) {
-      sidebar.classList.toggle("mobile-open");
-      overlay.classList.toggle("visible");
-      document.body.classList.toggle("sidebar-open");
-    } else {
-      sidebar.classList.toggle("collapsed");
-    }
-  });
-
-  // Overlay click → close sidebar
-  overlay.addEventListener("click", () => {
-    sidebar.classList.remove("mobile-open");
-    overlay.classList.remove("visible");
-    document.body.classList.remove("sidebar-open");
-  });
 </script>
 </body>
 </html>

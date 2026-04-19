@@ -13,9 +13,13 @@
   padding: 0;
 }
 
-html, body {
+html {
   height: 100%;
-  overflow: hidden; /* keep for layout */
+}
+
+body {
+  height: 100%;
+  overflow: hidden;
 }
 
 /* BUT allow chat to scroll (already done correctly) */
@@ -312,14 +316,19 @@ button:disabled { cursor: not-allowed; }
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0,0,0,0.6);
   backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
   z-index: var(--z-overlay);
-  animation: overlayFade 0.25s ease both;
-}
-.sidebar-overlay.visible { display: block; }
 
+  cursor: pointer;
+  touch-action: manipulation;
+  pointer-events: none;
+}
+
+.sidebar-overlay.visible {
+  display: block;
+  pointer-events: auto;
+}
 /* ============================================================
    MAIN COLUMN — flex column, only #chat scrolls
 ============================================================ */
@@ -1016,7 +1025,7 @@ button:disabled { cursor: not-allowed; }
     z-index: var(--z-sidebar);
     will-change: transform;
     /* Reset desktop collapsed state */
-    overflow: visible;
+    overflow: hidden;
   }
 
   /* Open state — JS adds .mobile-open to .aqua-sidebar */
