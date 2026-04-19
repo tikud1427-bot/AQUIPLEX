@@ -1069,3 +1069,57 @@ body.sidebar-open {
 #historyList div {
   cursor: pointer;
 }
+
+/* =========================
+   MOBILE SIDEBAR FIX (FINAL)
+   ========================= */
+
+/* Sidebar must be ABOVE everything */
+.aqua-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  z-index: 9999; /* highest layer */
+  pointer-events: auto;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Overlay sits BELOW sidebar */
+.sidebar-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+}
+
+/* Overlay only clickable when visible */
+.sidebar-overlay.visible {
+  pointer-events: auto;
+}
+
+/* Prevent overlay from blocking sidebar */
+.aqua-sidebar.mobile-open {
+  pointer-events: auto;
+}
+
+/* Fix tap issues on list items */
+#historyList div {
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  cursor: pointer;
+}
+
+/* Ensure buttons inside list still clickable */
+#historyList button {
+  pointer-events: auto;
+}
+
+/* Just in case any parent blocks clicks */
+.aqua-body,
+.aqua-main {
+  pointer-events: auto;
+}
