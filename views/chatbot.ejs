@@ -34,11 +34,121 @@
       position: relative;
       z-index: 1;
     }
+
+    /* ── SIDEBAR INLINE-STYLE APPROACH ──
+       We bypass ALL class-based CSS conflicts by driving open/close
+       purely through element.style.transform and element.style.width.
+       No .mobile-open, no .collapsed — nothing that styles.css can hijack.
+    ── */
+
+    /* Mobile sidebar: always fixed, starts hidden via transform */
+    @media (max-width: 768px) {
+      #sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        height: 100vh !important;
+        height: 100dvh !important;
+        width: 240px !important;
+        min-width: 240px !important;
+        z-index: 9999 !important;
+        background: #0b1628 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        transition: transform 0.28s cubic-bezier(0.4,0,0.2,1) !important;
+        transform: translateX(-100%) !important;
+        box-shadow: none;
+        border-right: 1px solid #1f2937 !important;
+        pointer-events: auto !important;
+      }
+    }
+
+    /* Desktop sidebar: in-flow, driven by width */
+    @media (min-width: 769px) {
+      #sidebar {
+        position: relative !important;
+        transform: none !important;
+        height: auto !important;
+        z-index: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        transition: width 0.28s ease, min-width 0.28s ease !important;
+        background: #0b1628 !important;
+        border-right: 1px solid #1f2937 !important;
+      }
+    }
+
+    /* Overlay */
+    #sidebarOverlay {
+      position: fixed !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      background: rgba(0,0,0,0.6) !important;
+      z-index: 9998 !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      transition: opacity 0.25s ease, visibility 0.25s ease !important;
+    }
+    #sidebarOverlay.visible {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+
+    /* Close button — guaranteed clickable */
+    #closeSidebarBtn {
+      background: none !important;
+      border: none !important;
+      color: #94a3b8 !important;
+      font-size: 1.1rem !important;
+      width: 36px !important;
+      height: 36px !important;
+      min-width: 36px !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      touch-action: manipulation !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      border-radius: 6px !important;
+      position: relative !important;
+      z-index: 10000 !important;
+      flex-shrink: 0 !important;
+      transform: none !important;
+      box-shadow: none !important;
+      -webkit-tap-highlight-color: rgba(56,189,248,0.2) !important;
+    }
+    #closeSidebarBtn:hover {
+      background: rgba(255,255,255,0.08) !important;
+      color: #e5e7eb !important;
+      transform: none !important;
+    }
+    #closeSidebarBtn:active {
+      background: rgba(255,255,255,0.12) !important;
+      transform: scale(0.9) !important;
+    }
+
+    .sidebar-header {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding: 12px !important;
+      border-bottom: 1px solid #1f2937 !important;
+      flex-shrink: 0 !important;
+      gap: 8px !important;
+    }
   </style>
 </head>
 <body>
 
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <div id="sidebarOverlay"></div>
 
   <div class="aqua-shell">
 
@@ -59,10 +169,10 @@
 
     <div class="aqua-body">
 
-      <aside class="aqua-sidebar" id="sidebar" aria-label="Chat history">
+      <aside id="sidebar" aria-label="Chat history">
         <div class="sidebar-header">
           <button class="new-chat-btn" onclick="newChat()">➕ New Chat</button>
-          <button class="sidebar-toggle-btn" id="closeSidebarBtn" title="Close sidebar" aria-label="Close sidebar" onclick="closeSidebar(); return false;">✕</button>
+          <button id="closeSidebarBtn" title="Close sidebar" aria-label="Close sidebar">✕</button>
         </div>
         <div id="historyList" role="list"></div>
       </aside>
@@ -116,18 +226,24 @@
     return window.matchMedia("(max-width: 768px)").matches;
   }
 
+  // ── SIDEBAR CONTROL ──
+  // Uses inline styles directly — immune to any external CSS class overrides.
+
   function openSidebar() {
     const sidebar = document.getElementById("sidebar");
     const overlay = document.getElementById("sidebarOverlay");
     const toggle  = document.getElementById("menuToggle");
     sidebarOpen = true;
     toggle.setAttribute("aria-expanded", "true");
+
     if (isMobile()) {
-      sidebar.classList.add("mobile-open");
+      sidebar.style.transform = "translateX(0)";
+      sidebar.style.boxShadow = "4px 0 32px rgba(0,0,0,0.5)";
       overlay.classList.add("visible");
-      document.body.classList.add("sidebar-open");
+      document.body.style.overflow = "hidden";
     } else {
-      sidebar.classList.remove("collapsed");
+      sidebar.style.width = "260px";
+      sidebar.style.minWidth = "260px";
     }
   }
 
@@ -137,11 +253,15 @@
     const toggle  = document.getElementById("menuToggle");
     sidebarOpen = false;
     toggle.setAttribute("aria-expanded", "false");
-    sidebar.classList.remove("mobile-open");
-    overlay.classList.remove("visible");
-    document.body.classList.remove("sidebar-open");
-    if (!isMobile()) {
-      sidebar.classList.add("collapsed");
+
+    if (isMobile()) {
+      sidebar.style.transform = "translateX(-100%)";
+      sidebar.style.boxShadow = "none";
+      overlay.classList.remove("visible");
+      document.body.style.overflow = "";
+    } else {
+      sidebar.style.width = "0";
+      sidebar.style.minWidth = "0";
     }
   }
 
@@ -152,17 +272,28 @@
   document.addEventListener("DOMContentLoaded", () => {
     const overlay  = document.getElementById("sidebarOverlay");
     const menuBtn  = document.getElementById("menuToggle");
+    const closeBtn = document.getElementById("closeSidebarBtn");
 
-    menuBtn.addEventListener("click", (e) => {
+    // Direct onclick on close button — most reliable possible approach
+    closeBtn.onclick = function(e) {
+      e.stopPropagation();
+      closeSidebar();
+      return false;
+    };
+
+    menuBtn.onclick = function(e) {
       e.stopPropagation();
       toggleSidebar();
-    });
+      return false;
+    };
 
-    overlay.addEventListener("click", closeSidebar);
-    overlay.addEventListener("touchend", (e) => {
+    overlay.onclick = function() { closeSidebar(); };
+
+    // Touch support for overlay
+    overlay.addEventListener("touchend", function(e) {
       e.preventDefault();
       closeSidebar();
-    });
+    }, { passive: false });
 
     renderEmptyState();
     loadHistoryList();
