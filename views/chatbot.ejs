@@ -1,725 +1,711 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>🌊 Aqua AI</title>
+<!DOCTYPE html>  <html lang="en">  
+<head>  
+  <meta charset="UTF-8" />  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />  
+  <title>🌊 Aqua AI</title>    <link rel="stylesheet" href="/css/aqua.css">    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">  
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>    <style>  
+    body::before {  
+      content: '';  
+      position: fixed;  
+      top: -30%;  
+      left: -20%;  
+      width: 70%;  
+      height: 70%;  
+      background: radial-gradient(ellipse, rgba(0,200,255,0.04) 0%, transparent 70%);  
+      pointer-events: none;  
+      z-index: 0;  
+    }  
+    body::after {  
+      content: '';  
+      position: fixed;  
+      bottom: -20%;  
+      right: -10%;  
+      width: 50%;  
+      height: 50%;  
+      background: radial-gradient(ellipse, rgba(123,94,167,0.05) 0%, transparent 70%);  
+      pointer-events: none;  
+      z-index: 0;  
+    }  
+    .aqua-shell {  
+      position: relative;  
+      z-index: 1;  
+    }  
+  </style>  </head>  <body>    <!-- Overlay OUTSIDE shell, z-index below sidebar -->    <div class="sidebar-overlay" id="sidebarOverlay"></div>    <div class="aqua-shell">  <header class="aqua-header">  
+  <div class="aqua-header-left">  
+    <button id="menuToggle" aria-label="Toggle sidebar" aria-expanded="false">☰</button>  
+    <a href="/" class="back-home-btn">← Home</a>  
+    <span class="aqua-logo">🌊 Aqua AI</span>  
+  </div>  
+  <div class="aqua-header-pills">  
+    <button class="pill-btn active" id="modeChatBtn"   onclick="setMode('chat')">💬 Chat</button>  
+    <button class="pill-btn"        id="modeSearchBtn" onclick="setMode('search')">🌐 Search</button>  
+    <button class="pill-btn"        id="modeImageBtn"  onclick="setMode('image')">🎨 Image</button>  
+    <button class="pill-btn refiner-on" id="refinerBtn" onclick="toggleRefiner(this)">✨ Enhance ON</button>  
+    <button class="pill-btn"        id="compareBtn"    onclick="toggleCompare(this)">⚖️ Compare</button>  
+  </div>  
+</header>  
 
-  <link rel="stylesheet" href="/css/aqua.css">
+<div class="aqua-body">  
 
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- ONE sidebar only, with all content -->  
+  <aside class="aqua-sidebar" id="sidebar" aria-label="Chat history">  
+    <div class="sidebar-header">  
+      <button class="new-chat-btn" onclick="newChat()">➕ New Chat</button>  
+      <button class="sidebar-toggle-btn" id="closeSidebarBtn" title="Close sidebar" aria-label="Close sidebar">✕</button>
+    </div>  
+    <div id="historyList" role="list"></div>  
+  </aside>  
 
-  <style>
-    body::before {
-      content: '';
-      position: fixed;
-      top: -30%;
-      left: -20%;
-      width: 70%;
-      height: 70%;
-      background: radial-gradient(ellipse, rgba(0,200,255,0.04) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-    body::after {
-      content: '';
-      position: fixed;
-      bottom: -20%;
-      right: -10%;
-      width: 50%;
-      height: 50%;
-      background: radial-gradient(ellipse, rgba(123,94,167,0.05) 0%, transparent 70%);
-      pointer-events: none;
-      z-index: 0;
-    }
-    .aqua-shell {
-      position: relative;
-      z-index: 1;
-    }
-  </style>
-</head>
+  <main class="aqua-main">  
+    <div class="export-toolbar">  
+      <button class="export-btn" onclick="copyFullConversation()">📋 Copy Chat</button>  
+      <button class="export-btn" onclick="exportAsText()">⬇ Export .txt</button>  
+      <button class="export-btn" onclick="shareChat()">🔗 Share</button>  
+    </div>  
 
-<body>
+    <div id="chat" role="log" aria-live="polite" aria-label="Chat messages"></div>  
 
-  <!-- Overlay OUTSIDE shell, z-index below sidebar -->
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <div class="aqua-input-wrap">  
+      <div class="aqua-input-row">  
+        <button class="input-icon-btn" onclick="document.getElementById('fileUpload').click()" title="Attach file" aria-label="Attach file">📎</button>  
+        <input type="file" id="fileUpload" aria-label="File upload" />  
+        <textarea  
+          id="messageInput"  
+          rows="1"  
+          placeholder="Ask anything..."  
+          aria-label="Message input"  
+          autocomplete="off"  
+          autocorrect="on"  
+          spellcheck="true"  
+        ></textarea>  
+        <button class="send-btn" id="sendBtn" onclick="send()" aria-label="Send message">Send ↑</button>  
+      </div>  
+      <div class="input-meta">  
+        <span id="modeIndicator">MODE: CHAT</span>  
+        <span id="fileNameTag" class="file-name-tag" style="display:none;" aria-live="polite"></span>  
+      </div>  
+    </div>  
+  </main>  
 
-  <div class="aqua-shell">
+</div>
 
-    <header class="aqua-header">
-      <div class="aqua-header-left">
-        <button id="menuToggle" aria-label="Toggle sidebar" aria-expanded="false">☰</button>
-        <a href="/" class="back-home-btn">← Home</a>
-        <span class="aqua-logo">🌊 Aqua AI</span>
-      </div>
-      <div class="aqua-header-pills">
-        <button class="pill-btn active" id="modeChatBtn"   onclick="setMode('chat')">💬 Chat</button>
-        <button class="pill-btn"        id="modeSearchBtn" onclick="setMode('search')">🌐 Search</button>
-        <button class="pill-btn"        id="modeImageBtn"  onclick="setMode('image')">🎨 Image</button>
-        <button class="pill-btn refiner-on" id="refinerBtn" onclick="toggleRefiner(this)">✨ Enhance ON</button>
-        <button class="pill-btn"        id="compareBtn"    onclick="toggleCompare(this)">⚖️ Compare</button>
-      </div>
-    </header>
+  </div>  <script>  
+marked.setOptions({ gfm: true, breaks: true });  
 
-    <div class="aqua-body">
+let messages      = [];  
+let currentChatId = null;  
+let mode          = "chat";  
+let useRefiner    = true;  
+let useCompare    = false;  
+let isSending     = false;  
+let sidebarOpen   = false;  
 
-      <!-- ONE sidebar only, with all content -->
-      <aside class="aqua-sidebar" id="sidebar" aria-label="Chat history">
-        <div class="sidebar-header">
-          <button class="new-chat-btn" onclick="newChat()">➕ New Chat</button>
-          <button class="sidebar-toggle-btn" onclick="closeSidebar()" title="Close sidebar" aria-label="Close sidebar">✕</button>
-        </div>
-        <div id="historyList" role="list"></div>
-      </aside>
+function isMobile() {  
+  return window.matchMedia("(max-width: 768px)").matches;  
+}  
 
-      <main class="aqua-main">
-        <div class="export-toolbar">
-          <button class="export-btn" onclick="copyFullConversation()">📋 Copy Chat</button>
-          <button class="export-btn" onclick="exportAsText()">⬇ Export .txt</button>
-          <button class="export-btn" onclick="shareChat()">🔗 Share</button>
-        </div>
+function openSidebar() {  
+  const sidebar = document.getElementById("sidebar");  
+  const overlay = document.getElementById("sidebarOverlay");  
+  const toggle  = document.getElementById("menuToggle");  
+  sidebarOpen = true;  
+  toggle.setAttribute("aria-expanded", "true");  
+  if (isMobile()) {  
+    sidebar.classList.add("mobile-open");  
+    overlay.classList.add("visible");  
+    document.body.classList.add("sidebar-open");  
+  } else {  
+    sidebar.classList.remove("collapsed");  
+  }  
+}  
 
-        <div id="chat" role="log" aria-live="polite" aria-label="Chat messages"></div>
+function closeSidebar() {  
+  const sidebar = document.getElementById("sidebar");  
+  const overlay = document.getElementById("sidebarOverlay");  
+  const toggle  = document.getElementById("menuToggle");  
+  sidebarOpen = false;  
+  toggle.setAttribute("aria-expanded", "false");  
+  sidebar.classList.remove("mobile-open");  
+  overlay.classList.remove("visible");  
+  document.body.classList.remove("sidebar-open");  
+}  
 
-        <div class="aqua-input-wrap">
-          <div class="aqua-input-row">
-            <button class="input-icon-btn" onclick="document.getElementById('fileUpload').click()" title="Attach file" aria-label="Attach file">📎</button>
-            <input type="file" id="fileUpload" aria-label="File upload" />
-            <textarea
-              id="messageInput"
-              rows="1"
-              placeholder="Ask anything..."
-              aria-label="Message input"
-              autocomplete="off"
-              autocorrect="on"
-              spellcheck="true"
-            ></textarea>
-            <button class="send-btn" id="sendBtn" onclick="send()" aria-label="Send message">Send ↑</button>
-          </div>
-          <div class="input-meta">
-            <span id="modeIndicator">MODE: CHAT</span>
-            <span id="fileNameTag" class="file-name-tag" style="display:none;" aria-live="polite"></span>
-          </div>
-        </div>
-      </main>
+function toggleSidebar() {  
+  sidebarOpen ? closeSidebar() : openSidebar();  
+}  
 
-    </div>
-  </div>
-
-<script>
-marked.setOptions({ gfm: true, breaks: true });
-
-let messages      = [];
-let currentChatId = null;
-let mode          = "chat";
-let useRefiner    = true;
-let useCompare    = false;
-let isSending     = false;
-let sidebarOpen   = false;
-
-function isMobile() {
-  return window.matchMedia("(max-width: 768px)").matches;
-}
-
-function openSidebar() {
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
-  const toggle  = document.getElementById("menuToggle");
-  sidebarOpen = true;
-  toggle.setAttribute("aria-expanded", "true");
-  if (isMobile()) {
-    sidebar.classList.add("mobile-open");
-    overlay.classList.add("visible");
-    document.body.classList.add("sidebar-open");
-  } else {
-    sidebar.classList.remove("collapsed");
-  }
-}
-
-function closeSidebar() {
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
-  const toggle  = document.getElementById("menuToggle");
-  sidebarOpen = false;
-  toggle.setAttribute("aria-expanded", "false");
-  sidebar.classList.remove("mobile-open");
-  overlay.classList.remove("visible");
-  document.body.classList.remove("sidebar-open");
-}
-
-function toggleSidebar() {
-  sidebarOpen ? closeSidebar() : openSidebar();
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const overlay = document.getElementById("sidebarOverlay");
+document.addEventListener("DOMContentLoaded", () => {  
+  const overlay = document.getElementById("sidebarOverlay");  
   const menuBtn = document.getElementById("menuToggle");
+  const closeBtn = document.getElementById("closeSidebarBtn");
+
+  closeBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeSidebar();
+  });
 
   menuBtn.addEventListener("click", (e) => {
     e.stopPropagation();
-    openSidebar();
+    toggleSidebar();
   });
 
-  overlay.addEventListener("click", closeSidebar);
+  overlay.addEventListener("click", closeSidebar);  
 
-  renderEmptyState();
-  loadHistoryList();
-});
+  renderEmptyState();  
+  loadHistoryList();  
+});  
 
-const placeholders = [
-  "Ask anything...",
-  "Generate a startup idea 💡",
-  "Create viral content 🔥",
-  "Explain like I'm 10 🧒",
-  "Fix my code 🛠️",
-  "Design a product roadmap 📋"
-];
-let phIdx = 0;
-setInterval(() => {
-  phIdx = (phIdx + 1) % placeholders.length;
-  const inp = document.getElementById("messageInput");
-  if (inp && document.activeElement !== inp) {
-    inp.placeholder = placeholders[phIdx];
-  }
-}, 3500);
+const placeholders = [  
+  "Ask anything...",  
+  "Generate a startup idea 💡",  
+  "Create viral content 🔥",  
+  "Explain like I'm 10 🧒",  
+  "Fix my code 🛠️",  
+  "Design a product roadmap 📋"  
+];  
+let phIdx = 0;  
+setInterval(() => {  
+  phIdx = (phIdx + 1) % placeholders.length;  
+  const inp = document.getElementById("messageInput");  
+  if (inp && document.activeElement !== inp) {  
+    inp.placeholder = placeholders[phIdx];  
+  }  
+}, 3500);  
 
-function setMode(m) {
-  mode = m;
-  document.getElementById("modeIndicator").textContent = "MODE: " + m.toUpperCase();
-  ["modeChatBtn", "modeSearchBtn", "modeImageBtn"].forEach(id => {
-    document.getElementById(id)?.classList.remove("active");
-  });
-  const map = { chat: "modeChatBtn", search: "modeSearchBtn", image: "modeImageBtn" };
-  document.getElementById(map[m])?.classList.add("active");
-}
+function setMode(m) {  
+  mode = m;  
+  document.getElementById("modeIndicator").textContent = "MODE: " + m.toUpperCase();  
+  ["modeChatBtn", "modeSearchBtn", "modeImageBtn"].forEach(id => {  
+    document.getElementById(id)?.classList.remove("active");  
+  });  
+  const map = { chat: "modeChatBtn", search: "modeSearchBtn", image: "modeImageBtn" };  
+  document.getElementById(map[m])?.classList.add("active");  
+}  
 
-function autoDetectMode(text) {
-  const t = text.toLowerCase();
-  if (/^(generate|create|draw).*(image|photo|art|logo)/.test(t)) return "image";
-  if (/\b(latest|news|search|find|who is|current|today|2024|2025|2026)\b/.test(t)) return "search";
-  return "chat";
-}
+function autoDetectMode(text) {  
+  const t = text.toLowerCase();  
+  if (/^(generate|create|draw).*(image|photo|art|logo)/.test(t)) return "image";  
+  if (/\b(latest|news|search|find|who is|current|today|2024|2025|2026)\b/.test(t)) return "search";  
+  return "chat";  
+}  
 
-function toggleRefiner(btn) {
-  useRefiner = !useRefiner;
-  btn.textContent = useRefiner ? "✨ Enhance ON" : "✨ Enhance OFF";
-  btn.classList.toggle("refiner-on", useRefiner);
-}
+function toggleRefiner(btn) {  
+  useRefiner = !useRefiner;  
+  btn.textContent = useRefiner ? "✨ Enhance ON" : "✨ Enhance OFF";  
+  btn.classList.toggle("refiner-on", useRefiner);  
+}  
 
-function toggleCompare(btn) {
-  useCompare = !useCompare;
-  btn.classList.toggle("compare-on", useCompare);
-  btn.textContent = useCompare ? "⚖️ Compare ON" : "⚖️ Compare";
-}
+function toggleCompare(btn) {  
+  useCompare = !useCompare;  
+  btn.classList.toggle("compare-on", useCompare);  
+  btn.textContent = useCompare ? "⚖️ Compare ON" : "⚖️ Compare";  
+}  
 
-const STARTERS = [
-  { icon: "🚀", text: "Build a startup idea",     prompt: "Help me brainstorm a startup idea with market validation and a go-to-market strategy." },
-  { icon: "📸", text: "Create Instagram content", prompt: "Create a week of Instagram content ideas for a lifestyle brand with captions and hashtags." },
-  { icon: "🧠", text: "Explain a concept",        prompt: "Explain quantum computing like I'm 10 years old with a fun analogy." },
-  { icon: "🎨", text: "Generate an image",        prompt: "Generate an image of a futuristic city at night with neon lights." },
-  { icon: "🛠️", text: "Fix my code",             prompt: "Here is my code. Please review it, find bugs, and suggest improvements:" },
-  { icon: "📊", text: "Summarize research",       prompt: "Summarize the key findings of the latest research on AI and productivity." },
-];
+const STARTERS = [  
+  { icon: "🚀", text: "Build a startup idea",     prompt: "Help me brainstorm a startup idea with market validation and a go-to-market strategy." },  
+  { icon: "📸", text: "Create Instagram content", prompt: "Create a week of Instagram content ideas for a lifestyle brand with captions and hashtags." },  
+  { icon: "🧠", text: "Explain a concept",        prompt: "Explain quantum computing like I'm 10 years old with a fun analogy." },  
+  { icon: "🎨", text: "Generate an image",        prompt: "Generate an image of a futuristic city at night with neon lights." },  
+  { icon: "🛠️", text: "Fix my code",             prompt: "Here is my code. Please review it, find bugs, and suggest improvements:" },  
+  { icon: "📊", text: "Summarize research",       prompt: "Summarize the key findings of the latest research on AI and productivity." },  
+];  
 
-function renderEmptyState() {
-  const chat = document.getElementById("chat");
-  chat.innerHTML = `
-    <div class="empty-state">
-      <div>
-        <h1>What can I help<br>you build today?</h1>
-        <p style="margin-top:8px;">Powered by Groq · OpenRouter · Gemini</p>
-      </div>
-      <div class="starter-grid">
-        ${STARTERS.map(s => `
-          <button class="starter-card" onclick="sendStarter(${JSON.stringify(s.prompt).replace(/"/g, '&quot;')})">
-            <span class="card-icon">${s.icon}</span>
-            ${s.text}
-          </button>
-        `).join("")}
-      </div>
-    </div>
-  `;
-}
+function renderEmptyState() {  
+  const chat = document.getElementById("chat");  
+  chat.innerHTML = `  
+    <div class="empty-state">  
+      <div>  
+        <h1>What can I help<br>you build today?</h1>  
+        <p style="margin-top:8px;">Powered by Groq · OpenRouter · Gemini</p>  
+      </div>  
+      <div class="starter-grid">  
+        ${STARTERS.map(s => `  
+          <button class="starter-card" onclick="sendStarter(${JSON.stringify(s.prompt).replace(/"/g, '&quot;')})">  
+            <span class="card-icon">${s.icon}</span>  
+            ${s.text}  
+          </button>  
+        `).join("")}  
+      </div>  
+    </div>  
+  `;  
+}  
 
-function sendStarter(prompt) {
-  document.getElementById("messageInput").value = prompt;
-  send();
-}
+function sendStarter(prompt) {  
+  document.getElementById("messageInput").value = prompt;  
+  send();  
+}  
 
-document.getElementById("messageInput")?.addEventListener("input", function () {
-  this.style.height = "auto";
-  this.style.height = Math.min(this.scrollHeight, 140) + "px";
-});
+document.getElementById("messageInput")?.addEventListener("input", function () {  
+  this.style.height = "auto";  
+  this.style.height = Math.min(this.scrollHeight, 140) + "px";  
+});  
 
-function setSending(val) {
-  isSending = val;
-  const btn = document.getElementById("sendBtn");
-  if (!btn) return;
-  btn.disabled = val;
-  btn.textContent = val ? "..." : "Send ↑";
-}
+function setSending(val) {  
+  isSending = val;  
+  const btn = document.getElementById("sendBtn");  
+  if (!btn) return;  
+  btn.disabled = val;  
+  btn.textContent = val ? "..." : "Send ↑";  
+}  
 
-async function send() {
-  if (isSending) return;
+async function send() {  
+  if (isSending) return;  
 
-  const input     = document.getElementById("messageInput");
-  const chat      = document.getElementById("chat");
-  const fileInput = document.getElementById("fileUpload");
+  const input     = document.getElementById("messageInput");  
+  const chat      = document.getElementById("chat");  
+  const fileInput = document.getElementById("fileUpload");  
 
-  const message = input.value.trim();
-  const file    = fileInput.files[0];
+  const message = input.value.trim();  
+  const file    = fileInput.files[0];  
 
-  if (!message && !file) return;
+  if (!message && !file) return;  
 
-  if (message) {
-    const detected = autoDetectMode(message);
-    if (detected !== mode) setMode(detected);
-  }
+  if (message) {  
+    const detected = autoDetectMode(message);  
+    if (detected !== mode) setMode(detected);  
+  }  
 
-  setSending(true);
-  input.value = "";
-  input.style.height = "auto";
+  setSending(true);  
+  input.value = "";  
+  input.style.height = "auto";  
 
-  if (message) messages.push({ role: "user", content: message });
+  if (message) messages.push({ role: "user", content: message });  
 
-  const formData = new FormData();
-  formData.append("message", message);
-  formData.append("mode",    mode);
-  formData.append("chatId",  currentChatId || "");
-  formData.append("history", JSON.stringify(messages.slice(-10)));
-  formData.append("refiner", useRefiner ? "true" : "false");
-  formData.append("stream",  (mode === "chat" && !useCompare) ? "true" : "false");
-  if (file) formData.append("file", file);
+  const formData = new FormData();  
+  formData.append("message", message);  
+  formData.append("mode",    mode);  
+  formData.append("chatId",  currentChatId || "");  
+  formData.append("history", JSON.stringify(messages.slice(-10)));  
+  formData.append("refiner", useRefiner ? "true" : "false");  
+  formData.append("stream",  (mode === "chat" && !useCompare) ? "true" : "false");  
+  if (file) formData.append("file", file);  
 
-  document.querySelector(".empty-state")?.remove();
-  if (message) appendMessage("user", message);
-  chat.scrollTop = chat.scrollHeight;
+  document.querySelector(".empty-state")?.remove();  
+  if (message) appendMessage("user", message);  
+  chat.scrollTop = chat.scrollHeight;  
 
-  const loading = document.createElement("div");
-  loading.className = "msg bot";
-  loading.id = "loading";
-  loading.innerHTML = `
-    <div class="msg-avatar">🌊</div>
-    <div class="msg-bubble">
-      <div class="typing-indicator">
-        <span></span><span></span><span></span>
-        <span class="think-text">Aqua is thinking...</span>
-      </div>
-    </div>
-  `;
-  chat.appendChild(loading);
-  chat.scrollTop = chat.scrollHeight;
+  const loading = document.createElement("div");  
+  loading.className = "msg bot";  
+  loading.id = "loading";  
+  loading.innerHTML = `  
+    <div class="msg-avatar">🌊</div>  
+    <div class="msg-bubble">  
+      <div class="typing-indicator">  
+        <span></span><span></span><span></span>  
+        <span class="think-text">Aqua is thinking...</span>  
+      </div>  
+    </div>  
+  `;  
+  chat.appendChild(loading);  
+  chat.scrollTop = chat.scrollHeight;  
 
-  try {
-    if (useCompare) {
-      const res = await fetch("/multi-generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: message, messages: messages.slice(-10) })
-      });
-      if (!res.ok) throw new Error("Compare request failed: " + res.status);
-      const data = await res.json();
-      document.getElementById("loading")?.remove();
-      appendCompareResult(data);
-      setSending(false);
-      fileInput.value = "";
-      return;
-    }
+  try {  
+    if (useCompare) {  
+      const res = await fetch("/multi-generate", {  
+        method: "POST",  
+        headers: { "Content-Type": "application/json" },  
+        body: JSON.stringify({ prompt: message, messages: messages.slice(-10) })  
+      });  
+      if (!res.ok) throw new Error("Compare request failed: " + res.status);  
+      const data = await res.json();  
+      document.getElementById("loading")?.remove();  
+      appendCompareResult(data);  
+      setSending(false);  
+      fileInput.value = "";  
+      return;  
+    }  
 
-    const res = await fetch("/chat", { method: "POST", body: formData });
-    document.getElementById("loading")?.remove();
-    if (!res.ok) throw new Error("Chat request failed: " + res.status);
+    const res = await fetch("/chat", { method: "POST", body: formData });  
+    document.getElementById("loading")?.remove();  
+    if (!res.ok) throw new Error("Chat request failed: " + res.status);  
 
-    if (mode === "image") {
-      const data = await res.json();
-      const div  = createBotBubble();
-      const imgHtml = data.image
-        ? `<img src="${data.image}" alt="Generated image" style="max-width:100%;border-radius:10px;margin-top:10px;" onerror="this.style.display='none'" />
-           <div class="msg-actions">
-             <a href="${data.image}" target="_blank" class="msg-action-btn">⬇ Download</a>
-           </div>`
-        : "";
-      div.querySelector(".msg-bubble").innerHTML = `
-        <div class="markdown-body">${marked.parse(data.reply || "Image generated.")}</div>
-        ${imgHtml}
-      `;
-      chat.appendChild(div);
-      chat.scrollTop = chat.scrollHeight;
-      messages.push({ role: "assistant", content: data.reply || "Image generated." });
-      setSending(false);
-      fileInput.value = "";
-      document.getElementById("fileNameTag").style.display = "none";
-      return;
-    }
+    if (mode === "image") {  
+      const data = await res.json();  
+      const div  = createBotBubble();  
+      const imgHtml = data.image  
+        ? `<img src="${data.image}" alt="Generated image" style="max-width:100%;border-radius:10px;margin-top:10px;" onerror="this.style.display='none'" />  
+           <div class="msg-actions">  
+             <a href="${data.image}" target="_blank" class="msg-action-btn">⬇ Download</a>  
+           </div>`  
+        : "";  
+      div.querySelector(".msg-bubble").innerHTML = `  
+        <div class="markdown-body">${marked.parse(data.reply || "Image generated.")}</div>  
+        ${imgHtml}  
+      `;  
+      chat.appendChild(div);  
+      chat.scrollTop = chat.scrollHeight;  
+      messages.push({ role: "assistant", content: data.reply || "Image generated." });  
+      setSending(false);  
+      fileInput.value = "";  
+      document.getElementById("fileNameTag").style.display = "none";  
+      return;  
+    }  
 
-    if (mode !== "chat") {
-      const data = await res.json();
-      const replyContent = data.reply || "⚠️ No response received.";
-      const div = createBotBubble();
-      div.querySelector(".msg-bubble").innerHTML = `
-        <div class="markdown-body">${marked.parse(replyContent)}</div>
-        ${buildActions(replyContent)}
-      `;
-      chat.appendChild(div);
-      messages.push({ role: "assistant", content: replyContent });
-      if (data.chatId) currentChatId = data.chatId;
-      chat.scrollTop = chat.scrollHeight;
-      setSending(false);
-      fileInput.value = "";
-      document.getElementById("fileNameTag").style.display = "none";
-      await loadHistoryList();
-      return;
-    }
+    if (mode !== "chat") {  
+      const data = await res.json();  
+      const replyContent = data.reply || "⚠️ No response received.";  
+      const div = createBotBubble();  
+      div.querySelector(".msg-bubble").innerHTML = `  
+        <div class="markdown-body">${marked.parse(replyContent)}</div>  
+        ${buildActions(replyContent)}  
+      `;  
+      chat.appendChild(div);  
+      messages.push({ role: "assistant", content: replyContent });  
+      if (data.chatId) currentChatId = data.chatId;  
+      chat.scrollTop = chat.scrollHeight;  
+      setSending(false);  
+      fileInput.value = "";  
+      document.getElementById("fileNameTag").style.display = "none";  
+      await loadHistoryList();  
+      return;  
+    }  
 
-    const contentType = res.headers.get("content-type") || "";
-    if (!contentType.includes("text/event-stream")) {
-      const data = await res.json();
-      const replyContent = data.reply || "⚠️ No response received.";
-      const div = createBotBubble();
-      div.querySelector(".msg-bubble").innerHTML = `
-        <div class="markdown-body">${marked.parse(replyContent)}</div>
-        ${buildActions(replyContent)}
-      `;
-      chat.appendChild(div);
-      messages.push({ role: "assistant", content: replyContent });
-      if (data.chatId) currentChatId = data.chatId;
-      chat.scrollTop = chat.scrollHeight;
-      setSending(false);
-      fileInput.value = "";
-      document.getElementById("fileNameTag").style.display = "none";
-      await loadHistoryList();
-      return;
-    }
+    const contentType = res.headers.get("content-type") || "";  
+    if (!contentType.includes("text/event-stream")) {  
+      const data = await res.json();  
+      const replyContent = data.reply || "⚠️ No response received.";  
+      const div = createBotBubble();  
+      div.querySelector(".msg-bubble").innerHTML = `  
+        <div class="markdown-body">${marked.parse(replyContent)}</div>  
+        ${buildActions(replyContent)}  
+      `;  
+      chat.appendChild(div);  
+      messages.push({ role: "assistant", content: replyContent });  
+      if (data.chatId) currentChatId = data.chatId;  
+      chat.scrollTop = chat.scrollHeight;  
+      setSending(false);  
+      fileInput.value = "";  
+      document.getElementById("fileNameTag").style.display = "none";  
+      await loadHistoryList();  
+      return;  
+    }  
 
-    const reader  = res.body.getReader();
-    const decoder = new TextDecoder("utf-8", { fatal: false });
-    const botDiv  = createBotBubble();
-    const bubble  = botDiv.querySelector(".msg-bubble");
-    const textDiv = document.createElement("div");
-    textDiv.className = "markdown-body";
-    bubble.appendChild(textDiv);
-    chat.appendChild(botDiv);
+    const reader  = res.body.getReader();  
+    const decoder = new TextDecoder("utf-8", { fatal: false });  
+    const botDiv  = createBotBubble();  
+    const bubble  = botDiv.querySelector(".msg-bubble");  
+    const textDiv = document.createElement("div");  
+    textDiv.className = "markdown-body";  
+    bubble.appendChild(textDiv);  
+    chat.appendChild(botDiv);  
 
-    const cursorEl = document.createElement("span");
-    cursorEl.className = "stream-cursor";
-    cursorEl.textContent = "▌";
-    textDiv.appendChild(cursorEl);
+    const cursorEl = document.createElement("span");  
+    cursorEl.className = "stream-cursor";  
+    cursorEl.textContent = "▌";  
+    textDiv.appendChild(cursorEl);  
 
-    let fullText   = "";
-    let buffer     = "";
-    let streamDone = false;
+    let fullText   = "";  
+    let buffer     = "";  
+    let streamDone = false;  
 
-    while (!streamDone) {
-      let done, value;
-      try { ({ done, value } = await reader.read()); } catch { break; }
-      if (done) break;
+    while (!streamDone) {  
+      let done, value;  
+      try { ({ done, value } = await reader.read()); } catch { break; }  
+      if (done) break;  
 
-      buffer += decoder.decode(value, { stream: true });
-      const parts = buffer.split("\n\n");
-      buffer = parts.pop() || "";
+      buffer += decoder.decode(value, { stream: true });  
+      const parts = buffer.split("\n\n");  
+      buffer = parts.pop() || "";  
 
-      for (const part of parts) {
-        if (streamDone) break;
-        const lines = part.split("\n");
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith("data:")) continue;
-          const payload = trimmed.slice(5).trim();
-          if (!payload) continue;
-          if (payload === "[DONE]") { streamDone = true; break; }
+      for (const part of parts) {  
+        if (streamDone) break;  
+        const lines = part.split("\n");  
+        for (const line of lines) {  
+          const trimmed = line.trim();  
+          if (!trimmed.startsWith("data:")) continue;  
+          const payload = trimmed.slice(5).trim();  
+          if (!payload) continue;  
+          if (payload === "[DONE]") { streamDone = true; break; }  
 
-          let parsed;
-          try { parsed = JSON.parse(payload); } catch { continue; }
+          let parsed;  
+          try { parsed = JSON.parse(payload); } catch { continue; }  
 
-          if (parsed && typeof parsed === "object" && parsed.refined) {
-            let refBox = bubble.querySelector(".refined-box");
-            if (!refBox) {
-              refBox = document.createElement("div");
-              refBox.className = "refined-box";
-              bubble.insertBefore(refBox, textDiv);
-            }
-            refBox.innerHTML = `✨ <b>Optimized prompt:</b> ${parsed.refined}`;
-            continue;
-          }
+          if (parsed && typeof parsed === "object" && parsed.refined) {  
+            let refBox = bubble.querySelector(".refined-box");  
+            if (!refBox) {  
+              refBox = document.createElement("div");  
+              refBox.className = "refined-box";  
+              bubble.insertBefore(refBox, textDiv);  
+            }  
+            refBox.innerHTML = `✨ <b>Optimized prompt:</b> ${parsed.refined}`;  
+            continue;  
+          }  
 
-          if (typeof parsed === "string" && parsed) {
-            fullText += parsed;
-            textDiv.innerHTML = marked.parse(fullText);
-            textDiv.appendChild(cursorEl);
-            chat.scrollTop = chat.scrollHeight;
-          }
-        }
-      }
-    }
+          if (typeof parsed === "string" && parsed) {  
+            fullText += parsed;  
+            textDiv.innerHTML = marked.parse(fullText);  
+            textDiv.appendChild(cursorEl);  
+            chat.scrollTop = chat.scrollHeight;  
+          }  
+        }  
+      }  
+    }  
 
-    cursorEl.remove();
-    textDiv.innerHTML = marked.parse(fullText.trim() || "⚠️ Empty response received.");
-    fetchToolSuggestions(fullText).then(toolSugg => {
-      if (toolSugg) bubble.appendChild(toolSugg);
-    });
-    bubble.insertAdjacentHTML("beforeend", buildActions(fullText));
-    messages.push({ role: "assistant", content: fullText });
-    chat.scrollTop = chat.scrollHeight;
-    await loadHistoryList();
+    cursorEl.remove();  
+    textDiv.innerHTML = marked.parse(fullText.trim() || "⚠️ Empty response received.");  
+    fetchToolSuggestions(fullText).then(toolSugg => {  
+      if (toolSugg) bubble.appendChild(toolSugg);  
+    });  
+    bubble.insertAdjacentHTML("beforeend", buildActions(fullText));  
+    messages.push({ role: "assistant", content: fullText });  
+    chat.scrollTop = chat.scrollHeight;  
+    await loadHistoryList();  
 
-  } catch (err) {
-    console.error("Send error:", err);
-    document.getElementById("loading")?.remove();
-    const div = createBotBubble();
-    div.querySelector(".msg-bubble").innerHTML = `<div class="markdown-body">⚠️ Something went wrong. Please try again.</div>`;
-    chat.appendChild(div);
-    if (messages.length && messages[messages.length - 1].role === "user") {
-      messages.pop();
-    }
-  } finally {
-    setSending(false);
-    document.getElementById("fileUpload").value = "";
-    document.getElementById("fileNameTag").style.display = "none";
-    document.getElementById("messageInput")?.focus();
-  }
-}
+  } catch (err) {  
+    console.error("Send error:", err);  
+    document.getElementById("loading")?.remove();  
+    const div = createBotBubble();  
+    div.querySelector(".msg-bubble").innerHTML = `<div class="markdown-body">⚠️ Something went wrong. Please try again.</div>`;  
+    chat.appendChild(div);  
+    if (messages.length && messages[messages.length - 1].role === "user") {  
+      messages.pop();  
+    }  
+  } finally {  
+    setSending(false);  
+    document.getElementById("fileUpload").value = "";  
+    document.getElementById("fileNameTag").style.display = "none";  
+    document.getElementById("messageInput")?.focus();  
+  }  
+}  
 
-function createBotBubble() {
-  const div = document.createElement("div");
-  div.className = "msg bot";
-  div.innerHTML = `<div class="msg-avatar">🌊</div><div class="msg-bubble"></div>`;
-  return div;
-}
+function createBotBubble() {  
+  const div = document.createElement("div");  
+  div.className = "msg bot";  
+  div.innerHTML = `<div class="msg-avatar">🌊</div><div class="msg-bubble"></div>`;  
+  return div;  
+}  
 
-function appendMessage(role, content) {
-  const chat = document.getElementById("chat");
-  const div  = document.createElement("div");
-  div.className = `msg ${role}`;
-  const safeContent = (content || "").toString();
-  div.innerHTML = `
-    <div class="msg-avatar">${role === "user" ? "👤" : "🌊"}</div>
-    <div class="msg-bubble">
-      <div class="markdown-body">${marked.parse(safeContent)}</div>
-    </div>
-  `;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-}
+function appendMessage(role, content) {  
+  const chat = document.getElementById("chat");  
+  const div  = document.createElement("div");  
+  div.className = `msg ${role}`;  
+  const safeContent = (content || "").toString();  
+  div.innerHTML = `  
+    <div class="msg-avatar">${role === "user" ? "👤" : "🌊"}</div>  
+    <div class="msg-bubble">  
+      <div class="markdown-body">${marked.parse(safeContent)}</div>  
+    </div>  
+  `;  
+  chat.appendChild(div);  
+  chat.scrollTop = chat.scrollHeight;  
+}  
 
-function buildActions(text) {
-  const id = "act_" + Math.random().toString(36).slice(2, 9);
-  window.__actionTexts = window.__actionTexts || {};
-  window.__actionTexts[id] = text;
-  return `
-    <div class="msg-actions">
-      <button class="msg-action-btn" onclick="copyText('${id}')">📋 Copy</button>
-      <button class="msg-action-btn" onclick="regenerate()">🔄 Regenerate</button>
-      <button class="msg-action-btn" onclick="improveResponse('${id}')">✨ Improve</button>
-      <button class="msg-action-btn" onclick="addToWorkspace()">➕ Workspace</button>
-    </div>
-  `;
-}
+function buildActions(text) {  
+  const id = "act_" + Math.random().toString(36).slice(2, 9);  
+  window.__actionTexts = window.__actionTexts || {};  
+  window.__actionTexts[id] = text;  
+  return `  
+    <div class="msg-actions">  
+      <button class="msg-action-btn" onclick="copyText('${id}')">📋 Copy</button>  
+      <button class="msg-action-btn" onclick="regenerate()">🔄 Regenerate</button>  
+      <button class="msg-action-btn" onclick="improveResponse('${id}')">✨ Improve</button>  
+      <button class="msg-action-btn" onclick="addToWorkspace()">➕ Workspace</button>  
+    </div>  
+  `;  
+}  
 
-function copyText(id) {
-  const text = (window.__actionTexts || {})[id] || "";
-  navigator.clipboard?.writeText(text).catch(() => {});
-}
+function copyText(id) {  
+  const text = (window.__actionTexts || {})[id] || "";  
+  navigator.clipboard?.writeText(text).catch(() => {});  
+}  
 
-function regenerate() {
-  if (isSending) return;
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i].role === "user") {
-      const lastUser = messages[i];
-      messages = messages.slice(0, i + 1);
-      document.getElementById("messageInput").value = lastUser.content;
-      const chat = document.getElementById("chat");
-      const botMsgs = chat.querySelectorAll(".msg.bot");
-      botMsgs[botMsgs.length - 1]?.remove();
-      send();
-      return;
-    }
-  }
-}
+function regenerate() {  
+  if (isSending) return;  
+  for (let i = messages.length - 1; i >= 0; i--) {  
+    if (messages[i].role === "user") {  
+      const lastUser = messages[i];  
+      messages = messages.slice(0, i + 1);  
+      document.getElementById("messageInput").value = lastUser.content;  
+      const chat = document.getElementById("chat");  
+      const botMsgs = chat.querySelectorAll(".msg.bot");  
+      botMsgs[botMsgs.length - 1]?.remove();  
+      send();  
+      return;  
+    }  
+  }  
+}  
 
-function improveResponse(id) {
-  if (isSending) return;
-  const text = (window.__actionTexts || {})[id] || "";
-  document.getElementById("messageInput").value = `Improve and expand on this response:\n\n${text}`;
-  send();
-}
+function improveResponse(id) {  
+  if (isSending) return;  
+  const text = (window.__actionTexts || {})[id] || "";  
+  document.getElementById("messageInput").value = `Improve and expand on this response:\n\n${text}`;  
+  send();  
+}  
 
-function addToWorkspace() {
-  alert("Content noted! Add specific tools from the 🔧 Tool Suggestions above to your Workspace.");
-}
+function addToWorkspace() {  
+  alert("Content noted! Add specific tools from the 🔧 Tool Suggestions above to your Workspace.");  
+}  
 
-async function fetchToolSuggestions(responseText) {
-  try {
-    const q = encodeURIComponent((responseText || "").slice(0, 60));
-    const res = await fetch("/api/tools/suggest?q=" + q);
-    if (!res.ok) return null;
-    const tools = await res.json();
-    if (!Array.isArray(tools) || !tools.length) return null;
-    const div = document.createElement("div");
-    div.className = "tool-suggestions";
-    div.innerHTML = `
-      <span class="ts-label">🔧 Recommended Tools:</span>
-      ${tools.map(t => `<a href="/visit/${t._id}" target="_blank" class="tool-chip">${t.name}</a>`).join("")}
-    `;
-    return div;
-  } catch {
-    return null;
-  }
-}
+async function fetchToolSuggestions(responseText) {  
+  try {  
+    const q = encodeURIComponent((responseText || "").slice(0, 60));  
+    const res = await fetch("/api/tools/suggest?q=" + q);  
+    if (!res.ok) return null;  
+    const tools = await res.json();  
+    if (!Array.isArray(tools) || !tools.length) return null;  
+    const div = document.createElement("div");  
+    div.className = "tool-suggestions";  
+    div.innerHTML = `  
+      <span class="ts-label">🔧 Recommended Tools:</span>  
+      ${tools.map(t => `<a href="/visit/${t._id}" target="_blank" class="tool-chip">${t.name}</a>`).join("")}  
+    `;  
+    return div;  
+  } catch {  
+    return null;  
+  }  
+}  
 
-function appendCompareResult(data) {
-  const bestOutput = data.responses?.[0]?.output || "";
-  if (bestOutput) messages.push({ role: "assistant", content: bestOutput });
-  const chat = document.getElementById("chat");
-  const div  = document.createElement("div");
-  div.className = "msg bot";
-  div.style.maxWidth = "100%";
-  const responsesHtml = (data.responses || []).map(r => `
-    <div class="compare-card">
-      <div class="model-name">${r.model || "Model"}</div>
-      <div class="markdown-body">${marked.parse(r.output || "")}</div>
-    </div>
-  `).join("");
-  div.innerHTML = `
-    <div class="msg-avatar">⚖️</div>
-    <div class="msg-bubble" style="flex:1;">
-      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">
-        ⭐ Recommended: <b style="color:var(--accent)">${data.recommended || "—"}</b>
-      </div>
-      <div class="compare-grid">${responsesHtml}</div>
-    </div>
-  `;
-  chat.appendChild(div);
-  chat.scrollTop = chat.scrollHeight;
-  loadHistoryList().catch(() => {});
-}
+function appendCompareResult(data) {  
+  const bestOutput = data.responses?.[0]?.output || "";  
+  if (bestOutput) messages.push({ role: "assistant", content: bestOutput });  
+  const chat = document.getElementById("chat");  
+  const div  = document.createElement("div");  
+  div.className = "msg bot";  
+  div.style.maxWidth = "100%";  
+  const responsesHtml = (data.responses || []).map(r => `  
+    <div class="compare-card">  
+      <div class="model-name">${r.model || "Model"}</div>  
+      <div class="markdown-body">${marked.parse(r.output || "")}</div>  
+    </div>  
+  `).join("");  
+  div.innerHTML = `  
+    <div class="msg-avatar">⚖️</div>  
+    <div class="msg-bubble" style="flex:1;">  
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:8px;">  
+        ⭐ Recommended: <b style="color:var(--accent)">${data.recommended || "—"}</b>  
+      </div>  
+      <div class="compare-grid">${responsesHtml}</div>  
+    </div>  
+  `;  
+  chat.appendChild(div);  
+  chat.scrollTop = chat.scrollHeight;  
+  loadHistoryList().catch(() => {});  
+}  
 
-  async function loadHistoryList() {
-    try {
-      const res = await fetch("/history");
-      if (!res.ok) return;
-      const chats = await res.json();
-      if (!Array.isArray(chats)) return;
+  async function loadHistoryList() {  
+    try {  
+      const res = await fetch("/history");  
+      if (!res.ok) return;  
+      const chats = await res.json();  
+      if (!Array.isArray(chats)) return;  
 
-      const list = document.getElementById("historyList");
-      list.innerHTML = "";
+      const list = document.getElementById("historyList");  
+      list.innerHTML = "";  
 
-      chats.forEach(c => {
-        const div = document.createElement("div");
-        div.setAttribute("data-id", c._id);
-        div.innerHTML = `
-          <span>${c.title || "Chat"}</span>
-          <button onclick="event.stopPropagation(); deleteChat('${c._id}')">🗑️</button>
-        `;
-        div.onclick = () => loadChat(c._id);
-        list.appendChild(div);
-      });
-    } catch(err) {
-      console.error("History load failed:", err);
-    }
-  }
-async function deleteChat(id) {
-  if (!confirm("Delete this chat?")) return;
-  try {
-    await fetch("/history/" + id, { method: "DELETE" });
-    document.querySelector(`[data-id='${id}']`)?.remove();
-    if (currentChatId === id) {
-      currentChatId = null;
-      messages = [];
-      renderEmptyState();
-    }
-  } catch {}
-}
+      chats.forEach(c => {  
+        const div = document.createElement("div");  
+        div.setAttribute("data-id", c._id);  
+        div.innerHTML = `  
+          <span>${c.title || "Chat"}</span>  
+          <button onclick="event.stopPropagation(); deleteChat('${c._id}')">🗑️</button>  
+        `;  
+        div.onclick = () => loadChat(c._id);  
+        list.appendChild(div);  
+      });  
+    } catch(err) {  
+      console.error("History load failed:", err);  
+    }  
+  }  
+async function deleteChat(id) {  
+  if (!confirm("Delete this chat?")) return;  
+  try {  
+    await fetch("/history/" + id, { method: "DELETE" });  
+    document.querySelector(`[data-id='${id}']`)?.remove();  
+    if (currentChatId === id) {  
+      currentChatId = null;  
+      messages = [];  
+      renderEmptyState();  
+    }  
+  } catch {}  
+}  
 
-async function loadChat(id) {
-  try {
-    const res  = await fetch("/history/" + id);
-    if (!res.ok) return;
-    const data = await res.json();
-    if (!data) return;
+async function loadChat(id) {  
+  try {  
+    const res  = await fetch("/history/" + id);  
+    if (!res.ok) return;  
+    const data = await res.json();  
+    if (!data) return;  
 
-    currentChatId = id;
-    messages = data.messages || [];
+    currentChatId = id;  
+    messages = data.messages || [];  
 
-    const chat = document.getElementById("chat");
-    chat.innerHTML = "";
+    const chat = document.getElementById("chat");  
+    chat.innerHTML = "";  
 
-    messages.forEach(m => {
-      if (m.role === "system") return;
-      appendMessage(m.role, m.content);
-    });
+    messages.forEach(m => {  
+      if (m.role === "system") return;  
+      appendMessage(m.role, m.content);  
+    });  
 
-    const lastBotContent = [...messages].reverse().find(m => m.role === "assistant")?.content;
-    if (lastBotContent) {
-      const botMsgs = chat.querySelectorAll(".msg.bot");
-      const lastBot = botMsgs[botMsgs.length - 1];
-      lastBot?.querySelector(".msg-bubble")?.insertAdjacentHTML("beforeend", buildActions(lastBotContent));
-    }
+    const lastBotContent = [...messages].reverse().find(m => m.role === "assistant")?.content;  
+    if (lastBotContent) {  
+      const botMsgs = chat.querySelectorAll(".msg.bot");  
+      const lastBot = botMsgs[botMsgs.length - 1];  
+      lastBot?.querySelector(".msg-bubble")?.insertAdjacentHTML("beforeend", buildActions(lastBotContent));  
+    }  
 
-    chat.scrollTop = chat.scrollHeight;
-    closeSidebar();
-  } catch (err) {
-    console.error("Load chat failed:", err);
-  }
-}
+    chat.scrollTop = chat.scrollHeight;  
+    closeSidebar();  
+  } catch (err) {  
+    console.error("Load chat failed:", err);  
+  }  
+}  
 
-function newChat() {
-  currentChatId = null;
-  messages = [];
-  renderEmptyState();
-  closeSidebar();
-}
+function newChat() {  
+  currentChatId = null;  
+  messages = [];  
+  renderEmptyState();  
+  closeSidebar();  
+}  
 
-function copyFullConversation() {
-  const text = messages
-    .filter(m => m.role !== "system")
-    .map(m => `${m.role === "user" ? "You" : "Aqua AI"}: ${m.content}`)
-    .join("\n\n");
-  navigator.clipboard?.writeText(text || "No messages yet.").catch(() => {});
-}
+function copyFullConversation() {  
+  const text = messages  
+    .filter(m => m.role !== "system")  
+    .map(m => `${m.role === "user" ? "You" : "Aqua AI"}: ${m.content}`)  
+    .join("\n\n");  
+  navigator.clipboard?.writeText(text || "No messages yet.").catch(() => {});  
+}  
 
-function exportAsText() {
-  const text = messages
-    .filter(m => m.role !== "system")
-    .map(m => `${m.role === "user" ? "You" : "Aqua AI"}: ${m.content}`)
-    .join("\n\n");
-  const blob = new Blob([text], { type: "text/plain" });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement("a");
-  a.href = url;
-  a.download = "aqua-chat.txt";
-  a.click();
-  URL.revokeObjectURL(url);
-}
+function exportAsText() {  
+  const text = messages  
+    .filter(m => m.role !== "system")  
+    .map(m => `${m.role === "user" ? "You" : "Aqua AI"}: ${m.content}`)  
+    .join("\n\n");  
+  const blob = new Blob([text], { type: "text/plain" });  
+  const url  = URL.createObjectURL(blob);  
+  const a    = document.createElement("a");  
+  a.href = url;  
+  a.download = "aqua-chat.txt";  
+  a.click();  
+  URL.revokeObjectURL(url);  
+}  
 
-function shareChat() {
-  if (currentChatId) {
-    const url = window.location.origin + "/history/" + currentChatId;
-    navigator.clipboard?.writeText(url).catch(() => {});
-    alert("Link copied! (Note: recipient must be logged in to view)");
-  } else {
-    alert("Send a message first to generate a shareable link.");
-  }
-}
+function shareChat() {  
+  if (currentChatId) {  
+    const url = window.location.origin + "/history/" + currentChatId;  
+    navigator.clipboard?.writeText(url).catch(() => {});  
+    alert("Link copied! (Note: recipient must be logged in to view)");  
+  } else {  
+    alert("Send a message first to generate a shareable link.");  
+  }  
+}  
 
-document.getElementById("messageInput")?.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    send();
-  }
-});
+document.getElementById("messageInput")?.addEventListener("keydown", e => {  
+  if (e.key === "Enter" && !e.shiftKey) {  
+    e.preventDefault();  
+    send();  
+  }  
+});  
 
-document.getElementById("fileUpload")?.addEventListener("change", () => {
-  const file = document.getElementById("fileUpload").files[0];
-  if (!file) return;
-  const tag = document.getElementById("fileNameTag");
-  tag.textContent = "📎 " + file.name;
-  tag.style.display = "inline-block";
-  document.querySelector(".empty-state")?.remove();
-  appendMessage("user", `📎 Attached: **${file.name}**`);
-  document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
-});
-</script>
-
-</body>
-</html>
+document.getElementById("fileUpload")?.addEventListener("change", () => {  
+  const file = document.getElementById("fileUpload").files[0];  
+  if (!file) return;  
+  const tag = document.getElementById("fileNameTag");  
+  tag.textContent = "📎 " + file.name;  
+  tag.style.display = "inline-block";  
+  document.querySelector(".empty-state")?.remove();  
+  appendMessage("user", `📎 Attached: **${file.name}**`);  
+  document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;  
+});  
+</script>  </body>  
+</html>  
