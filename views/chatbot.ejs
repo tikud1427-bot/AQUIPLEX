@@ -62,7 +62,7 @@
       <aside class="aqua-sidebar" id="sidebar" aria-label="Chat history">
         <div class="sidebar-header">
           <button class="new-chat-btn" onclick="newChat()">➕ New Chat</button>
-          <button class="sidebar-toggle-btn" id="closeSidebarBtn" title="Close sidebar" aria-label="Close sidebar">✕</button>
+          <button class="sidebar-toggle-btn" id="closeSidebarBtn" title="Close sidebar" aria-label="Close sidebar" onclick="closeSidebar(); return false;">✕</button>
         </div>
         <div id="historyList" role="list"></div>
       </aside>
@@ -152,19 +152,6 @@
   document.addEventListener("DOMContentLoaded", () => {
     const overlay  = document.getElementById("sidebarOverlay");
     const menuBtn  = document.getElementById("menuToggle");
-    const closeBtn = document.getElementById("closeSidebarBtn");
-
-    closeBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      closeSidebar();
-    });
-
-    closeBtn.addEventListener("touchend", (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      closeSidebar();
-    });
 
     menuBtn.addEventListener("click", (e) => {
       e.stopPropagation();
