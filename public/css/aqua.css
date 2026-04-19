@@ -1105,3 +1105,42 @@ body.sidebar-open {
     will-change: transform;
   }
 }
+
+
+
+/* =========================
+   FINAL MOBILE CLICK FIX
+   ========================= */
+
+/* Remove stacking trap */
+.aqua-shell {
+  z-index: auto;
+}
+
+/* Ensure main app doesn't block sidebar */
+.aqua-body {
+  position: static;
+}
+
+/* Force sidebar ABOVE EVERYTHING */
+.aqua-sidebar {
+  position: fixed;
+  z-index: 2147483647; /* max z-index */
+  pointer-events: auto;
+}
+
+/* Overlay below sidebar */
+.sidebar-overlay {
+  z-index: 2147483646;
+}
+
+/* CRITICAL: allow clicks inside sidebar */
+.aqua-sidebar * {
+  pointer-events: auto;
+}
+
+/* Prevent main content from stealing clicks */
+.aqua-main {
+  position: relative;
+  z-index: 1;
+}
