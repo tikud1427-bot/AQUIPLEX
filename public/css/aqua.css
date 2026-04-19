@@ -1087,15 +1087,13 @@ body.sidebar-open {
   }
 }
 
-/* Overlay sits BELOW sidebar */
 .sidebar-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9998;
+  z-index: 9997;  /* ← always below sidebar (9999) AND its contents */
   pointer-events: none;
 }
 
-/* Overlay only clickable when visible */
 .sidebar-overlay.visible {
   pointer-events: auto;
 }
