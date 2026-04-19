@@ -173,15 +173,19 @@
     const overlay  = document.getElementById("sidebarOverlay");
     const menuBtn  = document.getElementById("menuToggle");
     const closeBtn = document.getElementById("closeSidebarBtn");
+    const input    = document.getElementById("messageInput");
+    const fileUpload = document.getElementById("fileUpload");
 
     /* Set correct initial state via JS — avoids CSS/inline race condition */
     if (isMobile()) {
       sidebar.style.transform = "translateX(-100%)";
       sidebar.style.boxShadow = "none";
+      sidebarOpen = false;
     } else {
       /* Desktop: sidebar open by default */
       sidebar.style.width    = "260px";
       sidebar.style.minWidth = "260px";
+      sidebar.style.transform = "";
       sidebarOpen = true;
     }
 
@@ -215,6 +219,32 @@
         sidebar.style.transform = "translateX(-100%)";
         sidebar.style.boxShadow = "none";
       }
+    });
+
+    /* ── Textarea auto-resize ── */
+    input.addEventListener("input", function () {
+      this.style.height = "auto";
+      this.style.height = Math.min(this.scrollHeight, 140) + "px";
+    });
+
+    /* ── Send on Enter (not Shift+Enter) ── */
+    input.addEventListener("keydown", function(e) {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        send();
+      }
+    });
+
+    /* ── File upload display ── */
+    fileUpload.addEventListener("change", function() {
+      const file = this.files[0];
+      if (!file) return;
+      const tag = document.getElementById("fileNameTag");
+      tag.textContent = "📎 " + file.name;
+      tag.style.display = "inline-block";
+      document.querySelector(".empty-state")?.remove();
+      appendMessage("user", `📎 Attached: **${file.name}**`);
+      document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
     });
 
     renderEmptyState();
@@ -303,11 +333,6 @@
     document.getElementById("messageInput").value = prompt;
     send();
   }
-
-  document.getElementById("messageInput")?.addEventListener("input", function () {
-    this.style.height = "auto";
-    this.style.height = Math.min(this.scrollHeight, 140) + "px";
-  });
 
   function setSending(val) {
     isSending = val;
@@ -764,24 +789,6 @@
       alert("Send a message first to generate a shareable link.");
     }
   }
-
-  document.getElementById("messageInput")?.addEventListener("keydown", e => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  });
-
-  document.getElementById("fileUpload")?.addEventListener("change", () => {
-    const file = document.getElementById("fileUpload").files[0];
-    if (!file) return;
-    const tag = document.getElementById("fileNameTag");
-    tag.textContent = "📎 " + file.name;
-    tag.style.display = "inline-block";
-    document.querySelector(".empty-state")?.remove();
-    appendMessage("user", `📎 Attached: **${file.name}**`);
-    document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
-  });
   </script>
 </body>
 </html>
