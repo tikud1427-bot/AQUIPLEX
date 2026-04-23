@@ -1489,6 +1489,26 @@ app.post("/workspace/remove/:toolId", requireLogin, async (req, res) => {
   }
 });
 
+// ABOUT
+app.get('/about', (req, res) => {
+  res.render('about');
+});
+
+// AQUA AI
+app.get('/aqua-ai', (req, res) => {
+  res.render('aqua-ai');
+});
+
+// PROJECT ENGINE
+app.get('/aqua-project-engine', (req, res) => {
+  res.render('aqua-project-engine');
+});
+
+// FOUNDERS
+app.get('/founders', (req, res) => {
+  res.render('founders');
+});
+
 // ================= START =================
 async function startServer() {
   console.log("GROQ:", process.env.GROQ_API_KEY ? "OK" : "MISSING");
