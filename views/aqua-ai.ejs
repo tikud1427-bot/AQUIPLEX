@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aqua AI | Multi-Model AI Chatbot</title>
   <meta name="description" content="Aqua AI is a powerful multi-model AI chatbot by Aquiplex. Generate content, code, ideas, and more using advanced AI models in one place.">
 
   <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
@@ -19,24 +24,26 @@
       padding: 40px 20px;
     }
 
+    /* ── Hero ── */
     .hero {
       text-align: center;
       padding: 60px 20px;
     }
 
     .hero h1 {
-      font-size: 48px;
+      font-size: clamp(30px, 7vw, 48px);
       background: linear-gradient(90deg, #38bdf8, #a78bfa);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       margin-bottom: 15px;
+      line-height: 1.2;
     }
 
     .hero p {
-      font-size: 18px;
+      font-size: clamp(15px, 3vw, 18px);
       color: #94a3b8;
       max-width: 700px;
-      margin: auto;
+      margin: 0 auto;
     }
 
     .cta-btn {
@@ -44,31 +51,41 @@
       margin-top: 25px;
       background: linear-gradient(90deg, #38bdf8, #6366f1);
       color: white;
-      padding: 12px 20px;
+      padding: 13px 24px;
       border-radius: 10px;
       text-decoration: none;
       font-weight: bold;
+      font-size: 15px;
+      transition: opacity 0.2s;
     }
 
+    .cta-btn:hover {
+      opacity: 0.85;
+    }
+
+    /* ── Sections ── */
     .section {
-      margin-top: 80px;
+      margin-top: 70px;
+      padding: 0 4px;
     }
 
     .section h2 {
-      font-size: 28px;
+      font-size: clamp(20px, 4.5vw, 28px);
       margin-bottom: 15px;
     }
 
     .section p {
       color: #94a3b8;
       line-height: 1.7;
+      font-size: clamp(14px, 2.5vw, 16px);
     }
 
+    /* ── Grid ── */
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 20px;
-      margin-top: 30px;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 16px;
+      margin-top: 24px;
     }
 
     .card {
@@ -85,25 +102,97 @@
     }
 
     .card h3 {
-      margin-bottom: 10px;
+      margin: 0 0 10px;
+      font-size: clamp(15px, 3vw, 17px);
     }
 
+    .card p {
+      margin: 0;
+      font-size: 14px;
+      color: #94a3b8;
+      line-height: 1.5;
+    }
+
+    .card a {
+      display: inline-block;
+      margin-top: 12px;
+      color: #38bdf8;
+      text-decoration: none;
+      font-size: 14px;
+    }
+
+    .card a:hover {
+      color: #a78bfa;
+    }
+
+    /* ── Steps ── */
     .steps {
       margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
     .step {
-      margin-bottom: 15px;
       color: #cbd5f5;
+      font-size: clamp(14px, 2.5vw, 16px);
+      padding: 12px 16px;
+      background: #0f172a;
+      border-radius: 10px;
+      border: 1px solid #1e293b;
     }
 
     .highlight {
       color: #38bdf8;
     }
+
+    /* ── Explore section below container ── */
+    .explore-section {
+      max-width: 1100px;
+      margin: 60px auto 0;
+      padding: 0 20px;
+    }
+
+    .explore-section h2 {
+      font-size: clamp(20px, 4vw, 26px);
+      margin-bottom: 20px;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 480px) {
+      .container {
+        padding: 30px 16px;
+      }
+
+      .hero {
+        padding: 40px 16px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .section {
+        margin-top: 50px;
+      }
+
+      .section[style*="text-align:center"] .cta-btn {
+        display: block;
+        max-width: 260px;
+        margin: 20px auto 0;
+        text-align: center;
+      }
+
+      .explore-section {
+        padding: 0 16px;
+      }
+    }
   </style>
 </head>
 
 <body>
+
+  <%- include("partials/every") %>
 
   <div class="container">
 
@@ -114,7 +203,6 @@
         A powerful multi-model AI chatbot that helps you create, build, and solve anything—
         from content and code to ideas and projects.
       </p>
-
       <a href="/chatbot" class="cta-btn">Try Aqua AI →</a>
     </div>
 
@@ -131,44 +219,19 @@
     <!-- FEATURES -->
     <div class="section">
       <h2>What Can You Do with Aqua AI?</h2>
-
       <div class="grid">
-        <div class="card">
-          <h3>✍️ Generate Content</h3>
-          <p>Create blogs, captions, scripts, and more instantly.</p>
-        </div>
-
-        <div class="card">
-          <h3>💻 Write & Fix Code</h3>
-          <p>Get help with coding, debugging, and development tasks.</p>
-        </div>
-
-        <div class="card">
-          <h3>🚀 Build Ideas</h3>
-          <p>Turn ideas into structured plans and real outputs.</p>
-        </div>
-
-        <div class="card">
-          <h3>🧠 Learn Faster</h3>
-          <p>Understand concepts with clear explanations.</p>
-        </div>
-
-        <div class="card">
-          <h3>🎨 Generate Images</h3>
-          <p>Create visuals and designs using AI.</p>
-        </div>
-
-        <div class="card">
-          <h3>📊 Summarize & Research</h3>
-          <p>Break down complex information quickly.</p>
-        </div>
+        <div class="card"><h3>✍️ Generate Content</h3><p>Create blogs, captions, scripts, and more instantly.</p></div>
+        <div class="card"><h3>💻 Write & Fix Code</h3><p>Get help with coding, debugging, and development tasks.</p></div>
+        <div class="card"><h3>🚀 Build Ideas</h3><p>Turn ideas into structured plans and real outputs.</p></div>
+        <div class="card"><h3>🧠 Learn Faster</h3><p>Understand concepts with clear explanations.</p></div>
+        <div class="card"><h3>🎨 Generate Images</h3><p>Create visuals and designs using AI.</p></div>
+        <div class="card"><h3>📊 Summarize & Research</h3><p>Break down complex information quickly.</p></div>
       </div>
     </div>
 
     <!-- HOW IT WORKS -->
     <div class="section">
       <h2>How to Use Aqua AI</h2>
-
       <div class="steps">
         <div class="step">1. Enter your prompt or idea</div>
         <div class="step">2. Choose your task (content, code, etc.)</div>
@@ -184,49 +247,21 @@
         Unlike traditional chatbots, Aqua AI is built for <span class="highlight">execution</span>, not just conversation.
         It integrates multiple AI models and focuses on helping users actually build and create things.
       </p>
-
       <div class="grid">
-        <div class="card">
-          <h3>Multi-Model System</h3>
-          <p>Powered by multiple AI engines for better results.</p>
-        </div>
-
-        <div class="card">
-          <h3>Execution Focused</h3>
-          <p>Helps you create real outputs, not just answers.</p>
-        </div>
-
-        <div class="card">
-          <h3>All-in-One Platform</h3>
-          <p>No need to switch between multiple tools.</p>
-        </div>
+        <div class="card"><h3>Multi-Model System</h3><p>Powered by multiple AI engines for better results.</p></div>
+        <div class="card"><h3>Execution Focused</h3><p>Helps you create real outputs, not just answers.</p></div>
+        <div class="card"><h3>All-in-One Platform</h3><p>No need to switch between multiple tools.</p></div>
       </div>
     </div>
 
     <!-- USE CASES -->
     <div class="section">
       <h2>Who is Aqua AI For?</h2>
-
       <div class="grid">
-        <div class="card">
-          <h3>Students</h3>
-          <p>Learn faster, complete assignments, and explore ideas.</p>
-        </div>
-
-        <div class="card">
-          <h3>Creators</h3>
-          <p>Generate content, posts, and creative assets.</p>
-        </div>
-
-        <div class="card">
-          <h3>Developers</h3>
-          <p>Write, debug, and improve code efficiently.</p>
-        </div>
-
-        <div class="card">
-          <h3>Startup Founders</h3>
-          <p>Build ideas and MVPs quickly using AI.</p>
-        </div>
+        <div class="card"><h3>Students</h3><p>Learn faster, complete assignments, and explore ideas.</p></div>
+        <div class="card"><h3>Creators</h3><p>Generate content, posts, and creative assets.</p></div>
+        <div class="card"><h3>Developers</h3><p>Write, debug, and improve code efficiently.</p></div>
+        <div class="card"><h3>Startup Founders</h3><p>Build ideas and MVPs quickly using AI.</p></div>
       </div>
     </div>
 
@@ -234,33 +269,30 @@
     <div class="section" style="text-align:center;">
       <h2>Start Building with Aqua AI</h2>
       <p>Experience the future of AI-powered creation.</p>
-
       <a href="/chatbot" class="cta-btn">Launch Aqua AI →</a>
     </div>
 
   </div>
 
-  <div class="section">
+  <!-- EXPLORE MORE -->
+  <div class="explore-section">
     <h2>Explore More</h2>
-
     <div class="grid">
-
       <div class="card">
         <h3>Aqua Project Engine</h3>
         <p>Turn AI ideas into real projects.</p>
         <a href="/aqua-project-engine">Explore →</a>
       </div>
-
       <div class="card">
         <h3>About Aquiplex</h3>
         <p>Understand the platform behind Aqua AI.</p>
         <a href="/about">Learn more →</a>
       </div>
-
     </div>
   </div>
 
   <!-- FOOTER -->
   <%- include("partials/footer") %>
+
 </body>
 </html>

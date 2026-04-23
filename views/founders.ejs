@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Founders | Aquiplex</title>
   <meta name="description" content="Meet the founders of Aquiplex – the minds behind Aqua AI and Aqua Project Engine.">
 
   <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       font-family: 'Segoe UI', sans-serif;
@@ -19,13 +24,14 @@
       padding: 40px 20px;
     }
 
+    /* ── Hero ── */
     .hero {
       text-align: center;
       margin-bottom: 60px;
     }
 
     .hero h1 {
-      font-size: 42px;
+      font-size: clamp(28px, 6vw, 42px);
       margin-bottom: 10px;
       background: linear-gradient(90deg, #38bdf8, #6366f1);
       -webkit-background-clip: text;
@@ -34,13 +40,14 @@
 
     .hero p {
       color: #94a3b8;
-      font-size: 18px;
+      font-size: clamp(15px, 3vw, 18px);
     }
 
+    /* ── Founders grid ── */
     .founders-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 30px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
     }
 
     .card {
@@ -57,7 +64,7 @@
     }
 
     .name {
-      font-size: 22px;
+      font-size: clamp(18px, 4vw, 22px);
       font-weight: bold;
       margin-bottom: 5px;
     }
@@ -75,16 +82,24 @@
       margin-bottom: 20px;
     }
 
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
     .links a {
       display: inline-block;
-      margin-right: 10px;
       text-decoration: none;
       color: #0f172a;
       background: #38bdf8;
-      padding: 8px 12px;
+      padding: 9px 14px;
       border-radius: 8px;
       font-size: 14px;
+      font-weight: 600;
       transition: 0.2s;
+      min-width: 100px;
+      text-align: center;
     }
 
     .links a:hover {
@@ -92,13 +107,15 @@
       color: white;
     }
 
+    /* ── Vision ── */
     .vision {
       margin-top: 80px;
       text-align: center;
+      padding: 0 10px;
     }
 
     .vision h2 {
-      font-size: 28px;
+      font-size: clamp(22px, 5vw, 28px);
       margin-bottom: 10px;
     }
 
@@ -108,10 +125,76 @@
       margin: auto;
       line-height: 1.7;
     }
+
+    /* ── Explore section ── */
+    .section {
+      text-align: center;
+      margin-top: 60px;
+      padding: 0 10px;
+    }
+
+    .section h2 {
+      font-size: clamp(20px, 4vw, 26px);
+      margin-bottom: 20px;
+    }
+
+    .cta-btn {
+      display: inline-block;
+      margin: 8px;
+      background: linear-gradient(90deg, #38bdf8, #6366f1);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 10px;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 15px;
+      transition: opacity 0.2s;
+    }
+
+    .cta-btn:hover {
+      opacity: 0.85;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      text-align: center;
+      margin-top: 60px;
+      padding: 20px;
+      color: #475569;
+      border-top: 1px solid #1e293b;
+      font-size: 14px;
+    }
+
+    /* ── Mobile ── */
+    @media (max-width: 480px) {
+      .container {
+        padding: 30px 16px;
+      }
+
+      .founders-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .links a {
+        flex: 1;
+      }
+
+      .section .cta-btn {
+        display: block;
+        margin: 8px auto;
+        max-width: 260px;
+      }
+    }
   </style>
 </head>
 
 <body>
+
+  <%- include("partials/every") %>
 
   <div class="container">
 
@@ -128,7 +211,6 @@
       <div class="card">
         <div class="name">Chhanda Prabal Das</div>
         <div class="role">Co-Founder & Advisor</div>
-
         <div class="desc">
           The original mind behind Aquiplex, Chhanda Prabal Das is a student and entrepreneur
           who has worked on multiple early-stage startups including Uniqence and Acodet.
@@ -136,7 +218,6 @@
           His experience in building products from scratch shaped the vision of Aquiplex—
           an ecosystem focused on execution, not just ideas.
         </div>
-
         <div class="links">
           <a href="https://www.instagram.com/chhanda.pr" target="_blank">Instagram</a>
           <a href="https://www.linkedin.com/in/chhanda-prabal-das-7198a0280" target="_blank">LinkedIn</a>
@@ -147,7 +228,6 @@
       <div class="card">
         <div class="name">Ananya Prabal Das</div>
         <div class="role">Chief Executive Officer (CEO)</div>
-
         <div class="desc">
           Leading the execution of Aquiplex, Ananya Prabal Das manages daily operations
           and ensures consistent development of the platform.
@@ -155,7 +235,6 @@
           He plays a key role in turning ideas into real features, working closely with
           the product vision to build and scale Aquiplex efficiently.
         </div>
-
         <div class="links">
           <a href="https://www.instagram.com/ananya.p.r.a" target="_blank">Instagram</a>
           <a href="https://www.linkedin.com/in/ananya-prabal-das-024293383" target="_blank">LinkedIn</a>
@@ -177,9 +256,9 @@
     </div>
 
   </div>
-  <div class="section" style="text-align:center; margin-top:60px;">
-    <h2>Explore Aquiplex</h2>
 
+  <div class="section">
+    <h2>Explore Aquiplex</h2>
     <a href="/about" class="cta-btn">About Platform →</a>
     <a href="/aqua-ai" class="cta-btn">Aqua AI →</a>
     <a href="/aqua-project-engine" class="cta-btn">Project Engine →</a>
