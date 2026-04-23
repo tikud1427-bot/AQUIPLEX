@@ -9,6 +9,12 @@
 
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="manifest" href="/chatbot-manifest.json">
+  <meta name="theme-color" content="#00d4ff">
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="/logo/aqua-192.png">
 
   <style>
     body::before {
@@ -857,6 +863,31 @@ document.getElementById("fileUpload")?.addEventListener("change", () => {
   document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
 });
 </script>
+  <script>
+    const CACHE_NAME = "aqua-cache-v1";
+
+    self.addEventListener("install", (e) => {
+      self.skipWaiting();
+    });
+
+    self.addEventListener("activate", (e) => {
+      e.waitUntil(self.clients.claim());
+    });
+
+    self.addEventListener("fetch", (e) => {
+      e.respondWith(
+        fetch(e.request).catch(() => caches.match(e.request))
+      );
+    });
+  </script>
+  <script>
+  let deferredPrompt;
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+  });
+  </script>
 
 </body>
 </html>

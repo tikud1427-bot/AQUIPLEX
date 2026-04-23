@@ -1,0 +1,25 @@
+{
+  "name": "Aqua AI",
+  "short_name": "Aqua",
+  "id": "/chatbot",
+  "start_url": "/chatbot",
+  "scope": "/chatbot",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "background_color": "#020617",
+  "theme_color": "#00d4ff",
+  "description": "Chat with Aqua AI — fast, smart, and powerful.",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo/aqua-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo/aqua-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
