@@ -4615,3 +4615,92 @@ input {
   background: #333;
   z-index: -1;
 }
+
+
+/* ================= FOOTER ================= */
+.simple-footer {
+  background: #020617;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 35px 20px 30px;
+  text-align: center;
+}
+
+/* ================= COPYRIGHT ================= */
+.footer-text {
+  color: #94a3b8;
+  font-size: 14px;
+  margin-bottom: 18px;
+  letter-spacing: 0.3px;
+}
+
+/* ================= SOCIAL CONTAINER ================= */
+.footer-socials {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* ================= SOCIAL ICON BUTTON ================= */
+.footer-socials a {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+
+  background: #0f172a;
+  color: #94a3b8;
+
+  border: 1px solid rgba(255, 255, 255, 0.04);
+
+  transition: all 0.3s ease;
+  text-decoration: none;
+}
+
+/* ICON SIZE */
+.footer-socials svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ================= HOVER EFFECT ================= */
+.footer-socials a:hover {
+  color: #38bdf8;
+  background: #1e293b;
+  border-color: rgba(56, 189, 248, 0.3);
+  transform: translateY(-3px);
+}
+
+/* ================= ACTIVE (CLICK FEEL) ================= */
+.footer-socials a:active {
+  transform: scale(0.95);
+}
+
+/* ================= MOBILE ================= */
+@media (max-width: 500px) {
+  .simple-footer {
+    padding: 30px 15px;
+  }
+
+  .footer-text {
+    font-size: 13px;
+    margin-bottom: 14px;
+  }
+
+  .footer-socials {
+    gap: 12px;
+  }
+
+  .footer-socials a {
+    width: 38px;
+    height: 38px;
+  }
+
+  .footer-socials svg {
+    width: 16px;
+    height: 16px;
+  }
+}
