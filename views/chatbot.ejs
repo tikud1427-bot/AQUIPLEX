@@ -130,6 +130,11 @@ function openSidebar() {
   toggle.setAttribute("aria-expanded", "true");
   if (isMobile()) {
     sidebar.classList.add("mobile-open");
+    // Overlay only covers the area RIGHT of the sidebar so it
+    // never intercepts touches on sidebar content (iOS Safari fix)
+    const sidebarW = parseInt(getComputedStyle(document.documentElement)
+      .getPropertyValue("--sidebar-w-mobile")) || 240;
+    overlay.style.left = sidebarW + "px";
     overlay.classList.add("visible");
     document.body.classList.add("sidebar-open");
   } else {
@@ -145,6 +150,7 @@ function closeSidebar() {
   toggle.setAttribute("aria-expanded", "false");
   sidebar.classList.remove("mobile-open");
   overlay.classList.remove("visible");
+  overlay.style.left = "";   // reset for next open
   document.body.classList.remove("sidebar-open");
 }
 

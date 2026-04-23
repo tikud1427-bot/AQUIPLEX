@@ -196,7 +196,12 @@ button:disabled { cursor: not-allowed; }
 
 .sidebar-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  /* left is set dynamically by JS on mobile open to sidebar width,
+     so it never covers the sidebar itself — default covers full width */
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.6);
   opacity: 0;
   visibility: hidden;
