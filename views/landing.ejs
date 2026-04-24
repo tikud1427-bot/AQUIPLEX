@@ -3,244 +3,241 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#020510">
+  <meta name="theme-color" content="#010208">
   <title>Aqua AI — Intelligence, Orchestrated</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/landing.css">
-  <style>
-    html { scroll-behavior: smooth; }
-  </style>
 </head>
 
 <body>
 
-  <!-- BACKGROUND SYSTEM -->
-  <div class="bg-canvas"></div>
-  <div class="noise"></div>
-  <div class="orb orb-1"></div>
-  <div class="orb orb-2"></div>
-  <div class="orb orb-3"></div>
+  <div class="bg-canvas">
+    <div class="bg-grid"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="noise"></div>
+  </div>
+
   <div class="particles" id="particles"></div>
   <div class="cursor-glow" id="cursorGlow"></div>
 
-  <!-- ========================
-       NAVBAR
-  ========================= -->
-  <header class="navbar">
-    <div class="logo">
+  <!-- NAVBAR -->
+  <header class="navbar" id="navbar">
+    <a href="/" class="logo" aria-label="Aqua AI">
       <img src="/logo/logo.png" alt="Aqua AI">
+      <span class="nav-wordmark">Aqua</span>
       <span class="nav-tag">AI OS</span>
-    </div>
+    </a>
     <nav class="nav-buttons">
-      <a href="/login" class="btn-outline">Login</a>
-      <a href="/signup" class="btn-primary">Get Access</a>
+      <a href="/login" class="btn-ghost">Log in</a>
+      <a href="/signup" class="btn-nav-cta">Get Access <span class="btn-arrow">→</span></a>
     </nav>
   </header>
 
-  <!-- ========================
-       HERO
-  ========================= -->
+  <!-- HERO -->
   <section class="hero">
 
-    <div class="hero-badge">
-      <span class="dot"></span>
-      System Active — Aqua AI v2
+    <div class="hero-announce" style="--d:0">
+      <span class="announce-dot"></span>
+      <span>Aqua v2 · Now in early access</span>
     </div>
 
-    <h1>
-      Think It.<br>
-      <span class="accent">Aqua Executes It.</span>
+    <h1 class="hero-title" style="--d:1">
+      Think it.<br>
+      <em>Aqua executes it.</em>
     </h1>
 
-    <p class="hero-sub">
-      Not a chatbot. Not a tool. An AI system that plans, reasons,
-      and acts — so you don't have to figure out what to use.
+    <p class="hero-sub" style="--d:2">
+      Not a chatbot. An AI system that plans, reasons,<br class="br-desktop">
+      and acts — so you can focus on what matters.
     </p>
 
-    <!-- INPUT -->
-    <div class="input-wrapper">
-      <div class="input-box">
-        <input id="goalInput" type="text" placeholder="Build a SaaS product..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-        <button onclick="goToHome()">⚡ Execute</button>
+    <div class="input-wrapper" style="--d:3">
+      <div class="input-box" id="inputBox">
+        <span class="input-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        </span>
+        <input id="goalInput" type="text" placeholder="Build a SaaS product..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" aria-label="Describe your goal">
+        <button class="input-btn" onclick="goToHome()" aria-label="Execute goal">
+          <span class="btn-label">Execute</span>
+          <span class="btn-icon">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+        </button>
       </div>
+      <div class="input-hint">Press Enter to execute · Free to explore</div>
     </div>
 
-    <!-- EXAMPLES -->
-    <div class="examples">
-      <span onclick="setGoal('Write an essay')">Write an essay</span>
-      <span onclick="setGoal('Start a business')">Start a business</span>
-      <span onclick="setGoal('Grow Instagram')">Grow on Instagram</span>
-    </div>
-
-  </section>
-
-  <div class="section-divider"></div>
-
-  <!-- ========================
-       HOW IT WORKS
-  ========================= -->
-  <section class="how">
-
-    <div class="reveal">
-      <div class="section-label">How It Works</div>
-      <h2>Three Steps. Zero Friction.</h2>
-      <p class="sub">
-        Aqua handles the complexity. You handle the vision.
-      </p>
-    </div>
-
-    <div class="grid">
-
-      <div class="card reveal reveal-delay-1">
-        <div class="card-step">Step 01</div>
-        <span class="card-icon">🧠</span>
-        <h3>Define Intent</h3>
-        <p>Describe what you want to achieve in plain language. No setup, no configuration — just your goal.</p>
-      </div>
-
-      <div class="card reveal reveal-delay-2">
-        <div class="card-step">Step 02</div>
-        <span class="card-icon">⚙️</span>
-        <h3>Aqua Orchestrates</h3>
-        <p>The system decomposes your goal, selects the optimal AI capabilities, and builds an execution plan.</p>
-      </div>
-
-      <div class="card reveal reveal-delay-3">
-        <div class="card-step">Step 03</div>
-        <span class="card-icon">🚀</span>
-        <h3>Instant Output</h3>
-        <p>Watch your goal become reality. Refined results, ready to use — not another list of prompts to copy.</p>
-      </div>
-
+    <div class="chip-row" style="--d:4">
+      <button class="chip" onclick="setGoal('Write a pitch deck')">Write a pitch deck</button>
+      <button class="chip" onclick="setGoal('Launch a startup')">Launch a startup</button>
+      <button class="chip" onclick="setGoal('Grow Instagram')">Grow Instagram</button>
     </div>
 
   </section>
 
-  <div class="section-divider"></div>
+  <div class="divider"></div>
 
-  <!-- ========================
-       CTA
-  ========================= -->
-  <section class="cta">
-    <div class="cta-glow"></div>
-    <div class="cta-inner">
+  <!-- HOW IT WORKS -->
+  <section class="how" id="how">
+    <div class="section-header reveal">
+      <div class="section-eyebrow">How it works</div>
+      <h2 class="section-title">Three steps.<br>Zero friction.</h2>
+      <p class="section-sub">Aqua handles the complexity. You keep the vision.</p>
+    </div>
 
-      <div class="reveal">
-        <div class="section-label">Ready?</div>
-        <h2>Stop Searching.<br><span class="accent">Start Executing.</span></h2>
-        <p class="sub">
-          Every second spent looking for the right AI tool is a second Aqua could have already finished.
-        </p>
-        <a href="/home" class="btn-primary btn-cta">
-          Open Aqua AI
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
-        </a>
-        <div class="cta-status">
-          <span class="dot"></span>
-          System online · No account required to explore
+    <div class="steps">
+      <div class="step reveal" style="--sd:0.05s">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <div class="step-icon">🧠</div>
+          <h3>Define Intent</h3>
+          <p>Describe your goal in plain language. No setup, no prompts to learn — just say what you want.</p>
         </div>
       </div>
-
+      <div class="step-connector reveal" style="--sd:0.15s"></div>
+      <div class="step reveal" style="--sd:0.15s">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <div class="step-icon">⚙️</div>
+          <h3>Aqua Orchestrates</h3>
+          <p>The system decomposes your goal, selects optimal AI capabilities, and builds an execution plan.</p>
+        </div>
+      </div>
+      <div class="step-connector reveal" style="--sd:0.25s"></div>
+      <div class="step reveal" style="--sd:0.25s">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <div class="step-icon">🚀</div>
+          <h3>Instant Output</h3>
+          <p>Watch your goal become reality. Polished results — not another list of prompts to copy.</p>
+        </div>
+      </div>
     </div>
   </section>
 
-  <!-- ========================
-       FOOTER
-  ========================= -->
+  <div class="divider"></div>
+
+  <!-- CTA -->
+  <section class="cta">
+    <div class="cta-glow"></div>
+    <div class="cta-inner reveal">
+      <div class="section-eyebrow">Ready?</div>
+      <h2 class="cta-title">Stop searching.<br><em>Start executing.</em></h2>
+      <p class="cta-sub">Every second spent looking for the right AI tool<br class="br-desktop"> is a second Aqua could have already finished.</p>
+      <a href="/home" class="btn-cta">
+        Open Aqua AI
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </a>
+      <div class="cta-note">
+        <span class="online-dot"></span>
+        System online · No account required to explore
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
   <footer class="footer">
     <p>© 2025 Aqua AI · Intelligence, Orchestrated</p>
   </footer>
 
-  <!-- ========================
-       SCRIPTS
-  ========================= -->
   <script>
-    // ── Navigate with goal
     function goToHome() {
       const value = document.getElementById("goalInput").value.trim();
       window.location.href = "/home" + (value ? "?goal=" + encodeURIComponent(value) : "");
     }
 
-    // ── Set input from example chips
     function setGoal(text) {
       const input = document.getElementById("goalInput");
       input.value = text;
       input.focus();
     }
 
-    // ── Enter key support
-    document.getElementById("goalInput").addEventListener("keydown", (e) => {
+    document.getElementById("goalInput").addEventListener("keydown", function(e) {
       if (e.key === "Enter") goToHome();
     });
   </script>
 
   <script>
-    // ── Cycling placeholder
     const input = document.getElementById("goalInput");
     const suggestions = [
       "Build a SaaS product...",
-      "Grow my Instagram to 10k...",
+      "Grow Instagram to 10k...",
       "Write a professional pitch deck...",
       "Launch a YouTube channel...",
       "Create a business plan...",
       "Design a personal brand..."
     ];
     let idx = 0;
-    setInterval(() => {
+    setInterval(function() {
       if (document.activeElement !== input) {
-        input.placeholder = suggestions[idx];
         idx = (idx + 1) % suggestions.length;
+        input.placeholder = suggestions[idx];
       }
-    }, 2600);
+    }, 2800);
   </script>
 
   <script>
-    // ── Particles — fewer on mobile for performance
-    const container = document.getElementById("particles");
-    const isMobile = window.matchMedia("(max-width: 767px)").matches;
-    const count = isMobile ? 20 : 50;
-    for (let i = 0; i < count; i++) {
-      const s = document.createElement("span");
-      s.style.cssText = [
-        `left:${Math.random() * 100}%`,
-        `top:${Math.random() * 100}%`,
-        `animation-duration:${7 + Math.random() * 12}s`,
-        `animation-delay:${Math.random() * 8}s`,
-        `width:${1 + Math.random() * 2}px`,
-        `height:${1 + Math.random() * 2}px`,
-        `opacity:0`
-      ].join(";");
-      container.appendChild(s);
-    }
+    (function() {
+      const container = document.getElementById("particles");
+      const isMobile = window.matchMedia("(max-width: 767px)").matches;
+      const count = isMobile ? 14 : 40;
+      for (let i = 0; i < count; i++) {
+        const s = document.createElement("span");
+        s.style.cssText = [
+          "left:" + (Math.random() * 100) + "%",
+          "top:" + (Math.random() * 100) + "%",
+          "animation-duration:" + (8 + Math.random() * 14) + "s",
+          "animation-delay:" + (Math.random() * 10) + "s",
+          "width:" + (1 + Math.random() * 1.5) + "px",
+          "height:" + (1 + Math.random() * 1.5) + "px",
+          "opacity:0"
+        ].join(";");
+        container.appendChild(s);
+      }
+    })();
   </script>
 
   <script>
-    // ── Cursor glow (desktop / fine pointer only)
     if (window.matchMedia("(pointer: fine)").matches) {
       const glow = document.getElementById("cursorGlow");
-      document.addEventListener("mousemove", (e) => {
-        glow.style.left = e.clientX + "px";
-        glow.style.top  = e.clientY + "px";
+      let cx = 0, cy = 0, tx = 0, ty = 0;
+      document.addEventListener("mousemove", function(e) {
+        tx = e.clientX;
+        ty = e.clientY;
       });
+      function animateCursor() {
+        cx += (tx - cx) * 0.1;
+        cy += (ty - cy) * 0.1;
+        glow.style.left = cx + "px";
+        glow.style.top = cy + "px";
+        requestAnimationFrame(animateCursor);
+      }
+      animateCursor();
     }
   </script>
 
   <script>
-    // ── Scroll reveal with IntersectionObserver
-    const revealEls = document.querySelectorAll(".reveal");
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("visible");
-          observer.unobserve(entry.target);
-        }
-      });
-    }, { threshold: 0.08 });
-    revealEls.forEach(el => observer.observe(el));
+    (function() {
+      const navbar = document.getElementById("navbar");
+      window.addEventListener("scroll", function() {
+        navbar.classList.toggle("scrolled", window.scrollY > 20);
+      }, { passive: true });
+
+      const revealEls = document.querySelectorAll(".reveal");
+      const obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("visible");
+            obs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.07 });
+      revealEls.forEach(function(el) { obs.observe(el); });
+    })();
   </script>
 
 </body>
