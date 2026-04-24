@@ -2,7 +2,15 @@
    AQUA AI — LANDING PAGE CSS v2
    Premium AI OS · Mobile-First
    ============================================================ */
+/* ===== GLOBAL OVERFLOW FIX ===== */
+html, body {
+  max-width: 100vw;
+  overflow-x: clip;
+}
 
+* {
+  max-width: 100%;
+}
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap');
 
 /* ===== RESET ===== */
@@ -67,12 +75,19 @@ body {
   min-height: 100vh;
 }
 
+/* ===== HARD CONTAINMENT ===== */
+body, .hero, .how, .cta {
+  position: relative;
+  overflow-x: clip;
+}
+
 /* ===== BACKGROUND ===== */
 .bg-canvas {
   position: fixed;
   inset: 0;
   z-index: -10;
   overflow: hidden;
+  max-width: 100vw;
 }
 
 .bg-canvas::before {
@@ -100,6 +115,7 @@ body {
   border-radius: 50%;
   pointer-events: none;
   will-change: transform;
+  max-width: 100vw; /* ADD THIS */
 }
 
 .orb-1 {
@@ -157,6 +173,7 @@ body {
   z-index: -7;
   pointer-events: none;
   overflow: hidden;
+  max-width: 100vw;
 }
 
 .particles span {
@@ -734,6 +751,7 @@ body {
 
 .cta-glow {
   position: absolute;
+  max-width: 100vw;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -945,9 +963,9 @@ body {
 
 /* ===== MOBILE ===== */
 @media (max-width: 767px) {
-  .orb-1 { width: 340px; height: 340px; top: -120px; left: -120px; }
-  .orb-2 { width: 300px; height: 300px; bottom: -100px; right: -90px; }
-  .orb-3 { width: 220px; height: 220px; }
+  .orb-1 { width: 260px; height: 260px; top: -80px; left: -80px; }
+  .orb-2 { width: 240px; height: 240px; bottom: -70px; right: -70px; }
+  .orb-3 { width: 180px; height: 180px; }
 
   .nav-tag { display: none; }
   .nav-wordmark { display: none; }
@@ -1013,6 +1031,10 @@ body {
 
   .cta-note { font-size: 10px; }
   .footer { padding: 20px 16px; }
+  .cta-glow {
+    width: 100%;
+    max-width: 100vw;
+  }
 }
 
 /* ===== TINY ===== */
@@ -1036,4 +1058,8 @@ body {
     width: 100%;
     justify-content: center;
   }
+}
+/* ===== FINAL SAFETY LOCK ===== */
+section, div {
+  max-width: 100%;
 }
