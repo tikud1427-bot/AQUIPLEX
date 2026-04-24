@@ -1,391 +1,301 @@
 <!DOCTYPE html>
 <html lang="en">
 
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AQUIPLEX | Discover the Best AI Tools</title>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AQUIPLEX | The AI Operating System</title>
 
-    <!-- GLOBAL STYLES -->
-    <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/home.css">
 
-    <!-- HOME PAGE STYLES -->
-    <link rel="stylesheet" href="/css/home.css">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
 
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#03050f">
 
-    <!-- PWA -->
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#020617">
-
-    <!-- ICONS -->
-    <link rel="icon" href="/logo/icon-192.png" sizes="192x192">
-<link rel="shortcut icon" href="/logo/icon-192.png">
-<link rel="apple-touch-icon" href="/logo/icon-192.png">
-  </head>
+  <link rel="icon" href="/logo/icon-192.png" sizes="192x192">
+  <link rel="shortcut icon" href="/logo/icon-192.png">
+  <link rel="apple-touch-icon" href="/logo/icon-192.png">
+</head>
 
 <body>
 
-<%- include("partials/nav") %>
+  <!-- AMBIENT SYSTEM -->
+  <div class="ambient">
+    <div class="ambient-orb ambient-orb-1"></div>
+    <div class="ambient-orb ambient-orb-2"></div>
+    <div class="ambient-orb ambient-orb-3"></div>
+  </div>
+  <div class="grid-underlay"></div>
 
-<!-- 🌊 FLOATING BUTTON -->
-  <div class="aqua-float pulse" onclick="openAquaAI()">
-    💬 Ask AI
+  <%- include("partials/nav") %>
+
+  <!-- FLOAT BUTTON -->
+  <button class="aqua-float" onclick="openAquaAI()">
+    <span>💬</span>
+    <span>Ask Aqua</span>
+  </button>
+
+  <!-- AQUA POPUP -->
+  <div id="aquaPopup" class="aqua-popup hidden">
+    <div class="popup-header">
+      <span>🌊 Aqua AI</span>
+      <button onclick="closeAquaAI()" ontouchstart="closeAquaAI()">✕</button>
+    </div>
+    <div class="popup-body">
+      <p>Your AI operating system is ready. Ask anything — build anything.</p>
+      <a href="/chatbot" class="btn-primary-os">
+        Open Aqua AI →
+      </a>
+    </div>
   </div>
 
-<!-- 💬 AQUA AI POPUP -->
-<div id="aquaPopup" class="aqua-popup hidden">
-  <div class="popup-header">
-    <span>🌊 Aqua AI</span>
-    <button onclick="closeAquaAI()" ontouchstart="closeAquaAI()">✖</button>
-  </div>
+  <!-- ═══ HERO ═══ -->
+  <section class="hero-os">
 
-  <div class="popup-body">
-    <p>Ask anything. Get powerful answers instantly ⚡</p>
-
-    <a href="/chatbot" class="btn primary">
-      Open Aqua AI
-    </a>
-  </div>
-</div>
-
-<!-- HERO -->
-  <section class="hero new-hero">
-    <div class="hero-glow"></div>
-
-    <div class="hero-content">
-      <h1>
-        The AI OS for the Internet ⚡
-      </h1>
-
-      <p>
-        Discover. Compare. Use AI tools — or just ask Aqua AI.
-      </p>
-
-      <div class="hero-input-box">
-        <input 
-          type="text" 
-          placeholder="Try: Build a startup, create an app, grow Instagram..."
-          id="heroPrompt"
-        >
-        <button onclick="runHeroAI()">⚡ Generate</button>
-      </div>
-
-      
-
-      <div class="hero-buttons">
-        <button onclick="openAquaAI()" class="btn ghost">
-          💬 Open Chat
-        </button>
-      </div>
-      <div class="hero-stats">
-        <span>🔥 100+ Tools</span>
-        <span>⚡ Instant AI Answers</span>
-        <span>🌍 Global Users</span>
-      </div>
-      <div class="cursor-glow"></div>
-    </div>
-  </section>
-  <section class="section core-powers">
-
-    <h2 class="section-title">⚡ Your AI Superpowers</h2>
-
-    <div class="features">
-
-      <div class="feature-card highlight">
-        <h3>💬 Aqua AI Chat</h3>
-        <p>Multi-model AI answers instantly.</p>
-      </div>
-
-      <div class="feature-card highlight">
-        <h3>✨ Prompt Refiner</h3>
-        <p>Turn basic ideas into powerful prompts.</p>
-      </div>
-
-      <div class="feature-card highlight">
-        <h3>🏗️ Project Engine</h3>
-        <p>Generate full workflows with tools.</p>
-      </div>
-
+    <div class="status-chip">
+      <span class="status-dot"></span>
+      Aqua AI — Online & Ready
     </div>
 
-  </section>
-  <!-- 🔥 TRUST STRIP -->
-  <section class="trust-strip">
-    <p>Trusted by 10,000+ users worldwide 🌍</p>
-    <div class="trust-icons">
-      <span>🚀 Fast</span>
-      <span>🔒 Secure</span>
-      <span>⚡ AI Powered</span>
-      <span>💡 Smart Results</span>
-    </div>
-  </section>
-  <section class="section">
-    <h2 class="section-title">Why AQUIPLEX?</h2>
+    <h1 class="hero-headline">
+      <span class="word-plain">You think it.</span>
+      <span class="word-gradient">Aqua builds it.</span>
+    </h1>
 
-    <div class="features">
-
-      <div class="feature-card">
-        <h3>⚡ Instant AI Answers</h3>
-        <p>No need to search multiple tools.</p>
-      </div>
-
-      <div class="feature-card">
-        <h3>🧠 Smart Discovery</h3>
-        <p>Find the best AI tools instantly.</p>
-      </div>
-
-      <div class="feature-card">
-        <h3>🚀 All-in-One Platform</h3>
-        <p>Everything AI in one place.</p>
-      </div>
-
-    </div>
-  </section>
-  <!-- 🔥 USE CASES -->
-  <section class="section use-cases">
-
-    <h2 class="section-title">🔥 What You Can Do</h2>
-
-    <div class="grid">
-
-      <div class="tool-card">
-        <h3>🚀 Build a Startup</h3>
-        <p>Get full roadmap + tools in seconds.</p>
-      </div>
-
-      <div class="tool-card">
-        <h3>🎬 Create Content</h3>
-        <p>Scripts, posts, videos — instantly.</p>
-      </div>
-
-      <div class="tool-card">
-        <h3>💻 Build Apps</h3>
-        <p>Generate code + workflows.</p>
-      </div>
-
-      <div class="tool-card">
-        <h3>📈 Grow Online</h3>
-        <p>Marketing strategies powered by AI.</p>
-      </div>
-
-    </div>
-
-  </section>
-  <!-- 🔥 TRENDING -->
-  <section class="section">
-    <h2 class="section-title">🔥 Trending AI Tools</h2>
-    <p class="section-sub">
-      Discover what people are using right now
+    <p class="hero-sub">
+      The AI OS that turns raw ideas into real outcomes — instantly, intelligently, without friction.
     </p>
 
-    <div class="grid">
-
-      <% if (tools && tools.length > 0) { %>
-
-        <% tools.slice(0, 4).forEach(function(tool){ %>
-
-          <div class="tool-card">
-
-            <div class="logo-box">
-              <img src="<%= tool.logo %>" alt="<%= tool.name %>">
-            </div>
-
-            <h3><%= tool.name %></h3>
-            <p><%= tool.description %></p>
-
-          </div>
-
-        <% }) %>
-
-      <% } %>
-
-    </div>
-  </section>
-
-<!-- MAIN CONTENT -->
-<div class="container">
-
-  <!-- CATEGORIES -->
-  <section class="section">
-    <h2 class="section-title">Explore by Category</h2>
-
-    <div class="categories">
-
-      <%
-      const categories = [
-        { name: "Writing AI", icon: "✍️" },
-        { name: "Image AI", icon: "🎨" },
-        { name: "Video AI", icon: "🎬" },
-        { name: "Coding AI", icon: "💻" },
-        { name: "ML AI", icon: "🤖" }
-      ];
-      %>
-
-      <!-- Explore All -->
-      <a class="category-card explore-all" href="/categories">
-        <div class="category-icon">🌐</div>
-        <div class="category-name">Explore All</div>
-      </a>
-
-      <% categories.forEach(function(category){ %>
-
-        <a class="category-card" href="/tools/category/<%= category.name.toLowerCase().replace(/\s+/g, '-') %>">
-          <div class="category-icon"><%= category.icon %></div>
-          <div class="category-name"><%= category.name %></div>
-        </a>
-
-      <% }) %>
-
-    </div>
-  </section>
-
-  <!-- FEATURED TOOLS -->
-  <section class="section">
-    <h2 class="section-title">⭐ Featured Tools</h2>
-
-    <div class="grid">
-
-      <% if (tools && tools.length > 0) { %>
-
-      <% tools.forEach(function(tool){ %>
-
-      <div class="tool-card">
-
-        <div class="logo-box">
-          <img src="<%= tool.logo %>" alt="<%= tool.name %>">
-        </div>
-
-        <a href="/tool/<%= tool._id %>" class="tool-link">
-          <h3><%= tool.name %></h3>
-        </a>
-
-        <p><%= tool.description %></p>
-
-        <div class="tool-actions">
-          <a href="/tool/<%= tool._id %>" class="details-btn">
-            View Details
-          </a>
-
-          <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">
-            Visit Tool
-          </a>
-        </div>
-
+    <!-- COMMAND BAR -->
+    <div class="command-dock">
+      <div class="command-bar">
+        <span class="command-icon">⚡</span>
+        <input
+          class="command-input"
+          type="text"
+          id="heroPrompt"
+          placeholder="What do you want to build today?"
+          autocomplete="off"
+          spellcheck="false"
+        >
+        <button class="command-run" onclick="runHeroAI()">
+          <span class="run-label">Generate</span>
+          <span class="run-icon">→</span>
+        </button>
       </div>
 
-      <% }) %>
+      <!-- SUGGESTION CHIPS -->
+      <div class="suggestion-chips">
+        <button class="chip" onclick="setPrompt('Build a startup roadmap')">🚀 Build a startup</button>
+        <button class="chip" onclick="setPrompt('Create an app from scratch')">💻 Create an app</button>
+        <button class="chip" onclick="setPrompt('Design a study plan')">📚 Study plan</button>
+        <button class="chip" onclick="setPrompt('Automate my workflow')">⚙️ Automate workflow</button>
+        <button class="chip" onclick="setPrompt('Grow my online presence')">📈 Grow online</button>
+      </div>
+    </div>
 
-      <% } else { %>
-      <p style="text-align:center;">No tools available yet.</p>
-      <% } %>
+    <!-- HERO OUTPUT (hidden until used) -->
+    <div class="hero-output-wrap" id="heroOutputWrap" style="display:none;">
+      <div class="hero-output-box" id="heroOutput"></div>
+    </div>
+
+  </section>
+
+  <hr class="os-divider">
+
+  <!-- ═══ INTELLIGENCE LAYER ═══ -->
+  <section class="intelligence-layer">
+    <span class="section-eyebrow">Aqua Intelligence</span>
+    <h2 class="section-heading">Not a tool. An operating system.</h2>
+    <p class="section-body">
+      Aqua AI doesn't just answer questions. It maps ideas to execution — combining reasoning, workflow generation, and the internet's best tools into one fluid experience.
+    </p>
+
+    <div class="capability-grid">
+
+      <div class="capability-cell">
+        <span class="cap-number">01</span>
+        <span class="cap-icon">🧠</span>
+        <div class="cap-title">Think in Systems</div>
+        <p class="cap-desc">Turn vague goals into structured execution paths with multi-step reasoning.</p>
+      </div>
+
+      <div class="capability-cell">
+        <span class="cap-number">02</span>
+        <span class="cap-icon">⚡</span>
+        <div class="cap-title">Execute Instantly</div>
+        <p class="cap-desc">Generate full project workflows, content plans, and code — in seconds.</p>
+      </div>
+
+      <div class="capability-cell">
+        <span class="cap-number">03</span>
+        <span class="cap-icon">🌐</span>
+        <div class="cap-title">Connect Everything</div>
+        <p class="cap-desc">Surface the right AI tools for every step, curated from 100+ options.</p>
+      </div>
 
     </div>
   </section>
 
-</div>
-        <!-- ⚙️ HOW IT WORKS -->
-        <section class="section">
-          <h2 class="section-title">How It Works</h2>
+  <hr class="os-divider">
 
-          <div class="features">
+  <!-- ═══ TRENDING TOOLS (dynamic from backend) ═══ -->
+  <% if (tools && tools.length > 0) { %>
+  <section class="tools-section">
+    <span class="section-eyebrow">Trending Now</span>
+    <h2 class="section-heading">Tools people are building with</h2>
 
-            <div class="feature-card">
-              <h3>1. Search or Ask</h3>
-              <p>Use Aqua AI or explore tools.</p>
-            </div>
+    <div class="tools-grid">
+      <% tools.slice(0, 4).forEach(function(tool){ %>
+      <div class="tool-card-os">
+        <img class="tool-logo-os" src="<%= tool.logo %>" alt="<%= tool.name %>">
+        <div class="tool-name-os"><%= tool.name %></div>
+        <p class="tool-desc-os"><%= tool.description %></p>
+        <div class="tool-actions-os">
+          <a href="/tool/<%= tool._id %>" class="tool-btn primary-tool">Details</a>
+          <a href="/visit/<%= tool._id %>" target="_blank" class="tool-btn ghost-tool">Visit →</a>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </section>
 
-            <div class="feature-card">
-              <h3>2. Discover</h3>
-              <p>Find the best AI tools instantly.</p>
-            </div>
+  <hr class="os-divider">
+  <% } %>
 
-            <div class="feature-card">
-              <h3>3. Use & Grow</h3>
-              <p>Boost productivity with AI.</p>
-            </div>
+  <!-- ═══ FEATURED TOOLS (full list) ═══ -->
+  <% if (tools && tools.length > 0) { %>
+  <section class="tools-section">
+    <span class="section-eyebrow">Full Directory</span>
+    <h2 class="section-heading">Every AI tool, curated for you</h2>
 
-          </div>
-        </section>
-<!-- 📲 DOWNLOAD -->
-        <section class="section final-cta">
+    <%
+    const categories = [
+      { name: "Writing AI", icon: "✍️" },
+      { name: "Image AI", icon: "🎨" },
+      { name: "Video AI", icon: "🎬" },
+      { name: "Coding AI", icon: "💻" },
+      { name: "ML AI", icon: "🤖" }
+    ];
+    %>
 
-          <h1>
-            Stop Searching. Start Building ⚡
-          </h1>
+    <div class="categories-os">
+      <a class="category-pill explore-all" href="/categories">🌐 Explore All</a>
+      <% categories.forEach(function(category){ %>
+      <a class="category-pill" href="/tools/category/<%= category.name.toLowerCase().replace(/\s+/g, '-') %>">
+        <%= category.icon %> <%= category.name %>
+      </a>
+      <% }) %>
+    </div>
 
-          <p class="hero-sub">
-            Join thousands using AI to build startups, apps, and content — instantly.
-          </p>
+    <div class="tools-grid" style="margin-top: 32px;">
+      <% tools.forEach(function(tool){ %>
+      <div class="tool-card-os">
+        <img class="tool-logo-os" src="<%= tool.logo %>" alt="<%= tool.name %>">
+        <div class="tool-name-os"><%= tool.name %></div>
+        <p class="tool-desc-os"><%= tool.description %></p>
+        <div class="tool-actions-os">
+          <a href="/tool/<%= tool._id %>" class="tool-btn primary-tool">Details</a>
+          <a href="/visit/<%= tool._id %>" target="_blank" class="tool-btn ghost-tool">Visit →</a>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </section>
 
-          <div class="cta-buttons">
-            <button onclick="openAquaAI()" class="btn primary big-btn pulse">
-              🚀 Try Aqua AI Now
-            </button>
+  <hr class="os-divider">
+  <% } %>
 
-            <a href="/download" class="btn ghost big-btn secondary">
-              📲 Download App
-            </a>
-          </div>
+  <!-- ═══ MEMORY SIGNAL ═══ -->
+  <section class="memory-signal">
+    <div class="memory-card">
+      <div class="memory-icon-wrap">🧬</div>
+      <p class="memory-text">
+        <strong>Aqua learns with you.</strong> Every session, it gets more attuned to how you think and what you build.
+      </p>
+    </div>
+  </section>
 
-          <p style="margin-top:10px; opacity:0.7;">
-            ⚡ Takes 10 seconds. No setup required.
-          </p>
+  <!-- ═══ FINAL CTA ═══ -->
+  <section class="final-os">
+    <div class="final-os-inner">
+      <h2>Stop searching.<br>Start executing.</h2>
+      <p>You have an idea. Aqua has everything else. Let's build.</p>
+      <div class="final-actions">
+        <button onclick="openAquaAI()" class="btn-primary-os">
+          🚀 Open Aqua AI
+        </button>
+        <a href="/download" class="btn-ghost-os">
+          📲 Get the App
+        </a>
+      </div>
+    </div>
+  </section>
 
-        </section>
+  <%- include("partials/footer") %>
 
-        <%- include("partials/footer") %>
+  <!-- JS -->
+  <script>
+    document.addEventListener("touchstart", function(){}, true);
 
-<!-- JS -->
-<script>
-  function openAquaAI() {
-    document.getElementById("aquaPopup").classList.remove("hidden");
-  }
+    // Aqua popup
+    function openAquaAI() {
+      const popup = document.getElementById("aquaPopup");
+      popup.classList.remove("hidden");
+    }
 
-  function closeAquaAI() {
-    const popup = document.getElementById("aquaPopup");
-    popup.style.opacity = "0";
-    popup.style.transform = "translateY(20px)";
-
-    setTimeout(() => {
+    function closeAquaAI() {
+      const popup = document.getElementById("aquaPopup");
       popup.classList.add("hidden");
-    }, 200);
-  }
+    }
 
-  // AUTO POPUP (conversion boost)
-  setTimeout(() => {
-    openAquaAI();
-  }, 4000);
-</script>
-        <script>
-          document.addEventListener("touchstart", function(){}, true);
-        </script>
-        <script>
-        const glow = document.querySelector(".cursor-glow");
-        const hero = document.querySelector(".new-hero");
+    // Auto-popup after delay
+    setTimeout(openAquaAI, 4000);
 
-        hero.addEventListener("mousemove", (e) => {
-          const rect = hero.getBoundingClientRect();
-          glow.style.left = (e.clientX - rect.left) + "px";
-          glow.style.top = (e.clientY - rect.top) + "px";
-        });
-        </script>
-        <script>
-        function runHeroAI() {
-          const input = document.getElementById("heroPrompt").value.trim();
-          if (!input) return;
+    // Chip → input fill
+    function setPrompt(text) {
+      const input = document.getElementById("heroPrompt");
+      input.value = text;
+      input.focus();
+    }
 
-          const btn = document.querySelector(".hero-input-box button");
-          btn.innerText = "Redirecting...";
+    // Hero AI handler
+    function runHeroAI() {
+      const input = document.getElementById("heroPrompt").value.trim();
+      if (!input) return;
 
-          localStorage.setItem("aqua_goal", input);
+      const btn = document.querySelector(".command-run");
+      btn.innerHTML = '<span class="run-label">Thinking</span><span class="run-icon">...</span>';
+      btn.style.opacity = "0.7";
 
-          setTimeout(() => {
-            window.location.href = "/bundles";
-          }, 300);
-        }
-        </script>
+      localStorage.setItem("aqua_goal", input);
 
-        
+      setTimeout(() => {
+        window.location.href = "/bundles";
+      }, 350);
+    }
+
+    // Enter key on input
+    document.getElementById("heroPrompt").addEventListener("keydown", function(e) {
+      if (e.key === "Enter") runHeroAI();
+    });
+
+    // Cursor glow on hero
+    (function() {
+      const hero = document.querySelector(".hero-os");
+      if (!hero) return;
+      let glow = document.createElement("div");
+      glow.style.cssText = "position:absolute;width:350px;height:350px;background:radial-gradient(circle,rgba(56,189,248,0.12),transparent 70%);pointer-events:none;border-radius:50%;transform:translate(-50%,-50%);z-index:0;transition:left 0.1s,top 0.1s;";
+      hero.appendChild(glow);
+      hero.addEventListener("mousemove", function(e) {
+        const r = hero.getBoundingClientRect();
+        glow.style.left = (e.clientX - r.left) + "px";
+        glow.style.top = (e.clientY - r.top) + "px";
+      });
+    })();
+  </script>
+
 </body>
 </html>
