@@ -171,7 +171,7 @@ body {
   top: 0;
   z-index: 1000;
   padding: 0 24px;
-  height: 64px;
+  height: 60px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -201,7 +201,7 @@ body {
 }
 
 .logo img {
-  height: 30px;
+  height: 28px;
   object-fit: contain;
   filter: drop-shadow(0 0 8px rgba(0, 212, 255, 0.5));
   transition: filter var(--transition);
@@ -226,7 +226,7 @@ body {
 
 .nav-buttons {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   position: relative;
   z-index: 10;
@@ -249,6 +249,7 @@ body {
   cursor: pointer;
   overflow: hidden;
   z-index: 1;
+  white-space: nowrap;
 }
 
 .btn-primary::before {
@@ -288,6 +289,7 @@ body {
   position: relative;
   z-index: 10;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .btn-outline:hover {
@@ -341,12 +343,13 @@ body {
 /* ===== HERO ===== */
 .hero {
   min-height: 100vh;
+  min-height: 100dvh; /* dynamic viewport height for mobile browsers */
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   text-align: center;
-  padding: 100px 24px 80px;
+  padding: 100px 20px 80px;
   position: relative;
   gap: 0;
 }
@@ -366,7 +369,7 @@ body {
   background: rgba(0, 212, 255, 0.04);
   padding: 7px 16px;
   border-radius: 999px;
-  margin-bottom: 36px;
+  margin-bottom: 28px;
   opacity: 0;
   animation: fadeSlideIn 0.8s 0.3s ease forwards;
 }
@@ -377,6 +380,7 @@ body {
   border-radius: 50%;
   background: var(--accent-cyan);
   animation: pulse 2s infinite;
+  flex-shrink: 0;
 }
 
 @keyframes pulse {
@@ -391,15 +395,16 @@ body {
 
 .hero h1 {
   font-family: var(--font-display);
-  font-size: clamp(36px, 6vw, 72px);
+  font-size: clamp(32px, 7vw, 72px);
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.02em;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
   color: var(--text-primary);
   opacity: 0;
   animation: fadeSlideIn 0.9s 0.5s ease forwards;
   max-width: 880px;
+  width: 100%;
 }
 
 .hero h1 .accent {
@@ -415,8 +420,9 @@ body {
   font-weight: 300;
   color: var(--text-muted);
   max-width: 520px;
+  width: 100%;
   line-height: 1.7;
-  margin-bottom: 48px;
+  margin-bottom: 36px;
   opacity: 0;
   animation: fadeSlideIn 0.9s 0.7s ease forwards;
 }
@@ -425,9 +431,10 @@ body {
 .input-wrapper {
   width: 100%;
   max-width: 560px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   opacity: 0;
   animation: fadeSlideIn 0.9s 0.85s ease forwards;
+  padding: 0 4px;
 }
 
 .input-box {
@@ -458,11 +465,12 @@ body {
   border: none;
   background: transparent;
   color: var(--text-primary);
-  padding: 13px 16px;
+  padding: 13px 12px;
   outline: none;
   font-family: var(--font-body);
   font-size: 14px;
   font-weight: 400;
+  min-width: 0; /* prevent overflow in flex */
 }
 
 .input-box input::placeholder {
@@ -472,7 +480,7 @@ body {
 .input-box button {
   background: linear-gradient(135deg, var(--accent-cyan), var(--accent-indigo));
   border: none;
-  padding: 12px 22px;
+  padding: 12px 18px;
   border-radius: 8px;
   color: white;
   cursor: pointer;
@@ -485,6 +493,7 @@ body {
   white-space: nowrap;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
 }
 
 .input-box button::after {
@@ -510,14 +519,16 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  padding: 0 10px;
+  padding: 0 4px;
   opacity: 0;
   animation: fadeSlideIn 0.9s 1s ease forwards;
+  width: 100%;
+  max-width: 560px;
 }
 
 .examples span {
   display: inline-block;
-  padding: 7px 16px;
+  padding: 7px 14px;
   font-family: var(--font-body);
   font-size: 12px;
   font-weight: 500;
@@ -551,7 +562,7 @@ body {
 
 /* ===== HOW IT WORKS ===== */
 .how {
-  padding: 100px 24px 80px;
+  padding: 80px 20px 70px;
   text-align: center;
   max-width: 1100px;
   margin: 0 auto;
@@ -583,20 +594,21 @@ body {
 
 .how h2 {
   font-family: var(--font-display);
-  font-size: clamp(28px, 4vw, 48px);
+  font-size: clamp(24px, 4vw, 48px);
   font-weight: 800;
   letter-spacing: -0.02em;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   color: var(--text-primary);
 }
 
 .how .sub {
   font-size: 15px;
   color: var(--text-muted);
-  margin-bottom: 60px;
+  margin-bottom: 48px;
   max-width: 480px;
   margin-left: auto;
   margin-right: auto;
+  line-height: 1.65;
 }
 
 .grid {
@@ -622,7 +634,7 @@ body {
 .card {
   background: var(--bg-panel);
   border: 1px solid var(--border-glass);
-  padding: 36px 28px;
+  padding: 32px 24px;
   border-radius: 16px;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
@@ -674,21 +686,21 @@ body {
   text-transform: uppercase;
   color: var(--accent-cyan);
   opacity: 0.5;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .card-icon {
-  font-size: 32px;
-  margin-bottom: 16px;
+  font-size: 28px;
+  margin-bottom: 12px;
   display: block;
   line-height: 1;
 }
 
 .card h3 {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
   color: var(--text-primary);
 }
 
@@ -701,7 +713,7 @@ body {
 /* ===== CTA SECTION ===== */
 .cta {
   text-align: center;
-  padding: 100px 24px 120px;
+  padding: 80px 20px 100px;
   position: relative;
 }
 
@@ -723,10 +735,10 @@ body {
 
 .cta h2 {
   font-family: var(--font-display);
-  font-size: clamp(28px, 4vw, 52px);
+  font-size: clamp(26px, 4vw, 52px);
   font-weight: 800;
   letter-spacing: -0.02em;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
   line-height: 1.1;
 }
 
@@ -740,7 +752,8 @@ body {
 .cta .sub {
   font-size: 15px;
   color: var(--text-muted);
-  margin-bottom: 48px;
+  margin-bottom: 40px;
+  line-height: 1.65;
 }
 
 /* CTA status */
@@ -761,11 +774,12 @@ body {
   border-radius: 50%;
   background: #22c55e;
   animation: pulse 2s infinite;
+  flex-shrink: 0;
 }
 
 /* ===== FOOTER ===== */
 .footer {
-  padding: 32px 24px;
+  padding: 28px 20px;
   border-top: 1px solid rgba(0, 212, 255, 0.07);
   display: flex;
   justify-content: center;
@@ -776,6 +790,7 @@ body {
   font-size: 12px;
   color: var(--text-muted);
   letter-spacing: 0.06em;
+  text-align: center;
 }
 
 /* ===== DESKTOP ===== */
@@ -785,31 +800,215 @@ body {
   }
 
   .navbar {
+    height: 64px;
     padding: 0 40px;
   }
 
   .hero {
     padding: 120px 40px 100px;
   }
-}
-
-/* ===== MOBILE ===== */
-@media (max-width: 767px) {
-  .hero {
-    padding: 110px 18px 70px;
-  }
 
   .hero h1 {
-    font-size: 32px;
+    margin-bottom: 24px;
+  }
+
+  .hero-badge {
+    margin-bottom: 36px;
+  }
+
+  .hero-sub {
+    margin-bottom: 48px;
+  }
+
+  .how {
+    padding: 100px 24px 80px;
+  }
+
+  .cta {
+    padding: 100px 24px 120px;
+  }
+
+  .input-box button {
+    padding: 12px 22px;
+  }
+
+  .input-box input {
+    padding: 13px 16px;
+  }
+}
+
+/* ===== MOBILE — up to 767px ===== */
+@media (max-width: 767px) {
+
+  /* Prevent orbs from causing horizontal scroll */
+  .orb-1 {
+    width: 320px;
+    height: 320px;
+    top: -100px;
+    left: -100px;
+  }
+
+  .orb-2 {
+    width: 280px;
+    height: 280px;
+    bottom: -80px;
+    right: -80px;
+  }
+
+  .orb-3 {
+    width: 200px;
+    height: 200px;
+    top: 40%;
+    left: 50%;
+  }
+
+  /* Navbar */
+  .navbar {
+    height: 56px;
+    padding: 0 16px;
   }
 
   .nav-tag {
     display: none;
   }
 
+  .btn-outline,
+  .btn-primary {
+    padding: 8px 14px;
+    font-size: 12px;
+  }
+
+  /* Hero */
+  .hero {
+    padding: 88px 16px 60px;
+    min-height: 100dvh;
+  }
+
+  .hero-badge {
+    font-size: 10px;
+    padding: 6px 12px;
+    margin-bottom: 24px;
+    letter-spacing: 0.1em;
+  }
+
+  .hero h1 {
+    font-size: clamp(28px, 9vw, 42px);
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .hero-sub {
+    font-size: 14px;
+    margin-bottom: 28px;
+    padding: 0 4px;
+  }
+
+  /* Input box — stays horizontal on mobile, just tighter */
+  .input-wrapper {
+    margin-bottom: 14px;
+    padding: 0;
+  }
+
+  .input-box {
+    border-radius: 10px;
+    padding: 5px;
+    gap: 4px;
+  }
+
+  .input-box input {
+    padding: 11px 10px;
+    font-size: 14px;
+  }
+
+  .input-box button {
+    padding: 11px 14px;
+    font-size: 12px;
+    border-radius: 7px;
+    letter-spacing: 0.04em;
+  }
+
+  /* Example chips */
+  .examples {
+    gap: 6px;
+  }
+
+  .examples span {
+    font-size: 11px;
+    padding: 6px 12px;
+  }
+
+  /* How it works */
+  .how {
+    padding: 64px 16px 52px;
+  }
+
+  .how h2 {
+    font-size: clamp(22px, 7vw, 32px);
+  }
+
+  .how .sub {
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+
   .grid {
     grid-template-columns: 1fr;
-    gap: 14px;
+    gap: 12px;
+  }
+
+  .card {
+    padding: 24px 20px;
+    border-radius: 14px;
+  }
+
+  .card-icon {
+    font-size: 26px;
+    margin-bottom: 10px;
+  }
+
+  .card h3 {
+    font-size: 16px;
+  }
+
+  /* CTA */
+  .cta {
+    padding: 64px 16px 80px;
+  }
+
+  .cta h2 {
+    font-size: clamp(24px, 7.5vw, 36px);
+  }
+
+  .cta .sub {
+    font-size: 14px;
+    margin-bottom: 32px;
+  }
+
+  .btn-cta {
+    padding: 14px 28px;
+    font-size: 14px;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cta-status {
+    font-size: 10px;
+    flex-wrap: wrap;
+    gap: 4px;
+    text-align: center;
+  }
+
+  /* Footer */
+  .footer {
+    padding: 24px 16px;
+  }
+}
+
+/* ===== VERY SMALL SCREENS (< 360px) ===== */
+@media (max-width: 359px) {
+  .hero h1 {
+    font-size: 26px;
   }
 
   .input-box {
@@ -817,20 +1016,19 @@ body {
     gap: 8px;
   }
 
+  .input-box input {
+    width: 100%;
+    text-align: center;
+  }
+
   .input-box button {
     width: 100%;
     border-radius: 8px;
   }
 
-  .cta {
-    padding: 70px 18px 90px;
-  }
-
-  .how {
-    padding: 70px 18px 60px;
-  }
-
-  .card {
-    padding: 28px 22px;
+  .btn-outline,
+  .btn-primary {
+    padding: 7px 10px;
+    font-size: 11px;
   }
 }

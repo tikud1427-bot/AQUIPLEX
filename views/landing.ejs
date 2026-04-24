@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#020510">
   <title>Aqua AI — Intelligence, Orchestrated</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -61,7 +62,7 @@
     <!-- INPUT -->
     <div class="input-wrapper">
       <div class="input-box">
-        <input id="goalInput" type="text" placeholder="Build a SaaS product...">
+        <input id="goalInput" type="text" placeholder="Build a SaaS product..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         <button onclick="goToHome()">⚡ Execute</button>
       </div>
     </div>
@@ -198,9 +199,11 @@
   </script>
 
   <script>
-    // ── Particles
+    // ── Particles — fewer on mobile for performance
     const container = document.getElementById("particles");
-    for (let i = 0; i < 50; i++) {
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    const count = isMobile ? 20 : 50;
+    for (let i = 0; i < count; i++) {
       const s = document.createElement("span");
       s.style.cssText = [
         `left:${Math.random() * 100}%`,
@@ -216,7 +219,7 @@
   </script>
 
   <script>
-    // ── Cursor glow (desktop only)
+    // ── Cursor glow (desktop / fine pointer only)
     if (window.matchMedia("(pointer: fine)").matches) {
       const glow = document.getElementById("cursorGlow");
       document.addEventListener("mousemove", (e) => {
@@ -236,7 +239,7 @@
           observer.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.12 });
+    }, { threshold: 0.08 });
     revealEls.forEach(el => observer.observe(el));
   </script>
 
