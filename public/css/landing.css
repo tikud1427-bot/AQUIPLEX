@@ -99,16 +99,32 @@ body, .hero, .how, .cta {
     radial-gradient(ellipse 60% 45% at 85% 85%,  rgba(99, 102, 241, 0.12) 0%, transparent 55%),
     radial-gradient(ellipse 90% 70% at 50% 50%,  #030818 0%, var(--bg) 100%);
 }
-
 .bg-grid {
   position: absolute;
   inset: 0;
+
   background-image:
-    linear-gradient(rgba(0, 212, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 212, 255, 0.025) 1px, transparent 1px);
+    linear-gradient(rgba(0, 212, 255, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.055) 1px, transparent 1px);
+
   background-size: 52px 52px;
-  mask-image: radial-gradient(ellipse 85% 85% at 50% 35%, black 20%, transparent 100%);
+
+  mask-image: radial-gradient(ellipse 85% 85% at 50% 35%, black 25%, transparent 100%);
+
+  opacity: 0.65;
 }
+.bg-grid::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background:
+    radial-gradient(circle at 50% 40%, rgba(0,212,255,0.12), transparent 70%);
+
+  pointer-events: none;
+  opacity: 0.45;
+}
+
 
 .orb {
   position: absolute;
@@ -177,18 +193,21 @@ body, .hero, .how, .cta {
 }
 
 .particles span {
-  position: absolute;
   background: var(--cyan);
   border-radius: 50%;
   opacity: 0;
-  animation: rise linear infinite;
+
+  box-shadow:
+    0 0 6px rgba(0,212,255,0.6),
+    0 0 12px rgba(0,212,255,0.4);
 }
 
 @keyframes rise {
-  0%   { opacity: 0;    transform: translateY(80px) scale(0.5); }
-  8%   { opacity: 0.35; }
-  88%  { opacity: 0.15; }
-  100% { opacity: 0;    transform: translateY(-60vh) scale(1.2); }
+  0%   { opacity: 0; transform: translateY(80px) scale(0.5); }
+  10%  { opacity: 0.65; }
+  50%  { opacity: 0.4; }
+  90%  { opacity: 0.25; }
+  100% { opacity: 0; transform: translateY(-60vh) scale(1.2); }
 }
 
 /* ===== CURSOR GLOW ===== */
@@ -1033,7 +1052,16 @@ body, .hero, .how, .cta {
   .footer { padding: 20px 16px; }
   .cta-glow {
     width: 100%;
-    max-width: 100vw;
+    max-width: 100vw;  
+  }
+  .bg-grid {
+    opacity: 0.8;
+    background-size: 44px 44px; /* slightly tighter grid = more visible */
+  }
+  .particles span {
+    box-shadow:
+      0 0 8px rgba(0,212,255,0.8),
+      0 0 18px rgba(0,212,255,0.5);
   }
 }
 
