@@ -1,586 +1,1268 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- 🔥 THIS -->
-    <title>Aqua Project Engine | Aquiplex</title>
-    <link rel="stylesheet" href="/css/styles.css">
-  </head>
-  <body class="bundle-page">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aqua Project Engine | Aquiplex</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <style>
+    /* ── Reset & base ───────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    <%- include('partials/nav') %>
+    body.bundle-page {
+      background: #020617;
+      color: #e2e8f0;
+      font-family: "Inter", system-ui, sans-serif;
+      min-height: 100vh;
+    }
 
+    /* ── Layout shells ──────────────────────────────────────────── */
+    .ape-hero {
+      text-align: center;
+      padding: 56px 20px 32px;
+    }
+    .ape-hero h1 {
+      font-size: clamp(1.75rem, 4vw, 2.75rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 60%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.03em;
+    }
+    .ape-hero p {
+      margin-top: 10px;
+      color: #64748b;
+      font-size: 1rem;
+    }
 
-      <div class="hero">
-        <h1>🌊 Aqua Project Engine</h1>
-        <p>Turn any idea into a step-by-step AI-powered project plan 🚀</p>
+    /* ── Goal input card ────────────────────────────────────────── */
+    .goal-card {
+      max-width: 720px;
+      margin: 0 auto 32px;
+      padding: 28px 32px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+    }
+    .goal-card label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+    }
+    .goal-card input {
+      width: 100%;
+      padding: 14px 18px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      color: #f1f5f9;
+      font-size: 1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .goal-card input:focus { border-color: #38bdf8; }
+    .goal-card input::placeholder { color: #475569; }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+      padding: 13px 26px;
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .quick-btns {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .quick-btn {
+      padding: 7px 14px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #94a3b8;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .quick-btn:hover { background: #334155; color: #e2e8f0; }
+
+    /* ── Questions flow ─────────────────────────────────────────── */
+    .questions-card {
+      max-width: 720px;
+      margin: 0 auto 32px;
+      padding: 28px 32px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 16px;
+    }
+    .questions-card h3 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f1f5f9;
+      margin-bottom: 20px;
+    }
+    .q-item { margin-bottom: 18px; }
+    .q-item p { font-size: 0.9rem; color: #cbd5e1; margin-bottom: 6px; }
+    .q-item input {
+      width: 100%;
+      padding: 11px 15px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #f1f5f9;
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .q-item input:focus { border-color: #818cf8; }
+
+    /* ── Dashboard shell ────────────────────────────────────────── */
+    .dashboard {
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 24px;
+      align-items: start;
+    }
+    @media (max-width: 860px) {
+      .dashboard { grid-template-columns: 1fr; }
+    }
+
+    /* ── Sidebar ────────────────────────────────────────────────── */
+    .sidebar {
+      position: sticky;
+      top: 80px;
+    }
+    .sidebar-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .sidebar-card h4 {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #475569;
+      margin-bottom: 14px;
+    }
+
+    /* overall progress ring */
+    .progress-ring-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .progress-ring-wrap svg { transform: rotate(-90deg); }
+    .progress-ring-wrap .ring-bg { fill: none; stroke: #1e293b; stroke-width: 8; }
+    .progress-ring-wrap .ring-fill {
+      fill: none;
+      stroke: url(#ringGrad);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 226;       /* 2π × 36 */
+      stroke-dashoffset: 226;
+      transition: stroke-dashoffset 0.6s ease;
+    }
+    .ring-pct {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #f1f5f9;
+    }
+    .ring-label { font-size: 0.78rem; color: #64748b; }
+
+    /* step nav list */
+    .step-nav-list { list-style: none; }
+    .step-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 2px;
+    }
+    .step-nav-item:hover { background: #1e293b; }
+    .step-nav-item.active { background: #1e293b; }
+
+    .step-dot {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.65rem; font-weight: 700;
+      border: 2px solid #334155;
+      background: #0f172a;
+      color: #64748b;
+    }
+    .step-dot.done  { background: #22c55e; border-color: #22c55e; color: #fff; }
+    .step-dot.active { background: #38bdf8; border-color: #38bdf8; color: #fff; }
+    .step-dot.failed { background: #ef4444; border-color: #ef4444; color: #fff; }
+
+    .step-nav-label { font-size: 0.82rem; color: #94a3b8; line-height: 1.3; }
+    .step-nav-label.done { color: #22c55e; }
+    .step-nav-label.active { color: #f1f5f9; font-weight: 600; }
+
+    /* memory panel */
+    .memory-entry {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-bottom: 10px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #1e293b;
+    }
+    .memory-entry:last-child { border-bottom: none; margin-bottom: 0; }
+    .mem-key   { font-size: 0.7rem; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.06em; }
+    .mem-value { font-size: 0.83rem; color: #cbd5e1; }
+
+    /* ── Main panel ─────────────────────────────────────────────── */
+    .main-panel {}
+
+    /* project header */
+    .project-header {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      padding: 24px 28px;
+      margin-bottom: 20px;
+    }
+    .project-header h2 {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #f1f5f9;
+      margin-bottom: 6px;
+    }
+    .project-goal {
+      font-size: 0.88rem;
+      color: #64748b;
+      margin-bottom: 14px;
+    }
+    .project-meta {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: #1e293b;
+      border-radius: 999px;
+      font-size: 0.77rem;
+      color: #94a3b8;
+    }
+    .meta-pill .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: #22c55e;
+    }
+    .meta-pill .dot.blue   { background: #38bdf8; }
+    .meta-pill .dot.purple { background: #818cf8; }
+
+    /* step cards */
+    .step-card {
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 14px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .step-card.active  { border-color: #38bdf8; }
+    .step-card.done    { border-color: #1e293b; opacity: 0.85; }
+
+    .step-card-header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px 22px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .step-num {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; font-weight: 700;
+      flex-shrink: 0;
+      background: #1e293b;
+      color: #64748b;
+      border: 2px solid #334155;
+    }
+    .step-num.done    { background: #052e16; border-color: #22c55e; color: #22c55e; }
+    .step-num.active  { background: #0c2340; border-color: #38bdf8; color: #38bdf8; }
+    .step-num.running { background: #172554; border-color: #818cf8; color: #818cf8; }
+
+    .step-card-title { flex: 1; }
+    .step-card-title h3 { font-size: 1rem; font-weight: 700; color: #f1f5f9; }
+    .step-card-title p  { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+
+    .step-badge {
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-pending   { background: #1e293b; color: #64748b; }
+    .badge-running   { background: #172554; color: #818cf8; }
+    .badge-done      { background: #052e16; color: #22c55e; }
+    .badge-failed    { background: #2d0707; color: #ef4444; }
+
+    /* step body (collapsible) */
+    .step-card-body {
+      padding: 0 22px 22px;
+      display: none;
+    }
+    .step-card-body.open { display: block; }
+
+    .step-desc {
+      font-size: 0.87rem;
+      color: #94a3b8;
+      line-height: 1.6;
+      margin-bottom: 16px;
+      padding: 12px 16px;
+      background: #1e293b;
+      border-radius: 8px;
+    }
+
+    /* execute button */
+    .btn-execute {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 22px;
+      background: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+      border: none;
+      border-radius: 9px;
+      color: #fff;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-execute:hover:not(:disabled) { opacity: 0.85; transform: translateY(-1px); }
+    .btn-execute:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    .btn-re-execute {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #64748b;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.15s;
+      margin-left: 10px;
+    }
+    .btn-re-execute:hover { border-color: #818cf8; color: #818cf8; }
+
+    /* output area */
+    .output-area {
+      margin-top: 18px;
+    }
+    .output-label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #38bdf8;
+      margin-bottom: 8px;
+    }
+    .output-content {
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 18px 20px;
+      font-size: 0.88rem;
+      color: #cbd5e1;
+      line-height: 1.75;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      max-height: 520px;
+      overflow-y: auto;
+    }
+    /* basic markdown-like styling */
+    .output-content strong { color: #f1f5f9; }
+    .output-content code {
+      background: #1e293b;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-family: "Fira Code", monospace;
+      font-size: 0.82rem;
+      color: #38bdf8;
+    }
+
+    .insights-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .insight-pill {
+      padding: 4px 11px;
+      background: #0c2340;
+      border: 1px solid #1d4ed8;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: #93c5fd;
+    }
+
+    .hints-row {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: #14101e;
+      border: 1px solid #4c1d95;
+      border-radius: 8px;
+    }
+    .hints-row p {
+      font-size: 0.75rem;
+      color: #a78bfa;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .hints-row ul { list-style: none; }
+    .hints-row ul li {
+      font-size: 0.8rem;
+      color: #c4b5fd;
+      padding: 2px 0;
+    }
+    .hints-row ul li::before { content: "→ "; }
+
+    /* step duration */
+    .step-duration {
+      font-size: 0.72rem;
+      color: #334155;
+      margin-top: 8px;
+      text-align: right;
+    }
+
+    /* ── Spinner ────────────────────────────────────────────────── */
+    .spinner {
+      width: 20px; height: 20px;
+      border: 2px solid #334155;
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast ──────────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 28px; right: 24px;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      z-index: 9999;
+      animation: toastIn 0.25s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .toast.success { background: #052e16; border: 1px solid #22c55e; color: #22c55e; }
+    .toast.error   { background: #2d0707; border: 1px solid #ef4444; color: #ef4444; }
+    .toast.info    { background: #0c2340; border: 1px solid #38bdf8; color: #38bdf8; }
+    @keyframes toastIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: none; } }
+
+    /* ── Loading skeleton ───────────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, #0f172a 25%, #1e293b 50%, #0f172a 75%);
+      background-size: 400% 100%;
+      animation: shimmer 1.4s ease infinite;
+      border-radius: 8px;
+    }
+    @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+
+    /* ── Empty / loading states ─────────────────────────────────── */
+    #app-root { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+  </style>
+</head>
+<body class="bundle-page">
+
+  <%- include('partials/nav') %>
+
+  <!-- SVG gradient defs (hidden) -->
+  <svg width="0" height="0" style="position:absolute">
+    <defs>
+      <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%"   stop-color="#38bdf8"/>
+        <stop offset="100%" stop-color="#818cf8"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <div class="ape-hero">
+    <h1>🌊 Aqua Project Engine</h1>
+    <p>AI that doesn't just plan — it <em>executes</em>.</p>
+  </div>
+
+  <div id="app-root">
+
+    <!-- ── PHASE 1: Goal input ──────────────────────────────────── -->
+    <div id="phase-goal">
+      <div class="goal-card">
+        <label>What do you want to build?</label>
+        <input id="goalInput"
+               placeholder="e.g. Launch a SaaS app, Grow a YouTube channel, Start freelancing" />
+        <br/>
+        <button class="btn-primary" onclick="startGenerate()">
+          <span>🚀</span> Build Project Plan
+        </button>
+        <div class="quick-btns">
+          <button class="quick-btn" onclick="quick('Start a YouTube channel')">🎥 YouTuber</button>
+          <button class="quick-btn" onclick="quick('Build a SaaS product from scratch')">🛠 SaaS</button>
+          <button class="quick-btn" onclick="quick('Launch a freelancing business')">💼 Freelancer</button>
+          <button class="quick-btn" onclick="quick('Learn full-stack development fast')">💻 Developer</button>
+        </div>
       </div>
-  <div class="bundle-box">
 
-    <p style="font-size:13px; color:#94a3b8; text-align:center;">
-      Enter any goal — like "start freelancing", "grow Instagram", or "learn coding"
-    </p>
-
-    <input id="goalInput" placeholder="What do you want to build? (e.g. YouTube channel, SaaS app, freelancing business)" />
-    <button onclick="generateBundle()">🚀 Build Project</button>
-
-    <div class="category-buttons">
-      <button onclick="quick('Start a YouTube channel')">🎥 YouTuber</button>
-      <button onclick="quick('Learn coding fast')">💻 Developer</button>
-      <button onclick="quick('Learn video editing')">🎨 Editor</button>
+      <!-- resume banner (shown if localStorage has a saved bundle) -->
+      <div id="resume-banner" style="display:none; max-width:720px; margin: 0 auto 24px;">
+        <div class="sidebar-card" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="font-size:0.8rem; color:#38bdf8; font-weight:700; margin-bottom:4px;">🔥 CONTINUE WHERE YOU LEFT OFF</div>
+            <div id="resume-title" style="color:#f1f5f9; font-weight:600;"></div>
+            <div id="resume-meta"  style="color:#64748b; font-size:0.8rem;"></div>
+          </div>
+          <button class="btn-execute" style="font-size:0.82rem; padding:9px 18px;" onclick="resumeProject()">
+            ▶ Resume
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- 🔥 MOVE THIS HERE -->
-    <p style="font-size:12px; color:#64748b; text-align:center; margin-top:10px;">
-      Aquiplex will generate a step-by-step AI-powered project plan to help you achieve it faster 🚀
-    </p>
+    <!-- ── PHASE 2: Questions ───────────────────────────────────── -->
+    <div id="phase-questions" style="display:none;">
+      <div class="questions-card">
+        <h3>🧠 Quick Context — 30 seconds, much better results</h3>
+        <div id="questions-list"></div>
+        <button class="btn-primary" onclick="submitAnswers()">
+          <span>→</span> Continue
+        </button>
+      </div>
+    </div>
 
-  </div>
-<div id="result"></div>
+    <!-- ── PHASE 3: Execution Dashboard ────────────────────────── -->
+    <div id="phase-dashboard" class="dashboard" style="display:none;">
 
-      <!-- FOOTER -->    
+      <!-- Sidebar -->
+      <aside class="sidebar">
 
-        <%- include("partials/footer") %>
+        <!-- Progress ring -->
+        <div class="sidebar-card">
+          <h4>Project Progress</h4>
+          <div class="progress-ring-wrap">
+            <svg width="90" height="90" viewBox="0 0 90 90">
+              <circle class="ring-bg"   cx="45" cy="45" r="36"/>
+              <circle class="ring-fill" cx="45" cy="45" r="36" id="ringFill"/>
+            </svg>
+            <div class="ring-pct" id="ringPct">0%</div>
+            <div class="ring-label" id="ringLabel">0 of 0 steps</div>
+          </div>
 
+          <ul class="step-nav-list" id="stepNavList"></ul>
+        </div>
+
+        <!-- Memory panel -->
+        <div class="sidebar-card" id="memoryPanel" style="display:none;">
+          <h4>🧠 Project Memory</h4>
+          <div id="memoryEntries"></div>
+        </div>
+
+        <!-- Context summary -->
+        <div class="sidebar-card" id="contextPanel" style="display:none;">
+          <h4>📖 Context Summary</h4>
+          <div id="contextText" style="font-size:0.82rem; color:#94a3b8; line-height:1.6;"></div>
+        </div>
+
+        <!-- Actions -->
+        <div class="sidebar-card">
+          <h4>Actions</h4>
+          <button class="btn-primary" style="width:100%; justify-content:center; margin-bottom:8px;"
+                  onclick="saveCurrentBundle()">
+            💾 Save Bundle
+          </button>
+          <button class="quick-btn" style="width:100%; justify-content:center;"
+                  onclick="resetAll()">
+            ✕ New Project
+          </button>
+        </div>
+
+      </aside>
+
+      <!-- Main panel -->
+      <main class="main-panel">
+
+        <!-- Project header -->
+        <div class="project-header">
+          <h2 id="dashTitle">Project</h2>
+          <div class="project-goal" id="dashGoal"></div>
+          <div class="project-meta">
+            <span class="meta-pill"><span class="dot blue"></span><span id="metaSteps">— steps</span></span>
+            <span class="meta-pill"><span class="dot"></span><span id="metaStatus">Draft</span></span>
+            <span class="meta-pill"><span class="dot purple"></span><span id="metaTime">Just created</span></span>
+          </div>
+        </div>
+
+        <!-- Step cards -->
+        <div id="stepCards"></div>
+
+      </main>
+    </div><!-- /phase-dashboard -->
+
+  </div><!-- /app-root -->
+
+  <%- include("partials/footer") %>
 
 <script>
+// ════════════════════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════════════════════
+let STATE = {
+  goal:      "",
+  answers:   [],
+  questions: [],
+  bundle:    null,     // { _id?, title, goal, steps[], outputs[], progress[], memory{}, contextSummary }
+  running:   false,
+};
 
-  
-  async function generateBundle(step = 1) {
-  const goal = document.getElementById("goalInput").value.trim(); // ✅ MOVED HERE
-
-  if (!goal) {
-    alert("Please enter a goal");
-    return;
+// ════════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════════
+window.addEventListener("load", () => {
+  // Auto-fill goal from home page shortcut
+  const savedGoal = localStorage.getItem("aqua_goal");
+  if (savedGoal) {
+    document.getElementById("goalInput").value = savedGoal;
+    localStorage.removeItem("aqua_goal");
   }
 
-  console.log("Sending goal:", goal);
+  // Show resume banner if we have a persisted bundle
+  const cached = getCachedBundle();
+  if (cached) showResumeBanner(cached);
+});
 
-  // 🔄 Loading UI
-  document.getElementById("result").innerHTML = `
-    <div style="text-align:center; padding:30px;">
-      <div class="spinner"></div>
-      <p style="margin-top:10px; color:#94a3b8;">Generating your AI bundle...</p>
+// ════════════════════════════════════════════════════════════════════
+// PHASE 1 — GOAL INPUT
+// ════════════════════════════════════════════════════════════════════
+function quick(text) {
+  document.getElementById("goalInput").value = text;
+  startGenerate();
+}
+
+async function startGenerate() {
+  const goal = document.getElementById("goalInput").value.trim();
+  if (!goal) { toast("Please enter a goal", "error"); return; }
+  STATE.goal = goal;
+  STATE.answers = [];
+
+  showPhase("questions");
+  showLoadingInPhase("questions");
+
+  try {
+    const res  = await apiFetch("/generate-bundle", "POST", { goal, step: 1 });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    if (data.type === "questions") {
+      STATE.questions = data.questions;
+      renderQuestions(data.questions);
+    } else {
+      // No questions — go straight to dashboard
+      await loadDashboard(data);
+    }
+  } catch (err) {
+    toast("Failed to connect: " + err.message, "error");
+    showPhase("goal");
+  }
+}
+
+function renderQuestions(questions) {
+  const list = document.getElementById("questions-list");
+  list.innerHTML = questions.map((q, i) => `
+    <div class="q-item">
+      <p>${i + 1}. ${escHtml(q)}</p>
+      <input id="q${i}" placeholder="Your answer…" />
+    </div>
+  `).join("");
+}
+
+async function submitAnswers() {
+  const answers = STATE.questions.map((_, i) => {
+    const el = document.getElementById(`q${i}`);
+    return el ? el.value.trim() : "";
+  });
+  STATE.answers = answers;
+
+  showPhase("questions");
+  showLoadingInPhase("questions");
+
+  try {
+    const res  = await apiFetch("/generate-bundle", "POST", { goal: STATE.goal, step: 2, answers });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    await loadDashboard(data);
+  } catch (err) {
+    toast("Plan generation failed: " + err.message, "error");
+    showPhase("goal");
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PHASE 3 — DASHBOARD
+// ════════════════════════════════════════════════════════════════════
+async function loadDashboard(data) {
+  // data may be a fresh plan OR a resumed bundle
+  const isBundle = !!data._id;
+
+  STATE.bundle = {
+    _id:            data._id    || null,
+    title:          data.title  || "Untitled Project",
+    goal:           data.goal   || STATE.goal,
+    steps:          data.steps  || [],
+    outputs:        data.outputs   || [],
+    progress:       data.progress  || (data.steps || []).map((_, i) => ({ step: i, status: "pending" })),
+    decisions:      data.decisions || [],
+    memory:         data.memory    || {},
+    contextSummary: data.contextSummary || "",
+  };
+
+  // Auto-save if it's a fresh plan (not yet in DB)
+  if (!isBundle && STATE.bundle.steps.length) {
+    await autoSaveBundle();
+  }
+
+  // Persist to localStorage
+  setCachedBundle(STATE.bundle);
+
+  // Render
+  renderDashboard();
+  showPhase("dashboard");
+}
+
+function renderDashboard() {
+  const b = STATE.bundle;
+
+  // Header
+  document.getElementById("dashTitle").textContent = b.title;
+  document.getElementById("dashGoal").textContent  = b.goal ? `Goal: ${b.goal}` : "";
+  document.getElementById("metaSteps").textContent = `${b.steps.length} steps`;
+  updateStatusMeta();
+
+  // Step cards
+  const container = document.getElementById("stepCards");
+  container.innerHTML = b.steps.map((step, i) => buildStepCard(step, i)).join("");
+
+  // Restore outputs
+  b.outputs.forEach((o) => renderOutputIntoCard(o.stepIndex, o));
+
+  // Sidebar
+  updateSidebarNav();
+  updateProgress();
+  updateMemoryPanel();
+  updateContextPanel();
+
+  // Auto-open first non-completed step
+  const firstPending = b.progress.findIndex((p) => p.status !== "completed");
+  if (firstPending >= 0) openStepCard(firstPending);
+  else if (b.steps.length) openStepCard(0);
+}
+
+function buildStepCard(step, i) {
+  const prog   = getStepProgress(i);
+  const status = prog ? prog.status : "pending";
+  const cardClass = status === "completed" ? "done" : status === "in-progress" ? "active" : "";
+  const numClass  = status === "completed" ? "done"   : status === "in-progress" ? "running" : "";
+  const badge     = badgeHTML(status);
+
+  return `
+    <div class="step-card ${cardClass}" id="card-${i}">
+      <div class="step-card-header" onclick="toggleStepCard(${i})">
+        <div class="step-num ${numClass}">${status === "completed" ? "✓" : i + 1}</div>
+        <div class="step-card-title">
+          <h3>${escHtml(step.title)}</h3>
+          <p>Step ${i + 1} of ${STATE.bundle.steps.length}</p>
+        </div>
+        ${badge}
+      </div>
+      <div class="step-card-body" id="body-${i}">
+        <div class="step-desc">${escHtml(step.description || "")}</div>
+        <div id="output-area-${i}"></div>
+        <div style="margin-top:14px;">
+          <button class="btn-execute" id="btn-exec-${i}" onclick="executeStep(${i})">
+            ⚡ Execute Step ${i + 1}
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function badgeHTML(status) {
+  const map = {
+    pending:     ["badge-pending",  "Pending"],
+    "in-progress": ["badge-running","Running"],
+    completed:   ["badge-done",    "Done"],
+    failed:      ["badge-failed",  "Failed"],
+  };
+  const [cls, label] = map[status] || map.pending;
+  return `<span class="step-badge ${cls}" id="badge-${status}">${label}</span>`;
+}
+
+function toggleStepCard(i) { openStepCard(i); }
+function openStepCard(i) {
+  document.querySelectorAll(".step-card-body").forEach((el, idx) => {
+    el.classList.toggle("open", idx === i);
+  });
+  document.querySelectorAll(".step-card").forEach((el, idx) => {
+    el.classList.toggle("active", idx === i);
+  });
+  updateSidebarNav(i);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// EXECUTION ENGINE
+// ════════════════════════════════════════════════════════════════════
+async function executeStep(stepIndex) {
+  if (STATE.running) { toast("A step is already running", "info"); return; }
+  if (!STATE.bundle._id) { toast("Bundle not saved yet", "error"); return; }
+
+  STATE.running = true;
+
+  // UI — set running state
+  const btn  = document.getElementById(`btn-exec-${stepIndex}`);
+  const card = document.getElementById(`card-${stepIndex}`);
+  if (btn)  { btn.disabled = true; btn.innerHTML = `<span class="spinner"></span> Executing…`; }
+  if (card) { card.classList.add("active"); }
+
+  // Update badge
+  setBadge(stepIndex, "in-progress");
+
+  // Show skeleton output
+  const outputArea = document.getElementById(`output-area-${stepIndex}`);
+  outputArea.innerHTML = `
+    <div class="output-area">
+      <div class="output-label">AI OUTPUT</div>
+      <div class="output-content skeleton" style="min-height:120px;"></div>
     </div>
   `;
 
   try {
-    const res = await fetch(window.location.origin + "/generate-bundle", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ goal, step, answers })
+    const res  = await apiFetch("/execute-step", "POST", {
+      bundleId:  STATE.bundle._id,
+      stepIndex,
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || data.message || "Execution failed");
+
+    // Merge returned state into local STATE
+    mergeExecutionResult(stepIndex, data);
+
+    // Render output
+    renderOutputIntoCard(stepIndex, {
+      content:       data.output,
+      keyInsights:   data.keyInsights,
+      nextStepHints: data.nextStepHints,
+      durationMs:    data.durationMs,
+      title:         STATE.bundle.steps[stepIndex].title,
     });
 
-    const data = await res.json();
-    console.log("Response:", data);
+    // Update sidebar + progress
+    updateSidebarNav();
+    updateProgress();
+    updateMemoryPanel();
+    updateContextPanel();
 
-    if (data.error) {
-      document.getElementById("result").innerHTML = `
-        ❌ ${data.error}
-        <br><br>
-        <small>${data.raw || ""}</small>
-      `;
-      return;
+    // Mark card as done
+    setBadge(stepIndex, "completed");
+    if (card) { card.classList.remove("active"); card.classList.add("done"); }
+
+    // Auto-open next step
+    const next = stepIndex + 1;
+    if (next < STATE.bundle.steps.length) {
+      setTimeout(() => openStepCard(next), 400);
     }
 
-    if (data.type === "questions") {
-      renderQuestions(data.questions);
-    } else {
-      render(data);
-    }
+    toast(`Step ${stepIndex + 1} complete ✓`, "success");
 
   } catch (err) {
-    console.error(err);
-    document.getElementById("result").innerText = "❌ Failed to connect to server";
-  }
-}
-
-function quick(text) {
-  document.getElementById("goalInput").value = text;
-  generateBundle();
-}
-  function render(data) {
-  if (!data.steps || !Array.isArray(data.steps)) {
-    document.getElementById("result").innerText = "❌ Invalid bundle format";
-    return;
-  }
-
-  // ✅ SAVE FULL BUNDLE (FIXED)
-  localStorage.setItem("aqua_bundle_full", JSON.stringify(data));
-    let html = `
-      <div class="bundle-header">
-        <h2>${data.title || "Project Plan"}</h2>
-
-        <div class="xp-box">
-          ⚡ XP: <span id="xpValue">0</span> | 
-          🏆 Level: <span id="levelValue">1</span>
-        </div>
-
-        <div style="background:#1e293b; border-radius:10px; height:10px; margin:10px 0;">
-          <div id="progressFill" style="height:10px; width:0%; background:#22c55e; border-radius:10px;"></div>
-        </div>
-
-        <button onclick='saveBundle(${JSON.stringify(data).replace(/"/g, '&quot;')})' class="save-btn">
-          💾 Save Bundle
-        </button>
-
-        <button onclick='shareBundle(${JSON.stringify(data).replace(/"/g, '&quot;')})' class="share-btn">
-          🔗 Share
-        </button>
+    console.error("executeStep error:", err);
+    setBadge(stepIndex, "failed");
+    outputArea.innerHTML = `
+      <div class="output-area">
+        <div class="output-label" style="color:#ef4444;">EXECUTION FAILED</div>
+        <div class="output-content" style="color:#ef4444;">${escHtml(err.message)}</div>
       </div>
     `;
-
-    data.steps.forEach(step => {
-      html += `
-        <div class="step">
-          <h3>Step ${step.step || ""}: ${step.title || ""}</h3>
-          <p>${step.description || ""}</p>
-
-          <button onclick="completeStep(${step.step}, this)">
-            ✅ Mark as Done
-          </button>
-
-          <div class="tools">
-            ${(step.tools || []).map(t => {
-              let name, url;
-
-              if (typeof t === "object") {
-                name = t.name;
-                url = t.url;
-              } else {
-                name = t;
-                const links = {
-                  "PyCharm": "https://www.jetbrains.com/pycharm/",
-                  "VS Code": "https://code.visualstudio.com/",
-                  "Spyder": "https://www.spyder-ide.org/",
-                  "W3Schools": "https://www.w3schools.com/",
-                  "Real Python": "https://realpython.com/"
-                };
-                url = links[name] || `https://www.google.com/search?q=${encodeURIComponent(name)}`;
-              }
-
-              return `
-                <div class="tool-card-mini recommended">
-                  <img 
-                    src="https://www.google.com/s2/favicons?sz=64&domain_url=${url}" 
-                    onerror="this.src='/images/default-tool.png'"
-                  />
-
-                  <div class="tool-info">
-                    <span>${name}</span>
-                    <button class="use-btn" onclick="openTool('${url}')">Use</button>
-                  </div>
-                </div>
-              `;
-            }).join("")}
-          </div>
-        </div>
-      `;
-    });
-
-    document.getElementById("result").innerHTML = html;
-  }
-
-  async function saveBundle(data) {
-    try {
-      const res = await fetch("/bundle/save", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          title: data.title,
-          steps: data.steps
-        })
-      });
-
-      const result = await res.json();
-
-      if (result.success) {
-        alert("✅ Bundle saved to workspace!");
-      } else {
-        alert("❌ Failed to save bundle");
-      }
-
-    } catch (err) {
-      console.error(err);
-      alert("❌ Error saving bundle");
+    toast("Execution failed: " + err.message, "error");
+  } finally {
+    STATE.running = false;
+    if (btn) {
+      const prog = getStepProgress(stepIndex);
+      const isDone = prog && prog.status === "completed";
+      btn.disabled = false;
+      btn.innerHTML = isDone
+        ? `🔁 Re-execute Step ${stepIndex + 1}`
+        : `⚡ Execute Step ${stepIndex + 1}`;
     }
+    // Persist updated state to localStorage
+    setCachedBundle(STATE.bundle);
   }
-  function renderQuestions(questions) {
-    let html = "";
+}
 
-    for (let i = 0; i < questions.length; i++) {
-      html += `
-        <div style="margin: 15px 0;">
-          <p style="color: white;">${questions[i]}</p>
-          <input id="q${i}" placeholder="Your answer..." style="width:100%; padding:10px;" />
-        </div>
-      `;
-    }
+function renderOutputIntoCard(stepIndex, outputData) {
+  const outputArea = document.getElementById(`output-area-${stepIndex}`);
+  if (!outputArea) return;
 
-    html += `
-      <button onclick="submitAnswers(${questions.length})">
-        Continue 🚀
-      </button>
+  const durationSec = outputData.durationMs ? (outputData.durationMs / 1000).toFixed(1) : null;
+
+  const insightPills = (outputData.keyInsights || []).map(
+    (ins) => `<span class="insight-pill">${escHtml(ins)}</span>`
+  ).join("");
+
+  const hints = outputData.nextStepHints || [];
+  const hintsBlock = hints.length ? `
+    <div class="hints-row">
+      <p>↳ Refinements for next step</p>
+      <ul>${hints.map((h) => `<li>${escHtml(h)}</li>`).join("")}</ul>
+    </div>
+  ` : "";
+
+  outputArea.innerHTML = `
+    <div class="output-area">
+      <div class="output-label">AI OUTPUT — ${escHtml(outputData.title || "")}</div>
+      <div class="output-content" id="out-content-${stepIndex}">${formatOutput(outputData.content)}</div>
+      ${insightPills ? `<div class="insights-row">${insightPills}</div>` : ""}
+      ${hintsBlock}
+      ${durationSec ? `<div class="step-duration">Generated in ${durationSec}s</div>` : ""}
+    </div>
+  `;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// STATE MERGE
+// ════════════════════════════════════════════════════════════════════
+function mergeExecutionResult(stepIndex, data) {
+  const b = STATE.bundle;
+
+  // Update progress entry
+  const prog = b.progress.find((p) => p.step === stepIndex);
+  if (prog) prog.status = "completed";
+  else b.progress.push({ step: stepIndex, status: "completed" });
+
+  // Update outputs
+  b.outputs = b.outputs.filter((o) => o.stepIndex !== stepIndex);
+  b.outputs.push({
+    stepIndex,
+    title:         b.steps[stepIndex].title,
+    content:       data.output,
+    keyInsights:   data.keyInsights   || [],
+    nextStepHints: data.nextStepHints || [],
+    durationMs:    data.durationMs    || 0,
+    executedAt:    new Date().toISOString(),
+  });
+
+  // Merge memory
+  if (data.memory) Object.assign(b.memory, data.memory);
+
+  // Context summary
+  if (data.contextSummary) b.contextSummary = data.contextSummary;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SIDEBAR & PROGRESS
+// ════════════════════════════════════════════════════════════════════
+function updateSidebarNav(activeIdx) {
+  const b    = STATE.bundle;
+  const list = document.getElementById("stepNavList");
+  if (!list) return;
+
+  list.innerHTML = b.steps.map((step, i) => {
+    const prog   = getStepProgress(i);
+    const status = prog ? prog.status : "pending";
+    const dotCls = status === "completed" ? "done" : status === "in-progress" ? "active" : "";
+    const lblCls = status === "completed" ? "done" : i === activeIdx ? "active" : "";
+    const icon   = status === "completed" ? "✓" : status === "in-progress" ? "…" : i + 1;
+    return `
+      <li class="step-nav-item ${i === activeIdx ? "active" : ""}" onclick="openStepCard(${i}); toggleStepCard(${i})">
+        <div class="step-dot ${dotCls}">${icon}</div>
+        <span class="step-nav-label ${lblCls}">${escHtml(step.title)}</span>
+      </li>
     `;
+  }).join("");
+}
 
-    document.getElementById("result").innerHTML = html;
+function updateProgress() {
+  const b    = STATE.bundle;
+  const done = b.progress.filter((p) => p.status === "completed").length;
+  const total = b.steps.length;
+  const pct   = total ? Math.round((done / total) * 100) : 0;
+
+  // Ring
+  const CIRCUMFERENCE = 226;
+  const fill = document.getElementById("ringFill");
+  if (fill) fill.style.strokeDashoffset = CIRCUMFERENCE - (pct / 100) * CIRCUMFERENCE;
+
+  const ringPct = document.getElementById("ringPct");
+  if (ringPct) ringPct.textContent = pct + "%";
+
+  const ringLabel = document.getElementById("ringLabel");
+  if (ringLabel) ringLabel.textContent = `${done} of ${total} steps`;
+
+  updateStatusMeta(done, total);
+}
+
+function updateStatusMeta(done, total) {
+  const b = STATE.bundle;
+  const statusEl = document.getElementById("metaStatus");
+  if (!statusEl) return;
+  const allDone = done !== undefined && done === total && total > 0;
+  statusEl.textContent = allDone ? "Completed ✓" : done > 0 ? "In progress" : "Draft";
+}
+
+function updateMemoryPanel() {
+  const b      = STATE.bundle;
+  const panel  = document.getElementById("memoryPanel");
+  const entries = document.getElementById("memoryEntries");
+  if (!panel || !entries) return;
+
+  const keys = Object.keys(b.memory || {});
+  if (!keys.length) { panel.style.display = "none"; return; }
+
+  panel.style.display = "block";
+  entries.innerHTML = keys.map((k) => `
+    <div class="memory-entry">
+      <span class="mem-key">${escHtml(k)}</span>
+      <span class="mem-value">${escHtml(b.memory[k])}</span>
+    </div>
+  `).join("");
+}
+
+function updateContextPanel() {
+  const b      = STATE.bundle;
+  const panel  = document.getElementById("contextPanel");
+  const text   = document.getElementById("contextText");
+  if (!panel || !text) return;
+
+  if (!b.contextSummary) { panel.style.display = "none"; return; }
+  panel.style.display = "block";
+  text.textContent    = b.contextSummary;
+}
+
+function setBadge(stepIndex, status) {
+  const card = document.getElementById(`card-${stepIndex}`);
+  if (!card) return;
+  const badgeEl = card.querySelector(".step-badge");
+  if (!badgeEl) return;
+  const map = {
+    pending:       ["badge-pending",  "Pending"],
+    "in-progress": ["badge-running",  "Running"],
+    completed:     ["badge-done",     "Done"],
+    failed:        ["badge-failed",   "Failed"],
+  };
+  const [cls, label] = map[status] || map.pending;
+  badgeEl.className  = `step-badge ${cls}`;
+  badgeEl.textContent = label;
+
+  // Update step num icon
+  const numEl = card.querySelector(".step-num");
+  if (numEl) {
+    numEl.className  = `step-num ${status === "completed" ? "done" : status === "in-progress" ? "running" : ""}`;
+    numEl.textContent = status === "completed" ? "✓" : stepIndex + 1;
   }
+}
 
-  let answers = [];
+function getStepProgress(i) {
+  return (STATE.bundle.progress || []).find((p) => p.step === i);
+}
 
-  function submitAnswers(count) {
-    answers = [];
-
-    for (let i = 0; i < count; i++) {
-      const value = document.getElementById(`q${i}`).value;
-      answers.push(value);
+// ════════════════════════════════════════════════════════════════════
+// SAVE / RESUME
+// ════════════════════════════════════════════════════════════════════
+async function autoSaveBundle() {
+  try {
+    const b   = STATE.bundle;
+    const res = await apiFetch("/bundle/save", "POST", {
+      title:   b.title,
+      goal:    b.goal,
+      answers: b.answers || STATE.answers,
+      steps:   b.steps,
+    });
+    const data = await res.json();
+    if (data.success) {
+      STATE.bundle._id = data.id;
+      toast("Project saved ✓", "success");
     }
-
-    console.log("Answers:", answers);
-
-    // send again with step 2
-    generateBundle(2);
+  } catch (err) {
+    console.warn("Auto-save failed:", err.message);
   }
+}
+
+async function saveCurrentBundle() {
+  if (STATE.bundle._id) {
+    toast("Already saved", "info");
+    return;
+  }
+  await autoSaveBundle();
+}
+
+function showResumeBanner(cached) {
+  const banner    = document.getElementById("resume-banner");
+  const titleEl   = document.getElementById("resume-title");
+  const metaEl    = document.getElementById("resume-meta");
+  if (!banner || !cached) return;
+
+  const done  = (cached.progress || []).filter((p) => p.status === "completed").length;
+  const total = (cached.steps   || []).length;
+
+  titleEl.textContent = cached.title || "Untitled Project";
+  metaEl.textContent  = `${done} of ${total} steps completed`;
+  banner.style.display = "block";
+}
+
+async function resumeProject() {
+  const cached = getCachedBundle();
+  if (!cached) return;
+
+  if (cached._id) {
+    // Fetch latest state from server
+    try {
+      const res  = await apiFetch(`/resume/${cached._id}`, "GET");
+      const data = await res.json();
+      if (data.success) {
+        await loadDashboard(data.bundle);
+        return;
+      }
+    } catch (_) {}
+  }
+  // Fallback to cached state
+  await loadDashboard(cached);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// PHASE CONTROLLER
+// ════════════════════════════════════════════════════════════════════
+function showPhase(phase) {
+  document.getElementById("phase-goal").style.display      = phase === "goal"      ? "" : "none";
+  document.getElementById("phase-questions").style.display = phase === "questions" ? "" : "none";
+  document.getElementById("phase-dashboard").style.display = phase === "dashboard" ? "" : "none";
+}
+
+function showLoadingInPhase(phase) {
+  if (phase === "questions") {
+    document.getElementById("questions-list").innerHTML = `
+      <div style="text-align:center; padding:28px 0;">
+        <span class="spinner" style="width:28px;height:28px;border-width:3px;"></span>
+        <p style="margin-top:12px; color:#64748b;">Generating your plan…</p>
+      </div>
+    `;
+  }
+}
+
+function resetAll() {
+  STATE = { goal: "", answers: [], questions: [], bundle: null, running: false };
+  localStorage.removeItem("aqua_bundle_cache");
+  document.getElementById("goalInput").value = "";
+  showPhase("goal");
+}
+
+// ════════════════════════════════════════════════════════════════════
+// CACHE HELPERS
+// ════════════════════════════════════════════════════════════════════
+function getCachedBundle() {
+  try {
+    const raw = localStorage.getItem("aqua_bundle_cache");
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function setCachedBundle(bundle) {
+  try {
+    localStorage.setItem("aqua_bundle_cache", JSON.stringify(bundle));
+  } catch (_) {}
+}
+
+// ════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ════════════════════════════════════════════════════════════════════
+async function apiFetch(url, method = "GET", body = null) {
+  const opts = {
+    method,
+    headers: { "Content-Type": "application/json" },
+  };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(window.location.origin + url, opts);
+}
+
+function escHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatOutput(text) {
+  if (!text) return "";
+  // Basic markdown-ish rendering (bold, inline code, newlines)
+  return escHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\n/g, "<br/>");
+}
+
+let _toastTimer;
+function toast(msg, type = "info") {
+  clearTimeout(_toastTimer);
+  const old = document.querySelector(".toast");
+  if (old) old.remove();
+
+  const el = document.createElement("div");
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  _toastTimer = setTimeout(() => el.remove(), 3200);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// AUTO-TRIGGER FROM HOME PAGE
+// ════════════════════════════════════════════════════════════════════
+window.addEventListener("load", () => {
+  const goal = document.getElementById("goalInput").value.trim();
+  if (goal) startGenerate();
+});
 </script>
-
-
-    <script>
-    function openTool(url) {
-      window.open(url, "_blank");
-    }
-
-      async function shareBundle(data){
-        try {
-          const res = await fetch("/bundle/save", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify(data)
-          });
-
-          const result = await res.json();
-
-          if(result.success){
-            const url = window.location.origin + "/bundle/" + result.id;
-
-            navigator.clipboard.writeText(url);
-            alert("🔗 Link copied!");
-          }
-
-        } catch(err){
-          alert("Error sharing bundle");
-        }
-      }
-
-      let completedSteps = [];
-      let xp = 0;
-      let level = 1;
-
-      function completeStep(step, btn){
-        if(!completedSteps.includes(step)){
-          completedSteps.push(step);
-
-          // ❌ disable button after click
-          if(btn){
-            btn.disabled = true;
-            btn.innerText = "✅ Completed";
-          }
-
-          xp += 10;
-          level = Math.floor(xp / 50) + 1;
-
-          showReward("+10 XP 🚀");
-          updateXPUI();
-        }
-
-        localStorage.setItem("aqua_bundle_progress", JSON.stringify({
-          title: document.querySelector(".bundle-header h2")?.innerText,
-          completedSteps,
-          xp,
-          level,
-          totalSteps: document.querySelectorAll(".step").length
-        }));
-
-        const total = document.querySelectorAll(".step").length;
-        const progress = (completedSteps.length / total) * 100;
-
-        const bar = document.getElementById("progressFill");
-        bar.style.transition = "width 0.4s ease";
-        bar.style.width = progress + "%";
-
-        if(progress === 100){
-          showReward("🎉 Project Completed!");
-        }
-      }
-      function showResumeBox(data){
-        // ❌ remove old if exists
-        const old = document.getElementById("resume-box");
-        if(old) old.remove();
-
-        const div = document.createElement("div");
-        div.id = "resume-box";
-
-        div.innerHTML = `
-          <div style="
-            background:#0f172a;
-            border:1px solid #1e293b;
-            padding:15px;
-            border-radius:10px;
-            margin:20px;
-            text-align:center;
-          ">
-            <h3>🔥 Continue your project</h3>
-            <p>${data.title}</p>
-            <p>${data.completedSteps.length}/${data.totalSteps} steps completed</p>
-
-            <button onclick="resumeBundle()">
-              ▶ Resume
-            </button>
-          </div>
-        `;
-
-        document.querySelector(".bundle-box").appendChild(div);
-      }
-      function resumeBundle(){
-        const savedBundle = localStorage.getItem("aqua_bundle_full");
-        const savedProgress = localStorage.getItem("aqua_bundle_progress");
-        const resumeBox = document.getElementById("resume-box");
-        if(resumeBox) resumeBox.remove();
-
-        if(!savedBundle || !savedProgress){
-          alert("No saved project found");
-          return;
-        }
-
-        const bundleData = JSON.parse(savedBundle);
-        const progressData = JSON.parse(savedProgress);
-
-        // 🔥 Re-render bundle
-        render(bundleData);
-
-        // 🔥 Restore state AFTER render
-        setTimeout(() => {
-          restoreProgress(progressData);
-        }, 100);
-      }
-      function updateXPUI(){
-        const xpEl = document.getElementById("xpValue");
-        const lvlEl = document.getElementById("levelValue");
-
-        xpEl.innerText = xp;
-        lvlEl.innerText = level;
-
-        // 🔥 pulse effect
-        xpEl.style.transform = "scale(1.2)";
-        setTimeout(() => {
-          xpEl.style.transform = "scale(1)";
-        }, 200);
-      }
-      function restoreProgress(data){
-        completedSteps = data.completedSteps || [];
-        xp = data.xp || 0;
-        level = data.level || 1;
-
-        updateXPUI();
-
-        const total = data.totalSteps || 1;
-        const progress = (completedSteps.length / total) * 100;
-
-        const bar = document.getElementById("progressFill");
-        bar.style.transition = "width 0.4s ease";
-        bar.style.width = progress + "%";
-
-        // 🔥 Disable completed buttons
-        document.querySelectorAll(".step button").forEach((btn, index) => {
-          const stepNumber = index + 1;
-
-          if(completedSteps.includes(stepNumber)){
-            btn.disabled = true;
-            btn.innerText = "✅ Completed";
-          }
-        });
-      }
-      function showReward(text){
-        const div = document.createElement("div");
-        div.innerText = text;
-
-        div.style.position = "fixed";
-        div.style.top = "20px";
-        div.style.right = "20px";
-        div.style.background = "#22c55e";
-        div.style.color = "white";
-        div.style.padding = "10px 15px";
-        div.style.borderRadius = "8px";
-        div.style.zIndex = "9999";
-
-        document.body.appendChild(div);
-
-        setTimeout(() => div.remove(), 2000);
-      }
-      window.addEventListener("load", () => {
-        const saved = localStorage.getItem("aqua_bundle_progress");
-
-        if(saved){
-          const data = JSON.parse(saved);
-          showResumeBox(data);
-        }
-
-        const task = setDailyTask();
-        if(task){
-          showDailyTask();
-        }
-
-        // 🔥 STREAK
-        showStreak();
-      });
-        function generateDailyTask(bundle){
-          if(!bundle || !bundle.steps) return null;
-
-          const randomStep = bundle.steps[Math.floor(Math.random() * bundle.steps.length)];
-
-          return `👉 Complete: ${randomStep.title}`;
-        }
-      function setDailyTask(){
-        const today = new Date().toDateString();
-
-        const existing = localStorage.getItem("aqua_daily_task"); // ✅ FIX
-
-        if(existing){
-          const parsed = JSON.parse(existing);
-          if(parsed.date === today){
-            return parsed.task;
-          }
-        }
-
-        const bundleRaw = localStorage.getItem("aqua_bundle_full");
-        if(!bundleRaw) return null;
-
-        const bundle = JSON.parse(bundleRaw);
-        const task = generateDailyTask(bundle);
-
-        if(task){
-          localStorage.setItem("aqua_daily_task", JSON.stringify({
-            date: today,
-            task
-          }));
-        }
-
-        return task;
-      }
-      function showDailyTask(){
-        const old = document.getElementById("daily-task");
-        if(old) old.remove();
-
-        const data = JSON.parse(localStorage.getItem("aqua_daily_task"));
-        if(!data || !data.task) return;
-
-        const doneDate = localStorage.getItem("aqua_daily_task_done");
-        const today = new Date().toDateString();
-        const isDone = doneDate === today;
-
-        const div = document.createElement("div");
-        div.id = "daily-task";
-
-        div.innerHTML = `
-          <div style="
-            background:#020617;
-            border:1px solid #1e293b;
-            padding:15px;
-            border-radius:10px;
-            margin:20px;
-            text-align:center;
-          ">
-            <h3>🧠 Today’s Task</h3>
-            <p>${data.task}</p>
-
-            <button onclick="completeDailyTask(this)" ${isDone ? "disabled" : ""}>
-              ${isDone ? "🎉 Done!" : "✅ Mark as Done"}
-            </button>
-          </div>
-        `;
-
-        document.querySelector(".bundle-box").appendChild(div);
-      }
-        function completeDailyTask(btn){
-          btn.innerText = "🎉 Done!";
-          btn.disabled = true;
-
-          xp += 20;
-          updateXPUI();
-          updateStreak();
-          showStreak();
-
-          // ✅ SAVE COMPLETION
-          localStorage.setItem("aqua_daily_task_done", new Date().toDateString());
-
-          showReward("🔥 Daily task completed +20 XP");
-        }
-      function updateStreak(){
-        const today = new Date().toDateString();
-        const last = localStorage.getItem("aqua_last_active");
-        let streak = parseInt(localStorage.getItem("aqua_streak") || "0");
-
-        if(last === today){
-          return streak; // already counted today
-        }
-
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        if(last === yesterday.toDateString()){
-          streak += 1; // continue streak
-        } else {
-          streak = 1; // reset streak
-        }
-
-        localStorage.setItem("aqua_streak", streak);
-        localStorage.setItem("aqua_last_active", today);
-
-        return streak;
-      }
-      function showStreak(){
-        const streak = localStorage.getItem("aqua_streak") || 0;
-
-        const div = document.createElement("div");
-
-        div.innerHTML = `
-          <div style="
-            background:#020617;
-            border:1px solid #1e293b;
-            padding:10px;
-            border-radius:10px;
-            margin:10px 20px;
-            text-align:center;
-            color:#facc15;
-            font-weight:bold;
-          ">
-            🔥 Streak: ${streak} day${streak == 1 ? "" : "s"}
-          </div>
-        `;
-
-        document.querySelector(".bundle-box").appendChild(div);
-      }
-      // 🔥 AUTO RUN FROM HOME PAGE
-      window.addEventListener("load", () => {
-        const savedGoal = localStorage.getItem("aqua_goal");
-
-        if (savedGoal) {
-          document.getElementById("goalInput").value = savedGoal;
-
-          // clear so it doesn't repeat
-          localStorage.removeItem("aqua_goal");
-
-          // 🚀 auto generate
-          generateBundle();
-        }
-      });
-      
-    </script>
-      
-
 
 </body>
 </html>

@@ -55,6 +55,7 @@ const path       = require("path");
 const axios      = require("axios");
 const passport   = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const executionRoutes = require("./execution-engine.routes");
 
 // ── NEW: Service imports ─────────────────────────────────────────────────────
 // [FIX-2] [FIX-5] Import upgraded service modules
@@ -649,6 +650,8 @@ function redirectIfLoggedIn(req, res, next) {
   next();
 }
 
+executionRoutes(app, requireLogin, generateAI);
+
 // ================= UPLOAD =================
 const uploadDir = path.join(__dirname, "public/uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -913,84 +916,87 @@ app.get("/bundles", (req, res) => res.render("bundles"));
 
 app.post("/generate-bundle", async (req, res) => {
   const { goal, step, answers } = req.body;
-  const tools = await Tool.find().limit(20).lean();
-  const toolList = tools.map((t) => `Name: ${t.name}, URL: ${t.url}`).join("\n");
 
+  if (!goal || !goal.trim()) {
+    return res.status(400).json({ error: "Goal is required" });
+  }
+
+  // ── Step 1: collect context via questions ────────────────────
   if (!step || step === 1) {
     return res.json({
       type: "questions",
       step: 2,
       questions: [
-        "What type of project do you want?",
-        "Who is your target users?",
-        "What is your main goal?",
-        "Do you want simple or advanced?",
-        "Any tech preference?",
+        "What type of project is this? (e.g. SaaS, content, freelancing, startup)",
+        "Who is the target audience or end-user?",
+        "What is the single most important outcome you want?",
+        "Do you prefer a lean/fast approach or a thorough/detailed one?",
+        "Any tech, tools, or constraints we should know about?",
       ],
     });
   }
 
+  // ── Step 2: generate plan ────────────────────────────────────
   try {
     const prompt = `
-User goal: ${goal}
-Answers:
-${(answers || []).join("\n")}
-Use ONLY tools from this list (copy exact name and url):
-${toolList}
-Create a structured AI workflow bundle.
-Return ONLY JSON:
+You are an expert project architect. Generate a precise, actionable project plan.
+
+USER GOAL: ${goal}
+USER ANSWERS:
+${(answers || []).map((a, i) => `  ${i + 1}. ${a}`).join("\n")}
+
+Rules:
+- Return ONLY valid JSON. No prose, no markdown fences.
+- 5 to 8 steps. Each step must be concrete and self-contained.
+- Each step description must be 1-2 sentences explaining WHAT to produce (not vague advice).
+- steps[].tools is now steps[].resources — an array of strings naming key resources or methods.
+
+JSON schema:
 {
-  "title": "",
+  "title": "Project title",
   "steps": [
     {
       "step": 1,
-      "title": "",
-      "description": "",
-      "tools": [
-        { "name": "", "url": "" }
-      ]
+      "title": "Step title",
+      "description": "Specific description of what to produce in this step.",
+      "resources": ["resource 1", "resource 2"]
     }
   ]
 }
-    `;
+`.trim();
 
-    const ai = await axios.post(
-      "https://api.groq.com/openai/v1/chat/completions",
-      {
-        model: "llama-3.1-8b-instant",
-        messages: [
-          { role: "system", content: "You are an expert startup mentor. Return ONLY valid JSON." },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.5,
-      },
-      { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" }, timeout: 15000 }
+    const raw = await generateAI(
+      [
+        { role: "system", content: "You are an expert project architect. Return ONLY valid JSON." },
+        { role: "user",   content: prompt },
+      ],
+      { temperature: 0.5, maxTokens: 1400 }
     );
 
-    let text = ai.data.choices[0].message.content;
-    text = text.replace(/```json/g, "").replace(/```/g, "").trim();
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) throw new Error("No JSON");
+    const clean = raw.replace(/```json/g, "").replace(/```/g, "").trim();
+    const match = clean.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("No JSON in response");
 
     const parsed = JSON.parse(match[0]);
-    parsed.steps.forEach((s) => {
-      s.tools = (s.tools || []).map((t) => {
-        if (typeof t === "object" && t.name && t.url) return t;
-        const found = tools.find((tool) =>
-          tool.name.toLowerCase().includes((t.name || t).toLowerCase())
-        );
-        return found
-          ? { name: found.name, url: found.url }
-          : { name: t.name || t, url: "https://www.google.com/search?q=" + encodeURIComponent(t.name || t) };
-      });
-    });
+
+    // Normalise step index to 0-based integer for the execution engine
+    parsed.steps = parsed.steps.map((s, i) => ({
+      ...s,
+      step:      i,      // 0-based for engine; UI adds 1 when displaying
+      resources: s.resources || [],
+    }));
+
+    // Attach goal + answers so /bundle/save can store them
+    parsed.goal    = goal;
+    parsed.answers = answers || [];
 
     res.json(parsed);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "AI failed", raw: err.message });
+    console.error("❌ /generate-bundle error:", err);
+    res.status(500).json({ error: "AI failed to generate bundle", raw: err.message });
   }
 });
+
 
 app.get("/api/tools/suggest", async (req, res) => {
   try {
@@ -1119,14 +1125,19 @@ app.get("/history", requireLogin, async (req, res) => {
 
 app.post("/bundle/save", requireLogin, async (req, res) => {
   try {
-    const { title, steps } = req.body;
-    if (!title || !steps) return res.status(400).json({ error: "Invalid bundle" });
+    const { title, steps, goal, answers } = req.body;
+    if (!title || !steps || !Array.isArray(steps)) {
+      return res.status(400).json({ error: "Invalid bundle" });
+    }
 
     const saved = await new Bundle({
-      userId: req.session.userId,
+      userId:  req.session.userId,
       title,
+      goal:    goal    || title,
+      answers: answers || [],
       steps,
-      progress: steps.map((s) => ({ step: s.step, status: "pending" })),
+      progress: steps.map((s, i) => ({ step: i, status: "pending" })),
+      status:  "draft",
     }).save();
 
     res.json({ success: true, id: saved._id });
