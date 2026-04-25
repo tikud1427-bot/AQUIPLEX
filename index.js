@@ -1623,25 +1623,32 @@ app.get("/logout", (req, res) => {
 app.get("/workspace", requireLogin, async (req, res) => {
   try {
     const Workspace = require("./models/Workspace");
-    const Bundle    = require("./models/Bundle");
+    const Bundle = require("./models/Bundle");
 
     let ws = await Workspace.findOne({ userId: req.session.userId })
-              .populate("tools")
-              .lean();
+      .populate("tools")
+      .lean();
 
     if (!ws) {
-      ws = await new Workspace({ userId: req.session.userId }).save();
-      ws = ws.toObject();
+      const newWs = await new Workspace({
+        userId: req.session.userId,
+      }).save();
+
+      ws = newWs.toObject();
     }
 
     const bundles = await Bundle.find({ userId: req.session.userId })
-                      .sort({ updatedAt: -1 })
-                      .lean();
+      .sort({ updatedAt: -1 })
+      .lean();
 
-    res.render("workspace", { workspace: ws, bundles });
+    res.render("workspace", {
+      workspace: ws,
+      bundles,
+      page: "workspace",
+    });
 
   } catch (err) {
-    console.error(err);
+    console.error("Workspace Load Error:", err);
     res.status(500).send("Error loading workspace");
   }
 });

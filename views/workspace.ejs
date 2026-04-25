@@ -4,13 +4,11 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Workspace | Aquiplex</title>
-  <% if (page !== "workspace") { %>
-    <link rel="stylesheet" href="/css/styles.css">
-  <% } %>
+<% if (typeof page === 'undefined' || page !== "workspace") { %>
+  <link rel="stylesheet" href="/css/styles.css">
+<% } %>
 <link rel="stylesheet" href="/css/workspace.css">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
-
-
 </head>
 
 <body>
@@ -24,13 +22,11 @@
     <div class="wp-logo">
       AQUI<span class="wp-logo-sep">PLEX</span> // WORKSPACE
     </div>
-
     <div class="wp-breadcrumb">
       <span>Workspace</span>
       <span class="sep">›</span>
       <span class="active" id="topBreadcrumb">Overview</span>
     </div>
-
     <div class="wp-topbar-right">
       <div class="wp-status-pill">
         <div class="wp-status-dot"></div>
@@ -53,7 +49,7 @@
       <div class="wp-sidebar-list" id="leftBundleList">
         <% if (bundles && bundles.length > 0) { %>
           <% bundles.forEach(function(b) {
-            const completed = (b.progress || []).filter(p => p.status === 'completed').length;
+            const completed = (b.progress || []).filter(p => p && p.status === 'completed').length;
             const total     = (b.steps || []).length;
             const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
             const dotCls    = b.status === 'active'    ? 'wi-active'
@@ -62,7 +58,17 @@
                             : 'wi-draft';
           %>
           <div class="wp-bundle-item" id="brow-<%= b._id %>"
-               onclick="selectBundle(<%- JSON.stringify(b).replace(/</g,'\\u003c') %>)">
+               onclick="selectBundle(<%- JSON.stringify({
+                 _id:      b._id,
+                 title:    b.title,
+                 goal:     b.goal,
+                 status:   b.status,
+                 steps:    b.steps,
+                 progress: b.progress,
+                 outputs:  b.outputs || [],
+                 memory:   b.memory  || {},
+                 currentStep: b.currentStep || 0
+               }).replace(/</g,'\\u003c') %>)">
             <div class="wp-bundle-title"><%= b.title %></div>
             <div class="wp-bundle-meta">
               <div class="wp-status-icon <%= dotCls %>"></div>
@@ -91,7 +97,7 @@
                  class="wp-tool-logo" alt=""/>
             <span class="wp-tool-name"><%= tool.name %></span>
             <button class="wp-tool-open"
-                    onclick="event.stopPropagation(); launchTool('<%= tool.url || '' %>')">
+                    onclick="event.stopPropagation(); launchTool('<%= (tool.url || '').replace(/'/g, '') %>')">
               OPEN
             </button>
           </div>
@@ -108,7 +114,7 @@
     <!-- ─────── MAIN ─────── -->
     <div class="wp-main">
 
-      <!-- WELCOME (no bundle selected) -->
+      <!-- WELCOME -->
       <div class="wp-welcome" id="wsWelcome">
         <div class="wp-welcome-glyph">⚡</div>
         <h2>Execution Control</h2>
@@ -123,25 +129,16 @@
           <div class="wp-exec-header-top">
             <div class="wp-exec-title-block">
               <div class="wp-exec-title" id="execTitle">—</div>
-              <div class="wp-exec-goal" id="execGoal">—</div>
+              <div class="wp-exec-goal"  id="execGoal">—</div>
             </div>
             <div class="wp-exec-actions">
-              <button class="wp-btn wp-btn-run" id="btnRun" onclick="runCurrentBundle()">
-                ▶ RUN
-              </button>
-              <button class="wp-btn wp-btn-pause" id="btnPause" onclick="pauseCurrentBundle()" style="display:none;">
-                ⏸ PAUSE
-              </button>
-              <button class="wp-btn wp-btn-ghost" id="btnResume" onclick="resumeCurrentBundle()" style="display:none;">
-                ↺ RESUME
-              </button>
-              <button class="wp-btn wp-btn-ghost" id="btnPin" onclick="pinCurrentBundle()">
-                ☆ PIN
-              </button>
+              <button class="wp-btn wp-btn-run"   id="btnRun"    onclick="runCurrentBundle()">▶ RUN</button>
+              <button class="wp-btn wp-btn-pause"  id="btnPause"  onclick="pauseCurrentBundle()"  style="display:none;">⏸ PAUSE</button>
+              <button class="wp-btn wp-btn-ghost"  id="btnResume" onclick="resumeCurrentBundle()" style="display:none;">↺ RESUME</button>
+              <button class="wp-btn wp-btn-ghost"  id="btnPin"    onclick="pinCurrentBundle()">☆ PIN</button>
             </div>
           </div>
 
-          <!-- Stats + progress -->
           <div class="wp-stats-row">
             <div class="wp-stat">
               <div class="wp-stat-val c-accent" id="statSteps">—</div>
@@ -162,6 +159,11 @@
               <div class="wp-stat-val c-amber" id="statStatus">—</div>
               <div class="wp-stat-lbl">Status</div>
             </div>
+            <div class="wp-stat-divider"></div>
+            <div class="wp-stat">
+              <div class="wp-stat-val c-purple" id="statConfidence">—</div>
+              <div class="wp-stat-lbl">Confidence</div>
+            </div>
           </div>
 
           <div class="wp-exec-progress">
@@ -171,23 +173,21 @@
           </div>
         </div>
 
-        <!-- Content grid (steps + right panel) -->
+        <!-- Content grid -->
         <div class="wp-exec-content">
 
           <!-- Steps column -->
           <div class="wp-steps-panel">
-            <!-- Timeline strip -->
             <div class="wp-timeline-strip" id="execTimeline"></div>
-            <!-- Step cards -->
-            <div class="wp-steps-scroll" id="execSteps"></div>
+            <div class="wp-steps-scroll"  id="execSteps"></div>
           </div>
 
           <!-- Right panel -->
           <div class="wp-right-panel">
             <div class="wp-right-tabs">
               <button class="wp-right-tab active" onclick="switchRightTab('outputs', this)">OUTPUTS</button>
-              <button class="wp-right-tab" onclick="switchRightTab('memory', this)">MEMORY</button>
-              <button class="wp-right-tab" onclick="switchRightTab('insights', this)">INSIGHTS</button>
+              <button class="wp-right-tab"         onclick="switchRightTab('memory', this)">MEMORY</button>
+              <button class="wp-right-tab"         onclick="switchRightTab('insights', this)">INSIGHTS</button>
             </div>
 
             <div class="wp-right-body">
@@ -195,9 +195,7 @@
               <!-- Outputs -->
               <div class="wp-right-section active" id="rtab-outputs">
                 <div id="outputFeed">
-                  <div class="wp-empty" style="padding:32px 0;">
-                    Run a bundle step to see outputs here.
-                  </div>
+                  <div class="wp-empty" style="padding:32px 0;">Run a bundle step to see outputs here.</div>
                 </div>
               </div>
 
@@ -212,8 +210,8 @@
                 <div class="wp-mem-hdr" style="margin-top:18px;">
                   Context Summary
                 </div>
-                <div class="wp-context-box" id="memContextBox" style="display:none;"></div>
-                <div class="wp-empty" id="memContextEmpty" style="padding:8px 0;">No context summary yet.</div>
+                <div class="wp-context-box" id="memContextBox"   style="display:none;"></div>
+                <div class="wp-empty"        id="memContextEmpty" style="padding:8px 0;">No context summary yet.</div>
 
                 <div class="wp-mem-hdr" style="margin-top:18px;">
                   Workspace Memory
@@ -225,9 +223,7 @@
               <!-- Insights -->
               <div class="wp-right-section" id="rtab-insights">
                 <div id="insightList">
-                  <div class="wp-empty" style="padding:32px 0;">
-                    Key insights from step outputs will appear here.
-                  </div>
+                  <div class="wp-empty" style="padding:32px 0;">Key insights from step outputs will appear here.</div>
                 </div>
               </div>
 
@@ -245,7 +241,7 @@
 <%- include("partials/footer") %>
 
 <!-- ═══════════════════════════════════════
-     JAVASCRIPT
+     AQUIPLEX WORKSPACE ENGINE
 ═══════════════════════════════════════ -->
 <script>
 // ═══════════════════════════════════════════
@@ -256,6 +252,7 @@ const STATE = {
   wsMemory:     {},
   pinnedIds:    [],
   selectedStep: null,
+  loading:      false,
 };
 
 // ═══════════════════════════════════════════
@@ -264,26 +261,30 @@ const STATE = {
 window.addEventListener("DOMContentLoaded", async () => {
   try {
     const res  = await fetch("/workspace/state");
+    if (!res.ok) throw new Error("State load failed");
     const data = await res.json();
-    STATE.wsMemory  = data.workspace.workspaceMemory || {};
-    STATE.pinnedIds = data.workspace.pinnedBundleIds  || [];
+
+    STATE.wsMemory  = (data.workspace && data.workspace.workspaceMemory) || {};
+    STATE.pinnedIds = (data.workspace && data.workspace.pinnedBundleIds)  || [];
 
     renderWsMemory();
 
-    if (data.workspace.recentOutputs && data.workspace.recentOutputs.length) {
+    if (data.workspace && data.workspace.recentOutputs && data.workspace.recentOutputs.length) {
       renderOutputFeed(data.workspace.recentOutputs);
     }
 
-    const lastId = data.workspace.lastOpenBundleId;
+    const lastId = data.workspace && data.workspace.lastOpenBundleId;
+    const bundles = data.bundles || [];
+
     if (lastId) {
-      const b = (data.bundles || []).find(x => x._id === lastId || x._id.toString() === lastId);
+      const b = bundles.find(x => String(x._id) === String(lastId));
       if (b) { selectBundle(b); return; }
     }
 
-    const active = (data.bundles || []).find(b => b.status === "active");
+    const active = bundles.find(b => b.status === "active");
     if (active) selectBundle(active);
   } catch (e) {
-    console.warn("Workspace state load failed", e);
+    console.warn("[WS] State init failed:", e.message);
   }
 });
 
@@ -301,22 +302,28 @@ function switchRightTab(tab, btn) {
   document.querySelectorAll(".workspace-page .wp-right-tab").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".workspace-page .wp-right-section").forEach(s => s.classList.remove("active"));
   btn.classList.add("active");
-  document.getElementById("rtab-" + tab).classList.add("active");
+  const section = document.getElementById("rtab-" + tab);
+  if (section) section.classList.add("active");
 }
 
 // ═══════════════════════════════════════════
 // SELECT BUNDLE
 // ═══════════════════════════════════════════
 async function selectBundle(bundle) {
+  if (!bundle || !bundle._id) return;
+
   document.querySelectorAll(".workspace-page .wp-bundle-item").forEach(r => r.classList.remove("selected"));
-  const row = document.getElementById("brow-" + (bundle._id || bundle.id));
+  const row = document.getElementById("brow-" + bundle._id);
   if (row) row.classList.add("selected");
 
+  // Always fetch fresh state from server
   try {
-    const res  = await fetch("/workspace/bundle/" + (bundle._id || bundle.id));
-    const data = await res.json();
-    if (data.bundle) bundle = data.bundle;
-  } catch(_) {}
+    const res  = await fetch("/workspace/bundle/" + bundle._id);
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.bundle) bundle = data.bundle;
+    }
+  } catch (_) {}
 
   STATE.bundle       = bundle;
   STATE.selectedStep = null;
@@ -328,41 +335,52 @@ async function selectBundle(bundle) {
   renderMemoryPanel(bundle);
   renderInsightPanel(bundle);
   updateBreadcrumb(bundle.title);
-  updatePinBtn(bundle._id || bundle.id);
+  updatePinBtn(bundle._id);
 }
 
 // ═══════════════════════════════════════════
 // RENDER EXEC PANEL
 // ═══════════════════════════════════════════
 function renderExecPanel(b) {
-  const steps    = b.steps    || [];
-  const progress = b.progress || [];
-  const outputs  = b.outputs  || [];
+  const steps    = Array.isArray(b.steps)    ? b.steps    : [];
+  const progress = Array.isArray(b.progress) ? b.progress : [];
+  const outputs  = Array.isArray(b.outputs)  ? b.outputs  : [];
 
-  const done  = progress.filter(p => p.status === "completed").length;
+  const done  = progress.filter(p => p && p.status === "completed").length;
   const total = steps.length;
   const pct   = total ? Math.round((done / total) * 100) : 0;
 
-  document.getElementById("execTitle").textContent = b.title || "Untitled";
-  document.getElementById("execGoal").textContent  = b.goal  || "";
-  document.getElementById("statSteps").textContent  = total;
-  document.getElementById("statDone").textContent   = done;
-  document.getElementById("statPct").textContent    = pct + "%";
-  document.getElementById("statStatus").textContent = (b.status || "draft").toUpperCase();
+  // Compute avg confidence
+  const scores = outputs.map(o => o && o.confidenceScore).filter(s => typeof s === "number");
+  const avgConf = scores.length
+    ? (scores.reduce((a, s) => a + s, 0) / scores.length * 100).toFixed(0) + "%"
+    : "—";
+
+  document.getElementById("execTitle").textContent      = b.title  || "Untitled";
+  document.getElementById("execGoal").textContent       = b.goal   || "";
+  document.getElementById("statSteps").textContent      = total;
+  document.getElementById("statDone").textContent       = done;
+  document.getElementById("statPct").textContent        = pct + "%";
+  document.getElementById("statStatus").textContent     = (b.status || "draft").toUpperCase();
+  document.getElementById("statConfidence").textContent = avgConf;
   document.getElementById("mainProgressFill").style.width = pct + "%";
 
   const btnRun    = document.getElementById("btnRun");
   const btnPause  = document.getElementById("btnPause");
   const btnResume = document.getElementById("btnResume");
 
+  btnRun.style.display    = "";
+  btnPause.style.display  = "none";
+  btnResume.style.display = "none";
+
   if (b.status === "active") {
-    btnRun.style.display = "none"; btnPause.style.display = ""; btnResume.style.display = "none";
+    btnRun.style.display   = "none";
+    btnPause.style.display = "";
   } else if (b.status === "paused") {
-    btnRun.style.display = "none"; btnPause.style.display = "none"; btnResume.style.display = "";
+    btnRun.style.display    = "none";
+    btnResume.style.display = "";
   } else if (b.status === "completed") {
-    btnRun.style.display = "none"; btnPause.style.display = "none"; btnResume.style.display = "none";
-  } else {
-    btnRun.style.display = ""; btnPause.style.display = "none"; btnResume.style.display = "none";
+    btnRun.style.display    = "none";
   }
 
   renderTimeline(steps, progress, b.currentStep || 0);
@@ -374,17 +392,20 @@ function renderExecPanel(b) {
 // ═══════════════════════════════════════════
 function renderTimeline(steps, progress, currentStep) {
   const tl = document.getElementById("execTimeline");
-  if (!steps.length) { tl.innerHTML = ""; return; }
+  if (!steps || !steps.length) { tl.innerHTML = ""; return; }
 
   tl.innerHTML = steps.map((step, i) => {
-    const prog   = progress.find(p => p.step === i);
+    const prog   = progress.find(p => p && p.step === i);
     const status = prog ? prog.status : "pending";
     const dotCls = status === "completed"   ? "tl-done"
                  : status === "in-progress" ? "tl-running"
-                 : i === STATE.selectedStep  ? "tl-selected"
+                 : i === currentStep        ? "tl-running"
                  : "";
-    const icon = status === "completed" ? "✓" : status === "in-progress" ? "…" : (i + 1);
-    const lineCls = status === "completed" ? "tl-done" : "";
+    const icon = status === "completed" ? "✓"
+               : status === "in-progress" ? "…"
+               : (i + 1);
+
+    const lineCls   = status === "completed" ? "tl-done" : "";
     const connector = i < steps.length - 1
       ? `<div class="wp-tl-line ${lineCls}"></div>` : "";
 
@@ -401,46 +422,67 @@ function renderTimeline(steps, progress, currentStep) {
 // ═══════════════════════════════════════════
 function renderStepCards(steps, progress, outputs, currentStep) {
   const container = document.getElementById("execSteps");
-  if (!steps.length) {
+  if (!steps || !steps.length) {
     container.innerHTML = `<div class="wp-empty">No steps defined.</div>`;
     return;
   }
 
   container.innerHTML = steps.map((step, i) => {
-    const prog   = progress.find(p => p.step === i);
-    const status = prog ? prog.status : "pending";
-    const output = outputs.find(o => o.stepIndex === i);
+    const prog   = progress.find(p => p && p.step === i) || {};
+    const status = prog.status || "pending";
+    const output = outputs.find(o => o && o.stepIndex === i);
 
     const cardCls  = status === "in-progress" ? "sc-running"
                    : status === "completed"   ? "sc-done"
                    : i === currentStep        ? "sc-active" : "";
+
     const badgeCls = status === "completed"   ? "wb-done"
                    : status === "in-progress" ? "wb-running"
                    : status === "failed"      ? "wb-failed"
                    : "wb-pending";
+
     const badgeTxt = status === "completed"   ? "DONE"
                    : status === "in-progress" ? "RUNNING"
                    : status === "failed"      ? "FAILED"
                    : "PENDING";
+
     const numCls   = status === "completed"   ? "sn-done"
                    : status === "in-progress" ? "sn-running" : "";
     const numIcon  = status === "completed" ? "✓" : (i + 1);
 
-    const toolsHtml = (step.tools && step.tools.length)
-      ? `<div class="wp-step-tools">${step.tools.map(t =>
-          `<a class="wp-tool-chip" href="${esc(t.url||'#')}" target="_blank">🔗 ${esc(t.name||'Tool')}</a>`
-        ).join("")}</div>`
+    // Resources / tools chips
+    const resources = step.resources || step.tools || [];
+    const toolsHtml = resources.length
+      ? `<div class="wp-step-tools">${resources.map(r => {
+          if (typeof r === "string") {
+            return `<span class="wp-tool-chip">🔗 ${esc(r)}</span>`;
+          }
+          return `<a class="wp-tool-chip" href="${esc(r.url||'#')}" target="_blank">🔗 ${esc(r.name||'Tool')}</a>`;
+        }).join("")}</div>`
       : "";
 
     let outputHtml = "";
     if (output && output.content) {
+      const confBadge = typeof output.confidenceScore === "number"
+        ? `<span style="font-family:var(--wp-mono);font-size:0.57rem;color:var(--wp-accent2);margin-left:auto;">
+             ${Math.round(output.confidenceScore * 100)}% conf
+           </span>`
+        : "";
+      const durationBadge = output.durationMs
+        ? `<span style="font-family:var(--wp-mono);font-size:0.57rem;color:var(--wp-muted);margin-left:8px;">
+             ${output.durationMs}ms
+           </span>`
+        : "";
+
       const insights = (output.keyInsights || []).slice(0, 4).map(k =>
         `<span class="wp-insight-chip">${esc(k)}</span>`
       ).join("");
+
       outputHtml = `
         <div class="wp-output-block">
           <div class="wp-output-hdr">
             <span class="wp-output-label">⚡ Output</span>
+            ${confBadge}${durationBadge}
             <div class="wp-output-dot"></div>
           </div>
           <div class="wp-output-content">${formatOutput(output.content)}</div>
@@ -450,7 +492,7 @@ function renderStepCards(steps, progress, outputs, currentStep) {
     }
 
     const actionHtml = status !== "completed"
-      ? `<button class="wp-step-btn wsb-done" onclick="event.stopPropagation(); markStepDone(${i})">✅ Mark Done</button>`
+      ? `<button class="wp-step-btn wsb-done"  onclick="event.stopPropagation(); markStepDone(${i})">✅ Mark Done</button>`
       : `<button class="wp-step-btn wsb-rerun" onclick="event.stopPropagation(); rerunStep(${i})">↺ Re-run</button>`;
 
     const isOpen = i === currentStep || i === STATE.selectedStep;
@@ -477,24 +519,26 @@ function renderStepCards(steps, progress, outputs, currentStep) {
 }
 
 // ═══════════════════════════════════════════
-// MEMORY
+// MEMORY PANEL
 // ═══════════════════════════════════════════
 function renderMemoryPanel(b) {
   const mem  = b.memory || {};
-  const keys = Array.isArray(mem) ? []
-             : (mem instanceof Map ? [...mem.keys()] : Object.keys(mem));
+  const keys = mem instanceof Map ? [...mem.keys()] : Object.keys(mem);
 
   document.getElementById("memBundleCount").textContent = keys.length + " keys";
   document.getElementById("memBundleEntries").innerHTML = keys.length
-    ? keys.map(k => `
-        <div class="wp-mem-kv">
-          <div class="wp-mem-k">${esc(k)}</div>
-          <div class="wp-mem-v">${esc(mem instanceof Map ? mem.get(k) : mem[k])}</div>
-        </div>`).join("")
+    ? keys.map(k => {
+        const val = mem instanceof Map ? mem.get(k) : mem[k];
+        return `
+          <div class="wp-mem-kv">
+            <div class="wp-mem-k">${esc(k)}</div>
+            <div class="wp-mem-v">${esc(String(val || ""))}</div>
+          </div>`;
+      }).join("")
     : `<div class="wp-empty" style="padding:10px 0;">No bundle memory yet.</div>`;
 
   if (b.contextSummary) {
-    document.getElementById("memContextBox").textContent   = b.contextSummary;
+    document.getElementById("memContextBox").textContent    = b.contextSummary;
     document.getElementById("memContextBox").style.display  = "";
     document.getElementById("memContextEmpty").style.display = "none";
   } else {
@@ -508,28 +552,37 @@ function renderMemoryPanel(b) {
 function renderWsMemory() {
   const wsM    = STATE.wsMemory || {};
   const wsKeys = Object.keys(wsM);
-  document.getElementById("memWsCount").textContent   = wsKeys.length + " keys";
-  document.getElementById("memWsEntries").innerHTML   = wsKeys.length
+  document.getElementById("memWsCount").textContent = wsKeys.length + " keys";
+  document.getElementById("memWsEntries").innerHTML = wsKeys.length
     ? wsKeys.map(k => `
         <div class="wp-mem-kv" style="border-left-color:var(--wp-accent3)">
           <div class="wp-mem-k" style="color:var(--wp-accent3)">${esc(k)}</div>
-          <div class="wp-mem-v">${esc(wsM[k])}</div>
+          <div class="wp-mem-v">${esc(String(wsM[k] || ""))}</div>
         </div>`).join("")
     : `<div class="wp-empty" style="padding:10px 0;">No workspace memory yet.</div>`;
 }
 
 // ═══════════════════════════════════════════
-// INSIGHTS
+// INSIGHTS PANEL
 // ═══════════════════════════════════════════
 function renderInsightPanel(b) {
-  const outputs = b.outputs || [];
-  const all = [];
+  const outputs = Array.isArray(b.outputs) ? b.outputs : [];
+  const all     = [];
+
   outputs.forEach(o => {
-    (o.keyInsights || []).forEach(k => { if (k) all.push(k); });
+    (o && o.keyInsights ? o.keyInsights : []).forEach(k => { if (k) all.push({ text: k, confidence: o.confidenceScore || 0 }); });
   });
 
+  // Sort by confidence descending
+  all.sort((a, b) => b.confidence - a.confidence);
+
   document.getElementById("insightList").innerHTML = all.length
-    ? all.map(k => `<div class="wp-insight-item"><span>${esc(k)}</span></div>`).join("")
+    ? all.map(({ text, confidence }) => {
+        const badge = confidence
+          ? `<span style="font-family:var(--wp-mono);font-size:0.55rem;color:var(--wp-accent2);margin-left:8px;">${Math.round(confidence*100)}%</span>`
+          : "";
+        return `<div class="wp-insight-item"><span>${esc(text)}${badge}</span></div>`;
+      }).join("")
     : `<div class="wp-empty" style="padding:32px 0;">Insights from step outputs will appear here.</div>`;
 }
 
@@ -545,17 +598,17 @@ function renderOutputFeed(outputs) {
   feed.innerHTML = outputs.map(o => `
     <div class="wp-feed-item">
       <div class="wp-feed-meta">
-        <span class="wp-feed-step">Step ${(o.stepIndex ?? 0) + 1}${o.stepTitle ? ' · ' + esc(o.stepTitle) : ''}</span>
+        <span class="wp-feed-step">Step ${((o.stepIndex) ?? 0) + 1}${o.stepTitle ? ' · ' + esc(o.stepTitle) : ''}</span>
         <span class="wp-feed-bundle">${esc(o.bundleTitle || '')}</span>
       </div>
       <div class="wp-feed-preview">${esc(o.preview || '')}</div>
     </div>`).join("");
 }
 
-function pushOutputFeed(bundleTitle, stepIndex, stepTitle, content) {
-  const feed = document.getElementById("outputFeed");
-  const old  = feed.querySelector(".wp-empty");
-  if (old) old.remove();
+function prependOutputFeed(bundleTitle, stepIndex, stepTitle, content) {
+  const feed  = document.getElementById("outputFeed");
+  const empty = feed.querySelector(".wp-empty");
+  if (empty) empty.remove();
 
   const item = document.createElement("div");
   item.className = "wp-feed-item";
@@ -573,94 +626,183 @@ function pushOutputFeed(bundleTitle, stepIndex, stepTitle, content) {
 // ACTIONS
 // ═══════════════════════════════════════════
 async function runCurrentBundle() {
-  const b = STATE.bundle; if (!b) return;
+  const b = STATE.bundle;
+  if (!b || STATE.loading) return;
+  STATE.loading = true;
+
   try {
     const res  = await fetch("/workspace/run/" + b._id, { method: "POST" });
     const data = await res.json();
+
     if (data.error) { toast(data.error, "error"); return; }
+
     STATE.bundle = data.bundle;
+    if (data.workspace && data.workspace.workspaceMemory) {
+      STATE.wsMemory = data.workspace.workspaceMemory;
+    }
+
     renderExecPanel(data.bundle);
+    updateBundleRowDot(b._id, "active");
     toast("Bundle started ▶", "success");
-  } catch(e) { toast("Failed to run", "error"); }
+  } catch (e) {
+    toast("Failed to run bundle", "error");
+    console.error(e);
+  } finally {
+    STATE.loading = false;
+  }
 }
 
 async function pauseCurrentBundle() {
-  const b = STATE.bundle; if (!b) return;
+  const b = STATE.bundle;
+  if (!b || STATE.loading) return;
+  STATE.loading = true;
+
   try {
-    await fetch("/workspace/pause/" + b._id, { method: "POST" });
-    STATE.bundle.status = "paused";
+    const res  = await fetch("/workspace/pause/" + b._id, { method: "POST" });
+    const data = await res.json();
+
+    if (data.error) { toast(data.error, "error"); return; }
+
+    if (data.bundle) STATE.bundle = data.bundle;
+    else STATE.bundle.status = "paused";
+
     renderExecPanel(STATE.bundle);
     updateBundleRowDot(b._id, "paused");
     toast("Paused ⏸", "info");
-  } catch(e) { toast("Failed to pause", "error"); }
+  } catch (e) {
+    toast("Failed to pause", "error");
+  } finally {
+    STATE.loading = false;
+  }
 }
 
 async function resumeCurrentBundle() {
-  const b = STATE.bundle; if (!b) return;
+  const b = STATE.bundle;
+  if (!b || STATE.loading) return;
+  STATE.loading = true;
+
   try {
     const res  = await fetch("/workspace/resume/" + b._id, { method: "POST" });
     const data = await res.json();
+
     if (data.error) { toast(data.error, "error"); return; }
+
     STATE.bundle = data.bundle;
+    if (data.workspace && data.workspace.workspaceMemory) {
+      STATE.wsMemory = data.workspace.workspaceMemory;
+    }
+
     renderExecPanel(data.bundle);
     updateBundleRowDot(b._id, "active");
     toast("Resumed ▶", "success");
-  } catch(e) { toast("Failed to resume", "error"); }
+  } catch (e) {
+    toast("Failed to resume", "error");
+  } finally {
+    STATE.loading = false;
+  }
 }
 
 async function markStepDone(stepIndex) {
-  const b = STATE.bundle; if (!b) return;
+  const b = STATE.bundle;
+  if (!b || STATE.loading) return;
+  STATE.loading = true;
+
   try {
     const res  = await fetch(`/workspace/step/${b._id}/${stepIndex}`, {
-      method: "POST",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: b.steps[stepIndex]?.title || ("Step " + (stepIndex+1)) }),
+      body:    JSON.stringify({
+        title: (b.steps && b.steps[stepIndex] && b.steps[stepIndex].title)
+          || ("Step " + (stepIndex + 1)),
+      }),
     });
     const data = await res.json();
+
     if (data.error) { toast(data.error, "error"); return; }
+
     STATE.bundle = data.bundle;
+
+    if (data.workspace && data.workspace.workspaceMemory) {
+      STATE.wsMemory = data.workspace.workspaceMemory;
+    }
+
     renderExecPanel(data.bundle);
     renderMemoryPanel(data.bundle);
     renderInsightPanel(data.bundle);
     updateBundleRowProgress(b._id, data.bundle);
-    toast("Step " + (stepIndex+1) + " complete ✓", "success");
-  } catch(e) { toast("Error marking step", "error"); }
+
+    // Push new output to feed
+    if (data.output) {
+      prependOutputFeed(
+        data.bundle.title || "Bundle",
+        data.output.stepIndex,
+        data.output.stepTitle,
+        data.output.content
+      );
+    }
+
+    if (data.bundle.status === "completed") {
+      toast("🎉 Bundle complete!", "success");
+    } else {
+      toast("Step " + (stepIndex + 1) + " complete ✓", "success");
+    }
+  } catch (e) {
+    toast("Error marking step", "error");
+    console.error(e);
+  } finally {
+    STATE.loading = false;
+  }
 }
 
 async function rerunStep(stepIndex) {
-  const b = STATE.bundle; if (!b) return;
-  (b.progress || []).forEach(p => { if (p.step === stepIndex) p.status = "pending"; });
-  b.outputs = (b.outputs || []).filter(o => o.stepIndex !== stepIndex);
+  const b = STATE.bundle;
+  if (!b) return;
+
+  // Optimistic local reset
+  if (Array.isArray(b.progress)) {
+    const entry = b.progress.find(p => p && p.step === stepIndex);
+    if (entry) entry.status = "pending";
+  }
+  if (Array.isArray(b.outputs)) {
+    b.outputs = b.outputs.filter(o => o && o.stepIndex !== stepIndex);
+  }
+
   renderExecPanel(b);
-  toast("Step " + (stepIndex+1) + " reset — re-run when ready", "info");
+  toast("Step " + (stepIndex + 1) + " reset — mark done to re-run", "info");
 }
 
 async function pinCurrentBundle() {
-  const b = STATE.bundle; if (!b) return;
+  const b = STATE.bundle;
+  if (!b) return;
   const id = b._id;
+
   try {
-    if (STATE.pinnedIds.includes(id)) {
-      await fetch("/workspace/unpin/" + id, { method: "POST" });
-      STATE.pinnedIds = STATE.pinnedIds.filter(x => x !== id);
-      document.getElementById("btnPin").textContent = "☆ PIN";
-      toast("Unpinned", "info");
-    } else {
-      await fetch("/workspace/pin/" + id, { method: "POST" });
-      STATE.pinnedIds.push(id);
-      document.getElementById("btnPin").textContent = "★ PINNED";
-      toast("Pinned ★", "success");
-    }
-  } catch(e) {}
+    const isPinned = STATE.pinnedIds.includes(id);
+    const endpoint = isPinned ? "unpin" : "pin";
+    const res      = await fetch(`/workspace/${endpoint}/${id}`, { method: "POST" });
+    const data     = await res.json();
+
+    if (data.pinnedBundleIds) STATE.pinnedIds = data.pinnedBundleIds;
+    else if (!isPinned) STATE.pinnedIds.push(id);
+    else STATE.pinnedIds = STATE.pinnedIds.filter(x => x !== id);
+
+    updatePinBtn(id);
+    toast(isPinned ? "Unpinned" : "Pinned ★", isPinned ? "info" : "success");
+  } catch (e) {
+    toast("Pin action failed", "error");
+  }
 }
 
 // ═══════════════════════════════════════════
 // CARD TOGGLES
 // ═══════════════════════════════════════════
 function toggleCard(idx) {
-  const body   = document.getElementById("sbody-" + idx);
+  const body   = document.getElementById("sbody-"  + idx);
   const toggle = document.querySelector(`#scard-${idx} .wp-step-toggle`);
+  if (!body) return;
+
   const isOpen = body.classList.contains("open");
-  body.classList.toggle("open", !isOpen);
+  body.classList.toggle("open",    !isOpen);
   if (toggle) toggle.classList.toggle("open", !isOpen);
   STATE.selectedStep = !isOpen ? idx : null;
 }
@@ -670,23 +812,23 @@ function jumpToStep(idx) {
   const card = document.getElementById("scard-" + idx);
   if (card) {
     card.scrollIntoView({ behavior: "smooth", block: "center" });
-    const body   = document.getElementById("sbody-" + idx);
+    const body   = document.getElementById("sbody-"  + idx);
     const toggle = document.querySelector(`#scard-${idx} .wp-step-toggle`);
-    body.classList.add("open");
+    if (body)   body.classList.add("open");
     if (toggle) toggle.classList.add("open");
   }
 }
 
 // ═══════════════════════════════════════════
-// HELPERS
+// DOM HELPERS
 // ═══════════════════════════════════════════
 function updateBreadcrumb(title) {
   document.getElementById("topBreadcrumb").textContent = title || "Bundle";
 }
 
 function updatePinBtn(id) {
-  document.getElementById("btnPin").textContent =
-    STATE.pinnedIds.includes(id) ? "★ PINNED" : "☆ PIN";
+  const el = document.getElementById("btnPin");
+  if (el) el.textContent = STATE.pinnedIds.includes(id) ? "★ PINNED" : "☆ PIN";
 }
 
 function updateBundleRowDot(id, status) {
@@ -704,34 +846,39 @@ function updateBundleRowDot(id, status) {
 function updateBundleRowProgress(id, bundle) {
   const row = document.getElementById("brow-" + id);
   if (!row) return;
-  const steps = bundle.steps || [];
-  const done  = (bundle.progress || []).filter(p => p.status === "completed").length;
+  const steps = Array.isArray(bundle.steps)    ? bundle.steps    : [];
+  const prog  = Array.isArray(bundle.progress) ? bundle.progress : [];
+  const done  = prog.filter(p => p && p.status === "completed").length;
   const pct   = steps.length ? Math.round((done / steps.length) * 100) : 0;
   const fill  = row.querySelector(".wp-bundle-prog-fill");
   const pctEl = row.querySelector(".wp-bundle-pct");
-  if (fill)  fill.style.width = pct + "%";
-  if (pctEl) pctEl.textContent = pct + "%";
+  if (fill)  fill.style.width      = pct + "%";
+  if (pctEl) pctEl.textContent     = pct + "%";
   updateBundleRowDot(id, bundle.status);
 }
 
 function launchTool(url) {
   if (!url) return;
   if (!url.startsWith("http")) url = "https://" + url;
-  window.open(url, "_blank");
+  window.open(url, "_blank", "noopener");
 }
 
 function esc(str) {
-  if (!str) return "";
+  if (str === null || str === undefined) return "";
   return String(str)
-    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 function formatOutput(text) {
   if (!text) return "";
   return esc(text)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/`([^`]+)`/g, `<code style="background:var(--wp-bg);padding:1px 6px;border-radius:4px;font-family:var(--wp-mono);font-size:0.83em;">$1</code>`)
+    .replace(/^## (.+)$/gm,    '<span style="font-size:0.9rem;font-weight:700;color:var(--wp-bright);display:block;margin-bottom:4px;">$1</span>')
+    .replace(/^- (.+)$/gm,     '<span style="display:block;padding-left:12px;">• $1</span>')
+    .replace(/`([^`]+)`/g,     `<code style="background:var(--wp-bg);padding:1px 6px;border-radius:4px;font-family:var(--wp-mono);font-size:0.83em;">$1</code>`)
     .replace(/\n/g, "<br/>");
 }
 
@@ -745,7 +892,8 @@ function toast(msg, type = "info") {
   const el = document.createElement("div");
   el.className = `wp-toast wt-${type}`;
   el.textContent = msg;
-  document.querySelector(".workspace-page").appendChild(el);
+  const page = document.querySelector(".workspace-page");
+  if (page) page.appendChild(el);
   _toastTimer = setTimeout(() => el.remove(), 3200);
 }
 </script>
