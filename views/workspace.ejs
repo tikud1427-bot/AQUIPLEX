@@ -8,852 +8,1169 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
 
 <style>
-/* ══════════════════════════════════════════════════════════════
-   ROOT & RESET
-══════════════════════════════════════════════════════════════ */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ═══════════════════════════════════════════════════════════════
+   WORKSPACE PAGE — ALL STYLES SCOPED UNDER .workspace-page
+   No global selectors. No conflicts with global stylesheet.
+═══════════════════════════════════════════════════════════════ */
 
-:root {
-  --bg:         #020917;
-  --surface:    #060f1e;
-  --panel:      #0b1628;
-  --border:     #0f2040;
-  --border-lit: #1a3a6e;
-  --accent:     #00d4ff;
-  --accent2:    #7b5fff;
-  --accent3:    #ff4fc8;
-  --success:    #00e57a;
-  --warn:       #ffb520;
-  --danger:     #ff4040;
-  --text:       #c8d8f0;
-  --muted:      #3a5070;
-  --bright:     #e8f4ff;
-  --font-mono:  'Space Mono', monospace;
-  --font-ui:    'Syne', sans-serif;
-}
+/* ── TOKENS ─────────────────────────────────────────────────── */
+.workspace-page {
+  --wp-bg:           #07090f;
+  --wp-surface:      #0c1018;
+  --wp-panel:        #111724;
+  --wp-panel-2:      #141b27;
+  --wp-border:       rgba(255,255,255,0.06);
+  --wp-border-lit:   rgba(255,255,255,0.12);
+  --wp-border-glow:  rgba(0,210,255,0.25);
+  --wp-accent:       #00d2ff;
+  --wp-accent2:      #8b5cf6;
+  --wp-accent3:      #f43f5e;
+  --wp-green:        #10e97a;
+  --wp-amber:        #f59e0b;
+  --wp-text:         #c4d4e8;
+  --wp-muted:        rgba(148,163,184,0.45);
+  --wp-bright:       #eef4ff;
+  --wp-mono:         'Space Mono', monospace;
+  --wp-ui:           'Syne', sans-serif;
+  --wp-r:            14px;
+  --wp-r-sm:         8px;
+  --wp-shadow-glow:  0 0 40px rgba(0,210,255,0.06);
+  --wp-shadow-card:  0 4px 24px rgba(0,0,0,0.4);
 
-html, body {
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-ui);
+  font-family: var(--wp-ui);
+  background: var(--wp-bg);
+  color: var(--wp-text);
+  min-height: 100vh;
+  position: relative;
   overflow-x: hidden;
 }
 
-/* scanline overlay */
-body::before {
+/* Ambient grid background */
+.workspace-page::before {
   content: '';
   position: fixed;
   inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,212,255,0.012) 2px,
-    rgba(0,212,255,0.012) 4px
-  );
+  background-image:
+    linear-gradient(rgba(0,210,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,210,255,0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
   pointer-events: none;
-  z-index: 9999;
+  z-index: 0;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   WORKSPACE SHELL
-══════════════════════════════════════════════════════════════ */
-.ws-shell {
+/* Radial ambient glow top-right */
+.workspace-page::after {
+  content: '';
+  position: fixed;
+  top: -200px;
+  right: -200px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.workspace-page * {
+  box-sizing: border-box;
+}
+
+/* ── SHELL ───────────────────────────────────────────────────── */
+.workspace-page .wp-shell {
   display: grid;
-  grid-template-columns: 260px 1fr 300px;
   grid-template-rows: 56px 1fr;
   height: 100vh;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
-/* Top bar */
-.ws-topbar {
-  grid-column: 1 / -1;
+/* ── TOP BAR ─────────────────────────────────────────────────── */
+.workspace-page .wp-topbar {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  background: rgba(12,16,24,0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--wp-border);
   position: relative;
-  z-index: 100;
+  z-index: 200;
 }
 
-.ws-logo {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
+.workspace-page .wp-logo {
+  font-family: var(--wp-mono);
+  font-size: 0.72rem;
   font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 0.15em;
+  color: var(--wp-accent);
+  letter-spacing: 0.18em;
   text-transform: uppercase;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.ws-logo span { color: var(--muted); }
+.workspace-page .wp-logo-sep {
+  color: var(--wp-border-lit);
+  font-weight: 400;
+}
 
-.ws-breadcrumb {
+.workspace-page .wp-breadcrumb {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 0.78rem;
-  color: var(--muted);
+  color: var(--wp-muted);
   flex: 1;
 }
 
-.ws-breadcrumb .sep { color: var(--border-lit); }
-.ws-breadcrumb .active { color: var(--bright); font-weight: 600; }
+.workspace-page .wp-breadcrumb .sep {
+  color: var(--wp-border-lit);
+  font-size: 0.6rem;
+}
 
-.ws-status-bar {
+.workspace-page .wp-breadcrumb .active {
+  color: var(--wp-bright);
+  font-weight: 700;
+}
+
+.workspace-page .wp-topbar-right {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
+  gap: 16px;
 }
 
-.ws-pulse {
-  width: 7px; height: 7px;
+.workspace-page .wp-status-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  background: rgba(16,233,122,0.07);
+  border: 1px solid rgba(16,233,122,0.2);
+  border-radius: 20px;
+  font-family: var(--wp-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--wp-green);
+  letter-spacing: 0.1em;
+}
+
+.workspace-page .wp-status-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--success);
-  box-shadow: 0 0 8px var(--success);
-  animation: pulse 2s infinite;
+  background: var(--wp-green);
+  box-shadow: 0 0 8px var(--wp-green);
+  animation: wp-pulse 2s ease-in-out infinite;
 }
 
-@keyframes pulse {
+@keyframes wp-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.8); }
+}
+
+@keyframes wp-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes wp-blink {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
+  50%       { opacity: 0; }
 }
 
-.ws-status-text { color: var(--success); }
+@keyframes wp-slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
-/* ══════════════════════════════════════════════════════════════
-   LEFT PANEL — NAV
-══════════════════════════════════════════════════════════════ */
-.ws-left {
-  background: var(--surface);
-  border-right: 1px solid var(--border);
+@keyframes wp-glow-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(0,210,255,0.3); }
+  50%       { box-shadow: 0 0 24px rgba(0,210,255,0.6); }
+}
+
+@keyframes wp-toastIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── BODY LAYOUT ─────────────────────────────────────────────── */
+.workspace-page .wp-body {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  overflow: hidden;
+}
+
+/* ── LEFT SIDEBAR ────────────────────────────────────────────── */
+.workspace-page .wp-sidebar {
+  background: var(--wp-surface);
+  border-right: 1px solid var(--wp-border);
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.panel-hdr {
-  padding: 14px 16px 10px;
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  border-bottom: 1px solid var(--border);
+.workspace-page .wp-sidebar-tabs {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  border-bottom: 1px solid var(--wp-border);
+  padding: 0 8px;
+  gap: 2px;
 }
 
-.panel-hdr .badge {
-  background: var(--border-lit);
-  color: var(--accent);
-  padding: 2px 7px;
-  border-radius: 20px;
-  font-size: 0.6rem;
-}
-
-/* Nav tabs */
-.ws-nav {
-  display: flex;
-  border-bottom: 1px solid var(--border);
-}
-
-.ws-nav-btn {
+.workspace-page .wp-sidebar-tab {
   flex: 1;
-  padding: 10px 4px;
+  padding: 12px 6px;
   background: none;
   border: none;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  cursor: pointer;
+  color: var(--wp-muted);
+  font-family: var(--wp-mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  transition: all 0.15s;
+  cursor: pointer;
   border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  outline: none;
 }
 
-.ws-nav-btn.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-  background: rgba(0,212,255,0.04);
+.workspace-page .wp-sidebar-tab.active {
+  color: var(--wp-accent);
+  border-bottom-color: var(--wp-accent);
+  background: rgba(0,210,255,0.04);
 }
 
-.ws-nav-btn:hover:not(.active) {
-  color: var(--text);
-  background: rgba(255,255,255,0.03);
+.workspace-page .wp-sidebar-tab:hover:not(.active) {
+  color: var(--wp-text);
 }
 
-/* Scrollable list area */
-.ws-list {
+.workspace-page .wp-sidebar-list {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 10px;
 }
 
-.ws-list::-webkit-scrollbar { width: 3px; }
-.ws-list::-webkit-scrollbar-thumb { background: var(--border-lit); border-radius: 2px; }
-
-/* Bundle row */
-.bundle-row {
-  padding: 10px 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s;
-  border: 1px solid transparent;
-  margin-bottom: 3px;
-  position: relative;
-}
-
-.bundle-row:hover { background: var(--panel); border-color: var(--border); }
-.bundle-row.selected { background: var(--panel); border-color: var(--border-lit); }
-.bundle-row.selected::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 4px; bottom: 4px;
-  width: 2px;
-  background: var(--accent);
+.workspace-page .wp-sidebar-list::-webkit-scrollbar { width: 2px; }
+.workspace-page .wp-sidebar-list::-webkit-scrollbar-thumb {
+  background: var(--wp-border-lit);
   border-radius: 2px;
 }
 
-.bundle-row-title {
+/* Bundle item */
+.workspace-page .wp-bundle-item {
+  padding: 12px;
+  border-radius: var(--wp-r-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  margin-bottom: 4px;
+  position: relative;
+  overflow: hidden;
+}
+
+.workspace-page .wp-bundle-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 0;
+  background: var(--wp-accent);
+  transition: width 0.2s ease;
+  border-radius: 0 2px 2px 0;
+}
+
+.workspace-page .wp-bundle-item:hover {
+  background: var(--wp-panel);
+  border-color: var(--wp-border);
+}
+
+.workspace-page .wp-bundle-item.selected {
+  background: var(--wp-panel);
+  border-color: var(--wp-border-lit);
+}
+
+.workspace-page .wp-bundle-item.selected::before {
+  width: 3px;
+}
+
+.workspace-page .wp-bundle-title {
   font-size: 0.82rem;
-  color: var(--bright);
-  font-weight: 600;
+  font-weight: 700;
+  color: var(--wp-bright);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 5px;
+  margin-bottom: 8px;
 }
 
-.bundle-row-meta {
+.workspace-page .wp-bundle-meta {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.bundle-row-bar {
+.workspace-page .wp-bundle-prog-track {
   flex: 1;
   height: 3px;
-  background: var(--border);
+  background: var(--wp-border);
   border-radius: 2px;
   overflow: hidden;
 }
 
-.bundle-row-fill {
+.workspace-page .wp-bundle-prog-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  background: linear-gradient(90deg, var(--wp-accent), var(--wp-accent2));
   border-radius: 2px;
-  transition: width 0.4s ease;
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
 }
 
-.bundle-row-pct {
-  font-family: var(--font-mono);
+.workspace-page .wp-bundle-pct {
+  font-family: var(--wp-mono);
   font-size: 0.6rem;
-  color: var(--muted);
+  color: var(--wp-muted);
   flex-shrink: 0;
+  min-width: 28px;
+  text-align: right;
 }
 
-.bundle-status-dot {
-  width: 6px; height: 6px;
+.workspace-page .wp-status-icon {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   flex-shrink: 0;
 }
 
-.dot-active   { background: var(--success); box-shadow: 0 0 5px var(--success); animation: pulse 2s infinite; }
-.dot-paused   { background: var(--warn); }
-.dot-completed{ background: var(--accent2); }
-.dot-draft    { background: var(--muted); }
+.workspace-page .wi-active    { background: var(--wp-green); box-shadow: 0 0 6px var(--wp-green); animation: wp-pulse 2s infinite; }
+.workspace-page .wi-paused    { background: var(--wp-amber); }
+.workspace-page .wi-completed { background: var(--wp-accent2); }
+.workspace-page .wi-draft     { background: var(--wp-border-lit); }
 
-/* Tool row */
-.tool-row {
+/* Tool item */
+.workspace-page .wp-tool-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  padding: 9px 10px;
+  border-radius: var(--wp-r-sm);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s ease;
   margin-bottom: 2px;
 }
 
-.tool-row:hover { background: var(--panel); }
-
-.tool-logo {
-  width: 28px; height: 28px;
-  border-radius: 6px;
-  object-fit: contain;
-  background: var(--border);
-  flex-shrink: 0;
+.workspace-page .wp-tool-item:hover {
+  background: var(--wp-panel);
 }
 
-.tool-row-name {
+.workspace-page .wp-tool-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  object-fit: contain;
+  background: var(--wp-panel);
+  flex-shrink: 0;
+  border: 1px solid var(--wp-border);
+}
+
+.workspace-page .wp-tool-name {
   font-size: 0.8rem;
-  color: var(--text);
+  color: var(--wp-text);
+  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
 }
 
-.tool-launch-btn {
+.workspace-page .wp-tool-open {
   background: none;
-  border: 1px solid var(--border-lit);
-  color: var(--accent);
-  padding: 3px 8px;
+  border: 1px solid var(--wp-border-lit);
+  color: var(--wp-accent);
+  padding: 3px 9px;
   border-radius: 5px;
-  font-size: 0.65rem;
-  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-family: var(--wp-mono);
   cursor: pointer;
   opacity: 0;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.workspace-page .wp-tool-item:hover .wp-tool-open {
+  opacity: 1;
+}
+
+.workspace-page .wp-tool-open:hover {
+  background: rgba(0,210,255,0.08);
+  border-color: var(--wp-accent);
+}
+
+/* Empty state */
+.workspace-page .wp-empty {
+  padding: 28px 10px;
+  text-align: center;
+  color: var(--wp-muted);
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+.workspace-page .wp-empty-link {
+  color: var(--wp-accent);
+  text-decoration: none;
+  font-family: var(--wp-mono);
+  font-size: 0.7rem;
+  display: inline-block;
+  margin-top: 6px;
   transition: opacity 0.15s;
 }
 
-.tool-row:hover .tool-launch-btn { opacity: 1; }
+.workspace-page .wp-empty-link:hover { opacity: 0.75; }
 
-.empty-state {
-  padding: 24px 10px;
-  text-align: center;
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.empty-state a {
-  color: var(--accent);
-  text-decoration: none;
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   CENTER PANEL — EXECUTION
-══════════════════════════════════════════════════════════════ */
-.ws-center {
+/* ── MAIN AREA ───────────────────────────────────────────────── */
+.workspace-page .wp-main {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--wp-bg);
 }
 
-/* Welcome screen */
-.ws-welcome {
+/* ── WELCOME ─────────────────────────────────────────────────── */
+.workspace-page .wp-welcome {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  flex: 1;
-  padding: 40px;
+  padding: 60px 40px;
   text-align: center;
+  animation: wp-slideUp 0.4s ease;
 }
 
-.ws-welcome-icon {
-  font-size: 3rem;
-  margin-bottom: 20px;
-  opacity: 0.6;
+.workspace-page .wp-welcome-glyph {
+  width: 72px;
+  height: 72px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(0,210,255,0.1), rgba(139,92,246,0.1));
+  border: 1px solid var(--wp-border-lit);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  margin: 0 auto 24px;
+  box-shadow: var(--wp-shadow-glow);
 }
 
-.ws-welcome h2 {
-  font-size: 1.5rem;
+.workspace-page .wp-welcome h2 {
+  font-size: 1.6rem;
   font-weight: 800;
-  color: var(--bright);
+  color: var(--wp-bright);
   margin-bottom: 10px;
+  letter-spacing: -0.02em;
 }
 
-.ws-welcome p {
-  color: var(--muted);
+.workspace-page .wp-welcome p {
   font-size: 0.88rem;
-  max-width: 340px;
-  line-height: 1.6;
+  color: var(--wp-muted);
+  max-width: 360px;
+  line-height: 1.7;
 }
 
-/* Execution view */
-.ws-exec {
+/* ── EXECUTION VIEW ──────────────────────────────────────────── */
+.workspace-page .wp-exec {
   display: flex;
   flex-direction: column;
   flex: 1;
   overflow: hidden;
+  animation: wp-slideUp 0.3s ease;
 }
 
-/* Bundle header bar */
-.exec-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: var(--surface);
+/* ── EXEC HEADER ─────────────────────────────────────────────── */
+.workspace-page .wp-exec-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--wp-border);
+  background: rgba(11,16,24,0.9);
+  backdrop-filter: blur(10px);
   flex-shrink: 0;
 }
 
-.exec-title-block { flex: 1; min-width: 0; }
+.workspace-page .wp-exec-header-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 14px;
+}
 
-.exec-title {
-  font-size: 1.05rem;
+.workspace-page .wp-exec-title-block { flex: 1; min-width: 0; }
+
+.workspace-page .wp-exec-title {
+  font-size: 1.15rem;
   font-weight: 800;
-  color: var(--bright);
+  color: var(--wp-bright);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+
+.workspace-page .wp-exec-goal {
+  font-size: 0.76rem;
+  color: var(--wp-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.exec-goal {
-  font-size: 0.75rem;
-  color: var(--muted);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.exec-actions {
+.workspace-page .wp-exec-actions {
   display: flex;
   gap: 8px;
   flex-shrink: 0;
+  align-items: center;
 }
 
-.exec-btn {
-  padding: 7px 14px;
-  border-radius: 7px;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
+/* Action buttons */
+.workspace-page .wp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--wp-r-sm);
+  font-family: var(--wp-mono);
+  font-size: 0.66rem;
   font-weight: 700;
-  border: 1px solid var(--border-lit);
+  letter-spacing: 0.06em;
+  border: 1px solid;
   cursor: pointer;
-  transition: all 0.15s;
-  letter-spacing: 0.05em;
+  transition: all 0.2s ease;
+  outline: none;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
 }
 
-.exec-btn-run {
-  background: var(--accent);
+.workspace-page .wp-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0);
+  transition: background 0.15s ease;
+}
+
+.workspace-page .wp-btn:hover::after {
+  background: rgba(255,255,255,0.04);
+}
+
+.workspace-page .wp-btn:active {
+  transform: scale(0.97);
+}
+
+.workspace-page .wp-btn-run {
+  background: var(--wp-accent);
   color: #000;
-  border-color: var(--accent);
+  border-color: var(--wp-accent);
+  box-shadow: 0 0 20px rgba(0,210,255,0.25);
 }
 
-.exec-btn-run:hover { opacity: 0.85; transform: translateY(-1px); }
+.workspace-page .wp-btn-run:hover {
+  box-shadow: 0 0 30px rgba(0,210,255,0.45);
+  transform: translateY(-1px);
+}
 
-.exec-btn-pause {
+.workspace-page .wp-btn-pause {
+  background: rgba(245,158,11,0.08);
+  color: var(--wp-amber);
+  border-color: rgba(245,158,11,0.3);
+}
+
+.workspace-page .wp-btn-pause:hover {
+  background: rgba(245,158,11,0.15);
+}
+
+.workspace-page .wp-btn-ghost {
   background: transparent;
-  color: var(--warn);
-  border-color: var(--warn);
+  color: var(--wp-text);
+  border-color: var(--wp-border-lit);
 }
 
-.exec-btn-pause:hover { background: rgba(255,181,32,0.08); }
-
-.exec-btn-secondary {
-  background: transparent;
-  color: var(--text);
+.workspace-page .wp-btn-ghost:hover {
+  background: var(--wp-panel);
+  border-color: var(--wp-border-glow);
+  color: var(--wp-bright);
 }
 
-.exec-btn-secondary:hover { background: var(--panel); }
+/* Stats row */
+.workspace-page .wp-stats-row {
+  display: flex;
+  gap: 20px;
+}
 
-/* Progress timeline */
-.exec-timeline {
-  padding: 12px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+.workspace-page .wp-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.workspace-page .wp-stat-val {
+  font-family: var(--wp-mono);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--wp-bright);
+  line-height: 1;
+}
+
+.workspace-page .wp-stat-val.c-accent  { color: var(--wp-accent); }
+.workspace-page .wp-stat-val.c-green   { color: var(--wp-green); }
+.workspace-page .wp-stat-val.c-amber   { color: var(--wp-amber); }
+.workspace-page .wp-stat-val.c-purple  { color: var(--wp-accent2); }
+
+.workspace-page .wp-stat-lbl {
+  font-family: var(--wp-mono);
+  font-size: 0.56rem;
+  color: var(--wp-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.workspace-page .wp-stat-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--wp-border);
+  align-self: center;
+}
+
+/* Progress bar */
+.workspace-page .wp-exec-progress {
+  margin-top: 14px;
+}
+
+.workspace-page .wp-progress-track {
+  height: 3px;
+  background: var(--wp-border);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.workspace-page .wp-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--wp-accent), var(--wp-accent2), #f43f5e);
+  background-size: 200% 100%;
+  border-radius: 2px;
+  transition: width 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.workspace-page .wp-progress-fill::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: -2px;
+  width: 8px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--wp-accent);
+  box-shadow: 0 0 8px var(--wp-accent);
+}
+
+/* ── EXEC CONTENT GRID ───────────────────────────────────────── */
+.workspace-page .wp-exec-content {
+  display: grid;
+  grid-template-columns: 1fr 310px;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── STEP TIMELINE ───────────────────────────────────────────── */
+.workspace-page .wp-timeline-strip {
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--wp-border);
   display: flex;
   align-items: center;
   gap: 0;
   overflow-x: auto;
+  background: rgba(11,16,24,0.6);
   flex-shrink: 0;
 }
 
-.exec-timeline::-webkit-scrollbar { height: 2px; }
-.exec-timeline::-webkit-scrollbar-thumb { background: var(--border-lit); }
+.workspace-page .wp-timeline-strip::-webkit-scrollbar { height: 0; }
 
-.tl-step {
+.workspace-page .wp-tl-step {
   display: flex;
   align-items: center;
-  cursor: pointer;
   flex-shrink: 0;
+  cursor: pointer;
 }
 
-.tl-dot {
-  width: 28px; height: 28px;
+.workspace-page .wp-tl-dot {
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
+  font-family: var(--wp-mono);
   font-size: 0.6rem;
   font-weight: 700;
-  border: 2px solid var(--border-lit);
-  background: var(--panel);
-  color: var(--muted);
-  transition: all 0.2s;
+  border: 2px solid var(--wp-border-lit);
+  background: var(--wp-panel);
+  color: var(--wp-muted);
+  transition: all 0.25s ease;
   position: relative;
 }
 
-.tl-dot.done {
-  background: rgba(0,229,122,0.12);
-  border-color: var(--success);
-  color: var(--success);
+.workspace-page .wp-tl-dot:hover {
+  border-color: var(--wp-border-glow);
+  transform: scale(1.1);
 }
 
-.tl-dot.running {
-  background: rgba(0,212,255,0.12);
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 0 10px rgba(0,212,255,0.3);
-  animation: pulse 1.5s infinite;
+.workspace-page .wp-tl-dot.tl-done {
+  background: rgba(16,233,122,0.1);
+  border-color: var(--wp-green);
+  color: var(--wp-green);
+  box-shadow: 0 0 12px rgba(16,233,122,0.2);
 }
 
-.tl-dot.selected-step {
-  transform: scale(1.15);
-  box-shadow: 0 0 12px rgba(123,95,255,0.5);
-  border-color: var(--accent2);
-  color: var(--accent2);
+.workspace-page .wp-tl-dot.tl-running {
+  background: rgba(0,210,255,0.1);
+  border-color: var(--wp-accent);
+  color: var(--wp-accent);
+  box-shadow: 0 0 14px rgba(0,210,255,0.35);
+  animation: wp-glow-pulse 1.5s ease-in-out infinite;
 }
 
-.tl-dot.failed {
-  background: rgba(255,64,64,0.12);
-  border-color: var(--danger);
-  color: var(--danger);
+.workspace-page .wp-tl-dot.tl-selected {
+  border-color: var(--wp-accent2);
+  color: var(--wp-accent2);
+  background: rgba(139,92,246,0.1);
+  transform: scale(1.12);
+  box-shadow: 0 0 14px rgba(139,92,246,0.3);
 }
 
-.tl-connector {
+.workspace-page .wp-tl-dot.tl-failed {
+  background: rgba(244,63,94,0.1);
+  border-color: var(--wp-accent3);
+  color: var(--wp-accent3);
+}
+
+.workspace-page .wp-tl-line {
   height: 2px;
-  width: 24px;
-  background: var(--border);
+  width: 28px;
+  background: var(--wp-border);
   flex-shrink: 0;
+  transition: background 0.4s ease;
+  position: relative;
 }
 
-.tl-connector.done { background: var(--success); opacity: 0.4; }
+.workspace-page .wp-tl-line.tl-done {
+  background: linear-gradient(90deg, var(--wp-green), rgba(16,233,122,0.3));
+}
 
-/* Step cards area */
-.exec-steps {
+/* ── STEPS PANEL ─────────────────────────────────────────────── */
+.workspace-page .wp-steps-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--wp-border);
+}
+
+.workspace-page .wp-steps-scroll {
   flex: 1;
   overflow-y: auto;
   padding: 16px 20px;
 }
 
-.exec-steps::-webkit-scrollbar { width: 3px; }
-.exec-steps::-webkit-scrollbar-thumb { background: var(--border-lit); }
-
-/* Individual step card */
-.step-card {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  margin-bottom: 10px;
-  background: var(--surface);
-  overflow: hidden;
-  transition: border-color 0.2s;
+.workspace-page .wp-steps-scroll::-webkit-scrollbar { width: 3px; }
+.workspace-page .wp-steps-scroll::-webkit-scrollbar-thumb {
+  background: var(--wp-border-lit);
+  border-radius: 2px;
 }
 
-.step-card.active-card { border-color: var(--border-lit); }
-.step-card.running-card { border-color: var(--accent); box-shadow: 0 0 16px rgba(0,212,255,0.08); }
-.step-card.done-card { border-color: rgba(0,229,122,0.2); }
+/* Step card */
+.workspace-page .wp-step-card {
+  border: 1px solid var(--wp-border);
+  border-radius: var(--wp-r);
+  margin-bottom: 10px;
+  background: var(--wp-surface);
+  overflow: hidden;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+}
 
-.step-card-hdr {
+.workspace-page .wp-step-card:hover {
+  border-color: var(--wp-border-lit);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+}
+
+.workspace-page .wp-step-card.sc-active {
+  border-color: var(--wp-border-lit);
+}
+
+.workspace-page .wp-step-card.sc-running {
+  border-color: var(--wp-accent);
+  box-shadow: 0 0 20px rgba(0,210,255,0.08);
+}
+
+.workspace-page .wp-step-card.sc-done {
+  border-color: rgba(16,233,122,0.18);
+}
+
+.workspace-page .wp-step-card-hdr {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 14px 16px;
   cursor: pointer;
   user-select: none;
 }
 
-.step-num {
-  width: 30px; height: 30px;
+.workspace-page .wp-step-num {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--wp-mono);
   font-size: 0.65rem;
   font-weight: 700;
-  background: var(--panel);
-  border: 1px solid var(--border-lit);
-  color: var(--muted);
+  background: var(--wp-panel);
+  border: 1px solid var(--wp-border-lit);
+  color: var(--wp-muted);
   flex-shrink: 0;
+  transition: all 0.2s ease;
 }
 
-.step-num.done { background: rgba(0,229,122,0.1); border-color: var(--success); color: var(--success); }
-.step-num.running { background: rgba(0,212,255,0.1); border-color: var(--accent); color: var(--accent); animation: pulse 1.5s infinite; }
+.workspace-page .wp-step-num.sn-done {
+  background: rgba(16,233,122,0.08);
+  border-color: var(--wp-green);
+  color: var(--wp-green);
+}
 
-.step-card-info { flex: 1; min-width: 0; }
+.workspace-page .wp-step-num.sn-running {
+  background: rgba(0,210,255,0.08);
+  border-color: var(--wp-accent);
+  color: var(--wp-accent);
+  animation: wp-pulse 1.5s ease-in-out infinite;
+}
 
-.step-card-title {
-  font-size: 0.88rem;
+.workspace-page .wp-step-info { flex: 1; min-width: 0; }
+
+.workspace-page .wp-step-title {
+  font-size: 0.9rem;
   font-weight: 700;
-  color: var(--bright);
+  color: var(--wp-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.workspace-page .wp-step-desc {
+  font-size: 0.73rem;
+  color: var(--wp-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.step-card-desc {
-  font-size: 0.74rem;
-  color: var(--muted);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.step-badge {
-  padding: 3px 9px;
+.workspace-page .wp-badge {
+  padding: 3px 10px;
   border-radius: 20px;
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-family: var(--wp-mono);
+  font-size: 0.57rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.07em;
+  border: 1px solid;
   flex-shrink: 0;
 }
 
-.badge-pending  { background: var(--panel); color: var(--muted); border: 1px solid var(--border); }
-.badge-running  { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.25); }
-.badge-done     { background: rgba(0,229,122,0.1); color: var(--success); border: 1px solid rgba(0,229,122,0.25); }
-.badge-failed   { background: rgba(255,64,64,0.1); color: var(--danger); border: 1px solid rgba(255,64,64,0.25); }
+.workspace-page .wb-pending  {
+  background: var(--wp-panel);
+  color: var(--wp-muted);
+  border-color: var(--wp-border);
+}
 
-.step-toggle {
-  color: var(--muted);
-  font-size: 0.7rem;
+.workspace-page .wb-running  {
+  background: rgba(0,210,255,0.08);
+  color: var(--wp-accent);
+  border-color: rgba(0,210,255,0.25);
+}
+
+.workspace-page .wb-done     {
+  background: rgba(16,233,122,0.08);
+  color: var(--wp-green);
+  border-color: rgba(16,233,122,0.25);
+}
+
+.workspace-page .wb-failed   {
+  background: rgba(244,63,94,0.08);
+  color: var(--wp-accent3);
+  border-color: rgba(244,63,94,0.25);
+}
+
+.workspace-page .wp-step-toggle {
+  color: var(--wp-muted);
+  font-size: 0.65rem;
   flex-shrink: 0;
-  transition: transform 0.2s;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
 }
 
-.step-toggle.open { transform: rotate(180deg); }
-
-/* Expand body */
-.step-card-body {
-  border-top: 1px solid var(--border);
-  padding: 14px 16px;
-  display: none;
+.workspace-page .wp-step-toggle.open {
+  transform: rotate(180deg);
 }
 
-.step-card-body.open { display: block; }
+/* Step body */
+.workspace-page .wp-step-body {
+  border-top: 1px solid var(--wp-border);
+  padding: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
+}
 
-/* Step tools */
-.step-tools {
+.workspace-page .wp-step-body.open {
+  max-height: 700px;
+  padding: 16px;
+}
+
+.workspace-page .wp-step-tools {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
-.step-tool-chip {
+.workspace-page .wp-tool-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 10px;
-  background: var(--panel);
-  border: 1px solid var(--border-lit);
+  padding: 5px 11px;
+  background: var(--wp-panel);
+  border: 1px solid var(--wp-border-lit);
   border-radius: 6px;
-  font-size: 0.72rem;
-  color: var(--accent);
+  font-size: 0.71rem;
+  color: var(--wp-accent);
   text-decoration: none;
-  transition: all 0.15s;
+  transition: all 0.15s ease;
 }
 
-.step-tool-chip:hover { background: rgba(0,212,255,0.05); border-color: var(--accent); }
+.workspace-page .wp-tool-chip:hover {
+  background: rgba(0,210,255,0.06);
+  border-color: var(--wp-accent);
+  transform: translateY(-1px);
+}
 
 /* Output block */
-.step-output-block {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
+.workspace-page .wp-output-block {
+  background: var(--wp-panel);
+  border: 1px solid var(--wp-border);
+  border-radius: var(--wp-r-sm);
+  overflow: hidden;
   margin-bottom: 12px;
 }
 
-.step-output-label {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 8px;
+.workspace-page .wp-output-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--wp-border);
+  background: rgba(0,210,255,0.03);
 }
 
-.step-output-content {
-  font-size: 0.8rem;
-  color: var(--text);
-  line-height: 1.7;
+.workspace-page .wp-output-label {
+  font-family: var(--wp-mono);
+  font-size: 0.6rem;
+  color: var(--wp-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  flex: 1;
+}
+
+.workspace-page .wp-output-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--wp-green);
+}
+
+.workspace-page .wp-output-content {
+  padding: 12px 14px;
+  font-size: 0.79rem;
+  color: var(--wp-text);
+  line-height: 1.75;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 240px;
+  max-height: 220px;
   overflow-y: auto;
 }
 
-.step-output-content::-webkit-scrollbar { width: 3px; }
-.step-output-content::-webkit-scrollbar-thumb { background: var(--border-lit); }
+.workspace-page .wp-output-content::-webkit-scrollbar { width: 2px; }
+.workspace-page .wp-output-content::-webkit-scrollbar-thumb { background: var(--wp-border-lit); }
 
-/* Insights */
-.step-insights {
+/* Insight chips */
+.workspace-page .wp-step-insights {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
-.insight-chip {
-  padding: 3px 9px;
-  background: rgba(123,95,255,0.08);
-  border: 1px solid rgba(123,95,255,0.2);
+.workspace-page .wp-insight-chip {
+  padding: 3px 10px;
+  background: rgba(139,92,246,0.07);
+  border: 1px solid rgba(139,92,246,0.2);
   border-radius: 20px;
   font-size: 0.7rem;
-  color: var(--accent2);
+  color: var(--wp-accent2);
 }
 
 /* Step actions */
-.step-card-actions {
+.workspace-page .wp-step-actions {
   display: flex;
   gap: 8px;
 }
 
-.step-action-btn {
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
+.workspace-page .wp-step-btn {
+  padding: 7px 14px;
+  border-radius: 7px;
+  font-family: var(--wp-mono);
+  font-size: 0.63rem;
   font-weight: 700;
+  letter-spacing: 0.05em;
   border: 1px solid;
   cursor: pointer;
-  transition: all 0.15s;
-  letter-spacing: 0.04em;
+  transition: all 0.2s ease;
+  outline: none;
 }
 
-.btn-mark-done {
-  background: rgba(0,229,122,0.08);
-  color: var(--success);
-  border-color: rgba(0,229,122,0.25);
+.workspace-page .wp-step-btn:active { transform: scale(0.96); }
+
+.workspace-page .wsb-done {
+  background: rgba(16,233,122,0.06);
+  color: var(--wp-green);
+  border-color: rgba(16,233,122,0.25);
 }
 
-.btn-mark-done:hover { background: rgba(0,229,122,0.15); }
-
-.btn-rerun {
-  background: rgba(0,212,255,0.06);
-  color: var(--accent);
-  border-color: rgba(0,212,255,0.2);
+.workspace-page .wsb-done:hover {
+  background: rgba(16,233,122,0.14);
+  border-color: var(--wp-green);
 }
 
-.btn-rerun:hover { background: rgba(0,212,255,0.12); }
-
-/* Streaming text */
-.streaming-line {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--accent);
-  padding: 10px 12px;
-  background: rgba(0,212,255,0.04);
-  border-radius: 6px;
-  min-height: 36px;
-  border-left: 2px solid var(--accent);
+.workspace-page .wsb-rerun {
+  background: rgba(0,210,255,0.05);
+  color: var(--wp-accent);
+  border-color: rgba(0,210,255,0.2);
 }
 
-.streaming-cursor {
-  display: inline-block;
-  width: 6px; height: 12px;
-  background: var(--accent);
-  margin-left: 2px;
-  animation: blink 1s step-end infinite;
-  vertical-align: middle;
+.workspace-page .wsb-rerun:hover {
+  background: rgba(0,210,255,0.12);
+  border-color: var(--wp-accent);
 }
 
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
-}
-
-/* ══════════════════════════════════════════════════════════════
-   RIGHT PANEL — OUTPUT + MEMORY
-══════════════════════════════════════════════════════════════ */
-.ws-right {
-  background: var(--surface);
-  border-left: 1px solid var(--border);
+/* ── RIGHT PANEL ─────────────────────────────────────────────── */
+.workspace-page .wp-right-panel {
+  background: var(--wp-surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
-.right-tabs {
+.workspace-page .wp-right-panel::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--wp-border-glow), transparent);
+}
+
+.workspace-page .wp-right-tabs {
   display: flex;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--wp-border);
 }
 
-.right-tab-btn {
+.workspace-page .wp-right-tab {
   flex: 1;
-  padding: 10px 4px;
+  padding: 12px 4px;
   background: none;
   border: none;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  transition: all 0.15s;
   border-bottom: 2px solid transparent;
+  color: var(--wp-muted);
+  font-family: var(--wp-mono);
+  font-size: 0.57rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
 }
 
-.right-tab-btn.active {
-  color: var(--accent);
-  border-bottom-color: var(--accent);
-  background: rgba(0,212,255,0.04);
+.workspace-page .wp-right-tab.active {
+  color: var(--wp-accent);
+  border-bottom-color: var(--wp-accent);
+  background: rgba(0,210,255,0.03);
 }
 
-.right-tab-btn:hover:not(.active) { color: var(--text); }
+.workspace-page .wp-right-tab:hover:not(.active) {
+  color: var(--wp-text);
+}
 
-.right-panel-body {
+.workspace-page .wp-right-body {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 14px;
 }
 
-.right-panel-body::-webkit-scrollbar { width: 3px; }
-.right-panel-body::-webkit-scrollbar-thumb { background: var(--border-lit); }
+.workspace-page .wp-right-body::-webkit-scrollbar { width: 2px; }
+.workspace-page .wp-right-body::-webkit-scrollbar-thumb { background: var(--wp-border-lit); }
 
-.right-section { display: none; }
-.right-section.active { display: block; }
+.workspace-page .wp-right-section { display: none; }
+.workspace-page .wp-right-section.active { display: block; }
 
 /* Output feed */
-.output-feed-item {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
+.workspace-page .wp-feed-item {
+  background: var(--wp-panel);
+  border: 1px solid var(--wp-border);
+  border-radius: var(--wp-r-sm);
+  padding: 11px 13px;
   margin-bottom: 8px;
   cursor: pointer;
-  transition: border-color 0.15s;
+  transition: all 0.2s ease;
 }
 
-.output-feed-item:hover { border-color: var(--border-lit); }
+.workspace-page .wp-feed-item:hover {
+  border-color: var(--wp-border-lit);
+  transform: translateX(2px);
+}
 
-.output-feed-meta {
+.workspace-page .wp-feed-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  margin-bottom: 7px;
 }
 
-.output-feed-step {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  color: var(--accent);
+.workspace-page .wp-feed-step {
+  font-family: var(--wp-mono);
+  font-size: 0.59rem;
+  color: var(--wp-accent);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
-.output-feed-bundle {
-  font-size: 0.62rem;
-  color: var(--muted);
-  max-width: 120px;
+.workspace-page .wp-feed-bundle {
+  font-size: 0.61rem;
+  color: var(--wp-muted);
+  max-width: 110px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.output-feed-preview {
-  font-size: 0.76rem;
-  color: var(--text);
-  line-height: 1.5;
+.workspace-page .wp-feed-preview {
+  font-size: 0.75rem;
+  color: var(--wp-text);
+  line-height: 1.55;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -861,200 +1178,184 @@ body::before {
 }
 
 /* Memory panel */
-.memory-section-hdr {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  color: var(--muted);
+.workspace-page .wp-mem-hdr {
+  font-family: var(--wp-mono);
+  font-size: 0.59rem;
+  color: var(--wp-muted);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 8px 0 6px;
-  margin-bottom: 6px;
-  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.12em;
+  padding: 8px 0 7px;
+  margin-bottom: 7px;
+  border-bottom: 1px solid var(--wp-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.memory-section-hdr span { color: var(--accent); font-size: 0.58rem; }
-
-.memory-kv {
-  margin-bottom: 8px;
-  padding: 8px 10px;
-  background: var(--panel);
-  border-radius: 6px;
-  border-left: 2px solid var(--accent2);
+.workspace-page .wp-mem-hdr-count {
+  color: var(--wp-accent);
+  font-size: 0.57rem;
 }
 
-.mem-k {
-  font-family: var(--font-mono);
-  font-size: 0.62rem;
-  color: var(--accent2);
+.workspace-page .wp-mem-kv {
+  margin-bottom: 7px;
+  padding: 9px 11px;
+  background: var(--wp-panel);
+  border-radius: 7px;
+  border-left: 2px solid var(--wp-accent2);
+}
+
+.workspace-page .wp-mem-k {
+  font-family: var(--wp-mono);
+  font-size: 0.61rem;
+  color: var(--wp-accent2);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 2px;
+  letter-spacing: 0.07em;
+  margin-bottom: 3px;
 }
 
-.mem-v {
-  font-size: 0.78rem;
-  color: var(--text);
+.workspace-page .wp-mem-v {
+  font-size: 0.77rem;
+  color: var(--wp-text);
   line-height: 1.5;
   word-break: break-word;
 }
 
-/* Context summary */
-.context-box {
-  background: var(--panel);
-  border: 1px solid var(--border);
+.workspace-page .wp-context-box {
+  background: var(--wp-panel);
+  border: 1px solid var(--wp-border);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 11px 13px;
   font-size: 0.76rem;
-  color: var(--text);
+  color: var(--wp-text);
   line-height: 1.7;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-/* Insights right panel */
-.insight-list-item {
+/* Insight list */
+.workspace-page .wp-insight-item {
   display: flex;
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.78rem;
-  color: var(--text);
-  line-height: 1.5;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--wp-border);
+  font-size: 0.77rem;
+  color: var(--wp-text);
+  line-height: 1.55;
 }
 
-.insight-list-item::before {
+.workspace-page .wp-insight-item::before {
   content: '◆';
-  color: var(--accent);
-  font-size: 0.6rem;
+  color: var(--wp-accent);
+  font-size: 0.55rem;
   flex-shrink: 0;
-  margin-top: 3px;
+  margin-top: 4px;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   STATS ROW
-══════════════════════════════════════════════════════════════ */
-.exec-stats {
-  display: flex;
-  gap: 12px;
-  padding: 10px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-  flex-shrink: 0;
+/* ── STREAMING ───────────────────────────────────────────────── */
+.workspace-page .wp-stream-line {
+  font-family: var(--wp-mono);
+  font-size: 0.72rem;
+  color: var(--wp-accent);
+  padding: 10px 13px;
+  background: rgba(0,210,255,0.04);
+  border-radius: 7px;
+  border-left: 2px solid var(--wp-accent);
+  min-height: 36px;
 }
 
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.workspace-page .wp-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 12px;
+  background: var(--wp-accent);
+  margin-left: 3px;
+  animation: wp-blink 1s step-end infinite;
+  vertical-align: middle;
 }
 
-.stat-val {
-  font-family: var(--font-mono);
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--bright);
-}
-
-.stat-val.accent { color: var(--accent); }
-.stat-val.success { color: var(--success); }
-.stat-val.warn { color: var(--warn); }
-
-.stat-lbl {
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   TOAST
-══════════════════════════════════════════════════════════════ */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  z-index: 9999;
-  animation: toastIn 0.2s ease;
-}
-
-@keyframes toastIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-.toast-success { background: rgba(0,229,122,0.12); border: 1px solid var(--success); color: var(--success); }
-.toast-info    { background: rgba(0,212,255,0.12); border: 1px solid var(--accent);  color: var(--accent);  }
-.toast-error   { background: rgba(255,64,64,0.12); border: 1px solid var(--danger);  color: var(--danger);  }
-
-/* ══════════════════════════════════════════════════════════════
-   SPINNER
-══════════════════════════════════════════════════════════════ */
-.spin {
-  width: 14px; height: 14px;
-  border: 2px solid var(--border-lit);
-  border-top-color: var(--accent);
+/* ── SPINNER ─────────────────────────────────────────────────── */
+.workspace-page .wp-spin {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--wp-border-lit);
+  border-top-color: var(--wp-accent);
   border-radius: 50%;
-  animation: spin 0.6s linear infinite;
+  animation: wp-spin 0.65s linear infinite;
   display: inline-block;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ══════════════════════════════════════════════════════════════
-   OVERALL PROGRESS BAR
-══════════════════════════════════════════════════════════════ */
-.exec-progress-bar-wrap {
-  padding: 0 20px 0;
-  background: var(--surface);
-  flex-shrink: 0;
+/* ── TOAST ───────────────────────────────────────────────────── */
+.workspace-page .wp-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 11px 20px;
+  border-radius: 10px;
+  font-family: var(--wp-mono);
+  font-size: 0.73rem;
+  z-index: 9999;
+  animation: wp-toastIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
 }
 
-.exec-progress-bar-track {
-  height: 3px;
-  background: var(--border);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 10px;
+.workspace-page .wt-success {
+  background: rgba(16,233,122,0.1);
+  border: 1px solid rgba(16,233,122,0.3);
+  color: var(--wp-green);
 }
 
-.exec-progress-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
-  border-radius: 2px;
-  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+.workspace-page .wt-info {
+  background: rgba(0,210,255,0.1);
+  border: 1px solid rgba(0,210,255,0.3);
+  color: var(--wp-accent);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   RESPONSIVE
-══════════════════════════════════════════════════════════════ */
-@media (max-width: 1000px) {
-  .ws-shell {
-    grid-template-columns: 200px 1fr;
-    grid-template-rows: 56px 1fr;
+.workspace-page .wt-error {
+  background: rgba(244,63,94,0.1);
+  border: 1px solid rgba(244,63,94,0.3);
+  color: var(--wp-accent3);
+}
+
+/* ── RESPONSIVE ──────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .workspace-page .wp-body {
+    grid-template-columns: 220px 1fr;
   }
-  .ws-right { display: none; }
+  .workspace-page .wp-exec-content {
+    grid-template-columns: 1fr 270px;
+  }
 }
 
-@media (max-width: 680px) {
-  .ws-shell {
+@media (max-width: 860px) {
+  .workspace-page .wp-body {
     grid-template-columns: 1fr;
-    grid-template-rows: 56px auto 1fr;
   }
-  .ws-left {
-    grid-row: 2;
-    max-height: 220px;
-    border-right: none;
-    border-bottom: 1px solid var(--border);
+  .workspace-page .wp-sidebar {
+    display: none;
   }
-  .ws-center { grid-row: 3; }
+  .workspace-page .wp-exec-content {
+    grid-template-columns: 1fr;
+  }
+  .workspace-page .wp-right-panel {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .workspace-page .wp-exec-header-top {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .workspace-page .wp-exec-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .workspace-page .wp-stats-row {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
 }
 </style>
 </head>
@@ -1062,237 +1363,250 @@ body::before {
 <body>
 <%- include('partials/nav') %>
 
-<!-- ════════════════════════════════════════════════════════════
-     WORKSPACE SHELL
-════════════════════════════════════════════════════════════ -->
-<div class="ws-shell">
+<div class="workspace-page">
+<div class="wp-shell">
 
-  <!-- ── TOP BAR ── -->
-  <div class="ws-topbar">
-    <div class="ws-logo">AQUI<span>PLEX</span> // WORKSPACE</div>
+  <!-- ═══════════════ TOP BAR ═══════════════ -->
+  <div class="wp-topbar">
+    <div class="wp-logo">
+      AQUI<span class="wp-logo-sep">PLEX</span> // WORKSPACE
+    </div>
 
-    <div class="ws-breadcrumb">
+    <div class="wp-breadcrumb">
       <span>Workspace</span>
       <span class="sep">›</span>
       <span class="active" id="topBreadcrumb">Overview</span>
     </div>
 
-    <div class="ws-status-bar">
-      <div class="ws-pulse"></div>
-      <span class="ws-status-text" id="topStatusText">SYSTEM ONLINE</span>
+    <div class="wp-topbar-right">
+      <div class="wp-status-pill">
+        <div class="wp-status-dot"></div>
+        <span id="topStatusText">ONLINE</span>
+      </div>
     </div>
   </div>
 
-  <!-- ════════════════════════════════
-       LEFT PANEL
-  ════════════════════════════════ -->
-  <div class="ws-left">
-    <div class="ws-nav">
-      <button class="ws-nav-btn active" onclick="switchLeftTab('bundles', this)">BUNDLES</button>
-      <button class="ws-nav-btn" onclick="switchLeftTab('tools', this)">TOOLS</button>
-    </div>
+  <!-- ═══════════════ BODY ═══════════════ -->
+  <div class="wp-body">
 
-    <!-- BUNDLES LIST -->
-    <div class="ws-list" id="leftBundleList">
-      <% if (bundles && bundles.length > 0) { %>
-        <% bundles.forEach(function(b) {
-          const completed = (b.progress || []).filter(p => p.status === 'completed').length;
-          const total     = (b.steps || []).length;
-          const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
-          const dotCls    = b.status === 'active' ? 'dot-active'
-                          : b.status === 'paused' ? 'dot-paused'
-                          : b.status === 'completed' ? 'dot-completed'
-                          : 'dot-draft';
-        %>
-        <div class="bundle-row" id="brow-<%= b._id %>"
-             onclick="selectBundle(<%- JSON.stringify(b).replace(/</g,'\\u003c') %>)">
-          <div class="bundle-row-title"><%= b.title %></div>
-          <div class="bundle-row-meta">
-            <div class="bundle-status-dot <%= dotCls %>"></div>
-            <div class="bundle-row-bar">
-              <div class="bundle-row-fill" style="width:<%= pct %>%"></div>
+    <!-- ─────── LEFT SIDEBAR ─────── -->
+    <div class="wp-sidebar">
+      <div class="wp-sidebar-tabs">
+        <button class="wp-sidebar-tab active" onclick="switchLeftTab('bundles', this)">BUNDLES</button>
+        <button class="wp-sidebar-tab" onclick="switchLeftTab('tools', this)">TOOLS</button>
+      </div>
+
+      <!-- BUNDLES -->
+      <div class="wp-sidebar-list" id="leftBundleList">
+        <% if (bundles && bundles.length > 0) { %>
+          <% bundles.forEach(function(b) {
+            const completed = (b.progress || []).filter(p => p.status === 'completed').length;
+            const total     = (b.steps || []).length;
+            const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const dotCls    = b.status === 'active'    ? 'wi-active'
+                            : b.status === 'paused'    ? 'wi-paused'
+                            : b.status === 'completed' ? 'wi-completed'
+                            : 'wi-draft';
+          %>
+          <div class="wp-bundle-item" id="brow-<%= b._id %>"
+               onclick="selectBundle(<%- JSON.stringify(b).replace(/</g,'\\u003c') %>)">
+            <div class="wp-bundle-title"><%= b.title %></div>
+            <div class="wp-bundle-meta">
+              <div class="wp-status-icon <%= dotCls %>"></div>
+              <div class="wp-bundle-prog-track">
+                <div class="wp-bundle-prog-fill" style="width:<%= pct %>%"></div>
+              </div>
+              <div class="wp-bundle-pct"><%= pct %>%</div>
             </div>
-            <div class="bundle-row-pct"><%= pct %>%</div>
+          </div>
+          <% }) %>
+        <% } else { %>
+          <div class="wp-empty">
+            No bundles yet.<br/>
+            <a class="wp-empty-link" href="/bundles">Create one →</a>
+          </div>
+        <% } %>
+      </div>
+
+      <!-- TOOLS -->
+      <div class="wp-sidebar-list" id="leftToolList" style="display:none;">
+        <% if (workspace && workspace.tools && workspace.tools.length > 0) { %>
+          <% workspace.tools.forEach(function(tool) { %>
+          <div class="wp-tool-item">
+            <img src="<%= tool.logo || '/logos/default.png' %>"
+                 onerror="this.src='/logos/default.png'"
+                 class="wp-tool-logo" alt=""/>
+            <span class="wp-tool-name"><%= tool.name %></span>
+            <button class="wp-tool-open"
+                    onclick="event.stopPropagation(); launchTool('<%= tool.url || '' %>')">
+              OPEN
+            </button>
+          </div>
+          <% }) %>
+        <% } else { %>
+          <div class="wp-empty">
+            No tools saved.<br/>
+            <a class="wp-empty-link" href="/tools">Browse tools →</a>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- ─────── MAIN ─────── -->
+    <div class="wp-main">
+
+      <!-- WELCOME (no bundle selected) -->
+      <div class="wp-welcome" id="wsWelcome">
+        <div class="wp-welcome-glyph">⚡</div>
+        <h2>Execution Control</h2>
+        <p>Select a bundle from the sidebar to view its execution state, step timeline, outputs, and memory.</p>
+      </div>
+
+      <!-- EXEC VIEW -->
+      <div class="wp-exec" id="wsExec" style="display:none;">
+
+        <!-- Header -->
+        <div class="wp-exec-header">
+          <div class="wp-exec-header-top">
+            <div class="wp-exec-title-block">
+              <div class="wp-exec-title" id="execTitle">—</div>
+              <div class="wp-exec-goal" id="execGoal">—</div>
+            </div>
+            <div class="wp-exec-actions">
+              <button class="wp-btn wp-btn-run" id="btnRun" onclick="runCurrentBundle()">
+                ▶ RUN
+              </button>
+              <button class="wp-btn wp-btn-pause" id="btnPause" onclick="pauseCurrentBundle()" style="display:none;">
+                ⏸ PAUSE
+              </button>
+              <button class="wp-btn wp-btn-ghost" id="btnResume" onclick="resumeCurrentBundle()" style="display:none;">
+                ↺ RESUME
+              </button>
+              <button class="wp-btn wp-btn-ghost" id="btnPin" onclick="pinCurrentBundle()">
+                ☆ PIN
+              </button>
+            </div>
+          </div>
+
+          <!-- Stats + progress -->
+          <div class="wp-stats-row">
+            <div class="wp-stat">
+              <div class="wp-stat-val c-accent" id="statSteps">—</div>
+              <div class="wp-stat-lbl">Steps</div>
+            </div>
+            <div class="wp-stat-divider"></div>
+            <div class="wp-stat">
+              <div class="wp-stat-val c-green" id="statDone">—</div>
+              <div class="wp-stat-lbl">Done</div>
+            </div>
+            <div class="wp-stat-divider"></div>
+            <div class="wp-stat">
+              <div class="wp-stat-val" id="statPct">—</div>
+              <div class="wp-stat-lbl">Complete</div>
+            </div>
+            <div class="wp-stat-divider"></div>
+            <div class="wp-stat">
+              <div class="wp-stat-val c-amber" id="statStatus">—</div>
+              <div class="wp-stat-lbl">Status</div>
+            </div>
+          </div>
+
+          <div class="wp-exec-progress">
+            <div class="wp-progress-track">
+              <div class="wp-progress-fill" id="mainProgressFill" style="width:0%"></div>
+            </div>
           </div>
         </div>
-        <% }) %>
-      <% } else { %>
-        <div class="empty-state">
-          No bundles yet.<br/>
-          <a href="/bundles">Create one →</a>
-        </div>
-      <% } %>
-    </div>
 
-    <!-- TOOLS LIST -->
-    <div class="ws-list" id="leftToolList" style="display:none;">
-      <% if (workspace && workspace.tools && workspace.tools.length > 0) { %>
-        <% workspace.tools.forEach(function(tool) { %>
-        <div class="tool-row">
-          <img src="<%= tool.logo || '/logos/default.png' %>"
-               onerror="this.src='/logos/default.png'"
-               class="tool-logo" alt=""/>
-          <span class="tool-row-name"><%= tool.name %></span>
-          <button class="tool-launch-btn"
-                  onclick="event.stopPropagation(); launchTool('<%= tool.url || '' %>')">
-            OPEN
-          </button>
-        </div>
-        <% }) %>
-      <% } else { %>
-        <div class="empty-state">
-          No tools saved.<br/>
-          <a href="/tools">Browse tools →</a>
-        </div>
-      <% } %>
-    </div>
-  </div>
+        <!-- Content grid (steps + right panel) -->
+        <div class="wp-exec-content">
 
-  <!-- ════════════════════════════════
-       CENTER PANEL
-  ════════════════════════════════ -->
-  <div class="ws-center">
-
-    <!-- Welcome screen (shown when no bundle selected) -->
-    <div class="ws-welcome" id="wsWelcome">
-      <div class="ws-welcome-icon">⚡</div>
-      <h2>Execution Control Center</h2>
-      <p>Select a bundle from the left panel to view its execution state, step timeline, outputs, and memory.</p>
-    </div>
-
-    <!-- Execution view (shown when bundle selected) -->
-    <div class="ws-exec" id="wsExec" style="display:none;">
-
-      <!-- Bundle header -->
-      <div class="exec-header">
-        <div class="exec-title-block">
-          <div class="exec-title" id="execTitle">—</div>
-          <div class="exec-goal" id="execGoal">—</div>
-        </div>
-        <div class="exec-actions">
-          <button class="exec-btn exec-btn-run" id="btnRun" onclick="runCurrentBundle()">
-            ▶ RUN
-          </button>
-          <button class="exec-btn exec-btn-pause" id="btnPause" onclick="pauseCurrentBundle()" style="display:none;">
-            ⏸ PAUSE
-          </button>
-          <button class="exec-btn exec-btn-secondary" onclick="resumeCurrentBundle()" id="btnResume" style="display:none;">
-            ↺ RESUME
-          </button>
-          <button class="exec-btn exec-btn-secondary" onclick="pinCurrentBundle()" id="btnPin">
-            ☆ PIN
-          </button>
-        </div>
-      </div>
-
-      <!-- Stats row -->
-      <div class="exec-stats">
-        <div class="stat-item">
-          <div class="stat-val accent" id="statSteps">—</div>
-          <div class="stat-lbl">STEPS</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-val success" id="statDone">—</div>
-          <div class="stat-lbl">DONE</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-val" id="statPct">—</div>
-          <div class="stat-lbl">COMPLETE</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-val warn" id="statStatus">—</div>
-          <div class="stat-lbl">STATUS</div>
-        </div>
-      </div>
-
-      <!-- Progress bar -->
-      <div class="exec-progress-bar-wrap">
-        <div class="exec-progress-bar-track">
-          <div class="exec-progress-bar-fill" id="mainProgressFill" style="width:0%"></div>
-        </div>
-      </div>
-
-      <!-- Timeline strip -->
-      <div class="exec-timeline" id="execTimeline"></div>
-
-      <!-- Step cards -->
-      <div class="exec-steps" id="execSteps"></div>
-
-    </div>
-  </div>
-
-  <!-- ════════════════════════════════
-       RIGHT PANEL
-  ════════════════════════════════ -->
-  <div class="ws-right">
-    <div class="right-tabs">
-      <button class="right-tab-btn active" onclick="switchRightTab('outputs', this)">OUTPUTS</button>
-      <button class="right-tab-btn" onclick="switchRightTab('memory', this)">MEMORY</button>
-      <button class="right-tab-btn" onclick="switchRightTab('insights', this)">INSIGHTS</button>
-    </div>
-
-    <div class="right-panel-body">
-
-      <!-- OUTPUTS -->
-      <div class="right-section active" id="rtab-outputs">
-        <div id="outputFeed">
-          <div class="empty-state" style="padding:30px 0;">
-            Run a bundle step to see outputs here.
+          <!-- Steps column -->
+          <div class="wp-steps-panel">
+            <!-- Timeline strip -->
+            <div class="wp-timeline-strip" id="execTimeline"></div>
+            <!-- Step cards -->
+            <div class="wp-steps-scroll" id="execSteps"></div>
           </div>
-        </div>
-      </div>
 
-      <!-- MEMORY -->
-      <div class="right-section" id="rtab-memory">
-        <div class="memory-section-hdr">
-          Bundle Memory <span id="memBundleCount">0 keys</span>
-        </div>
-        <div id="memBundleEntries"></div>
+          <!-- Right panel -->
+          <div class="wp-right-panel">
+            <div class="wp-right-tabs">
+              <button class="wp-right-tab active" onclick="switchRightTab('outputs', this)">OUTPUTS</button>
+              <button class="wp-right-tab" onclick="switchRightTab('memory', this)">MEMORY</button>
+              <button class="wp-right-tab" onclick="switchRightTab('insights', this)">INSIGHTS</button>
+            </div>
 
-        <div class="memory-section-hdr" style="margin-top:16px;">
-          Context Summary
-        </div>
-        <div class="context-box" id="memContextBox" style="display:none;"></div>
-        <div class="empty-state" id="memContextEmpty">No context summary yet.</div>
+            <div class="wp-right-body">
 
-        <div class="memory-section-hdr" style="margin-top:16px;">
-          Workspace Memory <span id="memWsCount">0 keys</span>
-        </div>
-        <div id="memWsEntries"></div>
-      </div>
+              <!-- Outputs -->
+              <div class="wp-right-section active" id="rtab-outputs">
+                <div id="outputFeed">
+                  <div class="wp-empty" style="padding:32px 0;">
+                    Run a bundle step to see outputs here.
+                  </div>
+                </div>
+              </div>
 
-      <!-- INSIGHTS -->
-      <div class="right-section" id="rtab-insights">
-        <div id="insightList">
-          <div class="empty-state" style="padding:30px 0;">
-            Key insights extracted from step outputs will appear here.
+              <!-- Memory -->
+              <div class="wp-right-section" id="rtab-memory">
+                <div class="wp-mem-hdr">
+                  Bundle Memory
+                  <span class="wp-mem-hdr-count" id="memBundleCount">0 keys</span>
+                </div>
+                <div id="memBundleEntries"></div>
+
+                <div class="wp-mem-hdr" style="margin-top:18px;">
+                  Context Summary
+                </div>
+                <div class="wp-context-box" id="memContextBox" style="display:none;"></div>
+                <div class="wp-empty" id="memContextEmpty" style="padding:8px 0;">No context summary yet.</div>
+
+                <div class="wp-mem-hdr" style="margin-top:18px;">
+                  Workspace Memory
+                  <span class="wp-mem-hdr-count" id="memWsCount">0 keys</span>
+                </div>
+                <div id="memWsEntries"></div>
+              </div>
+
+              <!-- Insights -->
+              <div class="wp-right-section" id="rtab-insights">
+                <div id="insightList">
+                  <div class="wp-empty" style="padding:32px 0;">
+                    Key insights from step outputs will appear here.
+                  </div>
+                </div>
+              </div>
+
+            </div>
           </div>
+
         </div>
       </div>
-
     </div>
-  </div>
 
-</div><!-- /.ws-shell -->
+  </div>
+</div>
+</div><!-- /.workspace-page -->
 
 <%- include("partials/footer") %>
 
-<!-- ════════════════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════
      JAVASCRIPT
-════════════════════════════════════════════════════════════ -->
+═══════════════════════════════════════ -->
 <script>
 // ═══════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════
 const STATE = {
-  bundle:        null,    // currently selected bundle object
-  wsMemory:      {},      // workspace-level memory
-  pinnedIds:     [],
-  selectedStep:  null,
+  bundle:       null,
+  wsMemory:     {},
+  pinnedIds:    [],
+  selectedStep: null,
 };
 
 // ═══════════════════════════════════════════
-// INIT — hydrate from server
+// INIT
 // ═══════════════════════════════════════════
 window.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -1303,19 +1617,16 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     renderWsMemory();
 
-    // Recent outputs
     if (data.workspace.recentOutputs && data.workspace.recentOutputs.length) {
       renderOutputFeed(data.workspace.recentOutputs);
     }
 
-    // Auto-open last bundle
     const lastId = data.workspace.lastOpenBundleId;
     if (lastId) {
       const b = (data.bundles || []).find(x => x._id === lastId || x._id.toString() === lastId);
       if (b) { selectBundle(b); return; }
     }
 
-    // Auto-open first active bundle
     const active = (data.bundles || []).find(b => b.status === "active");
     if (active) selectBundle(active);
   } catch (e) {
@@ -1324,21 +1635,18 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 // ═══════════════════════════════════════════
-// LEFT TAB SWITCH
+// TAB SWITCHES
 // ═══════════════════════════════════════════
 function switchLeftTab(tab, btn) {
-  document.querySelectorAll(".ws-nav-btn").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".workspace-page .wp-sidebar-tab").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   document.getElementById("leftBundleList").style.display = tab === "bundles" ? "" : "none";
   document.getElementById("leftToolList").style.display   = tab === "tools"   ? "" : "none";
 }
 
-// ═══════════════════════════════════════════
-// RIGHT TAB SWITCH
-// ═══════════════════════════════════════════
 function switchRightTab(tab, btn) {
-  document.querySelectorAll(".right-tab-btn").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".right-section").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".workspace-page .wp-right-tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".workspace-page .wp-right-section").forEach(s => s.classList.remove("active"));
   btn.classList.add("active");
   document.getElementById("rtab-" + tab).classList.add("active");
 }
@@ -1347,12 +1655,10 @@ function switchRightTab(tab, btn) {
 // SELECT BUNDLE
 // ═══════════════════════════════════════════
 async function selectBundle(bundle) {
-  // Highlight row
-  document.querySelectorAll(".bundle-row").forEach(r => r.classList.remove("selected"));
+  document.querySelectorAll(".workspace-page .wp-bundle-item").forEach(r => r.classList.remove("selected"));
   const row = document.getElementById("brow-" + (bundle._id || bundle.id));
   if (row) row.classList.add("selected");
 
-  // Fetch fresh state
   try {
     const res  = await fetch("/workspace/bundle/" + (bundle._id || bundle.id));
     const data = await res.json();
@@ -1362,7 +1668,6 @@ async function selectBundle(bundle) {
   STATE.bundle       = bundle;
   STATE.selectedStep = null;
 
-  // Show exec panel
   document.getElementById("wsWelcome").style.display = "none";
   document.getElementById("wsExec").style.display    = "flex";
 
@@ -1385,46 +1690,29 @@ function renderExecPanel(b) {
   const total = steps.length;
   const pct   = total ? Math.round((done / total) * 100) : 0;
 
-  // Header
   document.getElementById("execTitle").textContent = b.title || "Untitled";
   document.getElementById("execGoal").textContent  = b.goal  || "";
-
-  // Stats
   document.getElementById("statSteps").textContent  = total;
   document.getElementById("statDone").textContent   = done;
   document.getElementById("statPct").textContent    = pct + "%";
   document.getElementById("statStatus").textContent = (b.status || "draft").toUpperCase();
-
-  // Progress bar
   document.getElementById("mainProgressFill").style.width = pct + "%";
 
-  // Run/pause/resume buttons
   const btnRun    = document.getElementById("btnRun");
   const btnPause  = document.getElementById("btnPause");
   const btnResume = document.getElementById("btnResume");
 
   if (b.status === "active") {
-    btnRun.style.display    = "none";
-    btnPause.style.display  = "";
-    btnResume.style.display = "none";
+    btnRun.style.display = "none"; btnPause.style.display = ""; btnResume.style.display = "none";
   } else if (b.status === "paused") {
-    btnRun.style.display    = "none";
-    btnPause.style.display  = "none";
-    btnResume.style.display = "";
+    btnRun.style.display = "none"; btnPause.style.display = "none"; btnResume.style.display = "";
   } else if (b.status === "completed") {
-    btnRun.style.display    = "none";
-    btnPause.style.display  = "none";
-    btnResume.style.display = "none";
+    btnRun.style.display = "none"; btnPause.style.display = "none"; btnResume.style.display = "none";
   } else {
-    btnRun.style.display    = "";
-    btnPause.style.display  = "none";
-    btnResume.style.display = "none";
+    btnRun.style.display = ""; btnPause.style.display = "none"; btnResume.style.display = "none";
   }
 
-  // Timeline
   renderTimeline(steps, progress, b.currentStep || 0);
-
-  // Step cards
   renderStepCards(steps, progress, outputs, b.currentStep || 0);
 }
 
@@ -1438,19 +1726,18 @@ function renderTimeline(steps, progress, currentStep) {
   tl.innerHTML = steps.map((step, i) => {
     const prog   = progress.find(p => p.step === i);
     const status = prog ? prog.status : "pending";
-    const dotCls = status === "completed"   ? "done"
-                 : status === "in-progress" ? "running"
-                 : i === STATE.selectedStep  ? "selected-step"
+    const dotCls = status === "completed"   ? "tl-done"
+                 : status === "in-progress" ? "tl-running"
+                 : i === STATE.selectedStep  ? "tl-selected"
                  : "";
-    const icon = status === "completed" ? "✓"
-               : status === "in-progress" ? "…"
-               : (i + 1);
+    const icon = status === "completed" ? "✓" : status === "in-progress" ? "…" : (i + 1);
+    const lineCls = status === "completed" ? "tl-done" : "";
     const connector = i < steps.length - 1
-      ? `<div class="tl-connector ${status === 'completed' ? 'done' : ''}"></div>`
-      : "";
+      ? `<div class="wp-tl-line ${lineCls}"></div>` : "";
+
     return `
-      <div class="tl-step" title="${esc(step.title || 'Step ' + (i+1))}" onclick="jumpToStep(${i})">
-        <div class="tl-dot ${dotCls}">${icon}</div>
+      <div class="wp-tl-step" title="${esc(step.title || 'Step ' + (i+1))}" onclick="jumpToStep(${i})">
+        <div class="wp-tl-dot ${dotCls}">${icon}</div>
       </div>${connector}
     `;
   }).join("");
@@ -1462,7 +1749,7 @@ function renderTimeline(steps, progress, currentStep) {
 function renderStepCards(steps, progress, outputs, currentStep) {
   const container = document.getElementById("execSteps");
   if (!steps.length) {
-    container.innerHTML = `<div class="empty-state">No steps defined.</div>`;
+    container.innerHTML = `<div class="wp-empty">No steps defined.</div>`;
     return;
   }
 
@@ -1471,73 +1758,65 @@ function renderStepCards(steps, progress, outputs, currentStep) {
     const status = prog ? prog.status : "pending";
     const output = outputs.find(o => o.stepIndex === i);
 
-    const cardCls  = status === "in-progress" ? "running-card"
-                   : status === "completed"   ? "done-card"
-                   : i === currentStep        ? "active-card"
-                   : "";
-    const badgeCls = status === "completed"   ? "badge-done"
-                   : status === "in-progress" ? "badge-running"
-                   : status === "failed"      ? "badge-failed"
-                   : "badge-pending";
+    const cardCls  = status === "in-progress" ? "sc-running"
+                   : status === "completed"   ? "sc-done"
+                   : i === currentStep        ? "sc-active" : "";
+    const badgeCls = status === "completed"   ? "wb-done"
+                   : status === "in-progress" ? "wb-running"
+                   : status === "failed"      ? "wb-failed"
+                   : "wb-pending";
     const badgeTxt = status === "completed"   ? "DONE"
                    : status === "in-progress" ? "RUNNING"
                    : status === "failed"      ? "FAILED"
                    : "PENDING";
-    const numCls   = status === "completed"   ? "done"
-                   : status === "in-progress" ? "running"
-                   : "";
+    const numCls   = status === "completed"   ? "sn-done"
+                   : status === "in-progress" ? "sn-running" : "";
     const numIcon  = status === "completed" ? "✓" : (i + 1);
 
-    // Tools chips
     const toolsHtml = (step.tools && step.tools.length)
-      ? `<div class="step-tools">${step.tools.map(t =>
-          `<a class="step-tool-chip" href="${esc(t.url||'#')}" target="_blank">🔗 ${esc(t.name||'Tool')}</a>`
+      ? `<div class="wp-step-tools">${step.tools.map(t =>
+          `<a class="wp-tool-chip" href="${esc(t.url||'#')}" target="_blank">🔗 ${esc(t.name||'Tool')}</a>`
         ).join("")}</div>`
       : "";
 
-    // Output block
     let outputHtml = "";
     if (output && output.content) {
       const insights = (output.keyInsights || []).slice(0, 4).map(k =>
-        `<span class="insight-chip">${esc(k)}</span>`
+        `<span class="wp-insight-chip">${esc(k)}</span>`
       ).join("");
       outputHtml = `
-        <div class="step-output-block">
-          <div class="step-output-label">⚡ OUTPUT</div>
-          <div class="step-output-content">${formatOutput(output.content)}</div>
+        <div class="wp-output-block">
+          <div class="wp-output-hdr">
+            <span class="wp-output-label">⚡ Output</span>
+            <div class="wp-output-dot"></div>
+          </div>
+          <div class="wp-output-content">${formatOutput(output.content)}</div>
         </div>
-        ${insights ? `<div class="step-insights">${insights}</div>` : ""}
+        ${insights ? `<div class="wp-step-insights">${insights}</div>` : ""}
       `;
     }
 
-    // Action buttons
     const actionHtml = status !== "completed"
-      ? `<button class="step-action-btn btn-mark-done"
-           onclick="event.stopPropagation(); markStepDone(${i})">
-           ✅ Mark Done
-         </button>`
-      : `<button class="step-action-btn btn-rerun"
-           onclick="event.stopPropagation(); rerunStep(${i})">
-           ↺ Re-run
-         </button>`;
+      ? `<button class="wp-step-btn wsb-done" onclick="event.stopPropagation(); markStepDone(${i})">✅ Mark Done</button>`
+      : `<button class="wp-step-btn wsb-rerun" onclick="event.stopPropagation(); rerunStep(${i})">↺ Re-run</button>`;
 
     const isOpen = i === currentStep || i === STATE.selectedStep;
 
     return `
-      <div class="step-card ${cardCls}" id="scard-${i}">
-        <div class="step-card-hdr" onclick="toggleCard(${i})">
-          <div class="step-num ${numCls}">${numIcon}</div>
-          <div class="step-card-info">
-            <div class="step-card-title">${esc(step.title || 'Step ' + (i+1))}</div>
-            <div class="step-card-desc">${esc(step.description || '')}</div>
+      <div class="wp-step-card ${cardCls}" id="scard-${i}">
+        <div class="wp-step-card-hdr" onclick="toggleCard(${i})">
+          <div class="wp-step-num ${numCls}">${numIcon}</div>
+          <div class="wp-step-info">
+            <div class="wp-step-title">${esc(step.title || 'Step ' + (i+1))}</div>
+            <div class="wp-step-desc">${esc(step.description || '')}</div>
           </div>
-          <span class="step-badge ${badgeCls}">${badgeTxt}</span>
-          <span class="step-toggle ${isOpen ? 'open' : ''}">▾</span>
+          <span class="wp-badge ${badgeCls}">${badgeTxt}</span>
+          <span class="wp-step-toggle ${isOpen ? 'open' : ''}">▾</span>
         </div>
-        <div class="step-card-body ${isOpen ? 'open' : ''}" id="sbody-${i}">
+        <div class="wp-step-body ${isOpen ? 'open' : ''}" id="sbody-${i}">
           ${toolsHtml}
           ${outputHtml}
-          <div class="step-card-actions">${actionHtml}</div>
+          <div class="wp-step-actions">${actionHtml}</div>
         </div>
       </div>
     `;
@@ -1545,32 +1824,28 @@ function renderStepCards(steps, progress, outputs, currentStep) {
 }
 
 // ═══════════════════════════════════════════
-// MEMORY PANEL
+// MEMORY
 // ═══════════════════════════════════════════
 function renderMemoryPanel(b) {
-  const mem = b.memory || {};
-  const keys = Array.isArray(mem)
-    ? []
-    : (mem instanceof Map ? [...mem.keys()] : Object.keys(mem));
+  const mem  = b.memory || {};
+  const keys = Array.isArray(mem) ? []
+             : (mem instanceof Map ? [...mem.keys()] : Object.keys(mem));
 
   document.getElementById("memBundleCount").textContent = keys.length + " keys";
-
   document.getElementById("memBundleEntries").innerHTML = keys.length
     ? keys.map(k => `
-        <div class="memory-kv">
-          <div class="mem-k">${esc(k)}</div>
-          <div class="mem-v">${esc(mem instanceof Map ? mem.get(k) : mem[k])}</div>
-        </div>
-      `).join("")
-    : `<div class="empty-state" style="padding:12px 0;">No bundle memory yet.</div>`;
+        <div class="wp-mem-kv">
+          <div class="wp-mem-k">${esc(k)}</div>
+          <div class="wp-mem-v">${esc(mem instanceof Map ? mem.get(k) : mem[k])}</div>
+        </div>`).join("")
+    : `<div class="wp-empty" style="padding:10px 0;">No bundle memory yet.</div>`;
 
-  // Context summary
   if (b.contextSummary) {
-    document.getElementById("memContextBox").textContent = b.contextSummary;
-    document.getElementById("memContextBox").style.display = "";
+    document.getElementById("memContextBox").textContent   = b.contextSummary;
+    document.getElementById("memContextBox").style.display  = "";
     document.getElementById("memContextEmpty").style.display = "none";
   } else {
-    document.getElementById("memContextBox").style.display = "none";
+    document.getElementById("memContextBox").style.display  = "none";
     document.getElementById("memContextEmpty").style.display = "";
   }
 
@@ -1578,38 +1853,31 @@ function renderMemoryPanel(b) {
 }
 
 function renderWsMemory() {
-  const wsM = STATE.wsMemory || {};
+  const wsM    = STATE.wsMemory || {};
   const wsKeys = Object.keys(wsM);
-  document.getElementById("memWsCount").textContent = wsKeys.length + " keys";
-  document.getElementById("memWsEntries").innerHTML = wsKeys.length
+  document.getElementById("memWsCount").textContent   = wsKeys.length + " keys";
+  document.getElementById("memWsEntries").innerHTML   = wsKeys.length
     ? wsKeys.map(k => `
-        <div class="memory-kv" style="border-left-color:var(--accent3)">
-          <div class="mem-k" style="color:var(--accent3)">${esc(k)}</div>
-          <div class="mem-v">${esc(wsM[k])}</div>
-        </div>
-      `).join("")
-    : `<div class="empty-state" style="padding:12px 0;">No workspace memory yet.</div>`;
+        <div class="wp-mem-kv" style="border-left-color:var(--wp-accent3)">
+          <div class="wp-mem-k" style="color:var(--wp-accent3)">${esc(k)}</div>
+          <div class="wp-mem-v">${esc(wsM[k])}</div>
+        </div>`).join("")
+    : `<div class="wp-empty" style="padding:10px 0;">No workspace memory yet.</div>`;
 }
 
 // ═══════════════════════════════════════════
-// INSIGHT PANEL
+// INSIGHTS
 // ═══════════════════════════════════════════
 function renderInsightPanel(b) {
   const outputs = b.outputs || [];
   const all = [];
   outputs.forEach(o => {
-    (o.keyInsights || []).forEach(k => {
-      if (k) all.push({ insight: k, step: o.stepIndex, title: o.title });
-    });
+    (o.keyInsights || []).forEach(k => { if (k) all.push(k); });
   });
 
   document.getElementById("insightList").innerHTML = all.length
-    ? all.map(item => `
-        <div class="insight-list-item">
-          <span>${esc(item.insight)}</span>
-        </div>
-      `).join("")
-    : `<div class="empty-state" style="padding:30px 0;">Key insights from step outputs will appear here.</div>`;
+    ? all.map(k => `<div class="wp-insight-item"><span>${esc(k)}</span></div>`).join("")
+    : `<div class="wp-empty" style="padding:32px 0;">Insights from step outputs will appear here.</div>`;
 }
 
 // ═══════════════════════════════════════════
@@ -1618,33 +1886,32 @@ function renderInsightPanel(b) {
 function renderOutputFeed(outputs) {
   const feed = document.getElementById("outputFeed");
   if (!outputs || !outputs.length) {
-    feed.innerHTML = `<div class="empty-state" style="padding:30px 0;">No outputs yet.</div>`;
+    feed.innerHTML = `<div class="wp-empty" style="padding:32px 0;">No outputs yet.</div>`;
     return;
   }
   feed.innerHTML = outputs.map(o => `
-    <div class="output-feed-item">
-      <div class="output-feed-meta">
-        <span class="output-feed-step">Step ${(o.stepIndex ?? 0) + 1}${o.stepTitle ? ' · ' + esc(o.stepTitle) : ''}</span>
-        <span class="output-feed-bundle">${esc(o.bundleTitle || '')}</span>
+    <div class="wp-feed-item">
+      <div class="wp-feed-meta">
+        <span class="wp-feed-step">Step ${(o.stepIndex ?? 0) + 1}${o.stepTitle ? ' · ' + esc(o.stepTitle) : ''}</span>
+        <span class="wp-feed-bundle">${esc(o.bundleTitle || '')}</span>
       </div>
-      <div class="output-feed-preview">${esc(o.preview || '')}</div>
-    </div>
-  `).join("");
+      <div class="wp-feed-preview">${esc(o.preview || '')}</div>
+    </div>`).join("");
 }
 
 function pushOutputFeed(bundleTitle, stepIndex, stepTitle, content) {
   const feed = document.getElementById("outputFeed");
-  const old  = feed.querySelector(".empty-state");
+  const old  = feed.querySelector(".wp-empty");
   if (old) old.remove();
 
   const item = document.createElement("div");
-  item.className = "output-feed-item";
+  item.className = "wp-feed-item";
   item.innerHTML = `
-    <div class="output-feed-meta">
-      <span class="output-feed-step">Step ${stepIndex + 1}${stepTitle ? ' · ' + esc(stepTitle) : ''}</span>
-      <span class="output-feed-bundle">${esc(bundleTitle)}</span>
+    <div class="wp-feed-meta">
+      <span class="wp-feed-step">Step ${stepIndex + 1}${stepTitle ? ' · ' + esc(stepTitle) : ''}</span>
+      <span class="wp-feed-bundle">${esc(bundleTitle)}</span>
     </div>
-    <div class="output-feed-preview">${esc((content || '').substring(0, 240))}</div>
+    <div class="wp-feed-preview">${esc((content || '').substring(0, 240))}</div>
   `;
   feed.prepend(item);
 }
@@ -1653,8 +1920,7 @@ function pushOutputFeed(bundleTitle, stepIndex, stepTitle, content) {
 // ACTIONS
 // ═══════════════════════════════════════════
 async function runCurrentBundle() {
-  const b = STATE.bundle;
-  if (!b) return;
+  const b = STATE.bundle; if (!b) return;
   try {
     const res  = await fetch("/workspace/run/" + b._id, { method: "POST" });
     const data = await res.json();
@@ -1666,8 +1932,7 @@ async function runCurrentBundle() {
 }
 
 async function pauseCurrentBundle() {
-  const b = STATE.bundle;
-  if (!b) return;
+  const b = STATE.bundle; if (!b) return;
   try {
     await fetch("/workspace/pause/" + b._id, { method: "POST" });
     STATE.bundle.status = "paused";
@@ -1678,8 +1943,7 @@ async function pauseCurrentBundle() {
 }
 
 async function resumeCurrentBundle() {
-  const b = STATE.bundle;
-  if (!b) return;
+  const b = STATE.bundle; if (!b) return;
   try {
     const res  = await fetch("/workspace/resume/" + b._id, { method: "POST" });
     const data = await res.json();
@@ -1692,8 +1956,7 @@ async function resumeCurrentBundle() {
 }
 
 async function markStepDone(stepIndex) {
-  const b = STATE.bundle;
-  if (!b) return;
+  const b = STATE.bundle; if (!b) return;
   try {
     const res  = await fetch(`/workspace/step/${b._id}/${stepIndex}`, {
       method: "POST",
@@ -1712,9 +1975,7 @@ async function markStepDone(stepIndex) {
 }
 
 async function rerunStep(stepIndex) {
-  const b = STATE.bundle;
-  if (!b) return;
-  // Reset progress for this step locally & reload
+  const b = STATE.bundle; if (!b) return;
   (b.progress || []).forEach(p => { if (p.step === stepIndex) p.status = "pending"; });
   b.outputs = (b.outputs || []).filter(o => o.stepIndex !== stepIndex);
   renderExecPanel(b);
@@ -1722,8 +1983,7 @@ async function rerunStep(stepIndex) {
 }
 
 async function pinCurrentBundle() {
-  const b = STATE.bundle;
-  if (!b) return;
+  const b = STATE.bundle; if (!b) return;
   const id = b._id;
   try {
     if (STATE.pinnedIds.includes(id)) {
@@ -1741,11 +2001,11 @@ async function pinCurrentBundle() {
 }
 
 // ═══════════════════════════════════════════
-// CARD TOGGLES & NAVIGATION
+// CARD TOGGLES
 // ═══════════════════════════════════════════
 function toggleCard(idx) {
   const body   = document.getElementById("sbody-" + idx);
-  const toggle = document.querySelector(`#scard-${idx} .step-toggle`);
+  const toggle = document.querySelector(`#scard-${idx} .wp-step-toggle`);
   const isOpen = body.classList.contains("open");
   body.classList.toggle("open", !isOpen);
   if (toggle) toggle.classList.toggle("open", !isOpen);
@@ -1757,16 +2017,15 @@ function jumpToStep(idx) {
   const card = document.getElementById("scard-" + idx);
   if (card) {
     card.scrollIntoView({ behavior: "smooth", block: "center" });
-    // open it
     const body   = document.getElementById("sbody-" + idx);
-    const toggle = document.querySelector(`#scard-${idx} .step-toggle`);
+    const toggle = document.querySelector(`#scard-${idx} .wp-step-toggle`);
     body.classList.add("open");
     if (toggle) toggle.classList.add("open");
   }
 }
 
 // ═══════════════════════════════════════════
-// UI HELPERS
+// HELPERS
 // ═══════════════════════════════════════════
 function updateBreadcrumb(title) {
   document.getElementById("topBreadcrumb").textContent = title || "Bundle";
@@ -1780,12 +2039,12 @@ function updatePinBtn(id) {
 function updateBundleRowDot(id, status) {
   const row = document.getElementById("brow-" + id);
   if (!row) return;
-  const dot = row.querySelector(".bundle-status-dot");
-  if (!dot) return;
-  dot.className = "bundle-status-dot " + (
-    status === "active"    ? "dot-active"    :
-    status === "paused"    ? "dot-paused"    :
-    status === "completed" ? "dot-completed" : "dot-draft"
+  const icon = row.querySelector(".wp-status-icon");
+  if (!icon) return;
+  icon.className = "wp-status-icon " + (
+    status === "active"    ? "wi-active"    :
+    status === "paused"    ? "wi-paused"    :
+    status === "completed" ? "wi-completed" : "wi-draft"
   );
 }
 
@@ -1795,8 +2054,8 @@ function updateBundleRowProgress(id, bundle) {
   const steps = bundle.steps || [];
   const done  = (bundle.progress || []).filter(p => p.status === "completed").length;
   const pct   = steps.length ? Math.round((done / steps.length) * 100) : 0;
-  const fill  = row.querySelector(".bundle-row-fill");
-  const pctEl = row.querySelector(".bundle-row-pct");
+  const fill  = row.querySelector(".wp-bundle-prog-fill");
+  const pctEl = row.querySelector(".wp-bundle-pct");
   if (fill)  fill.style.width = pct + "%";
   if (pctEl) pctEl.textContent = pct + "%";
   updateBundleRowDot(id, bundle.status);
@@ -1808,9 +2067,6 @@ function launchTool(url) {
   window.open(url, "_blank");
 }
 
-// ═══════════════════════════════════════════
-// FORMATTERS
-// ═══════════════════════════════════════════
 function esc(str) {
   if (!str) return "";
   return String(str)
@@ -1822,7 +2078,7 @@ function formatOutput(text) {
   if (!text) return "";
   return esc(text)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/`([^`]+)`/g, "<code style='background:var(--panel);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:0.85em;'>$1</code>")
+    .replace(/`([^`]+)`/g, `<code style="background:var(--wp-bg);padding:1px 6px;border-radius:4px;font-family:var(--wp-mono);font-size:0.83em;">$1</code>`)
     .replace(/\n/g, "<br/>");
 }
 
@@ -1832,12 +2088,12 @@ function formatOutput(text) {
 let _toastTimer;
 function toast(msg, type = "info") {
   clearTimeout(_toastTimer);
-  document.querySelectorAll(".toast").forEach(e => e.remove());
+  document.querySelectorAll(".workspace-page .wp-toast").forEach(e => e.remove());
   const el = document.createElement("div");
-  el.className = `toast toast-${type}`;
+  el.className = `wp-toast wt-${type}`;
   el.textContent = msg;
-  document.body.appendChild(el);
-  _toastTimer = setTimeout(() => el.remove(), 3000);
+  document.querySelector(".workspace-page").appendChild(el);
+  _toastTimer = setTimeout(() => el.remove(), 3200);
 }
 </script>
 </body>
