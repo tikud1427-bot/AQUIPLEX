@@ -999,6 +999,40 @@ JSON schema:
   }
 });
 
+// DELETE BUNDLE (SAFE ADD)
+app.delete("/bundle/:id", requireLogin, async (req, res) => {
+  try {
+    const result = await Bundle.deleteOne({
+      _id: req.params.id,
+      userId: req.session.userId,
+    });
+
+    if (!result.deletedCount) {
+      return res.status(404).json({ error: "Bundle not found" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Delete bundle error:", err);
+    res.status(500).json({ error: "Failed to delete bundle" });
+  }
+});
+
+// REMOVE TOOL FROM WORKSPACE (SAFE ADD)
+app.delete("/tool/:id", requireLogin, async (req, res) => {
+  try {
+    await Workspace.updateOne(
+      { userId: req.session.userId },
+      { $pull: { tools: req.params.id } }
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Remove tool error:", err);
+    res.status(500).json({ error: "Failed to remove tool" });
+  }
+});
+
 
 app.get("/api/tools/suggest", async (req, res) => {
   try {
@@ -1650,6 +1684,46 @@ app.get("/workspace", requireLogin, async (req, res) => {
   } catch (err) {
     console.error("Workspace Load Error:", err);
     res.status(500).send("Error loading workspace");
+  }
+});
+
+app.get("/workspace/:id", requireLogin, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.redirect("/workspace");
+    }
+
+    const Workspace = require("./models/Workspace");
+    const Bundle = require("./models/Bundle");
+
+    let ws = await Workspace.findOne({ userId: req.session.userId })
+      .populate("tools")
+      .lean();
+
+    if (!ws) {
+      ws = await new Workspace({ userId: req.session.userId }).save();
+      ws = ws.toObject();
+    }
+
+    const bundles = await Bundle.find({ userId: req.session.userId })
+      .sort({ updatedAt: -1 })
+      .lean();
+
+    const activeBundle = await Bundle.findOne({
+      _id: req.params.id,
+      userId: req.session.userId
+    }).lean();
+
+    res.render("workspace", {
+      workspace: ws,
+      bundles,
+      activeBundle,
+      page: "workspace"
+    });
+
+  } catch (err) {
+    console.error("Workspace ID error:", err);
+    res.redirect("/workspace");
   }
 });
 

@@ -5,9 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Workspace | Aquiplex</title>
 <link rel="stylesheet" href="/css/styles.css">
-  
 <link rel="stylesheet" href="/css/workspace.css">
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+  /* UI FIX: Reduce blur to max 6px, improve contrast */
+  .wp-shell { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  .wp-sidebar { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  .wp-right-panel { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  .wp-step-card { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+  /* Improve text contrast */
+  .wp-step-desc { opacity: 1; filter: brightness(1.3); }
+  .wp-mem-v { opacity: 1; color: #d0d0d0; }
+  .wp-bundle-title { color: #f0f0f0; }
+  .wp-exec-goal { color: #c8c8c8; }
+  .wp-feed-preview { color: #c0c0c0; }
+  .wp-output-content { color: #dcdcdc; }
+</style>
 </head>
 
 <body>
@@ -30,6 +43,19 @@
       <div class="wp-status-pill">
         <div class="wp-status-dot"></div>
         <span id="topStatusText">ONLINE</span>
+      </div>
+      <div style="display:flex; gap:10px; margin-left:20px;">
+
+        <button class="wp-btn wp-btn-ghost" onclick="goToBundles()">
+          ← Bundles
+        </button>
+
+        <select id="bundleSwitcher" class="wp-btn wp-btn-ghost"></select>
+
+        <button class="wp-btn wp-btn-ghost" onclick="deleteCurrentBundle()">
+          Delete
+        </button>
+
       </div>
     </div>
   </div>
@@ -75,6 +101,11 @@
                 <div class="wp-bundle-prog-fill" style="width:<%= pct %>%"></div>
               </div>
               <div class="wp-bundle-pct"><%= pct %>%</div>
+              <!-- FIX: Delete button now correctly inside .wp-bundle-item -->
+              <button class="wp-bundle-delete-btn"
+                onclick="event.stopPropagation(); deleteBundle('<%= b._id %>')"
+                title="Delete bundle"
+                style="background:none;border:none;color:#888;font-size:10px;cursor:pointer;padding:0 2px;margin-left:4px;line-height:1;">✕</button>
             </div>
           </div>
           <% }) %>
@@ -90,7 +121,8 @@
       <div class="wp-sidebar-list" id="leftToolList" style="display:none;">
         <% if (workspace && workspace.tools && workspace.tools.length > 0) { %>
           <% workspace.tools.forEach(function(tool) { %>
-          <div class="wp-tool-item">
+          <!-- FIX: Remove button is now correctly inside .wp-tool-item -->
+          <div class="wp-tool-item" style="position:relative;">
             <img src="<%= tool.logo || '/logos/default.png' %>"
                  onerror="this.src='/logos/default.png'"
                  class="wp-tool-logo" alt=""/>
@@ -98,6 +130,11 @@
             <button class="wp-tool-open"
                     onclick="event.stopPropagation(); launchTool('<%= (tool.url || '').replace(/'/g, '') %>')">
               OPEN
+            </button>
+            <button class="wp-tool-open"
+                    style="margin-left:4px; opacity:0.7;"
+                    onclick="event.stopPropagation(); removeTool('<%= tool._id %>')">
+              Remove
             </button>
           </div>
           <% }) %>
@@ -258,6 +295,9 @@ const STATE = {
 // INIT
 // ═══════════════════════════════════════════
 window.addEventListener("DOMContentLoaded", async () => {
+  // FIX: Init bundle switcher before async state fetch
+  initBundleSwitcher();
+
   try {
     const res  = await fetch("/workspace/state");
     if (!res.ok) throw new Error("State load failed");
@@ -288,6 +328,32 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 // ═══════════════════════════════════════════
+// BUNDLE SWITCHER — FIX: instant switch via fetch, no page reload
+// ═══════════════════════════════════════════
+// FIX: bundles array is injected once from EJS, used by switcher and sidebar
+const _ejsBundles = <%- JSON.stringify(bundles || []) %>;
+
+function initBundleSwitcher() {
+  const switcher = document.getElementById("bundleSwitcher");
+  if (!switcher) return;
+
+  switcher.innerHTML = _ejsBundles.map(b =>
+    `<option value="${b._id}">${esc(b.title)}</option>`
+  ).join("");
+
+  const saved = localStorage.getItem("activeBundle");
+  if (saved) switcher.value = saved;
+
+  // FIX: Use selectBundle via fetch instead of page reload
+  switcher.onchange = () => {
+    const id = switcher.value;
+    localStorage.setItem("activeBundle", id);
+    const found = _ejsBundles.find(b => String(b._id) === String(id));
+    if (found) selectBundle(found);
+  };
+}
+
+// ═══════════════════════════════════════════
 // TAB SWITCHES
 // ═══════════════════════════════════════════
 function switchLeftTab(tab, btn) {
@@ -314,6 +380,11 @@ async function selectBundle(bundle) {
   document.querySelectorAll(".workspace-page .wp-bundle-item").forEach(r => r.classList.remove("selected"));
   const row = document.getElementById("brow-" + bundle._id);
   if (row) row.classList.add("selected");
+
+  // Sync switcher dropdown
+  const switcher = document.getElementById("bundleSwitcher");
+  if (switcher) switcher.value = bundle._id;
+  localStorage.setItem("activeBundle", bundle._id);
 
   // Always fetch fresh state from server
   try {
@@ -793,6 +864,89 @@ async function pinCurrentBundle() {
 }
 
 // ═══════════════════════════════════════════
+// DELETE BUNDLE — FIX: fully working with UI refresh
+// ═══════════════════════════════════════════
+async function deleteCurrentBundle() {
+  const switcher = document.getElementById("bundleSwitcher");
+  const id = switcher ? switcher.value : (STATE.bundle && STATE.bundle._id);
+  if (!id) return;
+  if (!confirm("Delete this bundle? This cannot be undone.")) return;
+
+  try {
+    const res = await fetch("/bundle/" + id, { method: "DELETE" });
+    if (!res.ok) throw new Error("Delete failed");
+    toast("Bundle deleted", "info");
+    setTimeout(() => { window.location.href = "/bundles"; }, 800);
+  } catch (e) {
+    toast("Failed to delete bundle", "error");
+    console.error(e);
+  }
+}
+
+async function deleteBundle(id) {
+  if (!id) return;
+  if (!confirm("Delete this bundle? This cannot be undone.")) return;
+
+  try {
+    const res = await fetch("/bundle/" + id, { method: "DELETE" });
+    if (!res.ok) throw new Error("Delete failed");
+
+    // Remove from sidebar without full reload
+    const row = document.getElementById("brow-" + id);
+    if (row) row.remove();
+
+    // If it was the selected bundle, show welcome screen
+    if (STATE.bundle && String(STATE.bundle._id) === String(id)) {
+      STATE.bundle = null;
+      document.getElementById("wsWelcome").style.display = "";
+      document.getElementById("wsExec").style.display    = "none";
+      updateBreadcrumb("Overview");
+    }
+
+    // Remove from switcher
+    const switcher = document.getElementById("bundleSwitcher");
+    if (switcher) {
+      const opt = switcher.querySelector(`option[value="${id}"]`);
+      if (opt) opt.remove();
+    }
+
+    toast("Bundle deleted", "info");
+  } catch (e) {
+    toast("Failed to delete bundle", "error");
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════════════
+// REMOVE TOOL — FIX: working fetch + DOM removal
+// ═══════════════════════════════════════════
+async function removeTool(id) {
+  if (!id) return;
+  if (!confirm("Remove this tool?")) return;
+
+  try {
+    const res = await fetch("/tool/" + id, { method: "DELETE" });
+    if (!res.ok) throw new Error("Remove failed");
+
+    // Remove from sidebar without full reload
+    const toolList = document.getElementById("leftToolList");
+    if (toolList) {
+      // Find and remove the parent .wp-tool-item that contains this button
+      const allItems = toolList.querySelectorAll(".wp-tool-item");
+      allItems.forEach(item => {
+        const btn = item.querySelector(`button[onclick*="${id}"]`);
+        if (btn) item.remove();
+      });
+    }
+
+    toast("Tool removed", "info");
+  } catch (e) {
+    toast("Failed to remove tool", "error");
+    console.error(e);
+  }
+}
+
+// ═══════════════════════════════════════════
 // CARD TOGGLES
 // ═══════════════════════════════════════════
 function toggleCard(idx) {
@@ -879,6 +1033,13 @@ function formatOutput(text) {
     .replace(/^- (.+)$/gm,     '<span style="display:block;padding-left:12px;">• $1</span>')
     .replace(/`([^`]+)`/g,     `<code style="background:var(--wp-bg);padding:1px 6px;border-radius:4px;font-family:var(--wp-mono);font-size:0.83em;">$1</code>`)
     .replace(/\n/g, "<br/>");
+}
+
+// ═══════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════
+function goToBundles() {
+  window.location.href = "/bundles";
 }
 
 // ═══════════════════════════════════════════
