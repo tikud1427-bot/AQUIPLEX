@@ -5,276 +5,1157 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Workspace | Aquiplex</title>
 <link rel="stylesheet" href="/css/styles.css">
-<link rel="stylesheet" href="/css/workspace.css">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="/socket.io/socket.io.js"></script>
 <style>
-  /* UI FIX: Reduce blur to max 6px, improve contrast */
-  .wp-shell { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-  .wp-sidebar { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
-  .wp-right-panel { backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
-  .wp-step-card { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
-  /* Improve text contrast */
-  .wp-step-desc { opacity: 1; filter: brightness(1.3); }
-  .wp-mem-v { opacity: 1; color: #d0d0d0; }
-  .wp-bundle-title { color: #f0f0f0; }
-  .wp-exec-goal { color: #c8c8c8; }
-  .wp-feed-preview { color: #c0c0c0; }
-  .wp-output-content { color: #dcdcdc; }
-</style>
-  <script src="/socket.io/socket.io.js"></script>
-</head>
+/* ═══════════════════════════════════════════════════════
+   AQUIPLEX WORKSPACE — DESIGN SYSTEM
+   Theme: industrial-terminal / precision tool aesthetic
+═══════════════════════════════════════════════════════ */
 
+:root {
+  --bg:        #0a0a0c;
+  --bg1:       #111116;
+  --bg2:       #18181f;
+  --bg3:       #1e1e28;
+  --border:    #2a2a38;
+  --border2:   #363649;
+  --muted:     #555570;
+  --text:      #c8c8d8;
+  --bright:    #eeeef8;
+  --accent:    #5b6af0;   /* electric indigo */
+  --accent2:   #34d8a0;   /* emerald */
+  --accent3:   #f0a44a;   /* amber */
+  --accent4:   #e05c7a;   /* red */
+  --mono:      "IBM Plex Mono", monospace;
+  --sans:      "Syne", sans-serif;
+  --radius:    6px;
+  --radius2:   10px;
+  --sidebar-w: 240px;
+  --right-w:   320px;
+  --topbar-h:  52px;
+  --trans:     150ms ease;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; }
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar       { width:4px; height:4px; }
+::-webkit-scrollbar-track { background:transparent; }
+::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT SHELL
+═══════════════════════════════════════════════════════ */
+.aq-workspace {
+  display:flex;
+  flex-direction:column;
+  height: calc(100vh - 60px); /* subtract nav height */
+  overflow:hidden;
+  background:var(--bg);
+}
+
+/* ── Topbar ── */
+.aq-topbar {
+  display:flex;
+  align-items:center;
+  gap:16px;
+  height:var(--topbar-h);
+  padding:0 18px;
+  background:var(--bg1);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+  z-index:20;
+}
+.aq-logo {
+  font-family:var(--mono);
+  font-size:0.72rem;
+  font-weight:600;
+  color:var(--bright);
+  letter-spacing:0.12em;
+  white-space:nowrap;
+  flex-shrink:0;
+}
+.aq-logo-sep { color:var(--accent); }
+
+.aq-breadcrumb {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  font-family:var(--mono);
+  font-size:0.68rem;
+  color:var(--muted);
+  flex:1;
+  min-width:0;
+}
+.aq-breadcrumb .sep  { color:var(--border2); }
+.aq-breadcrumb .cur  { color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.aq-topbar-right {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-shrink:0;
+}
+
+.aq-status-pill {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:4px 10px;
+  font-family:var(--mono);
+  font-size:0.6rem;
+  color:var(--muted);
+}
+.aq-status-dot {
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:var(--accent2);
+  box-shadow:0 0 6px var(--accent2);
+  animation:pulse 2.4s ease infinite;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; }
+  50%      { opacity:0.4; }
+}
+
+/* ── Buttons ── */
+.aq-btn {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:6px 12px;
+  border-radius:var(--radius);
+  border:1px solid var(--border2);
+  background:var(--bg2);
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:0.65rem;
+  font-weight:500;
+  letter-spacing:0.06em;
+  cursor:pointer;
+  transition:var(--trans);
+  white-space:nowrap;
+}
+.aq-btn:hover   { background:var(--bg3); border-color:var(--muted); color:var(--bright); }
+.aq-btn:active  { transform:scale(0.97); }
+.aq-btn-run     { background:var(--accent); border-color:var(--accent); color:#fff; }
+.aq-btn-run:hover { filter:brightness(1.15); background:var(--accent); }
+.aq-btn-danger  { border-color:var(--accent4); color:var(--accent4); }
+.aq-btn-danger:hover { background:rgba(224,92,122,0.12); }
+
+.aq-switcher {
+  background:var(--bg2);
+  border:1px solid var(--border2);
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:0.65rem;
+  border-radius:var(--radius);
+  padding:5px 10px;
+  cursor:pointer;
+  max-width:180px;
+}
+.aq-switcher:focus { outline:none; border-color:var(--accent); }
+.aq-switcher option { background:var(--bg1); }
+
+/* ── Body ── */
+.aq-body {
+  display:flex;
+  flex:1;
+  overflow:hidden;
+}
+
+/* ─────────────────────────────────────────────
+   LEFT SIDEBAR
+───────────────────────────────────────────── */
+.aq-sidebar {
+  width:var(--sidebar-w);
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  background:var(--bg1);
+  border-right:1px solid var(--border);
+  overflow:hidden;
+}
+.aq-sidebar-tabs {
+  display:flex;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.aq-sidebar-tab {
+  flex:1;
+  padding:10px 0;
+  background:none;
+  border:none;
+  color:var(--muted);
+  font-family:var(--mono);
+  font-size:0.6rem;
+  font-weight:600;
+  letter-spacing:0.1em;
+  cursor:pointer;
+  transition:var(--trans);
+  border-bottom:2px solid transparent;
+}
+.aq-sidebar-tab:hover  { color:var(--text); }
+.aq-sidebar-tab.active { color:var(--bright); border-bottom-color:var(--accent); }
+
+.aq-sidebar-list {
+  flex:1;
+  overflow-y:auto;
+  padding:8px;
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+
+/* Bundle rows */
+.aq-bundle-item {
+  padding:9px 10px;
+  border-radius:var(--radius);
+  cursor:pointer;
+  transition:var(--trans);
+  border:1px solid transparent;
+}
+.aq-bundle-item:hover    { background:var(--bg2); border-color:var(--border); }
+.aq-bundle-item.selected { background:var(--bg3); border-color:var(--accent); }
+
+.aq-bundle-title {
+  font-size:0.75rem;
+  font-weight:600;
+  color:var(--bright);
+  margin-bottom:5px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.aq-bundle-meta {
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.aq-bundle-track {
+  flex:1;
+  height:3px;
+  background:var(--bg3);
+  border-radius:2px;
+  overflow:hidden;
+}
+.aq-bundle-fill {
+  height:100%;
+  border-radius:2px;
+  background:var(--accent2);
+  transition:width 0.5s ease;
+}
+.aq-bundle-pct {
+  font-family:var(--mono);
+  font-size:0.55rem;
+  color:var(--muted);
+  flex-shrink:0;
+}
+.aq-bundle-del {
+  background:none;
+  border:none;
+  color:transparent;
+  font-size:0.65rem;
+  cursor:pointer;
+  padding:2px 4px;
+  border-radius:3px;
+  transition:var(--trans);
+  flex-shrink:0;
+  line-height:1;
+}
+.aq-bundle-item:hover .aq-bundle-del { color:var(--muted); }
+.aq-bundle-del:hover { color:var(--accent4) !important; background:rgba(224,92,122,0.12); }
+
+/* Status dots */
+.aq-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.aq-dot-active    { background:var(--accent2); box-shadow:0 0 5px var(--accent2); }
+.aq-dot-paused    { background:var(--accent3); }
+.aq-dot-completed { background:var(--accent); }
+.aq-dot-draft     { background:var(--border2); }
+
+/* Tool rows */
+.aq-tool-item {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:var(--radius);
+  border:1px solid transparent;
+  transition:var(--trans);
+}
+.aq-tool-item:hover { background:var(--bg2); border-color:var(--border); }
+.aq-tool-logo {
+  width:22px;
+  height:22px;
+  border-radius:4px;
+  object-fit:contain;
+  flex-shrink:0;
+  background:var(--bg3);
+}
+.aq-tool-name { font-size:0.72rem; color:var(--text); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aq-tool-btns { display:flex; gap:4px; flex-shrink:0; }
+.aq-tool-btn {
+  background:none;
+  border:1px solid var(--border);
+  color:var(--muted);
+  font-family:var(--mono);
+  font-size:0.55rem;
+  padding:2px 7px;
+  border-radius:3px;
+  cursor:pointer;
+  transition:var(--trans);
+}
+.aq-tool-btn:hover       { color:var(--text); border-color:var(--muted); }
+.aq-tool-btn.rm:hover    { color:var(--accent4); border-color:var(--accent4); background:rgba(224,92,122,0.08); }
+
+/* Empty state */
+.aq-empty {
+  padding:24px 12px;
+  text-align:center;
+  color:var(--muted);
+  font-family:var(--mono);
+  font-size:0.68rem;
+  line-height:1.7;
+}
+.aq-empty a { color:var(--accent); text-decoration:none; }
+.aq-empty a:hover { text-decoration:underline; }
+
+/* ─────────────────────────────────────────────
+   MAIN
+───────────────────────────────────────────── */
+.aq-main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+/* Welcome screen */
+.aq-welcome {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  text-align:center;
+  padding:40px;
+}
+.aq-welcome-glyph {
+  font-size:2.5rem;
+  opacity:0.3;
+}
+.aq-welcome h2 {
+  font-family:var(--sans);
+  font-weight:700;
+  font-size:1.2rem;
+  color:var(--bright);
+}
+.aq-welcome p {
+  font-size:0.78rem;
+  color:var(--muted);
+  max-width:340px;
+  line-height:1.7;
+}
+.aq-welcome-hint {
+  margin-top:4px;
+  font-family:var(--mono);
+  font-size:0.6rem;
+  color:var(--border2);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:4px 10px;
+}
+
+/* Exec view */
+.aq-exec { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+/* Exec header */
+.aq-exec-hdr {
+  padding:16px 20px 0;
+  background:var(--bg1);
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.aq-exec-hdr-top {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
+}
+.aq-exec-title {
+  font-family:var(--sans);
+  font-size:1.05rem;
+  font-weight:700;
+  color:var(--bright);
+}
+.aq-exec-goal {
+  font-family:var(--mono);
+  font-size:0.67rem;
+  color:var(--muted);
+  margin-top:3px;
+}
+.aq-exec-actions { display:flex; gap:6px; flex-shrink:0; }
+
+/* Stats row */
+.aq-stats-row {
+  display:flex;
+  align-items:stretch;
+  gap:0;
+  margin-bottom:12px;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+.aq-stat {
+  flex:1;
+  padding:8px 12px;
+  text-align:center;
+  border-right:1px solid var(--border);
+}
+.aq-stat:last-child { border-right:none; }
+.aq-stat-val {
+  font-family:var(--mono);
+  font-size:0.95rem;
+  font-weight:600;
+  color:var(--bright);
+  margin-bottom:2px;
+}
+.aq-stat-lbl {
+  font-family:var(--mono);
+  font-size:0.52rem;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:0.08em;
+}
+.c-accent  { color:var(--accent) !important; }
+.c-green   { color:var(--accent2) !important; }
+.c-amber   { color:var(--accent3) !important; }
+.c-purple  { color:#9b7de8 !important; }
+
+/* Progress bar */
+.aq-progress-track {
+  height:2px;
+  background:var(--bg3);
+  overflow:hidden;
+}
+.aq-progress-fill {
+  height:100%;
+  background:linear-gradient(90deg, var(--accent), var(--accent2));
+  transition:width 0.6s ease;
+}
+
+/* Exec content grid */
+.aq-exec-content {
+  flex:1;
+  display:flex;
+  overflow:hidden;
+}
+
+/* ─────────────────────────────────────────────
+   STEPS PANEL
+───────────────────────────────────────────── */
+.aq-steps-panel {
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-right:1px solid var(--border);
+}
+
+/* Timeline strip */
+.aq-timeline {
+  display:flex;
+  align-items:center;
+  padding:10px 16px;
+  gap:0;
+  border-bottom:1px solid var(--border);
+  background:var(--bg1);
+  overflow-x:auto;
+  flex-shrink:0;
+}
+.aq-tl-step  { display:flex; align-items:center; cursor:pointer; }
+.aq-tl-dot   {
+  width:26px; height:26px;
+  border-radius:50%;
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:0.6rem; color:var(--muted);
+  transition:var(--trans);
+  flex-shrink:0;
+}
+.aq-tl-dot:hover { border-color:var(--accent); color:var(--accent); }
+.aq-tl-dot.done    { background:var(--accent2); border-color:var(--accent2); color:#fff; }
+.aq-tl-dot.running { background:var(--accent); border-color:var(--accent); color:#fff; animation:pulse 1.2s ease infinite; }
+.aq-tl-line {
+  width:20px; height:1px;
+  background:var(--border);
+  flex-shrink:0;
+  transition:background 0.4s;
+}
+.aq-tl-line.done { background:var(--accent2); }
+
+/* Step cards scroll */
+.aq-steps-scroll {
+  flex:1;
+  overflow-y:auto;
+  padding:12px;
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+/* Step card */
+.aq-step-card {
+  background:var(--bg1);
+  border:1px solid var(--border);
+  border-radius:var(--radius2);
+  overflow:hidden;
+  transition:border-color var(--trans);
+}
+.aq-step-card.active  { border-color:var(--border2); }
+.aq-step-card.running { border-color:var(--accent); }
+.aq-step-card.done    { border-color:var(--border); opacity:0.85; }
+.aq-step-card.done:hover { opacity:1; }
+
+.aq-step-hdr {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:10px 14px;
+  cursor:pointer;
+  user-select:none;
+}
+.aq-step-hdr:hover { background:var(--bg2); }
+
+.aq-step-num {
+  width:24px; height:24px; border-radius:50%;
+  background:var(--bg3); border:1px solid var(--border2);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--mono); font-size:0.6rem; color:var(--muted);
+  flex-shrink:0;
+}
+.aq-step-num.done    { background:var(--accent2); border-color:var(--accent2); color:#fff; }
+.aq-step-num.running { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+.aq-step-info { flex:1; min-width:0; }
+.aq-step-title {
+  font-size:0.78rem;
+  font-weight:600;
+  color:var(--bright);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.aq-step-desc {
+  font-family:var(--mono);
+  font-size:0.62rem;
+  color:var(--muted);
+  margin-top:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+.aq-badge {
+  font-family:var(--mono);
+  font-size:0.54rem;
+  font-weight:600;
+  letter-spacing:0.08em;
+  padding:2px 7px;
+  border-radius:3px;
+  flex-shrink:0;
+}
+.wb-done    { background:rgba(52,216,160,0.15); color:var(--accent2); border:1px solid rgba(52,216,160,0.3); }
+.wb-running { background:rgba(91,106,240,0.15); color:var(--accent);  border:1px solid rgba(91,106,240,0.3); }
+.wb-failed  { background:rgba(224,92,122,0.15); color:var(--accent4); border:1px solid rgba(224,92,122,0.3); }
+.wb-pending { background:var(--bg3); color:var(--muted); border:1px solid var(--border); }
+
+.aq-step-toggle {
+  color:var(--muted);
+  font-size:0.75rem;
+  transition:transform var(--trans);
+  flex-shrink:0;
+}
+.aq-step-toggle.open { transform:rotate(180deg); }
+
+/* Step body */
+.aq-step-body {
+  max-height:0;
+  overflow:hidden;
+  transition:max-height 0.3s ease;
+  border-top:0 solid var(--border);
+}
+.aq-step-body.open {
+  max-height:600px;
+  border-top:1px solid var(--border);
+}
+.aq-step-body-inner {
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+/* Output block */
+.aq-output-block {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:10px 12px;
+}
+.aq-output-hdr {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-bottom:7px;
+}
+.aq-output-label {
+  font-family:var(--mono);
+  font-size:0.6rem;
+  color:var(--accent2);
+  font-weight:600;
+}
+.aq-output-dot {
+  width:5px; height:5px; border-radius:50%;
+  background:var(--accent2);
+  margin-left:auto;
+}
+.aq-output-content {
+  font-family:var(--mono);
+  font-size:0.69rem;
+  color:var(--text);
+  line-height:1.65;
+}
+
+/* Tool chips */
+.aq-tool-chips { display:flex; flex-wrap:wrap; gap:5px; }
+.aq-tool-chip {
+  display:inline-flex; align-items:center; gap:4px;
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  border-radius:3px;
+  padding:3px 8px;
+  font-family:var(--mono);
+  font-size:0.6rem;
+  color:var(--muted);
+  text-decoration:none;
+  transition:var(--trans);
+}
+.aq-tool-chip:hover { color:var(--text); border-color:var(--muted); }
+
+/* Insight chips */
+.aq-insight-chips { display:flex; flex-wrap:wrap; gap:5px; }
+.aq-insight-chip {
+  background:rgba(91,106,240,0.1);
+  border:1px solid rgba(91,106,240,0.25);
+  border-radius:3px;
+  padding:2px 7px;
+  font-family:var(--mono);
+  font-size:0.57rem;
+  color:var(--accent);
+}
+
+/* Step actions */
+.aq-step-actions { display:flex; gap:6px; }
+.aq-step-act-btn {
+  padding:5px 12px;
+  border-radius:var(--radius);
+  border:1px solid var(--border2);
+  background:var(--bg3);
+  color:var(--text);
+  font-family:var(--mono);
+  font-size:0.62rem;
+  cursor:pointer;
+  transition:var(--trans);
+}
+.aq-step-act-btn:hover  { background:var(--bg2); border-color:var(--muted); color:var(--bright); }
+.aq-step-act-btn.done   { border-color:rgba(52,216,160,0.4); color:var(--accent2); }
+.aq-step-act-btn.done:hover { background:rgba(52,216,160,0.1); }
+.aq-step-act-btn.rerun  { border-color:rgba(91,106,240,0.4); color:var(--accent); }
+.aq-step-act-btn.rerun:hover { background:rgba(91,106,240,0.1); }
+
+/* ─────────────────────────────────────────────
+   RIGHT PANEL
+───────────────────────────────────────────── */
+.aq-right-panel {
+  width:var(--right-w);
+  flex-shrink:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:var(--bg1);
+}
+.aq-right-tabs {
+  display:flex;
+  border-bottom:1px solid var(--border);
+  flex-shrink:0;
+}
+.aq-right-tab {
+  flex:1;
+  padding:10px 0;
+  background:none;
+  border:none;
+  color:var(--muted);
+  font-family:var(--mono);
+  font-size:0.58rem;
+  font-weight:600;
+  letter-spacing:0.1em;
+  cursor:pointer;
+  border-bottom:2px solid transparent;
+  transition:var(--trans);
+}
+.aq-right-tab:hover  { color:var(--text); }
+.aq-right-tab.active { color:var(--bright); border-bottom-color:var(--accent); }
+
+.aq-right-body { flex:1; overflow:hidden; position:relative; }
+.aq-right-section {
+  position:absolute;
+  inset:0;
+  overflow-y:auto;
+  padding:14px;
+  display:none;
+  flex-direction:column;
+  gap:8px;
+  opacity:0;
+  transition:opacity 0.2s;
+}
+.aq-right-section.active { display:flex; opacity:1; }
+
+/* Output feed */
+.aq-feed-item {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:10px 12px;
+  transition:var(--trans);
+}
+.aq-feed-item:hover { border-color:var(--border2); }
+.aq-feed-meta {
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:5px;
+}
+.aq-feed-step   { font-family:var(--mono); font-size:0.6rem; color:var(--accent); font-weight:600; }
+.aq-feed-bundle { font-family:var(--mono); font-size:0.58rem; color:var(--muted); }
+.aq-feed-preview {
+  font-family:var(--mono);
+  font-size:0.64rem;
+  color:var(--text);
+  line-height:1.6;
+  display:-webkit-box;
+  -webkit-line-clamp:3;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+
+/* Memory */
+.aq-mem-hdr {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-family:var(--mono);
+  font-size:0.6rem;
+  font-weight:600;
+  color:var(--muted);
+  text-transform:uppercase;
+  letter-spacing:0.1em;
+  padding:4px 0;
+  border-bottom:1px solid var(--border);
+  margin-bottom:6px;
+}
+.aq-mem-hdr span { color:var(--border2); font-weight:400; }
+.aq-mem-kv {
+  display:grid;
+  grid-template-columns:1fr 1.5fr;
+  gap:6px;
+  align-items:start;
+  padding:6px 8px;
+  border-radius:var(--radius);
+  border-left:2px solid var(--accent);
+  background:var(--bg2);
+  margin-bottom:4px;
+}
+.aq-mem-k  { font-family:var(--mono); font-size:0.6rem; color:var(--accent); font-weight:500; word-break:break-all; }
+.aq-mem-v  { font-family:var(--mono); font-size:0.6rem; color:var(--text); word-break:break-all; }
+.aq-context-box {
+  font-family:var(--mono);
+  font-size:0.63rem;
+  color:var(--text);
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:8px 10px;
+  line-height:1.65;
+  white-space:pre-wrap;
+}
+
+/* Insights */
+.aq-insight-item {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  font-family:var(--mono);
+  font-size:0.65rem;
+  color:var(--text);
+  line-height:1.5;
+}
+.aq-insight-item::before {
+  content:"→";
+  color:var(--accent);
+  flex-shrink:0;
+}
+
+/* ─────────────────────────────────────────────
+   TOAST SYSTEM
+───────────────────────────────────────────── */
+#aq-toast-root {
+  position:fixed;
+  bottom:24px;
+  right:24px;
+  z-index:9999;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  pointer-events:none;
+}
+.aq-toast {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 16px;
+  border-radius:var(--radius2);
+  font-family:var(--mono);
+  font-size:0.68rem;
+  font-weight:500;
+  background:var(--bg2);
+  border:1px solid var(--border2);
+  color:var(--bright);
+  box-shadow:0 8px 32px rgba(0,0,0,0.5);
+  animation:toastIn 0.25s ease;
+  pointer-events:auto;
+  max-width:300px;
+}
+@keyframes toastIn {
+  from { opacity:0; transform:translateY(12px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+.aq-toast.fadeout { animation:toastOut 0.3s ease forwards; }
+@keyframes toastOut {
+  to { opacity:0; transform:translateY(8px); }
+}
+.aq-toast.success { border-color:rgba(52,216,160,0.4); }
+.aq-toast.success::before { content:"✓"; color:var(--accent2); }
+.aq-toast.error   { border-color:rgba(224,92,122,0.4); }
+.aq-toast.error::before   { content:"✕"; color:var(--accent4); }
+.aq-toast.info    { border-color:rgba(91,106,240,0.4); }
+.aq-toast.info::before    { content:"ℹ"; color:var(--accent); }
+
+/* ─────────────────────────────────────────────
+   LOADING OVERLAY (per-action)
+───────────────────────────────────────────── */
+.aq-loading-bar {
+  position:fixed;
+  top:0; left:0; right:0;
+  height:2px;
+  background:linear-gradient(90deg, var(--accent), var(--accent2));
+  z-index:10000;
+  animation:loadbar 1.2s ease infinite;
+  display:none;
+}
+.aq-loading-bar.visible { display:block; }
+@keyframes loadbar {
+  0%   { transform:scaleX(0); transform-origin:left; }
+  50%  { transform:scaleX(0.7); transform-origin:left; }
+  100% { transform:scaleX(1); transform-origin:left; opacity:0; }
+}
+
+/* ─────────────────────────────────────────────
+   COMMAND PALETTE
+───────────────────────────────────────────── */
+.aq-palette-backdrop {
+  position:fixed; inset:0; background:rgba(0,0,0,0.7);
+  z-index:8000; display:none; align-items:flex-start; justify-content:center;
+  padding-top:120px;
+}
+.aq-palette-backdrop.open { display:flex; }
+.aq-palette {
+  width:480px;
+  background:var(--bg1);
+  border:1px solid var(--border2);
+  border-radius:var(--radius2);
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+  overflow:hidden;
+}
+.aq-palette-input {
+  width:100%;
+  padding:14px 18px;
+  background:none;
+  border:none;
+  border-bottom:1px solid var(--border);
+  color:var(--bright);
+  font-family:var(--mono);
+  font-size:0.85rem;
+  outline:none;
+}
+.aq-palette-input::placeholder { color:var(--muted); }
+.aq-palette-list { padding:8px; }
+.aq-palette-cmd {
+  display:flex; align-items:center; gap:12px;
+  padding:9px 12px;
+  border-radius:var(--radius);
+  cursor:pointer;
+  transition:var(--trans);
+  font-family:var(--mono);
+  font-size:0.7rem;
+  color:var(--text);
+}
+.aq-palette-cmd:hover { background:var(--bg3); color:var(--bright); }
+.aq-palette-cmd .key {
+  background:var(--bg3);
+  border:1px solid var(--border2);
+  border-radius:3px;
+  padding:1px 6px;
+  font-size:0.58rem;
+  color:var(--muted);
+  margin-left:auto;
+}
+</style>
+</head>
 <body>
+
 <%- include('partials/nav') %>
 
-<div class="workspace-page">
-<div class="wp-shell">
+<!-- Loading bar -->
+<div class="aq-loading-bar" id="aqLoadingBar"></div>
 
-  <!-- ═══════════════ TOP BAR ═══════════════ -->
-  <div class="wp-topbar">
-    <div class="wp-logo">
-      AQUI<span class="wp-logo-sep">PLEX</span> // WORKSPACE
-    </div>
-    <div class="wp-breadcrumb">
+<!-- Toast root -->
+<div id="aq-toast-root"></div>
+
+<!-- Command Palette -->
+<div class="aq-palette-backdrop" id="aqPalette" onclick="closePalette(event)">
+  <div class="aq-palette">
+    <input class="aq-palette-input" id="aqPaletteInput" placeholder="Type a command…" oninput="filterPalette(this.value)" onkeydown="paletteKeydown(event)"/>
+    <div class="aq-palette-list" id="aqPaletteList"></div>
+  </div>
+</div>
+
+<div class="aq-workspace">
+
+  <!-- ═══════════ TOPBAR ═══════════ -->
+  <div class="aq-topbar">
+    <div class="aq-logo">AQUI<span class="aq-logo-sep">PLEX</span> <span style="color:var(--border2);">//</span> WORKSPACE</div>
+
+    <div class="aq-breadcrumb">
       <span>Workspace</span>
       <span class="sep">›</span>
-      <span class="active" id="topBreadcrumb">Overview</span>
+      <span class="cur" id="topBreadcrumb">Overview</span>
     </div>
-    <div class="wp-topbar-right">
-      <div class="wp-status-pill">
-        <div class="wp-status-dot"></div>
-        <span id="topStatusText">ONLINE</span>
+
+    <div class="aq-topbar-right">
+      <div class="aq-status-pill">
+        <div class="aq-status-dot"></div>
+        <span>ONLINE</span>
       </div>
-      <div style="display:flex; gap:10px; margin-left:20px;">
 
-            <button class="wp-btn wp-btn-ghost" onclick="goToBundles()">
-          ← Bundles
-        </button>
+      <button class="aq-btn" onclick="window.location.href='/bundles'">← Bundles</button>
 
-        <select id="bundleSwitcher" class="wp-btn wp-btn-ghost"></select>
+      <select id="bundleSwitcher" class="aq-switcher" title="Switch bundle">
+        <option value="">Select bundle…</option>
+      </select>
 
-        <button class="wp-btn wp-btn-ghost" onclick="deleteCurrentBundle()">
-          Delete
-        </button>
-        <button class="wp-btn wp-btn-run" onclick="autoRunSteps()">⚡ AUTO</button>
+      <button class="aq-btn aq-btn-danger" onclick="deleteCurrentBundle()">⌫ Delete</button>
+      <button class="aq-btn aq-btn-run"    onclick="autoRunSteps()">⚡ AUTO RUN</button>
 
-      </div>
-      <div id="copilot" style="
-        position:fixed;
-        bottom:20px;
-        right:20px;
-        background:#111;
-        border:1px solid #333;
-        padding:10px;
-        border-radius:8px;
-        font-size:12px;
-        cursor:pointer;
-      ">
-      ⚡ AI
-      </div>
+      <button class="aq-btn" onclick="openPalette()" title="⌘K">⌘K</button>
     </div>
   </div>
 
-  <!-- ═══════════════ BODY ═══════════════ -->
-  <div class="wp-body">
+  <!-- ═══════════ BODY ═══════════ -->
+  <div class="aq-body">
 
-    <!-- ─────── LEFT SIDEBAR ─────── -->
-    <div class="wp-sidebar">
-      <div class="wp-sidebar-tabs">
-        <button class="wp-sidebar-tab active" onclick="switchLeftTab('bundles', this)">BUNDLES</button>
-        <button class="wp-sidebar-tab" onclick="switchLeftTab('tools', this)">TOOLS</button>
+    <!-- ─── LEFT SIDEBAR ─── -->
+    <div class="aq-sidebar">
+      <div class="aq-sidebar-tabs">
+        <button class="aq-sidebar-tab active" onclick="switchLeftTab('bundles', this)">BUNDLES</button>
+        <button class="aq-sidebar-tab"        onclick="switchLeftTab('tools',   this)">TOOLS</button>
       </div>
 
       <!-- BUNDLES -->
-      <div class="wp-sidebar-list" id="leftBundleList">
+      <div class="aq-sidebar-list" id="leftBundleList">
         <% if (bundles && bundles.length > 0) { %>
           <% bundles.forEach(function(b) {
             const completed = (b.progress || []).filter(p => p && p.status === 'completed').length;
             const total     = (b.steps || []).length;
             const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
-            const dotCls    = b.status === 'active'    ? 'wi-active'
-                            : b.status === 'paused'    ? 'wi-paused'
-                            : b.status === 'completed' ? 'wi-completed'
-                            : 'wi-draft';
+            const dotCls    = b.status === 'active'    ? 'aq-dot-active'
+                            : b.status === 'paused'    ? 'aq-dot-paused'
+                            : b.status === 'completed' ? 'aq-dot-completed'
+                            : 'aq-dot-draft';
           %>
-          <div class="wp-bundle-item" id="brow-<%= b._id %>"
+          <div class="aq-bundle-item" id="brow-<%= b._id %>"
                onclick="selectBundle(<%- JSON.stringify({
-                 _id:      b._id,
-                 title:    b.title,
-                 goal:     b.goal,
-                 status:   b.status,
-                 steps:    b.steps,
-                 progress: b.progress,
-                 outputs:  b.outputs || [],
-                 memory:   b.memory  || {},
+                 _id:         b._id,
+                 title:       b.title,
+                 goal:        b.goal,
+                 status:      b.status,
+                 steps:       b.steps,
+                 progress:    b.progress,
+                 outputs:     b.outputs  || [],
+                 memory:      b.memory   || {},
                  currentStep: b.currentStep || 0
                }).replace(/</g,'\\u003c') %>)">
-            <div class="wp-bundle-title"><%= b.title %></div>
-            <div class="wp-bundle-meta">
-              <div class="wp-status-icon <%= dotCls %>"></div>
-              <div class="wp-bundle-prog-track">
-                <div class="wp-bundle-prog-fill" style="width:<%= pct %>%"></div>
+            <div class="aq-bundle-title"><%= b.title %></div>
+            <div class="aq-bundle-meta">
+              <div class="aq-dot <%= dotCls %>"></div>
+              <div class="aq-bundle-track">
+                <div class="aq-bundle-fill" style="width:<%= pct %>%"></div>
               </div>
-              <div class="wp-bundle-pct"><%= pct %>%</div>
-              <!-- FIX: Delete button now correctly inside .wp-bundle-item -->
-              <button class="wp-bundle-delete-btn"
+              <div class="aq-bundle-pct"><%= pct %>%</div>
+              <button class="aq-bundle-del"
                 onclick="event.stopPropagation(); deleteBundle('<%= b._id %>')"
-                title="Delete bundle"
-                style="background:none;border:none;color:#888;font-size:10px;cursor:pointer;padding:0 2px;margin-left:4px;line-height:1;">✕</button>
+                title="Delete bundle">✕</button>
             </div>
           </div>
           <% }) %>
         <% } else { %>
-          <div class="wp-empty">
+          <div class="aq-empty">
             No bundles yet.<br/>
-            <a class="wp-empty-link" href="/bundles">Create one →</a>
+            <a href="/bundles">Create one →</a>
           </div>
         <% } %>
       </div>
 
       <!-- TOOLS -->
-      <div class="wp-sidebar-list" id="leftToolList" style="display:none;">
+      <div class="aq-sidebar-list" id="leftToolList" style="display:none;">
         <% if (workspace && workspace.tools && workspace.tools.length > 0) { %>
           <% workspace.tools.forEach(function(tool) { %>
-          <!-- FIX: Remove button is now correctly inside .wp-tool-item -->
-          <div class="wp-tool-item" style="position:relative;">
+          <div class="aq-tool-item" id="trow-<%= tool._id %>">
             <img src="<%= tool.logo || '/logos/default.png' %>"
                  onerror="this.src='/logos/default.png'"
-                 class="wp-tool-logo" alt=""/>
-            <span class="wp-tool-name"><%= tool.name %></span>
-            <button class="wp-tool-open"
-                    onclick="event.stopPropagation(); launchTool('<%= (tool.url || '').replace(/'/g, '') %>')">
-              OPEN
-            </button>
-            <button class="wp-tool-open"
-                    style="margin-left:4px; opacity:0.7;"
-                    onclick="event.stopPropagation(); removeTool('<%= tool._id %>')">
-              Remove
-            </button>
+                 class="aq-tool-logo" alt=""/>
+            <span class="aq-tool-name"><%= tool.name %></span>
+            <div class="aq-tool-btns">
+              <button class="aq-tool-btn"
+                onclick="launchTool('<%= (tool.url || '').replace(/'/g, '') %>')">OPEN</button>
+              <button class="aq-tool-btn rm"
+                onclick="removeTool('<%= tool._id %>')">RM</button>
+            </div>
           </div>
           <% }) %>
         <% } else { %>
-          <div class="wp-empty">
+          <div class="aq-empty">
             No tools saved.<br/>
-            <a class="wp-empty-link" href="/tools">Browse tools →</a>
+            <a href="/tools">Browse tools →</a>
           </div>
         <% } %>
       </div>
     </div>
 
-    <!-- ─────── MAIN ─────── -->
-    <div class="wp-main">
+    <!-- ─── MAIN ─── -->
+    <div class="aq-main">
 
       <!-- WELCOME -->
-      <div class="wp-welcome" id="wsWelcome">
-        <div class="wp-welcome-glyph">⚡</div>
+      <div class="aq-welcome" id="wsWelcome">
+        <div class="aq-welcome-glyph">⚡</div>
         <h2>Execution Control</h2>
         <p>Select a bundle from the sidebar to view its execution state, step timeline, outputs, and memory.</p>
+        <div class="aq-welcome-hint">Press ⌘K for command palette</div>
       </div>
 
       <!-- EXEC VIEW -->
-      <div class="wp-exec" id="wsExec" style="display:none;">
+      <div class="aq-exec" id="wsExec" style="display:none;">
 
         <!-- Header -->
-        <div class="wp-exec-header">
-          <div class="wp-exec-header-top">
-            <div class="wp-exec-title-block">
-              <div class="wp-exec-title" id="execTitle">—</div>
-              <div class="wp-exec-goal"  id="execGoal">—</div>
+        <div class="aq-exec-hdr">
+          <div class="aq-exec-hdr-top">
+            <div>
+              <div class="aq-exec-title" id="execTitle">—</div>
+              <div class="aq-exec-goal"  id="execGoal">—</div>
             </div>
-            <div class="wp-exec-actions">
-              <button class="wp-btn wp-btn-run"   id="btnRun"    onclick="runCurrentBundle()">▶ RUN</button>
-              <button class="wp-btn wp-btn-pause"  id="btnPause"  onclick="pauseCurrentBundle()"  style="display:none;">⏸ PAUSE</button>
-              <button class="wp-btn wp-btn-ghost"  id="btnResume" onclick="resumeCurrentBundle()" style="display:none;">↺ RESUME</button>
-              <button class="wp-btn wp-btn-ghost"  id="btnPin"    onclick="pinCurrentBundle()">☆ PIN</button>
-            </div>
-          </div>
-
-          <div class="wp-stats-row">
-            <div class="wp-stat">
-              <div class="wp-stat-val c-accent" id="statSteps">—</div>
-              <div class="wp-stat-lbl">Steps</div>
-            </div>
-            <div class="wp-stat-divider"></div>
-            <div class="wp-stat">
-              <div class="wp-stat-val c-green" id="statDone">—</div>
-              <div class="wp-stat-lbl">Done</div>
-            </div>
-            <div class="wp-stat-divider"></div>
-            <div class="wp-stat">
-              <div class="wp-stat-val" id="statPct">—</div>
-              <div class="wp-stat-lbl">Complete</div>
-            </div>
-            <div class="wp-stat-divider"></div>
-            <div class="wp-stat">
-              <div class="wp-stat-val c-amber" id="statStatus">—</div>
-              <div class="wp-stat-lbl">Status</div>
-            </div>
-            <div class="wp-stat-divider"></div>
-            <div class="wp-stat">
-              <div class="wp-stat-val c-purple" id="statConfidence">—</div>
-              <div class="wp-stat-lbl">Confidence</div>
+            <div class="aq-exec-actions">
+              <button class="aq-btn aq-btn-run"   id="btnRun"    onclick="runCurrentBundle()">▶ RUN</button>
+              <button class="aq-btn"               id="btnPause"  onclick="pauseCurrentBundle()"  style="display:none;">⏸ PAUSE</button>
+              <button class="aq-btn"               id="btnResume" onclick="resumeCurrentBundle()" style="display:none;">↺ RESUME</button>
+              <button class="aq-btn"               id="btnPin"    onclick="pinCurrentBundle()">☆ PIN</button>
             </div>
           </div>
 
-          <div class="wp-exec-progress">
-            <div class="wp-progress-track">
-              <div class="wp-progress-fill" id="mainProgressFill" style="width:0%"></div>
+          <div class="aq-stats-row">
+            <div class="aq-stat">
+              <div class="aq-stat-val c-accent"  id="statSteps">—</div>
+              <div class="aq-stat-lbl">Steps</div>
             </div>
+            <div class="aq-stat">
+              <div class="aq-stat-val c-green"   id="statDone">—</div>
+              <div class="aq-stat-lbl">Done</div>
+            </div>
+            <div class="aq-stat">
+              <div class="aq-stat-val"            id="statPct">—</div>
+              <div class="aq-stat-lbl">Complete</div>
+            </div>
+            <div class="aq-stat">
+              <div class="aq-stat-val c-amber"   id="statStatus">—</div>
+              <div class="aq-stat-lbl">Status</div>
+            </div>
+            <div class="aq-stat">
+              <div class="aq-stat-val c-purple"  id="statConfidence">—</div>
+              <div class="aq-stat-lbl">Confidence</div>
+            </div>
+          </div>
+
+          <div class="aq-progress-track">
+            <div class="aq-progress-fill" id="mainProgressFill" style="width:0%"></div>
           </div>
         </div>
 
         <!-- Content grid -->
-        <div class="wp-exec-content">
+        <div class="aq-exec-content">
 
-          <!-- Steps column -->
-          <div class="wp-steps-panel">
-            <div class="wp-timeline-strip" id="execTimeline"></div>
-            <div class="wp-steps-scroll"  id="execSteps"></div>
+          <!-- Steps -->
+          <div class="aq-steps-panel">
+            <div class="aq-timeline" id="execTimeline"></div>
+            <div class="aq-steps-scroll" id="execSteps"></div>
           </div>
 
           <!-- Right panel -->
-          <div class="wp-right-panel">
-            <div class="wp-right-tabs">
-              <button class="wp-right-tab active" onclick="switchRightTab('outputs', this)">OUTPUTS</button>
-              <button class="wp-right-tab"         onclick="switchRightTab('memory', this)">MEMORY</button>
-              <button class="wp-right-tab"         onclick="switchRightTab('insights', this)">INSIGHTS</button>
+          <div class="aq-right-panel">
+            <div class="aq-right-tabs">
+              <button class="aq-right-tab active" onclick="switchRightTab('outputs',  this)">OUTPUTS</button>
+              <button class="aq-right-tab"         onclick="switchRightTab('memory',   this)">MEMORY</button>
+              <button class="aq-right-tab"         onclick="switchRightTab('insights', this)">INSIGHTS</button>
             </div>
 
-            <div class="wp-right-body">
+            <div class="aq-right-body">
 
               <!-- Outputs -->
-              <div class="wp-right-section active" id="rtab-outputs">
+              <div class="aq-right-section active" id="rtab-outputs">
                 <div id="outputFeed">
-                  <div class="wp-empty" style="padding:32px 0;">Run a bundle step to see outputs here.</div>
+                  <div class="aq-empty">Run a bundle step to see outputs.</div>
                 </div>
               </div>
 
               <!-- Memory -->
-              <div class="wp-right-section" id="rtab-memory">
-                <div class="wp-mem-hdr">
-                  Bundle Memory
-                  <span class="wp-mem-hdr-count" id="memBundleCount">0 keys</span>
-                </div>
+              <div class="aq-right-section" id="rtab-memory">
+                <div class="aq-mem-hdr">Bundle Memory <span id="memBundleCount">0 keys</span></div>
                 <div id="memBundleEntries"></div>
 
-                <div class="wp-mem-hdr" style="margin-top:18px;">
-                  Context Summary
-                </div>
-                <div class="wp-context-box" id="memContextBox"   style="display:none;"></div>
-                <div class="wp-empty"        id="memContextEmpty" style="padding:8px 0;">No context summary yet.</div>
+                <div class="aq-mem-hdr" style="margin-top:14px;">Context Summary</div>
+                <div class="aq-context-box" id="memContextBox"   style="display:none;"></div>
+                <div class="aq-empty"        id="memContextEmpty" style="padding:6px 0;">No context summary yet.</div>
 
-                <div class="wp-mem-hdr" style="margin-top:18px;">
-                  Workspace Memory
-                  <span class="wp-mem-hdr-count" id="memWsCount">0 keys</span>
-                </div>
+                <div class="aq-mem-hdr" style="margin-top:14px;">Workspace Memory <span id="memWsCount">0 keys</span></div>
                 <div id="memWsEntries"></div>
               </div>
 
               <!-- Insights -->
-              <div class="wp-right-section" id="rtab-insights">
+              <div class="aq-right-section" id="rtab-insights">
                 <div id="insightList">
-                  <div class="wp-empty" style="padding:32px 0;">Key insights from step outputs will appear here.</div>
+                  <div class="aq-empty">Insights from step outputs appear here.</div>
                 </div>
               </div>
 
@@ -287,17 +1168,16 @@
 
   </div>
 </div>
-</div><!-- /.workspace-page -->
 
 <%- include("partials/footer") %>
 
-<!-- ═══════════════════════════════════════
-     AQUIPLEX WORKSPACE ENGINE
-═══════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════
+     AQUIPLEX WORKSPACE ENGINE — workspace.client.js
+═══════════════════════════════════════════════════ -->
 <script>
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // STATE
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 const STATE = {
   bundle:       null,
   wsMemory:     {},
@@ -306,11 +1186,19 @@ const STATE = {
   loading:      false,
 };
 
-// ═══════════════════════════════════════════
+// EJS-injected bundle list (used for switcher & offline fallback)
+const _ejsBundles = <%- JSON.stringify(bundles || []) %>;
+
+// ────────────────────────────────────────────────────
+// LOADING BAR
+// ────────────────────────────────────────────────────
+function showLoading()  { document.getElementById("aqLoadingBar").classList.add("visible"); }
+function hideLoading()  { document.getElementById("aqLoadingBar").classList.remove("visible"); }
+
+// ────────────────────────────────────────────────────
 // INIT
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 window.addEventListener("DOMContentLoaded", async () => {
-  // FIX: Init bundle switcher before async state fetch
   initBundleSwitcher();
 
   try {
@@ -318,17 +1206,18 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!res.ok) throw new Error("State load failed");
     const data = await res.json();
 
-    STATE.wsMemory  = (data.workspace && data.workspace.workspaceMemory) || {};
-    STATE.pinnedIds = (data.workspace && data.workspace.pinnedBundleIds)  || [];
+    // Normalise workspaceMemory (Mongoose Map serialises as plain object)
+    const rawMem = (data.workspace && data.workspace.workspaceMemory) || {};
+    STATE.wsMemory  = rawMem instanceof Map ? Object.fromEntries(rawMem) : rawMem;
+    STATE.pinnedIds = (data.workspace && data.workspace.pinnedBundles) || [];
 
     renderWsMemory();
 
-    if (data.workspace && data.workspace.recentOutputs && data.workspace.recentOutputs.length) {
-      renderOutputFeed(data.workspace.recentOutputs);
-    }
+    const recentOutputs = data.workspace && data.workspace.recentOutputs;
+    if (recentOutputs && recentOutputs.length) renderOutputFeed(recentOutputs);
 
-    const lastId = data.workspace && data.workspace.lastOpenBundleId;
-    const bundles = data.bundles || [];
+    const lastId  = data.workspace && data.workspace.lastOpenBundleId;
+    const bundles = data.bundles || _ejsBundles;
 
     if (lastId) {
       const b = bundles.find(x => String(x._id) === String(lastId));
@@ -338,72 +1227,75 @@ window.addEventListener("DOMContentLoaded", async () => {
     const active = bundles.find(b => b.status === "active");
     if (active) selectBundle(active);
   } catch (e) {
-    console.warn("[WS] State init failed:", e.message);
+    console.warn("[AQ] State init failed:", e.message);
   }
 });
 
-// ═══════════════════════════════════════════
-// BUNDLE SWITCHER — FIX: instant switch via fetch, no page reload
-// ═══════════════════════════════════════════
-// FIX: bundles array is injected once from EJS, used by switcher and sidebar
-const _ejsBundles = <%- JSON.stringify(bundles || []) %>;
-
+// ────────────────────────────────────────────────────
+// BUNDLE SWITCHER
+// ────────────────────────────────────────────────────
 function initBundleSwitcher() {
-  const switcher = document.getElementById("bundleSwitcher");
-  if (!switcher) return;
+  const sw = document.getElementById("bundleSwitcher");
+  if (!sw) return;
 
-  switcher.innerHTML = _ejsBundles.map(b =>
-    `<option value="${b._id}">${esc(b.title)}</option>`
-  ).join("");
+  sw.innerHTML = '<option value="">Select bundle…</option>' +
+    _ejsBundles.map(b => `<option value="${b._id}">${esc(b.title)}</option>`).join("");
 
-  const saved = localStorage.getItem("activeBundle");
-  if (saved) switcher.value = saved;
+  const saved = localStorage.getItem("aq_activeBundle");
+  if (saved) sw.value = saved;
 
-  // FIX: Use selectBundle via fetch instead of page reload
-  switcher.onchange = () => {
-    const id = switcher.value;
-    localStorage.setItem("activeBundle", id);
-    const found = _ejsBundles.find(b => String(b._id) === String(id));
-    if (found) selectBundle(found);
+  sw.onchange = () => {
+    const id    = sw.value;
+    const found = _ejsBundles.find(b => String(b._id) === id);
+    if (found) {
+      localStorage.setItem("aq_activeBundle", id);
+      selectBundle(found);
+    }
   };
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // TAB SWITCHES
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 function switchLeftTab(tab, btn) {
-  document.querySelectorAll(".workspace-page .wp-sidebar-tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".aq-sidebar-tab").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
   document.getElementById("leftBundleList").style.display = tab === "bundles" ? "" : "none";
   document.getElementById("leftToolList").style.display   = tab === "tools"   ? "" : "none";
 }
 
 function switchRightTab(tab, btn) {
-  document.querySelectorAll(".workspace-page .wp-right-tab").forEach(b => b.classList.remove("active"));
-  document.querySelectorAll(".workspace-page .wp-right-section").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".aq-right-tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".aq-right-section").forEach(s => s.classList.remove("active"));
   btn.classList.add("active");
   const section = document.getElementById("rtab-" + tab);
-  if (section) section.classList.add("active");
+  if (section) {
+    section.classList.add("active");
+    // re-trigger opacity transition
+    section.style.opacity = 0;
+    requestAnimationFrame(() => { section.style.opacity = 1; });
+  }
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // SELECT BUNDLE
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 async function selectBundle(bundle) {
   if (!bundle || !bundle._id) return;
 
-  document.querySelectorAll(".workspace-page .wp-bundle-item").forEach(r => r.classList.remove("selected"));
+  // Highlight sidebar row
+  document.querySelectorAll(".aq-bundle-item").forEach(r => r.classList.remove("selected"));
   const row = document.getElementById("brow-" + bundle._id);
   if (row) row.classList.add("selected");
 
-  // Sync switcher dropdown
-  const switcher = document.getElementById("bundleSwitcher");
-  if (switcher) switcher.value = bundle._id;
-  localStorage.setItem("activeBundle", bundle._id);
+  // Sync dropdown
+  const sw = document.getElementById("bundleSwitcher");
+  if (sw) sw.value = bundle._id;
+  localStorage.setItem("aq_activeBundle", bundle._id);
 
-  // Always fetch fresh state from server
+  // Fetch fresh state
   try {
-    const res  = await fetch("/workspace/bundle/" + bundle._id);
+    const res = await fetch("/workspace/bundle/" + bundle._id);
     if (res.ok) {
       const data = await res.json();
       if (data && data.bundle) bundle = data.bundle;
@@ -411,7 +1303,6 @@ async function selectBundle(bundle) {
   } catch (_) {}
 
   STATE.bundle       = bundle;
-  window.currentBundle = bundle; // ← ADD THIS
   STATE.selectedStep = null;
 
   document.getElementById("wsWelcome").style.display = "none";
@@ -424,9 +1315,9 @@ async function selectBundle(bundle) {
   updatePinBtn(bundle._id);
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // RENDER EXEC PANEL
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 function renderExecPanel(b) {
   const steps    = Array.isArray(b.steps)    ? b.steps    : [];
   const progress = Array.isArray(b.progress) ? b.progress : [];
@@ -436,7 +1327,6 @@ function renderExecPanel(b) {
   const total = steps.length;
   const pct   = total ? Math.round((done / total) * 100) : 0;
 
-  // Compute avg confidence
   const scores = outputs.map(o => o && o.confidenceScore).filter(s => typeof s === "number");
   const avgConf = scores.length
     ? (scores.reduce((a, s) => a + s, 0) / scores.length * 100).toFixed(0) + "%"
@@ -451,76 +1341,69 @@ function renderExecPanel(b) {
   document.getElementById("statConfidence").textContent = avgConf;
   document.getElementById("mainProgressFill").style.width = pct + "%";
 
+  // Button state
   const btnRun    = document.getElementById("btnRun");
   const btnPause  = document.getElementById("btnPause");
   const btnResume = document.getElementById("btnResume");
+  btnRun.style.display = btnPause.style.display = btnResume.style.display = "none";
 
-  btnRun.style.display    = "";
-  btnPause.style.display  = "none";
-  btnResume.style.display = "none";
-
-  if (b.status === "active") {
-    btnRun.style.display   = "none";
-    btnPause.style.display = "";
-  } else if (b.status === "paused") {
-    btnRun.style.display    = "none";
-    btnResume.style.display = "";
-  } else if (b.status === "completed") {
-    btnRun.style.display    = "none";
-  }
+  if      (b.status === "active")    { btnPause.style.display  = ""; }
+  else if (b.status === "paused")    { btnResume.style.display = ""; }
+  else if (b.status === "completed") { /* all hidden */ }
+  else                               { btnRun.style.display    = ""; }
 
   renderTimeline(steps, progress, b.currentStep || 0);
   renderStepCards(steps, progress, outputs, b.currentStep || 0);
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // TIMELINE
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 function renderTimeline(steps, progress, currentStep) {
   const tl = document.getElementById("execTimeline");
-  if (!steps || !steps.length) { tl.innerHTML = ""; return; }
+  if (!steps.length) { tl.innerHTML = ""; return; }
 
   tl.innerHTML = steps.map((step, i) => {
     const prog   = progress.find(p => p && p.step === i);
-    const status = prog ? prog.status : "pending";
-    const dotCls = status === "completed"   ? "tl-done"
-                 : status === "in-progress" ? "tl-running"
-                 : i === currentStep        ? "tl-running"
-                 : "";
-    const icon = status === "completed" ? "✓"
-               : status === "in-progress" ? "…"
-               : (i + 1);
+    const status = prog ? prog.status : (i === currentStep ? "in-progress" : "pending");
 
-    const lineCls   = status === "completed" ? "tl-done" : "";
+    const dotCls = status === "completed"   ? "done"
+                 : status === "in-progress" ? "running"
+                 : i === currentStep        ? "running"
+                 : "";
+    const icon   = status === "completed"   ? "✓"
+                 : status === "in-progress" ? "…"
+                 : (i + 1);
+
+    const lineCls   = status === "completed" ? "done" : "";
     const connector = i < steps.length - 1
-      ? `<div class="wp-tl-line ${lineCls}"></div>` : "";
+      ? `<div class="aq-tl-line ${lineCls}"></div>` : "";
 
     return `
-      <div class="wp-tl-step" title="${esc(step.title || 'Step ' + (i+1))}" onclick="jumpToStep(${i})">
-        <div class="wp-tl-dot ${dotCls}">${icon}</div>
-      </div>${connector}
-    `;
+      <div class="aq-tl-step" title="${esc(step.title || 'Step '+(i+1))}" onclick="jumpToStep(${i})">
+        <div class="aq-tl-dot ${dotCls}">${icon}</div>
+      </div>${connector}`;
   }).join("");
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // STEP CARDS
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 function renderStepCards(steps, progress, outputs, currentStep) {
   const container = document.getElementById("execSteps");
-  if (!steps || !steps.length) {
-    container.innerHTML = `<div class="wp-empty">No steps defined.</div>`;
+  if (!steps.length) {
+    container.innerHTML = `<div class="aq-empty">No steps defined.</div>`;
     return;
   }
 
   container.innerHTML = steps.map((step, i) => {
     const prog   = progress.find(p => p && p.step === i) || {};
-    const status = prog.status || "pending";
+    const status = prog.status || (i === currentStep ? "in-progress" : "pending");
     const output = outputs.find(o => o && o.stepIndex === i);
 
-    const cardCls  = status === "in-progress" ? "sc-running"
-                   : status === "completed"   ? "sc-done"
-                   : i === currentStep        ? "sc-active" : "";
+    const cardCls  = status === "completed"   ? "done"
+                   : status === "in-progress" ? "running"
+                   : i === currentStep        ? "active" : "";
 
     const badgeCls = status === "completed"   ? "wb-done"
                    : status === "in-progress" ? "wb-running"
@@ -532,103 +1415,95 @@ function renderStepCards(steps, progress, outputs, currentStep) {
                    : status === "failed"      ? "FAILED"
                    : "PENDING";
 
-    const numCls   = status === "completed"   ? "sn-done"
-                   : status === "in-progress" ? "sn-running" : "";
-    const numIcon  = status === "completed" ? "✓" : (i + 1);
+    const numCls  = status === "completed"   ? "done"
+                  : status === "in-progress" ? "running" : "";
+    const numIcon = status === "completed" ? "✓" : (i + 1);
 
-    // Resources / tools chips
+    // Resources / tools
     const resources = step.resources || step.tools || [];
     const toolsHtml = resources.length
-      ? `<div class="wp-step-tools">${resources.map(r => {
-          if (typeof r === "string") {
-            return `<span class="wp-tool-chip">🔗 ${esc(r)}</span>`;
-          }
-          return `<a class="wp-tool-chip" href="${esc(r.url||'#')}" target="_blank">🔗 ${esc(r.name||'Tool')}</a>`;
-        }).join("")}</div>`
+      ? `<div class="aq-tool-chips">${resources.map(r =>
+          typeof r === "string"
+            ? `<span class="aq-tool-chip">🔗 ${esc(r)}</span>`
+            : `<a class="aq-tool-chip" href="${esc(r.url||'#')}" target="_blank" rel="noopener">🔗 ${esc(r.name||'Tool')}</a>`
+        ).join("")}</div>`
       : "";
 
+    // Output
     let outputHtml = "";
     if (output && output.content) {
       const confBadge = typeof output.confidenceScore === "number"
-        ? `<span style="font-family:var(--wp-mono);font-size:0.57rem;color:var(--wp-accent2);margin-left:auto;">
-             ${Math.round(output.confidenceScore * 100)}% conf
-           </span>`
+        ? `<span style="font-family:var(--mono);font-size:0.55rem;color:var(--accent2);margin-left:auto;">${Math.round(output.confidenceScore * 100)}% conf</span>`
         : "";
-      const durationBadge = output.durationMs
-        ? `<span style="font-family:var(--wp-mono);font-size:0.57rem;color:var(--wp-muted);margin-left:8px;">
-             ${output.durationMs}ms
-           </span>`
+      const durBadge = output.durationMs
+        ? `<span style="font-family:var(--mono);font-size:0.55rem;color:var(--muted);margin-left:8px;">${output.durationMs}ms</span>`
         : "";
-
       const insights = (output.keyInsights || []).slice(0, 4).map(k =>
-        `<span class="wp-insight-chip">${esc(k)}</span>`
+        `<span class="aq-insight-chip">${esc(k)}</span>`
       ).join("");
 
       outputHtml = `
-        <div class="wp-output-block">
-          <div class="wp-output-hdr">
-            <span class="wp-output-label">⚡ Output</span>
-            ${confBadge}${durationBadge}
-            <div class="wp-output-dot"></div>
+        <div class="aq-output-block">
+          <div class="aq-output-hdr">
+            <span class="aq-output-label">⚡ Output</span>
+            ${confBadge}${durBadge}
+            <div class="aq-output-dot"></div>
           </div>
-          <div class="wp-output-content">${formatOutput(output.content)}</div>
+          <div class="aq-output-content">${formatOutput(output.content)}</div>
         </div>
-        ${insights ? `<div class="wp-step-insights">${insights}</div>` : ""}
-      `;
+        ${insights ? `<div class="aq-insight-chips">${insights}</div>` : ""}`;
     }
 
     const actionHtml = status !== "completed"
-      ? `<button class="wp-step-btn wsb-done"  onclick="event.stopPropagation(); markStepDone(${i})">✅ Mark Done</button>`
-      : `<button class="wp-step-btn wsb-rerun" onclick="event.stopPropagation(); rerunStep(${i})">↺ Re-run</button>`;
+      ? `<button class="aq-step-act-btn done"  onclick="event.stopPropagation();markStepDone(${i})">✅ Mark Done</button>`
+      : `<button class="aq-step-act-btn rerun" onclick="event.stopPropagation();rerunStep(${i})">↺ Re-run</button>`;
 
     const isOpen = i === currentStep || i === STATE.selectedStep;
 
     return `
-      <div class="wp-step-card ${cardCls}" id="scard-${i}">
-        <div class="wp-step-card-hdr" onclick="toggleCard(${i})">
-          <div class="wp-step-num ${numCls}">${numIcon}</div>
-          <div class="wp-step-info">
-            <div class="wp-step-title">${esc(step.title || 'Step ' + (i+1))}</div>
-            <div class="wp-step-desc">${esc(step.description || '')}</div>
+      <div class="aq-step-card ${cardCls}" id="scard-${i}">
+        <div class="aq-step-hdr" onclick="toggleCard(${i})">
+          <div class="aq-step-num ${numCls}">${numIcon}</div>
+          <div class="aq-step-info">
+            <div class="aq-step-title">${esc(step.title || 'Step ' + (i+1))}</div>
+            <div class="aq-step-desc">${esc(step.description || '')}</div>
           </div>
-          <span class="wp-badge ${badgeCls}">${badgeTxt}</span>
-          <span class="wp-step-toggle ${isOpen ? 'open' : ''}">▾</span>
+          <span class="aq-badge ${badgeCls}">${badgeTxt}</span>
+          <span class="aq-step-toggle ${isOpen ? 'open' : ''}">▾</span>
         </div>
-        <div class="wp-step-body ${isOpen ? 'open' : ''}" id="sbody-${i}">
-          ${toolsHtml}
-          ${outputHtml}
-          <div class="wp-step-actions">${actionHtml}</div>
+        <div class="aq-step-body ${isOpen ? 'open' : ''}" id="sbody-${i}">
+          <div class="aq-step-body-inner">
+            ${toolsHtml}
+            ${outputHtml}
+            <div class="aq-step-actions">${actionHtml}</div>
+          </div>
         </div>
-      </div>
-    `;
+      </div>`;
   }).join("");
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // MEMORY PANEL
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 function renderMemoryPanel(b) {
   const mem  = b.memory || {};
-  const keys = mem instanceof Map ? [...mem.keys()] : Object.keys(mem);
+  const keys = Object.keys(mem);
 
   document.getElementById("memBundleCount").textContent = keys.length + " keys";
   document.getElementById("memBundleEntries").innerHTML = keys.length
-    ? keys.map(k => {
-        const val = mem instanceof Map ? mem.get(k) : mem[k];
-        return `
-          <div class="wp-mem-kv">
-            <div class="wp-mem-k">${esc(k)}</div>
-            <div class="wp-mem-v">${esc(String(val || ""))}</div>
-          </div>`;
-      }).join("")
-    : `<div class="wp-empty" style="padding:10px 0;">No bundle memory yet.</div>`;
+    ? keys.map(k => `
+        <div class="aq-mem-kv">
+          <div class="aq-mem-k">${esc(k)}</div>
+          <div class="aq-mem-v">${esc(String(mem[k] ?? ""))}</div>
+        </div>`).join("")
+    : `<div class="aq-empty" style="padding:8px 0;">No bundle memory yet.</div>`;
 
   if (b.contextSummary) {
-    document.getElementById("memContextBox").textContent    = b.contextSummary;
-    document.getElementById("memContextBox").style.display  = "";
+    document.getElementById("memContextBox").textContent     = b.contextSummary;
+    document.getElementById("memContextBox").style.display   = "";
     document.getElementById("memContextEmpty").style.display = "none";
   } else {
-    document.getElementById("memContextBox").style.display  = "none";
+    document.getElementById("memContextBox").style.display   = "none";
     document.getElementById("memContextEmpty").style.display = "";
   }
 
@@ -641,173 +1516,158 @@ function renderWsMemory() {
   document.getElementById("memWsCount").textContent = wsKeys.length + " keys";
   document.getElementById("memWsEntries").innerHTML = wsKeys.length
     ? wsKeys.map(k => `
-        <div class="wp-mem-kv" style="border-left-color:var(--wp-accent3)">
-          <div class="wp-mem-k" style="color:var(--wp-accent3)">${esc(k)}</div>
-          <div class="wp-mem-v">${esc(String(wsM[k] || ""))}</div>
+        <div class="aq-mem-kv" style="border-left-color:var(--accent3)">
+          <div class="aq-mem-k" style="color:var(--accent3)">${esc(k)}</div>
+          <div class="aq-mem-v">${esc(String(wsM[k] ?? ""))}</div>
         </div>`).join("")
-    : `<div class="wp-empty" style="padding:10px 0;">No workspace memory yet.</div>`;
+    : `<div class="aq-empty" style="padding:8px 0;">No workspace memory yet.</div>`;
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // INSIGHTS PANEL
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 function renderInsightPanel(b) {
   const outputs = Array.isArray(b.outputs) ? b.outputs : [];
   const all     = [];
-
   outputs.forEach(o => {
-    (o && o.keyInsights ? o.keyInsights : []).forEach(k => { if (k) all.push({ text: k, confidence: o.confidenceScore || 0 }); });
+    (o && o.keyInsights ? o.keyInsights : []).forEach(k => {
+      if (k) all.push({ text: k, confidence: o.confidenceScore || 0 });
+    });
   });
-
-  // Sort by confidence descending
   all.sort((a, b) => b.confidence - a.confidence);
 
   document.getElementById("insightList").innerHTML = all.length
     ? all.map(({ text, confidence }) => {
         const badge = confidence
-          ? `<span style="font-family:var(--wp-mono);font-size:0.55rem;color:var(--wp-accent2);margin-left:8px;">${Math.round(confidence*100)}%</span>`
+          ? `<span style="font-family:var(--mono);font-size:0.54rem;color:var(--accent2);margin-left:auto;">${Math.round(confidence*100)}%</span>`
           : "";
-        return `<div class="wp-insight-item"><span>${esc(text)}${badge}</span></div>`;
+        return `<div class="aq-insight-item">${esc(text)}${badge}</div>`;
       }).join("")
-    : `<div class="wp-empty" style="padding:32px 0;">Insights from step outputs will appear here.</div>`;
+    : `<div class="aq-empty">Insights from step outputs will appear here.</div>`;
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // OUTPUT FEED
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 function renderOutputFeed(outputs) {
   const feed = document.getElementById("outputFeed");
   if (!outputs || !outputs.length) {
-    feed.innerHTML = `<div class="wp-empty" style="padding:32px 0;">No outputs yet.</div>`;
+    feed.innerHTML = `<div class="aq-empty">No outputs yet.</div>`;
     return;
   }
   feed.innerHTML = outputs.map(o => `
-    <div class="wp-feed-item">
-      <div class="wp-feed-meta">
-        <span class="wp-feed-step">Step ${((o.stepIndex) ?? 0) + 1}${o.stepTitle ? ' · ' + esc(o.stepTitle) : ''}</span>
-        <span class="wp-feed-bundle">${esc(o.bundleTitle || '')}</span>
+    <div class="aq-feed-item">
+      <div class="aq-feed-meta">
+        <span class="aq-feed-step">Step ${(o.stepIndex ?? 0) + 1}${o.stepTitle ? ' · ' + esc(o.stepTitle) : ''}</span>
+        <span class="aq-feed-bundle">${esc(o.bundleTitle || '')}</span>
       </div>
-      <div class="wp-feed-preview">${esc(o.preview || '')}</div>
+      <div class="aq-feed-preview">${esc(o.preview || '')}</div>
     </div>`).join("");
 }
 
 function prependOutputFeed(bundleTitle, stepIndex, stepTitle, content) {
   const feed  = document.getElementById("outputFeed");
-  const empty = feed.querySelector(".wp-empty");
+  const empty = feed.querySelector(".aq-empty");
   if (empty) empty.remove();
 
   const item = document.createElement("div");
-  item.className = "wp-feed-item";
+  item.className = "aq-feed-item";
   item.innerHTML = `
-    <div class="wp-feed-meta">
-      <span class="wp-feed-step">Step ${stepIndex + 1}${stepTitle ? ' · ' + esc(stepTitle) : ''}</span>
-      <span class="wp-feed-bundle">${esc(bundleTitle)}</span>
+    <div class="aq-feed-meta">
+      <span class="aq-feed-step">Step ${stepIndex + 1}${stepTitle ? ' · ' + esc(stepTitle) : ''}</span>
+      <span class="aq-feed-bundle">${esc(bundleTitle)}</span>
     </div>
-    <div class="wp-feed-preview">${esc((content || '').substring(0, 240))}</div>
-  `;
+    <div class="aq-feed-preview">${esc((content || '').substring(0, 240))}</div>`;
   feed.prepend(item);
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // ACTIONS
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 async function runCurrentBundle() {
   const b = STATE.bundle;
   if (!b || STATE.loading) return;
-  STATE.loading = true;
+  STATE.loading = true; showLoading();
 
   try {
     const res  = await fetch("/workspace/run/" + b._id, { method: "POST" });
     const data = await res.json();
-
     if (data.error) { toast(data.error, "error"); return; }
 
     STATE.bundle = data.bundle;
     if (data.workspace && data.workspace.workspaceMemory) {
       STATE.wsMemory = data.workspace.workspaceMemory;
     }
-
     renderExecPanel(data.bundle);
     updateBundleRowDot(b._id, "active");
     toast("Bundle started ▶", "success");
   } catch (e) {
     toast("Failed to run bundle", "error");
     console.error(e);
-  } finally {
-    STATE.loading = false;
-  }
+  } finally { STATE.loading = false; hideLoading(); }
 }
 
 async function pauseCurrentBundle() {
   const b = STATE.bundle;
   if (!b || STATE.loading) return;
-  STATE.loading = true;
+  STATE.loading = true; showLoading();
 
   try {
     const res  = await fetch("/workspace/pause/" + b._id, { method: "POST" });
     const data = await res.json();
-
     if (data.error) { toast(data.error, "error"); return; }
 
-    if (data.bundle) STATE.bundle = data.bundle;
-    else STATE.bundle.status = "paused";
-
-    renderExecPanel(STATE.bundle);
+    const updated = data.bundle || { ...STATE.bundle, status: "paused" };
+    STATE.bundle = updated;
+    renderExecPanel(updated);
     updateBundleRowDot(b._id, "paused");
     toast("Paused ⏸", "info");
   } catch (e) {
     toast("Failed to pause", "error");
-  } finally {
-    STATE.loading = false;
-  }
+  } finally { STATE.loading = false; hideLoading(); }
 }
 
 async function resumeCurrentBundle() {
   const b = STATE.bundle;
   if (!b || STATE.loading) return;
-  STATE.loading = true;
+  STATE.loading = true; showLoading();
 
   try {
     const res  = await fetch("/workspace/resume/" + b._id, { method: "POST" });
     const data = await res.json();
-
     if (data.error) { toast(data.error, "error"); return; }
 
     STATE.bundle = data.bundle;
     if (data.workspace && data.workspace.workspaceMemory) {
       STATE.wsMemory = data.workspace.workspaceMemory;
     }
-
     renderExecPanel(data.bundle);
     updateBundleRowDot(b._id, "active");
     toast("Resumed ▶", "success");
   } catch (e) {
     toast("Failed to resume", "error");
-  } finally {
-    STATE.loading = false;
-  }
+  } finally { STATE.loading = false; hideLoading(); }
 }
 
 async function markStepDone(stepIndex) {
   const b = STATE.bundle;
   if (!b || STATE.loading) return;
-  STATE.loading = true;
+  STATE.loading = true; showLoading();
 
   try {
+    const stepTitle = (b.steps && b.steps[stepIndex] && b.steps[stepIndex].title)
+      || ("Step " + (stepIndex + 1));
+
+    // FIX: correct REST route — /workspace/step/:id/:stepIndex
     const res  = await fetch(`/workspace/step/${b._id}/${stepIndex}`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({
-        title: (b.steps && b.steps[stepIndex] && b.steps[stepIndex].title)
-          || ("Step " + (stepIndex + 1)),
-      }),
+      body:    JSON.stringify({ title: stepTitle }),
     });
     const data = await res.json();
-
     if (data.error) { toast(data.error, "error"); return; }
 
     STATE.bundle = data.bundle;
-
     if (data.workspace && data.workspace.workspaceMemory) {
       STATE.wsMemory = data.workspace.workspaceMemory;
     }
@@ -817,34 +1677,21 @@ async function markStepDone(stepIndex) {
     renderInsightPanel(data.bundle);
     updateBundleRowProgress(b._id, data.bundle);
 
-    // Push new output to feed
     if (data.output) {
-      prependOutputFeed(
-        data.bundle.title || "Bundle",
-        data.output.stepIndex,
-        data.output.stepTitle,
-        data.output.content
-      );
+      prependOutputFeed(data.bundle.title || "Bundle", data.output.stepIndex, data.output.stepTitle, data.output.content);
     }
 
-    if (data.bundle.status === "completed") {
-      toast("🎉 Bundle complete!", "success");
-    } else {
-      toast("Step " + (stepIndex + 1) + " complete ✓", "success");
-    }
+    if (data.bundle.status === "completed") toast("🎉 Bundle complete!", "success");
+    else toast(`Step ${stepIndex + 1} complete ✓`, "success");
   } catch (e) {
     toast("Error marking step", "error");
     console.error(e);
-  } finally {
-    STATE.loading = false;
-  }
+  } finally { STATE.loading = false; hideLoading(); }
 }
 
-async function rerunStep(stepIndex) {
+function rerunStep(stepIndex) {
   const b = STATE.bundle;
   if (!b) return;
-
-  // Optimistic local reset
   if (Array.isArray(b.progress)) {
     const entry = b.progress.find(p => p && p.step === stepIndex);
     if (entry) entry.status = "pending";
@@ -852,124 +1699,111 @@ async function rerunStep(stepIndex) {
   if (Array.isArray(b.outputs)) {
     b.outputs = b.outputs.filter(o => o && o.stepIndex !== stepIndex);
   }
-
   renderExecPanel(b);
-  toast("Step " + (stepIndex + 1) + " reset — mark done to re-run", "info");
+  toast(`Step ${stepIndex + 1} reset — mark done to re-run`, "info");
 }
 
 async function pinCurrentBundle() {
   const b = STATE.bundle;
   if (!b) return;
-  const id = b._id;
+  const id       = b._id;
+  const isPinned = STATE.pinnedIds.some(p => String(p) === String(id));
+  const endpoint = isPinned ? "unpin" : "pin";
 
   try {
-    const isPinned = STATE.pinnedIds.includes(id);
-    const endpoint = isPinned ? "unpin" : "pin";
-    const res      = await fetch(`/workspace/${endpoint}/${id}`, { method: "POST" });
-    const data     = await res.json();
-
+    const res  = await fetch(`/workspace/${endpoint}/${id}`, { method: "POST" });
+    const data = await res.json();
     if (data.pinnedBundleIds) STATE.pinnedIds = data.pinnedBundleIds;
     else if (!isPinned) STATE.pinnedIds.push(id);
-    else STATE.pinnedIds = STATE.pinnedIds.filter(x => x !== id);
-
+    else STATE.pinnedIds = STATE.pinnedIds.filter(x => String(x) !== String(id));
     updatePinBtn(id);
     toast(isPinned ? "Unpinned" : "Pinned ★", isPinned ? "info" : "success");
-  } catch (e) {
+  } catch {
     toast("Pin action failed", "error");
   }
 }
 
-// ═══════════════════════════════════════════
-// DELETE BUNDLE — FIX: fully working with UI refresh
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
+// DELETE BUNDLE
+// FIX: uses correct /bundle/:id DELETE, removes DOM, resets view
+// ────────────────────────────────────────────────────
 async function deleteCurrentBundle() {
-  const switcher = document.getElementById("bundleSwitcher");
-  const id = switcher ? switcher.value : (STATE.bundle && STATE.bundle._id);
+  const sw = document.getElementById("bundleSwitcher");
+  const id = (sw && sw.value) || (STATE.bundle && STATE.bundle._id);
   if (!id) return;
   if (!confirm("Delete this bundle? This cannot be undone.")) return;
-
-  try {
-    const res = await fetch("/bundle/" + id, { method: "DELETE" });
-    if (!res.ok) throw new Error("Delete failed");
-    toast("Bundle deleted", "info");
-    setTimeout(() => { window.location.href = "/bundles"; }, 800);
-  } catch (e) {
-    toast("Failed to delete bundle", "error");
-    console.error(e);
-  }
+  await _doDeleteBundle(id);
 }
 
 async function deleteBundle(id) {
   if (!id) return;
   if (!confirm("Delete this bundle? This cannot be undone.")) return;
+  await _doDeleteBundle(id);
+}
 
+async function _doDeleteBundle(id) {
+  showLoading();
   try {
+    // FIX: correct DELETE endpoint /bundle/:id (bundle controller owns CRUD)
     const res = await fetch("/bundle/" + id, { method: "DELETE" });
-    if (!res.ok) throw new Error("Delete failed");
+    if (!res.ok) throw new Error("Delete failed: " + res.status);
 
-    // Remove from sidebar without full reload
+    // Remove sidebar row
     const row = document.getElementById("brow-" + id);
     if (row) row.remove();
 
-    // If it was the selected bundle, show welcome screen
+    // Remove switcher option
+    const sw  = document.getElementById("bundleSwitcher");
+    if (sw) { const opt = sw.querySelector(`option[value="${id}"]`); if (opt) opt.remove(); }
+
+    // Clear exec view if it was the active bundle
     if (STATE.bundle && String(STATE.bundle._id) === String(id)) {
       STATE.bundle = null;
+      localStorage.removeItem("aq_activeBundle");
       document.getElementById("wsWelcome").style.display = "";
       document.getElementById("wsExec").style.display    = "none";
       updateBreadcrumb("Overview");
-    }
-
-    // Remove from switcher
-    const switcher = document.getElementById("bundleSwitcher");
-    if (switcher) {
-      const opt = switcher.querySelector(`option[value="${id}"]`);
-      if (opt) opt.remove();
     }
 
     toast("Bundle deleted", "info");
   } catch (e) {
     toast("Failed to delete bundle", "error");
     console.error(e);
-  }
+  } finally { hideLoading(); }
 }
 
-// ═══════════════════════════════════════════
-// REMOVE TOOL — FIX: working fetch + DOM removal
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
+// REMOVE TOOL
+// FIX: correct REST route /workspace/tools/:id
+// ────────────────────────────────────────────────────
 async function removeTool(id) {
   if (!id) return;
-  if (!confirm("Remove this tool?")) return;
+  if (!confirm("Remove this tool from your workspace?")) return;
+  showLoading();
 
   try {
-    const res = await fetch("/workspace/tool/" + id, { method: "DELETE" });
-    if (!res.ok) throw new Error("Remove failed");
+    // FIX: was /tool/:id — now /workspace/tools/:id
+    const res = await fetch("/workspace/tools/" + id, { method: "DELETE" });
+    if (!res.ok) throw new Error("Remove failed: " + res.status);
 
-    // Remove from sidebar without full reload
-    const toolList = document.getElementById("leftToolList");
-    if (toolList) {
-      // Find and remove the parent .wp-tool-item that contains this button
-      const allItems = toolList.querySelectorAll(".wp-tool-item");
-      allItems.forEach(item => {
-        const btn = item.querySelector(`button[onclick*="${id}"]`);
-        if (btn) item.remove();
-      });
-    }
+    // FIX: remove by known DOM id trow-<id>
+    const el = document.getElementById("trow-" + id);
+    if (el) el.remove();
 
     toast("Tool removed", "info");
   } catch (e) {
     toast("Failed to remove tool", "error");
     console.error(e);
-  }
+  } finally { hideLoading(); }
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // CARD TOGGLES
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 function toggleCard(idx) {
   const body   = document.getElementById("sbody-"  + idx);
-  const toggle = document.querySelector(`#scard-${idx} .wp-step-toggle`);
+  const toggle = document.querySelector(`#scard-${idx} .aq-step-toggle`);
   if (!body) return;
-
   const isOpen = body.classList.contains("open");
   body.classList.toggle("open",    !isOpen);
   if (toggle) toggle.classList.toggle("open", !isOpen);
@@ -982,33 +1816,52 @@ function jumpToStep(idx) {
   if (card) {
     card.scrollIntoView({ behavior: "smooth", block: "center" });
     const body   = document.getElementById("sbody-"  + idx);
-    const toggle = document.querySelector(`#scard-${idx} .wp-step-toggle`);
+    const toggle = document.querySelector(`#scard-${idx} .aq-step-toggle`);
     if (body)   body.classList.add("open");
     if (toggle) toggle.classList.add("open");
   }
 }
 
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
+// AUTO RUN
+// ────────────────────────────────────────────────────
+async function autoRunSteps() {
+  const b = STATE.bundle;
+  if (!b || !b.steps) { toast("Select a bundle first", "info"); return; }
+  if (!confirm(`Auto-run all ${b.steps.length} steps?`)) return;
+
+  for (let i = 0; i < b.steps.length; i++) {
+    const latest   = STATE.bundle;
+    const progress = Array.isArray(latest.progress) ? latest.progress : [];
+    const prog     = progress.find(p => p && p.step === i);
+    if (prog && prog.status === "completed") continue;
+    await markStepDone(i);
+    await new Promise(r => setTimeout(r, 600));
+  }
+  toast("✅ All steps completed", "success");
+}
+
+// ────────────────────────────────────────────────────
 // DOM HELPERS
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 function updateBreadcrumb(title) {
   document.getElementById("topBreadcrumb").textContent = title || "Bundle";
 }
 
 function updatePinBtn(id) {
   const el = document.getElementById("btnPin");
-  if (el) el.textContent = STATE.pinnedIds.includes(id) ? "★ PINNED" : "☆ PIN";
+  if (el) el.textContent = STATE.pinnedIds.some(p => String(p) === String(id)) ? "★ PINNED" : "☆ PIN";
 }
 
 function updateBundleRowDot(id, status) {
   const row = document.getElementById("brow-" + id);
   if (!row) return;
-  const icon = row.querySelector(".wp-status-icon");
-  if (!icon) return;
-  icon.className = "wp-status-icon " + (
-    status === "active"    ? "wi-active"    :
-    status === "paused"    ? "wi-paused"    :
-    status === "completed" ? "wi-completed" : "wi-draft"
+  const dot = row.querySelector(".aq-dot");
+  if (!dot) return;
+  dot.className = "aq-dot " + (
+    status === "active"    ? "aq-dot-active"    :
+    status === "paused"    ? "aq-dot-paused"    :
+    status === "completed" ? "aq-dot-completed" : "aq-dot-draft"
   );
 }
 
@@ -1019,21 +1872,21 @@ function updateBundleRowProgress(id, bundle) {
   const prog  = Array.isArray(bundle.progress) ? bundle.progress : [];
   const done  = prog.filter(p => p && p.status === "completed").length;
   const pct   = steps.length ? Math.round((done / steps.length) * 100) : 0;
-  const fill  = row.querySelector(".wp-bundle-prog-fill");
-  const pctEl = row.querySelector(".wp-bundle-pct");
-  if (fill)  fill.style.width      = pct + "%";
-  if (pctEl) pctEl.textContent     = pct + "%";
+  const fill  = row.querySelector(".aq-bundle-fill");
+  const pctEl = row.querySelector(".aq-bundle-pct");
+  if (fill)  fill.style.width  = pct + "%";
+  if (pctEl) pctEl.textContent = pct + "%";
   updateBundleRowDot(id, bundle.status);
 }
 
 function launchTool(url) {
   if (!url) return;
   if (!url.startsWith("http")) url = "https://" + url;
-  window.open(url, "_blank", "noopener");
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 function esc(str) {
-  if (str === null || str === undefined) return "";
+  if (str == null) return "";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -1045,161 +1898,125 @@ function formatOutput(text) {
   if (!text) return "";
   return esc(text)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/^## (.+)$/gm,    '<span style="font-size:0.9rem;font-weight:700;color:var(--wp-bright);display:block;margin-bottom:4px;">$1</span>')
+    .replace(/^## (.+)$/gm,    '<span style="font-size:0.88rem;font-weight:700;color:var(--bright);display:block;margin:6px 0 3px;">$1</span>')
     .replace(/^- (.+)$/gm,     '<span style="display:block;padding-left:12px;">• $1</span>')
-    .replace(/`([^`]+)`/g,     `<code style="background:var(--wp-bg);padding:1px 6px;border-radius:4px;font-family:var(--wp-mono);font-size:0.83em;">$1</code>`)
+    .replace(/`([^`]+)`/g,     '<code style="background:var(--bg);padding:1px 5px;border-radius:3px;font-family:var(--mono);font-size:0.82em;">$1</code>')
     .replace(/\n/g, "<br/>");
 }
 
-// ═══════════════════════════════════════════
-// NAV
-// ═══════════════════════════════════════════
-function goToBundles() {
-  window.location.href = "/bundles";
-}
-
-// ═══════════════════════════════════════════
+// ────────────────────────────────────────────────────
 // TOAST
-// ═══════════════════════════════════════════
-let _toastTimer;
+// ────────────────────────────────────────────────────
 function toast(msg, type = "info") {
-  clearTimeout(_toastTimer);
-  document.querySelectorAll(".workspace-page .wp-toast").forEach(e => e.remove());
-  const el = document.createElement("div");
-  el.className = `wp-toast wt-${type}`;
+  const root = document.getElementById("aq-toast-root");
+  const el   = document.createElement("div");
+  el.className   = `aq-toast ${type}`;
   el.textContent = msg;
-  const page = document.querySelector(".workspace-page");
-  if (page) page.appendChild(el);
-  _toastTimer = setTimeout(() => el.remove(), 3200);
+  root.appendChild(el);
+
+  setTimeout(() => {
+    el.classList.add("fadeout");
+    setTimeout(() => el.remove(), 320);
+  }, 3000);
 }
-  // ═══════════════════════════════════════════
-  // REALTIME SYNC (GOD MODE)
-  // ═══════════════════════════════════════════
-  let socket;
 
-  function initRealtime() {
-    try {
-      socket = io();
+// ────────────────────────────────────────────────────
+// COMMAND PALETTE
+// ────────────────────────────────────────────────────
+const PALETTE_COMMANDS = [
+  { label: "▶ Run Bundle",        hint: "R",  action: () => runCurrentBundle() },
+  { label: "⏸ Pause Bundle",      hint: "P",  action: () => pauseCurrentBundle() },
+  { label: "↺ Resume Bundle",     hint: "RS", action: () => resumeCurrentBundle() },
+  { label: "⚡ Auto-run All Steps",hint: "A",  action: () => autoRunSteps() },
+  { label: "☆ Pin / Unpin",       hint: "PI", action: () => pinCurrentBundle() },
+  { label: "⌫ Delete Bundle",     hint: "D",  action: () => deleteCurrentBundle() },
+  { label: "← Go to Bundles",     hint: "B",  action: () => { window.location.href = "/bundles"; } },
+];
 
-      socket.on("connect", () => {
-        console.log("⚡ Realtime connected");
-      });
+function openPalette() {
+  document.getElementById("aqPalette").classList.add("open");
+  document.getElementById("aqPaletteInput").value = "";
+  renderPaletteList(PALETTE_COMMANDS);
+  document.getElementById("aqPaletteInput").focus();
+}
 
-      socket.on("bundle:update", (data) => {
-        if (!STATE.bundle) return;
-        if (String(data.bundleId) !== String(STATE.bundle._id)) return;
+function closePalette(e) {
+  if (e && e.target !== document.getElementById("aqPalette")) return;
+  document.getElementById("aqPalette").classList.remove("open");
+}
 
-        // Refetch latest bundle state
-        fetch("/workspace/bundle/" + STATE.bundle._id)
-          .then(res => res.json())
-          .then(d => {
-            if (d.bundle) {
-              STATE.bundle = d.bundle;
-              renderExecPanel(d.bundle);
-              renderMemoryPanel(d.bundle);
-              renderInsightPanel(d.bundle);
-            }
-          });
-      });
+function renderPaletteList(cmds) {
+  document.getElementById("aqPaletteList").innerHTML = cmds.map((c, i) => `
+    <div class="aq-palette-cmd" onclick="runPaletteCmd(${i}_cmds)">
+      ${esc(c.label)}
+      <span class="key">${esc(c.hint)}</span>
+    </div>`).join("");
 
-    } catch (e) {
-      console.warn("Realtime init failed");
-    }
-  }
-
-  // call it
-  initRealtime();
-  // ═══════════════════════════════════════════
-  // AUTO REFRESH FALLBACK
-  // ═══════════════════════════════════════════
-  setInterval(async () => {
-    if (!STATE.bundle || STATE.loading) return;
-
-    try {
-      const res = await fetch("/workspace/bundle/" + STATE.bundle._id);
-      const data = await res.json();
-
-      if (data.bundle) {
-        STATE.bundle = data.bundle;
-        renderExecPanel(data.bundle);
-      }
-    } catch {}
-  }, 8000);
-  // ═══════════════════════════════════════════
-  // COMMAND PALETTE (CTRL + K)
-  // ═══════════════════════════════════════════
-  document.addEventListener("keydown", (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-      e.preventDefault();
-      openCommandPalette();
-    }
+  // re-bind with closure
+  document.querySelectorAll(".aq-palette-cmd").forEach((el, i) => {
+    el.onclick = () => { cmds[i].action(); document.getElementById("aqPalette").classList.remove("open"); };
   });
+}
 
-  function openCommandPalette() {
-    const cmd = prompt(
-  `⚡ COMMANDS:
-  1. run
-  2. pause
-  3. resume
-  4. delete
+function filterPalette(val) {
+  const lower = val.toLowerCase();
+  const filtered = PALETTE_COMMANDS.filter(c => c.label.toLowerCase().includes(lower));
+  renderPaletteList(filtered);
+}
 
-  Type command:`);
+function paletteKeydown(e) {
+  if (e.key === "Escape") document.getElementById("aqPalette").classList.remove("open");
+}
 
-    if (!cmd) return;
-
-    const b = STATE.bundle;
-    if (!b) return;
-
-    if (cmd === "run") runCurrentBundle();
-    if (cmd === "pause") pauseCurrentBundle();
-    if (cmd === "resume") resumeCurrentBundle();
-    if (cmd === "delete") deleteCurrentBundle();
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    openPalette();
   }
-  // ═══════════════════════════════════════════
-  // AUTO STEP EXECUTION
-  // ═══════════════════════════════════════════
-  async function autoRunSteps() {
-    const b = STATE.bundle;
-    if (!b || !b.steps) return;
-
-    for (let i = 0; i < b.steps.length; i++) {
-
-      const latest = STATE.bundle; // always fresh state
-      const progress = Array.isArray(latest.progress) ? latest.progress : [];
-      const prog = progress.find(p => p && p.step === i);
-
-      if (prog && prog.status === "completed") continue;
-
-      await markStepDone(i);
-
-      // small delay so UI updates smoothly
-      await new Promise(r => setTimeout(r, 800));
-    }
-
-    toast("✅ All steps completed", "success");
+  if (e.key === "Escape") {
+    document.getElementById("aqPalette").classList.remove("open");
   }
-  
- 
-  document.getElementById("copilot").onclick = async () => {
-    const input = prompt("Ask AI about this bundle:");
+});
 
-    if (!input) return;
-
-    const res = await fetch("/chat", {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({
-        message: input,
-        history: [],
-      })
+// ────────────────────────────────────────────────────
+// REALTIME (socket.io)
+// ────────────────────────────────────────────────────
+(function initRealtime() {
+  if (typeof io === "undefined") return;
+  try {
+    const socket = io();
+    socket.on("bundle:update", data => {
+      if (!STATE.bundle) return;
+      if (String(data.bundleId) !== String(STATE.bundle._id)) return;
+      fetch("/workspace/bundle/" + STATE.bundle._id)
+        .then(r => r.json())
+        .then(d => {
+          if (d.bundle) {
+            STATE.bundle = d.bundle;
+            renderExecPanel(d.bundle);
+            renderMemoryPanel(d.bundle);
+            renderInsightPanel(d.bundle);
+          }
+        }).catch(() => {});
     });
+  } catch { /* socket.io not configured */ }
+})();
 
+// ────────────────────────────────────────────────────
+// POLLING FALLBACK (every 10s)
+// ────────────────────────────────────────────────────
+setInterval(async () => {
+  if (!STATE.bundle || STATE.loading) return;
+  try {
+    const res  = await fetch("/workspace/bundle/" + STATE.bundle._id);
     const data = await res.json();
-    alert(data.reply);
-  };
-  
+    if (data.bundle) {
+      STATE.bundle = data.bundle;
+      renderExecPanel(data.bundle);
+    }
+  } catch {}
+}, 10000);
 </script>
-  
- 
+
 </body>
 </html>
