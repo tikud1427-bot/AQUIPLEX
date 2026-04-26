@@ -16,24 +16,7 @@
    overflow must be HIDDEN during both open AND close.
    We use data-state="open|closed" as source of truth.
 ═══════════════════════════════════════════════════════ */
-  /* 🔥 FIX: Make steps clickable on desktop */
-  .aq-steps-panel {
-    position: relative;
-    z-index: 10;
-  }
-
-  .aq-step-card {
-    position: relative;
-    z-index: 11;
-  }
-
-  .aq-step-hdr {
-    position: relative;
-    z-index: 12;
-    cursor: pointer;
-  }
-  
-  .aq-step-body {
+.aq-step-body {
   max-height: 0;
   overflow: hidden;
   /* Smooth, natural easing for expand/collapse */
@@ -78,8 +61,269 @@
 
 /* Loading bar */
 .aq-loading-bar { transition: opacity 0.2s ease; }
- 
-  
+
+/* ═══ SITE BUILDER STYLES ═══════════════════════════════════════════════════ */
+.aq-site-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 6px;
+  border-bottom: 1px solid #1e293b;
+}
+.aq-site-list-title { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; color: #64748b; text-transform: uppercase; }
+
+/* Sidebar site item rows */
+.aq-site-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid #0f172a;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.15s;
+}
+.aq-site-item:hover { background: #0f172a; }
+.aq-site-item.active { background: #1e293b; }
+.aq-site-item-icon { font-size: 1rem; flex-shrink: 0; }
+.aq-site-item-info { flex: 1; min-width: 0; }
+.aq-site-item-name { font-size: 0.78rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.aq-site-item-meta { font-size: 0.62rem; color: #475569; margin-top: 2px; }
+.aq-site-item-del { background: none; border: none; color: #475569; cursor: pointer; padding: 4px; font-size: 0.8rem; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+.aq-site-item:hover .aq-site-item-del { opacity: 1; }
+.aq-site-item-del:hover { color: #f87171; }
+
+/* Site Builder Panel */
+.aq-site-builder {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  background: #020617;
+}
+.aq-sb-header {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.aq-sb-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.aq-sb-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  letter-spacing: -0.01em;
+}
+.aq-sb-subtitle {
+  font-size: 0.7rem;
+  color: #475569;
+  margin-top: 2px;
+  font-family: 'IBM Plex Mono', monospace;
+}
+.aq-sb-generate-bar,
+.aq-sb-edit-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.aq-sb-input {
+  flex: 1;
+  padding: 10px 14px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: 0.84rem;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: inherit;
+}
+.aq-sb-input:focus { border-color: #38bdf8; }
+.aq-sb-input::placeholder { color: #334155; }
+.aq-sb-file-select {
+  padding: 9px 10px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  outline: none;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  min-width: 100px;
+}
+.aq-btn-run {
+  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  color: #fff;
+  border: none;
+  white-space: nowrap;
+}
+.aq-btn-run:hover { opacity: 0.88; }
+.aq-btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Body: file tree + preview */
+.aq-sb-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+.aq-sb-filetree {
+  width: 180px;
+  flex-shrink: 0;
+  border-right: 1px solid #1e293b;
+  overflow-y: auto;
+  background: #050e1a;
+}
+.aq-sb-filetree-header {
+  padding: 8px 12px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #334155;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.aq-sb-file-item {
+  padding: 8px 12px;
+  font-size: 0.75rem;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #94a3b8;
+  cursor: pointer;
+  border-bottom: 1px solid #0a1628;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aq-sb-file-item:hover { background: #0f172a; color: #e2e8f0; }
+.aq-sb-file-item.active { background: #1e293b; color: #38bdf8; }
+.aq-sb-file-icon { font-size: 0.8rem; flex-shrink: 0; }
+
+/* Preview panel */
+.aq-sb-preview-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+.aq-sb-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: #0a1628;
+  border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
+}
+.aq-sb-preview-dots {
+  display: flex;
+  gap: 5px;
+}
+.aq-sb-preview-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.aq-sb-preview-url {
+  flex: 1;
+  font-size: 0.72rem;
+  font-family: 'IBM Plex Mono', monospace;
+  color: #475569;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.aq-sb-iframe-wrap {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+.aq-sb-iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+}
+.aq-sb-preview-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(2,6,23,0.92);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+/* Empty state */
+.aq-sb-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+  text-align: center;
+}
+.aq-sb-empty-icon {
+  font-size: 2.5rem;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+.aq-sb-empty-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 8px;
+}
+.aq-sb-empty-sub {
+  font-size: 0.82rem;
+  color: #475569;
+  max-width: 360px;
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+.aq-sb-empty-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+.aq-sb-empty-examples span {
+  padding: 6px 14px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.aq-sb-empty-examples span:hover {
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+/* Generating overlay spinner animation (reuse aq-spin) */
+@keyframes aq-spin { to { transform: rotate(360deg); } }
+
 </style>
 </head>
 <body>
@@ -173,6 +417,7 @@
       <div class="aq-sidebar-tabs">
         <button class="aq-sidebar-tab active" onclick="switchLeftTab('bundles', this)">BUNDLES</button>
         <button class="aq-sidebar-tab"        onclick="switchLeftTab('tools',   this)">TOOLS</button>
+        <button class="aq-sidebar-tab"        onclick="switchLeftTab('sites',   this)">SITES</button>
       </div>
 
       <!-- BUNDLES LIST -->
@@ -243,10 +488,94 @@
           </div>
         <% } %>
       </div>
+      <!-- SITES LIST -->
+      <div class="aq-sidebar-list" id="leftSiteList" style="display:none;">
+        <div class="aq-site-list-header">
+          <span class="aq-site-list-title">AI Site Projects</span>
+          <button class="aq-btn aq-btn-sm" onclick="openSiteBuilder()" style="font-size:0.65rem;padding:4px 10px;">+ NEW</button>
+        </div>
+        <div id="sidebarSiteItems">
+          <div class="aq-empty" style="margin-top:8px;">
+            <span class="aq-empty-icon">&#127760;</span>
+            No sites yet.<br/>
+            <button onclick="openSiteBuilder()" style="background:none;border:none;color:#38bdf8;cursor:pointer;font-size:0.8rem;margin-top:6px;">Build one &#8594;</button>
+          </div>
+        </div>
+      </div>
     </div><!-- /aq-sidebar -->
 
     <!-- MAIN -->
     <div class="aq-main">
+
+      <!-- SITE BUILDER PANEL -->
+      <div class="aq-site-builder" id="wsSiteBuilder" style="display:none;">
+        <div class="aq-sb-header">
+          <div class="aq-sb-title-row">
+            <div>
+              <div class="aq-sb-title">&#127760; AI Site Builder</div>
+              <div class="aq-sb-subtitle" id="sbProjectName">No project loaded</div>
+            </div>
+            <div class="aq-sb-actions">
+              <button class="aq-btn aq-btn-sm" onclick="closeSiteBuilder()" title="Back to bundles">&#10005; CLOSE</button>
+            </div>
+          </div>
+          <div class="aq-sb-generate-bar" id="sbGenerateBar">
+            <input class="aq-sb-input" id="sbPromptInput"
+                   placeholder="Describe the website you want to build&#8230; e.g. &#39;A portfolio for a UX designer&#39;"
+                   onkeydown="if(event.key===&#39;Enter&#39;)generateSite()"/>
+            <button class="aq-btn aq-btn-run" id="sbGenerateBtn" onclick="generateSite()">
+              <span id="sbGenerateBtnText">&#9889; BUILD SITE</span>
+            </button>
+          </div>
+          <div class="aq-sb-edit-bar" id="sbEditBar" style="display:none;">
+            <input class="aq-sb-input" id="sbCommandInput"
+                   placeholder="Command: &#39;Change background to black&#39;, &#39;Add a contact form&#39;&#8230;"
+                   onkeydown="if(event.key===&#39;Enter&#39;)editSite()"/>
+            <select class="aq-sb-file-select" id="sbFileSelect" title="File to edit"></select>
+            <button class="aq-btn aq-btn-sm" id="sbEditBtn" onclick="editSite()">
+              <span id="sbEditBtnText">&#9998; EDIT</span>
+            </button>
+          </div>
+        </div>
+        <div class="aq-sb-body" id="sbBody" style="display:none;">
+          <div class="aq-sb-filetree">
+            <div class="aq-sb-filetree-header">
+              <span>FILES</span>
+              <span id="sbFileCount" style="color:#64748b;font-size:0.65rem;"></span>
+            </div>
+            <div class="aq-sb-filetree-list" id="sbFileList"></div>
+          </div>
+          <div class="aq-sb-preview-panel">
+            <div class="aq-sb-preview-header">
+              <div class="aq-sb-preview-dots">
+                <span style="background:#ff5f57;"></span>
+                <span style="background:#ffbd2e;"></span>
+                <span style="background:#28c940;"></span>
+              </div>
+              <div class="aq-sb-preview-url" id="sbPreviewUrl"></div>
+              <button class="aq-btn aq-btn-sm" onclick="refreshPreview()" title="Reload preview" style="padding:3px 9px;font-size:0.65rem;">&#8635;</button>
+            </div>
+            <div class="aq-sb-iframe-wrap">
+              <iframe id="sbPreviewFrame" class="aq-sb-iframe" sandbox="allow-scripts allow-same-origin" title="Site Preview"></iframe>
+              <div class="aq-sb-preview-loading" id="sbPreviewLoading" style="display:none;">
+                <div class="aq-spinner"></div>
+                <span>Generating site&#8230;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="aq-sb-empty" id="sbEmpty">
+          <div class="aq-sb-empty-icon">&#127760;</div>
+          <div class="aq-sb-empty-title">AI Website Execution Engine</div>
+          <div class="aq-sb-empty-sub">Describe a website above and Aqua AI will generate, write, and run it live.</div>
+          <div class="aq-sb-empty-examples">
+            <span onclick="setSbPrompt(&#39;A stunning portfolio for a UI/UX designer&#39;)">&#10022; UI/UX Portfolio</span>
+            <span onclick="setSbPrompt(&#39;A SaaS landing page for an AI writing tool&#39;)">&#10022; SaaS Landing Page</span>
+            <span onclick="setSbPrompt(&#39;A minimal blog for a travel photographer&#39;)">&#10022; Travel Blog</span>
+            <span onclick="setSbPrompt(&#39;A dark-themed personal resume website&#39;)">&#10022; Resume Site</span>
+          </div>
+        </div>
+      </div><!-- /wsSiteBuilder -->
 
       <!-- WELCOME STATE -->
       <div class="aq-welcome" id="wsWelcome">
@@ -913,17 +1242,16 @@ function renderStepCards(steps, progress, outputs, currentStep) {
    - On close: snap max-height back to px first, then animate to 0
      This is needed because max-height=none cannot animate to 0
 ═══════════════════════════════════════════════════════ */
-  function toggleCard(idx) {
-    console.log("CLICK WORKING → step:", idx);
-
-    if (STATE.openSteps.has(idx)) {
-      _closeCard(idx);
-    } else {
-      const others = Array.from(STATE.openSteps).filter(i => i !== idx);
-      others.forEach(i => _closeCard(i));
-      _openCard(idx, true);
-    }
+function toggleCard(idx) {
+  if (STATE.openSteps.has(idx)) {
+    _closeCard(idx);
+  } else {
+    // Close all other open cards first (single-open accordion)
+    const others = Array.from(STATE.openSteps).filter(i => i !== idx);
+    others.forEach(i => _closeCard(i));
+    _openCard(idx, /* animate= */ true);
   }
+}
 
 function _openCard(idx, animate = true) {
   const body   = document.getElementById("sbody-" + idx);
@@ -1642,6 +1970,327 @@ setInterval(async () => {
     }
   } catch {}
 }, 10000);
+
+/* ═══════════════════════════════════════════════════════
+   SITE BUILDER ENGINE
+   State, API calls, and UI management for the AI website
+   execution engine embedded inside the workspace.
+═══════════════════════════════════════════════════════ */
+
+const SB = {
+  projectId:   null,   // current project UUID
+  projectName: null,   // display name
+  files:       [],     // list of filenames
+  activeFile:  null,   // currently previewed file
+  busy:        false,  // prevent concurrent AI calls
+};
+
+// ── Open / Close ──────────────────────────────────────────────────────────────
+
+function openSiteBuilder() {
+  // Switch sidebar to SITES tab
+  document.querySelectorAll(".aq-sidebar-tab").forEach(t => t.classList.remove("active"));
+  const sitesTab = Array.from(document.querySelectorAll(".aq-sidebar-tab")).find(t => t.textContent.trim() === "SITES");
+  if (sitesTab) sitesTab.classList.add("active");
+  switchLeftTab("sites", sitesTab);
+
+  // Show site builder, hide others
+  document.getElementById("wsWelcome").style.display     = "none";
+  document.getElementById("wsLoading").style.display     = "none";
+  document.getElementById("wsExec").style.display        = "none";
+  document.getElementById("wsError").style.display       = "none";
+  document.getElementById("wsSiteBuilder").style.display = "flex";
+}
+
+function closeSiteBuilder() {
+  document.getElementById("wsSiteBuilder").style.display = "none";
+  showWelcome();
+}
+
+// ── Sidebar: left tab switch override ────────────────────────────────────────
+// Patch switchLeftTab to handle the new "sites" tab
+
+const _originalSwitchLeftTab = typeof switchLeftTab === "function" ? switchLeftTab : null;
+function switchLeftTab(tab, btn) {
+  // Update tab button active states
+  document.querySelectorAll(".aq-sidebar-tab").forEach(t => t.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+
+  // Hide/show sidebar panels
+  const bundleList = document.getElementById("leftBundleList");
+  const toolList   = document.getElementById("leftToolList");
+  const siteList   = document.getElementById("leftSiteList");
+
+  if (bundleList) bundleList.style.display = tab === "bundles" ? "" : "none";
+  if (toolList)   toolList.style.display   = tab === "tools"   ? "" : "none";
+  if (siteList)   siteList.style.display   = tab === "sites"   ? "" : "none";
+}
+
+// ── Load project list into sidebar ───────────────────────────────────────────
+
+async function loadSiteList() {
+  try {
+    const res  = await fetch("/workspace/project/list");
+    const data = await res.json();
+    if (!data.success) return;
+
+    const container = document.getElementById("sidebarSiteItems");
+    if (!data.projects || data.projects.length === 0) {
+      container.innerHTML = `<div class="aq-empty" style="margin-top:8px;">
+        <span class="aq-empty-icon">&#127760;</span>
+        No sites yet.<br/>
+        <button onclick="openSiteBuilder()" style="background:none;border:none;color:#38bdf8;cursor:pointer;font-size:0.8rem;margin-top:6px;">Build one &#8594;</button>
+      </div>`;
+      return;
+    }
+
+    container.innerHTML = data.projects.map(p => `
+      <div class="aq-site-item ${SB.projectId === p.projectId ? 'active' : ''}"
+           id="srow-${p.projectId}"
+           onclick="loadExistingProject('${p.projectId}', '${esc(p.name)}')">
+        <span class="aq-site-item-icon">&#127760;</span>
+        <div class="aq-site-item-info">
+          <div class="aq-site-item-name">${esc(p.name)}</div>
+          <div class="aq-site-item-meta">${p.files.length} file${p.files.length !== 1 ? 's' : ''}</div>
+        </div>
+        <button class="aq-site-item-del" onclick="event.stopPropagation();deleteSite('${p.projectId}')" title="Delete">&#10005;</button>
+      </div>`).join("");
+  } catch (err) {
+    console.warn("[SB] loadSiteList:", err.message);
+  }
+}
+
+// ── Load an existing project into the builder ─────────────────────────────────
+
+async function loadExistingProject(projectId, name) {
+  openSiteBuilder();
+
+  SB.projectId   = projectId;
+  SB.projectName = name;
+  document.getElementById("sbProjectName").textContent = name;
+
+  try {
+    const res  = await fetch(`/workspace/project/${projectId}/files`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    SB.files = data.files;
+    renderFileTree(data.files);
+    showEditBar();
+    // Load index.html by default
+    const indexFile = data.files.find(f => f === "index.html") || data.files[0];
+    if (indexFile) loadFilePreview(indexFile);
+    // Highlight sidebar row
+    document.querySelectorAll(".aq-site-item").forEach(el => el.classList.remove("active"));
+    const row = document.getElementById("srow-" + projectId);
+    if (row) row.classList.add("active");
+  } catch (err) {
+    toast("Failed to load project: " + err.message, "error");
+  }
+}
+
+// ── Generate a new site ───────────────────────────────────────────────────────
+
+async function generateSite() {
+  if (SB.busy) return;
+  const prompt = document.getElementById("sbPromptInput").value.trim();
+  if (!prompt) { toast("Please describe the website first", "error"); return; }
+
+  SB.busy = true;
+  setBtnLoading("sbGenerateBtn", "sbGenerateBtnText", "&#9889; Generating&#8230;", true);
+  showGeneratingOverlay(true);
+  document.getElementById("sbEmpty").style.display = "none";
+
+  try {
+    // 1. Create project
+    const name      = prompt.slice(0, 40);
+    const createRes = await fetch("/workspace/project/create", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ name }),
+    });
+    const createData = await createRes.json();
+    if (!createData.success) throw new Error(createData.error);
+
+    SB.projectId   = createData.projectId;
+    SB.projectName = createData.name;
+    document.getElementById("sbProjectName").textContent = createData.name;
+
+    // 2. Generate files
+    const genRes = await fetch("/workspace/project/generate", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ projectId: SB.projectId, prompt }),
+    });
+    const genData = await genRes.json();
+    if (!genData.success) throw new Error(genData.error);
+
+    SB.files = genData.files;
+    renderFileTree(genData.files);
+    showEditBar();
+    loadFilePreview("index.html");
+    showGeneratingOverlay(false);
+    document.getElementById("sbBody").style.display = "flex";
+
+    // Refresh sidebar
+    await loadSiteList();
+    toast("Site generated! (" + genData.files.length + " files)", "success");
+
+  } catch (err) {
+    showGeneratingOverlay(false);
+    document.getElementById("sbEmpty").style.display = "flex";
+    toast("Generation failed: " + err.message, "error");
+  } finally {
+    SB.busy = false;
+    setBtnLoading("sbGenerateBtn", "sbGenerateBtnText", "&#9889; BUILD SITE", false);
+  }
+}
+
+// ── Edit the site via natural language ────────────────────────────────────────
+
+async function editSite() {
+  if (SB.busy || !SB.projectId) return;
+  const command  = document.getElementById("sbCommandInput").value.trim();
+  const filename = document.getElementById("sbFileSelect").value || "index.html";
+  if (!command) { toast("Please enter an edit command", "error"); return; }
+
+  SB.busy = true;
+  setBtnLoading("sbEditBtn", "sbEditBtnText", "Editing&#8230;", true);
+  showGeneratingOverlay(true);
+
+  try {
+    const res = await fetch("/workspace/project/edit", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ projectId: SB.projectId, command, filename }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+
+    // Reload the preview
+    loadFilePreview(filename);
+    document.getElementById("sbCommandInput").value = "";
+    toast("Edit applied to " + filename, "success");
+
+  } catch (err) {
+    toast("Edit failed: " + err.message, "error");
+  } finally {
+    SB.busy = false;
+    showGeneratingOverlay(false);
+    setBtnLoading("sbEditBtn", "sbEditBtnText", "&#9998; EDIT", false);
+  }
+}
+
+// ── Delete a site project ─────────────────────────────────────────────────────
+
+async function deleteSite(projectId) {
+  const confirmed = await showConfirm("Delete Site", "This will permanently delete the project and all its files.", "Delete");
+  if (!confirmed) return;
+  try {
+    const res = await fetch(`/workspace/project/${projectId}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    if (SB.projectId === projectId) {
+      SB.projectId = null;
+      SB.files = [];
+      document.getElementById("sbBody").style.display  = "none";
+      document.getElementById("sbEmpty").style.display = "flex";
+      document.getElementById("sbEditBar").style.display    = "none";
+      document.getElementById("sbGenerateBar").style.display = "";
+      document.getElementById("sbProjectName").textContent  = "No project loaded";
+      document.getElementById("sbPreviewFrame").src = "about:blank";
+    }
+    await loadSiteList();
+    toast("Project deleted", "success");
+  } catch (err) {
+    toast("Delete failed: " + err.message, "error");
+  }
+}
+
+// ── Preview helpers ───────────────────────────────────────────────────────────
+
+function loadFilePreview(filename) {
+  if (!SB.projectId || !filename) return;
+  SB.activeFile = filename;
+
+  const url   = `/workspace/project/${SB.projectId}/${filename}`;
+  const frame = document.getElementById("sbPreviewFrame");
+  const urlEl = document.getElementById("sbPreviewUrl");
+
+  frame.src = url + "?v=" + Date.now(); // cache bust
+  if (urlEl) urlEl.textContent = url;
+
+  // Highlight active file in tree
+  document.querySelectorAll(".aq-sb-file-item").forEach(el => {
+    el.classList.toggle("active", el.dataset.filename === filename);
+  });
+
+  // Update file select
+  const sel = document.getElementById("sbFileSelect");
+  if (sel) sel.value = filename;
+}
+
+function refreshPreview() {
+  if (SB.activeFile) loadFilePreview(SB.activeFile);
+}
+
+// ── File tree rendering ───────────────────────────────────────────────────────
+
+function renderFileTree(files) {
+  const list = document.getElementById("sbFileList");
+  const cnt  = document.getElementById("sbFileCount");
+  if (cnt) cnt.textContent = files.length + " files";
+
+  const iconMap = { ".html": "&#128196;", ".css": "&#127912;", ".js": "&#9881;", ".json": "&#128202;", ".svg": "&#128444;", ".png": "&#128444;", ".jpg": "&#128444;" };
+  const ext = f => { const i = f.lastIndexOf("."); return i !== -1 ? f.slice(i) : ""; };
+
+  list.innerHTML = files.map(f => `
+    <div class="aq-sb-file-item ${f === SB.activeFile ? 'active' : ''}"
+         data-filename="${esc(f)}"
+         onclick="loadFilePreview('${esc(f)}')">
+      <span class="aq-sb-file-icon">${iconMap[ext(f)] || "&#128196;"}</span>
+      ${esc(f)}
+    </div>`).join("");
+
+  // Sync select dropdown
+  const sel = document.getElementById("sbFileSelect");
+  if (sel) {
+    sel.innerHTML = files.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join("");
+    if (SB.activeFile) sel.value = SB.activeFile;
+  }
+}
+
+// ── UI state helpers ──────────────────────────────────────────────────────────
+
+function showEditBar() {
+  document.getElementById("sbGenerateBar").style.display = "none";
+  document.getElementById("sbEditBar").style.display     = "";
+  document.getElementById("sbBody").style.display        = "flex";
+  document.getElementById("sbEmpty").style.display       = "none";
+}
+
+function showGeneratingOverlay(show) {
+  const el = document.getElementById("sbPreviewLoading");
+  if (el) el.style.display = show ? "flex" : "none";
+}
+
+function setBtnLoading(btnId, textId, label, disabled) {
+  const btn  = document.getElementById(btnId);
+  const span = document.getElementById(textId);
+  if (btn)  btn.disabled      = disabled;
+  if (span) span.innerHTML    = label;
+}
+
+function setSbPrompt(text) {
+  const input = document.getElementById("sbPromptInput");
+  if (input) { input.value = text; input.focus(); }
+}
+
+// ── Init: load site list on page load ────────────────────────────────────────
+
+(async function sbInit() {
+  await loadSiteList();
+})();
+
 </script>
 </body>
 </html>

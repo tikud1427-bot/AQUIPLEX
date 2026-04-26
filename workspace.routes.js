@@ -1,19 +1,15 @@
 /**
- * workspace.routes.js — AQUIPLEX Production
+ * workspace.routes.js — AQUIPLEX Production (v2 — AI Execution Engine)
  *
- * FIX LOG:
- * - Added req.body parsing guard (returns {} on missing body)
- * - Added missing /workspace/delete/:bundleId route (DELETE via query if needed)
- * - Hardened uid() to handle more passport/session combos
- * - Added 404 fallback for unknown GET sub-routes (prevents EJS double-render bug)
- * - DELETE /workspace/tools/:id fully validated with ObjectId check
- * - All route handlers wrapped in consistent try/catch with handleErr
+ * CHANGELOG v2:
+ * - Mounted project engine at /workspace/project/*
+ * - All existing routes preserved exactly
  *
  * Mount in index.js:
  *   const workspaceRoutes = require("./workspace.routes");
  *   app.use("/workspace", requireLogin, workspaceRoutes);
  *
- * ROUTES:
+ * ROUTES (existing — unchanged):
  *   GET    /workspace                      → render EJS
  *   GET    /workspace/state                → { workspace, bundles }
  *   GET    /workspace/bundle/:bundleId     → { bundle }
@@ -26,7 +22,17 @@
  *   POST   /workspace/memory               → update workspace memory
  *   POST   /workspace/add/:toolId          → add tool (compat)
  *   POST   /workspace/remove/:toolId       → remove tool (compat)
- *   DELETE /workspace/tools/:id            → remove tool (canonical) ← FIX
+ *   DELETE /workspace/tools/:id            → remove tool (canonical)
+ *
+ * NEW ROUTES (project engine):
+ *   POST   /workspace/project/create       → create project folder
+ *   POST   /workspace/project/generate     → AI generates website files
+ *   POST   /workspace/project/edit         → AI edits file
+ *   GET    /workspace/project/list         → list user projects
+ *   GET    /workspace/project/:id          → project metadata
+ *   GET    /workspace/project/:id/files    → list project files
+ *   GET    /workspace/project/:id/:file    → serve file (for iframe)
+ *   DELETE /workspace/project/:id          → delete project
  */
 
 "use strict";
@@ -37,6 +43,11 @@ const mongoose  = require("mongoose");
 const Workspace = require("./models/Workspace");
 const Bundle    = require("./models/Bundle");
 const svc       = require("./services/workspace.service");
+
+// ── Mount Project Engine ──────────────────────────────────────────────────────
+// IMPORTANT: mounted BEFORE param-based routes to prevent conflicts
+const projectRoutes = require("./project.routes");
+router.use("/project", projectRoutes);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -54,10 +65,6 @@ function handleErr(res, err, fallbackStatus = 500) {
   res.status(status).json({ error: msg, success: false });
 }
 
-/**
- * Resolve userId from session or passport user object.
- * FIX: handles more auth strategies (session.user._id, req.user.id, etc.)
- */
 function uid(req) {
   return (
     req.session?.userId          ||
@@ -83,7 +90,6 @@ router.get("/", async (req, res) => {
       ws = ws.toObject ? ws.toObject() : ws;
     }
 
-    // Normalize workspaceMemory Map → plain object for EJS serialization
     if (ws.workspaceMemory instanceof Map) {
       ws.workspaceMemory = Object.fromEntries(ws.workspaceMemory);
     }
@@ -138,13 +144,11 @@ router.post("/run/:bundleId", async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /workspace/step/:bundleId/:step
-// FIX: This is the single canonical endpoint for running OR marking steps done.
-//      Frontend sends title in body; service generates content automatically.
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.post("/step/:bundleId/:step", async (req, res) => {
   try {
-    const payload = req.body || {}; // FIX: guard against missing body
+    const payload = req.body || {};
     const data = await svc.completeStep(
       uid(req),
       req.params.bundleId,
@@ -218,7 +222,7 @@ router.post("/memory", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// DELETE /workspace/tools/:id  ← CANONICAL (FIX: was /tool/:id in old frontend)
+// DELETE /workspace/tools/:id
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.delete("/tools/:id", async (req, res) => {
@@ -226,7 +230,6 @@ router.delete("/tools/:id", async (req, res) => {
     const userId = uid(req);
     if (!userId) return res.status(401).json({ error: "Unauthorized", success: false });
 
-    // FIX: validate ObjectId before DB query
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res.status(400).json({ error: "Invalid tool ID", success: false });
     }
@@ -237,7 +240,6 @@ router.delete("/tools/:id", async (req, res) => {
     if (typeof ws.removeTool === "function") {
       ws.removeTool(req.params.id);
     } else {
-      // Fallback if model method isn't defined
       ws.tools = (ws.tools || []).filter(t => {
         const tid = t.toolId || t._id || t;
         return tid && tid.toString() !== req.params.id;
@@ -252,7 +254,7 @@ router.delete("/tools/:id", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /workspace/add/:toolId  (backward compat — keep for older clients)
+// POST /workspace/add/:toolId  (backward compat)
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.post("/add/:toolId", async (req, res) => {
@@ -283,7 +285,7 @@ router.post("/add/:toolId", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /workspace/remove/:toolId  (backward compat — keep for older clients)
+// POST /workspace/remove/:toolId  (backward compat)
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.post("/remove/:toolId", async (req, res) => {
@@ -312,17 +314,3 @@ router.post("/remove/:toolId", async (req, res) => {
 });
 
 module.exports = router;
-
-/*
- * ══════════════════════════════════════════════════════════════════════
- * Mount in index.js (replace old /workspace routes):
- *
- *   const workspaceRoutes = require("./workspace.routes");
- *   app.use("/workspace", requireLogin, workspaceRoutes);
- *
- * This handles GET /workspace (page render) + all API routes.
- * Ensure body parsing middleware is active before this:
- *   app.use(express.json());
- *   app.use(express.urlencoded({ extended: true }));
- * ══════════════════════════════════════════════════════════════════════
- */
