@@ -308,7 +308,7 @@ exports.pinBundle = async (req, res) => {
     if (!alreadyPinned) ws.pinnedBundles.push(id);
     await ws.save();
 
-    res.json({ pinnedBundleIds: ws.pinnedBundles.map(String) });
+    res.json({ success: true, pinnedBundleIds: ws.pinnedBundles.map(String) });
   } catch (err) {
     console.error("[WS] pinBundle:", err);
     apiError(res, "Failed to pin bundle");
@@ -324,7 +324,7 @@ exports.unpinBundle = async (req, res) => {
     ws.pinnedBundles = ws.pinnedBundles.filter((p) => p && p.toString() !== req.params.id);
     await ws.save();
 
-    res.json({ pinnedBundleIds: ws.pinnedBundles.map(String) });
+    res.json({ success: true, pinnedBundleIds: ws.pinnedBundles.map(String) });
   } catch (err) {
     console.error("[WS] unpinBundle:", err);
     apiError(res, "Failed to unpin bundle");

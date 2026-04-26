@@ -9,10 +9,8 @@
 <script src="/socket.io/socket.io.js"></script>
 <style>
 /* ═══════════════════════════════════════════════════════
-   AQUIPLEX WORKSPACE — DESIGN SYSTEM
-   Theme: industrial-terminal / precision tool aesthetic
+   AQUIPLEX WORKSPACE — DESIGN SYSTEM v2 (mobile-first)
 ═══════════════════════════════════════════════════════ */
-
 :root {
   --bg:        #0a0a0c;
   --bg1:       #111116;
@@ -23,24 +21,26 @@
   --muted:     #555570;
   --text:      #c8c8d8;
   --bright:    #eeeef8;
-  --accent:    #5b6af0;   /* electric indigo */
-  --accent2:   #34d8a0;   /* emerald */
-  --accent3:   #f0a44a;   /* amber */
-  --accent4:   #e05c7a;   /* red */
+  --accent:    #5b6af0;
+  --accent2:   #34d8a0;
+  --accent3:   #f0a44a;
+  --accent4:   #e05c7a;
   --mono:      "IBM Plex Mono", monospace;
   --sans:      "Syne", sans-serif;
   --radius:    6px;
   --radius2:   10px;
-  --sidebar-w: 240px;
-  --right-w:   320px;
+  --sidebar-w: 260px;
+  --right-w:   300px;
   --topbar-h:  52px;
+  --bottom-h:  60px;
   --trans:     150ms ease;
+  --touch:     44px;
 }
 
 *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
-body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; }
+html { height:100%; }
+body { background:var(--bg); color:var(--text); font-family:var(--sans); min-height:100vh; -webkit-font-smoothing:antialiased; }
 
-/* ── Scrollbars ── */
 ::-webkit-scrollbar       { width:4px; height:4px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
@@ -49,881 +49,1136 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
    LAYOUT SHELL
 ═══════════════════════════════════════════════════════ */
 .aq-workspace {
-  display:flex;
-  flex-direction:column;
-  height: calc(100vh - 60px); /* subtract nav height */
-  overflow:hidden;
-  background:var(--bg);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+  overflow: hidden;
+  background: var(--bg);
 }
 
 /* ── Topbar ── */
 .aq-topbar {
-  display:flex;
-  align-items:center;
-  gap:16px;
-  height:var(--topbar-h);
-  padding:0 18px;
-  background:var(--bg1);
-  border-bottom:1px solid var(--border);
-  flex-shrink:0;
-  z-index:20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: var(--topbar-h);
+  padding: 0 12px;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 20;
 }
+
+.aq-menu-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch);
+  height: var(--touch);
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: var(--trans);
+  flex-shrink: 0;
+}
+.aq-menu-btn:hover { background: var(--bg2); color: var(--bright); }
+
 .aq-logo {
-  font-family:var(--mono);
-  font-size:0.72rem;
-  font-weight:600;
-  color:var(--bright);
-  letter-spacing:0.12em;
-  white-space:nowrap;
-  flex-shrink:0;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--bright);
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
-.aq-logo-sep { color:var(--accent); }
+.aq-logo-sep { color: var(--accent); }
 
 .aq-breadcrumb {
-  display:flex;
-  align-items:center;
-  gap:6px;
-  font-family:var(--mono);
-  font-size:0.68rem;
-  color:var(--muted);
-  flex:1;
-  min-width:0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  color: var(--muted);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
-.aq-breadcrumb .sep  { color:var(--border2); }
-.aq-breadcrumb .cur  { color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.aq-breadcrumb .sep { color: var(--border2); flex-shrink: 0; }
+.aq-breadcrumb .cur { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .aq-topbar-right {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex-shrink:0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 .aq-status-pill {
-  display:flex;
-  align-items:center;
-  gap:6px;
-  background:var(--bg2);
-  border:1px solid var(--border);
-  border-radius:20px;
-  padding:4px 10px;
-  font-family:var(--mono);
-  font-size:0.6rem;
-  color:var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 4px 9px;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  color: var(--muted);
 }
 .aq-status-dot {
-  width:6px;
-  height:6px;
-  border-radius:50%;
-  background:var(--accent2);
-  box-shadow:0 0 6px var(--accent2);
-  animation:pulse 2.4s ease infinite;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent2);
+  box-shadow: 0 0 6px var(--accent2);
+  animation: pulse 2.4s ease infinite;
 }
-@keyframes pulse {
-  0%,100% { opacity:1; }
-  50%      { opacity:0.4; }
-}
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+/* Hide status text on very small screens */
+@media (max-width: 400px) { .aq-status-pill span { display: none; } }
 
 /* ── Buttons ── */
 .aq-btn {
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  padding:6px 12px;
-  border-radius:var(--radius);
-  border:1px solid var(--border2);
-  background:var(--bg2);
-  color:var(--text);
-  font-family:var(--mono);
-  font-size:0.65rem;
-  font-weight:500;
-  letter-spacing:0.06em;
-  cursor:pointer;
-  transition:var(--trans);
-  white-space:nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px;
+  height: var(--touch);
+  min-height: var(--touch);
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: var(--trans);
+  white-space: nowrap;
+  user-select: none;
+  touch-action: manipulation;
 }
-.aq-btn:hover   { background:var(--bg3); border-color:var(--muted); color:var(--bright); }
-.aq-btn:active  { transform:scale(0.97); }
-.aq-btn-run     { background:var(--accent); border-color:var(--accent); color:#fff; }
-.aq-btn-run:hover { filter:brightness(1.15); background:var(--accent); }
-.aq-btn-danger  { border-color:var(--accent4); color:var(--accent4); }
-.aq-btn-danger:hover { background:rgba(224,92,122,0.12); }
+.aq-btn:hover   { background: var(--bg3); border-color: var(--muted); color: var(--bright); }
+.aq-btn:active  { transform: scale(0.97); }
+.aq-btn-sm      { height: 34px; min-height: 34px; padding: 0 10px; font-size: 0.62rem; }
+.aq-btn-run     { background: var(--accent); border-color: var(--accent); color: #fff; }
+.aq-btn-run:hover { filter: brightness(1.15); background: var(--accent); }
+.aq-btn-danger  { border-color: var(--accent4); color: var(--accent4); }
+.aq-btn-danger:hover { background: rgba(224,92,122,0.12); }
+.aq-btn-success { border-color: rgba(52,216,160,0.5); color: var(--accent2); }
+.aq-btn-success:hover { background: rgba(52,216,160,0.1); }
 
 .aq-switcher {
-  background:var(--bg2);
-  border:1px solid var(--border2);
-  color:var(--text);
-  font-family:var(--mono);
-  font-size:0.65rem;
-  border-radius:var(--radius);
-  padding:5px 10px;
-  cursor:pointer;
-  max-width:180px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  border-radius: var(--radius);
+  padding: 0 10px;
+  height: var(--touch);
+  cursor: pointer;
+  max-width: 170px;
 }
-.aq-switcher:focus { outline:none; border-color:var(--accent); }
-.aq-switcher option { background:var(--bg1); }
+.aq-switcher:focus { outline: none; border-color: var(--accent); }
+.aq-switcher option { background: var(--bg1); }
 
 /* ── Body ── */
 .aq-body {
-  display:flex;
-  flex:1;
-  overflow:hidden;
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
 }
 
-/* ─────────────────────────────────────────────
-   LEFT SIDEBAR
-───────────────────────────────────────────── */
-.aq-sidebar {
-  width:var(--sidebar-w);
-  flex-shrink:0;
-  display:flex;
-  flex-direction:column;
-  background:var(--bg1);
-  border-right:1px solid var(--border);
-  overflow:hidden;
+/* ═══════════════════════════════════════════════════════
+   SIDEBAR DRAWER (mobile-first)
+═══════════════════════════════════════════════════════ */
+.aq-drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  backdrop-filter: blur(2px);
 }
+.aq-drawer-overlay.open { display: block; }
+
+.aq-sidebar {
+  position: fixed;
+  top: 60px; /* nav height */
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-w);
+  max-width: 85vw;
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg1);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  transform: translateX(-100%);
+  transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+}
+.aq-sidebar.open { transform: translateX(0); }
+
+/* Desktop: always visible */
+@media (min-width: 900px) {
+  .aq-sidebar {
+    position: relative;
+    top: auto; left: auto; bottom: auto;
+    transform: none !important;
+    flex-shrink: 0;
+  }
+  .aq-drawer-overlay { display: none !important; }
+  .aq-menu-btn { display: none; }
+}
+
+.aq-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.aq-sidebar-title {
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.aq-sidebar-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1rem;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: var(--trans);
+}
+.aq-sidebar-close:hover { background: var(--bg2); color: var(--bright); }
+@media (min-width: 900px) { .aq-sidebar-close { display: none; } }
+
 .aq-sidebar-tabs {
-  display:flex;
-  border-bottom:1px solid var(--border);
-  flex-shrink:0;
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .aq-sidebar-tab {
-  flex:1;
-  padding:10px 0;
-  background:none;
-  border:none;
-  color:var(--muted);
-  font-family:var(--mono);
-  font-size:0.6rem;
-  font-weight:600;
-  letter-spacing:0.1em;
-  cursor:pointer;
-  transition:var(--trans);
-  border-bottom:2px solid transparent;
+  flex: 1;
+  padding: 12px 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: var(--trans);
+  border-bottom: 2px solid transparent;
 }
-.aq-sidebar-tab:hover  { color:var(--text); }
-.aq-sidebar-tab.active { color:var(--bright); border-bottom-color:var(--accent); }
+.aq-sidebar-tab:hover  { color: var(--text); }
+.aq-sidebar-tab.active { color: var(--bright); border-bottom-color: var(--accent); }
 
 .aq-sidebar-list {
-  flex:1;
-  overflow-y:auto;
-  padding:8px;
-  display:flex;
-  flex-direction:column;
-  gap:2px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 /* Bundle rows */
 .aq-bundle-item {
-  padding:9px 10px;
-  border-radius:var(--radius);
-  cursor:pointer;
-  transition:var(--trans);
-  border:1px solid transparent;
+  padding: 12px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--trans);
+  border: 1px solid transparent;
 }
-.aq-bundle-item:hover    { background:var(--bg2); border-color:var(--border); }
-.aq-bundle-item.selected { background:var(--bg3); border-color:var(--accent); }
+.aq-bundle-item:hover    { background: var(--bg2); border-color: var(--border); }
+.aq-bundle-item.selected { background: var(--bg3); border-color: var(--accent); }
 
+.aq-bundle-row1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
 .aq-bundle-title {
-  font-size:0.75rem;
-  font-weight:600;
-  color:var(--bright);
-  margin-bottom:5px;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--bright);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .aq-bundle-meta {
-  display:flex;
-  align-items:center;
-  gap:6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .aq-bundle-track {
-  flex:1;
-  height:3px;
-  background:var(--bg3);
-  border-radius:2px;
-  overflow:hidden;
+  flex: 1;
+  height: 3px;
+  background: var(--bg3);
+  border-radius: 2px;
+  overflow: hidden;
 }
 .aq-bundle-fill {
-  height:100%;
-  border-radius:2px;
-  background:var(--accent2);
-  transition:width 0.5s ease;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent2);
+  transition: width 0.5s ease;
 }
 .aq-bundle-pct {
-  font-family:var(--mono);
-  font-size:0.55rem;
-  color:var(--muted);
-  flex-shrink:0;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  color: var(--muted);
+  flex-shrink: 0;
+  min-width: 30px;
+  text-align: right;
 }
-.aq-bundle-del {
-  background:none;
-  border:none;
-  color:transparent;
-  font-size:0.65rem;
-  cursor:pointer;
-  padding:2px 4px;
-  border-radius:3px;
-  transition:var(--trans);
-  flex-shrink:0;
-  line-height:1;
+
+/* Bundle actions — always visible (not hover-only) */
+.aq-bundle-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 8px;
 }
-.aq-bundle-item:hover .aq-bundle-del { color:var(--muted); }
-.aq-bundle-del:hover { color:var(--accent4) !important; background:rgba(224,92,122,0.12); }
+.aq-bundle-act-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.56rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--trans);
+  white-space: nowrap;
+  flex: 1;
+  text-align: center;
+}
+.aq-bundle-act-btn:hover         { color: var(--text); border-color: var(--muted); }
+.aq-bundle-act-btn.del:hover     { color: var(--accent4); border-color: var(--accent4); background: rgba(224,92,122,0.08); }
+.aq-bundle-act-btn.pin           { color: var(--accent3); border-color: rgba(240,164,74,0.3); }
 
 /* Status dots */
-.aq-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-.aq-dot-active    { background:var(--accent2); box-shadow:0 0 5px var(--accent2); }
-.aq-dot-paused    { background:var(--accent3); }
-.aq-dot-completed { background:var(--accent); }
-.aq-dot-draft     { background:var(--border2); }
+.aq-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.aq-dot-active    { background: var(--accent2); box-shadow: 0 0 5px var(--accent2); }
+.aq-dot-paused    { background: var(--accent3); }
+.aq-dot-completed { background: var(--accent); }
+.aq-dot-draft     { background: var(--border2); }
 
 /* Tool rows */
 .aq-tool-item {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:8px 10px;
-  border-radius:var(--radius);
-  border:1px solid transparent;
-  transition:var(--trans);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  transition: var(--trans);
 }
-.aq-tool-item:hover { background:var(--bg2); border-color:var(--border); }
+.aq-tool-item:hover { background: var(--bg2); border-color: var(--border); }
 .aq-tool-logo {
-  width:22px;
-  height:22px;
-  border-radius:4px;
-  object-fit:contain;
-  flex-shrink:0;
-  background:var(--bg3);
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  object-fit: contain;
+  flex-shrink: 0;
+  background: var(--bg3);
 }
-.aq-tool-name { font-size:0.72rem; color:var(--text); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.aq-tool-btns { display:flex; gap:4px; flex-shrink:0; }
+.aq-tool-name {
+  font-size: 0.74rem;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.aq-tool-btns { display: flex; gap: 5px; flex-shrink: 0; }
 .aq-tool-btn {
-  background:none;
-  border:1px solid var(--border);
-  color:var(--muted);
-  font-family:var(--mono);
-  font-size:0.55rem;
-  padding:2px 7px;
-  border-radius:3px;
-  cursor:pointer;
-  transition:var(--trans);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 10px;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: var(--trans);
+  white-space: nowrap;
 }
-.aq-tool-btn:hover       { color:var(--text); border-color:var(--muted); }
-.aq-tool-btn.rm:hover    { color:var(--accent4); border-color:var(--accent4); background:rgba(224,92,122,0.08); }
+.aq-tool-btn:hover       { color: var(--text); border-color: var(--muted); }
+.aq-tool-btn.rm          { color: var(--accent4); border-color: rgba(224,92,122,0.3); }
+.aq-tool-btn.rm:hover    { background: rgba(224,92,122,0.08); }
 
 /* Empty state */
 .aq-empty {
-  padding:24px 12px;
-  text-align:center;
-  color:var(--muted);
-  font-family:var(--mono);
-  font-size:0.68rem;
-  line-height:1.7;
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  line-height: 1.8;
 }
-.aq-empty a { color:var(--accent); text-decoration:none; }
-.aq-empty a:hover { text-decoration:underline; }
+.aq-empty .aq-empty-icon { font-size: 1.8rem; display: block; margin-bottom: 10px; opacity: 0.4; }
+.aq-empty a { color: var(--accent); text-decoration: none; }
+.aq-empty a:hover { text-decoration: underline; }
 
-/* ─────────────────────────────────────────────
+/* Error state */
+.aq-error-state {
+  padding: 28px 16px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  line-height: 1.8;
+  color: var(--accent4);
+  border: 1px solid rgba(224,92,122,0.2);
+  border-radius: var(--radius2);
+  margin: 12px;
+  background: rgba(224,92,122,0.05);
+}
+
+/* Loading skeleton */
+.aq-skeleton {
+  background: linear-gradient(90deg, var(--bg2) 25%, var(--bg3) 50%, var(--bg2) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: var(--radius);
+  height: 14px;
+}
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+/* ═══════════════════════════════════════════════════════
    MAIN
-───────────────────────────────────────────── */
-.aq-main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+═══════════════════════════════════════════════════════ */
+.aq-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 
 /* Welcome screen */
 .aq-welcome {
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap:14px;
-  text-align:center;
-  padding:40px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: center;
+  padding: 40px 24px;
 }
-.aq-welcome-glyph {
-  font-size:2.5rem;
-  opacity:0.3;
-}
+.aq-welcome-glyph { font-size: 2.8rem; opacity: 0.25; }
 .aq-welcome h2 {
-  font-family:var(--sans);
-  font-weight:700;
-  font-size:1.2rem;
-  color:var(--bright);
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: var(--bright);
 }
 .aq-welcome p {
-  font-size:0.78rem;
-  color:var(--muted);
-  max-width:340px;
-  line-height:1.7;
+  font-size: 0.8rem;
+  color: var(--muted);
+  max-width: 340px;
+  line-height: 1.8;
 }
+.aq-welcome-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
 .aq-welcome-hint {
-  margin-top:4px;
-  font-family:var(--mono);
-  font-size:0.6rem;
-  color:var(--border2);
-  border:1px solid var(--border);
-  border-radius:4px;
-  padding:4px 10px;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--border2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 5px 12px;
 }
 
 /* Exec view */
-.aq-exec { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.aq-exec { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
 /* Exec header */
 .aq-exec-hdr {
-  padding:16px 20px 0;
-  background:var(--bg1);
-  border-bottom:1px solid var(--border);
-  flex-shrink:0;
+  padding: 14px 16px 0;
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 .aq-exec-hdr-top {
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:16px;
-  margin-bottom:14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
 }
 .aq-exec-title {
-  font-family:var(--sans);
-  font-size:1.05rem;
-  font-weight:700;
-  color:var(--bright);
+  font-family: var(--sans);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--bright);
+  line-height: 1.3;
 }
 .aq-exec-goal {
-  font-family:var(--mono);
-  font-size:0.67rem;
-  color:var(--muted);
-  margin-top:3px;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--muted);
+  margin-top: 4px;
+  max-width: 400px;
+  line-height: 1.5;
 }
-.aq-exec-actions { display:flex; gap:6px; flex-shrink:0; }
+.aq-exec-actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; }
 
 /* Stats row */
 .aq-stats-row {
-  display:flex;
-  align-items:stretch;
-  gap:0;
-  margin-bottom:12px;
-  background:var(--bg2);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  overflow:hidden;
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  overflow-x: auto;
 }
 .aq-stat {
-  flex:1;
-  padding:8px 12px;
-  text-align:center;
-  border-right:1px solid var(--border);
+  flex: 1;
+  min-width: 70px;
+  padding: 8px 10px;
+  text-align: center;
+  border-right: 1px solid var(--border);
 }
-.aq-stat:last-child { border-right:none; }
+.aq-stat:last-child { border-right: none; }
 .aq-stat-val {
-  font-family:var(--mono);
-  font-size:0.95rem;
-  font-weight:600;
-  color:var(--bright);
-  margin-bottom:2px;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--bright);
+  margin-bottom: 2px;
 }
 .aq-stat-lbl {
-  font-family:var(--mono);
-  font-size:0.52rem;
-  color:var(--muted);
-  text-transform:uppercase;
-  letter-spacing:0.08em;
+  font-family: var(--mono);
+  font-size: 0.5rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
-.c-accent  { color:var(--accent) !important; }
-.c-green   { color:var(--accent2) !important; }
-.c-amber   { color:var(--accent3) !important; }
-.c-purple  { color:#9b7de8 !important; }
+.c-accent  { color: var(--accent)  !important; }
+.c-green   { color: var(--accent2) !important; }
+.c-amber   { color: var(--accent3) !important; }
+.c-purple  { color: #9b7de8       !important; }
 
 /* Progress bar */
-.aq-progress-track {
-  height:2px;
-  background:var(--bg3);
-  overflow:hidden;
-}
+.aq-progress-track { height: 2px; background: var(--bg3); overflow: hidden; }
 .aq-progress-fill {
-  height:100%;
-  background:linear-gradient(90deg, var(--accent), var(--accent2));
-  transition:width 0.6s ease;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  transition: width 0.6s ease;
 }
 
 /* Exec content grid */
 .aq-exec-content {
-  flex:1;
-  display:flex;
-  overflow:hidden;
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  flex-direction: column; /* mobile: stack */
+}
+@media (min-width: 900px) {
+  .aq-exec-content { flex-direction: row; }
 }
 
-/* ─────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════
    STEPS PANEL
-───────────────────────────────────────────── */
+═══════════════════════════════════════════════════════ */
 .aq-steps-panel {
-  flex:1;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-  border-right:1px solid var(--border);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+@media (min-width: 900px) {
+  .aq-steps-panel { border-right: 1px solid var(--border); }
 }
 
 /* Timeline strip */
 .aq-timeline {
-  display:flex;
-  align-items:center;
-  padding:10px 16px;
-  gap:0;
-  border-bottom:1px solid var(--border);
-  background:var(--bg1);
-  overflow-x:auto;
-  flex-shrink:0;
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg1);
+  overflow-x: auto;
+  flex-shrink: 0;
+  -webkit-overflow-scrolling: touch;
 }
-.aq-tl-step  { display:flex; align-items:center; cursor:pointer; }
+.aq-tl-step  { display: flex; align-items: center; cursor: pointer; }
 .aq-tl-dot   {
-  width:26px; height:26px;
-  border-radius:50%;
-  background:var(--bg3);
-  border:1px solid var(--border2);
-  display:flex; align-items:center; justify-content:center;
-  font-family:var(--mono); font-size:0.6rem; color:var(--muted);
-  transition:var(--trans);
-  flex-shrink:0;
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 0.62rem; color: var(--muted);
+  transition: var(--trans);
+  flex-shrink: 0;
+  touch-action: manipulation;
 }
-.aq-tl-dot:hover { border-color:var(--accent); color:var(--accent); }
-.aq-tl-dot.done    { background:var(--accent2); border-color:var(--accent2); color:#fff; }
-.aq-tl-dot.running { background:var(--accent); border-color:var(--accent); color:#fff; animation:pulse 1.2s ease infinite; }
-.aq-tl-line {
-  width:20px; height:1px;
-  background:var(--border);
-  flex-shrink:0;
-  transition:background 0.4s;
-}
-.aq-tl-line.done { background:var(--accent2); }
+.aq-tl-dot:hover { border-color: var(--accent); color: var(--accent); }
+.aq-tl-dot.done    { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.aq-tl-dot.running { background: var(--accent); border-color: var(--accent); color: #fff; animation: pulse 1.2s ease infinite; }
+.aq-tl-line { width: 18px; height: 1px; background: var(--border); flex-shrink: 0; transition: background 0.4s; }
+.aq-tl-line.done { background: var(--accent2); }
 
 /* Step cards scroll */
 .aq-steps-scroll {
-  flex:1;
-  overflow-y:auto;
-  padding:12px;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Step card */
 .aq-step-card {
-  background:var(--bg1);
-  border:1px solid var(--border);
-  border-radius:var(--radius2);
-  overflow:hidden;
-  transition:border-color var(--trans);
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius2);
+  overflow: hidden;
+  transition: border-color var(--trans);
 }
-.aq-step-card.active  { border-color:var(--border2); }
-.aq-step-card.running { border-color:var(--accent); }
-.aq-step-card.done    { border-color:var(--border); opacity:0.85; }
-.aq-step-card.done:hover { opacity:1; }
+.aq-step-card.active  { border-color: var(--border2); }
+.aq-step-card.running { border-color: var(--accent); }
+.aq-step-card.done    { border-color: var(--border); opacity: 0.88; }
+.aq-step-card.done:hover { opacity: 1; }
 
 .aq-step-hdr {
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:10px 14px;
-  cursor:pointer;
-  user-select:none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  user-select: none;
+  min-height: var(--touch);
+  touch-action: manipulation;
 }
-.aq-step-hdr:hover { background:var(--bg2); }
+.aq-step-hdr:hover { background: var(--bg2); }
 
 .aq-step-num {
-  width:24px; height:24px; border-radius:50%;
-  background:var(--bg3); border:1px solid var(--border2);
-  display:flex; align-items:center; justify-content:center;
-  font-family:var(--mono); font-size:0.6rem; color:var(--muted);
-  flex-shrink:0;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--bg3); border: 1px solid var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--mono); font-size: 0.62rem; color: var(--muted);
+  flex-shrink: 0;
 }
-.aq-step-num.done    { background:var(--accent2); border-color:var(--accent2); color:#fff; }
-.aq-step-num.running { background:var(--accent); border-color:var(--accent); color:#fff; }
+.aq-step-num.done    { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.aq-step-num.running { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-.aq-step-info { flex:1; min-width:0; }
+.aq-step-info { flex: 1; min-width: 0; }
 .aq-step-title {
-  font-size:0.78rem;
-  font-weight:600;
-  color:var(--bright);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--bright);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .aq-step-desc {
-  font-family:var(--mono);
-  font-size:0.62rem;
-  color:var(--muted);
-  margin-top:2px;
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font-family: var(--mono);
+  font-size: 0.63rem;
+  color: var(--muted);
+  margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 
 .aq-badge {
-  font-family:var(--mono);
-  font-size:0.54rem;
-  font-weight:600;
-  letter-spacing:0.08em;
-  padding:2px 7px;
-  border-radius:3px;
-  flex-shrink:0;
+  font-family: var(--mono);
+  font-size: 0.54rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  flex-shrink: 0;
 }
-.wb-done    { background:rgba(52,216,160,0.15); color:var(--accent2); border:1px solid rgba(52,216,160,0.3); }
-.wb-running { background:rgba(91,106,240,0.15); color:var(--accent);  border:1px solid rgba(91,106,240,0.3); }
-.wb-failed  { background:rgba(224,92,122,0.15); color:var(--accent4); border:1px solid rgba(224,92,122,0.3); }
-.wb-pending { background:var(--bg3); color:var(--muted); border:1px solid var(--border); }
+.wb-done    { background: rgba(52,216,160,0.15); color: var(--accent2); border: 1px solid rgba(52,216,160,0.3); }
+.wb-running { background: rgba(91,106,240,0.15); color: var(--accent);  border: 1px solid rgba(91,106,240,0.3); }
+.wb-failed  { background: rgba(224,92,122,0.15); color: var(--accent4); border: 1px solid rgba(224,92,122,0.3); }
+.wb-pending { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
 
 .aq-step-toggle {
-  color:var(--muted);
-  font-size:0.75rem;
-  transition:transform var(--trans);
-  flex-shrink:0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  transition: transform var(--trans);
+  flex-shrink: 0;
 }
-.aq-step-toggle.open { transform:rotate(180deg); }
+.aq-step-toggle.open { transform: rotate(180deg); }
 
 /* Step body */
 .aq-step-body {
-  max-height:0;
-  overflow:hidden;
-  transition:max-height 0.3s ease;
-  border-top:0 solid var(--border);
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.32s ease;
+  border-top: 0 solid var(--border);
 }
 .aq-step-body.open {
-  max-height:600px;
-  border-top:1px solid var(--border);
+  max-height: 700px;
+  border-top: 1px solid var(--border);
 }
 .aq-step-body-inner {
-  padding:12px 14px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* Output block */
 .aq-output-block {
-  background:var(--bg2);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:10px 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
 }
 .aq-output-hdr {
-  display:flex;
-  align-items:center;
-  gap:6px;
-  margin-bottom:7px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 .aq-output-label {
-  font-family:var(--mono);
-  font-size:0.6rem;
-  color:var(--accent2);
-  font-weight:600;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--accent2);
+  font-weight: 600;
 }
 .aq-output-dot {
-  width:5px; height:5px; border-radius:50%;
-  background:var(--accent2);
-  margin-left:auto;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--accent2);
+  margin-left: auto;
 }
 .aq-output-content {
-  font-family:var(--mono);
-  font-size:0.69rem;
-  color:var(--text);
-  line-height:1.65;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--text);
+  line-height: 1.7;
 }
 
 /* Tool chips */
-.aq-tool-chips { display:flex; flex-wrap:wrap; gap:5px; }
+.aq-tool-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .aq-tool-chip {
-  display:inline-flex; align-items:center; gap:4px;
-  background:var(--bg3);
-  border:1px solid var(--border2);
-  border-radius:3px;
-  padding:3px 8px;
-  font-family:var(--mono);
-  font-size:0.6rem;
-  color:var(--muted);
-  text-decoration:none;
-  transition:var(--trans);
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 4px 9px;
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  color: var(--muted);
+  text-decoration: none;
+  transition: var(--trans);
+  min-height: 28px;
 }
-.aq-tool-chip:hover { color:var(--text); border-color:var(--muted); }
+.aq-tool-chip:hover { color: var(--text); border-color: var(--muted); }
 
 /* Insight chips */
-.aq-insight-chips { display:flex; flex-wrap:wrap; gap:5px; }
+.aq-insight-chips { display: flex; flex-wrap: wrap; gap: 5px; }
 .aq-insight-chip {
-  background:rgba(91,106,240,0.1);
-  border:1px solid rgba(91,106,240,0.25);
-  border-radius:3px;
-  padding:2px 7px;
-  font-family:var(--mono);
-  font-size:0.57rem;
-  color:var(--accent);
+  background: rgba(91,106,240,0.1);
+  border: 1px solid rgba(91,106,240,0.25);
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  color: var(--accent);
 }
 
-/* Step actions */
-.aq-step-actions { display:flex; gap:6px; }
+/* Step actions — always visible, large touch targets */
+.aq-step-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .aq-step-act-btn {
-  padding:5px 12px;
-  border-radius:var(--radius);
-  border:1px solid var(--border2);
-  background:var(--bg3);
-  color:var(--text);
-  font-family:var(--mono);
-  font-size:0.62rem;
-  cursor:pointer;
-  transition:var(--trans);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 0 14px;
+  height: 36px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  cursor: pointer;
+  transition: var(--trans);
+  touch-action: manipulation;
 }
-.aq-step-act-btn:hover  { background:var(--bg2); border-color:var(--muted); color:var(--bright); }
-.aq-step-act-btn.done   { border-color:rgba(52,216,160,0.4); color:var(--accent2); }
-.aq-step-act-btn.done:hover { background:rgba(52,216,160,0.1); }
-.aq-step-act-btn.rerun  { border-color:rgba(91,106,240,0.4); color:var(--accent); }
-.aq-step-act-btn.rerun:hover { background:rgba(91,106,240,0.1); }
+.aq-step-act-btn:hover  { background: var(--bg2); border-color: var(--muted); color: var(--bright); }
+.aq-step-act-btn.done   { border-color: rgba(52,216,160,0.4); color: var(--accent2); }
+.aq-step-act-btn.done:hover { background: rgba(52,216,160,0.1); }
+.aq-step-act-btn.rerun  { border-color: rgba(91,106,240,0.4); color: var(--accent); }
+.aq-step-act-btn.rerun:hover { background: rgba(91,106,240,0.1); }
 
-/* ─────────────────────────────────────────────
-   RIGHT PANEL
-───────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════
+   RIGHT PANEL (tabs)
+═══════════════════════════════════════════════════════ */
 .aq-right-panel {
-  width:var(--right-w);
-  flex-shrink:0;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-  background:var(--bg1);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg1);
+  border-top: 1px solid var(--border);
+  height: 280px;
 }
+@media (min-width: 900px) {
+  .aq-right-panel {
+    width: var(--right-w);
+    height: auto;
+    border-top: none;
+    border-left: 1px solid var(--border);
+  }
+}
+
 .aq-right-tabs {
-  display:flex;
-  border-bottom:1px solid var(--border);
-  flex-shrink:0;
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
 }
 .aq-right-tab {
-  flex:1;
-  padding:10px 0;
-  background:none;
-  border:none;
-  color:var(--muted);
-  font-family:var(--mono);
-  font-size:0.58rem;
-  font-weight:600;
-  letter-spacing:0.1em;
-  cursor:pointer;
-  border-bottom:2px solid transparent;
-  transition:var(--trans);
+  flex: 1;
+  min-width: 80px;
+  padding: 11px 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: var(--trans);
+  white-space: nowrap;
+  touch-action: manipulation;
 }
-.aq-right-tab:hover  { color:var(--text); }
-.aq-right-tab.active { color:var(--bright); border-bottom-color:var(--accent); }
+.aq-right-tab:hover  { color: var(--text); }
+.aq-right-tab.active { color: var(--bright); border-bottom-color: var(--accent); }
 
-.aq-right-body { flex:1; overflow:hidden; position:relative; }
+.aq-right-body { flex: 1; overflow: hidden; position: relative; }
 .aq-right-section {
-  position:absolute;
-  inset:0;
-  overflow-y:auto;
-  padding:14px;
-  display:none;
-  flex-direction:column;
-  gap:8px;
-  opacity:0;
-  transition:opacity 0.2s;
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 14px;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  -webkit-overflow-scrolling: touch;
 }
-.aq-right-section.active { display:flex; opacity:1; }
+.aq-right-section.active { display: flex; opacity: 1; }
 
 /* Output feed */
 .aq-feed-item {
-  background:var(--bg2);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:10px 12px;
-  transition:var(--trans);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 13px;
+  transition: var(--trans);
 }
-.aq-feed-item:hover { border-color:var(--border2); }
+.aq-feed-item:hover { border-color: var(--border2); }
 .aq-feed-meta {
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:5px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  gap: 8px;
 }
-.aq-feed-step   { font-family:var(--mono); font-size:0.6rem; color:var(--accent); font-weight:600; }
-.aq-feed-bundle { font-family:var(--mono); font-size:0.58rem; color:var(--muted); }
+.aq-feed-step   { font-family: var(--mono); font-size: 0.62rem; color: var(--accent); font-weight: 600; }
+.aq-feed-bundle { font-family: var(--mono); font-size: 0.58rem; color: var(--muted); }
 .aq-feed-preview {
-  font-family:var(--mono);
-  font-size:0.64rem;
-  color:var(--text);
-  line-height:1.6;
-  display:-webkit-box;
-  -webkit-line-clamp:3;
-  -webkit-box-orient:vertical;
-  overflow:hidden;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text);
+  line-height: 1.65;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 /* Memory */
 .aq-mem-hdr {
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  font-family:var(--mono);
-  font-size:0.6rem;
-  font-weight:600;
-  color:var(--muted);
-  text-transform:uppercase;
-  letter-spacing:0.1em;
-  padding:4px 0;
-  border-bottom:1px solid var(--border);
-  margin-bottom:6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
 }
-.aq-mem-hdr span { color:var(--border2); font-weight:400; }
+.aq-mem-hdr span { color: var(--border2); font-weight: 400; }
 .aq-mem-kv {
-  display:grid;
-  grid-template-columns:1fr 1.5fr;
-  gap:6px;
-  align-items:start;
-  padding:6px 8px;
-  border-radius:var(--radius);
-  border-left:2px solid var(--accent);
-  background:var(--bg2);
-  margin-bottom:4px;
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 6px;
+  align-items: start;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  border-left: 2px solid var(--accent);
+  background: var(--bg2);
+  margin-bottom: 5px;
 }
-.aq-mem-k  { font-family:var(--mono); font-size:0.6rem; color:var(--accent); font-weight:500; word-break:break-all; }
-.aq-mem-v  { font-family:var(--mono); font-size:0.6rem; color:var(--text); word-break:break-all; }
+.aq-mem-k { font-family: var(--mono); font-size: 0.62rem; color: var(--accent); font-weight: 500; word-break: break-all; }
+.aq-mem-v { font-family: var(--mono); font-size: 0.62rem; color: var(--text); word-break: break-all; }
 .aq-context-box {
-  font-family:var(--mono);
-  font-size:0.63rem;
-  color:var(--text);
-  background:var(--bg2);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:8px 10px;
-  line-height:1.65;
-  white-space:pre-wrap;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  color: var(--text);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  line-height: 1.7;
+  white-space: pre-wrap;
 }
 
 /* Insights */
 .aq-insight-item {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:8px 10px;
-  background:var(--bg2);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  font-family:var(--mono);
-  font-size:0.65rem;
-  color:var(--text);
-  line-height:1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 11px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  color: var(--text);
+  line-height: 1.55;
 }
-.aq-insight-item::before {
-  content:"→";
-  color:var(--accent);
-  flex-shrink:0;
-}
+.aq-insight-item::before { content: "→"; color: var(--accent); flex-shrink: 0; }
 
-/* ─────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════
+   MOBILE BOTTOM NAV
+═══════════════════════════════════════════════════════ */
+.aq-bottom-nav {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg1);
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  height: var(--bottom-h);
+}
+@media (min-width: 900px) { .aq-bottom-nav { display: none; } }
+
+.aq-bottom-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: var(--trans);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.aq-bottom-tab:active    { background: var(--bg2); }
+.aq-bottom-tab.active    { color: var(--bright); }
+.aq-bottom-tab .icon     { font-size: 1.1rem; }
+.aq-bottom-tab span      { line-height: 1; }
+
+/* ═══════════════════════════════════════════════════════
    TOAST SYSTEM
-───────────────────────────────────────────── */
+═══════════════════════════════════════════════════════ */
 #aq-toast-root {
-  position:fixed;
-  bottom:24px;
-  right:24px;
-  z-index:9999;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  pointer-events:none;
+  position: fixed;
+  bottom: 80px;
+  right: 16px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
 }
+@media (min-width: 900px) {
+  #aq-toast-root { bottom: 24px; right: 24px; }
+}
+
 .aq-toast {
-  display:flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 16px;
-  border-radius:var(--radius2);
-  font-family:var(--mono);
-  font-size:0.68rem;
-  font-weight:500;
-  background:var(--bg2);
-  border:1px solid var(--border2);
-  color:var(--bright);
-  box-shadow:0 8px 32px rgba(0,0,0,0.5);
-  animation:toastIn 0.25s ease;
-  pointer-events:auto;
-  max-width:300px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px;
+  border-radius: var(--radius2);
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  color: var(--bright);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: toastIn 0.25s ease;
+  pointer-events: auto;
+  max-width: 320px;
 }
-@keyframes toastIn {
-  from { opacity:0; transform:translateY(12px); }
-  to   { opacity:1; transform:translateY(0); }
-}
-.aq-toast.fadeout { animation:toastOut 0.3s ease forwards; }
-@keyframes toastOut {
-  to { opacity:0; transform:translateY(8px); }
-}
-.aq-toast.success { border-color:rgba(52,216,160,0.4); }
-.aq-toast.success::before { content:"✓"; color:var(--accent2); }
-.aq-toast.error   { border-color:rgba(224,92,122,0.4); }
-.aq-toast.error::before   { content:"✕"; color:var(--accent4); }
-.aq-toast.info    { border-color:rgba(91,106,240,0.4); }
-.aq-toast.info::before    { content:"ℹ"; color:var(--accent); }
+@keyframes toastIn  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+.aq-toast.fadeout   { animation: toastOut 0.3s ease forwards; }
+@keyframes toastOut { to { opacity: 0; transform: translateY(8px); } }
+.aq-toast.success { border-color: rgba(52,216,160,0.4); }
+.aq-toast.success::before { content: "✓"; color: var(--accent2); }
+.aq-toast.error   { border-color: rgba(224,92,122,0.4); }
+.aq-toast.error::before   { content: "✕"; color: var(--accent4); }
+.aq-toast.info    { border-color: rgba(91,106,240,0.4); }
+.aq-toast.info::before    { content: "ℹ"; color: var(--accent); }
 
-/* ─────────────────────────────────────────────
-   LOADING OVERLAY (per-action)
-───────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════
+   LOADING BAR
+═══════════════════════════════════════════════════════ */
 .aq-loading-bar {
-  position:fixed;
-  top:0; left:0; right:0;
-  height:2px;
-  background:linear-gradient(90deg, var(--accent), var(--accent2));
-  z-index:10000;
-  animation:loadbar 1.2s ease infinite;
-  display:none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  z-index: 10000;
+  animation: loadbar 1.2s ease infinite;
+  display: none;
 }
-.aq-loading-bar.visible { display:block; }
+.aq-loading-bar.visible { display: block; }
 @keyframes loadbar {
-  0%   { transform:scaleX(0); transform-origin:left; }
-  50%  { transform:scaleX(0.7); transform-origin:left; }
-  100% { transform:scaleX(1); transform-origin:left; opacity:0; }
+  0%   { transform: scaleX(0); transform-origin: left; }
+  50%  { transform: scaleX(0.7); transform-origin: left; }
+  100% { transform: scaleX(1); transform-origin: left; opacity: 0; }
 }
 
-/* ─────────────────────────────────────────────
+/* ═══════════════════════════════════════════════════════
    COMMAND PALETTE
-───────────────────────────────────────────── */
+═══════════════════════════════════════════════════════ */
 .aq-palette-backdrop {
-  position:fixed; inset:0; background:rgba(0,0,0,0.7);
-  z-index:8000; display:none; align-items:flex-start; justify-content:center;
-  padding-top:120px;
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 8000; display: none; align-items: flex-start; justify-content: center;
+  padding-top: 80px;
+  padding-left: 16px; padding-right: 16px;
 }
-.aq-palette-backdrop.open { display:flex; }
+.aq-palette-backdrop.open { display: flex; }
 .aq-palette {
-  width:480px;
-  background:var(--bg1);
-  border:1px solid var(--border2);
-  border-radius:var(--radius2);
-  box-shadow:0 20px 60px rgba(0,0,0,0.6);
-  overflow:hidden;
+  width: 100%;
+  max-width: 500px;
+  background: var(--bg1);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius2);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  overflow: hidden;
 }
 .aq-palette-input {
-  width:100%;
-  padding:14px 18px;
-  background:none;
-  border:none;
-  border-bottom:1px solid var(--border);
-  color:var(--bright);
-  font-family:var(--mono);
-  font-size:0.85rem;
-  outline:none;
+  width: 100%;
+  padding: 14px 18px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--bright);
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  outline: none;
 }
-.aq-palette-input::placeholder { color:var(--muted); }
-.aq-palette-list { padding:8px; }
+.aq-palette-input::placeholder { color: var(--muted); }
+.aq-palette-list { padding: 8px; max-height: 60vh; overflow-y: auto; }
 .aq-palette-cmd {
-  display:flex; align-items:center; gap:12px;
-  padding:9px 12px;
-  border-radius:var(--radius);
-  cursor:pointer;
-  transition:var(--trans);
-  font-family:var(--mono);
-  font-size:0.7rem;
-  color:var(--text);
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--trans);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--text);
+  min-height: var(--touch);
+  touch-action: manipulation;
 }
-.aq-palette-cmd:hover { background:var(--bg3); color:var(--bright); }
+.aq-palette-cmd:hover { background: var(--bg3); color: var(--bright); }
 .aq-palette-cmd .key {
-  background:var(--bg3);
-  border:1px solid var(--border2);
-  border-radius:3px;
-  padding:1px 6px;
-  font-size:0.58rem;
-  color:var(--muted);
-  margin-left:auto;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 3px;
+  padding: 2px 7px;
+  font-size: 0.58rem;
+  color: var(--muted);
+  margin-left: auto;
 }
+
+/* ═══════════════════════════════════════════════════════
+   CONFIRM MODAL (replaces native confirm())
+═══════════════════════════════════════════════════════ */
+.aq-confirm-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 9000; display: none; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.aq-confirm-backdrop.open { display: flex; }
+.aq-confirm-box {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg1);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius2);
+  padding: 24px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
+.aq-confirm-title {
+  font-family: var(--sans);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--bright);
+  margin-bottom: 10px;
+}
+.aq-confirm-msg {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+.aq-confirm-actions { display: flex; gap: 8px; justify-content: flex-end; }
 </style>
 </head>
 <body>
@@ -939,19 +1194,38 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
 <!-- Command Palette -->
 <div class="aq-palette-backdrop" id="aqPalette" onclick="closePalette(event)">
   <div class="aq-palette">
-    <input class="aq-palette-input" id="aqPaletteInput" placeholder="Type a command…" oninput="filterPalette(this.value)" onkeydown="paletteKeydown(event)"/>
+    <input class="aq-palette-input" id="aqPaletteInput" placeholder="Type a command…"
+           oninput="filterPalette(this.value)" onkeydown="paletteKeydown(event)"/>
     <div class="aq-palette-list" id="aqPaletteList"></div>
   </div>
 </div>
+
+<!-- Confirm Modal -->
+<div class="aq-confirm-backdrop" id="aqConfirm">
+  <div class="aq-confirm-box">
+    <div class="aq-confirm-title" id="aqConfirmTitle">Are you sure?</div>
+    <div class="aq-confirm-msg"   id="aqConfirmMsg"></div>
+    <div class="aq-confirm-actions">
+      <button class="aq-btn aq-btn-sm" onclick="resolveConfirm(false)">Cancel</button>
+      <button class="aq-btn aq-btn-sm aq-btn-danger" id="aqConfirmOk" onclick="resolveConfirm(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- Drawer overlay -->
+<div class="aq-drawer-overlay" id="drawerOverlay" onclick="closeSidebar()"></div>
 
 <div class="aq-workspace">
 
   <!-- ═══════════ TOPBAR ═══════════ -->
   <div class="aq-topbar">
-    <div class="aq-logo">AQUI<span class="aq-logo-sep">PLEX</span> <span style="color:var(--border2);">//</span> WORKSPACE</div>
+    <!-- Hamburger (mobile only) -->
+    <button class="aq-menu-btn" id="menuBtn" onclick="openSidebar()" aria-label="Open menu">☰</button>
+
+    <div class="aq-logo">AQUI<span class="aq-logo-sep">PLEX</span></div>
 
     <div class="aq-breadcrumb">
-      <span>Workspace</span>
+      <span>WS</span>
       <span class="sep">›</span>
       <span class="cur" id="topBreadcrumb">Overview</span>
     </div>
@@ -962,30 +1236,28 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
         <span>ONLINE</span>
       </div>
 
-      <button class="aq-btn" onclick="window.location.href='/bundles'">← Bundles</button>
-
-      <select id="bundleSwitcher" class="aq-switcher" title="Switch bundle">
-        <option value="">Select bundle…</option>
-      </select>
-
-      <button class="aq-btn aq-btn-danger" onclick="deleteCurrentBundle()">⌫ Delete</button>
-      <button class="aq-btn aq-btn-run"    onclick="autoRunSteps()">⚡ AUTO RUN</button>
-
-      <button class="aq-btn" onclick="openPalette()" title="⌘K">⌘K</button>
+      <!-- Desktop controls -->
+      <select id="bundleSwitcher" class="aq-switcher" title="Switch bundle" style="display:none;"></select>
+      <button class="aq-btn aq-btn-sm" onclick="openPalette()" title="⌘K" id="paletteBtn">⌘K</button>
     </div>
   </div>
 
   <!-- ═══════════ BODY ═══════════ -->
   <div class="aq-body">
 
-    <!-- ─── LEFT SIDEBAR ─── -->
-    <div class="aq-sidebar">
+    <!-- ─── LEFT SIDEBAR (drawer on mobile, fixed on desktop) ─── -->
+    <div class="aq-sidebar" id="aqSidebar">
+      <div class="aq-sidebar-header">
+        <span class="aq-sidebar-title">Navigation</span>
+        <button class="aq-sidebar-close" onclick="closeSidebar()" aria-label="Close">✕</button>
+      </div>
+
       <div class="aq-sidebar-tabs">
         <button class="aq-sidebar-tab active" onclick="switchLeftTab('bundles', this)">BUNDLES</button>
         <button class="aq-sidebar-tab"        onclick="switchLeftTab('tools',   this)">TOOLS</button>
       </div>
 
-      <!-- BUNDLES -->
+      <!-- BUNDLES LIST -->
       <div class="aq-sidebar-list" id="leftBundleList">
         <% if (bundles && bundles.length > 0) { %>
           <% bundles.forEach(function(b) {
@@ -998,46 +1270,43 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
                             : 'aq-dot-draft';
           %>
           <div class="aq-bundle-item" id="brow-<%= b._id %>"
-               onclick="selectBundle(<%- JSON.stringify({
-                 _id:         b._id,
-                 title:       b.title,
-                 goal:        b.goal,
-                 status:      b.status,
-                 steps:       b.steps,
-                 progress:    b.progress,
-                 outputs:     b.outputs  || [],
-                 memory:      b.memory   || {},
-                 currentStep: b.currentStep || 0
-               }).replace(/</g,'\\u003c') %>)">
-            <div class="aq-bundle-title"><%= b.title %></div>
-            <div class="aq-bundle-meta">
+               onclick="selectBundleById('<%= b._id %>')">
+            <div class="aq-bundle-row1">
               <div class="aq-dot <%= dotCls %>"></div>
+              <div class="aq-bundle-title"><%= b.title %></div>
+            </div>
+            <div class="aq-bundle-meta">
               <div class="aq-bundle-track">
                 <div class="aq-bundle-fill" style="width:<%= pct %>%"></div>
               </div>
               <div class="aq-bundle-pct"><%= pct %>%</div>
-              <button class="aq-bundle-del"
-                onclick="event.stopPropagation(); deleteBundle('<%= b._id %>')"
-                title="Delete bundle">✕</button>
+            </div>
+            <!-- Always-visible actions (no hover-only) -->
+            <div class="aq-bundle-actions" onclick="event.stopPropagation()">
+              <button class="aq-bundle-act-btn pin"
+                onclick="pinBundleById('<%= b._id %>')" title="Pin/Unpin">☆ PIN</button>
+              <button class="aq-bundle-act-btn del"
+                onclick="deleteBundleById('<%= b._id %>')" title="Delete">✕ DEL</button>
             </div>
           </div>
           <% }) %>
         <% } else { %>
           <div class="aq-empty">
+            <span class="aq-empty-icon">📦</span>
             No bundles yet.<br/>
             <a href="/bundles">Create one →</a>
           </div>
         <% } %>
       </div>
 
-      <!-- TOOLS -->
+      <!-- TOOLS LIST -->
       <div class="aq-sidebar-list" id="leftToolList" style="display:none;">
         <% if (workspace && workspace.tools && workspace.tools.length > 0) { %>
           <% workspace.tools.forEach(function(tool) { %>
           <div class="aq-tool-item" id="trow-<%= tool._id %>">
             <img src="<%= tool.logo || '/logos/default.png' %>"
                  onerror="this.src='/logos/default.png'"
-                 class="aq-tool-logo" alt=""/>
+                 class="aq-tool-logo" alt="<%= tool.name %>"/>
             <span class="aq-tool-name"><%= tool.name %></span>
             <div class="aq-tool-btns">
               <button class="aq-tool-btn"
@@ -1049,6 +1318,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
           <% }) %>
         <% } else { %>
           <div class="aq-empty">
+            <span class="aq-empty-icon">🔧</span>
             No tools saved.<br/>
             <a href="/tools">Browse tools →</a>
           </div>
@@ -1059,12 +1329,37 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
     <!-- ─── MAIN ─── -->
     <div class="aq-main">
 
-      <!-- WELCOME -->
+      <!-- WELCOME / EMPTY STATE -->
       <div class="aq-welcome" id="wsWelcome">
         <div class="aq-welcome-glyph">⚡</div>
         <h2>Execution Control</h2>
         <p>Select a bundle from the sidebar to view its execution state, step timeline, outputs, and memory.</p>
-        <div class="aq-welcome-hint">Press ⌘K for command palette</div>
+        <div class="aq-welcome-actions">
+          <button class="aq-btn" onclick="openSidebar()">☰ Open Bundles</button>
+          <button class="aq-btn" onclick="window.location.href='/bundles'">+ New Bundle</button>
+        </div>
+        <div class="aq-welcome-hint">Press ⌘K for commands</div>
+      </div>
+
+      <!-- LOADING STATE -->
+      <div id="wsLoading" style="display:none;" class="aq-welcome">
+        <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;">
+          <div class="aq-skeleton" style="height:18px;width:60%;"></div>
+          <div class="aq-skeleton" style="height:12px;width:80%;"></div>
+          <div class="aq-skeleton" style="height:12px;width:50%;"></div>
+          <div class="aq-skeleton" style="height:60px;margin-top:8px;"></div>
+          <div class="aq-skeleton" style="height:60px;"></div>
+          <div class="aq-skeleton" style="height:60px;"></div>
+        </div>
+      </div>
+
+      <!-- ERROR STATE -->
+      <div id="wsError" style="display:none;" class="aq-welcome">
+        <div class="aq-error-state">
+          <div style="font-size:1.6rem;margin-bottom:8px;">⚠</div>
+          <div id="wsErrorMsg">Something went wrong loading this bundle.</div>
+          <button class="aq-btn" onclick="retryLoad()" style="margin-top:14px;">↺ Retry</button>
+        </div>
       </div>
 
       <!-- EXEC VIEW -->
@@ -1073,15 +1368,16 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
         <!-- Header -->
         <div class="aq-exec-hdr">
           <div class="aq-exec-hdr-top">
-            <div>
+            <div style="flex:1;min-width:0;">
               <div class="aq-exec-title" id="execTitle">—</div>
               <div class="aq-exec-goal"  id="execGoal">—</div>
             </div>
             <div class="aq-exec-actions">
-              <button class="aq-btn aq-btn-run"   id="btnRun"    onclick="runCurrentBundle()">▶ RUN</button>
-              <button class="aq-btn"               id="btnPause"  onclick="pauseCurrentBundle()"  style="display:none;">⏸ PAUSE</button>
-              <button class="aq-btn"               id="btnResume" onclick="resumeCurrentBundle()" style="display:none;">↺ RESUME</button>
-              <button class="aq-btn"               id="btnPin"    onclick="pinCurrentBundle()">☆ PIN</button>
+              <button class="aq-btn aq-btn-sm aq-btn-run"   id="btnRun"    onclick="runCurrentBundle()">▶ RUN</button>
+              <button class="aq-btn aq-btn-sm"              id="btnPause"  onclick="pauseCurrentBundle()"  style="display:none;">⏸ PAUSE</button>
+              <button class="aq-btn aq-btn-sm"              id="btnResume" onclick="resumeCurrentBundle()" style="display:none;">↺ RESUME</button>
+              <button class="aq-btn aq-btn-sm"              id="btnPin"    onclick="pinCurrentBundle()">☆ PIN</button>
+              <button class="aq-btn aq-btn-sm aq-btn-danger" onclick="deleteCurrentBundle()">⌫</button>
             </div>
           </div>
 
@@ -1096,7 +1392,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
             </div>
             <div class="aq-stat">
               <div class="aq-stat-val"            id="statPct">—</div>
-              <div class="aq-stat-lbl">Complete</div>
+              <div class="aq-stat-lbl">Pct</div>
             </div>
             <div class="aq-stat">
               <div class="aq-stat-val c-amber"   id="statStatus">—</div>
@@ -1104,7 +1400,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
             </div>
             <div class="aq-stat">
               <div class="aq-stat-val c-purple"  id="statConfidence">—</div>
-              <div class="aq-stat-lbl">Confidence</div>
+              <div class="aq-stat-lbl">Conf</div>
             </div>
           </div>
 
@@ -1116,7 +1412,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
         <!-- Content grid -->
         <div class="aq-exec-content">
 
-          <!-- Steps -->
+          <!-- Steps panel -->
           <div class="aq-steps-panel">
             <div class="aq-timeline" id="execTimeline"></div>
             <div class="aq-steps-scroll" id="execSteps"></div>
@@ -1129,7 +1425,6 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
               <button class="aq-right-tab"         onclick="switchRightTab('memory',   this)">MEMORY</button>
               <button class="aq-right-tab"         onclick="switchRightTab('insights', this)">INSIGHTS</button>
             </div>
-
             <div class="aq-right-body">
 
               <!-- Outputs -->
@@ -1146,7 +1441,7 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
 
                 <div class="aq-mem-hdr" style="margin-top:14px;">Context Summary</div>
                 <div class="aq-context-box" id="memContextBox"   style="display:none;"></div>
-                <div class="aq-empty"        id="memContextEmpty" style="padding:6px 0;">No context summary yet.</div>
+                <div class="aq-empty"        id="memContextEmpty" style="padding:6px 0; font-size:0.64rem;">No context summary yet.</div>
 
                 <div class="aq-mem-hdr" style="margin-top:14px;">Workspace Memory <span id="memWsCount">0 keys</span></div>
                 <div id="memWsEntries"></div>
@@ -1163,18 +1458,42 @@ body { background:var(--bg); color:var(--text); font-family:var(--sans); min-hei
           </div>
 
         </div>
-      </div>
-    </div>
+      </div><!-- /wsExec -->
 
+    </div><!-- /aq-main -->
+
+  </div><!-- /aq-body -->
+
+  <!-- ═══════════ MOBILE BOTTOM NAV ═══════════ -->
+  <div class="aq-bottom-nav">
+    <button class="aq-bottom-tab active" id="mnavBundles" onclick="mobileNav('bundles')">
+      <span class="icon">📦</span>
+      <span>Bundles</span>
+    </button>
+    <button class="aq-bottom-tab" id="mnavSteps" onclick="mobileNav('steps')">
+      <span class="icon">⚡</span>
+      <span>Steps</span>
+    </button>
+    <button class="aq-bottom-tab" id="mnavOutputs" onclick="mobileNav('outputs')">
+      <span class="icon">📤</span>
+      <span>Outputs</span>
+    </button>
+    <button class="aq-bottom-tab" id="mnavCmd" onclick="openPalette()">
+      <span class="icon">⌘</span>
+      <span>Commands</span>
+    </button>
   </div>
-</div>
+
+</div><!-- /aq-workspace -->
 
 <%- include("partials/footer") %>
 
 <!-- ═══════════════════════════════════════════════════
-     AQUIPLEX WORKSPACE ENGINE — workspace.client.js
+     AQUIPLEX WORKSPACE ENGINE v2 — client JS
 ═══════════════════════════════════════════════════ -->
 <script>
+"use strict";
+
 // ────────────────────────────────────────────────────
 // STATE
 // ────────────────────────────────────────────────────
@@ -1184,16 +1503,96 @@ const STATE = {
   pinnedIds:    [],
   selectedStep: null,
   loading:      false,
+  lastBundleId: null,
 };
 
-// EJS-injected bundle list (used for switcher & offline fallback)
 const _ejsBundles = <%- JSON.stringify(bundles || []) %>;
 
 // ────────────────────────────────────────────────────
-// LOADING BAR
+// LOADING / ERROR UI
 // ────────────────────────────────────────────────────
-function showLoading()  { document.getElementById("aqLoadingBar").classList.add("visible"); }
-function hideLoading()  { document.getElementById("aqLoadingBar").classList.remove("visible"); }
+function showLoading()  { document.getElementById("aqLoadingBar").classList.add("visible"); STATE.loading = true; }
+function hideLoading()  { document.getElementById("aqLoadingBar").classList.remove("visible"); STATE.loading = false; }
+
+function showBundleLoading() {
+  document.getElementById("wsWelcome").style.display  = "none";
+  document.getElementById("wsLoading").style.display  = "flex";
+  document.getElementById("wsExec").style.display     = "none";
+  document.getElementById("wsError").style.display    = "none";
+}
+function showBundleError(msg) {
+  document.getElementById("wsLoading").style.display  = "none";
+  document.getElementById("wsError").style.display    = "flex";
+  document.getElementById("wsErrorMsg").textContent   = msg || "Failed to load bundle.";
+}
+function showBundleExec() {
+  document.getElementById("wsLoading").style.display  = "none";
+  document.getElementById("wsError").style.display    = "none";
+  document.getElementById("wsWelcome").style.display  = "none";
+  document.getElementById("wsExec").style.display     = "flex";
+}
+function showWelcome() {
+  document.getElementById("wsWelcome").style.display  = "";
+  document.getElementById("wsLoading").style.display  = "none";
+  document.getElementById("wsExec").style.display     = "none";
+  document.getElementById("wsError").style.display    = "none";
+}
+function retryLoad() {
+  if (STATE.lastBundleId) {
+    const b = _ejsBundles.find(x => String(x._id) === String(STATE.lastBundleId));
+    if (b) selectBundle(b);
+  }
+}
+
+// ────────────────────────────────────────────────────
+// CONFIRM DIALOG (replaces native confirm())
+// ────────────────────────────────────────────────────
+let _confirmResolve = null;
+function showConfirm(title, msg, okLabel = "Confirm") {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    document.getElementById("aqConfirmTitle").textContent = title;
+    document.getElementById("aqConfirmMsg").textContent   = msg;
+    document.getElementById("aqConfirmOk").textContent    = okLabel;
+    document.getElementById("aqConfirm").classList.add("open");
+  });
+}
+function resolveConfirm(val) {
+  document.getElementById("aqConfirm").classList.remove("open");
+  if (_confirmResolve) { _confirmResolve(val); _confirmResolve = null; }
+}
+
+// ────────────────────────────────────────────────────
+// SIDEBAR DRAWER
+// ────────────────────────────────────────────────────
+function openSidebar() {
+  document.getElementById("aqSidebar").classList.add("open");
+  document.getElementById("drawerOverlay").classList.add("open");
+}
+function closeSidebar() {
+  document.getElementById("aqSidebar").classList.remove("open");
+  document.getElementById("drawerOverlay").classList.remove("open");
+}
+
+// ────────────────────────────────────────────────────
+// MOBILE BOTTOM NAV
+// ────────────────────────────────────────────────────
+function mobileNav(tab) {
+  document.querySelectorAll(".aq-bottom-tab").forEach(b => b.classList.remove("active"));
+  if (tab === "bundles") {
+    document.getElementById("mnavBundles").classList.add("active");
+    openSidebar();
+  } else if (tab === "steps") {
+    document.getElementById("mnavSteps").classList.add("active");
+    closeSidebar();
+    // Scroll exec steps into view
+    const s = document.getElementById("execSteps");
+    if (s) s.scrollIntoView({ behavior: "smooth", block: "start" });
+  } else if (tab === "outputs") {
+    document.getElementById("mnavOutputs").classList.add("active");
+    switchRightTab("outputs", document.querySelector(".aq-right-tab"));
+  }
+}
 
 // ────────────────────────────────────────────────────
 // INIT
@@ -1206,10 +1605,9 @@ window.addEventListener("DOMContentLoaded", async () => {
     if (!res.ok) throw new Error("State load failed");
     const data = await res.json();
 
-    // Normalise workspaceMemory (Mongoose Map serialises as plain object)
     const rawMem = (data.workspace && data.workspace.workspaceMemory) || {};
     STATE.wsMemory  = rawMem instanceof Map ? Object.fromEntries(rawMem) : rawMem;
-    STATE.pinnedIds = (data.workspace && data.workspace.pinnedBundles) || [];
+    STATE.pinnedIds = (data.workspace && data.workspace.pinnedBundleIds) || [];
 
     renderWsMemory();
 
@@ -1221,11 +1619,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     if (lastId) {
       const b = bundles.find(x => String(x._id) === String(lastId));
-      if (b) { selectBundle(b); return; }
+      if (b) { await selectBundle(b); return; }
     }
-
     const active = bundles.find(b => b.status === "active");
-    if (active) selectBundle(active);
+    if (active) await selectBundle(active);
   } catch (e) {
     console.warn("[AQ] State init failed:", e.message);
   }
@@ -1238,20 +1635,20 @@ function initBundleSwitcher() {
   const sw = document.getElementById("bundleSwitcher");
   if (!sw) return;
 
-  sw.innerHTML = '<option value="">Select bundle…</option>' +
-    _ejsBundles.map(b => `<option value="${b._id}">${esc(b.title)}</option>`).join("");
+  if (_ejsBundles.length > 0) {
+    sw.style.display = "";
+    sw.innerHTML = '<option value="">Select bundle…</option>' +
+      _ejsBundles.map(b => `<option value="${b._id}">${esc(b.title)}</option>`).join("");
 
-  const saved = localStorage.getItem("aq_activeBundle");
-  if (saved) sw.value = saved;
+    const saved = localStorage.getItem("aq_activeBundle");
+    if (saved) sw.value = saved;
 
-  sw.onchange = () => {
-    const id    = sw.value;
-    const found = _ejsBundles.find(b => String(b._id) === id);
-    if (found) {
-      localStorage.setItem("aq_activeBundle", id);
-      selectBundle(found);
-    }
-  };
+    sw.onchange = () => {
+      const id    = sw.value;
+      const found = _ejsBundles.find(b => String(b._id) === id);
+      if (found) { localStorage.setItem("aq_activeBundle", id); selectBundle(found); }
+    };
+  }
 }
 
 // ────────────────────────────────────────────────────
@@ -1267,11 +1664,15 @@ function switchLeftTab(tab, btn) {
 function switchRightTab(tab, btn) {
   document.querySelectorAll(".aq-right-tab").forEach(b => b.classList.remove("active"));
   document.querySelectorAll(".aq-right-section").forEach(s => s.classList.remove("active"));
-  btn.classList.add("active");
+  if (btn) btn.classList.add("active");
+  else {
+    const tabs = document.querySelectorAll(".aq-right-tab");
+    const map  = { outputs: 0, memory: 1, insights: 2 };
+    if (tabs[map[tab]]) tabs[map[tab]].classList.add("active");
+  }
   const section = document.getElementById("rtab-" + tab);
   if (section) {
     section.classList.add("active");
-    // re-trigger opacity transition
     section.style.opacity = 0;
     requestAnimationFrame(() => { section.style.opacity = 1; });
   }
@@ -1282,37 +1683,49 @@ function switchRightTab(tab, btn) {
 // ────────────────────────────────────────────────────
 async function selectBundle(bundle) {
   if (!bundle || !bundle._id) return;
+  STATE.lastBundleId = bundle._id;
 
-  // Highlight sidebar row
   document.querySelectorAll(".aq-bundle-item").forEach(r => r.classList.remove("selected"));
   const row = document.getElementById("brow-" + bundle._id);
   if (row) row.classList.add("selected");
 
-  // Sync dropdown
   const sw = document.getElementById("bundleSwitcher");
   if (sw) sw.value = bundle._id;
   localStorage.setItem("aq_activeBundle", bundle._id);
 
-  // Fetch fresh state
+  showBundleLoading();
+  showLoading();
+
   try {
     const res = await fetch("/workspace/bundle/" + bundle._id);
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.bundle) bundle = data.bundle;
-    }
-  } catch (_) {}
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (data && data.bundle) bundle = data.bundle;
+  } catch (e) {
+    showBundleError("Could not load bundle. Check your connection.");
+    hideLoading();
+    return;
+  }
 
+  hideLoading();
   STATE.bundle       = bundle;
   STATE.selectedStep = null;
 
-  document.getElementById("wsWelcome").style.display = "none";
-  document.getElementById("wsExec").style.display    = "flex";
-
+  showBundleExec();
   renderExecPanel(bundle);
   renderMemoryPanel(bundle);
   renderInsightPanel(bundle);
   updateBreadcrumb(bundle.title);
   updatePinBtn(bundle._id);
+
+  // Auto-close sidebar on mobile after selection
+  if (window.innerWidth < 900) closeSidebar();
+}
+
+// Helper: select by ID from EJS bundle list
+async function selectBundleById(id) {
+  const bundle = _ejsBundles.find(b => String(b._id) === String(id));
+  if (bundle) await selectBundle(bundle);
 }
 
 // ────────────────────────────────────────────────────
@@ -1327,7 +1740,7 @@ function renderExecPanel(b) {
   const total = steps.length;
   const pct   = total ? Math.round((done / total) * 100) : 0;
 
-  const scores = outputs.map(o => o && o.confidenceScore).filter(s => typeof s === "number");
+  const scores  = outputs.map(o => o && o.confidenceScore).filter(s => typeof s === "number");
   const avgConf = scores.length
     ? (scores.reduce((a, s) => a + s, 0) / scores.length * 100).toFixed(0) + "%"
     : "—";
@@ -1341,7 +1754,6 @@ function renderExecPanel(b) {
   document.getElementById("statConfidence").textContent = avgConf;
   document.getElementById("mainProgressFill").style.width = pct + "%";
 
-  // Button state
   const btnRun    = document.getElementById("btnRun");
   const btnPause  = document.getElementById("btnPause");
   const btnResume = document.getElementById("btnResume");
@@ -1366,19 +1778,13 @@ function renderTimeline(steps, progress, currentStep) {
   tl.innerHTML = steps.map((step, i) => {
     const prog   = progress.find(p => p && p.step === i);
     const status = prog ? prog.status : (i === currentStep ? "in-progress" : "pending");
-
     const dotCls = status === "completed"   ? "done"
                  : status === "in-progress" ? "running"
-                 : i === currentStep        ? "running"
-                 : "";
+                 : i === currentStep        ? "running" : "";
     const icon   = status === "completed"   ? "✓"
-                 : status === "in-progress" ? "…"
-                 : (i + 1);
-
+                 : status === "in-progress" ? "…" : (i + 1);
     const lineCls   = status === "completed" ? "done" : "";
-    const connector = i < steps.length - 1
-      ? `<div class="aq-tl-line ${lineCls}"></div>` : "";
-
+    const connector = i < steps.length - 1 ? `<div class="aq-tl-line ${lineCls}"></div>` : "";
     return `
       <div class="aq-tl-step" title="${esc(step.title || 'Step '+(i+1))}" onclick="jumpToStep(${i})">
         <div class="aq-tl-dot ${dotCls}">${icon}</div>
@@ -1392,34 +1798,30 @@ function renderTimeline(steps, progress, currentStep) {
 function renderStepCards(steps, progress, outputs, currentStep) {
   const container = document.getElementById("execSteps");
   if (!steps.length) {
-    container.innerHTML = `<div class="aq-empty">No steps defined.</div>`;
+    container.innerHTML = `<div class="aq-empty"><span class="aq-empty-icon">📋</span>No steps defined in this bundle.</div>`;
     return;
   }
 
   container.innerHTML = steps.map((step, i) => {
-    const prog   = progress.find(p => p && p.step === i) || {};
-    const status = prog.status || (i === currentStep ? "in-progress" : "pending");
-    const output = outputs.find(o => o && o.stepIndex === i);
+    const prog    = progress.find(p => p && p.step === i) || {};
+    const status  = prog.status || (i === currentStep ? "in-progress" : "pending");
+    const output  = outputs.find(o => o && o.stepIndex === i);
 
     const cardCls  = status === "completed"   ? "done"
                    : status === "in-progress" ? "running"
                    : i === currentStep        ? "active" : "";
-
     const badgeCls = status === "completed"   ? "wb-done"
                    : status === "in-progress" ? "wb-running"
                    : status === "failed"      ? "wb-failed"
                    : "wb-pending";
-
     const badgeTxt = status === "completed"   ? "DONE"
                    : status === "in-progress" ? "RUNNING"
                    : status === "failed"      ? "FAILED"
                    : "PENDING";
+    const numCls   = status === "completed"   ? "done"
+                   : status === "in-progress" ? "running" : "";
+    const numIcon  = status === "completed"   ? "✓" : (i + 1);
 
-    const numCls  = status === "completed"   ? "done"
-                  : status === "in-progress" ? "running" : "";
-    const numIcon = status === "completed" ? "✓" : (i + 1);
-
-    // Resources / tools
     const resources = step.resources || step.tools || [];
     const toolsHtml = resources.length
       ? `<div class="aq-tool-chips">${resources.map(r =>
@@ -1429,18 +1831,16 @@ function renderStepCards(steps, progress, outputs, currentStep) {
         ).join("")}</div>`
       : "";
 
-    // Output
     let outputHtml = "";
     if (output && output.content) {
       const confBadge = typeof output.confidenceScore === "number"
-        ? `<span style="font-family:var(--mono);font-size:0.55rem;color:var(--accent2);margin-left:auto;">${Math.round(output.confidenceScore * 100)}% conf</span>`
+        ? `<span style="font-family:var(--mono);font-size:0.58rem;color:var(--accent2);">${Math.round(output.confidenceScore * 100)}% conf</span>`
         : "";
       const durBadge = output.durationMs
-        ? `<span style="font-family:var(--mono);font-size:0.55rem;color:var(--muted);margin-left:8px;">${output.durationMs}ms</span>`
+        ? `<span style="font-family:var(--mono);font-size:0.58rem;color:var(--muted);margin-left:6px;">${output.durationMs}ms</span>`
         : "";
       const insights = (output.keyInsights || []).slice(0, 4).map(k =>
-        `<span class="aq-insight-chip">${esc(k)}</span>`
-      ).join("");
+        `<span class="aq-insight-chip">${esc(k)}</span>`).join("");
 
       outputHtml = `
         <div class="aq-output-block">
@@ -1455,11 +1855,10 @@ function renderStepCards(steps, progress, outputs, currentStep) {
     }
 
     const actionHtml = status !== "completed"
-      ? `<button class="aq-step-act-btn done"  onclick="event.stopPropagation();markStepDone(${i})">✅ Mark Done</button>`
+      ? `<button class="aq-step-act-btn done" onclick="event.stopPropagation();markStepDone(${i})">✅ Mark Done</button>`
       : `<button class="aq-step-act-btn rerun" onclick="event.stopPropagation();rerunStep(${i})">↺ Re-run</button>`;
 
     const isOpen = i === currentStep || i === STATE.selectedStep;
-
     return `
       <div class="aq-step-card ${cardCls}" id="scard-${i}">
         <div class="aq-step-hdr" onclick="toggleCard(${i})">
@@ -1474,7 +1873,7 @@ function renderStepCards(steps, progress, outputs, currentStep) {
         <div class="aq-step-body ${isOpen ? 'open' : ''}" id="sbody-${i}">
           <div class="aq-step-body-inner">
             ${toolsHtml}
-            ${outputHtml}
+            ${outputHtml || `<div class="aq-empty" style="padding:8px 0;font-size:0.64rem;">No output yet. Mark this step done to generate output.</div>`}
             <div class="aq-step-actions">${actionHtml}</div>
           </div>
         </div>
@@ -1496,7 +1895,7 @@ function renderMemoryPanel(b) {
           <div class="aq-mem-k">${esc(k)}</div>
           <div class="aq-mem-v">${esc(String(mem[k] ?? ""))}</div>
         </div>`).join("")
-    : `<div class="aq-empty" style="padding:8px 0;">No bundle memory yet.</div>`;
+    : `<div class="aq-empty" style="padding:8px 0;font-size:0.64rem;">No bundle memory yet.</div>`;
 
   if (b.contextSummary) {
     document.getElementById("memContextBox").textContent     = b.contextSummary;
@@ -1520,7 +1919,7 @@ function renderWsMemory() {
           <div class="aq-mem-k" style="color:var(--accent3)">${esc(k)}</div>
           <div class="aq-mem-v">${esc(String(wsM[k] ?? ""))}</div>
         </div>`).join("")
-    : `<div class="aq-empty" style="padding:8px 0;">No workspace memory yet.</div>`;
+    : `<div class="aq-empty" style="padding:8px 0;font-size:0.64rem;">No workspace memory yet.</div>`;
 }
 
 // ────────────────────────────────────────────────────
@@ -1539,7 +1938,7 @@ function renderInsightPanel(b) {
   document.getElementById("insightList").innerHTML = all.length
     ? all.map(({ text, confidence }) => {
         const badge = confidence
-          ? `<span style="font-family:var(--mono);font-size:0.54rem;color:var(--accent2);margin-left:auto;">${Math.round(confidence*100)}%</span>`
+          ? `<span style="font-family:var(--mono);font-size:0.56rem;color:var(--accent2);margin-left:auto;flex-shrink:0;">${Math.round(confidence*100)}%</span>`
           : "";
         return `<div class="aq-insight-item">${esc(text)}${badge}</div>`;
       }).join("")
@@ -1561,7 +1960,7 @@ function renderOutputFeed(outputs) {
         <span class="aq-feed-step">Step ${(o.stepIndex ?? 0) + 1}${o.stepTitle ? ' · ' + esc(o.stepTitle) : ''}</span>
         <span class="aq-feed-bundle">${esc(o.bundleTitle || '')}</span>
       </div>
-      <div class="aq-feed-preview">${esc(o.preview || '')}</div>
+      <div class="aq-feed-preview">${esc(o.preview || o.content || '')}</div>
     </div>`).join("");
 }
 
@@ -1569,7 +1968,6 @@ function prependOutputFeed(bundleTitle, stepIndex, stepTitle, content) {
   const feed  = document.getElementById("outputFeed");
   const empty = feed.querySelector(".aq-empty");
   if (empty) empty.remove();
-
   const item = document.createElement("div");
   item.className = "aq-feed-item";
   item.innerHTML = `
@@ -1587,78 +1985,63 @@ function prependOutputFeed(bundleTitle, stepIndex, stepTitle, content) {
 async function runCurrentBundle() {
   const b = STATE.bundle;
   if (!b || STATE.loading) return;
-  STATE.loading = true; showLoading();
-
+  showLoading();
   try {
     const res  = await fetch("/workspace/run/" + b._id, { method: "POST" });
     const data = await res.json();
     if (data.error) { toast(data.error, "error"); return; }
-
     STATE.bundle = data.bundle;
-    if (data.workspace && data.workspace.workspaceMemory) {
-      STATE.wsMemory = data.workspace.workspaceMemory;
-    }
+    if (data.workspace && data.workspace.workspaceMemory) STATE.wsMemory = data.workspace.workspaceMemory;
     renderExecPanel(data.bundle);
     updateBundleRowDot(b._id, "active");
     toast("Bundle started ▶", "success");
   } catch (e) {
     toast("Failed to run bundle", "error");
-    console.error(e);
-  } finally { STATE.loading = false; hideLoading(); }
+  } finally { hideLoading(); }
 }
 
 async function pauseCurrentBundle() {
   const b = STATE.bundle;
   if (!b || STATE.loading) return;
-  STATE.loading = true; showLoading();
-
+  showLoading();
   try {
     const res  = await fetch("/workspace/pause/" + b._id, { method: "POST" });
     const data = await res.json();
     if (data.error) { toast(data.error, "error"); return; }
-
     const updated = data.bundle || { ...STATE.bundle, status: "paused" };
-    STATE.bundle = updated;
+    STATE.bundle  = updated;
     renderExecPanel(updated);
     updateBundleRowDot(b._id, "paused");
     toast("Paused ⏸", "info");
   } catch (e) {
     toast("Failed to pause", "error");
-  } finally { STATE.loading = false; hideLoading(); }
+  } finally { hideLoading(); }
 }
 
 async function resumeCurrentBundle() {
   const b = STATE.bundle;
   if (!b || STATE.loading) return;
-  STATE.loading = true; showLoading();
-
+  showLoading();
   try {
     const res  = await fetch("/workspace/resume/" + b._id, { method: "POST" });
     const data = await res.json();
     if (data.error) { toast(data.error, "error"); return; }
-
     STATE.bundle = data.bundle;
-    if (data.workspace && data.workspace.workspaceMemory) {
-      STATE.wsMemory = data.workspace.workspaceMemory;
-    }
+    if (data.workspace && data.workspace.workspaceMemory) STATE.wsMemory = data.workspace.workspaceMemory;
     renderExecPanel(data.bundle);
     updateBundleRowDot(b._id, "active");
     toast("Resumed ▶", "success");
   } catch (e) {
     toast("Failed to resume", "error");
-  } finally { STATE.loading = false; hideLoading(); }
+  } finally { hideLoading(); }
 }
 
 async function markStepDone(stepIndex) {
   const b = STATE.bundle;
   if (!b || STATE.loading) return;
-  STATE.loading = true; showLoading();
-
+  showLoading();
   try {
-    const stepTitle = (b.steps && b.steps[stepIndex] && b.steps[stepIndex].title)
-      || ("Step " + (stepIndex + 1));
-
-    // FIX: correct REST route — /workspace/step/:id/:stepIndex
+    const stepTitle = (b.steps && b.steps[stepIndex] && b.steps[stepIndex].title) || ("Step " + (stepIndex + 1));
     const res  = await fetch(`/workspace/step/${b._id}/${stepIndex}`, {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -1668,25 +2051,21 @@ async function markStepDone(stepIndex) {
     if (data.error) { toast(data.error, "error"); return; }
 
     STATE.bundle = data.bundle;
-    if (data.workspace && data.workspace.workspaceMemory) {
-      STATE.wsMemory = data.workspace.workspaceMemory;
-    }
+    if (data.workspace && data.workspace.workspaceMemory) STATE.wsMemory = data.workspace.workspaceMemory;
 
     renderExecPanel(data.bundle);
     renderMemoryPanel(data.bundle);
     renderInsightPanel(data.bundle);
     updateBundleRowProgress(b._id, data.bundle);
 
-    if (data.output) {
-      prependOutputFeed(data.bundle.title || "Bundle", data.output.stepIndex, data.output.stepTitle, data.output.content);
-    }
+    if (data.output) prependOutputFeed(data.bundle.title || "Bundle", data.output.stepIndex, data.output.stepTitle, data.output.content);
 
     if (data.bundle.status === "completed") toast("🎉 Bundle complete!", "success");
     else toast(`Step ${stepIndex + 1} complete ✓`, "success");
   } catch (e) {
     toast("Error marking step", "error");
     console.error(e);
-  } finally { STATE.loading = false; hideLoading(); }
+  } finally { hideLoading(); }
 }
 
 function rerunStep(stepIndex) {
@@ -1696,9 +2075,7 @@ function rerunStep(stepIndex) {
     const entry = b.progress.find(p => p && p.step === stepIndex);
     if (entry) entry.status = "pending";
   }
-  if (Array.isArray(b.outputs)) {
-    b.outputs = b.outputs.filter(o => o && o.stepIndex !== stepIndex);
-  }
+  if (Array.isArray(b.outputs)) b.outputs = b.outputs.filter(o => o && o.stepIndex !== stepIndex);
   renderExecPanel(b);
   toast(`Step ${stepIndex + 1} reset — mark done to re-run`, "info");
 }
@@ -1706,65 +2083,69 @@ function rerunStep(stepIndex) {
 async function pinCurrentBundle() {
   const b = STATE.bundle;
   if (!b) return;
-  const id       = b._id;
+  await _togglePin(b._id);
+}
+
+async function pinBundleById(id) {
+  await _togglePin(id);
+}
+
+async function _togglePin(id) {
   const isPinned = STATE.pinnedIds.some(p => String(p) === String(id));
   const endpoint = isPinned ? "unpin" : "pin";
-
   try {
     const res  = await fetch(`/workspace/${endpoint}/${id}`, { method: "POST" });
     const data = await res.json();
     if (data.pinnedBundleIds) STATE.pinnedIds = data.pinnedBundleIds;
     else if (!isPinned) STATE.pinnedIds.push(id);
     else STATE.pinnedIds = STATE.pinnedIds.filter(x => String(x) !== String(id));
-    updatePinBtn(id);
+    if (STATE.bundle && String(STATE.bundle._id) === String(id)) updatePinBtn(id);
+    // Update sidebar pin button label
+    const row = document.getElementById("brow-" + id);
+    if (row) {
+      const pinBtn = row.querySelector(".aq-bundle-act-btn.pin");
+      if (pinBtn) pinBtn.textContent = STATE.pinnedIds.some(p => String(p) === String(id)) ? "★ PIND" : "☆ PIN";
+    }
     toast(isPinned ? "Unpinned" : "Pinned ★", isPinned ? "info" : "success");
   } catch {
     toast("Pin action failed", "error");
   }
 }
 
-// ────────────────────────────────────────────────────
-// DELETE BUNDLE
-// FIX: uses correct /bundle/:id DELETE, removes DOM, resets view
-// ────────────────────────────────────────────────────
 async function deleteCurrentBundle() {
-  const sw = document.getElementById("bundleSwitcher");
-  const id = (sw && sw.value) || (STATE.bundle && STATE.bundle._id);
+  const b = STATE.bundle;
+  const id = b && b._id;
   if (!id) return;
-  if (!confirm("Delete this bundle? This cannot be undone.")) return;
+  const ok = await showConfirm("Delete Bundle", "Delete this bundle? This cannot be undone.", "Delete");
+  if (!ok) return;
   await _doDeleteBundle(id);
 }
 
-async function deleteBundle(id) {
+async function deleteBundleById(id) {
   if (!id) return;
-  if (!confirm("Delete this bundle? This cannot be undone.")) return;
+  const ok = await showConfirm("Delete Bundle", "Delete this bundle? This cannot be undone.", "Delete");
+  if (!ok) return;
   await _doDeleteBundle(id);
 }
 
 async function _doDeleteBundle(id) {
   showLoading();
   try {
-    // FIX: correct DELETE endpoint /bundle/:id (bundle controller owns CRUD)
     const res = await fetch("/bundle/" + id, { method: "DELETE" });
     if (!res.ok) throw new Error("Delete failed: " + res.status);
 
-    // Remove sidebar row
     const row = document.getElementById("brow-" + id);
     if (row) row.remove();
 
-    // Remove switcher option
-    const sw  = document.getElementById("bundleSwitcher");
+    const sw = document.getElementById("bundleSwitcher");
     if (sw) { const opt = sw.querySelector(`option[value="${id}"]`); if (opt) opt.remove(); }
 
-    // Clear exec view if it was the active bundle
     if (STATE.bundle && String(STATE.bundle._id) === String(id)) {
       STATE.bundle = null;
       localStorage.removeItem("aq_activeBundle");
-      document.getElementById("wsWelcome").style.display = "";
-      document.getElementById("wsExec").style.display    = "none";
+      showWelcome();
       updateBreadcrumb("Overview");
     }
-
     toast("Bundle deleted", "info");
   } catch (e) {
     toast("Failed to delete bundle", "error");
@@ -1772,24 +2153,16 @@ async function _doDeleteBundle(id) {
   } finally { hideLoading(); }
 }
 
-// ────────────────────────────────────────────────────
-// REMOVE TOOL
-// FIX: correct REST route /workspace/tools/:id
-// ────────────────────────────────────────────────────
 async function removeTool(id) {
   if (!id) return;
-  if (!confirm("Remove this tool from your workspace?")) return;
+  const ok = await showConfirm("Remove Tool", "Remove this tool from your workspace?", "Remove");
+  if (!ok) return;
   showLoading();
-
   try {
-    // FIX: was /tool/:id — now /workspace/tools/:id
     const res = await fetch("/workspace/tools/" + id, { method: "DELETE" });
     if (!res.ok) throw new Error("Remove failed: " + res.status);
-
-    // FIX: remove by known DOM id trow-<id>
     const el = document.getElementById("trow-" + id);
     if (el) el.remove();
-
     toast("Tool removed", "info");
   } catch (e) {
     toast("Failed to remove tool", "error");
@@ -1815,7 +2188,7 @@ function jumpToStep(idx) {
   const card = document.getElementById("scard-" + idx);
   if (card) {
     card.scrollIntoView({ behavior: "smooth", block: "center" });
-    const body   = document.getElementById("sbody-"  + idx);
+    const body   = document.getElementById("sbody-" + idx);
     const toggle = document.querySelector(`#scard-${idx} .aq-step-toggle`);
     if (body)   body.classList.add("open");
     if (toggle) toggle.classList.add("open");
@@ -1828,7 +2201,8 @@ function jumpToStep(idx) {
 async function autoRunSteps() {
   const b = STATE.bundle;
   if (!b || !b.steps) { toast("Select a bundle first", "info"); return; }
-  if (!confirm(`Auto-run all ${b.steps.length} steps?`)) return;
+  const ok = await showConfirm("Auto-Run All Steps", `Auto-run all ${b.steps.length} steps sequentially?`, "▶ Auto Run");
+  if (!ok) return;
 
   for (let i = 0; i < b.steps.length; i++) {
     const latest   = STATE.bundle;
@@ -1850,7 +2224,7 @@ function updateBreadcrumb(title) {
 
 function updatePinBtn(id) {
   const el = document.getElementById("btnPin");
-  if (el) el.textContent = STATE.pinnedIds.some(p => String(p) === String(id)) ? "★ PINNED" : "☆ PIN";
+  if (el) el.textContent = STATE.pinnedIds.some(p => String(p) === String(id)) ? "★ PIN" : "☆ PIN";
 }
 
 function updateBundleRowDot(id, status) {
@@ -1898,9 +2272,9 @@ function formatOutput(text) {
   if (!text) return "";
   return esc(text)
     .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/^## (.+)$/gm,    '<span style="font-size:0.88rem;font-weight:700;color:var(--bright);display:block;margin:6px 0 3px;">$1</span>')
-    .replace(/^- (.+)$/gm,     '<span style="display:block;padding-left:12px;">• $1</span>')
-    .replace(/`([^`]+)`/g,     '<code style="background:var(--bg);padding:1px 5px;border-radius:3px;font-family:var(--mono);font-size:0.82em;">$1</code>')
+    .replace(/^## (.+)$/gm, '<span style="font-size:0.88rem;font-weight:700;color:var(--bright);display:block;margin:6px 0 3px;">$1</span>')
+    .replace(/^- (.+)$/gm, '<span style="display:block;padding-left:12px;">• $1</span>')
+    .replace(/`([^`]+)`/g, '<code style="background:var(--bg);padding:1px 5px;border-radius:3px;font-family:var(--mono);font-size:0.82em;">$1</code>')
     .replace(/\n/g, "<br/>");
 }
 
@@ -1913,7 +2287,6 @@ function toast(msg, type = "info") {
   el.className   = `aq-toast ${type}`;
   el.textContent = msg;
   root.appendChild(el);
-
   setTimeout(() => {
     el.classList.add("fadeout");
     setTimeout(() => el.remove(), 320);
@@ -1924,13 +2297,14 @@ function toast(msg, type = "info") {
 // COMMAND PALETTE
 // ────────────────────────────────────────────────────
 const PALETTE_COMMANDS = [
-  { label: "▶ Run Bundle",        hint: "R",  action: () => runCurrentBundle() },
-  { label: "⏸ Pause Bundle",      hint: "P",  action: () => pauseCurrentBundle() },
-  { label: "↺ Resume Bundle",     hint: "RS", action: () => resumeCurrentBundle() },
-  { label: "⚡ Auto-run All Steps",hint: "A",  action: () => autoRunSteps() },
-  { label: "☆ Pin / Unpin",       hint: "PI", action: () => pinCurrentBundle() },
-  { label: "⌫ Delete Bundle",     hint: "D",  action: () => deleteCurrentBundle() },
-  { label: "← Go to Bundles",     hint: "B",  action: () => { window.location.href = "/bundles"; } },
+  { label: "▶ Run Bundle",         hint: "R",  action: () => runCurrentBundle() },
+  { label: "⏸ Pause Bundle",       hint: "P",  action: () => pauseCurrentBundle() },
+  { label: "↺ Resume Bundle",      hint: "RS", action: () => resumeCurrentBundle() },
+  { label: "⚡ Auto-run All Steps", hint: "A",  action: () => autoRunSteps() },
+  { label: "☆ Pin / Unpin",        hint: "PI", action: () => pinCurrentBundle() },
+  { label: "⌫ Delete Bundle",      hint: "D",  action: () => deleteCurrentBundle() },
+  { label: "☰ Open Bundles",       hint: "B",  action: () => openSidebar() },
+  { label: "← Go to Bundles",      hint: "G",  action: () => { window.location.href = "/bundles"; } },
 ];
 
 function openPalette() {
@@ -1939,42 +2313,38 @@ function openPalette() {
   renderPaletteList(PALETTE_COMMANDS);
   document.getElementById("aqPaletteInput").focus();
 }
-
 function closePalette(e) {
   if (e && e.target !== document.getElementById("aqPalette")) return;
   document.getElementById("aqPalette").classList.remove("open");
 }
-
 function renderPaletteList(cmds) {
   document.getElementById("aqPaletteList").innerHTML = cmds.map((c, i) => `
-    <div class="aq-palette-cmd" onclick="runPaletteCmd(${i}_cmds)">
+    <div class="aq-palette-cmd" data-idx="${i}">
       ${esc(c.label)}
       <span class="key">${esc(c.hint)}</span>
     </div>`).join("");
-
-  // re-bind with closure
-  document.querySelectorAll(".aq-palette-cmd").forEach((el, i) => {
-    el.onclick = () => { cmds[i].action(); document.getElementById("aqPalette").classList.remove("open"); };
+  document.querySelectorAll(".aq-palette-cmd").forEach(el => {
+    el.onclick = () => {
+      cmds[parseInt(el.dataset.idx)].action();
+      document.getElementById("aqPalette").classList.remove("open");
+    };
   });
 }
-
 function filterPalette(val) {
-  const lower = val.toLowerCase();
+  const lower    = val.toLowerCase();
   const filtered = PALETTE_COMMANDS.filter(c => c.label.toLowerCase().includes(lower));
   renderPaletteList(filtered);
 }
-
 function paletteKeydown(e) {
   if (e.key === "Escape") document.getElementById("aqPalette").classList.remove("open");
 }
-
 document.addEventListener("keydown", e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
-    e.preventDefault();
-    openPalette();
+    e.preventDefault(); openPalette();
   }
   if (e.key === "Escape") {
     document.getElementById("aqPalette").classList.remove("open");
+    document.getElementById("aqConfirm").classList.remove("open");
   }
 });
 
@@ -2017,6 +2387,5 @@ setInterval(async () => {
   } catch {}
 }, 10000);
 </script>
-
 </body>
 </html>
