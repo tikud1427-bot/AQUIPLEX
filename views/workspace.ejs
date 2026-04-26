@@ -894,16 +894,17 @@ function renderStepCards(steps, progress, outputs, currentStep) {
    - On close: snap max-height back to px first, then animate to 0
      This is needed because max-height=none cannot animate to 0
 ═══════════════════════════════════════════════════════ */
-function toggleCard(idx) {
-  if (STATE.openSteps.has(idx)) {
-    _closeCard(idx);
-  } else {
-    // Close all other open cards first (single-open accordion)
-    const others = Array.from(STATE.openSteps).filter(i => i !== idx);
-    others.forEach(i => _closeCard(i));
-    _openCard(idx, /* animate= */ true);
+  function toggleCard(idx) {
+    console.log("CLICK WORKING → step:", idx);
+
+    if (STATE.openSteps.has(idx)) {
+      _closeCard(idx);
+    } else {
+      const others = Array.from(STATE.openSteps).filter(i => i !== idx);
+      others.forEach(i => _closeCard(i));
+      _openCard(idx, true);
+    }
   }
-}
 
 function _openCard(idx, animate = true) {
   const body   = document.getElementById("sbody-" + idx);
