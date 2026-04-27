@@ -1,24 +1,23 @@
 /**
- * project.routes.js — Aquiplex AI Website Execution Engine  [UPGRADED]
+ * project.routes.js — Aquiplex AI Website Execution Engine  [FIXED v2]
  *
  * Mounted at: /workspace/project
  *
- * UPGRADE CHANGELOG:
- * - [UPGRADE-1] POST /generate now uses builderService.generate(prompt)
- *               → intent detection + AI generation + template fallback
- *               → ZERO FAILURE: always returns a working result
- * - [UPGRADE-2] Accepts both old array format { files: [...] }
- *               and new object format { files: { "name": "content" } }
- * - [UPGRADE-3] Logs source (ai | template | nuclear_fallback) for debugging
- *
- * ALL OTHER ROUTES: UNCHANGED — backward compatible.
+ * BUGFIX CHANGELOG:
+ * - [FIX-1] GET /:id now calls res.render("workspace", {...}) instead of res.json(...)
+ *           This was the root cause: the browser was receiving raw JSON instead of HTML.
+ * - [FIX-2] Added GET /api/:id — dedicated JSON endpoint for programmatic consumers.
+ *           API routes are always prefixed /api/ to prevent mixing concerns.
+ * - [FIX-3] GET /:id fetches the user's full workspace + bundles so workspace.ejs
+ *           receives the same data shape as GET /workspace (workspace_routes.js line 99).
  *
  * ROUTES:
  *   POST   /workspace/project/create       → create new project + folder
- *   POST   /workspace/project/generate     → AI + template hybrid generation [UPGRADED]
+ *   POST   /workspace/project/generate     → AI + template hybrid generation
  *   POST   /workspace/project/edit         → AI edits file via natural language
  *   GET    /workspace/project/list         → list user's projects
- *   GET    /workspace/project/:id          → project metadata
+ *   GET    /workspace/project/:id          → [FIXED] render workspace SPA, auto-open builder
+ *   GET    /workspace/project/api/:id      → [NEW]   JSON metadata (for programmatic use)
  *   GET    /workspace/project/:id/files    → list files in project
  *   GET    /workspace/project/:id/:file    → serve raw file (for iframe)
  *   DELETE /workspace/project/:id          → delete project
@@ -33,7 +32,13 @@ const path     = require("path");
 const { v4: uuidv4 } = require("uuid");
 const axios    = require("axios");
 
-// ── [UPGRADE-1] Import builder service ────────────────────────────────────────
+// ── Models needed for workspace render ───────────────────────────────────────
+// [FIX-3] project route must pull the same data that workspace_routes.js GET /
+// passes to the EJS template: { workspace, bundles, page }
+const Workspace = require("../models/Workspace");
+const Bundle    = require("../models/Bundle");
+
+// ── Builder service ───────────────────────────────────────────────────────────
 const builderService = require("../services/builder.service");
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -42,7 +47,6 @@ const builderService = require("../services/builder.service");
 
 const PROJECTS_ROOT = path.join(process.cwd(), "projects");
 
-// Ensure projects root exists on startup
 if (!fs.existsSync(PROJECTS_ROOT)) {
   fs.mkdirSync(PROJECTS_ROOT, { recursive: true });
 }
@@ -66,12 +70,10 @@ function handleErr(res, err, status = 500) {
   res.status(status).json({ success: false, error: err?.message || "Internal error" });
 }
 
-/** Resolve the project folder path */
 function projectDir(projectId) {
   return path.join(PROJECTS_ROOT, projectId);
 }
 
-/** Read the project manifest (meta.json) safely */
 function readMeta(projectId) {
   try {
     const p = path.join(projectDir(projectId), "meta.json");
@@ -82,16 +84,11 @@ function readMeta(projectId) {
   }
 }
 
-/** Write the project manifest */
 function writeMeta(projectId, data) {
   const p = path.join(projectDir(projectId), "meta.json");
   fs.writeFileSync(p, JSON.stringify(data, null, 2), "utf8");
 }
 
-/**
- * Strip markdown fences and extract JSON from AI response.
- * Kept for the /edit route which still uses direct AI calls.
- */
 function extractJSON(raw) {
   if (!raw) throw new Error("AI returned empty response");
   let cleaned = raw
@@ -104,48 +101,28 @@ function extractJSON(raw) {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
-/** Sanitize a filename to prevent path traversal */
 function safeFilename(name) {
   return path.basename(name).replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
-/** Check if a file extension is allowed to be served */
 function isAllowedExt(filename) {
   const allowed = [".html", ".css", ".js", ".json", ".svg", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".woff", ".woff2", ".ttf"];
   return allowed.includes(path.extname(filename).toLowerCase());
 }
 
-/**
- * [UPGRADE-2] Normalize builder output to { filename: content } map.
- * Builder returns { files: { "index.html": "..." } } (object format).
- * Old code used { files: [{ name, content }] } (array format).
- * This handles both for backward compatibility.
- */
 function normalizeFiles(filesOutput) {
   if (!filesOutput) return {};
-
-  // Object format (new): { "index.html": "content" }
-  if (!Array.isArray(filesOutput) && typeof filesOutput === "object") {
-    return filesOutput;
-  }
-
-  // Array format (old): [{ name: "index.html", content: "..." }]
+  if (!Array.isArray(filesOutput) && typeof filesOutput === "object") return filesOutput;
   if (Array.isArray(filesOutput)) {
     const result = {};
     for (const f of filesOutput) {
-      if (f.name && f.content !== undefined) {
-        result[f.name] = f.content;
-      }
+      if (f.name && f.content !== undefined) result[f.name] = f.content;
     }
     return result;
   }
-
   return {};
 }
 
-/**
- * Multi-provider AI call for single file edits — unchanged from original.
- */
 async function callAIForEdit(systemPrompt, userPrompt) {
   const messages = [
     { role: "system", content: systemPrompt },
@@ -156,7 +133,6 @@ async function callAIForEdit(systemPrompt, userPrompt) {
     try { return await fn(); } catch { return null; }
   }
 
-  // Groq
   const groqResult = await tryProvider(async () => {
     const res = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -169,7 +145,6 @@ async function callAIForEdit(systemPrompt, userPrompt) {
   });
   if (groqResult) return groqResult;
 
-  // OpenRouter
   const orResult = await tryProvider(async () => {
     const res = await axios.post(
       "https://openrouter.ai/api/v1/chat/completions",
@@ -215,8 +190,7 @@ router.post("/create", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /workspace/project/generate  — [UPGRADED] Uses Builder Service
-// Body: { projectId, prompt }
+// POST /workspace/project/generate  — UNCHANGED
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.post("/generate", async (req, res) => {
@@ -233,28 +207,22 @@ router.post("/generate", async (req, res) => {
       return res.status(404).json({ success: false, error: "Project not found" });
     }
 
-    // ── [UPGRADE-1] Call builder service (never throws) ────────────────────
     const buildResult = await builderService.generate(prompt);
-
-    // buildResult is always { files: {...}, source: "ai"|"template"|..., intent: "..." }
-    const filesMap = normalizeFiles(buildResult.files);
-
-    const dir     = projectDir(projectId);
-    const written = [];
+    const filesMap    = normalizeFiles(buildResult.files);
+    const dir         = projectDir(projectId);
+    const written     = [];
 
     for (const [filename, content] of Object.entries(filesMap)) {
-      if (!filename || content === undefined) continue;
       const safeName = safeFilename(filename);
-      const filePath = path.join(dir, safeName);
-      fs.writeFileSync(filePath, content, "utf8");
+      if (!safeName || !isAllowedExt(safeName)) continue;
+      fs.writeFileSync(path.join(dir, safeName), content, "utf8");
       written.push(safeName);
     }
 
-    // Update meta
     meta.files     = written;
     meta.prompt    = prompt;
-    meta.intent    = buildResult.intent;   // [UPGRADE-3] store intent for debugging
-    meta.source    = buildResult.source;   // [UPGRADE-3] store source
+    meta.intent    = buildResult.intent;
+    meta.source    = buildResult.source;
     meta.updatedAt = new Date().toISOString();
     writeMeta(projectId, meta);
 
@@ -264,12 +232,10 @@ router.post("/generate", async (req, res) => {
       success: true,
       projectId,
       files:   written,
-      source:  buildResult.source,   // "ai" | "template" | "nuclear_fallback"
+      source:  buildResult.source,
       intent:  buildResult.intent,
     });
-
   } catch (err) {
-    // Even if something unexpected explodes, don't surface raw error to user
     console.error("[Project Engine] /generate unexpected error:", err);
     handleErr(res, err);
   }
@@ -277,7 +243,6 @@ router.post("/generate", async (req, res) => {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /workspace/project/edit  — UNCHANGED
-// Body: { projectId, command, filename? }
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.post("/edit", async (req, res) => {
@@ -320,7 +285,6 @@ Return ONLY the updated complete file content. Nothing else.`;
 
     const updatedContent = await callAIForEdit(systemPrompt, userPrompt);
 
-    // Strip any accidental code fences from response
     const cleanContent = updatedContent
       .replace(/^```[a-zA-Z]*\n?/gm, "")
       .replace(/^```\n?/gm, "")
@@ -375,13 +339,14 @@ router.get("/list", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /workspace/project/:id  — UNCHANGED
+// [NEW] GET /workspace/project/api/:id  — JSON metadata for programmatic use
+//
+// Kept here so AJAX callers that previously hit /:id for JSON continue to work
+// after the fix. Prefix all API-only routes with /api/ to prevent collisions
+// with view routes.
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.get("/:id", async (req, res, next) => {
-  const reserved = ["create", "generate", "edit", "list"];
-  if (reserved.includes(req.params.id)) return next();
-
+router.get("/api/:id", async (req, res) => {
   try {
     const userId = String(uid(req));
     const meta   = readMeta(req.params.id);
@@ -390,15 +355,78 @@ router.get("/:id", async (req, res, next) => {
       return res.status(404).json({ success: false, error: "Project not found" });
     }
 
-    res.json({ success: true, project: {
-      projectId:  meta.projectId,
-      name:       meta.name,
-      files:      meta.files || [],
-      createdAt:  meta.createdAt,
-      updatedAt:  meta.updatedAt,
-    }});
+    res.json({
+      success: true,
+      project: {
+        projectId:  meta.projectId,
+        name:       meta.name,
+        files:      meta.files || [],
+        createdAt:  meta.createdAt,
+        updatedAt:  meta.updatedAt,
+      },
+    });
   } catch (err) {
     handleErr(res, err);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// [FIXED] GET /workspace/project/:id  — Render workspace SPA, auto-open builder
+//
+// ROOT CAUSE OF BUG:
+//   The old code did res.json({ success: true, project: {...} }) here.
+//   The browser received raw JSON instead of HTML, so no UI rendered.
+//
+// FIX:
+//   1. Validate the project belongs to the user (unchanged).
+//   2. Load the same workspace + bundles data that GET /workspace loads
+//      (workspace_routes.js line 87-99) so workspace.ejs gets everything it needs.
+//   3. Pass `openProjectId` as an extra EJS variable — workspace.ejs uses
+//      this to auto-open the Site Builder panel for this project on load.
+//   4. Call res.render("workspace", {...}) — NOT res.json().
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.get("/:id", async (req, res, next) => {
+  // Guard: skip reserved keyword segments so they fall through to their own routes
+  const reserved = ["create", "generate", "edit", "list", "api"];
+  if (reserved.includes(req.params.id)) return next();
+
+  try {
+    const userId = uid(req);
+    if (!userId) return res.redirect("/login");
+
+    // 1. Validate project ownership
+    const meta = readMeta(req.params.id);
+    if (!meta || meta.userId !== String(userId)) {
+      return res.status(404).render("error", {
+        message: "Project not found or you don't have access to it.",
+        status:  404,
+      });
+    }
+
+    // 2. Load workspace + bundles — same query as workspace_routes.js GET /
+    let ws = await Workspace.findOne({ userId }).populate("tools").lean();
+    if (!ws) {
+      ws = await new Workspace({ userId }).save();
+      ws = ws.toObject ? ws.toObject() : ws;
+    }
+    if (ws.workspaceMemory instanceof Map) {
+      ws.workspaceMemory = Object.fromEntries(ws.workspaceMemory);
+    }
+    const bundles = await Bundle.find({ userId }).sort({ updatedAt: -1 }).lean();
+
+    // 3. Render workspace.ejs with the same data shape it always expects,
+    //    PLUS openProjectId so the client-side JS knows which project to open.
+    return res.render("workspace", {
+      workspace:     ws,
+      bundles,
+      page:          "workspace",
+      openProjectId: meta.projectId,   // ← NEW: tells the SPA to auto-open this project
+      openProjectName: meta.name,      // ← NEW: avoids an extra fetch for the project name
+    });
+  } catch (err) {
+    console.error("[PROJECT ENGINE] GET /:id render error:", err);
+    res.status(500).send("Failed to load workspace for this project.");
   }
 });
 

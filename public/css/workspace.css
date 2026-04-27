@@ -4,48 +4,37 @@
 ═══════════════════════════════════════════════════════════════ */
 
 /* ── TOKENS ─────────────────────────────────────────────────── */
+/* ── UPGRADED TOKENS (v3 — refined, premium contrast) ── */
 .workspace-page {
-  --wp-bg:           #080c12;
-  --wp-surface:      #0d1117;
-  --wp-panel:        #161b22;
-  --wp-panel-2:      #1c2333;
-  --wp-border:       rgba(255,255,255,0.08);
-  --wp-border-lit:   rgba(255,255,255,0.16);
-  --wp-accent:       #00c8f5;
-  --wp-accent2:      #7c6df5;
-  --wp-accent3:      #f04f6e;
-  --wp-green:        #0dcc6e;
-  --wp-amber:        #f5a623;
-  --wp-text:         #c9d1d9;
-  --wp-muted:        #6e7b8a;
-  --wp-bright:       #ffffff;
-  --wp-mono:         'JetBrains Mono', 'Fira Code', monospace;
-  --wp-ui:           'DM Sans', 'Segoe UI', sans-serif;
-  --wp-r:            10px;
-  --wp-r-sm:         6px;
-  --wp-shadow-card:  0 2px 12px rgba(0,0,0,0.5);
+  --wp-bg:           #06090f;
+  --wp-surface:      #0b0f16;
+  --wp-panel:        #121826;
+  --wp-panel-2:      #182132;
 
-  font-family: var(--wp-ui);
-  background: var(--wp-bg);
-  color: var(--wp-text);
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
-}
+  --wp-border:       rgba(255,255,255,0.06);
+  --wp-border-lit:   rgba(255,255,255,0.12);
 
-.workspace-page * { box-sizing: border-box; }
+  /* refined accents (less neon, more pro) */
+  --wp-accent:       #22d3ee;   /* cyan-400 */
+  --wp-accent2:      #8b5cf6;   /* violet-500 */
+  --wp-accent3:      #fb7185;   /* rose-400 */
 
-/* subtle grid bg */
-.workspace-page::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(0,200,245,0.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,200,245,0.018) 1px, transparent 1px);
-  background-size: 40px 40px;
-  pointer-events: none;
-  z-index: 0;
+  --wp-green:        #34d399;   /* emerald-400 */
+  --wp-amber:        #fbbf24;   /* amber-400 */
+
+  /* text hierarchy improved */
+  --wp-text:         #d1d5db;
+  --wp-muted:        #7b8794;
+  --wp-bright:       #f9fafb;
+
+  /* subtle depth */
+  --wp-shadow-card:  0 4px 20px rgba(0,0,0,0.6);
+
+  background: radial-gradient(
+    ellipse at top,
+    rgba(34,211,238,0.04),
+    transparent 60%
+  ), var(--wp-bg);
 }
 
 /* ── ANIMATIONS ──────────────────────────────────────────────── */
@@ -505,7 +494,6 @@
   transition: all 0.15s ease;
   border: 1px solid transparent;
   margin-bottom: 2px;
-  group: true;
 }
 
 .workspace-page .wp-bundle-item:hover {
@@ -1313,10 +1301,15 @@
   font-size: 0.73rem;
   color: var(--wp-text);
   line-height: 1.5;
+
   display: -webkit-box;
-  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+
   overflow: hidden;
+
+  /* ✅ Standard (future support) */
+  line-clamp: 3;
 }
 
 /* Memory panel */
@@ -1509,37 +1502,26 @@
 
 /* ── ROOT TOKENS (re-expose on aq-workspace scope) ─────────── */
 .aq-workspace {
-  --aq-bg:          #080c12;
-  --aq-surface:     #0d1117;
-  --aq-panel:       #161b22;
-  --aq-panel-2:     #1c2333;
-  --aq-border:      rgba(255,255,255,0.08);
-  --aq-border-lit:  rgba(255,255,255,0.16);
-  --aq-accent:      #00c8f5;
-  --aq-accent2:     #7c6df5;
-  --aq-accent3:     #f04f6e;
-  --aq-green:       #0dcc6e;
-  --aq-amber:       #f5a623;
-  --aq-text:        #c9d1d9;
-  --aq-muted:       #6e7b8a;
-  --aq-bright:      #ffffff;
-  --aq-mono:        'IBM Plex Mono', 'JetBrains Mono', monospace;
-  --aq-ui:          'Syne', 'DM Sans', sans-serif;
-  --aq-r:           10px;
-  --aq-r-sm:        6px;
+  --aq-bg:          #06090f;
+  --aq-surface:     #0b0f16;
+  --aq-panel:       #121826;
+  --aq-panel-2:     #182132;
 
-  font-family:  var(--aq-ui);
-  background:   var(--aq-bg);
-  color:        var(--aq-text);
-  display:      flex;
-  flex-direction: column;
-  height:       100vh;
-  overflow:     hidden;
-  position:     relative;
-  z-index:      1;
+  --aq-border:      rgba(255,255,255,0.06);
+  --aq-border-lit:  rgba(255,255,255,0.12);
+
+  --aq-accent:      #22d3ee;
+  --aq-accent2:     #8b5cf6;
+  --aq-accent3:     #fb7185;
+
+  --aq-green:       #34d399;
+  --aq-amber:       #fbbf24;
+
+  --aq-text:        #d1d5db;
+  --aq-muted:       #7b8794;
+  --aq-bright:      #f9fafb;
 }
 
-.aq-workspace * { box-sizing: border-box; }
 
 /* ── LOADING BAR ──────────────────────────────────────────────── */
 .aq-loading-bar {
@@ -2714,4 +2696,12 @@
   .aq-stats-row     { flex-wrap: wrap; gap: 10px; }
   .aq-topbar        { padding: 0 10px; }
   .aq-breadcrumb    { display: none; }
+}
+
+/* ── FINAL VISUAL ENHANCEMENTS (safe overrides) ── */
+
+.workspace-page .wp-btn-run:hover,
+.workspace-page .wp-tab.active {
+  box-shadow: 0 0 0 1px rgba(34,211,238,0.25),
+              0 4px 14px rgba(34,211,238,0.15);
 }

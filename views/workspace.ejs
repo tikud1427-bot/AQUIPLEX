@@ -283,7 +283,7 @@
             </div>
             <div class="aq-bundle-meta">
               <div class="aq-bundle-track">
-                <div class="aq-bundle-fill" style="width:<%= pct %>%"></div>
+                <div class="aq-bundle-fill"style="width: <%= pct %>%"></div>
               </div>
               <div class="aq-bundle-pct"><%= pct %>%</div>
             </div>
@@ -314,10 +314,10 @@
                  class="aq-tool-logo" alt="<%= tool.name %>"/>
             <span class="aq-tool-name"><%= tool.name %></span>
             <div class="aq-tool-btns">
-              <button class="aq-tool-btn"
-                onclick="launchTool('<%= (tool.url || '').replace(/'/g, "\\'") %>')">OPEN</button>
-              <button class="aq-tool-btn rm"
-                onclick="removeTool('<%= tool._id %>')">RM</button>
+              <button class="aq-tool-btn" data-url="<%= tool.url %>"
+                onclick="launchTool(this.dataset.url)">OPEN</button>
+              <button class="aq-tool-btn rm" data-id="<%= tool._id %>"
+                onclick="removeTool(this.dataset.id)">RM</button>
             </div>
           </div>
           <% }) %>
@@ -570,7 +570,7 @@
 
 <%- include("partials/footer") %>
 
-<script>
+<script type="text/javascript">
 "use strict";
 
 /* ═══════════════════════════════════════════════════════
@@ -588,7 +588,7 @@ const STATE = {
   allBundles:   [],
 };
 
-const _ejsBundles = <%- JSON.stringify(bundles || []) %>;
+const _ejsBundles = JSON.parse(decodeURIComponent("<%- encodeURIComponent(JSON.stringify(bundles || [])) %>"));
 STATE.allBundles = _ejsBundles.slice();
 
 /* ═══════════════════════════════════════════════════════

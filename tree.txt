@@ -1,0 +1,33 @@
+
+/workspaces/AQUIPLEX
+├── aquiplex-ai
+├── client
+├── components.json
+├── controllers
+├── data
+├── gemini-test.js
+├── generated-icon.png
+├── index.cjs
+├── index.js
+├── models
+├── node_modules
+├── package-lock.json
+├── package.json
+├── projects
+├── public
+├── routes
+├── script
+├── seed.js
+├── server
+├── services
+├── shared
+├── templates
+├── tree.txt
+├── tsconfig.json
+└── views
+
+directory: 15 file: 10
+
+
+
+[2K[1G
