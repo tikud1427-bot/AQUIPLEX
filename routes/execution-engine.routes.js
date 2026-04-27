@@ -15,7 +15,7 @@
 "use strict";
 
 const mongoose = require("mongoose");
-const Bundle   = require("./models/Bundle");
+const Bundle   = require("../models/Bundle");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Context Engine — builds the deep prompt injected before every step

@@ -1,0 +1,15 @@
+{
+  "projectId": "bd2158c0-e5a6-42bf-b3e2-5354eb6f0e2d",
+  "userId": "69b6c6d87c83e9504c4e0cde",
+  "name": "A stunning portfolio for a UI/UX designe",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-04-27T11:54:59.784Z",
+  "updatedAt": "2026-04-27T11:55:10.361Z",
+  "prompt": "A stunning portfolio for a UI/UX designer",
+  "intent": "portfolio",
+  "source": "template"
+}

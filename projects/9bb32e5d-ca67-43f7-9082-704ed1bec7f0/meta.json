@@ -1,0 +1,15 @@
+{
+  "projectId": "9bb32e5d-ca67-43f7-9082-704ed1bec7f0",
+  "userId": "69b6c1b8cd3038e700ab58ff",
+  "name": "Build a modern, user-friendly student no",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-04-27T11:18:55.353Z",
+  "updatedAt": "2026-04-27T11:19:26.085Z",
+  "prompt": "Build a modern, user-friendly student notes website where users can upload, browse, search, and download categorized study notes with a clean UI and responsive design.",
+  "intent": "landing_page",
+  "source": "ai"
+}

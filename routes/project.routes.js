@@ -34,7 +34,7 @@ const { v4: uuidv4 } = require("uuid");
 const axios    = require("axios");
 
 // ── [UPGRADE-1] Import builder service ────────────────────────────────────────
-const builderService = require("./services/builder.service");
+const builderService = require("../services/builder.service");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config

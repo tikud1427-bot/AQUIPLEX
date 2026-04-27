@@ -1,0 +1,15 @@
+{
+  "projectId": "578a1418-6871-497e-8562-38e08425105f",
+  "userId": "69b6c1b8cd3038e700ab58ff",
+  "name": "Design and build a scalable, modern stud",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-04-27T11:21:20.416Z",
+  "updatedAt": "2026-04-27T11:21:23.788Z",
+  "prompt": "Design and build a scalable, modern student notes platform with a clean, intuitive UI where users can upload, organize, search, and download categorized study materials, featuring advanced filtering, user authentication, collaborative features, and a fully responsive, performance-optimized experience.",
+  "intent": "form",
+  "source": "ai"
+}

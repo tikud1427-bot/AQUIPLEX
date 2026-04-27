@@ -612,6 +612,10 @@
                   onclick="saveCurrentBundle()">
             💾 Save Bundle
           </button>
+          <button class="btn-primary" style="width:100%; justify-content:center; margin-bottom:8px;"
+        onclick="handleBuildWebsite()">
+  🚀 Build Website
+</button>
           <button class="quick-btn" style="width:100%; justify-content:center;"
                   onclick="resetAll()">
             ✕ New Project
@@ -1262,6 +1266,63 @@ window.addEventListener("load", () => {
   const goal = document.getElementById("goalInput").value.trim();
   if (goal) startGenerate();
 });
+
+// 🚀 BUILD WEBSITE FUNCTION — FIXED
+async function handleBuildWebsite() {
+  if (!STATE.bundle || !STATE.bundle._id) {
+    toast("💾 Save the bundle first!", "error");
+    return;
+  }
+
+  // Find and disable the button while working
+  const btn = [...document.querySelectorAll("button")]
+    .find((b) => b.textContent.includes("Build Website"));
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Building..."; }
+
+  try {
+    console.log("🚀 [buildWebsite] calling /bundle/" + STATE.bundle._id + "/execute");
+
+    const res = await fetch(`/bundle/${STATE.bundle._id}/execute`, {
+      method:      "POST",
+      headers:     { "Content-Type": "application/json" },
+      credentials: "include",   // ✅ CRITICAL: sends session cookie
+    });
+
+    // Parse JSON safely
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error("Server returned invalid response (status " + res.status + ")");
+    }
+
+    console.log("📦 [buildWebsite] response:", data);
+
+    // Surface backend errors to the user instead of hiding them
+    if (!res.ok) {
+      throw new Error(data?.error || "Server error " + res.status);
+    }
+
+    if (data.redirectUrl) {
+      toast("🚀 Website built! Redirecting...", "success");
+      setTimeout(() => { window.location.href = data.redirectUrl; }, 700);
+      return; // keep button disabled — we're navigating away
+    }
+
+    if (data.webIntent === false) {
+      toast("ℹ️ Not detected as a website project. Try adding web-related steps.", "info");
+    } else {
+      throw new Error(data?.error || "Unexpected response — no redirect URL returned");
+    }
+
+  } catch (err) {
+    console.error("❌ [buildWebsite] error:", err);
+    toast("Build failed: " + err.message, "error");
+  }
+
+  // Re-enable button on failure
+  if (btn) { btn.disabled = false; btn.textContent = "🚀 Build Website"; }
+}
 </script>
 
 </body>

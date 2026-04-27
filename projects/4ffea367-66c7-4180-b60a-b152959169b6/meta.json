@@ -1,0 +1,15 @@
+{
+  "projectId": "4ffea367-66c7-4180-b60a-b152959169b6",
+  "userId": "69b6c1b8cd3038e700ab58ff",
+  "name": "Build a modern, visually stunning gaming",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-04-27T11:16:14.614Z",
+  "updatedAt": "2026-04-27T11:18:11.356Z",
+  "prompt": "Build a modern, visually stunning gaming website.  Website Name: Apex Gaming Hub  Goal: Create a complete gaming platform homepage that showcases games, news, and community features.  Design Requirements: - Dark theme (black + neon blue/purple accents) - Futuristic UI with glowing effects - Smooth animations and hover effects - Fully responsive (mobile + desktop)  Sections to include:  1. Hero Section - Big headline: \"Enter the Ultimate Gaming Universe\" - Subtext: \"Discover, play, and dominate\" - Background: animated or gradient gaming-style - Call-to-action button: \"Explore Games\"  2. Featured Games Section - Grid of game cards (with images) - Each card shows:   - Game name   - Genre   - Play button  3. Latest Gaming News - 3–5 news cards - Title, short description, read more button  4. Categories - Action, RPG, FPS, Racing, Esports - Icon-based layout  5. Community Section - Show player stats, online users, leaderboard preview  6. Footer - Social links - About - Contact  Technical Requirements: - Clean HTML, CSS, and JavaScript - Use modern UI styling (glassmorphism or neon glow) - Add subtle animations (hover, transitions) - No external dependencies unless necessary  Make it look like a real gaming platform (similar to Steam or Epic Games).",
+  "intent": "portfolio",
+  "source": "template"
+}

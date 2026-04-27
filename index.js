@@ -55,8 +55,8 @@ const path = require("path");
 const axios = require("axios");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-const executionRoutes = require("./execution-engine.routes");
-const workspaceRoutes = require("./workspace.routes");
+const executionRoutes = require("./routes/execution-engine.routes");
+const workspaceRoutes = require("./routes/workspace.routes");
 
 // ── NEW: Service imports ─────────────────────────────────────────────────────
 // [FIX-2] [FIX-5] Import upgraded service modules
@@ -1232,10 +1232,13 @@ app.post("/submit", upload.single("logo"), async (req, res) => {
 
 app.get("/about", (req, res) => res.render("about"));
 
-const { runBundle } = require("./services/execution.service");
+// ✅ FIX: executeBundle registered globally — NOT nested inside another route
+const bundleExec = require("./controllers/bundleExecuteController");
+app.post("/bundle/:id/execute", requireLogin, bundleExec.executeBundle);
 
 app.post("/bundle/:id/run", requireLogin, async (req, res) => {
   try {
+    const { runBundle } = require("./services/execution.service");
     const bundle = await runBundle(req.params.id, generateAI);
     res.json({ success: true, bundle });
   } catch (err) {
@@ -1998,7 +2001,7 @@ async function startServer() {
   await connectDB();
   await importTools();
 
-  const PORT = process.env.PORT;
+  const PORT = process.env.PORT || 5000;
   const http = require("http");
   const server = http.createServer(app);
 

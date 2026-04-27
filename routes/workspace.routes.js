@@ -40,9 +40,9 @@
 const express   = require("express");
 const router    = express.Router();
 const mongoose  = require("mongoose");
-const Workspace = require("./models/Workspace");
-const Bundle    = require("./models/Bundle");
-const svc       = require("./services/workspace.service");
+const Workspace = require("../models/Workspace");
+const Bundle    = require("../models/Bundle");
+const svc       = require("../services/workspace.service");
 
 // ── Mount Project Engine ──────────────────────────────────────────────────────
 // IMPORTANT: mounted BEFORE param-based routes to prevent conflicts

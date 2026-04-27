@@ -1,0 +1,15 @@
+{
+  "projectId": "cef1a7e5-ef89-41cc-a8d9-036c543a110c",
+  "userId": "69b6c6d87c83e9504c4e0cde",
+  "name": "create a website for a college research ",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-04-27T07:20:00.889Z",
+  "updatedAt": "2026-04-27T07:26:26.730Z",
+  "prompt": "create a website for a college research journal named eshona",
+  "intent": "blog",
+  "source": "ai"
+}

@@ -13,7 +13,10 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
-    "baseUrl": ".",
+
+    "baseUrl": ".",                         // keep this
+    "ignoreDeprecations": "6.0",            // ✅ ADD THIS
+
     "types": ["node", "vite/client"],
     "paths": {
       "@/*": ["./client/src/*"],
