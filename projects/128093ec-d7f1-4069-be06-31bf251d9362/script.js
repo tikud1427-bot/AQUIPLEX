@@ -1,1 +1,0 @@
-// No JavaScript needed for this landing page.

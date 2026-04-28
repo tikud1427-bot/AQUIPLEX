@@ -7,169 +7,17 @@
 <link rel="stylesheet" href="/css/styles.css">
 <link rel="stylesheet" href="/css/workspace.css">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<!-- FAVICON (correct based on your files) -->
+<link rel="icon" type="image/png" sizes="96x96" href="https://aquiplex.com/logo/favicon-96x96.png">
+<link rel="icon" type="image/svg+xml" href="https://aquiplex.com/logo/favicon.svg">
+<link rel="shortcut icon" href="https://aquiplex.com/logo/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="https://aquiplex.com/logo/apple-touch-icon.png">
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
-/* ═══════════════════════════════════════════════════════
-   ACCORDION — max-height transition engine
-═══════════════════════════════════════════════════════ */
-.aq-step-body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-  will-change: max-height;
-}
-.aq-step-body[data-state="open"]    { overflow: hidden; }
-.aq-step-body[data-state="settled"] { max-height: none !important; overflow: visible; }
-
-/* Spinner */
-@keyframes aq-spin { to { transform: rotate(360deg); } }
-.aq-mini-spinner, .aq-spinner { animation: aq-spin 0.75s linear infinite; }
-
-/* Feed entrance */
-@keyframes feedIn {
-  from { opacity: 0; transform: translateY(-6px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.aq-feed-item-new.visible { animation: feedIn 0.24s ease forwards; }
-
-.aq-right-section { transition: opacity 0.18s ease; }
-.aq-loading-bar   { transition: opacity 0.2s ease; }
-
-/* ═══ SITE BUILDER ═══════════════════════════════════════ */
-.aq-site-list-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px 6px; border-bottom: 1px solid #1e293b;
-}
-.aq-site-list-title { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em; color: #64748b; text-transform: uppercase; }
-
-.aq-site-item {
-  padding: 10px 14px; border-bottom: 1px solid #0f172a; cursor: pointer;
-  display: flex; align-items: center; gap: 10px; transition: background 0.15s;
-}
-.aq-site-item:hover  { background: #0f172a; }
-.aq-site-item.active { background: #1e293b; }
-.aq-site-item-icon   { font-size: 1rem; flex-shrink: 0; }
-.aq-site-item-info   { flex: 1; min-width: 0; }
-.aq-site-item-name   { font-size: 0.78rem; font-weight: 600; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.aq-site-item-meta   { font-size: 0.62rem; color: #475569; margin-top: 2px; }
-.aq-site-item-del    { background: none; border: none; color: #475569; cursor: pointer; padding: 4px; font-size: 0.8rem; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
-.aq-site-item:hover .aq-site-item-del { opacity: 1; }
-.aq-site-item-del:hover { color: #f87171; }
-
-/* Builder shell */
-.aq-site-builder { display: flex; flex-direction: column; height: 100%; overflow: hidden; background: #020617; }
-
-.aq-sb-header {
-  padding: 16px 20px 14px; border-bottom: 1px solid #1e293b;
-  flex-shrink: 0; display: flex; flex-direction: column; gap: 10px;
-}
-.aq-sb-title-row  { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.aq-sb-title      { font-size: 1rem; font-weight: 700; color: #f1f5f9; letter-spacing: -0.01em; }
-.aq-sb-subtitle   { font-size: 0.7rem; color: #475569; margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
-
-/* Suggestion chips */
-.aq-sb-suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 0 2px; }
-.aq-sb-chip {
-  padding: 5px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; cursor: pointer;
-  background: #0f172a; border: 1px solid #1e293b; color: #94a3b8;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
-  font-family: inherit; white-space: nowrap;
-}
-.aq-sb-chip:hover { border-color: #38bdf8; color: #38bdf8; background: rgba(56,189,248,0.06); }
-
-.aq-sb-generate-bar,
-.aq-sb-edit-bar { display: flex; gap: 8px; align-items: center; }
-
-.aq-sb-input {
-  flex: 1; padding: 10px 14px; background: #0f172a; border: 1px solid #1e293b;
-  border-radius: 8px; color: #f1f5f9; font-size: 0.84rem; outline: none;
-  transition: border-color 0.2s; font-family: inherit;
-}
-.aq-sb-input:focus        { border-color: #38bdf8; }
-.aq-sb-input::placeholder { color: #334155; }
-
-.aq-sb-file-select {
-  padding: 9px 10px; background: #0f172a; border: 1px solid #1e293b;
-  border-radius: 8px; color: #94a3b8; font-size: 0.75rem; outline: none; cursor: pointer;
-  font-family: 'IBM Plex Mono', monospace; min-width: 100px;
-}
-
-.aq-btn-run { background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff; border: none; white-space: nowrap; }
-.aq-btn-run:hover     { opacity: 0.88; }
-.aq-btn-run:disabled  { opacity: 0.5; cursor: not-allowed; }
-
-/* Builder body */
-.aq-sb-body { flex: 1; display: flex; overflow: hidden; min-height: 0; }
-
-.aq-sb-filetree { width: 180px; flex-shrink: 0; border-right: 1px solid #1e293b; overflow-y: auto; background: #050e1a; }
-.aq-sb-filetree-header {
-  padding: 8px 12px; font-size: 0.62rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.1em; color: #334155; border-bottom: 1px solid #1e293b;
-  display: flex; justify-content: space-between; align-items: center;
-}
-.aq-sb-file-item {
-  padding: 8px 12px; font-size: 0.75rem; font-family: 'IBM Plex Mono', monospace;
-  color: #94a3b8; cursor: pointer; border-bottom: 1px solid #0a1628;
-  display: flex; align-items: center; gap: 6px; transition: background 0.12s, color 0.12s;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.aq-sb-file-item:hover  { background: #0f172a; color: #e2e8f0; }
-.aq-sb-file-item.active { background: #1e293b; color: #38bdf8; }
-.aq-sb-file-icon { font-size: 0.8rem; flex-shrink: 0; }
-
-/* Preview panel */
-.aq-sb-preview-panel { flex: 1; display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
-.aq-sb-preview-header {
-  display: flex; align-items: center; gap: 10px; padding: 8px 14px;
-  background: #0a1628; border-bottom: 1px solid #1e293b; flex-shrink: 0;
-}
-.aq-sb-preview-dots { display: flex; gap: 5px; }
-.aq-sb-preview-dots span { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.aq-sb-preview-url { flex: 1; font-size: 0.72rem; font-family: 'IBM Plex Mono', monospace; color: #475569; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.aq-sb-iframe-wrap { flex: 1; position: relative; overflow: hidden; }
-.aq-sb-iframe      { width: 100%; height: 100%; border: none; background: #fff; }
-.aq-sb-preview-loading {
-  position: absolute; inset: 0; background: rgba(2,6,23,0.92);
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 12px; font-size: 0.85rem; color: #94a3b8;
-}
-
-/* Empty state */
-.aq-sb-empty {
-  flex: 1; display: flex; flex-direction: column; align-items: center;
-  justify-content: center; padding: 40px 24px; text-align: center; position: relative;
-}
-.aq-sb-empty-icon  { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5; }
-.aq-sb-empty-title { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin-bottom: 8px; }
-.aq-sb-empty-sub   { font-size: 0.82rem; color: #475569; max-width: 360px; line-height: 1.5; margin-bottom: 22px; }
-.aq-sb-empty-examples { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
-.aq-sb-empty-examples span {
-  padding: 6px 14px; background: #0f172a; border: 1px solid #1e293b;
-  border-radius: 20px; font-size: 0.75rem; color: #94a3b8; cursor: pointer;
-  transition: border-color 0.15s, color 0.15s;
-}
-.aq-sb-empty-examples span:hover { border-color: #38bdf8; color: #38bdf8; }
-
-/* Retry button — floats top-right of empty state */
-.aq-sb-retry-btn {
-  display: none; /* shown via JS after first failed attempt */
-  position: absolute; top: 16px; right: 16px;
-  background: #0f172a; border: 1px solid #1e293b; color: #94a3b8;
-  border-radius: 6px; padding: 6px 12px; font-size: 0.72rem; cursor: pointer;
-  font-family: inherit; transition: border-color 0.15s, color 0.15s;
-}
-.aq-sb-retry-btn:hover { border-color: #38bdf8; color: #38bdf8; }
-.aq-sb-retry-btn.visible { display: block; }
-
-/* Intent badge — shown briefly inside generate bar after detection */
-.aq-sb-intent-badge {
-  display: none; align-items: center; gap: 5px;
-  padding: 4px 10px; border-radius: 12px; font-size: 0.68rem; font-weight: 600;
-  background: rgba(56,189,248,0.08); border: 1px solid rgba(56,189,248,0.2); color: #38bdf8;
-  font-family: 'IBM Plex Mono', monospace; white-space: nowrap; flex-shrink: 0;
-}
-.aq-sb-intent-badge.visible { display: flex; }
+/* All component styles are in workspace.css — this block is intentionally minimal */
+/* Accordion settled state override (applied by JS after transition completes) */
+.aq-step-body[data-state="settled"] { max-height: none; overflow: visible; }
 </style>
 </head>
 <body>
@@ -226,7 +74,7 @@
 <!-- Drawer overlay (mobile) -->
 <div class="aq-drawer-overlay" id="drawerOverlay" onclick="closeSidebar()"></div>
 
-<div class="aq-workspace">
+<div class="workspace-page aq-workspace">
 
   <!-- ═══════════════ TOPBAR ═══════════════ -->
   <div class="aq-topbar">

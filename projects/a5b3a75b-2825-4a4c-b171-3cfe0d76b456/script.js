@@ -1,1 +1,0 @@
-// No JS needed for this simple site

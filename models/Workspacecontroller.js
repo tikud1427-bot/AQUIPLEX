@@ -54,21 +54,21 @@ function apiError(res, msg, status = 500) {
 exports.renderWorkspace = async (req, res) => {
   try {
     const userId = req.user._id;
-    const ws     = await getOrCreateWorkspace(userId);
 
-    // Populate tool snapshots (already embedded — no extra query needed)
-    // Fetch bundles belonging to this user
+    // Load workspace + bundles (same pattern as getState)
+    const ws = await Workspace.findOne({ userId }).lean();
     const bundles = await Bundle.find({ userId })
       .sort({ updatedAt: -1 })
       .lean();
 
     res.render("workspace", {
-      workspace: ws.toObject({ getters: true }),
-      bundles,
+      page: "workspace",   // ✅ CRITICAL (fixes your layout issue)
+      workspace: ws || null,
+      bundles: bundles || [],
     });
   } catch (err) {
     console.error("[WS] renderWorkspace:", err);
-    res.status(500).send("Workspace unavailable");
+    res.status(500).send("Error loading workspace");
   }
 };
 
