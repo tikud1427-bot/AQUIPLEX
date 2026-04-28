@@ -1,0 +1,15 @@
+{
+  "projectId": "0880d418-f5b1-4cdf-95b8-0fce1dbfb428",
+  "userId": "69b6c6d87c83e9504c4e0cde",
+  "name": "A minimal blog for a travel photographer",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-04-28T05:35:00.012Z",
+  "updatedAt": "2026-04-28T05:35:14.212Z",
+  "prompt": "A minimal blog for a travel photographer",
+  "intent": "blog",
+  "source": "ai"
+}

@@ -7,7 +7,6 @@
 <link rel="stylesheet" href="/css/styles.css">
 <link rel="stylesheet" href="/css/workspace.css">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
-<!-- FAVICON (correct based on your files) -->
 <link rel="icon" type="image/png" sizes="96x96" href="https://aquiplex.com/logo/favicon-96x96.png">
 <link rel="icon" type="image/svg+xml" href="https://aquiplex.com/logo/favicon.svg">
 <link rel="shortcut icon" href="https://aquiplex.com/logo/favicon.ico">
@@ -15,9 +14,145 @@
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
-/* All component styles are in workspace.css — this block is intentionally minimal */
-/* Accordion settled state override (applied by JS after transition completes) */
+/* Step body settled state — override for open accordion */
 .aq-step-body[data-state="settled"] { max-height: none; overflow: visible; }
+
+/* ── CRITICAL OVERFLOW FIXES ── */
+/* Prevent any child from blowing out the viewport */
+.aq-workspace,
+.aq-body,
+.aq-main,
+.aq-exec,
+.aq-exec-content,
+.aq-steps-panel,
+.aq-steps-scroll,
+.aq-site-builder,
+.aq-sb-body,
+.aq-sb-preview-panel,
+.aq-sb-iframe-wrap {
+  min-width: 0;
+}
+
+/* Drawer overlay uses class "open" in JS — map to CSS "visible" */
+.aq-drawer-overlay.open {
+  display: block;
+  pointer-events: auto;
+}
+
+/* ── TOPBAR: prevent right-side overflow on very narrow screens ── */
+.aq-topbar-right {
+  min-width: 0;
+  overflow: hidden;
+}
+@media (max-width: 480px) {
+  .aq-status-pill { display: none; }
+  .aq-switcher    { max-width: 100px; }
+}
+
+/* ── EXEC HEADER: prevent action buttons from overflowing ── */
+.aq-exec-actions {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* ── SB HEADER: chips + bars wrap cleanly on mobile ── */
+.aq-sb-generate-bar,
+.aq-sb-edit-bar {
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .aq-sb-generate-bar,
+  .aq-sb-edit-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .aq-sb-file-select { min-width: 0; width: 100%; }
+  .aq-sb-intent-badge { align-self: flex-start; }
+}
+
+/* ── SITE BUILDER BODY: stack on mobile ── */
+@media (max-width: 680px) {
+  .aq-sb-body {
+    flex-direction: column;
+  }
+  .aq-sb-filetree {
+    width: 100%;
+    max-height: 140px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/* ── IFRAME: always fills container, never overflows ── */
+.aq-sb-iframe-wrap {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+}
+.aq-sb-iframe {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: #fff;
+  display: block;
+}
+
+/* ── RIGHT PANEL: zero-width when hidden, no layout impact ── */
+@media (max-width: 860px) {
+  .aq-right-panel {
+    display: none !important;
+    width: 0 !important;
+    border-left: none !important;
+  }
+}
+
+/* ── WELCOME: padding safety on very small screens ── */
+@media (max-width: 480px) {
+  .aq-welcome { padding: 40px 20px; }
+  .aq-welcome h2 { font-size: 1.2rem; }
+  .aq-welcome-actions { flex-direction: column; align-items: center; }
+}
+
+/* ── EXEC HDR: prevent title overflow ── */
+.aq-exec-title,
+.aq-exec-goal {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── BUNDLE ITEM TITLE: always truncates ── */
+.aq-bundle-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── STEP TITLE/DESC: always truncates ── */
+.aq-step-title,
+.aq-step-desc {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── OUTPUT CONTENT: prevents preformatted blowout ── */
+.aq-output-content {
+  overflow-x: auto;
+  word-break: break-word;
+}
+
+/* ── BOTTOMNAV: ensure above content, safe area aware ── */
+.aq-bottom-nav {
+  position: relative;
+  z-index: 100;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
 </style>
 </head>
 <body>
@@ -71,19 +206,18 @@
   </div>
 </div>
 
-<!-- Drawer overlay (mobile) -->
-<div class="aq-drawer-overlay" id="drawerOverlay" onclick="closeSidebar()"></div>
+<!-- ═══════════════ DRAWER OVERLAY (mobile) ═══════════════ -->
+<!-- NOTE: JS toggles class "open"; CSS maps both "open" and "visible" to shown state -->
+<div class="aq-drawer-overlay" id="drawerOverlay"></div>
 
 <div class="workspace-page aq-workspace">
 
   <!-- ═══════════════ TOPBAR ═══════════════ -->
   <div class="aq-topbar">
-    <button class="aq-menu-btn" id="menuBtn" onclick="openSidebar()" aria-label="Open menu">☰</button>
+    <button class="aq-menu-btn" id="menuBtn" aria-label="Open menu" onclick="openSidebar()">☰</button>
     <div class="aq-logo">AQUI<span class="aq-logo-sep">PLEX</span></div>
     <div class="aq-breadcrumb">
-      <span>WS</span>
-      <span class="sep">›</span>
-      <span class="cur" id="topBreadcrumb">Overview</span>
+      <span class="cur" id="topBreadcrumb">Workspace</span>
     </div>
     <div class="aq-topbar-right">
       <div class="aq-status-pill">
@@ -91,24 +225,24 @@
         <span>ONLINE</span>
       </div>
       <select id="bundleSwitcher" class="aq-switcher" title="Switch bundle" style="display:none;"></select>
-      <button class="aq-btn aq-btn-sm" onclick="openPalette()" title="⌘K" id="paletteBtn">⌘K</button>
+      <button class="aq-btn aq-btn-sm" onclick="openPalette()" title="Command palette" id="paletteBtn">⌘K</button>
     </div>
   </div>
 
   <!-- ═══════════════ BODY ═══════════════ -->
   <div class="aq-body">
 
-    <!-- LEFT SIDEBAR -->
+    <!-- ═══════════════ LEFT SIDEBAR ═══════════════ -->
     <div class="aq-sidebar" id="aqSidebar">
       <div class="aq-sidebar-header">
-        <span class="aq-sidebar-title">Navigation</span>
-        <button class="aq-sidebar-close" onclick="closeSidebar()" aria-label="Close">✕</button>
+        <span class="aq-sidebar-title">Bundles &amp; Tools</span>
+        <button class="aq-sidebar-close" onclick="closeSidebar()" aria-label="Close sidebar">✕</button>
       </div>
 
       <div class="aq-sidebar-tabs">
-        <button class="aq-sidebar-tab active" onclick="switchLeftTab('bundles', this)">BUNDLES</button>
-        <button class="aq-sidebar-tab"        onclick="switchLeftTab('tools',   this)">TOOLS</button>
-        <button class="aq-sidebar-tab"        onclick="switchLeftTab('sites',   this)">SITES</button>
+        <button class="aq-sidebar-tab active" onclick="switchLeftTab('bundles', this)">Bundles</button>
+        <button class="aq-sidebar-tab"        onclick="switchLeftTab('tools',   this)">Tools</button>
+        <button class="aq-sidebar-tab"        onclick="switchLeftTab('sites',   this)">Sites</button>
       </div>
 
       <!-- BUNDLES LIST -->
@@ -131,15 +265,15 @@
             </div>
             <div class="aq-bundle-meta">
               <div class="aq-bundle-track">
-                <div class="aq-bundle-fill"style="width: <%= pct %>%"></div>
+                <div class="aq-bundle-fill" style="width: <%= pct %>%"></div>
               </div>
               <div class="aq-bundle-pct"><%= pct %>%</div>
             </div>
             <div class="aq-bundle-actions" onclick="event.stopPropagation()">
               <button class="aq-bundle-act-btn pin"
-                onclick="pinBundleById('<%= b._id %>')" title="Pin/Unpin">☆ PIN</button>
+                onclick="pinBundleById('<%= b._id %>')" title="Pin/Unpin">☆ Pin</button>
               <button class="aq-bundle-act-btn del"
-                onclick="deleteBundleById('<%= b._id %>')" title="Delete">✕ DEL</button>
+                onclick="deleteBundleById('<%= b._id %>')" title="Delete">✕ Delete</button>
             </div>
           </div>
           <% }) %>
@@ -147,7 +281,7 @@
           <div class="aq-empty">
             <span class="aq-empty-icon">📦</span>
             No bundles yet.<br/>
-            <a href="/bundles">Create one →</a>
+            <a href="/bundles">Create your first bundle →</a>
           </div>
         <% } %>
       </div>
@@ -163,9 +297,9 @@
             <span class="aq-tool-name"><%= tool.name %></span>
             <div class="aq-tool-btns">
               <button class="aq-tool-btn" data-url="<%= tool.url %>"
-                onclick="launchTool(this.dataset.url)">OPEN</button>
+                onclick="launchTool(this.dataset.url)">Open</button>
               <button class="aq-tool-btn rm" data-id="<%= tool._id %>"
-                onclick="removeTool(this.dataset.id)">RM</button>
+                onclick="removeTool(this.dataset.id)">Remove</button>
             </div>
           </div>
           <% }) %>
@@ -181,21 +315,21 @@
       <!-- SITES LIST -->
       <div class="aq-sidebar-list" id="leftSiteList" style="display:none;">
         <div class="aq-site-list-header">
-          <span class="aq-site-list-title">AI Site Projects</span>
+          <span class="aq-site-list-title">AI Sites</span>
           <button class="aq-btn aq-btn-sm" onclick="openSiteBuilder()"
-                  style="font-size:0.65rem;padding:4px 10px;">+ NEW</button>
+                  style="font-size:0.6rem;padding:3px 9px;">+ New</button>
         </div>
         <div id="sidebarSiteItems">
           <div class="aq-empty" style="margin-top:8px;">
             <span class="aq-empty-icon">🌐</span>
             No sites yet.<br/>
-            <button onclick="openSiteBuilder()" style="background:none;border:none;color:#38bdf8;cursor:pointer;font-size:0.8rem;margin-top:6px;">Build one →</button>
+            <button onclick="openSiteBuilder()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.76rem;margin-top:6px;font-family:inherit;">Build one →</button>
           </div>
         </div>
       </div>
     </div><!-- /aq-sidebar -->
 
-    <!-- MAIN -->
+    <!-- ═══════════════ MAIN ═══════════════ -->
     <div class="aq-main">
 
       <!-- ═══ SITE BUILDER PANEL ═══ -->
@@ -203,29 +337,29 @@
 
         <div class="aq-sb-header">
           <div class="aq-sb-title-row">
-            <div>
-              <div class="aq-sb-title">🌐 AI Site Builder</div>
+            <div style="min-width:0;flex:1;">
+              <div class="aq-sb-title">AI Site Builder</div>
               <div class="aq-sb-subtitle" id="sbProjectName">No project loaded</div>
             </div>
             <div class="aq-sb-actions">
-              <button class="aq-btn aq-btn-sm" onclick="closeSiteBuilder()" title="Back to bundles">✕ CLOSE</button>
+              <button class="aq-btn aq-btn-sm" onclick="closeSiteBuilder()" title="Back to bundles">✕ Close</button>
             </div>
           </div>
 
-          <!-- Suggestion chips — map directly to intent_service intents -->
+          <!-- Suggestion chips -->
           <div class="aq-sb-suggestions" id="sbSuggestions">
-            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Build a scientific calculator')">🔬 Calculator</button>
-            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Create a developer portfolio website')">💼 Portfolio</button>
-            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Make a SaaS landing page for a project management tool')">🚀 Landing Page</button>
-            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Build a blog homepage with featured posts')">📝 Blog</button>
-            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Create a contact form with validation')">📬 Contact Form</button>
-            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Build an analytics dashboard with charts')">📊 Dashboard</button>
+            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Build a scientific calculator')">Calculator</button>
+            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Create a developer portfolio website')">Portfolio</button>
+            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Make a SaaS landing page for a project management tool')">Landing Page</button>
+            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Build a blog homepage with featured posts')">Blog</button>
+            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Create a contact form with validation')">Contact Form</button>
+            <button class="aq-sb-chip" onclick="setSbPromptAndFocus('Build an analytics dashboard with charts')">Dashboard</button>
           </div>
 
           <!-- Generate bar (new project) -->
           <div class="aq-sb-generate-bar" id="sbGenerateBar">
             <input class="aq-sb-input" id="sbPromptInput"
-                   placeholder="Describe the website you want to build… e.g. 'A portfolio for a UX designer'"
+                   placeholder="Describe the website you want to build…"
                    onkeydown="if(event.key==='Enter')generateSite()"/>
             <span class="aq-sb-intent-badge" id="sbIntentBadge"></span>
             <button class="aq-btn aq-btn-run" id="sbGenerateBtn" onclick="generateSite()">
@@ -236,21 +370,21 @@
           <!-- Edit bar (existing project) -->
           <div class="aq-sb-edit-bar" id="sbEditBar" style="display:none;">
             <input class="aq-sb-input" id="sbCommandInput"
-                   placeholder="Command: 'Change background to black', 'Add a contact form'…"
+                   placeholder="Describe an edit: 'Change background to black', 'Add a contact form'…"
                    onkeydown="if(event.key==='Enter')editSite()"/>
             <select class="aq-sb-file-select" id="sbFileSelect" title="File to edit"></select>
             <button class="aq-btn aq-btn-sm" id="sbEditBtn" onclick="editSite()">
               <span id="sbEditBtnText">✎ EDIT</span>
             </button>
           </div>
-        </div>
+        </div><!-- /aq-sb-header -->
 
         <!-- File tree + Preview -->
         <div class="aq-sb-body" id="sbBody" style="display:none;">
           <div class="aq-sb-filetree">
             <div class="aq-sb-filetree-header">
-              <span>FILES</span>
-              <span id="sbFileCount" style="color:#64748b;font-size:0.65rem;"></span>
+              <span>Files</span>
+              <span id="sbFileCount" style="color:var(--muted);font-size:0.6rem;"></span>
             </div>
             <div class="aq-sb-filetree-list" id="sbFileList"></div>
           </div>
@@ -263,8 +397,9 @@
               </div>
               <div class="aq-sb-preview-url" id="sbPreviewUrl"></div>
               <button class="aq-btn aq-btn-sm" onclick="refreshPreview()"
-                      title="Reload preview" style="padding:3px 9px;font-size:0.65rem;">⟳</button>
+                      title="Reload preview" style="padding:3px 9px;font-size:0.6rem;">⟳</button>
             </div>
+            <!-- iframe-wrap uses absolute-positioned iframe to prevent overflow -->
             <div class="aq-sb-iframe-wrap">
               <iframe id="sbPreviewFrame" class="aq-sb-iframe"
                       sandbox="allow-scripts allow-same-origin" title="Site Preview"></iframe>
@@ -274,62 +409,60 @@
               </div>
             </div>
           </div>
-        </div>
+        </div><!-- /aq-sb-body -->
 
-        <!-- Empty state (shown by default) -->
+        <!-- Empty state -->
         <div class="aq-sb-empty" id="sbEmpty">
-          <!-- Retry button: hidden until a generation attempt has been made -->
           <button class="aq-sb-retry-btn" id="sbRetryBtn" onclick="retrySiteGeneration()">↺ Retry</button>
-
-          <div class="aq-sb-empty-icon">🌐</div>
-          <div class="aq-sb-empty-title">AI Website Execution Engine</div>
-          <div class="aq-sb-empty-sub">Describe a website above and Aqua AI will generate, write, and run it live — no external dependencies.</div>
+          <div class="aq-sb-empty-icon">✦</div>
+          <div class="aq-sb-empty-title">Build a website with AI</div>
+          <div class="aq-sb-empty-sub">Describe what you want — Aqua AI writes, styles, and runs it live. No setup, no dependencies.</div>
           <div class="aq-sb-empty-examples">
-            <span onclick="setSbPromptAndFocus('A stunning portfolio for a UI/UX designer')">✦ UI/UX Portfolio</span>
-            <span onclick="setSbPromptAndFocus('A SaaS landing page for an AI writing tool')">✦ SaaS Landing Page</span>
-            <span onclick="setSbPromptAndFocus('A minimal blog for a travel photographer')">✦ Travel Blog</span>
-            <span onclick="setSbPromptAndFocus('A dark-themed personal resume website')">✦ Resume Site</span>
-            <span onclick="setSbPromptAndFocus('A scientific calculator with history')">✦ Calculator</span>
-            <span onclick="setSbPromptAndFocus('An analytics dashboard with charts')">✦ Dashboard</span>
+            <span onclick="setSbPromptAndFocus('A stunning portfolio for a UI/UX designer')">UI/UX Portfolio</span>
+            <span onclick="setSbPromptAndFocus('A SaaS landing page for an AI writing tool')">SaaS Landing Page</span>
+            <span onclick="setSbPromptAndFocus('A minimal blog for a travel photographer')">Travel Blog</span>
+            <span onclick="setSbPromptAndFocus('A dark-themed personal resume website')">Resume Site</span>
+            <span onclick="setSbPromptAndFocus('A scientific calculator with history')">Calculator</span>
+            <span onclick="setSbPromptAndFocus('An analytics dashboard with charts')">Dashboard</span>
           </div>
         </div>
 
       </div><!-- /wsSiteBuilder -->
 
-      <!-- WELCOME STATE -->
+      <!-- ═══ WELCOME STATE ═══ -->
       <div class="aq-welcome" id="wsWelcome">
         <div class="aq-welcome-glyph">⚡</div>
         <h2>Execution Control</h2>
-        <p>Select a bundle from the sidebar to view its execution state, step timeline, outputs, and memory.</p>
+        <p>Select a bundle from the sidebar to monitor its steps, view outputs, and run AI tasks.</p>
         <div class="aq-welcome-actions">
-          <button class="aq-btn" onclick="openSidebar()">☰ Open Bundles</button>
-          <button class="aq-btn" onclick="window.location.href='/bundles'">+ New Bundle</button>
+          <button class="aq-btn aq-btn-run" onclick="window.location.href='/bundles'">+ New Bundle</button>
+          <button class="aq-btn" onclick="openSidebar()">Open Bundles</button>
         </div>
         <div class="aq-welcome-hint">Press ⌘K for commands</div>
       </div>
 
-      <!-- LOADING STATE (skeleton) -->
+      <!-- ═══ LOADING STATE (skeleton) ═══ -->
       <div id="wsLoading" style="display:none;" class="aq-welcome">
         <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;">
-          <div class="aq-skeleton" style="height:18px;width:60%;"></div>
-          <div class="aq-skeleton" style="height:12px;width:80%;"></div>
-          <div class="aq-skeleton" style="height:12px;width:50%;"></div>
-          <div class="aq-skeleton" style="height:60px;margin-top:8px;"></div>
-          <div class="aq-skeleton" style="height:60px;"></div>
-          <div class="aq-skeleton" style="height:60px;"></div>
+          <div class="aq-skeleton" style="height:16px;width:55%;"></div>
+          <div class="aq-skeleton" style="height:11px;width:75%;"></div>
+          <div class="aq-skeleton" style="height:11px;width:45%;"></div>
+          <div class="aq-skeleton" style="height:56px;margin-top:10px;"></div>
+          <div class="aq-skeleton" style="height:56px;"></div>
+          <div class="aq-skeleton" style="height:56px;"></div>
         </div>
       </div>
 
-      <!-- ERROR STATE -->
+      <!-- ═══ ERROR STATE ═══ -->
       <div id="wsError" style="display:none;" class="aq-welcome">
         <div class="aq-error-state">
-          <div style="font-size:1.6rem;margin-bottom:8px;">⚠</div>
+          <div style="font-size:1.4rem;margin-bottom:10px;opacity:0.5;">⚠</div>
           <div id="wsErrorMsg">Something went wrong loading this bundle.</div>
-          <button class="aq-btn" onclick="retryLoad()" style="margin-top:14px;">↺ Retry</button>
+          <button class="aq-btn" onclick="retryLoad()" style="margin-top:16px;">↺ Retry</button>
         </div>
       </div>
 
-      <!-- EXEC VIEW -->
+      <!-- ═══ EXEC VIEW ═══ -->
       <div class="aq-exec" id="wsExec" style="display:none;">
 
         <div class="aq-exec-hdr">
@@ -339,40 +472,41 @@
               <div class="aq-exec-goal"  id="execGoal">—</div>
             </div>
             <div class="aq-exec-actions">
-              <button class="aq-btn aq-btn-sm aq-btn-run"    id="btnRun"    onclick="runCurrentBundle()">▶ RUN</button>
-              <button class="aq-btn aq-btn-sm"               id="btnPause"  onclick="pauseCurrentBundle()"  style="display:none;">⏸ PAUSE</button>
-              <button class="aq-btn aq-btn-sm"               id="btnResume" onclick="resumeCurrentBundle()" style="display:none;">↺ RESUME</button>
-              <button class="aq-btn aq-btn-sm"               id="btnAutoRun" onclick="autoRunSteps()">⚡ AUTO</button>
-              <button class="aq-btn aq-btn-sm"               id="btnPin"    onclick="pinCurrentBundle()">☆ PIN</button>
-              <button class="aq-btn aq-btn-sm aq-btn-danger" onclick="deleteCurrentBundle()">⌫</button>
+              <button class="aq-btn aq-btn-sm aq-btn-run" id="btnRun"    onclick="runCurrentBundle()">▶ Run</button>
+              <button class="aq-btn aq-btn-sm"            id="btnPause"  onclick="pauseCurrentBundle()"  style="display:none;">⏸ Pause</button>
+              <button class="aq-btn aq-btn-sm"            id="btnResume" onclick="resumeCurrentBundle()" style="display:none;">↺ Resume</button>
+              <button class="aq-btn aq-btn-sm"            id="btnAutoRun" onclick="autoRunSteps()">⚡ Auto</button>
+              <button class="aq-btn aq-btn-sm"            id="btnPin"    onclick="pinCurrentBundle()">☆</button>
+              <button class="aq-btn aq-btn-sm aq-btn-danger" onclick="deleteCurrentBundle()" title="Delete bundle">⌫</button>
             </div>
           </div>
 
           <div class="aq-stats-row">
             <div class="aq-stat"><div class="aq-stat-val c-accent"  id="statSteps">—</div><div class="aq-stat-lbl">Steps</div></div>
             <div class="aq-stat"><div class="aq-stat-val c-green"   id="statDone">—</div><div class="aq-stat-lbl">Done</div></div>
-            <div class="aq-stat"><div class="aq-stat-val"            id="statPct">—</div><div class="aq-stat-lbl">Pct</div></div>
+            <div class="aq-stat"><div class="aq-stat-val"            id="statPct">—</div><div class="aq-stat-lbl">Progress</div></div>
             <div class="aq-stat"><div class="aq-stat-val c-amber"   id="statStatus">—</div><div class="aq-stat-lbl">Status</div></div>
-            <div class="aq-stat"><div class="aq-stat-val c-purple"  id="statConfidence">—</div><div class="aq-stat-lbl">Conf</div></div>
+            <div class="aq-stat"><div class="aq-stat-val c-purple"  id="statConfidence">—</div><div class="aq-stat-lbl">Confidence</div></div>
           </div>
 
           <div class="aq-progress-track">
             <div class="aq-progress-fill" id="mainProgressFill" style="width:0%"></div>
             <div class="aq-progress-glow" id="mainProgressGlow" style="left:0%"></div>
           </div>
-        </div>
+        </div><!-- /aq-exec-hdr -->
 
         <div class="aq-exec-content">
           <div class="aq-steps-panel">
-            <div class="aq-timeline"    id="execTimeline"></div>
+            <div class="aq-timeline" id="execTimeline"></div>
             <div class="aq-steps-scroll" id="execSteps"></div>
           </div>
 
-          <div class="aq-right-panel">
+          <!-- Right panel: visible desktop, hidden mobile via CSS -->
+          <div class="aq-right-panel" id="aqRightPanel">
             <div class="aq-right-tabs">
-              <button class="aq-right-tab active" data-tab="outputs"  onclick="switchRightTab('outputs',  this)">OUTPUTS</button>
-              <button class="aq-right-tab"         data-tab="memory"   onclick="switchRightTab('memory',   this)">MEMORY</button>
-              <button class="aq-right-tab"         data-tab="insights" onclick="switchRightTab('insights', this)">INSIGHTS</button>
+              <button class="aq-right-tab active" data-tab="outputs"  onclick="switchRightTab('outputs',  this)">Outputs</button>
+              <button class="aq-right-tab"         data-tab="memory"   onclick="switchRightTab('memory',   this)">Memory</button>
+              <button class="aq-right-tab"         data-tab="insights" onclick="switchRightTab('insights', this)">Insights</button>
             </div>
             <div class="aq-right-body">
               <div class="aq-right-section active" id="rtab-outputs">
@@ -383,22 +517,23 @@
                 <div id="memBundleEntries"></div>
                 <div class="aq-mem-hdr" style="margin-top:14px;">Context Summary</div>
                 <div class="aq-context-box" id="memContextBox"    style="display:none;"></div>
-                <div class="aq-empty"        id="memContextEmpty" style="padding:6px 0;font-size:0.64rem;">No context summary yet.</div>
+                <div class="aq-empty"        id="memContextEmpty" style="padding:6px 0;font-size:0.62rem;">No context yet.</div>
                 <div class="aq-mem-hdr" style="margin-top:14px;">Workspace Memory <span id="memWsCount">0 keys</span></div>
                 <div id="memWsEntries"></div>
               </div>
               <div class="aq-right-section" id="rtab-insights">
-                <div id="insightList"><div class="aq-empty">Insights from step outputs appear here.</div></div>
+                <div id="insightList"><div class="aq-empty">Insights appear after steps run.</div></div>
               </div>
             </div>
-          </div>
-        </div>
+          </div><!-- /aq-right-panel -->
+
+        </div><!-- /aq-exec-content -->
       </div><!-- /wsExec -->
 
     </div><!-- /aq-main -->
   </div><!-- /aq-body -->
 
-  <!-- MOBILE BOTTOM NAV -->
+  <!-- ═══════════════ MOBILE BOTTOM NAV ═══════════════ -->
   <div class="aq-bottom-nav">
     <button class="aq-bottom-tab active" id="mnavBundles" onclick="mobileNav('bundles')">
       <span class="icon">📦</span><span>Bundles</span>
@@ -516,8 +651,9 @@ function closeRunModal() { document.getElementById("aqRunModal").classList.remov
 
 /* ═══════════════════════════════════════════════════════
    SIDEBAR DRAWER
+   CSS responds to class "open" on both sidebar and overlay.
 ═══════════════════════════════════════════════════════ */
-function openSidebar()  {
+function openSidebar() {
   document.getElementById("aqSidebar").classList.add("open");
   document.getElementById("drawerOverlay").classList.add("open");
 }
@@ -525,6 +661,9 @@ function closeSidebar() {
   document.getElementById("aqSidebar").classList.remove("open");
   document.getElementById("drawerOverlay").classList.remove("open");
 }
+
+// Close sidebar when overlay is clicked
+document.getElementById("drawerOverlay").addEventListener("click", closeSidebar);
 
 /* ═══════════════════════════════════════════════════════
    MOBILE BOTTOM NAV
@@ -586,7 +725,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     console.warn("[AQ] State init failed:", e.message);
   }
 
-  // Load site list for SITES tab
   await loadSiteList();
 });
 
@@ -612,8 +750,6 @@ function initBundleSwitcher() {
 
 /* ═══════════════════════════════════════════════════════
    TAB SWITCHES
-   FIX: Single definition handles bundles + tools + sites.
-        No re-declaration further down.
 ═══════════════════════════════════════════════════════ */
 function switchLeftTab(tab, btn) {
   document.querySelectorAll(".aq-sidebar-tab").forEach(b => b.classList.remove("active"));
@@ -1523,11 +1659,6 @@ setInterval(async () => {
 
 /* ═══════════════════════════════════════════════════════
    SITE BUILDER ENGINE
-   Compatible with:
-   - intent_service.js  → detectByKeyword() maps the INTENT_MAP
-   - ai_service.js      → POST /workspace/project/generate
-   - templates/calculator.js, portfolio.js, landing.js
-     → served by backend; we just show what the server returns
 ═══════════════════════════════════════════════════════ */
 
 const SB = {
@@ -1536,19 +1667,16 @@ const SB = {
   files:          [],
   activeFile:     null,
   busy:           false,
-  lastPrompt:     null,   // stored for retry
-  detectedIntent: null,   // e.g. "calculator", "portfolio", "landing_page"
+  lastPrompt:     null,
+  detectedIntent: null,
 };
 
-// ── Intent keyword map (mirrors intent_service.js INTENT_MAP) ────────────────
-// Used client-side ONLY for instant badge feedback. The server's intent_service
-// is the authoritative classifier — this is purely a UX hint.
 const SB_INTENT_KEYWORDS = {
-  calculator: ["calculator","calc","calculate","math","arithmetic","bmi","tip calculator","loan","mortgage","converter","percentage","interest","tax"],
-  portfolio:  ["portfolio","personal site","personal website","about me","resume","cv","my work","showcase","developer portfolio","designer portfolio","freelancer","hire me"],
-  dashboard:  ["dashboard","admin panel","analytics","metrics","stats","statistics","control panel","management","monitor","overview panel","data panel"],
-  blog:       ["blog","article","post","news","newsletter","magazine","editorial","writing","journal"],
-  form:       ["form","contact form","sign up","signup","registration","survey","quiz","questionnaire","feedback form","application form","booking form"],
+  calculator:   ["calculator","calc","calculate","math","arithmetic","bmi","tip calculator","loan","mortgage","converter","percentage","interest","tax"],
+  portfolio:    ["portfolio","personal site","personal website","about me","resume","cv","my work","showcase","developer portfolio","designer portfolio","freelancer","hire me"],
+  dashboard:    ["dashboard","admin panel","analytics","metrics","stats","statistics","control panel","management","monitor","overview panel","data panel"],
+  blog:         ["blog","article","post","news","newsletter","magazine","editorial","writing","journal"],
+  form:         ["form","contact form","sign up","signup","registration","survey","quiz","questionnaire","feedback form","application form","booking form"],
   landing_page: ["landing","landing page","saas","startup","product page","marketing","sales page","waitlist","coming soon","app landing","hero","promo"],
 };
 
@@ -1583,12 +1711,9 @@ function _showIntentBadge(intent) {
   }
 }
 
-// ── Open / Close ──────────────────────────────────────────────────────────────
-
 function openSiteBuilder() {
-  // Switch sidebar to SITES tab
   const sitesTab = Array.from(document.querySelectorAll(".aq-sidebar-tab"))
-    .find(t => t.textContent.trim() === "SITES");
+    .find(t => t.textContent.trim() === "Sites");
   switchLeftTab("sites", sitesTab);
 
   document.getElementById("wsWelcome").style.display     = "none";
@@ -1605,12 +1730,10 @@ function closeSiteBuilder() {
   showWelcome();
 }
 
-// ── Load site list into SITES tab ─────────────────────────────────────────────
-
 async function loadSiteList() {
   try {
     const res  = await fetch("/workspace/project/list");
-    if (!res.ok) return; // silently skip if route not set up yet
+    if (!res.ok) return;
     const data = await res.json();
     if (!data.success) return;
 
@@ -1620,7 +1743,7 @@ async function loadSiteList() {
         <div class="aq-empty" style="margin-top:8px;">
           <span class="aq-empty-icon">🌐</span>
           No sites yet.<br/>
-          <button onclick="openSiteBuilder()" style="background:none;border:none;color:#38bdf8;cursor:pointer;font-size:0.8rem;margin-top:6px;">Build one →</button>
+          <button onclick="openSiteBuilder()" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:0.76rem;margin-top:6px;font-family:inherit;">Build one →</button>
         </div>`;
       return;
     }
@@ -1640,8 +1763,6 @@ async function loadSiteList() {
     console.warn("[SB] loadSiteList:", err.message);
   }
 }
-
-// ── Load existing project ──────────────────────────────────────────────────────
 
 async function loadExistingProject(projectId, name) {
   openSiteBuilder();
@@ -1666,10 +1787,6 @@ async function loadExistingProject(projectId, name) {
   }
 }
 
-// ── Generate new site ─────────────────────────────────────────────────────────
-// Flow: create project → POST /workspace/project/generate (hits ai_service + templates)
-// The backend's intent_service.js selects the right template automatically.
-
 async function generateSite() {
   if (SB.busy) return;
   const prompt = document.getElementById("sbPromptInput").value.trim();
@@ -1683,14 +1800,12 @@ async function generateSite() {
   setBtnLoading("sbGenerateBtn", "sbGenerateBtnText", "⚡ Generating…", true);
   showGeneratingOverlay(true, "Detecting site type…");
 
-  // Hide retry button while generating
   const retryBtn = document.getElementById("sbRetryBtn");
   if (retryBtn) retryBtn.classList.remove("visible");
 
   document.getElementById("sbEmpty").style.display = "none";
 
   try {
-    // 1. Create project record
     const name      = prompt.slice(0, 40);
     const createRes = await fetch("/workspace/project/create", {
       method:  "POST",
@@ -1707,7 +1822,6 @@ async function generateSite() {
 
     showGeneratingOverlay(true, "Building site with AI…");
 
-    // 2. Generate files — backend runs intent_service → template or ai_service
     const genRes = await fetch("/workspace/project/generate", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
@@ -1724,13 +1838,12 @@ async function generateSite() {
     showGeneratingOverlay(false);
 
     await loadSiteList();
-    _showIntentBadge(null); // clear badge after success
+    _showIntentBadge(null);
     toast(`Site generated! (${genData.files.length} files)`, "success");
 
   } catch (err) {
     showGeneratingOverlay(false);
     document.getElementById("sbEmpty").style.display = "flex";
-    // Show retry button after a failed attempt
     if (retryBtn) retryBtn.classList.add("visible");
     _showIntentBadge(null);
     toast("Generation failed: " + err.message, "error");
@@ -1741,15 +1854,11 @@ async function generateSite() {
   }
 }
 
-// ── Retry last generation ─────────────────────────────────────────────────────
-
 function retrySiteGeneration() {
   if (!SB.lastPrompt) return;
   document.getElementById("sbPromptInput").value = SB.lastPrompt;
   generateSite();
 }
-
-// ── Edit existing site ────────────────────────────────────────────────────────
 
 async function editSite() {
   if (SB.busy || !SB.projectId) return;
@@ -1783,8 +1892,6 @@ async function editSite() {
   }
 }
 
-// ── Delete site ───────────────────────────────────────────────────────────────
-
 async function deleteSite(projectId) {
   const confirmed = await showConfirm("Delete Site", "This will permanently delete the project and all its files.", "Delete");
   if (!confirmed) return;
@@ -1813,8 +1920,6 @@ async function deleteSite(projectId) {
   }
 }
 
-// ── Preview ───────────────────────────────────────────────────────────────────
-
 function loadFilePreview(filename) {
   if (!SB.projectId || !filename) return;
   SB.activeFile = filename;
@@ -1831,8 +1936,6 @@ function loadFilePreview(filename) {
 }
 
 function refreshPreview() { if (SB.activeFile) loadFilePreview(SB.activeFile); }
-
-// ── File tree ─────────────────────────────────────────────────────────────────
 
 function renderFileTree(files) {
   const list = document.getElementById("sbFileList");
@@ -1860,8 +1963,6 @@ function renderFileTree(files) {
   }
 }
 
-// ── UI state helpers ──────────────────────────────────────────────────────────
-
 function showEditBar() {
   document.getElementById("sbGenerateBar").style.display = "none";
   document.getElementById("sbEditBar").style.display     = "";
@@ -1883,29 +1984,17 @@ function setBtnLoading(btnId, textId, label, disabled) {
   if (span) span.innerHTML = label;
 }
 
-// ── Prompt helpers (used by suggestion chips + empty state examples) ──────────
-
-/**
- * Set prompt input and move focus to it.
- * Also shows a client-side intent badge immediately.
- * FIX: was missing in original — caused ReferenceError on chip clicks.
- */
 function setSbPromptAndFocus(text) {
   const input = document.getElementById("sbPromptInput");
   if (input) {
     input.value = text;
     input.focus();
-    // Show intent badge immediately as UX feedback
     const intent = _detectIntentClient(text);
     _showIntentBadge(intent);
   }
 }
 
-/** Legacy alias — kept for any other callers. */
 function setSbPrompt(text) { setSbPromptAndFocus(text); }
-
-// ── Init: load site list on page load ────────────────────────────────────────
-// Called from DOMContentLoaded above; also available as a standalone call.
 
 </script>
 </body>

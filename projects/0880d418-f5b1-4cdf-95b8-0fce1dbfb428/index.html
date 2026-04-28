@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <link rel='stylesheet' href='style.css'>
+    <title>Travel Photography Blog</title>
+</head>
+<body>
+    <header>
+        <h1>Wandering Lens</h1>
+        <nav>
+            <ul>
+                <li><a href='#about'>About</a></li>
+                <li><a href='#gallery'>Gallery</a></li>
+                <li><a href='#contact'>Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <section id='about'>
+            <h2>About Me</h2>
+            <p>I'm a travel photographer, exploring the world one photo at a time. Join me on my journey as I share stories and images from the most beautiful places on Earth.</p>
+        </section>
+        <section id='gallery'>
+            <h2>Gallery</h2>
+            <div class='gallery-item'>
+                <img src='https://source.unsplash.com/random/400x300' alt='Travel photo'>
+                <p>Paris, France</p>
+            </div>
+            <div class='gallery-item'>
+                <img src='https://source.unsplash.com/random/400x300' alt='Travel photo'>
+                <p>New York, USA</p>
+            </div>
+            <div class='gallery-item'>
+                <img src='https://source.unsplash.com/random/400x300' alt='Travel photo'>
+                <p>Tokyo, Japan</p>
+            </div>
+        </section>
+        <section id='contact'>
+            <h2>Get in Touch</h2>
+            <form action='mailto:travelphotographer@example.com' method='post' enctype='text/plain'>
+                <label for='name'>Name:</label>
+                <input type='text' id='name' name='name' required>
+                <label for='email'>Email:</label>
+                <input type='email' id='email' name='email' required>
+                <label for='message'>Message:</label>
+                <textarea id='message' name='message' rows='4' cols='50' required></textarea>
+                <button type='submit'>Send</button>
+            </form>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2023 Wandering Lens. All rights reserved.</p>
+    </footer>
+    <script src='script.js'></script>
+</body>
+</html>

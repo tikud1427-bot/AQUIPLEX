@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calculator</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="calc">
+      <div class="calc-display">
+        <div class="calc-expr" id="expr"></div>
+        <div class="calc-result" id="result">0</div>
+      </div>
+      <div class="calc-keys">
+        <button class="key key-wide key-util" data-action="clear">AC</button>
+        <button class="key key-util" data-action="sign">+/-</button>
+        <button class="key key-util" data-action="percent">%</button>
+        <button class="key key-op" data-action="op" data-val="/">÷</button>
+        <button class="key history">History</button>
+
+        <button class="key" data-action="num" data-val="7">7</button>
+        <button class="key" data-action="num" data-val="8">8</button>
+        <button class="key" data-action="num" data-val="9">9</button>
+        <button class="key key-op" data-action="op" data-val="*">×</button>
+
+        <button class="key" data-action="num" data-val="4">4</button>
+        <button class="key" data-action="num" data-val="5">5</button>
+        <button class="key" data-action="num" data-val="6">6</button>
+        <button class="key key-op" data-action="op" data-val="-">−</button>
+
+        <button class="key" data-action="num" data-val="1">1</button>
+        <button class="key" data-action="num" data-val="2">2</button>
+        <button class="key" data-action="num" data-val="3">3</button>
+        <button class="key key-op" data-action="op" data-val="+">+</button>
+
+        <button class="key key-wide" data-action="num" data-val="0">0</button>
+        <button class="key" data-action="dot">.</button>
+        <button class="key key-eq" data-action="equals">=</button>
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

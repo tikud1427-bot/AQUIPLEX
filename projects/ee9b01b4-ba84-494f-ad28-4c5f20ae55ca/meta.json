@@ -1,0 +1,15 @@
+{
+  "projectId": "ee9b01b4-ba84-494f-ad28-4c5f20ae55ca",
+  "userId": "69b6c6d87c83e9504c4e0cde",
+  "name": "A scientific calculator with history",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-04-28T05:07:28.205Z",
+  "updatedAt": "2026-04-28T05:09:15.120Z",
+  "prompt": "A scientific calculator with history",
+  "intent": "calculator",
+  "source": "template"
+}
