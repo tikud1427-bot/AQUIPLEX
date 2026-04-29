@@ -1,20 +1,25 @@
 /**
  * workspace.service.js
- * AQUIPLEX Execution Engine — Production Grade (v3)
+ * AQUIPLEX Execution Engine — Production Grade (v4)
  * Drop in: services/workspace.service.js
  *
- * v3 upgrades:
- *  - generateCodeWithLLM: retry (×2), AbortController timeout, HTTP/JSON/empty guards
- *  - parseMultiFileOutput: auto-repair malformed delimiters, strip markdown fences,
- *    auto-wrap plain HTML, guaranteed non-empty return
- *  - generateProject: no double-save, index.html normalised before first save
- *  - Fallback UI: always valid multi-file output, never blank
+ * v4 upgrades:
+ *  - saveProjectFiles: atomic write via temp file + rename, updates _index.json safely
+ *  - writeSingleFile: atomic write, guaranteed _index.json sync
+ *  - listProjects: enriched metadata (name, id, updatedAt, fileCount)
+ *  - readProjectFiles: skips missing files gracefully, logs warnings
+ *  - generateProject: ensures index.html, persists _index.json name field
+ *  - editProjectFile: validates target file exists, atomic write
+ *  - createProject: unified _index.json (single source of truth, no meta.json split)
+ *  - getProjectList: normalized output with name, projectId, updatedAt
  */
 
 "use strict";
 
 const fs        = require("fs").promises;
+const fsSync    = require("fs");
 const path      = require("path");
+const os        = require("os");
 const mongoose  = require("mongoose");
 const Workspace = require("../models/Workspace");
 const Bundle    = require("../models/Bundle");
@@ -419,62 +424,52 @@ button {
 }
 button:hover { opacity: .85; }
 .btn-primary  { background: #6366f1; color: #fff; }
-.btn-secondary { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; }
+.btn-secondary { background: #1e1e2e; color: #94a3b8; border: 1px solid #2d2d3d; }
 
 === FILE: script.js ===
-console.warn("[Aquiplex] AI generation failed — showing fallback UI.");
-`;
+console.log("[Aquiplex] Fallback page loaded.");`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OUTPUT PARSING  (production-grade, self-healing)
+// PARSER
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Parses LLM raw output into an array of { fileName, content, language }.
- *
- * Handles:
- *  - Correct "=== FILE: x ===" delimiters
- *  - Variants with extra spaces / dashes / markdown fences around the delimiter
- *  - Plain HTML with no delimiters → auto-wrapped as index.html
- *  - Empty or non-string input → returns safe fallback entry
- *
- * NEVER returns an empty array.
+ * Parse multi-file LLM output into an array of { fileName, content, language }.
+ * ALWAYS returns a non-empty array.
  */
-function parseMultiFileOutput(rawOutput) {
-  // ── 0. Guard ───────────────────────────────────────────────────────────────
-  if (!rawOutput || typeof rawOutput !== "string") {
-    return [_fallbackFile("parseMultiFileOutput received no input")];
+function parseMultiFileOutput(raw) {
+  if (!raw || typeof raw !== "string") {
+    console.warn("[parser] Received empty/null output — using fallback");
+    return [_fallbackFile("LLM returned no output")];
   }
 
-  // ── 1. Strip wrapping markdown code fences, e.g. ```html … ``` ────────────
-  let cleaned = rawOutput
+  // ── 1. Strip markdown code fences ─────────────────────────────────────────
+  let cleaned = raw
     .replace(/^```[\w]*\n?/gm, "")
     .replace(/^```\s*$/gm, "")
     .trim();
 
-  // ── 2. Normalise delimiter variants ───────────────────────────────────────
-  //   Handles: "-- FILE: x --", "===FILE:x===", "== FILE: x =="
-  cleaned = cleaned.replace(
-    /^(?:={2,}|-{2,})\s*FILE:\s*(.+?)\s*(?:={2,}|-{2,})\s*$/gim,
-    "=== FILE: $1 ==="
-  );
+  // ── 2. Auto-repair common delimiter variants ───────────────────────────────
+  cleaned = cleaned
+    .replace(/={2,}\s*FILE\s*:\s*/gi, "=== FILE: ")
+    .replace(/\s*={2,}\s*$/gm, " ===");
 
-  // ── 3. Find all delimiters ─────────────────────────────────────────────────
-  const DELIM = /^=== FILE:\s*(.+?)\s*===\s*$/gim;
-  const matches = [];
-  let m;
-  while ((m = DELIM.exec(cleaned)) !== null) {
-    matches.push({ fileName: m[1].trim(), start: m.index, end: DELIM.lastIndex });
+  // ── 3. Find all FILE delimiters ────────────────────────────────────────────
+  const delimiterRe = /^={3}\s*FILE:\s*(.+?)\s*={3}\s*$/gm;
+  const matches     = [];
+  let   m;
+  while ((m = delimiterRe.exec(cleaned)) !== null) {
+    matches.push({ fileName: m[1].trim(), start: m.index, end: m.index + m[0].length });
   }
 
-  // ── 4a. No delimiters found — try to salvage ───────────────────────────────
+  // ── 4a. No delimiters found ────────────────────────────────────────────────
   if (matches.length === 0) {
     const trimmed = cleaned.trim();
 
-    // Looks like HTML → wrap it
-    if (/<!doctype\s+html|<html[\s>]/i.test(trimmed)) {
-      console.warn("[parser] No FILE delimiters found — wrapping content as index.html");
+    // Plain HTML — wrap as index.html
+    if (trimmed.toLowerCase().includes("<!doctype") || trimmed.toLowerCase().includes("<html")) {
+      console.warn("[parser] No FILE delimiters but found raw HTML — wrapping as index.html");
       return [{
         fileName: "index.html",
         content:  trimmed,
@@ -545,13 +540,6 @@ function _fallbackFile(reason = "", content = null) {
 // FILE HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function guessFileName(content) {
-  if (content.includes("<html")) return "index.html";
-  if (content.includes("function") || content.includes("const")) return "script.js";
-  if (content.includes("{") && content.includes("}")) return "style.css";
-  return "index.html";
-}
-
 function sanitizeFileName(name) {
   if (!name || typeof name !== "string") return "";
   return name.replace(/\\/g, "/").replace(/^\/+/, "").replace(/\0/g, "").trim();
@@ -580,67 +568,144 @@ function projectDir(projectId) {
   return path.join(PROJECTS_DIR, String(projectId));
 }
 
-async function saveProjectFiles(projectId, files) {
+/**
+ * Atomically write a file using a temp file + rename pattern.
+ * Prevents corruption from partial writes.
+ */
+async function _atomicWrite(filePath, content) {
+  const dir     = path.dirname(filePath);
+  const tmpPath = path.join(dir, `.tmp_${Date.now()}_${Math.random().toString(36).slice(2)}`);
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(tmpPath, content, "utf8");
+  await fs.rename(tmpPath, filePath);
+}
+
+/**
+ * Save all project files and update _index.json.
+ * Uses atomic writes for every file.
+ */
+async function saveProjectFiles(projectId, files, meta = {}) {
   const dir = projectDir(projectId);
   await fs.mkdir(dir, { recursive: true });
 
-  const index = {
-    projectId: String(projectId),
-    files:     files.map(f => f.fileName),
-    updatedAt: new Date().toISOString(),
-  };
-  await fs.writeFile(path.join(dir, "_index.json"), JSON.stringify(index, null, 2));
+  // Build the merged index, preserving any existing metadata fields (name, userId, etc.)
+  let existingIndex = {};
+  try {
+    const raw = await fs.readFile(path.join(dir, "_index.json"), "utf8");
+    existingIndex = JSON.parse(raw);
+  } catch { /* first save — no existing index */ }
 
-  for (const file of files) {
-    const filePath = path.join(dir, file.fileName);
-    await fs.mkdir(path.dirname(filePath), { recursive: true });
-    await fs.writeFile(filePath, file.content, "utf8");
-  }
+  const index = {
+    ...existingIndex,
+    ...meta,
+    projectId:  String(projectId),
+    files:      files.map(f => f.fileName),
+    updatedAt:  new Date().toISOString(),
+    createdAt:  existingIndex.createdAt || new Date().toISOString(),
+  };
+
+  // Write all files atomically in parallel
+  await Promise.all(
+    files.map(async file => {
+      const filePath = path.join(dir, file.fileName);
+      if (!filePath.startsWith(dir)) {
+        console.warn(`[saveProjectFiles] Skipping unsafe path: ${file.fileName}`);
+        return;
+      }
+      await fs.mkdir(path.dirname(filePath), { recursive: true });
+      await _atomicWrite(filePath, file.content);
+    })
+  );
+
+  // Write index last — only after all files are safely written
+  await _atomicWrite(path.join(dir, "_index.json"), JSON.stringify(index, null, 2));
 
   return index;
 }
 
+/**
+ * Read all files for a project using the _index.json manifest.
+ * Missing files are skipped with a warning rather than crashing.
+ */
 async function readProjectFiles(projectId) {
   const dir = projectDir(projectId);
   try {
     const indexRaw = await fs.readFile(path.join(dir, "_index.json"), "utf8");
     const index    = JSON.parse(indexRaw);
     const files    = [];
+
     for (const fileName of (index.files || [])) {
       try {
         const content = await fs.readFile(path.join(dir, fileName), "utf8");
         files.push({ fileName, content, language: inferLanguage(fileName) });
-      } catch { /* file missing — skip */ }
+      } catch (readErr) {
+        console.warn(`[readProjectFiles] Missing file skipped: ${fileName} (${readErr.message})`);
+      }
     }
+
+    // Always try to include index.html if it exists but wasn't in the manifest
+    if (!index.files.includes("index.html")) {
+      try {
+        const content = await fs.readFile(path.join(dir, "index.html"), "utf8");
+        files.unshift({ fileName: "index.html", content, language: "html" });
+        index.files = ["index.html", ...index.files];
+        console.warn(`[readProjectFiles] index.html found on disk but missing from manifest — added`);
+      } catch { /* no index.html on disk either */ }
+    }
+
     return { index, files };
-  } catch {
+  } catch (err) {
+    console.warn(`[readProjectFiles] Could not read index for project ${projectId}: ${err.message}`);
     return { index: null, files: [] };
   }
 }
 
 async function readSingleFile(projectId, fileName) {
   const safeFile = sanitizeFileName(fileName);
-  const filePath = path.join(projectDir(projectId), safeFile);
-  if (!filePath.startsWith(projectDir(projectId))) throw new Error("Forbidden path");
-  return fs.readFile(filePath, "utf8");
-}
-
-async function writeSingleFile(projectId, fileName, content) {
-  const safeFile = sanitizeFileName(fileName);
+  if (!safeFile) throw new Error("Invalid file name");
   const dir      = projectDir(projectId);
   const filePath = path.join(dir, safeFile);
   if (!filePath.startsWith(dir)) throw new Error("Forbidden path");
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, content, "utf8");
-
   try {
-    const indexPath = path.join(dir, "_index.json");
-    const indexRaw  = await fs.readFile(indexPath, "utf8");
-    const index     = JSON.parse(indexRaw);
+    return await fs.readFile(filePath, "utf8");
+  } catch (err) {
+    throw new Error(`File not found: ${safeFile}`);
+  }
+}
+
+/**
+ * Write a single file and keep _index.json in sync.
+ * Uses atomic write to prevent partial-write corruption.
+ */
+async function writeSingleFile(projectId, fileName, content) {
+  const safeFile = sanitizeFileName(fileName);
+  if (!safeFile) throw new Error("Invalid file name");
+  const dir      = projectDir(projectId);
+  const filePath = path.join(dir, safeFile);
+  if (!filePath.startsWith(dir)) throw new Error("Forbidden path");
+
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await _atomicWrite(filePath, content);
+
+  // Update _index.json manifest
+  const indexPath = path.join(dir, "_index.json");
+  try {
+    const indexRaw = await fs.readFile(indexPath, "utf8");
+    const index    = JSON.parse(indexRaw);
+    if (!Array.isArray(index.files)) index.files = [];
     if (!index.files.includes(safeFile)) index.files.push(safeFile);
     index.updatedAt = new Date().toISOString();
-    await fs.writeFile(indexPath, JSON.stringify(index, null, 2));
-  } catch {}
+    await _atomicWrite(indexPath, JSON.stringify(index, null, 2));
+  } catch (indexErr) {
+    // Index missing — create a minimal one
+    const fallbackIndex = {
+      projectId: String(projectId),
+      files:     [safeFile],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await _atomicWrite(indexPath, JSON.stringify(fallbackIndex, null, 2));
+  }
 }
 
 async function deleteProject(projectId) {
@@ -648,19 +713,45 @@ async function deleteProject(projectId) {
   await fs.rm(dir, { recursive: true, force: true });
 }
 
+/**
+ * List all projects, returning enriched metadata.
+ * Output: [{ projectId, name, userId, files, fileCount, createdAt, updatedAt }]
+ */
 async function listProjects() {
   try {
     const entries  = await fs.readdir(PROJECTS_DIR, { withFileTypes: true });
     const projects = [];
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      try {
-        const indexRaw = await fs.readFile(
-          path.join(PROJECTS_DIR, entry.name, "_index.json"), "utf8"
-        );
-        projects.push(JSON.parse(indexRaw));
-      } catch {}
-    }
+
+    await Promise.all(
+      entries.map(async entry => {
+        if (!entry.isDirectory()) return;
+        try {
+          const indexRaw = await fs.readFile(
+            path.join(PROJECTS_DIR, entry.name, "_index.json"), "utf8"
+          );
+          const index = JSON.parse(indexRaw);
+
+          // Normalise the shape so consumers always see consistent fields
+          projects.push({
+            projectId:  index.projectId  || entry.name,
+            name:       index.name       || "Untitled Project",
+            userId:     index.userId     || null,
+            files:      Array.isArray(index.files) ? index.files : [],
+            fileCount:  Array.isArray(index.files) ? index.files.length : 0,
+            createdAt:  index.createdAt  || null,
+            updatedAt:  index.updatedAt  || null,
+          });
+        } catch { /* malformed or missing index — skip silently */ }
+      })
+    );
+
+    // Sort newest first
+    projects.sort((a, b) => {
+      const ta = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const tb = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return tb - ta;
+    });
+
     return projects;
   } catch {
     return [];
@@ -830,6 +921,10 @@ function validateBundleId(bundleId) {
 // PROJECT SERVICES
 // ─────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Create a new project directory and _index.json.
+ * This is the single source of truth — no separate meta.json needed.
+ */
 async function createProject(userId, name, projectId = null) {
   if (!userId) throw new Error("Unauthorized");
   const id  = projectId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -843,18 +938,19 @@ async function createProject(userId, name, projectId = null) {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  await fs.writeFile(path.join(dir, "_index.json"), JSON.stringify(index, null, 2));
+  await _atomicWrite(path.join(dir, "_index.json"), JSON.stringify(index, null, 2));
   return { success: true, projectId: id, name: index.name };
 }
 
 /**
  * Generate a complete multi-file project using the LLM.
- * Fixes vs v2:
- *  - Normalise index.html BEFORE the first save (no double-save)
- *  - parseMultiFileOutput never returns [] so fallback branch is safety-only
+ * Guarantees:
+ *  - index.html is always present
+ *  - _index.json includes name field from existing metadata
+ *  - Single atomic save after normalisation
  */
 async function generateProject(userId, projectId, prompt) {
-  if (!userId)              throw new Error("Unauthorized");
+  if (!userId)               throw new Error("Unauthorized");
   if (!projectId || !prompt) throw new Error("projectId and prompt are required");
 
   const appType   = detectAppType(prompt);
@@ -865,26 +961,65 @@ async function generateProject(userId, projectId, prompt) {
   const hasIndex = files.some(f => f.fileName === "index.html");
   if (!hasIndex) {
     const htmlFile = files.find(f => f.fileName.endsWith(".html"));
-    if (htmlFile) htmlFile.fileName = "index.html";
+    if (htmlFile) {
+      htmlFile.fileName = "index.html";
+    } else {
+      // Inject a minimal index.html that loads the first file
+      files.unshift({
+        fileName: "index.html",
+        content: `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${String(prompt).slice(0, 60)}</title></head>
+<body><script src="${files[0]?.fileName || 'script.js'}"></script></body>
+</html>`,
+        language: "html",
+      });
+    }
   }
 
-  // Single save after normalisation
-  await saveProjectFiles(projectId, files);
+  // Retrieve existing metadata (name, userId) to preserve in index
+  let existingMeta = {};
+  try {
+    const raw = await fs.readFile(path.join(projectDir(projectId), "_index.json"), "utf8");
+    existingMeta = JSON.parse(raw);
+  } catch { /* no existing index — fine */ }
+
+  const meta = {
+    name:   existingMeta.name   || String(prompt).slice(0, 80) || "Generated Project",
+    userId: existingMeta.userId || String(userId),
+    prompt: String(prompt).slice(0, 500),
+  };
+
+  // Single atomic save after all normalisation
+  const index = await saveProjectFiles(projectId, files, meta);
 
   return {
     success:  true,
     projectId,
     appType,
+    name:     index.name,
     files:    files.map(f => f.fileName),
     fileData: files,
   };
 }
 
+/**
+ * Edit a single project file using the LLM.
+ * Validates the file exists before editing and uses atomic writes.
+ */
 async function editProjectFile(userId, projectId, filename, command) {
-  if (!userId) throw new Error("Unauthorized");
+  if (!userId)   throw new Error("Unauthorized");
+  if (!filename) throw new Error("filename is required");
+  if (!command)  throw new Error("edit command is required");
 
   const { files: existingFiles } = await readProjectFiles(projectId);
-  if (!existingFiles.length) throw new Error("Project not found or empty");
+  if (!existingFiles.length) throw new Error("Project not found or has no files");
+
+  const targetExists = existingFiles.some(f => f.fileName === filename);
+  if (!targetExists) {
+    throw new Error(`File not found in project: ${filename}`);
+  }
 
   const previousFiles = {};
   existingFiles.forEach(f => { previousFiles[f.fileName] = f.content; });
@@ -913,36 +1048,67 @@ async function editProjectFile(userId, projectId, filename, command) {
   };
 }
 
+/**
+ * List all projects for a user.
+ * Returns normalized, sorted metadata suitable for a project list UI.
+ */
 async function getProjectList(userId) {
-  const all = await listProjects();
-  return {
-    success:  true,
-    projects: all.filter(p => !p.userId || p.userId === String(userId)),
-  };
+  if (!userId) throw new Error("Unauthorized");
+  const all      = await listProjects();
+  const projects = all
+    .filter(p => !p.userId || p.userId === String(userId))
+    .map(p => ({
+      projectId:  p.projectId,
+      name:       p.name,
+      fileCount:  p.fileCount,
+      files:      p.files,
+      createdAt:  p.createdAt,
+      updatedAt:  p.updatedAt,
+    }));
+  return { success: true, projects };
 }
 
+/**
+ * Get all files for a project.
+ * Always attempts to include index.html as the primary file.
+ */
 async function getProjectFiles(userId, projectId) {
+  if (!projectId) throw new Error("projectId is required");
   const { index, files } = await readProjectFiles(projectId);
   if (!index) throw new Error("Project not found");
+
+  // Sort so index.html is always first
+  const sorted = [
+    ...files.filter(f => f.fileName === "index.html"),
+    ...files.filter(f => f.fileName !== "index.html"),
+  ];
+
   return {
-    success:  true,
+    success:   true,
     projectId,
-    files:    files.map(f => f.fileName),
-    fileData: files,
+    name:      index.name || "Untitled Project",
+    files:     sorted.map(f => f.fileName),
+    fileData:  sorted,
+    updatedAt: index.updatedAt || null,
   };
 }
 
 async function getProjectFile(userId, projectId, fileName) {
+  if (!projectId || !fileName) throw new Error("projectId and fileName are required");
   const content = await readSingleFile(projectId, fileName);
   return { success: true, projectId, fileName, content };
 }
 
 async function saveProjectFile(userId, projectId, fileName, content) {
+  if (!projectId || !fileName) throw new Error("projectId and fileName are required");
+  if (content === undefined || content === null) throw new Error("content is required");
   await writeSingleFile(projectId, fileName, content);
   return { success: true, projectId, fileName };
 }
 
 async function deleteProjectById(userId, projectId) {
+  if (!userId)    throw new Error("Unauthorized");
+  if (!projectId) throw new Error("projectId is required");
   await deleteProject(projectId);
   return { success: true };
 }
@@ -1034,17 +1200,27 @@ async function completeStep(userId, bundleId, stepIndex, payload = {}) {
           userId: String(userId), files: [],
           createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
         };
-        await fs.writeFile(
+        await _atomicWrite(
           path.join(projectDir(projectId), "_index.json"),
           JSON.stringify(initIndex, null, 2)
-        ).catch(() => {});
+        );
       }
 
       const rawOutput = await generateCodeWithLLM(bundle.goal || prompt, appType, {});
-      const files     = parseMultiFileOutput(rawOutput);
+      let   files     = parseMultiFileOutput(rawOutput);
+
+      // Ensure index.html exists
+      const hasIndex = files.some(f => f.fileName === "index.html");
+      if (!hasIndex) {
+        const htmlFile = files.find(f => f.fileName.endsWith(".html"));
+        if (htmlFile) htmlFile.fileName = "index.html";
+      }
 
       if (files.length) {
-        await saveProjectFiles(projectId, files);
+        await saveProjectFiles(projectId, files, {
+          name:   bundle.title || "Generated Project",
+          userId: String(userId),
+        });
       }
 
       const filesSummary = files.map(f => `- \`${f.fileName}\` (${f.content.length} chars)`).join("\n");

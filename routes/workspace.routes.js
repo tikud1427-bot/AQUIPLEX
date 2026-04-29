@@ -1,13 +1,12 @@
 /**
- * workspace.routes.js — AQUIPLEX Production (v3 — Fixed)
+ * workspace.routes.js — AQUIPLEX Production (v4)
  *
- * CHANGELOG v3:
- * - Mounted project engine at /workspace/project/*
- * - Added proxy routes for frontend ↔ project engine:
- *     GET  /workspace/files/:id          → list project files
- *     GET  /workspace/file/:id/:file     → serve raw file (returns JSON for editor)
- *     POST /workspace/save-file          → save file content
- *     POST /workspace/edit-file          → AI edit file
+ * CHANGELOG v4:
+ * - GET  /workspace/projects          → list all user projects (with metadata)
+ * - GET  /workspace/files/:projectId  → list project files (index.html always first)
+ * - GET  /workspace/file/:projectId/:filename → serve file content as JSON for editor
+ * - POST /workspace/save-file         → atomic file save
+ * - POST /workspace/edit-file         → AI-powered file edit
  * - All existing routes preserved exactly
  */
 
@@ -298,16 +297,16 @@ router.post("/remove/:toolId", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// [NEW] GET /workspace/files/:projectId
-// Frontend calls this to list project files for the code editor.
-// Proxies to project engine's /:id/files logic.
+// GET /workspace/projects
+// List all saved projects for the authenticated user.
+// Returns: { success, projects: [{ projectId, name, fileCount, updatedAt, createdAt }] }
 // ─────────────────────────────────────────────────────────────────────────────
 
-router.get("/files/:projectId", async (req, res) => {
+router.get("/projects", async (req, res) => {
   try {
-    const userId    = uid(req);
-    const { projectId } = req.params;
-    const result    = await svc.getProjectFiles(userId, projectId);
+    const userId = uid(req);
+    if (!userId) return res.status(401).json({ error: "Unauthorized", success: false });
+    const result = await svc.getProjectList(userId);
     res.json(result);
   } catch (err) {
     handleErr(res, err);
@@ -315,19 +314,40 @@ router.get("/files/:projectId", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// [NEW] GET /workspace/file/:projectId/:filename
-// Frontend calls this to get file content for the code editor.
-// Returns JSON { success, file: { content, fileName } }.
+// GET /workspace/files/:projectId
+// List all files in a project. index.html is always first in the response.
+// Returns: { success, projectId, name, files, fileData, updatedAt }
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.get("/files/:projectId", async (req, res) => {
+  try {
+    const userId     = uid(req);
+    const { projectId } = req.params;
+    if (!projectId) return res.status(400).json({ success: false, error: "projectId required" });
+    const result = await svc.getProjectFiles(userId, projectId);
+    res.json(result);
+  } catch (err) {
+    handleErr(res, err);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /workspace/file/:projectId/:filename
+// Fetch content of a single file for the code editor.
+// Returns: { success, file: { content, fileName }, projectId }
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.get("/file/:projectId/:filename", async (req, res) => {
   try {
-    const userId   = uid(req);
+    const userId             = uid(req);
     const { projectId, filename } = req.params;
-    const result   = await svc.getProjectFile(userId, projectId, decodeURIComponent(filename));
+    if (!projectId || !filename) {
+      return res.status(400).json({ success: false, error: "projectId and filename required" });
+    }
+    const result = await svc.getProjectFile(userId, projectId, decodeURIComponent(filename));
     res.json({
-      success:  true,
-      file:     { content: result.content, fileName: result.fileName },
+      success:   true,
+      file:      { content: result.content, fileName: result.fileName },
       projectId,
     });
   } catch (err) {
@@ -336,9 +356,10 @@ router.get("/file/:projectId/:filename", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// [NEW] POST /workspace/save-file
-// Frontend calls this to save manually edited file content.
+// POST /workspace/save-file
+// Manually save file content (from the code editor).
 // Body: { projectId, fileName, content }
+// Returns: { success, projectId, fileName }
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.post("/save-file", async (req, res) => {
@@ -348,7 +369,10 @@ router.post("/save-file", async (req, res) => {
     if (!projectId || !fileName) {
       return res.status(400).json({ success: false, error: "projectId and fileName required" });
     }
-    const result = await svc.saveProjectFile(userId, projectId, fileName, content || "");
+    if (content === undefined || content === null) {
+      return res.status(400).json({ success: false, error: "content is required" });
+    }
+    const result = await svc.saveProjectFile(userId, projectId, fileName, content);
     res.json(result);
   } catch (err) {
     handleErr(res, err);
@@ -356,9 +380,10 @@ router.post("/save-file", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// [NEW] POST /workspace/edit-file
-// Frontend calls this for AI-powered file editing.
+// POST /workspace/edit-file
+// AI-powered file edit via natural language instruction.
 // Body: { projectId, fileName, instruction }
+// Returns: { success, projectId, filename, updatedFiles }
 // ─────────────────────────────────────────────────────────────────────────────
 
 router.post("/edit-file", async (req, res) => {
