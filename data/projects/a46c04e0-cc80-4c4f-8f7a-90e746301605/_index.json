@@ -1,0 +1,15 @@
+{
+  "projectId": "a46c04e0-cc80-4c4f-8f7a-90e746301605",
+  "name": "build a pomodoro timer for ADHD people",
+  "userId": "69b6c6d87c83e9504c4e0cde",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-04-30T05:26:20.524Z",
+  "updatedAt": "2026-04-30T05:26:29.343Z",
+  "prompt": "build a pomodoro timer for ADHD people",
+  "source": "ai",
+  "intent": "tool"
+}

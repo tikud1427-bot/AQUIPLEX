@@ -14,11 +14,140 @@
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#03050f">
 
-  <!-- FAVICON (correct based on your files) -->
-<link rel="icon" type="image/png" sizes="96x96" href="https://aquiplex.com/logo/favicon-96x96.png">
-<link rel="icon" type="image/svg+xml" href="https://aquiplex.com/logo/favicon.svg">
-<link rel="shortcut icon" href="https://aquiplex.com/logo/favicon.ico">
-<link rel="apple-touch-icon" sizes="180x180" href="https://aquiplex.com/logo/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="96x96" href="https://aquiplex.com/logo/favicon-96x96.png">
+  <link rel="icon" type="image/svg+xml" href="https://aquiplex.com/logo/favicon.svg">
+  <link rel="shortcut icon" href="https://aquiplex.com/logo/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://aquiplex.com/logo/apple-touch-icon.png">
+
+  <style>
+  /* ── Build with Aquiplex section ── */
+  .build-section {
+    padding: 80px 24px;
+    text-align: center;
+  }
+  .build-section-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, rgba(56,189,248,0.07) 0%, rgba(99,102,241,0.07) 100%);
+    border: 1px solid rgba(56,189,248,0.18);
+    border-radius: 20px;
+    padding: 56px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .build-section-inner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% -20%, rgba(56,189,248,0.12), transparent 65%);
+    pointer-events: none;
+  }
+  .build-eyebrow {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #38bdf8;
+    margin-bottom: 16px;
+    background: rgba(56,189,248,0.1);
+    border: 1px solid rgba(56,189,248,0.25);
+    padding: 4px 14px;
+    border-radius: 20px;
+  }
+  .build-heading {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 800;
+    color: #f1f5f9;
+    margin: 0 0 16px;
+    line-height: 1.15;
+  }
+  .build-heading span {
+    background: linear-gradient(90deg, #38bdf8, #818cf8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .build-desc {
+    font-size: 1rem;
+    color: #94a3b8;
+    margin: 0 0 36px;
+    line-height: 1.7;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .build-features {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 36px;
+  }
+  .build-feature-chip {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 8px 14px;
+  }
+  .build-cta-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .btn-workspace-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 32px;
+    background: linear-gradient(135deg, #38bdf8, #6366f1);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    box-shadow: 0 0 24px rgba(56,189,248,0.4);
+    transition: box-shadow 0.2s, transform 0.15s;
+  }
+  .btn-workspace-primary:hover {
+    box-shadow: 0 0 36px rgba(56,189,248,0.6);
+    transform: translateY(-2px);
+  }
+  .btn-workspace-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: rgba(255,255,255,0.04);
+    color: #94a3b8;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-workspace-ghost:hover {
+    background: rgba(255,255,255,0.08);
+    color: #f1f5f9;
+  }
+  @media (max-width: 600px) {
+    .build-section-inner { padding: 36px 20px; }
+    .btn-workspace-primary,
+    .btn-workspace-ghost { width: 100%; justify-content: center; }
+    .build-cta-row { flex-direction: column; align-items: stretch; }
+  }
+  </style>
 </head>
 
 <body>
@@ -34,16 +163,16 @@
   <%- include("partials/nav") %>
 
   <!-- FLOAT BUTTON -->
-  <button class="aqua-float" onclick="openAquaAI()">
+  <button class="aqua-float" onclick="openAquaAI()" aria-label="Ask Aqua AI">
     <span>💬</span>
     <span>Ask Aqua</span>
   </button>
 
   <!-- AQUA POPUP -->
-  <div id="aquaPopup" class="aqua-popup hidden">
+  <div id="aquaPopup" class="aqua-popup hidden" role="dialog" aria-modal="true" aria-label="Aqua AI">
     <div class="popup-header">
       <span>🌊 Aqua AI</span>
-      <button onclick="closeAquaAI()" ontouchstart="closeAquaAI()">✕</button>
+      <button onclick="closeAquaAI()" ontouchstart="closeAquaAI()" aria-label="Close">✕</button>
     </div>
     <div class="popup-body">
       <p>Your AI operating system is ready. Ask anything — build anything.</p>
@@ -57,7 +186,7 @@
   <section class="hero-os">
 
     <div class="status-chip">
-      <span class="status-dot"></span>
+      <span class="status-dot" aria-hidden="true"></span>
       Aqua AI — Online & Ready
     </div>
 
@@ -73,7 +202,7 @@
     <!-- COMMAND BAR -->
     <div class="command-dock">
       <div class="command-bar">
-        <span class="command-icon">⚡</span>
+        <span class="command-icon" aria-hidden="true">⚡</span>
         <input
           class="command-input"
           type="text"
@@ -81,31 +210,96 @@
           placeholder="What do you want to build today?"
           autocomplete="off"
           spellcheck="false"
+          aria-label="Describe what you want to build"
         >
-        <button class="command-run" onclick="runHeroAI()">
+        <button class="command-run" onclick="runHeroAI()" aria-label="Generate">
           <span class="run-label">Generate</span>
-          <span class="run-icon">→</span>
+          <span class="run-icon" aria-hidden="true">→</span>
         </button>
       </div>
 
       <!-- SUGGESTION CHIPS -->
-      <div class="suggestion-chips">
-        <button class="chip" onclick="setPrompt('Build a startup roadmap')">🚀 Build a startup</button>
-        <button class="chip" onclick="setPrompt('Create an app from scratch')">💻 Create an app</button>
-        <button class="chip" onclick="setPrompt('Design a study plan')">📚 Study plan</button>
-        <button class="chip" onclick="setPrompt('Automate my workflow')">⚙️ Automate workflow</button>
-        <button class="chip" onclick="setPrompt('Grow my online presence')">📈 Grow online</button>
+      <div class="suggestion-chips" role="list" aria-label="Quick prompts">
+        <button class="chip" role="listitem" onclick="setPrompt('Build a startup roadmap')">🚀 Build a startup</button>
+        <button class="chip" role="listitem" onclick="setPrompt('Create an app from scratch')">💻 Create an app</button>
+        <button class="chip" role="listitem" onclick="setPrompt('Design a study plan')">📚 Study plan</button>
+        <button class="chip" role="listitem" onclick="setPrompt('Automate my workflow')">⚙️ Automate workflow</button>
+        <button class="chip" role="listitem" onclick="setPrompt('Grow my online presence')">📈 Grow online</button>
       </div>
     </div>
 
     <!-- HERO OUTPUT (hidden until used) -->
-    <div class="hero-output-wrap" id="heroOutputWrap" style="display:none;">
+    <div class="hero-output-wrap" id="heroOutputWrap" style="display:none;" aria-live="polite">
       <div class="hero-output-box" id="heroOutput"></div>
     </div>
 
   </section>
 
   <hr class="os-divider">
+  <!-- ═══ BUILD WITH AQUIPLEX ═══ -->
+  <section class="build-section" aria-labelledby="build-heading">
+    <div class="build-section-inner">
+      <span class="build-eyebrow">⚡ Workspace</span>
+      <h2 class="build-heading" id="build-heading">
+        Build with <span>Aquiplex</span>
+      </h2>
+      <p class="build-desc">
+        Your personal AI development environment. Describe what you want — Aquiplex generates code, runs execution bundles, and ships projects. All in one place.
+      </p>
+
+      <div class="build-features" aria-label="Workspace features">
+        <div class="build-feature-chip"><span aria-hidden="true">🤖</span> AI website Generation</div>
+        <div class="build-feature-chip"><span aria-hidden="true">📦</span> Execution Bundles</div>
+        <div class="build-feature-chip"><span aria-hidden="true">💾</span> Live File Editor</div>
+        <div class="build-feature-chip"><span aria-hidden="true">↗</span> Instant Preview</div>
+        <div class="build-feature-chip"><span aria-hidden="true">✦</span> AI File Editing</div>
+      </div>
+
+      <div class="build-cta-row">
+        <% if (typeof user !== "undefined" && user) { %>
+          <a href="/workspace" class="btn-workspace-primary">
+            ⚡ Open Workspace
+          </a>
+        <% } else { %>
+          <a href="/signup" class="btn-workspace-primary">
+            ⚡ Get Started Free
+          </a>
+          <a href="/login" class="btn-workspace-ghost">
+            Log In
+          </a>
+        <% } %>
+        <a href="/bundles" class="btn-workspace-ghost">
+          🌊 View Bundles
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <hr class="os-divider">
+
+  <!-- ═══ TRENDING TOOLS (dynamic from backend) ═══ -->
+  <% if (tools && tools.length > 0) { %>
+  <section class="tools-section" aria-labelledby="trending-heading">
+    <span class="section-eyebrow">Trending Now</span>
+    <h2 class="section-heading" id="trending-heading">Tools people are building with</h2>
+
+    <div class="tools-grid">
+      <% tools.slice(0, 4).forEach(function(tool){ %>
+      <div class="tool-card-os">
+        <img class="tool-logo-os" src="<%= tool.logo %>" alt="<%= tool.name %> logo">
+        <div class="tool-name-os"><%= tool.name %></div>
+        <p class="tool-desc-os"><%= tool.description %></p>
+        <div class="tool-actions-os">
+          <a href="/tool/<%= tool._id %>" class="tool-btn primary-tool">Details</a>
+          <a href="/visit/<%= tool._id %>" target="_blank" rel="noopener noreferrer" class="tool-btn ghost-tool">Visit →</a>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+  </section>
+
+  <hr class="os-divider">
+  <% } %>
 
   <!-- ═══ INTELLIGENCE LAYER ═══ -->
   <section class="intelligence-layer">
@@ -119,21 +313,21 @@
 
       <div class="capability-cell">
         <span class="cap-number">01</span>
-        <span class="cap-icon">🧠</span>
+        <span class="cap-icon" aria-hidden="true">🧠</span>
         <div class="cap-title">Think in Systems</div>
         <p class="cap-desc">Turn vague goals into structured execution paths with multi-step reasoning.</p>
       </div>
 
       <div class="capability-cell">
         <span class="cap-number">02</span>
-        <span class="cap-icon">⚡</span>
+        <span class="cap-icon" aria-hidden="true">⚡</span>
         <div class="cap-title">Execute Instantly</div>
         <p class="cap-desc">Generate full project workflows, content plans, and code — in seconds.</p>
       </div>
 
       <div class="capability-cell">
         <span class="cap-number">03</span>
-        <span class="cap-icon">🌐</span>
+        <span class="cap-icon" aria-hidden="true">🌐</span>
         <div class="cap-title">Connect Everything</div>
         <p class="cap-desc">Surface the right AI tools for every step, curated from 100+ options.</p>
       </div>
@@ -143,35 +337,12 @@
 
   <hr class="os-divider">
 
-  <!-- ═══ TRENDING TOOLS (dynamic from backend) ═══ -->
-  <% if (tools && tools.length > 0) { %>
-  <section class="tools-section">
-    <span class="section-eyebrow">Trending Now</span>
-    <h2 class="section-heading">Tools people are building with</h2>
-
-    <div class="tools-grid">
-      <% tools.slice(0, 4).forEach(function(tool){ %>
-      <div class="tool-card-os">
-        <img class="tool-logo-os" src="<%= tool.logo %>" alt="<%= tool.name %>">
-        <div class="tool-name-os"><%= tool.name %></div>
-        <p class="tool-desc-os"><%= tool.description %></p>
-        <div class="tool-actions-os">
-          <a href="/tool/<%= tool._id %>" class="tool-btn primary-tool">Details</a>
-          <a href="/visit/<%= tool._id %>" target="_blank" class="tool-btn ghost-tool">Visit →</a>
-        </div>
-      </div>
-      <% }) %>
-    </div>
-  </section>
-
-  <hr class="os-divider">
-  <% } %>
 
   <!-- ═══ FEATURED TOOLS (full list) ═══ -->
   <% if (tools && tools.length > 0) { %>
-  <section class="tools-section">
+  <section class="tools-section" aria-labelledby="directory-heading">
     <span class="section-eyebrow">Full Directory</span>
-    <h2 class="section-heading">Every AI tool, curated for you</h2>
+    <h2 class="section-heading" id="directory-heading">Every AI tool, curated for you</h2>
 
     <%
     const categories = [
@@ -183,10 +354,10 @@
     ];
     %>
 
-    <div class="categories-os">
-      <a class="category-pill explore-all" href="/categories">🌐 Explore All</a>
+    <div class="categories-os" role="list" aria-label="Tool categories">
+      <a class="category-pill explore-all" href="/categories" role="listitem">🌐 Explore All</a>
       <% categories.forEach(function(category){ %>
-      <a class="category-pill" href="/tools/category/<%= category.name.toLowerCase().replace(/\s+/g, '-') %>">
+      <a class="category-pill" href="/tools/category/<%= category.name.toLowerCase().replace(/\s+/g, '-') %>" role="listitem">
         <%= category.icon %> <%= category.name %>
       </a>
       <% }) %>
@@ -195,12 +366,12 @@
     <div class="tools-grid" style="margin-top: 32px;">
       <% tools.forEach(function(tool){ %>
       <div class="tool-card-os">
-        <img class="tool-logo-os" src="<%= tool.logo %>" alt="<%= tool.name %>">
+        <img class="tool-logo-os" src="<%= tool.logo %>" alt="<%= tool.name %> logo">
         <div class="tool-name-os"><%= tool.name %></div>
         <p class="tool-desc-os"><%= tool.description %></p>
         <div class="tool-actions-os">
           <a href="/tool/<%= tool._id %>" class="tool-btn primary-tool">Details</a>
-          <a href="/visit/<%= tool._id %>" target="_blank" class="tool-btn ghost-tool">Visit →</a>
+          <a href="/visit/<%= tool._id %>" target="_blank" rel="noopener noreferrer" class="tool-btn ghost-tool">Visit →</a>
         </div>
       </div>
       <% }) %>
@@ -211,9 +382,9 @@
   <% } %>
 
   <!-- ═══ MEMORY SIGNAL ═══ -->
-  <section class="memory-signal">
+  <section class="memory-signal" aria-label="Aqua learning">
     <div class="memory-card">
-      <div class="memory-icon-wrap">🧬</div>
+      <div class="memory-icon-wrap" aria-hidden="true">🧬</div>
       <p class="memory-text">
         <strong>Aqua learns with you.</strong> Every session, it gets more attuned to how you think and what you build.
       </p>
@@ -221,9 +392,9 @@
   </section>
 
   <!-- ═══ FINAL CTA ═══ -->
-  <section class="final-os">
+  <section class="final-os" aria-labelledby="final-cta-heading">
     <div class="final-os-inner">
-      <h2>Stop searching.<br>Start executing.</h2>
+      <h2 id="final-cta-heading">Stop searching.<br>Start executing.</h2>
       <p>You have an idea. Aqua has everything else. Let's build.</p>
       <div class="final-actions">
         <button onclick="openAquaAI()" class="btn-primary-os">
@@ -245,13 +416,18 @@
     // Aqua popup
     function openAquaAI() {
       const popup = document.getElementById("aquaPopup");
-      popup.classList.remove("hidden");
+      if (popup) popup.classList.remove("hidden");
     }
 
     function closeAquaAI() {
       const popup = document.getElementById("aquaPopup");
-      popup.classList.add("hidden");
+      if (popup) popup.classList.add("hidden");
     }
+
+    // Close popup on Escape key
+    document.addEventListener("keydown", function(e) {
+      if (e.key === "Escape") closeAquaAI();
+    });
 
     // Auto-popup after delay
     setTimeout(openAquaAI, 4000);
@@ -259,20 +435,24 @@
     // Chip → input fill
     function setPrompt(text) {
       const input = document.getElementById("heroPrompt");
-      input.value = text;
-      input.focus();
+      if (input) { input.value = text; input.focus(); }
     }
 
     // Hero AI handler
     function runHeroAI() {
-      const input = document.getElementById("heroPrompt").value.trim();
+      const input = document.getElementById("heroPrompt");
       if (!input) return;
+      const value = input.value.trim();
+      if (!value) { input.focus(); return; }
 
       const btn = document.querySelector(".command-run");
-      btn.innerHTML = '<span class="run-label">Thinking</span><span class="run-icon">...</span>';
-      btn.style.opacity = "0.7";
+      if (btn) {
+        btn.innerHTML = '<span class="run-label">Thinking</span><span class="run-icon">...</span>';
+        btn.style.opacity = "0.7";
+        btn.disabled = true;
+      }
 
-      localStorage.setItem("aqua_goal", input);
+      try { localStorage.setItem("aqua_goal", value); } catch(e) {}
 
       setTimeout(() => {
         window.location.href = "/bundles";
@@ -280,23 +460,29 @@
     }
 
     // Enter key on input
-    document.getElementById("heroPrompt").addEventListener("keydown", function(e) {
-      if (e.key === "Enter") runHeroAI();
-    });
-
-    // Cursor glow on hero
-    (function() {
-      const hero = document.querySelector(".hero-os");
-      if (!hero) return;
-      let glow = document.createElement("div");
-      glow.style.cssText = "position:absolute;width:350px;height:350px;background:radial-gradient(circle,rgba(56,189,248,0.12),transparent 70%);pointer-events:none;border-radius:50%;transform:translate(-50%,-50%);z-index:0;transition:left 0.1s,top 0.1s;";
-      hero.appendChild(glow);
-      hero.addEventListener("mousemove", function(e) {
-        const r = hero.getBoundingClientRect();
-        glow.style.left = (e.clientX - r.left) + "px";
-        glow.style.top = (e.clientY - r.top) + "px";
+    const heroInput = document.getElementById("heroPrompt");
+    if (heroInput) {
+      heroInput.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") runHeroAI();
       });
-    })();
+    }
+
+    // Cursor glow on hero (desktop only)
+    if (window.matchMedia("(pointer: fine)").matches) {
+      (function() {
+        const hero = document.querySelector(".hero-os");
+        if (!hero) return;
+        const glow = document.createElement("div");
+        glow.setAttribute("aria-hidden", "true");
+        glow.style.cssText = "position:absolute;width:350px;height:350px;background:radial-gradient(circle,rgba(56,189,248,0.12),transparent 70%);pointer-events:none;border-radius:50%;transform:translate(-50%,-50%);z-index:0;transition:left 0.1s,top 0.1s;";
+        hero.appendChild(glow);
+        hero.addEventListener("mousemove", function(e) {
+          const r = hero.getBoundingClientRect();
+          glow.style.left = (e.clientX - r.left) + "px";
+          glow.style.top  = (e.clientY - r.top)  + "px";
+        });
+      })();
+    }
   </script>
 
 </body>

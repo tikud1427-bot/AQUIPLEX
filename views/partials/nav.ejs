@@ -8,17 +8,15 @@
     </a>
 
     <!-- NAV LINKS (DESKTOP ONLY) -->
-    <nav class="nav-links">
+    <nav class="nav-links" aria-label="Main navigation">
 
       <a href="<%= user ? '/home' : '/' %>">Home</a>
       <a href="/tools">Tools</a>
       <a href="/trending" class="highlight">🔥 Trending</a>
-
-      <!-- 🔥 ADD THIS -->
       <a href="/chatbot" class="ai-link">🌊 Aqua AI</a>
 
       <% if (typeof user !== "undefined" && user) { %>
-        <a href="/workspace">Workspace</a>
+        <!-- Desktop workspace link in nav removed — CTA button handles it -->
       <% } %>
 
       <!-- MORE DROPDOWN -->
@@ -34,11 +32,12 @@
     </nav>
 
     <!-- 🔍 DESKTOP SEARCH -->
-    <form action="/tools" method="GET" class="nav-search">
+    <form action="/tools" method="GET" class="nav-search" role="search">
       <input 
         type="text" 
         name="q" 
-        placeholder="Search AI tools..." 
+        placeholder="Search AI tools..."
+        aria-label="Search AI tools"
         required
       >
     </form>
@@ -48,13 +47,16 @@
 
       <% if (typeof user !== "undefined" && user) { %>
 
-        <!-- ✅ Username only on desktop -->
-        <span class="user-greet desktop-only">
+        <span class="user-greet desktop-only" aria-label="Logged in as <%= user.username || 'User' %>">
           Hi, <%= user.username || "User" %>
         </span>
 
-        <a href="/workspace" class="btn ghost">⚡ Workspace</a>
-        <a href="/logout" class="btn primary">Logout</a>
+        <!-- ⚡ PRIMARY WORKSPACE CTA — visually prominent -->
+        <a href="/workspace" class="btn primary nav-workspace-cta" aria-label="Open Workspace">
+          ⚡ Open Workspace
+        </a>
+
+        <a href="/logout" class="btn ghost">Logout</a>
 
       <% } else { %>
 
@@ -66,22 +68,28 @@
     </div>
 
     <!-- MOBILE MENU BUTTON -->
-    <div class="menu-toggle" onclick="toggleMenu()">☰</div>
+    <button class="menu-toggle" onclick="toggleMenu()" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">☰</button>
 
   </div>
 
   <!-- ✅ MOBILE MENU -->
-  <div class="mobile-menu" id="mobileMenu">
+  <div class="mobile-menu" id="mobileMenu" role="navigation" aria-label="Mobile navigation">
 
     <!-- 🔍 MOBILE SEARCH -->
-    <form action="/tools" method="GET" class="mobile-search">
+    <form action="/tools" method="GET" class="mobile-search" role="search">
       <input 
         type="text" 
         name="q" 
         placeholder="Search AI tools..."
+        aria-label="Search AI tools"
         required
       >
     </form>
+
+    <% if (typeof user !== "undefined" && user) { %>
+      <!-- ⚡ WORKSPACE CTA — first link in mobile menu, full-width -->
+      <a href="/workspace" class="btn primary mobile-workspace-cta" style="text-align:center;width:100%;padding:14px 0;font-size:1rem;border-radius:10px;display:block;margin-bottom:4px;">⚡ Open Workspace</a>
+    <% } %>
 
     <a href="<%= user ? '/home' : '/' %>">Home</a>
     <a href="/chatbot" class="btn ai-btn">🌊 Aqua AI</a>
@@ -90,7 +98,6 @@
     <a href="/bundles" class="btn ai-btn">🌊 Project Engine</a>
 
     <% if (typeof user !== "undefined" && user) { %>
-      <a href="/workspace">Workspace</a>
       <a href="/logout">Logout</a>
     <% } else { %>
       <a href="/login">Login</a>
@@ -103,12 +110,52 @@
   </div>
 </header>
 
-<!-- ✅ GLOBAL SCRIPT (IMPORTANT - OUTSIDE HEADER) -->
+<style>
+/* ── Workspace CTA pill — desktop navbar ── */
+.nav-workspace-cta {
+  background: linear-gradient(135deg, #38bdf8, #6366f1) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 8px 18px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+  box-shadow: 0 0 14px rgba(56,189,248,0.35) !important;
+  transition: box-shadow 0.2s, transform 0.15s !important;
+  white-space: nowrap;
+}
+.nav-workspace-cta:hover {
+  box-shadow: 0 0 24px rgba(56,189,248,0.55) !important;
+  transform: translateY(-1px) !important;
+}
+/* Mobile CTA */
+.mobile-workspace-cta {
+  background: linear-gradient(135deg, #38bdf8, #6366f1) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 12px rgba(56,189,248,0.3) !important;
+}
+/* Keep mobile overflow safe */
+.mobile-menu { box-sizing: border-box; overflow-x: hidden; }
+</style>
+
+<!-- ✅ GLOBAL SCRIPT -->
 <script>
 function toggleMenu() {
-  const menu = document.getElementById("mobileMenu");
-  if (menu) {
-    menu.classList.toggle("active");
-  }
+  const menu   = document.getElementById("mobileMenu");
+  const toggle = document.querySelector(".menu-toggle");
+  if (!menu) return;
+  const isOpen = menu.classList.toggle("active");
+  if (toggle) toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
 }
+// Close mobile menu on outside click
+document.addEventListener("click", function(e) {
+  const menu   = document.getElementById("mobileMenu");
+  const toggle = document.querySelector(".menu-toggle");
+  if (!menu || !menu.classList.contains("active")) return;
+  if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+    menu.classList.remove("active");
+    toggle.setAttribute("aria-expanded", "false");
+  }
+});
 </script>

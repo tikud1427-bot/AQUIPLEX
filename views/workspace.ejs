@@ -12,6 +12,43 @@
 <link rel="shortcut icon" href="https://aquiplex.com/logo/favicon.ico">
 <link rel="apple-touch-icon" sizes="180x180" href="https://aquiplex.com/logo/apple-touch-icon.png">
 <script src="/socket.io/socket.io.js"></script>
+<style>
+/* ── WORKSPACE UX IMPROVEMENTS ── */
+/* Prevent horizontal overflow on mobile */
+.aq-workspace { overflow-x: hidden; max-width: 100vw; }
+.aq-body { overflow-x: hidden; }
+/* Topbar: allow wrap on small screens */
+.aq-topbar { flex-wrap: wrap; gap: 6px; }
+.aq-topbar-prompt { flex: 1 1 200px; min-width: 0; }
+.aq-topbar-prompt input { width: 100%; min-width: 0; box-sizing: border-box; }
+@media (max-width: 640px) {
+  .aq-topbar { padding: 8px 10px; }
+  .aq-breadcrumb { display: none; }
+  .aq-topbar-prompt { order: 3; flex: 1 1 100%; }
+  .aq-topbar-right { margin-left: auto; }
+  #topGenBtn { white-space: nowrap; min-width: 90px; }
+  /* Exec action buttons wrap on mobile */
+  .aq-exec-actions { flex-wrap: wrap; gap: 6px; }
+  .aq-exec-actions .aq-btn { flex: 1 1 auto; justify-content: center; min-width: 70px; }
+  /* Sticky action bar horizontally scrollable */
+  .aq-sticky-action-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; }
+}
+@media (max-width: 420px) {
+  .aq-logo { display: none; }
+}
+/* Welcome chip a11y */
+.aq-welcome-prompt-chip { cursor: pointer; }
+.aq-welcome-prompt-chip:focus { outline: 2px solid var(--accent, #38bdf8); outline-offset: 2px; border-radius: 6px; }
+/* Keyboard key badge */
+kbd {
+  font-family: var(--mono, monospace);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.72em;
+}
+</style>
 </head>
 <body>
 
@@ -313,24 +350,86 @@
         </div>
       </div><!-- /wsExec -->
 
-      <!-- ─── WELCOME ─── -->
+      <!-- ─── WELCOME / ONBOARDING ─── -->
       <div class="aq-welcome" id="wsWelcome">
-        <div class="aq-welcome-glyph">⚡</div>
-        <h2>Aquiplex Workspace</h2>
-        <p>Generate a project with AI, monitor execution bundles, or pick up where you left off.</p>
 
-        <div class="aq-welcome-prompts" id="welcomePrompts">
-          <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)">Landing page for a SaaS product</span>
-          <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)">Portfolio site with dark mode</span>
-          <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)">Dashboard with charts</span>
-          <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)">E-commerce product page</span>
+        <!-- RETURNING USER: has projects or bundles -->
+        <div id="wsWelcomeReturning" style="display:none;width:100%;max-width:560px;text-align:center;">
+          <div class="aq-welcome-glyph" aria-hidden="true">⚡</div>
+          <h2>Welcome back to Workspace</h2>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:24px;">Pick up where you left off, or start something new.</p>
+
+          <div class="aq-welcome-prompts" id="welcomePrompts" aria-label="Quick start prompts">
+            <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPrompt(this.textContent)">Landing page for a SaaS product</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPrompt(this.textContent)">Portfolio site with dark mode</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPrompt(this.textContent)">Dashboard with charts</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPrompt(this.textContent)">E-commerce product page</span>
+          </div>
+
+          <div class="aq-welcome-actions">
+            <button class="aq-btn aq-btn-run" onclick="focusPrompt()" style="min-height:48px;padding:0 24px;" aria-label="Generate a new project">⚡ Generate Project</button>
+            <button class="aq-btn" onclick="switchLeftTab('bundles')" style="min-height:48px;padding:0 24px;">📦 View Bundles</button>
+          </div>
+          <div class="aq-welcome-hint" aria-label="Keyboard shortcuts">Press ⌘K for commands · ⌘S to save</div>
         </div>
 
-        <div class="aq-welcome-actions">
-          <button class="aq-btn aq-btn-run" onclick="focusPrompt()" style="min-height:48px;padding:0 24px;">⚡ Generate Project</button>
-          <button class="aq-btn" onclick="switchLeftTab('bundles')" style="min-height:48px;padding:0 24px;">📦 View Bundles</button>
+        <!-- FIRST-TIME USER: no projects, no bundles -->
+        <div id="wsWelcomeOnboarding" style="display:none;width:100%;max-width:600px;">
+          <div style="text-align:center;margin-bottom:36px;">
+            <div style="font-size:3rem;margin-bottom:12px;" aria-hidden="true">🚀</div>
+            <h2 style="font-family:var(--font-head,sans-serif);font-size:1.6rem;font-weight:800;color:var(--fg,#f1f5f9);margin:0 0 10px;">Start your first project</h2>
+            <p style="color:var(--muted);font-size:0.9rem;line-height:1.65;max-width:400px;margin:0 auto;">
+              Describe anything you want to build. Aquiplex AI generates the code, files, and a live preview — instantly.
+            </p>
+          </div>
+
+          <!-- HOW IT WORKS -->
+          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:36px;" role="list" aria-label="How it works">
+
+            <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 18px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.15);border-radius:12px;" role="listitem">
+              <div style="flex-shrink:0;width:28px;height:28px;background:linear-gradient(135deg,#38bdf8,#6366f1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#fff;" aria-hidden="true">1</div>
+              <div>
+                <div style="font-weight:600;font-size:0.88rem;color:var(--fg,#f1f5f9);margin-bottom:3px;">Describe what to build</div>
+                <div style="font-size:0.8rem;color:var(--muted);">Type your idea in the bar above — "landing page for a fitness app", "portfolio with dark mode", anything.</div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 18px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.15);border-radius:12px;" role="listitem">
+              <div style="flex-shrink:0;width:28px;height:28px;background:linear-gradient(135deg,#38bdf8,#6366f1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#fff;" aria-hidden="true">2</div>
+              <div>
+                <div style="font-weight:600;font-size:0.88rem;color:var(--fg,#f1f5f9);margin-bottom:3px;">AI generates your files</div>
+                <div style="font-size:0.8rem;color:var(--muted);">HTML, CSS, JS — all created and saved automatically. A live preview loads on the right.</div>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 18px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.15);border-radius:12px;" role="listitem">
+              <div style="flex-shrink:0;width:28px;height:28px;background:linear-gradient(135deg,#38bdf8,#6366f1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#fff;" aria-hidden="true">3</div>
+              <div>
+                <div style="font-weight:600;font-size:0.88rem;color:var(--fg,#f1f5f9);margin-bottom:3px;">Edit, save, and iterate</div>
+                <div style="font-size:0.8rem;color:var(--muted);">Use the code editor to tweak files manually, or use <strong style="color:var(--accent,#38bdf8);">✦ AI Edit</strong> to apply changes in plain English.</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- QUICK START CHIPS -->
+          <p style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:12px;text-align:center;">Try one of these to get started</p>
+          <div class="aq-welcome-prompts" aria-label="Starter project ideas">
+            <span class="aq-welcome-prompt-chip" onclick="_fillPromptAndFocus(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPromptAndFocus(this.textContent)">🚀 SaaS landing page</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPromptAndFocus(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPromptAndFocus(this.textContent)">🌙 Portfolio with dark mode</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPromptAndFocus(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPromptAndFocus(this.textContent)">📊 Dashboard with charts</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPromptAndFocus(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPromptAndFocus(this.textContent)">🛒 E-commerce product page</span>
+          </div>
+
+          <div class="aq-welcome-actions" style="margin-top:28px;">
+            <button class="aq-btn aq-btn-run" onclick="focusPrompt()" style="min-height:52px;padding:0 32px;font-size:1rem;font-weight:700;" aria-label="Start your first project">⚡ Start Your First Project</button>
+          </div>
+
+          <p style="font-size:0.73rem;color:var(--muted);margin-top:20px;text-align:center;">
+            Tip: Press <kbd style="background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;font-size:0.7rem;">⌘K</kbd> anytime for commands
+          </p>
         </div>
-        <div class="aq-welcome-hint">Press ⌘K for commands · ⌘S to save</div>
+
       </div>
 
       <!-- ─── LOADING SKELETON ─── -->
@@ -539,6 +638,26 @@ function _fillPrompt(text) {
   const i = document.getElementById("topPromptInput");
   if (i) { i.value = text; i.focus(); }
 }
+function _fillPromptAndFocus(text) {
+  _fillPrompt(text);
+  // Scroll topbar into view on mobile
+  const bar = document.getElementById("topPromptInput");
+  if (bar) bar.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+/* ─── WELCOME STATE: show onboarding vs returning ─── */
+function _resolveWelcomeState(hasProjects) {
+  const hasAnyBundles = _ejsBundles && _ejsBundles.length > 0;
+  const returning = document.getElementById("wsWelcomeReturning");
+  const onboard   = document.getElementById("wsWelcomeOnboarding");
+  if (!returning || !onboard) return;
+  if (hasProjects || hasAnyBundles) {
+    returning.style.display = "";
+    onboard.style.display   = "none";
+  } else {
+    returning.style.display = "none";
+    onboard.style.display   = "";
+  }
+}
 let _promptHintTimer;
 function _debouncePromptHint(val) {
   clearTimeout(_promptHintTimer);
@@ -617,8 +736,10 @@ function renderProjectList(projects) {
   if (!container) return;
   if (!projects.length) {
     container.innerHTML = `<div class="aq-empty"><span class="aq-empty-icon">📁</span>No projects yet.<br/><a href="#" onclick="promptNewProject();return false;" style="color:var(--accent);font-size:0.66rem;margin-top:4px;display:inline-block;">Create your first →</a></div>`;
+    _resolveWelcomeState(false);
     return;
   }
+  _resolveWelcomeState(true);
   container.innerHTML = projects.map(p => `
     <div class="aq-proj-item ${STATE.projectId === String(p.projectId || p._id || p.id) ? 'active' : ''}"
          id="prow-${p.projectId || p._id || p.id}"

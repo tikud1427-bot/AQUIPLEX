@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Timer for ADHD</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Pomodoro Timer for ADHD</h1>
+    </header>
+    <main>
+        <section class="timer">
+            <h2>Timer</h2>
+            <div class="time-display">
+                <span id="minutes">25</span>:<span id="seconds">00</span>
+            </div>
+            <button id="start-button">Start</button>
+            <button id="pause-button" disabled>Pause</button>
+            <button id="reset-button">Reset</button>
+        </section>
+        <section class="settings">
+            <h2>Settings</h2>
+            <label for="work-duration">Work Duration (minutes):</label>
+            <input type="number" id="work-duration" value="25">
+            <label for="break-duration">Break Duration (minutes):</label>
+            <input type="number" id="break-duration" value="5">
+            <button id="save-settings">Save Settings</button>
+        </section>
+        <section class="history">
+            <h2>History</h2>
+            <ul id="history-list"></ul>
+        </section>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
