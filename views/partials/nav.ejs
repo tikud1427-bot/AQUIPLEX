@@ -1,0 +1,310 @@
+<header class="main-header">
+  <div class="header-container">
+
+    <!-- LOGO -->
+    <a href="/" class="logo">
+      <img src="/logo/logo.png" alt="AQUIPLEX" class="logo-img">
+      <span class="logo-text">AQUIPLEX</span>
+    </a>
+
+    <!-- NAV LINKS (DESKTOP ONLY) -->
+    <nav class="nav-links" aria-label="Main navigation">
+
+      <a href="<%= user ? '/home' : '/' %>">Home</a>
+      <a href="/tools">Tools</a>
+      <a href="/trending" class="highlight">🔥 Trending</a>
+      <a href="/chatbot" class="ai-link aqua-ai-link">
+        <img src="/logo/aqua-favicon.png" alt="Aqua AI">
+        Aqua AI
+      </a>
+
+      <!-- UPGRADE LINK (desktop) -->
+      <% if (typeof user !== "undefined" && user) { %>
+        <% if (user.plan === 'free' || !user.plan) { %>
+          <a href="/pricing" class="nav-upgrade-link">⚡ Upgrade</a>
+        <% } else { %>
+          <a href="/billing" class="nav-plan-badge nav-plan-<%= user.plan %>"><%= user.plan.toUpperCase() %></a>
+        <% } %>
+      <% } else { %>
+        <a href="/pricing" class="nav-upgrade-link">⚡ Pricing</a>
+      <% } %>
+
+      <!-- MORE DROPDOWN -->
+      <div class="nav-more">
+        <span>More ▾</span>
+        <div class="dropdown">
+          <a href="/bundles" class="ai-link">🌊 Aqua Project Engine</a>
+          <a href="/pricing">⚡ Pricing</a>
+          <a href="/submit">Submit</a>
+          <a href="/about">About</a>
+        </div>
+      </div>
+
+    </nav>
+
+    <!-- 🔍 DESKTOP SEARCH -->
+    <form action="/tools" method="GET" class="nav-search" role="search">
+      <input 
+        type="text" 
+        name="q" 
+        placeholder="Search AI tools..."
+        aria-label="Search AI tools"
+        required
+      >
+    </form>
+
+    <!-- ACTION BUTTONS -->
+    <div class="header-actions">
+
+      <% if (typeof user !== "undefined" && user) { %>
+
+        <span class="user-greet desktop-only" aria-label="Logged in as <%= user.username || 'User' %>">
+          Hi, <%= user.username || "User" %>
+        </span>
+
+        <!-- ⚡ PRIMARY WORKSPACE CTA -->
+        <a href="/workspace" class="btn primary nav-workspace-cta" aria-label="Open Workspace">
+          ⚡ Open Workspace
+        </a>
+
+        <!-- Upgrade CTA for free users -->
+        <% if (user.plan === 'free' || !user.plan) { %>
+          <a href="/pricing" class="btn nav-upgrade-cta" aria-label="Upgrade Plan">
+            Go Pro
+          </a>
+        <% } %>
+
+        <!-- User dropdown -->
+        <div class="nav-user-menu">
+          <button class="nav-user-btn" onclick="toggleUserMenu(event)" aria-label="User menu">
+            <span class="nav-avatar"><%= (user.username || user.email || 'U')[0].toUpperCase() %></span>
+          </button>
+          <div class="nav-user-dropdown" id="navUserDropdown">
+            <div class="nav-user-email"><%= user.email || user.username %></div>
+            <div class="nav-user-plan-row">
+              <span class="nav-inline-badge nav-plan-<%= user.plan || 'free' %>"><%= (user.plan || 'free').toUpperCase() %></span>
+            </div>
+            <a href="/billing" class="nav-dropdown-item">💳 Billing & Credits</a>
+            <a href="/pricing" class="nav-dropdown-item upgrade">⚡ Upgrade Plan</a>
+            <div class="nav-dropdown-divider"></div>
+            <a href="/logout" class="nav-dropdown-item">Logout</a>
+          </div>
+        </div>
+
+      <% } else { %>
+
+        <a href="/login" class="btn ghost">Login</a>
+        <a href="/signup" class="btn primary">Sign Up</a>
+
+      <% } %>
+
+    </div>
+
+    <!-- MOBILE MENU BUTTON -->
+    <button class="menu-toggle" onclick="toggleMenu()" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">☰</button>
+
+  </div>
+
+  <!-- ✅ MOBILE MENU -->
+  <div class="mobile-menu" id="mobileMenu" role="navigation" aria-label="Mobile navigation">
+
+    <!-- 🔍 MOBILE SEARCH -->
+    <form action="/tools" method="GET" class="mobile-search" role="search">
+      <input 
+        type="text" 
+        name="q" 
+        placeholder="Search AI tools..."
+        aria-label="Search AI tools"
+        required
+      >
+    </form>
+
+    <% if (typeof user !== "undefined" && user) { %>
+      <a href="/workspace" class="btn primary mobile-workspace-cta" style="text-align:center;width:100%;padding:14px 0;font-size:1rem;border-radius:10px;display:block;margin-bottom:4px;">⚡ Open Workspace</a>
+      <% if (user.plan === 'free' || !user.plan) { %>
+        <a href="/pricing" class="btn mobile-upgrade-cta" style="text-align:center;width:100%;padding:12px 0;font-size:0.95rem;border-radius:10px;display:block;margin-bottom:4px;">✦ Upgrade to Pro</a>
+      <% } else { %>
+        <a href="/billing" class="btn mobile-upgrade-cta" style="text-align:center;width:100%;padding:12px 0;font-size:0.95rem;border-radius:10px;display:block;margin-bottom:4px;">💳 <%= (user.plan || 'free').toUpperCase() %> Plan</a>
+      <% } %>
+    <% } %>
+
+    <a href="<%= user ? '/home' : '/' %>">Home</a>
+    <a href="/chatbot" class="btn ai-btn">🌊 Aqua AI</a>
+    <a href="/tools">Tools</a>
+    <a href="/trending">🔥 Trending</a>
+    <a href="/bundles" class="btn ai-btn">🌊 Project Engine</a>
+    <a href="/pricing">⚡ Pricing</a>
+
+    <% if (typeof user !== "undefined" && user) { %>
+      <a href="/billing">💳 Billing</a>
+      <a href="/logout">Logout</a>
+    <% } else { %>
+      <a href="/login">Login</a>
+      <a href="/signup">Sign Up</a>
+    <% } %>
+
+    <a href="/submit">Submit</a>
+    <a href="/about">About</a>
+
+  </div>
+</header>
+
+<style>
+/* ── Workspace CTA pill — desktop navbar ── */
+.nav-workspace-cta {
+  background: linear-gradient(135deg, #38bdf8, #6366f1) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 8px 18px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em !important;
+  box-shadow: 0 0 14px rgba(56,189,248,0.35) !important;
+  transition: box-shadow 0.2s, transform 0.15s !important;
+  white-space: nowrap;
+}
+.nav-workspace-cta:hover {
+  box-shadow: 0 0 24px rgba(56,189,248,0.55) !important;
+  transform: translateY(-1px) !important;
+}
+/* Upgrade CTA */
+.nav-upgrade-cta {
+  background: linear-gradient(135deg, #f59e0b, #ef4444) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 7px 14px !important;
+  font-weight: 700 !important;
+  font-size: 0.82rem !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: 0 0 10px rgba(245,158,11,0.3) !important;
+  transition: all 0.2s !important;
+  white-space: nowrap;
+}
+.nav-upgrade-cta:hover {
+  box-shadow: 0 0 20px rgba(245,158,11,0.5) !important;
+  transform: translateY(-1px) !important;
+}
+/* Nav upgrade link */
+.nav-upgrade-link {
+  color: #f59e0b !important;
+  font-weight: 700 !important;
+  animation: upgrade-pulse 2s infinite;
+}
+@keyframes upgrade-pulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+/* Plan badges in nav */
+.nav-plan-badge {
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  padding: 3px 10px !important;
+  border-radius: 999px !important;
+  text-decoration: none !important;
+}
+.nav-plan-starter { background: rgba(0,212,255,0.12); color: #00d4ff; border: 1px solid rgba(0,212,255,0.3); }
+.nav-plan-pro     { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.4); }
+.nav-plan-team    { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+
+/* Mobile CTA */
+.mobile-workspace-cta {
+  background: linear-gradient(135deg, #38bdf8, #6366f1) !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 12px rgba(56,189,248,0.3) !important;
+}
+.mobile-upgrade-cta {
+  background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.1)) !important;
+  color: #f59e0b !important;
+  border: 1px solid rgba(245,158,11,0.3) !important;
+  font-weight: 700 !important;
+}
+.mobile-menu { box-sizing: border-box; overflow-x: hidden; }
+
+/* ── User avatar menu ── */
+.nav-user-menu { position: relative; }
+.nav-user-btn {
+  background: none; border: 1px solid rgba(255,255,255,0.15); border-radius: 50%;
+  width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.2s;
+}
+.nav-user-btn:hover { border-color: rgba(56,189,248,0.6); }
+.nav-avatar {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  color: #fff; font-size: 0.72rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.nav-user-dropdown {
+  display: none;
+  position: absolute; top: calc(100% + 10px); right: 0;
+  background: #0f0f1e; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px; min-width: 200px; padding: 8px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+  z-index: 9999;
+}
+.nav-user-dropdown.open { display: block; }
+.nav-user-email {
+  padding: 8px 12px 4px;
+  font-size: 0.78rem; color: rgba(255,255,255,0.5);
+  word-break: break-all;
+}
+.nav-user-plan-row { padding: 4px 12px 10px; }
+.nav-inline-badge {
+  font-size: 0.7rem; font-weight: 700; padding: 2px 8px;
+  border-radius: 999px; display: inline-block;
+}
+.nav-plan-free    { background: rgba(255,255,255,0.08); color: #aaa; }
+.nav-plan-starter { background: rgba(0,212,255,0.12); color: #00d4ff; border: 1px solid rgba(0,212,255,0.3); }
+.nav-plan-pro     { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.4); }
+.nav-plan-team    { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+.nav-dropdown-item {
+  display: block; padding: 9px 12px; border-radius: 8px;
+  font-size: 0.85rem; color: rgba(255,255,255,0.75);
+  text-decoration: none; transition: background 0.15s;
+}
+.nav-dropdown-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
+.nav-dropdown-item.upgrade { color: #f59e0b; font-weight: 600; }
+.nav-dropdown-item.upgrade:hover { background: rgba(245,158,11,0.08); }
+.nav-dropdown-divider {
+  height: 1px; background: rgba(255,255,255,0.07);
+  margin: 6px 0;
+}
+
+/* Aqua AI logo link */
+.aqua-ai-link { display: flex; align-items: center; gap: 6px; }
+.aqua-ai-link img { width: 16px; height: 16px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(56,189,248,0.4)); }
+.aqua-ai-link:hover img { filter: drop-shadow(0 0 8px rgba(56,189,248,0.8)); }
+</style>
+
+<!-- ✅ GLOBAL SCRIPT -->
+<script>
+function toggleMenu() {
+  const menu   = document.getElementById("mobileMenu");
+  const toggle = document.querySelector(".menu-toggle");
+  if (!menu) return;
+  const isOpen = menu.classList.toggle("active");
+  if (toggle) toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+document.addEventListener("click", function(e) {
+  const menu   = document.getElementById("mobileMenu");
+  const toggle = document.querySelector(".menu-toggle");
+  if (!menu || !menu.classList.contains("active")) return;
+  if (!menu.contains(e.target) && !toggle.contains(e.target)) {
+    menu.classList.remove("active");
+    toggle.setAttribute("aria-expanded", "false");
+  }
+});
+function toggleUserMenu(e) {
+  e.stopPropagation();
+  const dd = document.getElementById("navUserDropdown");
+  if (dd) dd.classList.toggle("open");
+}
+document.addEventListener("click", function(e) {
+  const dd = document.getElementById("navUserDropdown");
+  if (dd && dd.classList.contains("open")) {
+    if (!dd.contains(e.target) && !e.target.closest(".nav-user-btn")) {
+      dd.classList.remove("open");
+    }
+  }
+});
+</script>

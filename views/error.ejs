@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Something Went Wrong | Aquiplex</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="96x96" href="/logo/favicon-48x48.png">
+  <style>
+    .error-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 2rem;
+      background: #000;
+      color: #fff;
+    }
+    .error-code {
+      font-size: clamp(80px, 15vw, 140px);
+      font-weight: 700;
+      line-height: 1;
+      background: linear-gradient(135deg, #ff6b6b, #7b2ff7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0;
+    }
+    .error-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 1rem 0 0.5rem;
+      color: #fff;
+    }
+    .error-sub {
+      font-size: 1rem;
+      color: #888;
+      max-width: 420px;
+      margin: 0 auto 2rem;
+      line-height: 1.6;
+    }
+    .error-logo {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 1.5rem;
+      opacity: 0.9;
+    }
+    .error-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .error-btn {
+      padding: 12px 28px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+    .error-btn-primary {
+      background: linear-gradient(135deg, #ff6b6b, #7b2ff7);
+      color: #fff;
+    }
+    .error-btn-primary:hover {
+      opacity: 0.85;
+      transform: translateY(-1px);
+    }
+    .error-btn-secondary {
+      background: rgba(255,255,255,0.08);
+      color: #ccc;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .error-btn-secondary:hover {
+      background: rgba(255,255,255,0.14);
+      color: #fff;
+    }
+    .error-detail {
+      margin-top: 2rem;
+      font-size: 0.78rem;
+      color: #555;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="error-page">
+    <img src="/logo/aqua-favicon.png" alt="Aquiplex" class="error-logo">
+    <p class="error-code">500</p>
+    <h1 class="error-title">Something went wrong</h1>
+    <p class="error-sub">Our server hit an unexpected error. The team has been notified. Please try again in a moment.</p>
+    <div class="error-actions">
+      <a href="javascript:history.back()" class="error-btn error-btn-primary">Go Back</a>
+      <a href="/" class="error-btn error-btn-secondary">Go Home</a>
+    </div>
+    <% if (typeof message !== 'undefined' && message && process.env.NODE_ENV !== 'production') { %>
+      <p class="error-detail">Error: <%= message %></p>
+    <% } %>
+  </div>
+</body>
+</html>

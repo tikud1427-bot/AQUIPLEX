@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Aquiplex AI</title>
+  <style>
+    body {
+      background: #0f172a;
+      color: white;
+      font-family: Arial;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #chat {
+      width: 400px;
+      height: 500px;
+      overflow-y: auto;
+      border: 1px solid #334155;
+      padding: 10px;
+      margin-bottom: 10px;
+      background: #020617;
+    }
+
+    .user { color: #38bdf8; }
+    .bot { color: #22c55e; }
+
+    input {
+      width: 300px;
+      padding: 10px;
+    }
+
+    button {
+      padding: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Aquiplex AI Chat</h2>
+
+<div id="chat"></div>
+
+<input id="msg" placeholder="Ask something..." />
+<button onclick="send()">Send</button>
+
+  <script>
+  let history = [];
+
+  async function send() {
+    const input = document.getElementById("msg");
+    const chat = document.getElementById("chat");
+
+    const message = input.value;
+    if (!message) return;
+
+    chat.innerHTML += `<p class="user"><b>You:</b> ${message}</p>`;
+    input.value = "";
+
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message,
+        history
+      })
+    });
+
+    const data = await res.json();
+
+    chat.innerHTML += `<p class="bot"><b>AI:</b> ${data.reply}</p>`;
+
+    history.push({ role: "user", content: message });
+    history.push({ role: "assistant", content: data.reply });
+
+    chat.scrollTop = chat.scrollHeight;
+  }
+  </script>
+
+</body>
+</html>

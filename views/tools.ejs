@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Tools Directory | Aquiplex</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="96x96" href="https://aquiplex.com/logo/favicon-96x96.png">
+  <link rel="icon" type="image/svg+xml" href="https://aquiplex.com/logo/favicon.svg">
+  <link rel="shortcut icon" href="https://aquiplex.com/logo/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://aquiplex.com/logo/apple-touch-icon.png">
+  <style>
+    .tools-hero{text-align:center;padding:48px 0 24px}
+    .tools-hero h1{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:700;background:linear-gradient(135deg,#60a5fa,#a78bfa,#f472b6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px}
+    .tools-hero p{color:#94a3b8;font-size:1rem}
+    .search-wrapper{display:flex;align-items:center;background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.12);border-radius:14px;padding:0 16px;max-width:700px;margin:0 auto 20px;transition:border-color .2s,box-shadow .2s}
+    .search-wrapper:focus-within{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.15)}
+    .search-wrapper .search-icon{color:#64748b;font-size:1rem;margin-right:10px;flex-shrink:0}
+    .search-wrapper input{flex:1;background:transparent;border:none;outline:none;color:#f1f5f9;font-family:'Poppins',sans-serif;font-size:.95rem;padding:14px 0}
+    .search-wrapper input::placeholder{color:#475569}
+    .search-btn{background:linear-gradient(135deg,#3b82f6,#8b5cf6);border:none;color:#fff;font-family:'Poppins',sans-serif;font-size:.85rem;font-weight:600;padding:8px 18px;border-radius:9px;cursor:pointer;transition:opacity .2s,transform .1s;flex-shrink:0}
+    .search-btn:hover{opacity:.9;transform:translateY(-1px)}
+    .sort-bar{display:flex;align-items:center;gap:8px;max-width:700px;margin:0 auto 20px;flex-wrap:wrap}
+    .sort-label{color:#64748b;font-size:.78rem;font-weight:500;white-space:nowrap}
+    .sort-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;font-family:'Poppins',sans-serif;font-size:.78rem;padding:5px 13px;border-radius:20px;cursor:pointer;transition:all .2s}
+    .sort-btn:hover,.sort-btn.active{background:rgba(96,165,250,.15);border-color:#60a5fa;color:#60a5fa}
+    .category-filter{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:32px}
+    .category-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;font-family:'Poppins',sans-serif;font-size:.8rem;font-weight:500;padding:6px 16px;border-radius:20px;cursor:pointer;text-decoration:none;transition:all .2s}
+    .category-btn:hover,.category-btn.active{background:rgba(96,165,250,.15);border-color:#60a5fa;color:#60a5fa}
+    .ai-recommend-box{background:linear-gradient(135deg,rgba(96,165,250,.08),rgba(167,139,250,.08));border:1px solid rgba(96,165,250,.2);border-radius:16px;padding:24px;margin-bottom:32px}
+    .ai-recommend-box h2{font-size:1.1rem;font-weight:600;color:#e2e8f0;margin-bottom:4px}
+    .ai-recommend-box>p{color:#64748b;font-size:.85rem;margin-bottom:16px}
+    .ai-recommend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    .ai-rec-card{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:12px;text-decoration:none;transition:all .2s}
+    .ai-rec-card:hover{background:rgba(255,255,255,.08);border-color:rgba(96,165,250,.3);transform:translateY(-2px)}
+    .ai-rec-card img{width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0}
+    .ai-rec-info{flex:1;min-width:0}
+    .ai-rec-info h4{font-size:.85rem;font-weight:600;color:#e2e8f0;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ai-rec-info p{font-size:.72rem;color:#64748b;margin:0}
+    .ai-rec-use{font-size:.72rem;font-weight:600;color:#60a5fa;white-space:nowrap;flex-shrink:0}
+    .trending-section{margin-bottom:32px}
+    .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .section-header h2{font-size:1.1rem;font-weight:600;color:#e2e8f0}
+    .section-header a{font-size:.8rem;color:#60a5fa;text-decoration:none}
+    .section-header a:hover{text-decoration:underline}
+    .trending-strip{display:flex;gap:12px;overflow-x:auto;padding-bottom:8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.1) transparent}
+    .trending-chip{display:flex;align-items:center;gap:8px;background:rgba(251,146,60,.1);border:1px solid rgba(251,146,60,.25);border-radius:10px;padding:8px 14px;text-decoration:none;flex-shrink:0;transition:all .2s}
+    .trending-chip:hover{background:rgba(251,146,60,.18);transform:translateY(-1px)}
+    .trending-chip img{width:26px;height:26px;border-radius:6px;object-fit:cover}
+    .trending-chip span{font-size:.82rem;font-weight:500;color:#fde68a}
+    .tools-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px;margin-bottom:48px}
+    .tool-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:12px;transition:all .25s;position:relative;overflow:hidden}
+    .tool-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(96,165,250,.03),rgba(167,139,250,.03));opacity:0;transition:opacity .25s}
+    .tool-card:hover{border-color:rgba(96,165,250,.25);transform:translateY(-3px);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+    .tool-card:hover::before{opacity:1}
+    .badge-row{position:absolute;top:12px;right:12px;display:flex;gap:4px;z-index:1}
+    .badge{font-size:.62rem;font-weight:700;padding:3px 7px;border-radius:6px;letter-spacing:.02em}
+    .badge-trending{background:rgba(251,146,60,.2);color:#fb923c;border:1px solid rgba(251,146,60,.3)}
+    .badge-new{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.25)}
+    .badge-popular{background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.25)}
+    .tool-top{display:flex;align-items:flex-start;justify-content:space-between}
+    .tool-logo{width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid rgba(255,255,255,.1)}
+    .favorite-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#64748b;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:.8rem;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+    .favorite-btn:hover{color:#facc15;border-color:#facc15;background:rgba(250,204,21,.1)}
+    .favorite-btn.saved{color:#facc15;border-color:#facc15;background:rgba(250,204,21,.1)}
+    .tool-content{flex:1}
+    .tool-content h3{font-size:.95rem;font-weight:600;color:#f1f5f9;margin:0 0 4px}
+    .tool-category{font-size:.72rem;font-weight:500;color:#60a5fa;background:rgba(96,165,250,.1);border-radius:6px;padding:2px 8px;display:inline-block;margin-bottom:8px}
+    .tool-description{font-size:.82rem;color:#94a3b8;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    .tool-footer{display:flex;align-items:center;gap:8px;margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}
+    .details-btn{flex:1;text-align:center;padding:8px;border-radius:8px;font-size:.8rem;font-weight:500;color:#94a3b8;border:1px solid rgba(255,255,255,.1);background:transparent;text-decoration:none;transition:all .2s}
+    .details-btn:hover{border-color:#60a5fa;color:#60a5fa}
+    .visit-btn{flex:1;text-align:center;padding:8px;border-radius:8px;font-size:.8rem;font-weight:600;color:#fff;background:linear-gradient(135deg,#3b82f6,#8b5cf6);text-decoration:none;transition:opacity .2s,transform .1s;display:block}
+    .visit-btn:hover{opacity:.88;transform:translateY(-1px)}
+    .like-btn{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;font-family:'Poppins',sans-serif;font-size:.78rem;padding:7px 10px;border-radius:8px;cursor:pointer;transition:all .2s;white-space:nowrap}
+    .like-btn:hover,.like-btn.liked{background:rgba(239,68,68,.1);border-color:#ef4444;color:#ef4444}
+    .like-btn i{font-size:.8rem;transition:transform .15s}
+    .like-btn.pulse i{transform:scale(1.4)}
+    .like-btn:disabled{opacity:.6;cursor:not-allowed}
+    .no-tools{grid-column:1/-1;text-align:center;padding:60px 20px;color:#475569}
+    .no-tools i{font-size:2.5rem;margin-bottom:16px;display:block}
+    .no-tools h3{font-size:1.1rem;color:#64748b;margin-bottom:8px}
+    .search-suggestions{position:absolute;top:calc(100% + 6px);left:0;right:0;background:#1e2535;border:1px solid rgba(255,255,255,.1);border-radius:12px;overflow:hidden;z-index:100;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+    .suggestion-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;transition:background .15s;text-decoration:none}
+    .suggestion-item:hover{background:rgba(255,255,255,.06)}
+    .suggestion-item img{width:28px;height:28px;border-radius:6px;object-fit:cover}
+    .suggestion-item span{font-size:.85rem;color:#e2e8f0}
+    .suggestion-item small{font-size:.72rem;color:#60a5fa;margin-left:auto}
+    .search-pos{position:relative;flex:1}
+    @media(max-width:600px){.tools-grid{grid-template-columns:1fr}.ai-recommend-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+
+<%- include("partials/nav") %>
+
+<main class="container">
+
+  <section class="tools-hero">
+    <h1>✨ AI Tools Directory</h1>
+    <p>Discover <%= tools.length %> tools for productivity, coding, design & more</p>
+  </section>
+
+  <form action="/tools" method="GET" id="searchForm" autocomplete="off">
+    <div class="search-wrapper">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <div class="search-pos">
+        <input
+          type="text" name="q" id="searchInput"
+          placeholder="🔍 Ask anything... e.g. 'AI for startups', 'video editing'"
+          value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>" autocomplete="off"
+        >
+        <div class="search-suggestions" id="suggestions" style="display:none;"></div>
+      </div>
+      <button type="submit" class="search-btn">Search</button>
+    </div>
+  </form>
+
+  <div class="sort-bar">
+    <span class="sort-label">Sort:</span>
+    <button class="sort-btn active" data-sort="default">Default</button>
+    <button class="sort-btn" data-sort="trending">🔥 Trending</button>
+    <button class="sort-btn" data-sort="liked">⭐ Most Liked</button>
+    <button class="sort-btn" data-sort="newest">🆕 Newest</button>
+  </div>
+
+  <div class="category-filter">
+    <a href="/tools<%= (typeof searchQuery !== 'undefined' && searchQuery) ? '?q=' + encodeURIComponent(searchQuery) : '' %>"
+       class="category-btn <%= (typeof categoryFilter === 'undefined' || !categoryFilter) ? 'active' : '' %>">All</a>
+    <% if (typeof categories !== 'undefined' && categories && categories.length > 0) { %>
+      <% categories.forEach(function(cat){ %>
+        <a href="/tools?<%= (typeof searchQuery !== 'undefined' && searchQuery) ? 'q=' + encodeURIComponent(searchQuery) + '&' : '' %>cat=<%= encodeURIComponent(cat) %>"
+           class="category-btn <%= (typeof categoryFilter !== 'undefined' && categoryFilter === cat) ? 'active' : '' %>">
+          <%= cat %>
+        </a>
+      <% }) %>
+    <% } %>
+  </div>
+
+  <%
+    var trendingToolsList = (typeof tools !== 'undefined' && tools) ? tools.filter(function(t){ return t.isTrending; }) : [];
+  %>
+  <% if (trendingToolsList.length > 0) { %>
+    <section class="trending-section">
+      <div class="section-header">
+        <h2>🔥 Trending Now</h2>
+        <a href="/trending">View all →</a>
+      </div>
+      <div class="trending-strip">
+        <% trendingToolsList.slice(0,10).forEach(function(t){ %>
+          <a href="/visit/<%= t._id %>" target="_blank" class="trending-chip">
+            <img src="<%= t.logo || '/logos/default.png' %>" onerror="this.src='/logos/default.png'" alt="<%= t.name %>">
+            <span><%= t.name %></span>
+          </a>
+        <% }) %>
+      </div>
+    </section>
+  <% } %>
+
+  <% if (typeof recommended !== 'undefined' && recommended && recommended.length > 0) { %>
+    <div class="ai-recommend-box">
+      <h2>✨ AI Recommended for You</h2>
+      <p><%= (typeof searchQuery !== 'undefined' && searchQuery) ? 'Best tools for "' + searchQuery + '"' : 'Top picks based on popularity & trending' %></p>
+      <div class="ai-recommend-grid">
+        <% recommended.forEach(function(t){ %>
+          <a href="/visit/<%= t._id %>" target="_blank" class="ai-rec-card">
+            <img src="<%= t.logo || '/logos/default.png' %>" onerror="this.src='/logos/default.png'" alt="<%= t.name %>">
+            <div class="ai-rec-info">
+              <h4><%= t.name %></h4>
+              <p><%= t.category %><%= t.isTrending ? ' · 🔥' : '' %></p>
+            </div>
+            <span class="ai-rec-use">Open →</span>
+          </a>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
+  <div class="tools-grid" id="toolsGrid">
+
+    <% if (typeof tools !== 'undefined' && tools && tools.length > 0) { %>
+      <% tools.forEach(function(tool){ %>
+        <div class="tool-card"
+             data-name="<%= (tool.name || '').toLowerCase() %>"
+             data-cat="<%= (tool.category || '').toLowerCase() %>"
+             data-trending="<%= tool.isTrending ? '1' : '0' %>"
+             data-likes="<%= tool.likes || 0 %>"
+             data-created="<%= tool.createdAt ? new Date(tool.createdAt).getTime() : 0 %>"
+        >
+          <div class="badge-row">
+            <% if (tool.isTrending) { %><span class="badge badge-trending">🔥 Trending</span><% } %>
+            <% if (tool.isNew) { %><span class="badge badge-new">🆕 New</span><% } %>
+            <% if (!tool.isTrending && !tool.isNew && tool.isPopular) { %><span class="badge badge-popular">⭐ Popular</span><% } %>
+          </div>
+
+          <div class="tool-top">
+            <img src="<%= tool.logo || '/logos/default.png' %>" class="tool-logo" onerror="this.src='/logos/default.png'" alt="<%= tool.name %>">
+            <button class="favorite-btn" data-id="<%= tool._id %>" title="Save to Workspace" aria-label="Save to Workspace">
+              <i class="fa-regular fa-star"></i>
+            </button>
+          </div>
+
+          <div class="tool-content">
+            <h3><%= tool.name %></h3>
+            <% if (tool.category) { %><span class="tool-category"><%= tool.category %></span><% } %>
+            <p class="tool-description"><%= tool.description %></p>
+          </div>
+
+          <div class="tool-footer">
+            <a href="/tools/<%= tool._id %>" class="details-btn">Details</a>
+            <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn">Open →</a>
+            <button class="like-btn" data-id="<%= tool._id %>" id="like-btn-<%= tool._id %>" aria-label="Like">
+              <i class="fa-regular fa-heart"></i>
+              <span class="like-count"><%= tool.likes || 0 %></span>
+            </button>
+          </div>
+        </div>
+      <% }) %>
+    <% } else { %>
+      <div class="no-tools">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <h3>No tools found</h3>
+        <p>Try a different search or <a href="/tools" style="color:#60a5fa;">browse all tools</a></p>
+      </div>
+    <% } %>
+
+  </div>
+
+</main>
+
+<%- include("partials/footer") %>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  // ── Like buttons ──────────────────────────────────────────────────────────
+  document.querySelectorAll(".like-btn").forEach(function (btn) {
+    btn.addEventListener("click", async function () {
+      const id = this.dataset.id;
+      if (!id) return;
+      if (this.disabled) return;
+
+      this.disabled = true;
+      const icon = this.querySelector("i");
+      const countEl = this.querySelector(".like-count");
+
+      try {
+        const res = await fetch("/api/tools/" + id + "/like", { method: "POST" });
+
+        if (res.status === 401) {
+          alert("Please log in to like tools.");
+          return;
+        }
+
+        const data = await res.json();
+        if (typeof data.likes === "number") {
+          countEl.textContent = data.likes;
+          // update card data-likes for sorting
+          const card = btn.closest(".tool-card");
+          if (card) card.dataset.likes = data.likes;
+        }
+
+        if (data.liked) {
+          icon.className = "fa-solid fa-heart";
+          btn.classList.add("liked");
+        } else {
+          icon.className = "fa-regular fa-heart";
+          btn.classList.remove("liked");
+        }
+
+        // pulse animation
+        btn.classList.add("pulse");
+        setTimeout(function () { btn.classList.remove("pulse"); }, 300);
+
+      } catch (e) {
+        console.error("Like error:", e);
+      } finally {
+        this.disabled = false;
+      }
+    });
+  });
+
+  // ── Favorite / Workspace buttons ──────────────────────────────────────────
+  document.querySelectorAll(".favorite-btn").forEach(function (btn) {
+    btn.addEventListener("click", async function () {
+      const id = this.dataset.id;
+      if (!id) return;
+      const icon = this.querySelector("i");
+
+      icon.className = "fa-solid fa-spinner fa-spin";
+
+      try {
+        const res = await fetch("/workspace/add/" + id, { method: "POST" });
+
+        if (res.redirected || res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
+
+        if (res.ok) {
+          icon.className = "fa-solid fa-check";
+          btn.classList.add("saved");
+          btn.title = "Saved!";
+        } else {
+          icon.className = "fa-regular fa-star";
+        }
+      } catch (e) {
+        console.error("Workspace error:", e);
+        icon.className = "fa-regular fa-star";
+      }
+    });
+  });
+
+  // ── Search suggestions ────────────────────────────────────────────────────
+  var searchInput = document.getElementById("searchInput");
+  var suggestBox  = document.getElementById("suggestions");
+  var debounceTimer;
+
+  if (searchInput && suggestBox) {
+    searchInput.addEventListener("input", function () {
+      var q = this.value.trim();
+      clearTimeout(debounceTimer);
+      if (q.length < 2) { suggestBox.style.display = "none"; return; }
+
+      debounceTimer = setTimeout(async function () {
+        try {
+          var res  = await fetch("/api/tools/suggest?q=" + encodeURIComponent(q));
+          var data = await res.json();
+          if (!data.length) { suggestBox.style.display = "none"; return; }
+
+          suggestBox.innerHTML = data.map(function (t) {
+            return '<a class="suggestion-item" href="/visit/' + t._id + '" target="_blank">' +
+              '<img src="' + (t.logo || "/logos/default.png") + '" onerror="this.src=\'/logos/default.png\'" alt="' + (t.name || "") + '">' +
+              '<span>' + (t.name || "") + '</span>' +
+              '<small>' + (t.category || "") + '</small>' +
+              '</a>';
+          }).join("");
+
+          suggestBox.style.display = "block";
+        } catch (e) {
+          suggestBox.style.display = "none";
+        }
+      }, 350);
+    });
+
+    searchInput.addEventListener("keyup", function (e) {
+      if (e.key === "Enter") {
+        suggestBox.style.display = "none";
+        document.getElementById("searchForm").submit();
+      }
+    });
+
+    document.addEventListener("click", function (e) {
+      if (!e.target.closest(".search-pos")) suggestBox.style.display = "none";
+    });
+  }
+
+  // ── Sort buttons ──────────────────────────────────────────────────────────
+  document.querySelectorAll(".sort-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".sort-btn").forEach(function (b) { b.classList.remove("active"); });
+      this.classList.add("active");
+      sortCards(this.dataset.sort);
+    });
+  });
+
+  function sortCards(mode) {
+    var grid  = document.getElementById("toolsGrid");
+    if (!grid) return;
+    var cards = Array.from(grid.querySelectorAll(".tool-card"));
+    cards.sort(function (a, b) {
+      if (mode === "trending") return Number(b.dataset.trending) - Number(a.dataset.trending);
+      if (mode === "liked")    return Number(b.dataset.likes)    - Number(a.dataset.likes);
+      if (mode === "newest")   return Number(b.dataset.created)  - Number(a.dataset.created);
+      return 0;
+    });
+    cards.forEach(function (c) { grid.appendChild(c); });
+  }
+
+  // ── Client-side category filter ───────────────────────────────────────────
+  (function applyClientCatFilter() {
+    var params = new URLSearchParams(window.location.search);
+    var cat = (params.get("cat") || "").toLowerCase();
+    if (!cat) return;
+    document.querySelectorAll(".tool-card").forEach(function (card) {
+      card.style.display = card.dataset.cat === cat ? "" : "none";
+    });
+  })();
+
+});
+</script>
+</body>
+</html>

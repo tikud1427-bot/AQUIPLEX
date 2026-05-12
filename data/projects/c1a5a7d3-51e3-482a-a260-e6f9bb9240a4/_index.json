@@ -1,0 +1,15 @@
+{
+  "projectId": "c1a5a7d3-51e3-482a-a260-e6f9bb9240a4",
+  "name": "Build a calculator",
+  "userId": "69b6c1b8cd3038e700ab58ff",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-04-30T10:45:55.048Z",
+  "updatedAt": "2026-04-30T10:45:55.218Z",
+  "prompt": "Build a calculator",
+  "source": "nuclear_fallback",
+  "intent": "tool"
+}

@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wallet — Aquiplex</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    :root {
+      --bg:          #08080f;
+      --surface:     rgba(255,255,255,0.03);
+      --surface-2:   rgba(255,255,255,0.06);
+      --border:      rgba(255,255,255,0.08);
+      --border-glow: rgba(0,212,255,0.3);
+      --text:        #fff;
+      --muted:       rgba(255,255,255,0.45);
+      --blue:        #00d4ff;
+      --purple:      #7c3aed;
+      --green:       #22c55e;
+      --amber:       #f59e0b;
+      --red:         #ef4444;
+      --blue-glow:   rgba(0,212,255,0.12);
+      --purple-glow: rgba(124,58,237,0.15);
+      --radius:      16px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ── */
+    .wallet-wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 56px 20px 100px;
+    }
+
+    .page-header {
+      margin-bottom: 40px;
+    }
+    .page-header h1 {
+      font-size: clamp(1.6rem, 4vw, 2.4rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 6px;
+    }
+    .page-header p {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    /* ── Status toast ── */
+    .toast {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      display: none;
+      animation: slideIn 0.3s ease;
+      max-width: 340px;
+    }
+    .toast.success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.4); color: #4ade80; display: flex; gap: 8px; }
+    .toast.error   { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.35); color: #fca5a5; display: flex; gap: 8px; }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Wallet summary cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 40px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      transition: border-color 0.2s;
+    }
+    .stat-card:hover { border-color: rgba(255,255,255,0.14); }
+
+    .stat-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .stat-value.blue   { color: var(--blue); }
+    .stat-value.green  { color: var(--green); }
+    .stat-value.purple { color: #a78bfa; }
+    .stat-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* Free credits bar */
+    .free-bar-wrap { margin-top: 10px; }
+    .free-bar-track {
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .free-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--blue), #0ea5e9);
+      border-radius: 99px;
+      transition: width 0.5s ease;
+    }
+
+    /* ── Section headers ── */
+    .section-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .section-head h2 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .section-head .badge-pill {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: var(--blue-glow);
+      color: var(--blue);
+      border: 1px solid rgba(0,212,255,0.2);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+    }
+
+    /* ── Credit packs grid ── */
+    .packs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 16px;
+      margin-bottom: 48px;
+    }
+
+    .pack-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      overflow: hidden;
+    }
+    .pack-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at top left, rgba(0,212,255,0.05), transparent 60%);
+      pointer-events: none;
+    }
+    .pack-card:hover {
+      border-color: rgba(0,212,255,0.35);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,212,255,0.1);
+    }
+    .pack-card.popular {
+      border-color: rgba(0,212,255,0.45);
+      background: linear-gradient(135deg, rgba(0,212,255,0.06), rgba(124,58,237,0.06));
+    }
+    .pack-card.popular::after {
+      content: 'MOST POPULAR';
+      position: absolute;
+      top: -1px;
+      right: -1px;
+      background: linear-gradient(135deg, var(--blue), #0ea5e9);
+      color: #000;
+      font-size: 0.6rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      padding: 4px 10px;
+      border-radius: 0 var(--radius) 0 8px;
+    }
+
+    .pack-price {
+      font-size: 1.8rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 4px;
+    }
+    .pack-credits {
+      font-size: 0.85rem;
+      color: var(--blue);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .pack-desc {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+    .pack-cpr {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .btn-buy {
+      display: block;
+      width: 100%;
+      padding: 11px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      text-align: center;
+    }
+    .btn-buy:hover {
+      background: rgba(0,212,255,0.12);
+      border-color: rgba(0,212,255,0.4);
+      color: var(--blue);
+    }
+    .pack-card.popular .btn-buy {
+      background: linear-gradient(135deg, rgba(0,212,255,0.18), rgba(124,58,237,0.14));
+      border-color: rgba(0,212,255,0.45);
+      color: var(--blue);
+    }
+
+    /* Loading spinner on button */
+    .btn-buy.loading {
+      opacity: 0.7;
+      pointer-events: none;
+      position: relative;
+    }
+    .btn-buy.loading::after {
+      content: '';
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Transaction history ── */
+    .txn-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .txn-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      transition: border-color 0.15s;
+    }
+    .txn-row:hover { border-color: rgba(255,255,255,0.12); }
+
+    .txn-left { display: flex; align-items: center; gap: 12px; }
+    .txn-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+    .txn-icon.purchase { background: rgba(34,197,94,0.12); }
+    .txn-icon.debit    { background: rgba(239,68,68,0.1); }
+    .txn-icon.refund   { background: rgba(245,158,11,0.1); }
+
+    .txn-desc { font-size: 0.875rem; font-weight: 500; }
+    .txn-time { font-size: 0.73rem; color: var(--muted); margin-top: 2px; }
+
+    .txn-amount {
+      font-size: 0.9rem;
+      font-weight: 700;
+      text-align: right;
+    }
+    .txn-amount.positive { color: var(--green); }
+    .txn-amount.negative { color: var(--red); }
+
+    .txn-empty {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+
+    /* ── Free credits info box ── */
+    .info-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 32px;
+    }
+    .info-box-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+    .info-box-text h4 { font-size: 0.875rem; font-weight: 700; margin-bottom: 4px; }
+    .info-box-text p  { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .wallet-wrap { padding: 36px 16px 80px; }
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .packs-grid   { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 400px) {
+      .packs-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<%- include('partials/nav') %>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<div class="wallet-wrap">
+
+  <!-- Header -->
+  <div class="page-header">
+    <h1>Your Wallet</h1>
+    <p>Credits never expire. Free credits reset every day at midnight.</p>
+  </div>
+
+  <!-- Wallet summary -->
+  <div class="summary-grid" id="walletSummary">
+    <div class="stat-card">
+      <div class="stat-label">Free Credits Today</div>
+      <div class="stat-value blue" id="statFree">—</div>
+      <div class="stat-sub" id="statFreeReset">Resets daily</div>
+      <div class="free-bar-wrap">
+        <div class="free-bar-track">
+          <div class="free-bar-fill" id="freeBar" style="width: 0%"></div>
+        </div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Paid Credits</div>
+      <div class="stat-value purple" id="statPaid">—</div>
+      <div class="stat-sub">Never expires</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Available</div>
+      <div class="stat-value green" id="statTotal">—</div>
+      <div class="stat-sub" id="statSpent">Loading…</div>
+    </div>
+  </div>
+
+  <!-- Info box -->
+  <div class="info-box">
+    <div class="info-box-icon">⚡</div>
+    <div class="info-box-text">
+      <h4>How credits work</h4>
+      <p>Free credits are used first, then paid credits. Chat = 5 credits · Code generation = 20 · Full app = 150. Purchased credits accumulate and never expire.</p>
+    </div>
+  </div>
+
+  <!-- Credit packs -->
+  <div class="section-head">
+    <h2>Buy Credits</h2>
+    <span class="badge-pill">One-time · No subscription</span>
+  </div>
+
+  <div class="packs-grid" id="packsGrid">
+    <!-- Rendered by JS -->
+  </div>
+
+  <!-- Transaction history -->
+  <div class="section-head" style="margin-top: 8px;">
+    <h2>Transaction History</h2>
+  </div>
+  <div class="txn-list" id="txnList">
+    <div class="txn-empty">Loading history…</div>
+  </div>
+
+</div><!-- /wallet-wrap -->
+
+<script>
+(function () {
+  /* ── Config ── */
+  const RZP_KEY = '<%= process.env.RAZORPAY_KEY_ID || "" %>';
+  const USER_EMAIL = '<%= billingUser?.email || "" %>';
+  const USER_PHONE = '<%= billingUser?.phone || "" %>';
+
+  /* ── Toast ── */
+  function showToast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = (type === 'success' ? '✓  ' : '✕  ') + msg;
+    el.className = 'toast ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = 'toast'; }, 4000);
+  }
+
+  /* ── Format number ── */
+  function fmt(n) { return n.toLocaleString('en-IN'); }
+
+  /* ── Load wallet ── */
+  async function loadWallet() {
+    try {
+      const r = await fetch('/api/billing/wallet');
+      const d = await r.json();
+      if (!d.wallet) return;
+      const w = d.wallet;
+      document.getElementById('statFree').textContent  = fmt(w.freeCredits);
+      document.getElementById('statPaid').textContent  = fmt(w.paidCredits);
+      document.getElementById('statTotal').textContent = fmt(w.totalCredits);
+      document.getElementById('statSpent').textContent = `${fmt(w.totalSpent)} spent lifetime`;
+
+      const pct = Math.min(100, Math.round((w.freeCredits / w.freeDailyMax) * 100));
+      document.getElementById('freeBar').style.width = pct + '%';
+
+      const resetDate = new Date(w.freeResetAt);
+      document.getElementById('statFreeReset').textContent =
+        'Resets ' + resetDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    } catch (e) {
+      console.error('loadWallet error', e);
+    }
+  }
+
+  /* ── Load packs ── */
+  async function loadPacks() {
+    try {
+      const r = await fetch('/api/billing/packs');
+      const d = await r.json();
+      renderPacks(d.packs || []);
+    } catch (e) {
+      console.error('loadPacks error', e);
+    }
+  }
+
+  function renderPacks(packs) {
+    const grid = document.getElementById('packsGrid');
+    grid.innerHTML = packs.map(p => {
+      const cpr = (p.priceINR / p.credits * 100).toFixed(1);
+      return `
+        <div class="pack-card ${p.badge === 'MOST POPULAR' ? 'popular' : ''}">
+          <div class="pack-price">₹${p.priceINR}</div>
+          <div class="pack-credits">${fmt(p.credits)} credits</div>
+          <div class="pack-desc">${p.description}</div>
+          <div class="pack-cpr">₹${cpr} per 100 credits</div>
+          <button class="btn-buy" onclick="buyPack('${p.id}', this)">Buy Now</button>
+        </div>`;
+    }).join('');
+  }
+
+  /* ── Buy pack ── */
+  window.buyPack = async function (packId, btn) {
+    btn.classList.add('loading');
+    btn.textContent = 'Preparing…';
+
+    try {
+      // 1. Create order
+      const r = await fetch('/api/billing/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ packId }),
+      });
+      const d = await r.json();
+      if (!d.success) throw new Error(d.message || 'Order creation failed');
+
+      const order = d.order;
+
+      // 2. Open Razorpay Standard Checkout
+      const rzp = new Razorpay({
+        key: RZP_KEY,
+        order_id: order.orderId,
+        amount:   order.amount,
+        currency: 'INR',
+        name:     'Aquiplex',
+        description: order.packName + ' — ' + fmt(order.credits) + ' credits',
+        image:    '/logo/favicon.ico',
+        prefill: {
+          email:   USER_EMAIL,
+          contact: USER_PHONE,
+        },
+        theme: { color: '#00d4ff' },
+        modal: {
+          backdropclose: false,
+          ondismiss: function () {
+            btn.classList.remove('loading');
+            btn.textContent = 'Buy Now';
+          },
+        },
+        handler: async function (response) {
+          btn.textContent = 'Verifying…';
+          try {
+            const vr = await fetch('/api/billing/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+              }),
+            });
+            const vd = await vr.json();
+            if (vd.success) {
+              showToast(`✅ ${fmt(vd.credits)} credits added to your wallet!`);
+              await loadWallet();
+              await loadHistory();
+            } else {
+              showToast('Payment error: ' + (vd.error || 'Unknown'), 'error');
+            }
+          } catch (e) {
+            showToast('Verification failed. Contact support.', 'error');
+          } finally {
+            btn.classList.remove('loading');
+            btn.textContent = 'Buy Now';
+          }
+        },
+      });
+
+      rzp.on('payment.failed', function (resp) {
+        showToast('Payment failed: ' + (resp.error?.description || 'Try again'), 'error');
+        btn.classList.remove('loading');
+        btn.textContent = 'Buy Now';
+      });
+
+      rzp.open();
+
+    } catch (e) {
+      showToast(e.message || 'Something went wrong', 'error');
+      btn.classList.remove('loading');
+      btn.textContent = 'Buy Now';
+    }
+  };
+
+  /* ── Load transaction history ── */
+  async function loadHistory() {
+    try {
+      const r = await fetch('/api/billing/history?limit=20');
+      const d = await r.json();
+      renderHistory(d.history || []);
+    } catch (e) {
+      document.getElementById('txnList').innerHTML = '<div class="txn-empty">Failed to load history.</div>';
+    }
+  }
+
+  function renderHistory(txns) {
+    const list = document.getElementById('txnList');
+    if (!txns.length) {
+      list.innerHTML = '<div class="txn-empty">No transactions yet. Buy credits to get started.</div>';
+      return;
+    }
+
+    list.innerHTML = txns.map(t => {
+      const isCredit = t.amount > 0;
+      const icon = t.type === 'PURCHASE' ? '💳' : t.type === 'REFUND' ? '↩️' : '⚡';
+      const iconClass = t.type === 'PURCHASE' ? 'purchase' : t.type === 'REFUND' ? 'refund' : 'debit';
+      const timeStr = new Date(t.createdAt).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+      return `
+        <div class="txn-row">
+          <div class="txn-left">
+            <div class="txn-icon ${iconClass}">${icon}</div>
+            <div>
+              <div class="txn-desc">${escHtml(t.description || t.type)}</div>
+              <div class="txn-time">${timeStr}</div>
+            </div>
+          </div>
+          <div class="txn-amount ${isCredit ? 'positive' : 'negative'}">
+            ${isCredit ? '+' : ''}${fmt(Math.abs(t.amount))}
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  /* ── Check URL params for redirect from Razorpay ── */
+  function checkPaymentReturn() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      showToast('Payment successful! Credits added to your wallet.');
+      window.history.replaceState({}, '', '/wallet');
+    } else if (params.get('payment') === 'failed') {
+      showToast('Payment did not complete. Please try again.', 'error');
+      window.history.replaceState({}, '', '/wallet');
+    }
+  }
+
+  /* ── Init ── */
+  checkPaymentReturn();
+  loadWallet();
+  loadPacks();
+  loadHistory();
+
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "Aquiplex",
+  "short_name": "Aquiplex",
+  "id": "/app",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "description": "Discover and explore the best AI tools in one place. Aquiplex helps you find, compare, and use powerful AI tools easily.",
+  "orientation": "any",
+  "categories": ["productivity", "tools", "ai"],
+  "icons": [
+    {
+      "src": "/logo/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

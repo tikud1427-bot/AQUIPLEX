@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Workspace | Aquiplex</title>
+<link rel="stylesheet" href="/css/styles.css">
+<link rel="stylesheet" href="/css/workspace.css">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="icon" type="image/png" sizes="96x96" href="https://aquiplex.com/logo/favicon-96x96.png">
+<link rel="icon" type="image/svg+xml" href="https://aquiplex.com/logo/favicon.svg">
+<link rel="shortcut icon" href="https://aquiplex.com/logo/favicon.ico">
+<link rel="apple-touch-icon" sizes="180x180" href="https://aquiplex.com/logo/apple-touch-icon.png">
+<script src="/socket.io/socket.io.js"></script>
+<style>
+/* ── WORKSPACE UX ── */
+.aq-workspace { overflow-x: hidden; max-width: 100vw; }
+.aq-body      { overflow-x: hidden; }
+.aq-topbar    { flex-wrap: wrap; gap: 6px; }
+.aq-topbar-prompt { flex: 1 1 200px; min-width: 0; }
+.aq-topbar-prompt input { width: 100%; min-width: 0; box-sizing: border-box; }
+@media (max-width: 640px) {
+  .aq-topbar { padding: 8px 10px; }
+  .aq-breadcrumb { display: none; }
+  .aq-topbar-prompt { order: 3; flex: 1 1 100%; }
+  .aq-topbar-right  { margin-left: auto; }
+  #topGenBtn { white-space: nowrap; min-width: 90px; }
+  .aq-exec-actions { flex-wrap: wrap; gap: 6px; }
+  .aq-exec-actions .aq-btn { flex: 1 1 auto; justify-content: center; min-width: 70px; }
+  .aq-sticky-action-bar { overflow-x: auto; -webkit-overflow-scrolling: touch; scroll-snap-type: x mandatory; }
+}
+@media (max-width: 420px) { .aq-logo { display: none; } }
+.aq-welcome-prompt-chip { cursor: pointer; }
+.aq-welcome-prompt-chip:focus { outline: 2px solid var(--accent, #38bdf8); outline-offset: 2px; border-radius: 6px; }
+kbd {
+  font-family: var(--mono, monospace);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px; padding: 1px 5px; font-size: 0.72em;
+}
+/* AQUA chat panel */
+.aq-aqua-panel {
+  position: fixed; bottom: 80px; right: 18px; width: 340px; max-height: 480px;
+  background: var(--surface, #1e2130); border: 1px solid rgba(56,189,248,0.2);
+  border-radius: 16px; box-shadow: 0 8px 40px rgba(0,0,0,0.45);
+  display: flex; flex-direction: column; z-index: 900;
+  transition: opacity .2s, transform .2s;
+}
+.aq-aqua-panel.hidden { opacity: 0; pointer-events: none; transform: translateY(12px); }
+.aq-aqua-hdr {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
+  font-size: 0.78rem; font-weight: 600; color: var(--fg, #f1f5f9);
+}
+.aq-aqua-hdr .aq-aqua-dot { width:7px;height:7px;border-radius:50%;background:#38bdf8;animation:pulse 1.4s infinite; }
+.aq-aqua-log {
+  flex: 1; overflow-y: auto; padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem;
+}
+.aq-aqua-msg { padding: 7px 11px; border-radius: 10px; line-height: 1.5; max-width: 92%; word-break: break-word; }
+.aq-aqua-msg.user     { background: rgba(56,189,248,0.15); color: var(--fg); align-self: flex-end; }
+.aq-aqua-msg.assistant{ background: rgba(255,255,255,0.05); color: var(--fg); align-self: flex-start; }
+.aq-aqua-msg.error    { background: rgba(239,68,68,0.15); color: #f87171; align-self: flex-start; }
+.aq-aqua-input-row { display: flex; gap: 6px; padding: 10px 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+.aq-aqua-input-row input { flex:1; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:7px 10px; color:var(--fg); font-size:0.8rem; outline:none; }
+.aq-aqua-input-row input:focus { border-color: rgba(56,189,248,0.4); }
+.aq-aqua-send { background: linear-gradient(135deg,#38bdf8,#6366f1); border:none; border-radius:8px; color:#fff; padding:7px 12px; cursor:pointer; font-size:0.8rem; font-weight:600; }
+.aq-aqua-fab {
+  position: fixed; bottom: 20px; right: 18px; z-index: 901;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: linear-gradient(135deg,#38bdf8,#6366f1);
+  border: none; cursor: pointer; color: #fff; font-size: 1.2rem;
+  box-shadow: 0 4px 20px rgba(56,189,248,0.4);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .15s;
+}
+.aq-aqua-fab:hover { transform: scale(1.08); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+</style>
+</head>
+<body>
+
+<%- include('partials/nav') %>
+
+<div class="aq-loading-bar" id="aqLoadingBar"></div>
+<div id="aq-toast-root"></div>
+
+<!-- DRAWER OVERLAY -->
+<div class="aq-drawer-overlay" id="aqDrawerOverlay" onclick="closeSidebar()"></div>
+
+<!-- STEP RUN MODAL -->
+<div class="aq-modal-backdrop" id="aqRunModal">
+  <div class="aq-modal">
+    <div class="aq-modal-hdr">
+      <span class="aq-modal-title" id="runModalTitle">Running Step…</span>
+      <button class="aq-modal-close" onclick="closeRunModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="aq-modal-body">
+      <div class="aq-run-spinner" id="runModalSpinner">
+        <div class="aq-spinner"></div><span>Executing step…</span>
+      </div>
+      <div class="aq-run-output" id="runModalOutput" style="display:none;">
+        <div class="aq-run-output-label">⚡ Output</div>
+        <div class="aq-run-output-content" id="runModalOutputContent"></div>
+      </div>
+    </div>
+    <div class="aq-modal-footer" id="runModalFooter" style="display:none;">
+      <button class="aq-btn aq-btn-sm aq-btn-success" onclick="closeRunModal()">✓ Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMMAND PALETTE -->
+<div class="aq-palette-backdrop" id="aqPalette" onclick="closePalette(event)">
+  <div class="aq-palette" role="dialog" aria-label="Command palette">
+    <input class="aq-palette-input" id="aqPaletteInput" placeholder="Type a command…"
+           oninput="filterPalette(this.value)" onkeydown="paletteKeydown(event)"
+           autocomplete="off" spellcheck="false"/>
+    <div class="aq-palette-list" id="aqPaletteList"></div>
+  </div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="aq-confirm-backdrop" id="aqConfirm">
+  <div class="aq-confirm-box" role="alertdialog">
+    <div class="aq-confirm-title" id="aqConfirmTitle">Are you sure?</div>
+    <div class="aq-confirm-msg"   id="aqConfirmMsg"></div>
+    <div class="aq-confirm-actions">
+      <button class="aq-btn aq-btn-sm" onclick="resolveConfirm(false)">Cancel</button>
+      <button class="aq-btn aq-btn-sm aq-btn-danger" id="aqConfirmOk" onclick="resolveConfirm(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="workspace-page aq-workspace">
+
+  <!-- TOPBAR -->
+  <div class="aq-topbar">
+    <button class="aq-menu-btn" id="menuBtn" aria-label="Open sidebar" onclick="openSidebar()">☰</button>
+    <div class="aq-logo">AQUI<span>PLEX</span></div>
+    <div class="aq-breadcrumb">
+      <span class="sep">/</span>
+      <span class="cur" id="topBreadcrumb">Workspace</span>
+    </div>
+
+    <div class="aq-topbar-prompt">
+      <input id="topPromptInput"
+             placeholder="Describe what to build — press Enter to generate…"
+             aria-label="Project prompt"
+             onkeydown="if(event.key==='Enter'&&!STATE.busy)generateProject()"
+             oninput="_debouncePromptHint(this.value)"/>
+      <button class="aq-btn aq-btn-run aq-btn-sm" id="topGenBtn" onclick="generateProject()" aria-label="Generate project">
+        ⚡ Generate
+      </button>
+    </div>
+
+    <div class="aq-topbar-right">
+      <div class="aq-status-pill" title="Connected">
+        <div class="aq-status-dot"></div><span>ONLINE</span>
+      </div>
+      <select id="bundleSwitcher" class="aq-switcher" title="Switch bundle" style="display:none;" aria-label="Switch bundle"></select>
+      <button class="aq-btn aq-btn-sm" id="paletteBtn" onclick="openPalette()" title="Command palette (⌘K)" aria-label="Open command palette">⌘K</button>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="aq-body">
+
+    <!-- LEFT SIDEBAR -->
+    <div class="aq-sidebar" id="aqSidebar" role="navigation" aria-label="Workspace sidebar">
+      <div class="aq-sidebar-header">
+        <span class="aq-sidebar-title">Workspace</span>
+        <button class="aq-sidebar-close" id="sidebarCloseBtn" onclick="closeSidebar()" aria-label="Close sidebar">✕</button>
+      </div>
+
+      <div class="aq-sidebar-tabs" role="tablist">
+        <button class="aq-sidebar-tab active" role="tab" aria-selected="true"  onclick="switchLeftTab('projects', this)">Projects</button>
+        <button class="aq-sidebar-tab"        role="tab" aria-selected="false" onclick="switchLeftTab('bundles',  this)">Bundles</button>
+      </div>
+
+      <!-- PROJECTS LIST -->
+      <div class="aq-sidebar-list" id="leftProjectList" role="tabpanel">
+        <button class="aq-sidebar-new-btn" onclick="promptNewProject()" aria-label="New project">+ New Project</button>
+        <div id="projectListItems">
+          <div class="aq-empty">
+            <span class="aq-empty-icon">📁</span>
+            No projects yet.<br/>
+            <a href="#" onclick="promptNewProject();return false;" style="color:var(--accent);font-size:0.66rem;margin-top:4px;display:inline-block;">Create your first →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- BUNDLES LIST -->
+      <div class="aq-sidebar-list" id="leftBundleList" style="display:none;" role="tabpanel">
+        <% if (bundles && bundles.length > 0) { %>
+          <% bundles.forEach(function(b) {
+            const completed = (b.progress || []).filter(p => p && p.status === 'completed').length;
+            const total     = (b.steps || []).length;
+            const pct       = total > 0 ? Math.round((completed / total) * 100) : 0;
+            const dotCls    = b.status === 'active'    ? 'aq-dot-active'
+                            : b.status === 'paused'    ? 'aq-dot-paused'
+                            : b.status === 'completed' ? 'aq-dot-completed'
+                            : 'aq-dot-draft';
+          %>
+          <div class="aq-bundle-item" id="brow-<%= b._id %>" onclick="selectBundleById('<%= b._id %>')" role="button" tabindex="0"
+               onkeydown="if(event.key==='Enter')selectBundleById('<%= b._id %>')">
+            <div class="aq-bundle-row1">
+              <div class="aq-dot <%= dotCls %>" title="<%= b.status %>"></div>
+              <div class="aq-bundle-title" title="<%= b.title %>"><%= b.title %></div>
+            </div>
+            <div class="aq-bundle-meta">
+              <div class="aq-bundle-track"><div class="aq-bundle-fill" style="width:<%= pct %>%"></div></div>
+              <div class="aq-bundle-pct"><%= pct %>%</div>
+            </div>
+          </div>
+          <% }) %>
+        <% } else { %>
+          <div class="aq-empty">
+            <span class="aq-empty-icon">📦</span>
+            No bundles yet.<br/>
+            <a href="/bundles" style="color:var(--accent);font-size:0.7rem;margin-top:4px;display:inline-block;">Create bundle →</a>
+          </div>
+        <% } %>
+      </div>
+    <!-- UPGRADE BANNER in sidebar -->
+    <div class="aq-sidebar-upgrade">
+      <% const wsPlan = (typeof user !== 'undefined' && user && user.plan) ? user.plan : 'free'; %>
+      <% if (wsPlan === 'free' || !wsPlan) { %>
+        <div class="aq-upgrade-card">
+          <div class="aq-upgrade-icon">⚡</div>
+          <div class="aq-upgrade-text">
+            <strong>Upgrade to Pro</strong>
+            <span>5,000 credits/mo · Deploy support · Multi-agent</span>
+          </div>
+          <a href="/pricing" class="aq-upgrade-btn">Go Pro →</a>
+        </div>
+      <% } else { %>
+        <div class="aq-plan-chip">
+          <span class="aq-plan-dot"></span>
+          <span><%= wsPlan.toUpperCase() %> Plan active</span>
+          <a href="/billing" style="margin-left:auto;font-size:0.7rem;color:var(--accent);text-decoration:none;">Manage →</a>
+        </div>
+      <% } %>
+    </div>
+    </div><!-- /aq-sidebar -->
+
+    <!-- MAIN -->
+    <div class="aq-main">
+
+      <!-- PROJECT VIEW -->
+      <div id="wsProjectView" style="display:none;flex-direction:column;flex:1;min-width:0;min-height:0;">
+
+        <div class="aq-mobile-tab-bar" id="mobileEditorTabs" aria-label="Editor mode">
+          <button class="aq-mobile-tab-bar-btn active" id="mobTabCode"
+                  onclick="switchMobileEditorTab('code',this)" aria-selected="true">⌨ Code</button>
+          <button class="aq-mobile-tab-bar-btn" id="mobTabPreview"
+                  onclick="switchMobileEditorTab('preview',this)" aria-selected="false">↗ Preview</button>
+        </div>
+
+        <!-- Sticky Action Bar -->
+        <div class="aq-sticky-action-bar" id="projectActionBar">
+          <span class="aq-sticky-action-bar-label">Actions</span>
+          <button class="aq-btn aq-btn-sm aq-btn-run" id="stickyGenBtn" onclick="generateProject()" title="Re-generate project">⚡ Generate</button>
+          <div class="aq-sticky-sep"></div>
+          <button class="aq-btn aq-btn-sm aq-btn-success" onclick="saveCurrentFile()" id="stickySaveBtn" title="Save file (⌘S)">💾 Save</button>
+          <button class="aq-btn aq-btn-sm aq-btn-ai" id="stickyAiBtn" onclick="focusAiEdit()" title="AI-edit current file">✦ AI Edit</button>
+          <button class="aq-btn aq-btn-sm aq-btn-ai" onclick="toggleAquaPanel()" title="Chat with AQUA">💬 AQUA</button>
+          <div class="aq-sticky-sep"></div>
+          <button class="aq-btn aq-btn-sm" onclick="refreshPreview()" title="Reload preview">⟳ Reload</button>
+          <button class="aq-btn aq-btn-sm" onclick="openPreviewInTab()" title="Open preview in new tab">↗ Preview</button>
+          <div class="aq-sticky-sep"></div>
+          <button class="aq-btn aq-btn-sm" id="exportZipBtn" onclick="exportProjectZip()" title="Download project as ZIP">⬇ Export</button>
+          <button class="aq-btn aq-btn-sm" id="deployConfigBtn" onclick="generateDeployConfigs()" title="Generate deploy config files">🚀 Deploy</button>
+          <button class="aq-btn aq-btn-sm" id="shareBtn" onclick="shareProject()" title="Share project publicly">🔗 Share</button>
+        </div>
+
+        <!-- Editor + Preview row -->
+        <div class="aq-editor-row" id="editorRow">
+
+        <!-- Editor Pane -->
+        <div class="aq-editor-pane" id="editorPane">
+          <div class="aq-file-tabs" id="fileTabs" role="tablist" aria-label="Open files"></div>
+          <div class="aq-editor-toolbar">
+            <span class="aq-editor-filename" id="editorFilename">No file selected</span>
+            <span class="aq-editor-unsaved" id="editorUnsaved" aria-live="polite">Unsaved</span>
+            <button class="aq-btn aq-btn-sm aq-btn-success" onclick="saveCurrentFile()" title="Save (⌘S)">💾 Save</button>
+          </div>
+          <textarea class="aq-code-editor" id="codeEditor" spellcheck="false"
+                    placeholder="Select a file from the tabs above…"
+                    oninput="markDirty()"
+                    aria-label="Code editor"></textarea>
+          <div class="aq-ai-edit-bar">
+            <input id="aiEditInput"
+                   placeholder="Describe an edit — 'Make the navbar sticky', 'Add dark mode'…"
+                   onkeydown="if(event.key==='Enter')aiEditFile()"
+                   aria-label="AI edit instruction"
+                   autocomplete="off"/>
+            <button class="aq-btn aq-btn-ai aq-btn-sm" id="aiEditBtn" onclick="aiEditFile()" aria-label="Apply AI edit">✦ AI Edit</button>
+          </div>
+          <div class="aq-gen-overlay" id="genOverlay" style="display:none;" aria-live="polite">
+            <div class="aq-gen-overlay-spinner"></div>
+            <div class="aq-gen-overlay-msg" id="genOverlayMsg">Generating project…</div>
+            <div class="aq-gen-overlay-steps" id="genOverlaySteps">
+              <div class="aq-gen-step" id="genStep1"><div class="aq-gen-step-dot"></div>Creating project…</div>
+              <div class="aq-gen-step" id="genStep2"><div class="aq-gen-step-dot"></div>AI generating files…</div>
+              <div class="aq-gen-step" id="genStep3"><div class="aq-gen-step-dot"></div>Loading preview…</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Preview Pane -->
+        <div class="aq-preview-pane" id="previewPane">
+          <div class="aq-preview-header">
+            <div class="aq-preview-dots">
+              <span style="background:#ff5f57;"></span>
+              <span style="background:#ffbd2e;"></span>
+              <span style="background:#28c940;"></span>
+            </div>
+            <div class="aq-preview-url" id="previewUrl">about:blank</div>
+            <div class="aq-preview-actions">
+              <button class="aq-preview-icon-btn" onclick="refreshPreview()" title="Reload preview" aria-label="Reload preview">⟳</button>
+              <button class="aq-preview-icon-btn" onclick="openPreviewInTab()" title="Open in new tab" aria-label="Open preview in new tab">↗</button>
+            </div>
+          </div>
+          <iframe id="previewFrame" class="aq-preview-iframe"
+                  sandbox="allow-scripts allow-same-origin"
+                  title="Live preview"
+                  onload="this.classList.remove('loading')"></iframe>
+        </div><!-- /aq-preview-pane -->
+        </div><!-- /aq-editor-row -->
+      </div><!-- /wsProjectView -->
+
+      <!-- BUNDLE EXEC VIEW -->
+      <div class="aq-exec" id="wsExec" style="display:none;">
+        <div class="aq-exec-hdr">
+          <div class="aq-exec-hdr-top">
+            <div style="flex:1;min-width:0;">
+              <div class="aq-exec-title" id="execTitle">—</div>
+              <div class="aq-exec-goal"  id="execGoal">—</div>
+            </div>
+            <div class="aq-exec-actions">
+              <button class="aq-btn aq-btn-sm aq-btn-run" id="btnRun"    onclick="runCurrentBundle()">▶ Run</button>
+              <button class="aq-btn aq-btn-sm"            id="btnPause"  onclick="pauseCurrentBundle()"  style="display:none;">⏸ Pause</button>
+              <button class="aq-btn aq-btn-sm"            id="btnResume" onclick="resumeCurrentBundle()" style="display:none;">↺ Resume</button>
+              <button class="aq-btn aq-btn-sm"            id="btnAutoRun" onclick="autoRunSteps()">⚡ Auto</button>
+              <button class="aq-btn aq-btn-sm"            id="btnPin"    onclick="pinCurrentBundle()">☆ PIN</button>
+              <button class="aq-btn aq-btn-sm aq-btn-danger" onclick="deleteCurrentBundle()" title="Delete bundle">⌫ Del</button>
+            </div>
+          </div>
+          <div class="aq-stats-row">
+            <div class="aq-stat"><div class="aq-stat-val c-accent"  id="statSteps">—</div><div class="aq-stat-lbl">Steps</div></div>
+            <div class="aq-stat"><div class="aq-stat-val c-green"   id="statDone">—</div><div class="aq-stat-lbl">Done</div></div>
+            <div class="aq-stat"><div class="aq-stat-val"            id="statPct">—</div><div class="aq-stat-lbl">Progress</div></div>
+            <div class="aq-stat"><div class="aq-stat-val c-amber"   id="statStatus">—</div><div class="aq-stat-lbl">Status</div></div>
+            <div class="aq-stat"><div class="aq-stat-val c-purple"  id="statConfidence">—</div><div class="aq-stat-lbl">Confidence</div></div>
+          </div>
+          <div class="aq-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="mainProgressTrack">
+            <div class="aq-progress-fill" id="mainProgressFill" style="width:0%"></div>
+            <div class="aq-progress-glow" id="mainProgressGlow" style="left:0%"></div>
+          </div>
+        </div>
+        <div class="aq-exec-content">
+          <div class="aq-steps-panel">
+            <div class="aq-timeline" id="execTimeline" role="list" aria-label="Step timeline"></div>
+            <div class="aq-steps-scroll" id="execSteps" role="list"></div>
+          </div>
+          <div class="aq-right-panel" id="aqRightPanel">
+            <div class="aq-right-tabs" role="tablist">
+              <button class="aq-right-tab active" role="tab" data-tab="outputs"  onclick="switchRightTab('outputs',this)">Outputs</button>
+              <button class="aq-right-tab"         role="tab" data-tab="memory"   onclick="switchRightTab('memory',this)">Memory</button>
+              <button class="aq-right-tab"         role="tab" data-tab="insights" onclick="switchRightTab('insights',this)">Insights</button>
+            </div>
+            <div class="aq-right-body">
+              <div class="aq-right-section active" id="rtab-outputs" role="tabpanel">
+                <div id="outputFeed"><div class="aq-empty"><span class="aq-empty-icon">📤</span>Run a step to see outputs.</div></div>
+              </div>
+              <div class="aq-right-section" id="rtab-memory" role="tabpanel">
+                <div class="aq-mem-hdr">Bundle Memory <span id="memBundleCount">0 keys</span></div>
+                <div id="memBundleEntries"></div>
+                <div class="aq-mem-hdr" style="margin-top:14px;">Context <span id="memWsCount">0 keys</span></div>
+                <div id="memWsEntries"></div>
+              </div>
+              <div class="aq-right-section" id="rtab-insights" role="tabpanel">
+                <div id="insightList"><div class="aq-empty"><span class="aq-empty-icon">💡</span>Insights appear after steps run.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /wsExec -->
+
+      <!-- WELCOME -->
+      <div class="aq-welcome" id="wsWelcome">
+        <div id="wsWelcomeReturning" style="display:none;width:100%;max-width:560px;text-align:center;">
+          <div class="aq-welcome-glyph">
+  <img src="/logo/aqua-favicon.png" alt="Aqua AI" />
+</div>
+          <h2>Welcome back to Workspace</h2>
+          <p style="color:var(--muted);font-size:0.9rem;margin-bottom:24px;">Pick up where you left off, or start something new.</p>
+          <div class="aq-welcome-prompts" id="welcomePrompts" aria-label="Quick start prompts">
+            <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPrompt(this.textContent)">Landing page for a SaaS product</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPrompt(this.textContent)">Portfolio site with dark mode</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPrompt(this.textContent)">Dashboard with charts</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPrompt(this.textContent)" role="button" tabindex="0" onkeydown="if(event.key==='Enter')_fillPrompt(this.textContent)">E-commerce product page</span>
+          </div>
+          <div class="aq-welcome-actions">
+            <button class="aq-btn aq-btn-run" onclick="focusPrompt()" style="min-height:48px;padding:0 24px;">⚡ Generate Project</button>
+            <button class="aq-btn" onclick="switchLeftTab('bundles')" style="min-height:48px;padding:0 24px;">📦 View Bundles</button>
+          </div>
+          <div class="aq-welcome-hint">Press ⌘K for commands · ⌘S to save</div>
+        </div>
+
+        <div id="wsWelcomeOnboarding" style="display:none;width:100%;max-width:600px;">
+          <div style="text-align:center;margin-bottom:36px;">
+            <div style="font-size:3rem;margin-bottom:12px;">🚀</div>
+            <h2 style="font-family:var(--font-head,sans-serif);font-size:1.6rem;font-weight:800;color:var(--fg,#f1f5f9);margin:0 0 10px;">Start your first project</h2>
+            <p style="color:var(--muted);font-size:0.9rem;line-height:1.65;max-width:400px;margin:0 auto;">
+              Describe anything you want to build. Aquiplex AI generates the code, files, and a live preview — instantly.
+            </p>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:36px;" role="list">
+            <% [['1','Describe what to build','Type your idea in the bar above — &ldquo;landing page for a fitness app&rdquo;, &ldquo;portfolio with dark mode&rdquo;, anything.'],['2','AI generates your files','HTML, CSS, JS — all created and saved automatically. A live preview loads on the right.'],['3','Edit, save, and iterate','Use the code editor to tweak files manually, or use ✦ AI Edit to apply changes in plain English.']].forEach(function(s){ %>
+            <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 18px;background:rgba(56,189,248,0.06);border:1px solid rgba(56,189,248,0.15);border-radius:12px;" role="listitem">
+              <div style="flex-shrink:0;width:28px;height:28px;background:linear-gradient(135deg,#38bdf8,#6366f1);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;color:#fff;"><%= s[0] %></div>
+              <div>
+                <div style="font-weight:600;font-size:0.88rem;color:var(--fg,#f1f5f9);margin-bottom:3px;"><%= s[1] %></div>
+                <div style="font-size:0.8rem;color:var(--muted);"><%- s[2] %></div>
+              </div>
+            </div>
+            <% }) %>
+          </div>
+          <p style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-bottom:12px;text-align:center;">Try one of these to get started</p>
+          <div class="aq-welcome-prompts">
+            <span class="aq-welcome-prompt-chip" onclick="_fillPromptAndFocus(this.textContent)" role="button" tabindex="0">🚀 SaaS landing page</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPromptAndFocus(this.textContent)" role="button" tabindex="0">🌙 Portfolio with dark mode</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPromptAndFocus(this.textContent)" role="button" tabindex="0">📊 Dashboard with charts</span>
+            <span class="aq-welcome-prompt-chip" onclick="_fillPromptAndFocus(this.textContent)" role="button" tabindex="0">🛒 E-commerce product page</span>
+          </div>
+          <div class="aq-welcome-actions" style="margin-top:28px;">
+            <button class="aq-btn aq-btn-run" onclick="focusPrompt()" style="min-height:52px;padding:0 32px;font-size:1rem;font-weight:700;">⚡ Start Your First Project</button>
+          </div>
+          <p style="font-size:0.73rem;color:var(--muted);margin-top:20px;text-align:center;">
+            Tip: Press <kbd>⌘K</kbd> anytime for commands
+          </p>
+        </div>
+      </div>
+
+      <!-- LOADING SKELETON -->
+      <div id="wsLoading" style="display:none;" class="aq-welcome">
+        <div style="display:flex;flex-direction:column;gap:12px;width:100%;max-width:320px;align-items:center;">
+          <div class="aq-skeleton" style="height:18px;width:50%;border-radius:8px;"></div>
+          <div class="aq-skeleton" style="height:12px;width:70%;border-radius:6px;"></div>
+          <div class="aq-skeleton" style="height:58px;margin-top:10px;border-radius:10px;"></div>
+          <div class="aq-skeleton" style="height:58px;border-radius:10px;"></div>
+          <div class="aq-skeleton" style="height:58px;border-radius:10px;"></div>
+        </div>
+      </div>
+
+      <!-- ERROR -->
+      <div id="wsError" style="display:none;" class="aq-welcome">
+        <div style="font-size:1.8rem;opacity:0.3;margin-bottom:16px;">⚠</div>
+        <div id="wsErrorMsg" style="font-size:0.84rem;color:var(--muted);margin-bottom:20px;">Something went wrong.</div>
+        <button class="aq-btn aq-btn-run" onclick="retryLoad()" style="min-height:44px;padding:0 20px;">↺ Retry</button>
+      </div>
+
+    </div><!-- /aq-main -->
+  </div><!-- /aq-body -->
+
+  <!-- MOBILE BOTTOM NAV -->
+  <nav class="aq-bottom-nav" aria-label="Mobile navigation">
+    <button class="aq-bottom-tab active" id="btnav-workspace" onclick="mobileNavSwitch('workspace',this)">
+      <span class="icon">⚡</span>Workspace
+    </button>
+    <button class="aq-bottom-tab" id="btnav-projects" onclick="mobileNavSwitch('projects',this)">
+      <span class="icon">📁</span>Projects
+    </button>
+    <button class="aq-bottom-tab" id="btnav-bundles" onclick="mobileNavSwitch('bundles',this)">
+      <span class="icon">📦</span>Bundles
+    </button>
+    <button class="aq-bottom-tab" id="btnav-cmd" onclick="openPalette()">
+      <span class="icon">⌘</span>Commands
+    </button>
+  </nav>
+
+</div><!-- /aq-workspace -->
+
+<!-- AQUA CHAT FAB + PANEL -->
+<button class="aq-aqua-fab" id="aquaFab" onclick="toggleAquaPanel()">
+  <img src="/logo/aqua-favicon.png" alt="Aqua AI" />
+</button>
+<div class="aq-aqua-panel hidden" id="aquaPanel" aria-label="AQUA chat">
+  <div class="aq-aqua-hdr">
+    <div class="aq-aqua-dot"></div>
+    AQUA AI
+    <button onclick="toggleAquaPanel()" style="margin-left:auto;background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.9rem;">✕</button>
+  </div>
+  <div class="aq-aqua-log" id="aquaLog"></div>
+  <div class="aq-aqua-input-row">
+    <input id="aquaChatInput" placeholder="Ask AQUA to edit, explain, build…"
+           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();aquaSend();}"
+           autocomplete="off"/>
+    <button class="aq-aqua-send" onclick="aquaSend()">↑</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ═══════════════════════════════════════════════════════
+   GLOBAL STATE
+═══════════════════════════════════════════════════════ */
+const STATE = {
+  bundle:       null,
+  wsMemory:     {},
+  pinnedIds:    [],
+  selectedStep: null,
+  openSteps:    new Set(),
+  loading:      false,
+  lastBundleId: null,
+  stepRunning:  new Set(),
+  allBundles:   [],
+  projectId:    null,
+  projectFiles: [],
+  activeFile:   null,
+  dirtyFiles:   new Set(),
+  busy:         false,
+};
+
+const _ejsBundles    = JSON.parse(decodeURIComponent("<%- encodeURIComponent(JSON.stringify(bundles || [])) %>"));
+STATE.allBundles     = _ejsBundles.slice();
+const _openProjectId   = "<%= typeof openProjectId   !== 'undefined' && openProjectId   ? openProjectId   : '' %>";
+const _openProjectName = "<%= typeof openProjectName !== 'undefined' && openProjectName ? openProjectName : '' %>";
+
+/* ── LOADING BAR ── */
+function showLoading() { document.getElementById("aqLoadingBar").classList.add("visible");    STATE.loading = true; }
+function hideLoading() { document.getElementById("aqLoadingBar").classList.remove("visible"); STATE.loading = false; }
+
+/* ── VIEW HELPERS ── */
+function showView(id) {
+  ["wsWelcome","wsLoading","wsExec","wsError","wsProjectView"].forEach(v => {
+    const el = document.getElementById(v);
+    if (!el) return;
+    el.style.display = (v === id) ? "flex" : "none";
+  });
+}
+function retryLoad() {
+  if (STATE.lastBundleId) {
+    const b = STATE.allBundles.find(x => String(x._id) === String(STATE.lastBundleId));
+    if (b) selectBundle(b);
+  }
+}
+
+/* ── CONFIRM ── */
+let _confirmResolve = null;
+function showConfirm(title, msg, okLabel = "Confirm") {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    document.getElementById("aqConfirmTitle").textContent = title;
+    document.getElementById("aqConfirmMsg").textContent   = msg;
+    document.getElementById("aqConfirmOk").textContent    = okLabel;
+    document.getElementById("aqConfirm").classList.add("open");
+  });
+}
+function resolveConfirm(val) {
+  document.getElementById("aqConfirm").classList.remove("open");
+  if (_confirmResolve) { _confirmResolve(val); _confirmResolve = null; }
+}
+
+/* ── RUN MODAL ── */
+function openRunModal(title) {
+  document.getElementById("runModalTitle").textContent       = title || "Running…";
+  document.getElementById("runModalSpinner").style.display   = "flex";
+  document.getElementById("runModalOutput").style.display    = "none";
+  document.getElementById("runModalFooter").style.display    = "none";
+  document.getElementById("runModalOutputContent").innerHTML = "";
+  document.getElementById("aqRunModal").classList.add("open");
+}
+function showRunModalOutput(content) {
+  document.getElementById("runModalSpinner").style.display   = "none";
+  document.getElementById("runModalOutput").style.display    = "block";
+  document.getElementById("runModalFooter").style.display    = "flex";
+  document.getElementById("runModalOutputContent").innerHTML = formatOutput(content);
+}
+function closeRunModal() { document.getElementById("aqRunModal").classList.remove("open"); }
+
+/* ── SIDEBAR ── */
+function openSidebar() {
+  document.getElementById("aqSidebar").classList.add("open");
+  document.getElementById("sidebarCloseBtn").style.display = "flex";
+  document.getElementById("aqDrawerOverlay").classList.add("visible");
+}
+function closeSidebar() {
+  document.getElementById("aqSidebar").classList.remove("open");
+  document.getElementById("sidebarCloseBtn").style.display = "none";
+  document.getElementById("aqDrawerOverlay").classList.remove("visible");
+}
+
+/* ── TABS ── */
+function switchLeftTab(tab, btn) {
+  document.querySelectorAll(".aq-sidebar-tab").forEach(b => {
+    b.classList.remove("active");
+    b.setAttribute("aria-selected", "false");
+  });
+  if (btn) {
+    btn.classList.add("active");
+    btn.setAttribute("aria-selected", "true");
+  } else {
+    document.querySelectorAll(".aq-sidebar-tab").forEach(b => {
+      if (b.textContent.trim().toLowerCase().startsWith(tab[0])) {
+        b.classList.add("active");
+        b.setAttribute("aria-selected", "true");
+      }
+    });
+  }
+  document.getElementById("leftProjectList").style.display = tab === "projects" ? "" : "none";
+  document.getElementById("leftBundleList").style.display  = tab === "bundles"  ? "" : "none";
+}
+function switchRightTab(tab, btn) {
+  document.querySelectorAll(".aq-right-tab").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".aq-right-section").forEach(s => s.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  else { const t = document.querySelector(`.aq-right-tab[data-tab="${tab}"]`); if (t) t.classList.add("active"); }
+  const sec = document.getElementById("rtab-" + tab);
+  if (sec) { sec.classList.add("active"); sec.style.opacity = "0"; requestAnimationFrame(() => requestAnimationFrame(() => sec.style.opacity = "1")); }
+}
+
+/* ── MOBILE NAV ── */
+function mobileNavSwitch(view, btn) {
+  document.querySelectorAll(".aq-bottom-tab").forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  if (view === "projects")    { openSidebar(); switchLeftTab("projects"); }
+  else if (view === "bundles") { openSidebar(); switchLeftTab("bundles"); }
+  else { closeSidebar(); }
+}
+
+/* ── MOBILE EDITOR TABS ── */
+function switchMobileEditorTab(tab, btn) {
+  document.querySelectorAll(".aq-mobile-tab-bar-btn").forEach(b => {
+    b.classList.remove("active"); b.setAttribute("aria-selected", "false");
+  });
+  if (btn) { btn.classList.add("active"); btn.setAttribute("aria-selected", "true"); }
+  const editor  = document.getElementById("editorPane");
+  const preview = document.getElementById("previewPane");
+  if (!editor || !preview) return;
+  if (tab === "preview") { editor.classList.add("mob-hidden"); preview.classList.add("mob-active"); }
+  else { editor.classList.remove("mob-hidden"); preview.classList.remove("mob-active"); }
+}
+
+/* ── PROMPT HELPERS ── */
+function focusPrompt() { const i = document.getElementById("topPromptInput"); if (i) { i.focus(); i.select(); } }
+function focusAiEdit() { const i = document.getElementById("aiEditInput");    if (i) { i.focus(); i.select(); } }
+function _fillPrompt(text) { const i = document.getElementById("topPromptInput"); if (i) { i.value = text; i.focus(); } }
+function _fillPromptAndFocus(text) {
+  _fillPrompt(text);
+  const bar = document.getElementById("topPromptInput");
+  if (bar) bar.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+function _resolveWelcomeState(hasProjects) {
+  const hasAnyBundles = _ejsBundles && _ejsBundles.length > 0;
+  const returning     = document.getElementById("wsWelcomeReturning");
+  const onboard       = document.getElementById("wsWelcomeOnboarding");
+  if (!returning || !onboard) return;
+  if (hasProjects || hasAnyBundles) { returning.style.display = ""; onboard.style.display = "none"; }
+  else { returning.style.display = "none"; onboard.style.display = ""; }
+}
+let _promptHintTimer;
+function _debouncePromptHint(val) { clearTimeout(_promptHintTimer); }
+
+/* ── INIT ── */
+window.addEventListener("DOMContentLoaded", async () => {
+  initBundleSwitcher();
+  await loadProjectList();
+
+  if (_openProjectId) {
+    await openProject(_openProjectId, _openProjectName || "Project");
+    switchLeftTab("projects");
+    return;
+  }
+
+  try {
+    const res  = await fetch("/workspace/state");
+    if (!res.ok) throw new Error("state fail");
+    const data = await res.json();
+    const rawMem = (data.workspace && data.workspace.workspaceMemory) || {};
+    STATE.wsMemory  = rawMem instanceof Map ? Object.fromEntries(rawMem) : rawMem;
+    STATE.pinnedIds = (data.workspace && data.workspace.pinnedBundleIds) || [];
+    if (data.bundles && data.bundles.length) {
+      data.bundles.forEach(sb => {
+        const idx = STATE.allBundles.findIndex(b => String(b._id) === String(sb._id));
+        if (idx !== -1) STATE.allBundles[idx] = sb; else STATE.allBundles.push(sb);
+      });
+    }
+    const recentOutputs = data.workspace && data.workspace.recentOutputs;
+    if (recentOutputs && recentOutputs.length) renderOutputFeed(recentOutputs);
+    const lastId = data.workspace && data.workspace.lastOpenBundleId;
+    if (lastId) {
+      const b = (data.bundles || STATE.allBundles).find(x => String(x._id) === String(lastId));
+      if (b) { await selectBundle(b); return; }
+    }
+    const active = STATE.allBundles.find(b => b.status === "active");
+    if (active) await selectBundle(active);
+    else showView("wsWelcome");
+  } catch(e) { console.warn("[AQ] init:", e.message); showView("wsWelcome"); }
+});
+
+/* ── BUNDLE SWITCHER ── */
+function initBundleSwitcher() {
+  const sw = document.getElementById("bundleSwitcher");
+  if (!sw || !_ejsBundles.length) return;
+  sw.style.display = "";
+  sw.innerHTML = '<option value="">Bundle…</option>' +
+    _ejsBundles.map(b => `<option value="${b._id}">${esc(b.title)}</option>`).join("");
+  const saved = localStorage.getItem("aq_activeBundle");
+  if (saved) sw.value = saved;
+  sw.onchange = () => {
+    const id    = sw.value;
+    const found = STATE.allBundles.find(b => String(b._id) === id);
+    if (found) { localStorage.setItem("aq_activeBundle", id); selectBundle(found); }
+  };
+}
+
+/* ═════════════════════════════════════════════════════════
+   PROJECT ENGINE
+   NOTE: Routes fixed for batch 1-3 changes:
+   - List:   GET /workspace/project/list   → res.json() has .projects[]
+   - Create: POST /workspace/project/create
+   - Generate: POST /workspace/project/generate
+   - Files:  GET /workspace/project/:id/files → {success, files[]}
+   - File:   GET /workspace/file/:id/:name    → {success, data:{file:{content}}}  ← FIXED
+   - Save:   POST /workspace/save-file
+   - Edit:   POST /workspace/edit-file
+═════════════════════════════════════════════════════════ */
+
+async function loadProjectList() {
+  try {
+    const res  = await fetch("/workspace/project/list");
+    if (!res.ok) return;
+    const data = await res.json();
+    renderProjectList(data.projects || []);
+  } catch(e) { console.warn("[AQ] loadProjectList:", e.message); }
+}
+
+function renderProjectList(projects) {
+  const container = document.getElementById("projectListItems");
+  if (!container) return;
+  if (!projects.length) {
+    container.innerHTML = `<div class="aq-empty"><span class="aq-empty-icon">📁</span>No projects yet.<br/><a href="#" onclick="promptNewProject();return false;" style="color:var(--accent);font-size:0.66rem;margin-top:4px;display:inline-block;">Create your first →</a></div>`;
+    _resolveWelcomeState(false); return;
+  }
+  _resolveWelcomeState(true);
+  container.innerHTML = projects.map(p => `
+    <div class="aq-proj-item ${STATE.projectId === String(p.projectId || p._id || p.id) ? 'active' : ''}"
+         id="prow-${p.projectId || p._id || p.id}"
+         role="button" tabindex="0"
+         onclick="openProject('${p.projectId || p._id || p.id}','${esc(p.name)}')"
+         onkeydown="if(event.key==='Enter')openProject('${p.projectId || p._id || p.id}','${esc(p.name)}')">
+      <span class="aq-proj-icon">📁</span>
+      <span class="aq-proj-name" title="${esc(p.name)}">${esc(p.name)}</span>
+      <button class="aq-proj-del" onclick="event.stopPropagation();deleteProject('${p.projectId || p._id || p.id}')" title="Delete project" aria-label="Delete ${esc(p.name)}">✕</button>
+    </div>`).join("");
+}
+
+async function promptNewProject() {
+  const name = window.prompt("Project name:");
+  if (!name || !name.trim()) return;
+  showLoading();
+  try {
+    const res  = await fetch("/workspace/project/create", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || "Create failed");
+    await loadProjectList();
+    if (data.projectId) openProject(data.projectId, name.trim());
+    toast("Project created", "success");
+  } catch(e) { toast("Error: " + e.message, "error"); }
+  finally { hideLoading(); }
+}
+
+async function generateProject() {
+  const input  = document.getElementById("topPromptInput");
+  const prompt = input.value.trim();
+  if (!prompt) { input.focus(); toast("Describe what to build first", "info"); return; }
+  if (STATE.busy) return;
+  STATE.busy = true;
+
+  const btn       = document.getElementById("topGenBtn");
+  const stickyBtn = document.getElementById("stickyGenBtn");
+  btn.disabled    = true; btn.textContent = "⏳ Generating…";
+  if (stickyBtn) { stickyBtn.disabled = true; stickyBtn.textContent = "⏳…"; }
+
+  showView("wsProjectView");
+  _setGenStep(1);
+  document.getElementById("genOverlay").style.display   = "flex";
+  document.getElementById("genOverlayMsg").textContent  = "Creating project…";
+  document.getElementById("codeEditor").value           = "";
+  document.getElementById("fileTabs").innerHTML         = "";
+  document.getElementById("editorFilename").textContent = "Generating…";
+  _hideUnsavedIndicator();
+
+  try {
+    // STEP 1: Create project
+    const createRes  = await fetch("/workspace/project/create", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: prompt.slice(0, 60) }),
+    });
+    const createData = await createRes.json();
+    if (!createData.success) throw new Error(createData.error || "Project creation failed");
+    const projectId   = createData.projectId;
+    const projectName = createData.name || prompt.slice(0, 50);
+
+    _setGenStep(2);
+    document.getElementById("genOverlayMsg").textContent = "AI generating files…";
+
+    // STEP 2: Generate files via /workspace/project/generate
+    const genRes  = await fetch("/workspace/project/generate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId, prompt }),
+    });
+    const genData = await genRes.json();
+    if (!genData.success) throw new Error(genData.error || "Generation failed");
+
+    STATE.projectId    = String(projectId);
+    // genData.files is the file name array (from project.routes.js response)
+    STATE.projectFiles = genData.files || (genData.fileData || []).map(f => f.fileName || f);
+    STATE.dirtyFiles.clear();
+    document.getElementById("topBreadcrumb").textContent = projectName;
+
+    _setGenStep(3);
+    document.getElementById("genOverlayMsg").textContent = "Loading preview…";
+
+    await loadProjectList();
+    renderFileTabs(STATE.projectFiles);
+
+    const defaultFile = STATE.projectFiles.find(f => f === "index.html") || STATE.projectFiles[0];
+    if (defaultFile) {
+      await loadFile(defaultFile);
+      safeRefreshPreview();
+    }
+
+    document.getElementById("genOverlay").style.display = "none";
+    input.value = "";
+    toast(`Project generated (${STATE.projectFiles.length} files)`, "success");
+  } catch(e) {
+    document.getElementById("genOverlay").style.display = "none";
+    toast("Generation failed: " + e.message, "error");
+    console.error("[AQ] generateProject:", e);
+  } finally {
+    STATE.busy      = false;
+    btn.disabled    = false; btn.textContent = "⚡ Generate";
+    if (stickyBtn) { stickyBtn.disabled = false; stickyBtn.textContent = "⚡ Generate"; }
+  }
+}
+
+function _setGenStep(n) {
+  [1, 2, 3].forEach(i => {
+    const el = document.getElementById("genStep" + i);
+    if (!el) return;
+    el.className = "aq-gen-step" + (i < n ? " done" : i === n ? " active" : "");
+  });
+}
+
+async function openProject(id, name) {
+  STATE.projectId = String(id);
+  // Sync window.PROJECT_ID so workspace.js (export/share/deploy functions) always
+  // sees the current project — workspace.js reads this on load and on every button click.
+  window.PROJECT_ID = STATE.projectId;
+  STATE.dirtyFiles.clear(); _hideUnsavedIndicator();
+  document.getElementById("topBreadcrumb").textContent = name || "Project";
+  document.querySelectorAll(".aq-proj-item").forEach(el => el.classList.remove("active"));
+  const row = document.getElementById("prow-" + id);
+  if (row) row.classList.add("active");
+  showView("wsProjectView"); showLoading();
+  try {
+    // FIXED: route is /workspace/project/:id/files (from project.routes.js GET /:id/files)
+    const res  = await fetch(`/workspace/project/${encodeURIComponent(id)}/files`);
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || "Load failed");
+    STATE.projectFiles = data.files || [];
+    renderFileTabs(STATE.projectFiles);
+    const defaultFile = STATE.projectFiles.find(f => f === "index.html") || STATE.projectFiles[0];
+    if (defaultFile) { await loadFile(defaultFile); refreshPreview(); }
+  } catch(e) { toast("Error loading project: " + e.message, "error"); }
+  finally { hideLoading(); }
+  if (window.innerWidth < 768) closeSidebar();
+}
+
+async function deleteProject(id) {
+  const ok = await showConfirm("Delete Project", "Permanently delete this project and all files?", "Delete");
+  if (!ok) return;
+  showLoading();
+  try {
+    // FIXED: route is /workspace/project/:id (DELETE in project.routes.js)
+    const res  = await fetch(`/workspace/project/${encodeURIComponent(id)}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (data.success === false) throw new Error(data.error || "Delete failed");
+    await loadProjectList();
+    if (STATE.projectId === String(id)) {
+      STATE.projectId = null; STATE.projectFiles = []; STATE.activeFile = null;
+      showView("wsWelcome");
+    }
+    toast("Project deleted", "success");
+  } catch(e) { toast("Delete failed: " + e.message, "error"); }
+  finally { hideLoading(); }
+}
+
+function renderFileTabs(files) {
+  const tabs = document.getElementById("fileTabs");
+  if (!tabs) return;
+  const extIcon = f => {
+    const e = f.split(".").pop();
+    return e === "html" ? "📄" : e === "css" ? "🎨" : e === "js" ? "⚙️" : e === "json" ? "📊" : "📄";
+  };
+  tabs.innerHTML = files.map(f => {
+    const isDirty  = STATE.dirtyFiles.has(f);
+    const isActive = f === STATE.activeFile;
+    return `
+    <button class="aq-file-tab ${isActive ? 'active' : ''}"
+            role="tab" aria-selected="${isActive}"
+            data-file="${esc(f)}" onclick="loadFile('${esc(f)}')"
+            title="${esc(f)}">
+      ${extIcon(f)} ${esc(f)}
+      ${isDirty ? '<span class="aq-file-tab-dirty" title="Unsaved changes"></span>' : ''}
+    </button>`;
+  }).join("");
+}
+
+async function loadFile(filename) {
+  if (!STATE.projectId || !filename) return;
+  const editor = document.getElementById("codeEditor");
+  editor.classList.add("loading");
+  STATE.activeFile = filename;
+  renderFileTabs(STATE.projectFiles);
+  document.getElementById("editorFilename").textContent = filename;
+  showLoading();
+  try {
+    // FIXED: response shape is {success, data:{file:{content}}} from workspace.routes.js
+    const res  = await fetch(`/workspace/file/${encodeURIComponent(STATE.projectId)}/${encodeURIComponent(filename)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || "Load failed");
+    // Support both old shape {file:{content}} and new shape {data:{file:{content}}}
+    const fileObj = (json.data && json.data.file) || json.file || {};
+    const content = fileObj.content !== undefined ? fileObj.content : "";
+    editor.value  = typeof content === "string" ? content : JSON.stringify(content, null, 2);
+    if (STATE.dirtyFiles.has(filename)) _showUnsavedIndicator(); else _hideUnsavedIndicator();
+  } catch(e) { toast("Error loading file: " + e.message, "error"); }
+  finally { hideLoading(); editor.classList.remove("loading"); }
+}
+
+function markDirty() {
+  if (!STATE.activeFile) return;
+  STATE.dirtyFiles.add(STATE.activeFile);
+  renderFileTabs(STATE.projectFiles);
+  _showUnsavedIndicator();
+}
+function _showUnsavedIndicator() { const el = document.getElementById("editorUnsaved"); if (el) el.classList.add("visible"); }
+function _hideUnsavedIndicator() { const el = document.getElementById("editorUnsaved"); if (el) el.classList.remove("visible"); }
+
+/* ── SAVE ── */
+async function saveCurrentFile() {
+  if (!STATE.projectId || !STATE.activeFile) { toast("No file to save", "info"); return; }
+  const content = document.getElementById("codeEditor").value;
+  showLoading();
+  try {
+    const res  = await fetch("/workspace/save-file", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: STATE.projectId, fileName: STATE.activeFile, content }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || "Save failed");
+    STATE.dirtyFiles.delete(STATE.activeFile);
+    renderFileTabs(STATE.projectFiles);
+    _hideUnsavedIndicator();
+    safeRefreshPreview();
+    toast("Saved ✓", "success");
+  } catch(e) { toast("Save failed: " + e.message, "error"); }
+  finally { hideLoading(); }
+}
+
+/* ── AI EDIT ── */
+async function aiEditFile() {
+  if (!STATE.projectId || !STATE.activeFile) { toast("Open a file first", "info"); return; }
+  const instruction = document.getElementById("aiEditInput").value.trim();
+  if (!instruction) { document.getElementById("aiEditInput").focus(); return; }
+  if (STATE.busy) return;
+  STATE.busy = true;
+  const btn  = document.getElementById("aiEditBtn");
+  btn.disabled = true; btn.textContent = "⏳ Editing…";
+  showLoading();
+  try {
+    const res  = await fetch("/workspace/edit-file", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectId: STATE.projectId, fileName: STATE.activeFile, instruction }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || "Edit failed");
+    document.getElementById("aiEditInput").value = "";
+    await loadFile(STATE.activeFile);
+    // Mirror is now synchronous on the server (files written before response sent).
+    // Safe to refresh preview immediately.
+    safeRefreshPreview();
+    toast("Edit applied ✓", "success");
+  } catch(e) { toast("AI edit failed: " + e.message, "error"); }
+  finally { STATE.busy = false; hideLoading(); btn.disabled = false; btn.textContent = "✦ AI Edit"; }
+}
+
+/* ── PREVIEW ── */
+function _getEntryFile() {
+  // Always prefer index.html — never fall back to a CSS/JS/non-HTML file as the iframe entry
+  // because that causes a blank preview (browser renders CSS/JS as plain text).
+  const HTML_EXTS = /\.(html|htm)$/i;
+  return (
+    STATE.projectFiles.find(f => f === "index.html") ||
+    STATE.projectFiles.find(f => HTML_EXTS.test(f)) ||
+    "index.html"
+  );
+}
+function refreshPreview() {
+  if (!STATE.projectId) return;
+  const frame = document.getElementById("previewFrame");
+  const urlEl = document.getElementById("previewUrl");
+  const entry = _getEntryFile();
+  const url   = `/workspace/project/${STATE.projectId}/preview/${entry}`;
+  frame.classList.add("loading");
+  frame.src = `${url}?v=${Date.now()}`;
+  if (urlEl) urlEl.textContent = url;
+}
+// safeRefreshPreview: removed broken HEAD probe that silently swallowed
+// preview refreshes when the probe returned non-ok (e.g. auth redirect, or
+// file not yet mirrored). Now just delegates to refreshPreview directly.
+function safeRefreshPreview() {
+  refreshPreview();
+}
+function openPreviewInTab() {
+  if (!STATE.projectId) return;
+  window.open(`/workspace/project/${STATE.projectId}/preview/${_getEntryFile()}`, "_blank");
+}
+
+/* ── EXPORT ZIP ───────────────────────────────────────────────────────────── */
+async function exportProjectZip() {
+  if (!STATE.projectId) { toast("No project open to export", "error"); return; }
+  const btn = document.getElementById("exportZipBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Zipping…"; }
+  try {
+    // Try new /export/zip endpoint first, fall back to old /export
+    const endpoint = `/workspace/project/${encodeURIComponent(STATE.projectId)}/export/zip`;
+    const res = await fetch(endpoint, { credentials: "same-origin" });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+      throw new Error(err.error || `Export failed (${res.status})`);
+    }
+    const disposition = res.headers.get("Content-Disposition") || "";
+    const nameMatch   = disposition.match(/filename="?([^";\n]+)"?/i);
+    const zipName     = nameMatch?.[1] || "project.zip";
+    const blob   = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objUrl; a.download = zipName;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(objUrl);
+    toast(`✅ Exported as ${zipName}`, "success");
+  } catch (e) {
+    toast(`Export failed: ${e.message}`, "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "⬇ Export"; }
+  }
+}
+
+/* ── DEPLOY CONFIGS ───────────────────────────────────────────────────────── */
+async function generateDeployConfigs() {
+  if (!STATE.projectId) { toast("No project open", "error"); return; }
+  const btn = document.getElementById("deployConfigBtn");
+  let targets = ["vercel", "render", "railway", "docker"];
+  let isFullstack = false;
+  try {
+    const r = await fetch(`/workspace/project/${encodeURIComponent(STATE.projectId)}/deploy-targets`, { credentials: "same-origin" });
+    if (r.ok) { const d = await r.json(); targets = d.targets || targets; isFullstack = d.isFullstack || false; }
+  } catch { /* use defaults */ }
+
+  const picked = await new Promise(resolve => {
+    const opts = targets.map(t => `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+      <input type="checkbox" value="${t}" checked style="accent-color:var(--aq-accent)"> ${t}
+    </label>`).join("");
+    const modal = document.createElement("div");
+    modal.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;";
+    modal.innerHTML = `<div style="background:var(--aq-bg-2,#1a1a2e);border:1px solid var(--aq-border,#333);border-radius:16px;padding:28px;min-width:300px;max-width:400px;">
+      <h3 style="margin:0 0 8px;font-size:1rem;">🚀 Generate Deploy Configs</h3>
+      <p style="margin:0 0 18px;font-size:.85rem;opacity:.7;">${isFullstack ? "Fullstack" : "Frontend"} project — select targets:</p>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">${opts}</div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="_dCancel" style="padding:8px 18px;border-radius:8px;border:1px solid var(--aq-border,#333);background:transparent;color:inherit;cursor:pointer;">Cancel</button>
+        <button id="_dGenerate" style="padding:8px 18px;border-radius:8px;border:none;background:var(--aq-accent,#6366f1);color:#fff;cursor:pointer;font-weight:600;">Generate</button>
+      </div></div>`;
+    document.body.appendChild(modal);
+    document.getElementById("_dCancel").onclick = () => { document.body.removeChild(modal); resolve(null); };
+    document.getElementById("_dGenerate").onclick = () => {
+      const checked = [...modal.querySelectorAll("input:checked")].map(el => el.value);
+      document.body.removeChild(modal); resolve(checked.length ? checked : null);
+    };
+  });
+  if (!picked) return;
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Generating…"; }
+  try {
+    const res = await fetch(`/workspace/project/${encodeURIComponent(STATE.projectId)}/deploy-configs`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin",
+      body: JSON.stringify({ targets: picked }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    toast(`✅ Deploy configs added: ${(data.saved || []).join(", ")}`, "success");
+    if (typeof loadProjectFiles === "function") loadProjectFiles(STATE.projectId);
+  } catch (e) {
+    toast(`Deploy config failed: ${e.message}`, "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "🚀 Deploy"; }
+  }
+}
+
+/* ── SHARE PROJECT ────────────────────────────────────────────────────────── */
+let _shareUrl = null;
+async function shareProject() {
+  if (!STATE.projectId) { toast("No project open", "error"); return; }
+  const btn = document.getElementById("shareBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "⏳ Sharing…"; }
+  try {
+    const res  = await fetch(`/workspace/project/${encodeURIComponent(STATE.projectId)}/share`, {
+      method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    _shareUrl = data.shareUrl;
+    _showShareModal(data);
+  } catch (e) {
+    toast(`Share failed: ${e.message}`, "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "🔗 Share"; }
+  }
+}
+async function revokeShare() {
+  if (!STATE.projectId) return;
+  if (!confirm("Revoke share link? Anyone with the link will lose access.")) return;
+  try {
+    const res  = await fetch(`/workspace/project/${encodeURIComponent(STATE.projectId)}/share`, { method: "DELETE", credentials: "same-origin" });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    _shareUrl = null; _closeShareModal(); toast("✅ Share link revoked", "success");
+  } catch (e) { toast(`Revoke failed: ${e.message}`, "error"); }
+}
+function _showShareModal(data) {
+  const existing = document.getElementById("_shareModal");
+  if (existing) existing.remove();
+  const modal = document.createElement("div");
+  modal.id = "_shareModal";
+  modal.style.cssText = "position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;";
+  modal.innerHTML = `<div style="background:var(--aq-bg-2,#1a1a2e);border:1px solid var(--aq-border,#333);border-radius:16px;padding:28px;min-width:340px;max-width:480px;width:90%;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;"><span style="font-size:1.3rem;">🔗</span><h3 style="margin:0;font-size:1rem;">Project Shared!</h3></div>
+    <p style="margin:0 0 16px;font-size:.82rem;opacity:.65;">${data.name || "Project"} is now publicly viewable</p>
+    <div style="display:flex;gap:8px;margin-bottom:18px;">
+      <input id="_shareUrlInput" value="${data.shareUrl}" readonly style="flex:1;padding:9px 12px;border-radius:8px;border:1px solid var(--aq-border,#333);background:rgba(255,255,255,.05);color:inherit;font-size:.8rem;outline:none;"/>
+      <button onclick="_copyShareUrl()" style="padding:9px 14px;border-radius:8px;border:none;background:var(--aq-accent,#6366f1);color:#fff;cursor:pointer;font-weight:600;">Copy</button>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:space-between;align-items:center;">
+      <button onclick="revokeShare()" style="padding:7px 14px;border-radius:8px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.1);color:#f87171;cursor:pointer;font-size:.8rem;">🗑 Revoke</button>
+      <div style="display:flex;gap:8px;">
+        <a href="${data.shareUrl}" target="_blank" style="padding:7px 14px;border-radius:8px;border:1px solid var(--aq-border,#333);background:transparent;color:inherit;text-decoration:none;font-size:.8rem;">↗ Open</a>
+        <button onclick="_closeShareModal()" style="padding:7px 14px;border-radius:8px;border:none;background:var(--aq-accent,#6366f1);color:#fff;cursor:pointer;font-size:.8rem;">Done</button>
+      </div>
+    </div></div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener("click", e => { if (e.target === modal) _closeShareModal(); });
+  document.getElementById("_shareUrlInput").addEventListener("click", e => e.target.select());
+}
+function _copyShareUrl() {
+  const url = _shareUrl || document.getElementById("_shareUrlInput")?.value;
+  if (!url) return;
+  navigator.clipboard.writeText(url).then(() => toast("🔗 Share link copied!", "success"));
+}
+function _closeShareModal() { const m = document.getElementById("_shareModal"); if (m) m.remove(); }
+
+/* ═════════════════════════════════════════════════════════
+   AQUA CHAT PANEL
+   Uses POST /api/aqua/execute (fixed route from batch 1)
+═════════════════════════════════════════════════════════ */
+let _aquaPanelOpen = false;
+
+function toggleAquaPanel() {
+  _aquaPanelOpen = !_aquaPanelOpen;
+  const panel = document.getElementById("aquaPanel");
+  if (_aquaPanelOpen) {
+    panel.classList.remove("hidden");
+    document.getElementById("aquaChatInput").focus();
+  } else {
+    panel.classList.add("hidden");
+  }
+}
+
+function _aquaAppendMsg(role, text) {
+  const log = document.getElementById("aquaLog");
+  const el  = document.createElement("div");
+  el.className = "aq-aqua-msg " + role;
+  el.textContent = text;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function aquaSend() {
+  const input = document.getElementById("aquaChatInput");
+  const msg   = input.value.trim();
+  if (!msg) return;
+  input.value = "";
+  _aquaAppendMsg("user", msg);
+
+  try {
+    // FIXED: route is POST /api/aqua/execute (batch 1 fix)
+    const res  = await fetch("/api/aqua/execute", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message:   msg,
+        projectId: STATE.projectId || null,
+        fileName:  STATE.activeFile || null,
+      }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error || "Request failed");
+
+    _aquaAppendMsg("assistant", data.message || data.reply || "Done.");
+
+    // If AQUA edited files — reload and refresh preview
+    if (data.previewRefresh && STATE.projectId) {
+      if (STATE.activeFile) await loadFile(STATE.activeFile);
+      safeRefreshPreview();
+      toast("AQUA updated your project ✓", "success");
+    }
+    // If AQUA generated a new project
+    if (data.action === "generated" && data.projectId) {
+      STATE.projectId = String(data.projectId);
+      STATE.projectFiles = (data.files || []).map(f => typeof f === "string" ? f : f.fileName);
+      renderFileTabs(STATE.projectFiles);
+      await loadProjectList();
+      const defaultFile = STATE.projectFiles.find(f => f === "index.html") || STATE.projectFiles[0];
+      if (defaultFile) { await loadFile(defaultFile); }
+      safeRefreshPreview();
+      showView("wsProjectView");
+    }
+  } catch(e) {
+    _aquaAppendMsg("error", "⚠ " + (e.message || "Request failed"));
+  }
+}
+
+/* ═════════════════════════════════════════════════════════
+   BUNDLE ENGINE  (unchanged from original — routes not affected)
+═════════════════════════════════════════════════════════ */
+
+async function selectBundle(bundle) {
+  if (!bundle || !bundle._id) return;
+  STATE.lastBundleId = bundle._id;
+  STATE.openSteps.clear(); STATE.stepRunning.clear();
+  document.querySelectorAll(".aq-bundle-item").forEach(r => r.classList.remove("selected"));
+  const row = document.getElementById("brow-" + bundle._id);
+  if (row) row.classList.add("selected");
+  const sw = document.getElementById("bundleSwitcher");
+  if (sw) sw.value = bundle._id;
+  localStorage.setItem("aq_activeBundle", bundle._id);
+  showView("wsLoading"); showLoading();
+  try {
+    const res = await fetch("/workspace/bundle/" + bundle._id);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    if (data && data.bundle) bundle = data.bundle;
+  } catch(e) {
+    showView("wsError");
+    document.getElementById("wsErrorMsg").textContent = "Could not load bundle.";
+    hideLoading(); return;
+  }
+  hideLoading();
+  STATE.bundle = bundle;
+  const currentStep = bundle.currentStep || 0;
+  STATE.openSteps.add(currentStep);
+  showView("wsExec");
+  renderExecPanel(bundle); renderMemoryPanel(bundle); renderInsightPanel(bundle);
+  document.getElementById("topBreadcrumb").textContent = bundle.title || "Bundle";
+  updatePinBtn(bundle._id);
+  if (window.innerWidth < 900) closeSidebar();
+}
+
+async function selectBundleById(id) {
+  const bundle = STATE.allBundles.find(b => String(b._id) === String(id));
+  if (bundle) await selectBundle(bundle); else await selectBundle({ _id: id });
+}
+
+function renderExecPanel(b) {
+  const steps    = Array.isArray(b.steps)    ? b.steps    : [];
+  const progress = Array.isArray(b.progress) ? b.progress : [];
+  const outputs  = Array.isArray(b.outputs)  ? b.outputs  : [];
+  const done     = progress.filter(p => p && p.status === "completed").length;
+  const total    = steps.length;
+  const pct      = total > 0 ? Math.round((done / total) * 100) : 0;
+  const scores   = outputs.map(o => o && o.confidenceScore).filter(s => typeof s === "number");
+  const avgConf  = scores.length ? (scores.reduce((a, s) => a + s, 0) / scores.length * 100).toFixed(0) + "%" : "—";
+
+  document.getElementById("execTitle").textContent      = b.title  || "Untitled";
+  document.getElementById("execGoal").textContent       = b.goal   || "";
+  document.getElementById("statSteps").textContent      = total;
+  document.getElementById("statDone").textContent       = done;
+  document.getElementById("statPct").textContent        = pct + "%";
+  document.getElementById("statStatus").textContent     = (b.status || "draft").toUpperCase();
+  document.getElementById("statConfidence").textContent = avgConf;
+
+  const fill = document.getElementById("mainProgressFill");
+  fill.style.width = pct + "%";
+  if (b.status === "active") fill.classList.add("running"); else fill.classList.remove("running");
+  const track = document.getElementById("mainProgressTrack");
+  if (track) track.setAttribute("aria-valuenow", pct);
+  document.getElementById("mainProgressGlow").style.left = pct + "%";
+
+  const btnRun    = document.getElementById("btnRun");
+  const btnPause  = document.getElementById("btnPause");
+  const btnResume = document.getElementById("btnResume");
+  btnRun.style.display = btnPause.style.display = btnResume.style.display = "none";
+  if (b.status === "active")        btnPause.style.display  = "";
+  else if (b.status === "paused")   btnResume.style.display = "";
+  else if (b.status !== "completed") btnRun.style.display   = "";
+
+  renderTimeline(steps, progress, b.currentStep || 0);
+  renderStepCards(steps, progress, outputs, b.currentStep || 0);
+}
+
+function renderTimeline(steps, progress, currentStep) {
+  const tl = document.getElementById("execTimeline");
+  if (!steps.length) { tl.innerHTML = ""; return; }
+  tl.innerHTML = steps.map((step, i) => {
+    const prog   = progress.find(p => p && p.step === i);
+    const status = prog ? prog.status : (i === currentStep ? "in-progress" : "pending");
+    const dotCls = status === "completed" ? "done" : (status === "in-progress" || i === currentStep) ? "running" : "";
+    const icon   = status === "completed" ? "✓" : status === "in-progress" ? "…" : (i + 1);
+    const lineCls= status === "completed" ? "done" : "";
+    const conn   = i < steps.length - 1 ? `<div class="aq-tl-line ${lineCls}"></div>` : "";
+    return `<div class="aq-tl-step" title="${esc(step.title||'Step '+(i+1))}" onclick="jumpToStep(${i})" role="listitem"><div class="aq-tl-dot ${dotCls}" tabindex="0" onkeydown="if(event.key==='Enter')jumpToStep(${i})">${icon}</div></div>${conn}`;
+  }).join("");
+}
+
+function renderStepCards(steps, progress, outputs, currentStep) {
+  const container = document.getElementById("execSteps");
+  if (!steps.length) { container.innerHTML = `<div class="aq-empty"><span class="aq-empty-icon">📋</span>No steps defined.</div>`; return; }
+  container.innerHTML = steps.map((step, i) => {
+    const prog      = progress.find(p => p && p.step === i) || {};
+    const status    = prog.status || (i === currentStep ? "in-progress" : "pending");
+    const output    = outputs.find(o => o && o.stepIndex === i);
+    const isRunning = STATE.stepRunning.has(i);
+    const cardCls   = status === "completed" ? "done" : (status === "in-progress" || i === currentStep) ? (isRunning ? "running" : "active") : "";
+    const badgeCls  = status === "completed" ? "wb-done" : isRunning ? "wb-running" : status === "in-progress" ? "wb-running" : status === "failed" ? "wb-failed" : "wb-pending";
+    const badgeTxt  = status === "completed" ? "DONE" : isRunning ? "RUNNING…" : status === "in-progress" ? "RUNNING" : status === "failed" ? "FAILED" : "PENDING";
+    const numCls    = status === "completed" ? "done" : status === "in-progress" ? "running" : "";
+    const numIcon   = status === "completed" ? "✓" : isRunning ? `<div class="aq-mini-spinner"></div>` : (i + 1);
+    const resources = step.resources || step.tools || [];
+    const toolsHtml = resources.length
+      ? `<div class="aq-tool-chips">${resources.map(r => typeof r === "string"
+          ? `<span class="aq-tool-chip">🔗 ${esc(r)}</span>`
+          : `<a class="aq-tool-chip" href="${esc(r.url||'#')}" target="_blank" rel="noopener">🔗 ${esc(r.name||'Tool')}</a>`).join("")}</div>`
+      : "";
+
+    let outputHtml = "";
+    if (output && output.content) {
+      const confBadge = typeof output.confidenceScore === "number" ? `<span class="aq-out-meta-badge green">${Math.round(output.confidenceScore*100)}% conf</span>` : "";
+      const durBadge  = output.durationMs ? `<span class="aq-out-meta-badge muted">${output.durationMs}ms</span>` : "";
+      const insights  = (output.keyInsights||[]).slice(0,4).map(k=>`<span class="aq-insight-chip">${esc(k)}</span>`).join("");
+      outputHtml = `<div class="aq-output-block"><div class="aq-output-hdr"><span class="aq-output-label">⚡ Output</span><div class="aq-output-badges">${confBadge}${durBadge}</div><div class="aq-output-dot"></div></div><div class="aq-output-content">${formatOutput(output.content)}</div></div>${insights?`<div class="aq-insight-chips">${insights}</div>`:""}`;
+    } else if (isRunning) {
+      outputHtml = `<div class="aq-output-block aq-output-loading"><div class="aq-spinner-row"><div class="aq-spinner aq-spinner-sm"></div><span>Executing…</span></div></div>`;
+    } else {
+      outputHtml = `<div class="aq-empty-inline">No output yet.</div>`;
+    }
+
+    const ad         = isRunning ? "disabled" : "";
+    const actionHtml = status !== "completed"
+      ? `<button class="aq-step-act-btn run-step ${isRunning?'loading':''}" ${ad} onclick="event.stopPropagation();runStep(${i})">${isRunning?'<div class="aq-mini-spinner"></div> Running…':'▶ Run Step'}</button><button class="aq-step-act-btn done-btn" ${ad} onclick="event.stopPropagation();markStepDone(${i})">✅ Done</button>`
+      : `<button class="aq-step-act-btn rerun" onclick="event.stopPropagation();rerunStep(${i})">↺ Re-run</button>`;
+
+    return `
+      <div class="aq-step-card ${cardCls}" id="scard-${i}" data-step="${i}" role="listitem">
+        <div class="aq-step-hdr" onclick="toggleCard(${i})" role="button" tabindex="0" aria-expanded="false" onkeydown="if(event.key==='Enter')toggleCard(${i})">
+          <div class="aq-step-num ${numCls}">${numIcon}</div>
+          <div class="aq-step-info">
+            <div class="aq-step-title">${esc(step.title||'Step '+(i+1))}</div>
+            <div class="aq-step-desc">${esc(step.description||'')}</div>
+          </div>
+          <span class="aq-badge ${badgeCls}">${badgeTxt}</span>
+          <span class="aq-step-toggle" aria-hidden="true">▾</span>
+        </div>
+        <div class="aq-step-body" id="sbody-${i}" data-state="closed">
+          <div class="aq-step-body-inner" id="sbody-inner-${i}">
+            ${toolsHtml}${outputHtml}
+            <div class="aq-step-actions">${actionHtml}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+  requestAnimationFrame(() => requestAnimationFrame(() => STATE.openSteps.forEach(idx => _openCard(idx, false))));
+}
+
+/* ── ACCORDION ── */
+function toggleCard(idx) {
+  const hdr = document.querySelector(`#scard-${idx} .aq-step-hdr`);
+  if (STATE.openSteps.has(idx)) { _closeCard(idx); if (hdr) hdr.setAttribute("aria-expanded","false"); }
+  else {
+    Array.from(STATE.openSteps).filter(i => i !== idx).forEach(i => { _closeCard(i); const h=document.querySelector(`#scard-${i} .aq-step-hdr`); if(h) h.setAttribute("aria-expanded","false"); });
+    _openCard(idx, true); if (hdr) hdr.setAttribute("aria-expanded","true");
+  }
+}
+function _openCard(idx, animate=true) {
+  const body=document.getElementById("sbody-"+idx), inner=document.getElementById("sbody-inner-"+idx), toggle=document.querySelector(`#scard-${idx} .aq-step-toggle`);
+  if (!body||!inner) return;
+  STATE.openSteps.add(idx); if (toggle) toggle.classList.add("open");
+  body.style.overflow="hidden"; body.style.maxHeight="0"; body.setAttribute("data-state","open");
+  const targetH=inner.scrollHeight+40;
+  if (animate) requestAnimationFrame(() => { body.style.maxHeight=targetH+"px"; }); else body.style.maxHeight=targetH+"px";
+  const onEnd=e=>{ if(e.propertyName!=="max-height")return; body.removeEventListener("transitionend",onEnd); if(STATE.openSteps.has(idx)){body.style.maxHeight="none";body.style.overflow="visible";body.setAttribute("data-state","settled");} };
+  body.addEventListener("transitionend",onEnd);
+  if (!animate){body.style.maxHeight="none";body.style.overflow="visible";body.setAttribute("data-state","settled");}
+}
+function _closeCard(idx) {
+  const body=document.getElementById("sbody-"+idx), toggle=document.querySelector(`#scard-${idx} .aq-step-toggle`);
+  if (!body) return; STATE.openSteps.delete(idx); if(toggle) toggle.classList.remove("open");
+  body.setAttribute("data-state","closed");
+  if (body.style.maxHeight==="none"||body.style.maxHeight==="") {
+    const inner=document.getElementById("sbody-inner-"+idx), h=inner?inner.scrollHeight+40:200;
+    body.style.overflow="hidden"; body.style.maxHeight=h+"px"; body.getBoundingClientRect();
+    requestAnimationFrame(()=>{body.style.maxHeight="0";});
+  } else { body.style.overflow="hidden"; body.style.maxHeight="0"; }
+  if (STATE.selectedStep===idx) STATE.selectedStep=null;
+}
+function _recalcOpenCard(idx) {
+  if (!STATE.openSteps.has(idx)) return;
+  const body=document.getElementById("sbody-"+idx), inner=document.getElementById("sbody-inner-"+idx);
+  if (!body||!inner) return; if (body.getAttribute("data-state")==="settled") return;
+  body.style.maxHeight=(inner.scrollHeight+40)+"px";
+}
+function jumpToStep(idx) {
+  STATE.selectedStep=idx;
+  const card=document.getElementById("scard-"+idx); if (!card) return;
+  card.scrollIntoView({behavior:"smooth",block:"center"});
+  if (!STATE.openSteps.has(idx)) requestAnimationFrame(()=>requestAnimationFrame(()=>toggleCard(idx)));
+}
+
+/* ── RUN STEP ── */
+async function runStep(stepIndex) {
+  const b=STATE.bundle; if (!b||STATE.stepRunning.has(stepIndex)) return;
+  const stepTitle=(b.steps&&b.steps[stepIndex]&&b.steps[stepIndex].title)||("Step "+(stepIndex+1));
+  STATE.stepRunning.add(stepIndex); openRunModal(`▶ ${stepTitle}`); _patchStepCardRunning(stepIndex,true);
+  try {
+    const res=await fetch(`/workspace/step/${b._id}/${stepIndex}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:stepTitle})});
+    if (!res.ok){const err=await res.json().catch(()=>({})); throw new Error(err.error||`HTTP ${res.status}`);}
+    const data=await res.json();
+    if (data.error) throw new Error(data.error);
+    STATE.bundle=data.bundle;
+    if (data.workspace&&data.workspace.workspaceMemory) STATE.wsMemory=data.workspace.workspaceMemory;
+    STATE.stepRunning.delete(stepIndex); STATE.openSteps.add(stepIndex);
+    renderExecPanel(data.bundle); renderMemoryPanel(data.bundle); renderInsightPanel(data.bundle);
+    updateBundleRowProgress(b._id,data.bundle);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>_openCard(stepIndex,false)));
+    const output=data.output||(data.bundle.outputs||[]).find(o=>o&&o.stepIndex===stepIndex);
+    if (output&&output.content){showRunModalOutput(output.content);prependOutputFeed(data.bundle.title||"Bundle",output.stepIndex,output.stepTitle,output.content);}
+    else closeRunModal();
+    if (data.bundle.status==="completed") toast("🎉 Bundle complete!","success"); else toast(`Step ${stepIndex+1} complete ✓`,"success");
+  } catch(e) {
+    STATE.stepRunning.delete(stepIndex); toast("Error: "+e.message,"error"); closeRunModal();
+    if (STATE.bundle) renderExecPanel(STATE.bundle);
+  }
+}
+function _patchStepCardRunning(stepIndex,isRunning) {
+  const card=document.getElementById("scard-"+stepIndex); if(!card) return;
+  const badge=card.querySelector(".aq-badge"), num=card.querySelector(".aq-step-num"), btn=card.querySelector(".aq-step-act-btn.run-step");
+  if(badge){badge.className="aq-badge wb-running";badge.textContent="RUNNING…";}
+  if(num) num.innerHTML=`<div class="aq-mini-spinner"></div>`;
+  if(btn){btn.disabled=isRunning;btn.innerHTML=isRunning?'<div class="aq-mini-spinner"></div> Running…':'▶ Run Step';}
+  const inner=document.getElementById("sbody-inner-"+stepIndex);
+  if(inner&&isRunning){const emptyEl=inner.querySelector(".aq-empty-inline");if(emptyEl)emptyEl.outerHTML=`<div class="aq-output-block aq-output-loading"><div class="aq-spinner-row"><div class="aq-spinner aq-spinner-sm"></div><span>Executing…</span></div></div>`;_recalcOpenCard(stepIndex);}
+}
+
+/* ── AUTO RUN ── */
+async function autoRunSteps() {
+  const b=STATE.bundle; if(!b||!b.steps){toast("Select a bundle","info");return;}
+  const ok=await showConfirm("Auto-Run All Steps",`Auto-run all ${b.steps.length} steps sequentially?`,"▶ Auto Run");
+  if(!ok) return;
+  for(let i=0;i<b.steps.length;i++){
+    const prog=(Array.isArray(STATE.bundle.progress)?STATE.bundle.progress:[]).find(p=>p&&p.step===i);
+    if(prog&&prog.status==="completed") continue;
+    await markStepDone(i);
+  }
+  toast("✅ All steps completed","success");
+}
+
+/* ── MARK STEP DONE ── */
+async function markStepDone(stepIndex) {
+  const b=STATE.bundle; if(!b||STATE.loading) return;
+  showLoading();
+  try {
+    const stepTitle=(b.steps&&b.steps[stepIndex]&&b.steps[stepIndex].title)||("Step "+(stepIndex+1));
+    const res=await fetch(`/workspace/step/${b._id}/${stepIndex}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({title:stepTitle})});
+    const data=await res.json();
+    if(data.error){toast(data.error,"error");return;}
+    STATE.bundle=data.bundle;
+    if(data.workspace&&data.workspace.workspaceMemory) STATE.wsMemory=data.workspace.workspaceMemory;
+    STATE.openSteps.add(stepIndex);
+    renderExecPanel(data.bundle); renderMemoryPanel(data.bundle); renderInsightPanel(data.bundle);
+    updateBundleRowProgress(b._id,data.bundle);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>_openCard(stepIndex,false)));
+    if(data.output) prependOutputFeed(data.bundle.title||"Bundle",data.output.stepIndex,data.output.stepTitle,data.output.content);
+    if(data.bundle.status==="completed") toast("🎉 Bundle complete!","success"); else toast(`Step ${stepIndex+1} complete ✓`,"success");
+  } catch(e){toast("Error marking step","error");console.error(e);}
+  finally{hideLoading();}
+}
+
+function rerunStep(stepIndex) {
+  const b=STATE.bundle; if(!b) return;
+  if(Array.isArray(b.progress)){const e=b.progress.find(p=>p&&p.step===stepIndex);if(e)e.status="pending";}
+  if(Array.isArray(b.outputs)) b.outputs=b.outputs.filter(o=>o&&o.stepIndex!==stepIndex);
+  STATE.openSteps.add(stepIndex); renderExecPanel(b); toast(`Step ${stepIndex+1} reset`,"info");
+}
+
+/* ── BUNDLE ACTIONS ── */
+async function runCurrentBundle() {
+  const b=STATE.bundle; if(!b||STATE.loading) return; showLoading();
+  try{const res=await fetch("/workspace/run/"+b._id,{method:"POST"});const data=await res.json();if(data.error){toast(data.error,"error");return;}STATE.bundle=data.bundle;if(data.workspace&&data.workspace.workspaceMemory)STATE.wsMemory=data.workspace.workspaceMemory;renderExecPanel(data.bundle);updateBundleRowDot(b._id,"active");toast("Bundle started ▶","success");}
+  catch{toast("Failed","error");}finally{hideLoading();}
+}
+async function pauseCurrentBundle() {
+  const b=STATE.bundle; if(!b||STATE.loading) return; showLoading();
+  try{const res=await fetch("/workspace/pause/"+b._id,{method:"POST"});const data=await res.json();if(data.error){toast(data.error,"error");return;}const updated=data.bundle||{...STATE.bundle,status:"paused"};STATE.bundle=updated;renderExecPanel(updated);updateBundleRowDot(b._id,"paused");toast("Paused ⏸","info");}
+  catch{toast("Failed","error");}finally{hideLoading();}
+}
+async function resumeCurrentBundle() {
+  const b=STATE.bundle; if(!b||STATE.loading) return; showLoading();
+  try{const res=await fetch("/workspace/resume/"+b._id,{method:"POST"});const data=await res.json();if(data.error){toast(data.error,"error");return;}STATE.bundle=data.bundle;if(data.workspace&&data.workspace.workspaceMemory)STATE.wsMemory=data.workspace.workspaceMemory;renderExecPanel(data.bundle);updateBundleRowDot(b._id,"active");toast("Resumed ▶","success");}
+  catch{toast("Failed","error");}finally{hideLoading();}
+}
+async function pinCurrentBundle() { const b=STATE.bundle; if(!b) return; await _togglePin(b._id); }
+async function pinBundleById(id)  { await _togglePin(id); }
+async function _togglePin(id) {
+  const isPinned=STATE.pinnedIds.some(p=>String(p)===String(id)), endpoint=isPinned?"unpin":"pin";
+  try{const res=await fetch(`/workspace/${endpoint}/${id}`,{method:"POST"});const data=await res.json();if(data.pinnedBundleIds)STATE.pinnedIds=data.pinnedBundleIds;else if(!isPinned)STATE.pinnedIds.push(id);else STATE.pinnedIds=STATE.pinnedIds.filter(x=>String(x)!==String(id));if(STATE.bundle&&String(STATE.bundle._id)===String(id))updatePinBtn(id);toast(isPinned?"Unpinned":"Pinned ★",isPinned?"info":"success");}
+  catch{toast("Pin failed","error");}
+}
+async function deleteCurrentBundle() {
+  const b=STATE.bundle, id=b&&b._id; if(!id) return;
+  const ok=await showConfirm("Delete Bundle","Delete this bundle? This cannot be undone.","Delete");
+  if(!ok) return; await _doDeleteBundle(id);
+}
+async function _doDeleteBundle(id) {
+  showLoading();
+  try{
+    const res=await fetch("/bundle/"+id,{method:"DELETE"});
+    if(!res.ok) throw new Error("Delete failed");
+    const rowEl=document.getElementById("brow-"+id); if(rowEl) rowEl.remove();
+    const sw=document.getElementById("bundleSwitcher"); if(sw){const opt=sw.querySelector(`option[value="${id}"]`);if(opt)opt.remove();}
+    STATE.allBundles=STATE.allBundles.filter(b=>String(b._id)!==String(id));
+    if(STATE.bundle&&String(STATE.bundle._id)===String(id)){STATE.bundle=null;localStorage.removeItem("aq_activeBundle");showView("wsWelcome");document.getElementById("topBreadcrumb").textContent="Workspace";}
+    toast("Bundle deleted","info");
+  }catch{toast("Failed to delete","error");}finally{hideLoading();}
+}
+
+/* ── MEMORY / INSIGHT / OUTPUT ── */
+function renderMemoryPanel(b) {
+  const mem=b.memory||{}, keys=Object.keys(mem);
+  document.getElementById("memBundleCount").textContent=keys.length+" keys";
+  document.getElementById("memBundleEntries").innerHTML=keys.length?keys.map(k=>`<div class="aq-mem-kv"><div class="aq-mem-k">${esc(k)}</div><div class="aq-mem-v">${esc(String(mem[k]??""))}</div></div>`).join(""):`<div class="aq-empty" style="padding:6px 0;font-size:0.64rem;">No memory.</div>`;
+  renderWsMemory();
+}
+function renderWsMemory() {
+  const wsM=STATE.wsMemory||{}, wsKeys=Object.keys(wsM);
+  document.getElementById("memWsCount").textContent=wsKeys.length+" keys";
+  document.getElementById("memWsEntries").innerHTML=wsKeys.length?wsKeys.map(k=>`<div class="aq-mem-kv" style="border-left-color:var(--accent3)"><div class="aq-mem-k" style="color:var(--accent3)">${esc(k)}</div><div class="aq-mem-v">${esc(String(wsM[k]??""))}</div></div>`).join(""):`<div class="aq-empty" style="padding:6px 0;font-size:0.64rem;">No workspace memory.</div>`;
+}
+function renderInsightPanel(b) {
+  const outputs=Array.isArray(b.outputs)?b.outputs:[], all=[];
+  outputs.forEach(o=>{(o&&o.keyInsights?o.keyInsights:[]).forEach(k=>{if(k)all.push({text:k,confidence:o.confidenceScore||0});});});
+  all.sort((a,b)=>b.confidence-a.confidence);
+  document.getElementById("insightList").innerHTML=all.length?all.map(({text,confidence})=>{const badge=confidence?`<span style="font-family:var(--mono);font-size:0.56rem;color:var(--accent);margin-left:auto;flex-shrink:0;">${Math.round(confidence*100)}%</span>`:"";return`<div class="aq-insight-item">${esc(text)}${badge}</div>`;}).join(""):`<div class="aq-empty"><span class="aq-empty-icon">💡</span>No insights yet.</div>`;
+}
+function renderOutputFeed(outputs) {
+  const feed=document.getElementById("outputFeed");
+  if(!outputs||!outputs.length){feed.innerHTML=`<div class="aq-empty"><span class="aq-empty-icon">📤</span>No outputs yet.</div>`;return;}
+  feed.innerHTML=outputs.map(o=>`<div class="aq-feed-item"><div class="aq-feed-meta"><span class="aq-feed-step">Step ${(o.stepIndex??0)+1}${o.stepTitle?' · '+esc(o.stepTitle):''}</span><span class="aq-feed-bundle">${esc(o.bundleTitle||'')}</span></div><div class="aq-feed-preview">${esc(o.preview||o.content||'')}</div></div>`).join("");
+}
+function prependOutputFeed(bundleTitle,stepIndex,stepTitle,content) {
+  const feed=document.getElementById("outputFeed");
+  const empty=feed.querySelector(".aq-empty"); if(empty) empty.remove();
+  const item=document.createElement("div"); item.className="aq-feed-item aq-feed-item-new";
+  item.innerHTML=`<div class="aq-feed-meta"><span class="aq-feed-step">Step ${stepIndex+1}${stepTitle?' · '+esc(stepTitle):''}</span><span class="aq-feed-bundle">${esc(bundleTitle)}</span></div><div class="aq-feed-preview">${esc((content||'').substring(0,240))}</div>`;
+  feed.prepend(item); requestAnimationFrame(()=>item.classList.add("visible"));
+}
+
+/* ── DOM HELPERS ── */
+function updatePinBtn(id) { const el=document.getElementById("btnPin"); if(el) el.textContent=STATE.pinnedIds.some(p=>String(p)===String(id))?"★ PIN":"☆ PIN"; }
+function updateBundleRowDot(id,status) {
+  const row=document.getElementById("brow-"+id); if(!row) return;
+  const dot=row.querySelector(".aq-dot"); if(!dot) return;
+  dot.className="aq-dot "+(status==="active"?"aq-dot-active":status==="paused"?"aq-dot-paused":status==="completed"?"aq-dot-completed":"aq-dot-draft");
+}
+function updateBundleRowProgress(id,bundle) {
+  const row=document.getElementById("brow-"+id); if(!row) return;
+  const steps=Array.isArray(bundle.steps)?bundle.steps:[], prog=Array.isArray(bundle.progress)?bundle.progress:[];
+  const done=prog.filter(p=>p&&p.status==="completed").length;
+  const pct=steps.length>0?Math.round((done/steps.length)*100):0;
+  const fill=row.querySelector(".aq-bundle-fill"), pctEl=row.querySelector(".aq-bundle-pct");
+  if(fill) fill.style.width=pct+"%"; if(pctEl) pctEl.textContent=pct+"%";
+  updateBundleRowDot(id,bundle.status);
+}
+
+/* ── SANITIZE / FORMAT ── */
+function esc(str) {
+  if (str==null) return "";
+  return String(str).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+function formatOutput(text) {
+  if (!text) return "";
+  return esc(text)
+    .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>")
+    .replace(/^## (.+)$/gm,'<span class="aq-out-h2">$1</span>')
+    .replace(/^- (.+)$/gm,'<span class="aq-out-li">• $1</span>')
+    .replace(/`([^`]+)`/g,'<code class="aq-out-code">$1</code>')
+    .replace(/\n/g,"<br/>");
+}
+
+/* ── TOAST ── */
+function toast(msg, type="info") {
+  const root=document.getElementById("aq-toast-root");
+  const el=document.createElement("div"); el.className=`aq-toast ${type}`; el.textContent=msg;
+  root.appendChild(el);
+  const remove=()=>{ el.classList.add("fadeout"); el.addEventListener("transitionend",()=>el.remove(),{once:true}); };
+  const timer=window.setTimeout(remove,3000);
+  el.addEventListener("click",()=>{clearTimeout(timer);remove();});
+}
+
+/* ── COMMAND PALETTE ── */
+const PALETTE_COMMANDS = [
+  { label: "⚡ Generate Project",   hint: "G",  action: () => focusPrompt() },
+  { label: "▶ Run Bundle",          hint: "R",  action: () => runCurrentBundle() },
+  { label: "⏸ Pause Bundle",        hint: "P",  action: () => pauseCurrentBundle() },
+  { label: "↺ Resume Bundle",       hint: "RS", action: () => resumeCurrentBundle() },
+  { label: "⚡ Auto-run All Steps", hint: "A",  action: () => autoRunSteps() },
+  { label: "☆ Pin / Unpin",         hint: "PI", action: () => pinCurrentBundle() },
+  { label: "⌫ Delete Bundle",       hint: "D",  action: () => deleteCurrentBundle() },
+  { label: "💾 Save File",           hint: "S",  action: () => saveCurrentFile() },
+  { label: "✦ AI Edit File",         hint: "AI", action: () => focusAiEdit() },
+  { label: "💬 AQUA Chat",           hint: "AQ", action: () => toggleAquaPanel() },
+  { label: "↗ Open Preview in Tab", hint: "PV", action: () => openPreviewInTab() },
+  { label: "⟳ Reload Preview",      hint: "RP", action: () => refreshPreview() },
+  { label: "☰ Open Sidebar",        hint: "B",  action: () => openSidebar() },
+  { label: "← Go to Bundles",       hint: "GB", action: () => { window.location.href="/bundles"; } },
+];
+function openPalette() {
+  document.getElementById("aqPalette").classList.add("open");
+  document.getElementById("aqPaletteInput").value="";
+  renderPaletteList(PALETTE_COMMANDS);
+  document.getElementById("aqPaletteInput").focus();
+}
+function closePalette(e) {
+  if (e&&e.target!==document.getElementById("aqPalette")) return;
+  document.getElementById("aqPalette").classList.remove("open");
+}
+function renderPaletteList(cmds) {
+  document.getElementById("aqPaletteList").innerHTML=cmds.map((c,i)=>`<div class="aq-palette-cmd" data-idx="${i}" role="option">${esc(c.label)}<span class="key">${esc(c.hint)}</span></div>`).join("");
+  document.querySelectorAll(".aq-palette-cmd").forEach(el=>{
+    el.onclick=()=>{cmds[parseInt(el.dataset.idx)].action();document.getElementById("aqPalette").classList.remove("open");};
+  });
+}
+function filterPalette(val) { const lower=val.toLowerCase(); renderPaletteList(PALETTE_COMMANDS.filter(c=>c.label.toLowerCase().includes(lower))); }
+function paletteKeydown(e) { if(e.key==="Escape") document.getElementById("aqPalette").classList.remove("open"); }
+
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="k") { e.preventDefault(); openPalette(); }
+  if ((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==="s") { e.preventDefault(); saveCurrentFile(); }
+  if (e.key==="Escape") {
+    document.getElementById("aqPalette").classList.remove("open");
+    document.getElementById("aqConfirm").classList.remove("open");
+    document.getElementById("aqRunModal").classList.remove("open");
+    closeSidebar();
+  }
+});
+
+/* ── REALTIME ── */
+(function initRealtime() {
+  if (typeof io==="undefined") return;
+  try {
+    const socket=io();
+    socket.on("bundle:update", data => {
+      if (!STATE.bundle||String(data.bundleId)!==String(STATE.bundle._id)) return;
+      fetch("/workspace/bundle/"+STATE.bundle._id).then(r=>r.json()).then(d=>{if(!d.bundle)return;STATE.bundle=d.bundle;renderExecPanel(d.bundle);renderMemoryPanel(d.bundle);renderInsightPanel(d.bundle);}).catch(()=>{});
+    });
+  } catch {}
+})();
+
+setInterval(async () => {
+  if (!STATE.bundle||STATE.loading||STATE.stepRunning.size>0) return;
+  try {
+    const res=await fetch("/workspace/bundle/"+STATE.bundle._id);
+    const data=await res.json(); if(!data.bundle) return;
+    const prevDone=(STATE.bundle.progress||[]).filter(p=>p&&p.status==="completed").length;
+    const nextDone=(data.bundle.progress||[]).filter(p=>p&&p.status==="completed").length;
+    if (nextDone!==prevDone||data.bundle.status!==STATE.bundle.status){STATE.bundle=data.bundle;renderExecPanel(data.bundle);}
+  } catch {}
+}, 10000);
+</script>
+
+<!-- AGENT STATUS PANEL ─────────────────────────────────────────── -->
+<style>
+#agentPanel {
+  position: fixed; bottom: 80px; left: 18px; width: 300px; max-height: 380px;
+  background: rgba(15,22,41,0.97); border: 1px solid rgba(56,189,248,0.2);
+  border-radius: 14px; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+  display: flex; flex-direction: column; z-index: 890;
+  transition: opacity .2s, transform .2s; font-family: var(--mono, monospace);
+  overflow: hidden;
+}
+#agentPanel.hidden { opacity: 0; pointer-events: none; transform: translateY(10px); }
+#agentPanelHdr {
+  display: flex; align-items: center; gap: 8px; padding: 10px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 0.75rem;
+  font-weight: 600; color: #94a3b8;
+}
+#agentPanelHdr .ap-dot { width:6px;height:6px;border-radius:50%;background:#38bdf8;animation:pulse 1.4s infinite; }
+#agentLog {
+  flex: 1; overflow-y: auto; padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 5px; font-size: 0.72rem;
+}
+.ap-event { display: flex; align-items: flex-start; gap: 7px; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.ap-badge {
+  font-size: 0.62rem; font-weight: 700; padding: 1px 6px; border-radius: 4px;
+  white-space: nowrap; flex-shrink: 0; margin-top: 1px;
+}
+.ap-badge.planner  { background: rgba(99,102,241,0.25); color: #a5b4fc; }
+.ap-badge.frontend { background: rgba(34,211,238,0.2);  color: #67e8f9; }
+.ap-badge.backend  { background: rgba(251,191,36,0.2);  color: #fcd34d; }
+.ap-badge.repair   { background: rgba(239,68,68,0.2);   color: #fca5a5; }
+.ap-badge.deploy   { background: rgba(52,211,153,0.2);  color: #6ee7b7; }
+.ap-badge.system   { background: rgba(148,163,184,0.15);color: #94a3b8; }
+.ap-text { color: #cbd5e1; line-height: 1.4; }
+.ap-status { color: #64748b; font-size: 0.65rem; }
+.ap-status.done    { color: #4ade80; }
+.ap-status.error   { color: #f87171; }
+.ap-status.started { color: #38bdf8; }
+</style>
+
+<div id="agentPanel" class="hidden">
+  <div id="agentPanelHdr">
+    <span class="ap-dot"></span>
+    <span>Agent Pipeline</span>
+    <button onclick="document.getElementById('agentPanel').classList.add('hidden')"
+      style="margin-left:auto;background:none;border:none;color:#64748b;cursor:pointer;font-size:1rem;line-height:1;">✕</button>
+  </div>
+  <div id="agentLog"></div>
+</div>
+
+<script>
+// ── AGENT PANEL ──────────────────────────────────────────────────────────────
+
+function showAgentPanel() {
+  const panel = document.getElementById("agentPanel");
+  if (panel) { panel.classList.remove("hidden"); }
+}
+
+function hideAgentPanel() {
+  const panel = document.getElementById("agentPanel");
+  if (panel) { panel.classList.add("hidden"); }
+}
+
+function logAgentEvent(event) {
+  showAgentPanel();
+  const log  = document.getElementById("agentLog");
+  if (!log) return;
+
+  const agentKey  = (event.agent || "system").replace(/-agent$/, "").split("-")[0];
+  const statusCls = event.status === "done" || event.status === "complete" ? "done"
+    : event.status === "error" ? "error"
+    : event.status === "started" ? "started"
+    : "";
+
+  const el = document.createElement("div");
+  el.className = "ap-event";
+  el.innerHTML = `
+    <span class="ap-badge ${agentKey}">${agentKey}</span>
+    <div>
+      <div class="ap-text">${event.detail || ""}</div>
+      <div class="ap-status ${statusCls}">${event.status}</div>
+    </div>`;
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+
+// ── AGENT-GEN (streaming) ────────────────────────────────────────────────────
+
+async function runAgentGen(projectId, prompt) {
+  if (!projectId || !prompt) return;
+  document.getElementById("agentLog").innerHTML = "";
+  showAgentPanel();
+
+  const url = `/workspace/project/${encodeURIComponent(projectId)}/agent-gen/stream`;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const reader  = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const payload = trimmed.slice(5).trim();
+        if (!payload || payload === "[DONE]") continue;
+        try {
+          const ev = JSON.parse(payload);
+          if (ev.type === "status")      logAgentEvent(ev);
+          if (ev.type === "files_saved") logAgentEvent({ agent: "system", status: "saved", detail: `${ev.count} files written` });
+          if (ev.type === "complete") {
+            logAgentEvent({ agent: "system", status: "complete", detail: `Done in ${(ev.durationMs/1000).toFixed(1)}s` });
+            setTimeout(() => { if (typeof loadProject === "function") loadProject(ev.projectId); }, 800);
+          }
+          if (ev.type === "error") logAgentEvent({ agent: "system", status: "error", detail: ev.message });
+        } catch {}
+      }
+    }
+  } catch (e) {
+    logAgentEvent({ agent: "system", status: "error", detail: e.message });
+  }
+}
+
+// ── PLAN VIEWER ──────────────────────────────────────────────────────────────
+
+async function viewProjectPlan() {
+  if (!STATE.projectId) { toast("No project open", "error"); return; }
+  try {
+    const res = await fetch(`/workspace/project/${encodeURIComponent(STATE.projectId)}/graph`, { credentials: "same-origin" });
+    const data = await res.json();
+    if (!data.success || !data.graphs?.architecture) { toast("No plan found — generate project first", "info"); return; }
+
+    const arch = data.graphs.architecture;
+    const info = [
+      `📦 ${arch.title}`,
+      `Type: ${arch.type} | Complexity: ${arch.complexity}`,
+      `Stack: ${arch.stack?.framework}/${arch.stack?.runtime}`,
+      `Files: ${(arch.files||[]).join(", ")}`,
+      `Design: ${arch.designSystem?.theme}`,
+    ].join("\n");
+
+    alert(info);
+  } catch (e) {
+    toast(`Graph fetch failed: ${e.message}`, "error");
+  }
+}
+</script>
+
+<script src="/js/aqua-client.js"></script>
+</body>
+</html>

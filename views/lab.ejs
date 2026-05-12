@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Aquiplex Prompt Lab</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+<div class="container">
+
+  <h1>🧠 Aquiplex Prompt Lab</h1>
+
+  <div class="prompt-box">
+    <input type="text" id="prompt" placeholder="Ask anything...">
+    <button onclick="generate()">Generate</button>
+  </div>
+
+  <div id="loading" class="loading" style="display:none;">
+    Thinking...
+  </div>
+
+  <div id="results" class="results"></div>
+
+</div>
+
+<script>
+async function generate() {
+  const prompt = document.getElementById("prompt").value;
+
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("results").innerHTML = "";
+
+  const res = await fetch("/generate", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ prompt })
+  });
+
+  const data = await res.json();
+
+  document.getElementById("loading").style.display = "none";
+
+  document.getElementById("results").innerHTML = `
+    <div class="card highlight">
+      <h3>⭐ Smart AI</h3>
+      <p>${data.smart}</p>
+    </div>
+
+    <div class="card">
+      <h3>🎨 Creative AI</h3>
+      <p>${data.creative}</p>
+    </div>
+
+    <div class="card">
+      <h3>⚡ Fast AI</h3>
+      <p>${data.fast}</p>
+    </div>
+
+    <div class="card">
+      <h3>📚 Detailed AI</h3>
+      <p>${data.detailed}</p>
+    </div>
+  `;
+}
+</script>
+
+</body>
+</html>

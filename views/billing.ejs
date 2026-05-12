@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Billing — Aquiplex</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    :root {
+      --aqua-blue:   #00d4ff;
+      --aqua-purple: #7c3aed;
+      --card-bg:     rgba(15, 15, 30, 0.95);
+      --border:      rgba(255,255,255,0.08);
+      --text-muted:  rgba(255,255,255,0.55);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #080810; color: #fff; font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
+
+    .billing-wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 60px 24px 80px;
+    }
+    .billing-wrap h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .billing-wrap .subtitle {
+      color: var(--text-muted);
+      margin-bottom: 40px;
+      font-size: 0.95rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+    }
+    .card-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .card-value {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .card-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    .plan-badge {
+      display: inline-block;
+      padding: 4px 14px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .plan-badge.free     { background: rgba(255,255,255,0.08); color: #aaa; }
+    .plan-badge.starter  { background: rgba(0,212,255,0.12); color: var(--aqua-blue); border: 1px solid rgba(0,212,255,0.3); }
+    .plan-badge.pro      { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.4); }
+    .plan-badge.team     { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
+
+    .progress-bar {
+      background: rgba(255,255,255,0.08);
+      border-radius: 999px;
+      height: 8px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--aqua-blue), var(--aqua-purple));
+      transition: width 0.6s ease;
+    }
+    .progress-fill.warning { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+
+    /* Usage chart area */
+    .usage-section { margin-bottom: 24px; }
+
+    /* History table */
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    .history-table th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .history-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      color: rgba(255,255,255,0.8);
+      vertical-align: middle;
+    }
+    .status-pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-pill.success { background: rgba(34,197,94,0.12); color: #86efac; }
+    .status-pill.failed  { background: rgba(239,68,68,0.12);  color: #fca5a5; }
+    .status-pill.pending { background: rgba(234,179,8,0.12);  color: #fde68a; }
+
+    /* Actions */
+    .actions-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .btn {
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--aqua-blue), var(--aqua-purple));
+      color: #fff;
+    }
+    .btn-primary:hover { opacity: 0.9; }
+    .btn-ghost {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.7);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .btn-danger {
+      background: rgba(239,68,68,0.1);
+      color: #fca5a5;
+      border: 1px solid rgba(239,68,68,0.25);
+    }
+    .btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+    /* Cancel confirm */
+    #cancel-confirm {
+      display: none;
+      background: rgba(239,68,68,0.08);
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+    #cancel-confirm p { font-size: 0.9rem; color: rgba(255,255,255,0.8); margin-bottom: 16px; line-height: 1.6; }
+    #cancel-confirm .btns { display: flex; gap: 10px; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: #1a1a2e;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 20px;
+      font-size: 0.9rem;
+      z-index: 99999;
+      transform: translateY(80px);
+      opacity: 0;
+      transition: all 0.3s;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.success { border-color: #22c55e; }
+    .toast.error   { border-color: #ef4444; }
+
+    @media (max-width: 600px) {
+      .grid-2 { grid-template-columns: 1fr; }
+      .actions-row { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<%- include('partials/nav') %>
+
+<div class="billing-wrap">
+  <h1>Billing & Credits</h1>
+  <p class="subtitle">Manage your Aqua Credits, plan, and subscription.</p>
+
+  <!-- Plan + Credits cards -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-label">Current Plan</div>
+      <div style="margin-bottom:12px">
+        <span class="plan-badge <%= (billingUser||user).plan || 'free' %>" id="plan-badge"><%= ((billingUser||user).plan||"free").toUpperCase() %></span>
+      </div>
+      <div class="card-sub" id="plan-status-text">Loading status…</div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Aqua Credits</div>
+      <div class="card-value" id="credits-val">–</div>
+      <div class="card-sub" id="credits-sub">Loading…</div>
+      <div class="progress-bar" style="margin-top:14px">
+        <div class="progress-fill" id="credits-fill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-label">Daily Usage</div>
+      <div class="card-value" id="daily-val">–</div>
+      <div class="card-sub" id="daily-sub">Loading…</div>
+      <div class="progress-bar" style="margin-top:14px">
+        <div class="progress-fill" id="daily-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Renewal Date</div>
+      <div class="card-value" style="font-size:1.4rem" id="renewal-val">–</div>
+      <div class="card-sub" id="renewal-sub">–</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions-row">
+    <% if (!billingUser || !billingUser.plan || billingUser.plan === 'free') { %>
+      <a href="/pricing" class="btn btn-primary">⚡ Upgrade Plan</a>
+    <% } else { %>
+      <a href="/pricing" class="btn btn-primary">⚡ Change Plan</a>
+      <button class="btn btn-danger" onclick="toggleCancel()">Cancel Subscription</button>
+    <% } %>
+    <a href="/pricing" class="btn btn-ghost">Compare Plans</a>
+  </div>
+
+  <!-- Cancel confirm -->
+  <div id="cancel-confirm">
+    <p>Are you sure? You'll keep access until the end of your current billing period, then revert to the Free plan. Your projects are never deleted.</p>
+    <div class="btns">
+      <button class="btn btn-danger" onclick="doCancel()" id="confirm-cancel-btn">Yes, cancel subscription</button>
+      <button class="btn btn-ghost" onclick="toggleCancel()">Keep my plan</button>
+    </div>
+  </div>
+
+  <!-- Transaction history -->
+  <div class="card usage-section">
+    <div class="card-label" style="margin-bottom:20px">Transaction History</div>
+    <div id="history-container">
+      <table class="history-table">
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Plan</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showToast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+function fmt(n) { return Number(n).toLocaleString('en-IN'); }
+
+async function loadStatus() {
+  try {
+    const [statusRes, historyRes] = await Promise.all([
+      fetch('/api/billing/status'),
+      fetch('/api/billing/history'),
+    ]);
+    const status  = await statusRes.json();
+    const history = await historyRes.json();
+
+    // Credits
+    const c = status.credits;
+    document.getElementById('credits-val').textContent  = `${fmt(c.credits)} / ${fmt(c.monthlyTotal)}`;
+    document.getElementById('credits-sub').textContent  = `Resets ${new Date(c.resetAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`;
+    const creditPct = Math.min(100, (c.credits / c.monthlyTotal) * 100);
+    const fill = document.getElementById('credits-fill');
+    fill.style.width = creditPct + '%';
+    if (creditPct < 20) fill.classList.add('warning');
+
+    // Daily
+    document.getElementById('daily-val').textContent = `${fmt(c.dailyUsed)} / ${fmt(c.dailyLimit)}`;
+    document.getElementById('daily-sub').textContent = 'used today';
+    const dayPct = Math.min(100, (c.dailyUsed / c.dailyLimit) * 100);
+    const dayFill = document.getElementById('daily-fill');
+    dayFill.style.width = dayPct + '%';
+    if (dayPct > 80) dayFill.classList.add('warning');
+
+    // Plan status
+    const statusText = document.getElementById('plan-status-text');
+    if (status.subscriptionStatus === 'active') {
+      statusText.textContent = '✓ Active subscription';
+      statusText.style.color = '#86efac';
+    } else if (status.subscriptionStatus === 'cancelled') {
+      statusText.textContent = '⚠ Cancelled — access until period end';
+      statusText.style.color = '#fde68a';
+    } else {
+      statusText.textContent = 'Free plan';
+      statusText.style.color = '';
+    }
+
+    // Renewal
+    if (status.currentPeriodEnd) {
+      const d = new Date(status.currentPeriodEnd);
+      document.getElementById('renewal-val').textContent = d.toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'});
+      document.getElementById('renewal-sub').textContent = status.subscriptionStatus === 'cancelled' ? 'Access ends' : 'Next renewal';
+    } else {
+      document.getElementById('renewal-val').textContent = 'Monthly';
+      document.getElementById('renewal-sub').textContent = new Date(c.resetAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    }
+
+    // History
+    const tbody = document.getElementById('history-body');
+    if (!history.history || history.history.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px">No transactions yet.</td></tr>`;
+    } else {
+      tbody.innerHTML = history.history.map(h => {
+        const amt = h.amount ? `₹${(h.amount/100).toFixed(0)}` : '—';
+        const date = new Date(h.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
+        const statusCls = h.status === 'success' ? 'success' : h.status === 'failed' ? 'failed' : 'pending';
+        const eventLabel = h.event.replace('subscription.','').replace('payment.','Payment ');
+        return `<tr>
+          <td style="text-transform:capitalize">${eventLabel}</td>
+          <td style="text-transform:capitalize">${h.plan}</td>
+          <td>${amt}</td>
+          <td><span class="status-pill ${statusCls}">${h.status}</span></td>
+          <td style="color:var(--text-muted)">${date}</td>
+        </tr>`;
+      }).join('');
+    }
+
+  } catch(e) {
+    console.error('Billing load error:', e);
+  }
+}
+
+function toggleCancel() {
+  const el = document.getElementById('cancel-confirm');
+  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
+async function doCancel() {
+  const btn = document.getElementById('confirm-cancel-btn');
+  btn.disabled = true;
+  btn.textContent = 'Cancelling…';
+  try {
+    const res  = await fetch('/api/billing/cancel', { method: 'POST' });
+    const data = await res.json();
+    if (res.ok) {
+      showToast('Subscription cancelled. Access retained until period end.', 'success');
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      showToast(data.message || 'Cancel failed. Try again.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Yes, cancel subscription';
+    }
+  } catch(e) {
+    showToast('Network error. Try again.', 'error');
+    btn.disabled = false;
+    btn.textContent = 'Yes, cancel subscription';
+  }
+}
+
+loadStatus();
+</script>
+
+<%- include('partials/footer') %>
+</body>
+</html>
