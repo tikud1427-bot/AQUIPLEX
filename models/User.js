@@ -19,6 +19,7 @@
 
 const mongoose = require("mongoose");
 const crypto   = require("crypto");
+const { isUnlimitedAccount, unlimitedAccessReason } = require("../utils/credits/unlimitedAccess");
 
 const FREE_DAILY_CREDITS = parseInt(process.env.FREE_DAILY_CREDITS || "100", 10);
 
@@ -38,6 +39,8 @@ const userSchema = new mongoose.Schema(
     email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     googleId: { type: String, default: null, sparse: true },
+    role: { type: String, default: "user", index: true },
+    isUnlimited: { type: Boolean, default: false },
 
     // ── Wallet ──────────────────────────────────────────────────────────────
     wallet: { type: walletSchema, default: () => ({}) },
@@ -62,6 +65,16 @@ userSchema.pre("save", function (next) {
   next();
 });
 
+// ── Access helpers ────────────────────────────────────────────────────────────
+
+userSchema.methods.isUnlimitedAccount = function () {
+  return isUnlimitedAccount(this);
+};
+
+userSchema.methods.unlimitedAccessReason = function () {
+  return unlimitedAccessReason(this);
+};
+
 // ── Wallet methods ─────────────────────────────────────────────────────────────
 
 /**
@@ -69,6 +82,7 @@ userSchema.pre("save", function (next) {
  * Returns true if reset occurred.
  */
 userSchema.methods.resetFreeCreditsIfNeeded = function () {
+  if (this.isUnlimitedAccount()) return false;
   const now = new Date();
   if (this.wallet.freeResetAt && now >= this.wallet.freeResetAt) {
     this.wallet.freeCredits = FREE_DAILY_CREDITS;
@@ -82,6 +96,7 @@ userSchema.methods.resetFreeCreditsIfNeeded = function () {
  * totalAvailableCredits — free + paid.
  */
 userSchema.methods.totalAvailableCredits = function () {
+  if (this.isUnlimitedAccount()) return Number.MAX_SAFE_INTEGER;
   this.resetFreeCreditsIfNeeded();
   return this.wallet.freeCredits + this.wallet.paidCredits;
 };
@@ -90,6 +105,7 @@ userSchema.methods.totalAvailableCredits = function () {
  * hasEnoughCredits — check without mutating.
  */
 userSchema.methods.hasEnoughCredits = function (cost) {
+  if (this.isUnlimitedAccount()) return true;
   this.resetFreeCreditsIfNeeded();
   return this.totalAvailableCredits() >= cost;
 };
@@ -100,6 +116,7 @@ userSchema.methods.hasEnoughCredits = function (cost) {
  * Throws if insufficient.
  */
 userSchema.methods.deductCredits = function (cost) {
+  if (this.isUnlimitedAccount()) return;
   this.resetFreeCreditsIfNeeded();
   const total = this.wallet.freeCredits + this.wallet.paidCredits;
   if (total < cost) throw new Error("INSUFFICIENT_CREDITS");
@@ -136,6 +153,8 @@ userSchema.methods.walletSummary = function () {
     freeDailyMax: FREE_DAILY_CREDITS,
     totalEarned:  this.wallet.totalEarned,
     totalSpent:   this.wallet.totalSpent,
+    isUnlimited:  this.isUnlimitedAccount(),
+    unlimitedReason: this.unlimitedAccessReason(),
   };
 };
 

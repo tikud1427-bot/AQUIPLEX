@@ -24,6 +24,8 @@ const { allPacksArray }      = require("../../utils/credits/packs");
 const { createLogger }       = require("../../utils/logger");
 
 const log = createLogger("BILLING_ROUTES");
+const walletService = require("../../services/credits/wallet.service");
+const User = require("../../models/User");
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
 
@@ -109,20 +111,83 @@ router.get("/wallet", requireLogin, async (req, res) => {
   }
 });
 
-// ── GET /api/billing/history ──────────────────────────────────────────────────
-
-router.get("/history", requireLogin, async (req, res) => {
+// —— GET /api/billing/status ——————————————————————————————
+router.get("/status", requireLogin, async (req, res) => {
   try {
-    const limit = Math.min(parseInt(req.query.limit || "30", 10), 100);
-    const skip  = parseInt(req.query.skip || "0", 10);
-    const history = await getTransactionHistory(req.uid, limit, skip);
-    return res.json({ success: true, history });
+    const user = await User.findById(req.uid).lean();
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "USER_NOT_FOUND",
+      });
+    }
+
+    const wallet = user.wallet || {};
+
+    return res.json({
+      success: true,
+
+      billing: {
+        credits: Number(wallet.balance || 0),
+        lifetimeCredits: Number(
+          wallet.lifetimePurchasedCredits || 0
+        ),
+        totalSpent: Number(wallet.totalSpent || 0),
+      },
+
+      subscription: user.subscription || null,
+    });
+
   } catch (err) {
-    log.error("history fetch error:", err.message);
-    return res.status(500).json({ error: "HISTORY_FETCH_FAILED" });
+    log.error("billing status error:", err.message);
+
+    return res.status(500).json({
+      success: false,
+      error: "STATUS_FETCH_FAILED",
+    });
   }
 });
 
+// —— GET /api/billing/history ——————————————————————————————
+router.get("/history", requireLogin, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit || "30", 10), 100);
+
+    const skip = parseInt(req.query.skip || "0", 10);
+
+    const history = await getTransactionHistory(
+      req.uid,
+      limit,
+      skip
+    );
+
+    const normalizedHistory = Array.isArray(history)
+      ? history.map((tx) => ({
+          id: tx._id || null,
+          type: tx.type || "wallet",
+          amount: Number(tx.amount || 0),
+          credits: Number(tx.credits || 0),
+          status: tx.status || "completed",
+          createdAt: tx.createdAt || null,
+        }))
+      : [];
+
+    return res.json({
+      success: true,
+      history: normalizedHistory,
+    });
+
+  } catch (err) {
+    log.error("history fetch error:", err.message);
+
+    return res.status(500).json({
+      success: false,
+      error: "HISTORY_FETCH_FAILED",
+      history: [],
+    });
+  }
+});
 // ── GET /api/billing/payments ─────────────────────────────────────────────────
 
 router.get("/payments", requireLogin, async (req, res) => {

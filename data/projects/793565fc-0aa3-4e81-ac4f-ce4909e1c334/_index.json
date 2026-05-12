@@ -1,0 +1,25 @@
+{
+  "projectId": "793565fc-0aa3-4e81-ac4f-ce4909e1c334",
+  "name": "build a chessboard game",
+  "userId": "69b6cfebb7e3cd8899a4c459",
+  "files": [
+    "package.json",
+    "README.md",
+    "index.html",
+    "style.css",
+    "script.js",
+    "components/Menu.js",
+    "components/Game.js",
+    "components/PauseMenu.js",
+    "components/StartScreen.js",
+    "server.js"
+  ],
+  "createdAt": "2026-05-12T17:18:37.033Z",
+  "updatedAt": "2026-05-12T17:18:53.948Z",
+  "prompt": "build a chessboard game",
+  "source": "fullstack",
+  "intent": "fullstack",
+  "qualityScore": 80,
+  "projectType": "game",
+  "designDirection": "Dark Sci-Fi: deep space theme, holographic UI elements, blue/purple palette, star particle bg"
+}

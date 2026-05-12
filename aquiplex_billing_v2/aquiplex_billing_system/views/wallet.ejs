@@ -440,6 +440,15 @@
       const d = await r.json();
       if (!d.wallet) return;
       const w = d.wallet;
+      if (w.isUnlimited) {
+        document.getElementById('statFree').textContent  = 'Unlimited';
+        document.getElementById('statPaid').textContent  = 'Unlimited';
+        document.getElementById('statTotal').textContent = 'Unlimited';
+        document.getElementById('statSpent').textContent = `${fmt(w.totalSpent)} spent lifetime`;
+        document.getElementById('freeBar').style.width = '100%';
+        document.getElementById('statFreeReset').textContent = 'No daily limit';
+        return;
+      }
       document.getElementById('statFree').textContent  = fmt(w.freeCredits);
       document.getElementById('statPaid').textContent  = fmt(w.paidCredits);
       document.getElementById('statTotal').textContent = fmt(w.totalCredits);

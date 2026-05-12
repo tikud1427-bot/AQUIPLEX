@@ -1,0 +1,18 @@
+{
+  "projectId": "793565fc-0aa3-4e81-ac4f-ce4909e1c334",
+  "userId": "69b6cfebb7e3cd8899a4c459",
+  "name": "build a chessboard game",
+  "files": [
+    "package.json",
+    "README.md",
+    "index.html",
+    "style.css",
+    "script.js",
+    "components/Menu.js",
+    "components/Game.js",
+    "components/PauseMenu.js",
+    "components/StartScreen.js",
+    "server.js"
+  ],
+  "updatedAt": "2026-05-12T17:18:54.014Z"
+}

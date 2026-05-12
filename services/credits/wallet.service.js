@@ -16,6 +16,7 @@ const mongoose   = require("mongoose");
 const User        = require("../../models/User");
 const Transaction = require("../../models/Transaction");
 const { createLogger } = require("../../utils/logger");
+const { isUnlimitedAccount, unlimitedAccessReason } = require("../../utils/credits/unlimitedAccess");
 
 const log = createLogger("WALLET");
 const FREE_DAILY = parseInt(process.env.FREE_DAILY_CREDITS || "100", 10);
@@ -35,6 +36,24 @@ async function deductCredits(userId, cost, actionType = "default", description =
   // Fetch current wallet, applying lazy daily reset
   const user = await User.findById(userId);
   if (!user) throw new Error("USER_NOT_FOUND");
+
+  if (isUnlimitedAccount(user)) {
+    const snapshot = user.walletSummary();
+    log.info(`DEBIT bypassed for unlimited user=${userId} reason=${unlimitedAccessReason(user)} cost=${cost}`);
+    return {
+      deducted:  0,
+      fromFree:  0,
+      fromPaid:  0,
+      unlimited: true,
+      balanceAfter: {
+        freeCredits: snapshot.freeCredits,
+        paidCredits: snapshot.paidCredits,
+        total: snapshot.totalCredits,
+        isUnlimited: true,
+        unlimitedReason: snapshot.unlimitedReason,
+      },
+    };
+  }
 
   // Lazy daily reset
   const wasReset = user.resetFreeCreditsIfNeeded();
@@ -113,6 +132,12 @@ async function deductCredits(userId, cost, actionType = "default", description =
  */
 async function refundCredits(userId, amount, reason = "generation_failed") {
   if (amount <= 0) return;
+
+  const user = await User.findById(userId);
+  if (user && isUnlimitedAccount(user)) {
+    log.info(`REFUND bypassed for unlimited user=${userId} reason=${unlimitedAccessReason(user)} amount=${amount}`);
+    return;
+  }
 
   const updated = await User.findOneAndUpdate(
     { _id: userId },
@@ -237,7 +262,12 @@ async function getWalletSummary(userId) {
   const wasReset = user.resetFreeCreditsIfNeeded();
   if (wasReset) await user.save();
 
-  return user.walletSummary();
+  const summary = user.walletSummary();
+  return {
+    ...summary,
+    isUnlimited: isUnlimitedAccount(user),
+    unlimitedReason: unlimitedAccessReason(user),
+  };
 }
 
 // ── Get transaction history ───────────────────────────────────────────────────

@@ -415,218 +415,59 @@
 </div><!-- /wallet-wrap -->
 
 <script>
-(function () {
-  /* ── Config ── */
-  const RZP_KEY = '<%= process.env.RAZORPAY_KEY_ID || "" %>';
-  const USER_EMAIL = '<%= billingUser?.email || "" %>';
-  const USER_PHONE = '<%= billingUser?.phone || "" %>';
+async function loadWallet() {
+  try {
+    const response = await fetch('/api/billing/history', {
+      credentials: 'include'
+    });
 
-  /* ── Toast ── */
-  function showToast(msg, type = 'success') {
-    const el = document.getElementById('toast');
-    el.textContent = (type === 'success' ? '✓  ' : '✕  ') + msg;
-    el.className = 'toast ' + type;
-    clearTimeout(el._t);
-    el._t = setTimeout(() => { el.className = 'toast'; }, 4000);
-  }
+    const data = await response.json();
 
-  /* ── Format number ── */
-  function fmt(n) { return n.toLocaleString('en-IN'); }
-
-  /* ── Load wallet ── */
-  async function loadWallet() {
-    try {
-      const r = await fetch('/api/billing/wallet');
-      const d = await r.json();
-      if (!d.wallet) return;
-      const w = d.wallet;
-      document.getElementById('statFree').textContent  = fmt(w.freeCredits);
-      document.getElementById('statPaid').textContent  = fmt(w.paidCredits);
-      document.getElementById('statTotal').textContent = fmt(w.totalCredits);
-      document.getElementById('statSpent').textContent = `${fmt(w.totalSpent)} spent lifetime`;
-
-      const pct = Math.min(100, Math.round((w.freeCredits / w.freeDailyMax) * 100));
-      document.getElementById('freeBar').style.width = pct + '%';
-
-      const resetDate = new Date(w.freeResetAt);
-      document.getElementById('statFreeReset').textContent =
-        'Resets ' + resetDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-    } catch (e) {
-      console.error('loadWallet error', e);
-    }
-  }
-
-  /* ── Load packs ── */
-  async function loadPacks() {
-    try {
-      const r = await fetch('/api/billing/packs');
-      const d = await r.json();
-      renderPacks(d.packs || []);
-    } catch (e) {
-      console.error('loadPacks error', e);
-    }
-  }
-
-  function renderPacks(packs) {
-    const grid = document.getElementById('packsGrid');
-    grid.innerHTML = packs.map(p => {
-      const cpr = (p.priceINR / p.credits * 100).toFixed(1);
-      return `
-        <div class="pack-card ${p.badge === 'MOST POPULAR' ? 'popular' : ''}">
-          <div class="pack-price">₹${p.priceINR}</div>
-          <div class="pack-credits">${fmt(p.credits)} credits</div>
-          <div class="pack-desc">${p.description}</div>
-          <div class="pack-cpr">₹${cpr} per 100 credits</div>
-          <button class="btn-buy" onclick="buyPack('${p.id}', this)">Buy Now</button>
-        </div>`;
-    }).join('');
-  }
-
-  /* ── Buy pack ── */
-  window.buyPack = async function (packId, btn) {
-    btn.classList.add('loading');
-    btn.textContent = 'Preparing…';
-
-    try {
-      // 1. Create order
-      const r = await fetch('/api/billing/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packId }),
-      });
-      const d = await r.json();
-      if (!d.success) throw new Error(d.message || 'Order creation failed');
-
-      const order = d.order;
-
-      // 2. Open Razorpay Standard Checkout
-      const rzp = new Razorpay({
-        key: RZP_KEY,
-        order_id: order.orderId,
-        amount:   order.amount,
-        currency: 'INR',
-        name:     'Aquiplex',
-        description: order.packName + ' — ' + fmt(order.credits) + ' credits',
-        image:    '/logo/favicon.ico',
-        prefill: {
-          email:   USER_EMAIL,
-          contact: USER_PHONE,
-        },
-        theme: { color: '#00d4ff' },
-        modal: {
-          backdropclose: false,
-          ondismiss: function () {
-            btn.classList.remove('loading');
-            btn.textContent = 'Buy Now';
-          },
-        },
-        handler: async function (response) {
-          btn.textContent = 'Verifying…';
-          try {
-            const vr = await fetch('/api/billing/verify-payment', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                razorpay_order_id:   response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature:  response.razorpay_signature,
-              }),
-            });
-            const vd = await vr.json();
-            if (vd.success) {
-              showToast(`✅ ${fmt(vd.credits)} credits added to your wallet!`);
-              await loadWallet();
-              await loadHistory();
-            } else {
-              showToast('Payment error: ' + (vd.error || 'Unknown'), 'error');
-            }
-          } catch (e) {
-            showToast('Verification failed. Contact support.', 'error');
-          } finally {
-            btn.classList.remove('loading');
-            btn.textContent = 'Buy Now';
-          }
-        },
-      });
-
-      rzp.on('payment.failed', function (resp) {
-        showToast('Payment failed: ' + (resp.error?.description || 'Try again'), 'error');
-        btn.classList.remove('loading');
-        btn.textContent = 'Buy Now';
-      });
-
-      rzp.open();
-
-    } catch (e) {
-      showToast(e.message || 'Something went wrong', 'error');
-      btn.classList.remove('loading');
-      btn.textContent = 'Buy Now';
-    }
-  };
-
-  /* ── Load transaction history ── */
-  async function loadHistory() {
-    try {
-      const r = await fetch('/api/billing/history?limit=20');
-      const d = await r.json();
-      renderHistory(d.history || []);
-    } catch (e) {
-      document.getElementById('txnList').innerHTML = '<div class="txn-empty">Failed to load history.</div>';
-    }
-  }
-
-  function renderHistory(txns) {
-    const list = document.getElementById('txnList');
-    if (!txns.length) {
-      list.innerHTML = '<div class="txn-empty">No transactions yet. Buy credits to get started.</div>';
-      return;
+    if (!data?.success) {
+      throw new Error('Failed to load wallet history');
     }
 
-    list.innerHTML = txns.map(t => {
-      const isCredit = t.amount > 0;
-      const icon = t.type === 'PURCHASE' ? '💳' : t.type === 'REFUND' ? '↩️' : '⚡';
-      const iconClass = t.type === 'PURCHASE' ? 'purchase' : t.type === 'REFUND' ? 'refund' : 'debit';
-      const timeStr = new Date(t.createdAt).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    renderWalletHistory(data.history || []);
 
-      return `
-        <div class="txn-row">
-          <div class="txn-left">
-            <div class="txn-icon ${iconClass}">${icon}</div>
-            <div>
-              <div class="txn-desc">${escHtml(t.description || t.type)}</div>
-              <div class="txn-time">${timeStr}</div>
-            </div>
-          </div>
-          <div class="txn-amount ${isCredit ? 'positive' : 'negative'}">
-            ${isCredit ? '+' : ''}${fmt(Math.abs(t.amount))}
-          </div>
-        </div>`;
-    }).join('');
-  }
+  } catch (err) {
+    console.error('[WalletPage] fetch failure', err);
 
-  function escHtml(s) {
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+    const container = document.getElementById('walletHistory');
 
-  /* ── Check URL params for redirect from Razorpay ── */
-  function checkPaymentReturn() {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('payment') === 'success') {
-      showToast('Payment successful! Credits added to your wallet.');
-      window.history.replaceState({}, '', '/wallet');
-    } else if (params.get('payment') === 'failed') {
-      showToast('Payment did not complete. Please try again.', 'error');
-      window.history.replaceState({}, '', '/wallet');
+    if (container) {
+      container.innerHTML = '<p>Unable to load wallet history.</p>';
     }
   }
+}
 
-  /* ── Init ── */
-  checkPaymentReturn();
-  loadWallet();
-  loadPacks();
-  loadHistory();
+function renderWalletHistory(history) {
+  const container = document.getElementById('walletHistory');
 
-})();
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (!history.length) {
+    container.innerHTML = '<p>No wallet activity yet.</p>';
+    return;
+  }
+
+  history.forEach((item) => {
+    const row = document.createElement('div');
+
+    row.className = 'wallet-row';
+
+    row.innerHTML = `
+      <div>${item.type}</div>
+      <div>${item.credits}</div>
+      <div>${item.amount}</div>
+    `;
+
+    container.appendChild(row);
+  });
+}
+
+loadWallet();
 </script>
 
 </body>

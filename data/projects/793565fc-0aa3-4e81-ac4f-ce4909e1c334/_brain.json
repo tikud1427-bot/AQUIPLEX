@@ -1,0 +1,118 @@
+{
+  "projectId": "793565fc-0aa3-4e81-ac4f-ce4909e1c334",
+  "createdAt": "2026-05-12T17:18:53.963Z",
+  "updatedAt": "2026-05-12T17:18:53.993Z",
+  "name": "build a chessboard game",
+  "projectType": "game",
+  "description": "build a chessboard game",
+  "framework": "vanilla",
+  "entryFile": "index.html",
+  "stylesheets": [
+    "style.css"
+  ],
+  "scripts": [
+    "script.js",
+    "components/Menu.js",
+    "components/Game.js",
+    "components/PauseMenu.js",
+    "components/StartScreen.js",
+    "server.js"
+  ],
+  "fileGraph": {
+    "index.html": [
+      "style.css",
+      "script.js"
+    ]
+  },
+  "components": [],
+  "colorPalette": [
+    "#3498db",
+    "#2ecc71",
+    "#2f3436",
+    "#fdfbfb",
+    "#ebedee"
+  ],
+  "fontPrimary": "Space Mono",
+  "fontSecondary": "",
+  "designTheme": "Dark Sci-Fi: deep space theme, holographic UI elements, blue/purple palette, star particle bg",
+  "cdnLibraries": [],
+  "codingStyle": {
+    "usesClasses": false,
+    "usesModules": false,
+    "usesLocalStorage": false,
+    "usesWebComponents": false,
+    "usesCanvas": true,
+    "usesWebAudio": false,
+    "usesAnimations": true,
+    "usesIntersectionObserver": false
+  },
+  "editHistory": [],
+  "knownIssues": [],
+  "activeTasks": [],
+  "snapshots": [
+    {
+      "version": 1,
+      "label": "v1 — initial generation",
+      "ts": "2026-05-12T17:18:53.993Z",
+      "files": [
+        {
+          "fileName": "package.json",
+          "content": "{\n  \"name\": \"darkspacechess\",\n  \"version\": \"1.0.0\",\n  \"description\": \"\",\n  \"main\": \"server.js\",\n  \"scripts\": {\n    \"start\": \"node server.js\"\n  },\n  \"keywords\": [],\n  \"author\": \"\",\n  \"license\": \"ISC\",\n  \"dependencies\": {\n    \"express\": \"^4.18.2\",\n    \"react\": \"^18.2.0\",\n    \"react-dom\": \"^18.2.0\"\n  }\n}"
+        },
+        {
+          "fileName": "README.md",
+          "content": "# DarkSpaceChess\n\n## Setup Steps\n\n1. Clone the repository: `git clone https://github.com/your-repo/DarkSpaceChess.git`\n2. Install dependencies: `npm install`\n3. Start the server: `npm start`\n\n## Environment Variables\n\n| Variable | Description |\n| --- | --- |\n| PORT | Server port number (default: 3000) |\n\n## API Docs\n\n### GET /\n\nMain game route. Returns the game HTML page.\n\n## Deploy Instructions\n\n1. Create a Vercel account and install the Vercel CLI: `npm install -g vercel`\n2. Login to Vercel: `vercel login`\n3. Deploy the app: `vercel`"
+        },
+        {
+          "fileName": "index.html",
+          "content": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>DarkSpaceChess</title>\n  <link rel=\"stylesheet\" href=\"style.css\">\n  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n  <link href=\"https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap\" rel=\"stylesheet\">\n</head>\n<body>\n  <div id=\"root\"></div>\n  <script src=\"script.js\"></script>\n</body>\n</html>"
+        },
+        {
+          "fileName": "style.css",
+          "content": ":root {\n  --primary-color: #3498db;\n  --secondary-color: #2ecc71;\n  --background-color: #2f3436;\n  --font-family: 'Space Mono', monospace;\n  --border-radius: 16px;\n  --box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);\n}\n\nbody {\n  font-family: var(--font-family);\n  background-color: var(--background-color);\n  margin: 0;\n  padding: 0;\n  overflow-x: hidden;\n}\n\n#root {\n  width: 100%;\n  height: 100vh;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}\n\nbutton {\n  background-color: var(--primary-color);\n  color: #fff;\n  border: none;\n  padding: 10px 20px;\n  font-size: 16px;\n  cursor: pointer;\n  border-radius: var(--border-radius);\n  box-shadow: var(--box-shadow);\n  transition: transform 0.2s ease;\n}\n\nbutton:hover {\n  transform: scale(1.05);\n  box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);\n}\n\nbutton:active {\n  transform: scale(0.96);\n}\n\n::-webkit-scrollbar {\n  width: 10px;\n  height: 10px;\n}\n\n::-webkit-scrollbar-thumb {\n  background-color: var(--primary-color);\n  border-radius: var(--border-radius);\n}\n\n::selection {\n  background-color: var(--primary-color);\n  color: #fff;\n}\n\n.particle-bg {\n  position: absolute;\n  top: 0;\n  left: 0;\n  width: 100%;\n  height: 100%;\n  background-image: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);\n  background-size: 200% 200%;\n  animation: gradient 10s ease infinite;\n}\n\n@keyframes gradient {\n  0% {\n    background-position: 0% 50%;\n  }\n  50% {\n    background-position: 100% 50%;\n  }\n  100% {\n    background-position: 0% 50%;\n  }\n}"
+        },
+        {
+          "fileName": "script.js",
+          "content": "import React from 'react';\nimport ReactDOM from 'react-dom';\nimport Menu from './components/Menu';\nimport Game from './components/Game';\nimport PauseMenu from './components/PauseMenu';\nimport StartScreen from './components/StartScreen';\n\nconst App = () => {\n  const [state, setState] = React.useState('MENU');\n\n  switch (state) {\n    case 'MENU':\n      return <Menu setState={setState} />;\n    case 'PLAYING':\n      return <Game setState={setState} />;\n    case 'PAUSED':\n      return <PauseMenu setState={setState} />;\n    case 'GAME_OVER':\n      return <StartScreen setState={setState} gameOver={true} />;\n    case 'WIN':\n      return <StartScreen setState={setState} gameOver={false} />;\n    default:\n      return <div>Invalid state</div>;\n  }\n};\n\nReactDOM.render(<App />, document.getElementById('root'));"
+        },
+        {
+          "fileName": "components/Menu.js",
+          "content": "import React from 'react';\n\nconst Menu = ({ setState }) => {\n  return (\n    <div>\n      <h1>DarkSpaceChess</h1>\n      <button onClick={() => setState('PLAYING')}>Play</button>\n      <button onClick={() => console.log('Options')}>Options</button>\n      <button onClick={() => console.log('Quit')}>Quit</button>\n    </div>\n  );\n};\n\nexport default Menu;"
+        },
+        {
+          "fileName": "components/Game.js",
+          "content": "import React, { useEffect, useRef } from 'react';\n\nconst Game = ({ setState }) => {\n  const canvasRef = useRef(null);\n  const [score, setScore] = React.useState(0);\n  const [deltaTime, setDeltaTime] = React.useState(0);\n  const [speed, setSpeed] = React.useState(1);\n  const [density, setDensity] = React.useState(1);\n\n  useEffect(() => {\n    const canvas = canvasRef.current;\n    const ctx = canvas.getContext('2d');\n    const lastTime = performance.now();\n\n    const gameLoop = () => {\n      const currentTime = performance.now();\n      const delta = (currentTime - lastTime) / 1000;\n      setDeltaTime(delta);\n      lastTime = currentTime;\n\n      // Game logic here\n      ctx.clearRect(0, 0, canvas.width, canvas.height);\n      // Draw game elements\n\n      requestAnimationFrame(gameLoop);\n    };\n\n    gameLoop();\n  }, []);\n\n  const handleKeyPress = (event) => {\n    if (event.key === 'Escape') {\n      setState('PAUSED');\n    }\n  };\n\n  useEffect(() => {\n    document.addEventListener('keydown', handleKeyPress);\n    return () => document.removeEventListener('keydown', handleKeyPress);\n  }, []);\n\n  return (\n    <div>\n      <canvas ref={canvasRef} width={800} height={600} />\n      <div>Score: {score}</div>\n      <button onClick={() => setState('PAUSED')}>Pause</button>\n    </div>\n  );\n};\n\nexport default Game;"
+        },
+        {
+          "fileName": "components/PauseMenu.js",
+          "content": "import React from 'react';\n\nconst PauseMenu = ({ setState }) => {\n  return (\n    <div>\n      <h1>Pause Menu</h1>\n      <button onClick={() => setState('PLAYING')}>Resume</button>\n      <button onClick={() => setState('MENU')}>Menu</button>\n      <button onClick={() => console.log('Quit')}>Quit</button>\n    </div>\n  );\n};\n\nexport default PauseMenu;"
+        },
+        {
+          "fileName": "components/StartScreen.js",
+          "content": "import React from 'react';\n\nconst StartScreen = ({ setState, gameOver }) => {\n  return (\n    <div>\n      {gameOver ? (\n        <h1>Game Over</h1>\n      ) : (\n        <h1>Welcome to DarkSpaceChess</h1>\n      )}\n      <button onClick={() => setState('PLAYING')}>Play</button>\n      <button onClick={() => console.log('Options')}>Options</button>\n      <button onClick={() => console.log('Quit')}>Quit</button>\n    </div>\n  );\n};\n\nexport default StartScreen;"
+        },
+        {
+          "fileName": "server.js",
+          "content": "require('dotenv').config();\nconst express = require('express');\nconst app = express();\nconst port = process.env.PORT;\n\napp.use(express.static('public'));\n\napp.get('/', (req, res) => {\n  res.sendFile(__dirname + '/public/index.html');\n});\n\napp.listen(port, () => {\n  console.log(`Server started on port ${port}`);\n});"
+        }
+      ]
+    }
+  ],
+  "isFullstack": true,
+  "stack": {
+    "frontend": "react",
+    "backend": "none",
+    "database": "none",
+    "auth": "none"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/",
+      "description": "Main game route"
+    }
+  ],
+  "dbModels": [],
+  "envVars": [],
+  "deployTarget": "vercel"
+}

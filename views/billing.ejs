@@ -291,117 +291,80 @@
 <div class="toast" id="toast"></div>
 
 <script>
-function showToast(msg, type = 'success') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = `toast show ${type}`;
-  setTimeout(() => el.classList.remove('show'), 4000);
-}
-
-function fmt(n) { return Number(n).toLocaleString('en-IN'); }
-
-async function loadStatus() {
+async function loadBillingPage() {
   try {
-    const [statusRes, historyRes] = await Promise.all([
-      fetch('/api/billing/status'),
-      fetch('/api/billing/history'),
+    const [statusRes, historyRes] = await Promise.allSettled([
+      fetch('/api/billing/status', {
+        credentials: 'include'
+      }),
+
+      fetch('/api/billing/history', {
+        credentials: 'include'
+      })
     ]);
-    const status  = await statusRes.json();
-    const history = await historyRes.json();
 
-    // Credits
-    const c = status.credits;
-    document.getElementById('credits-val').textContent  = `${fmt(c.credits)} / ${fmt(c.monthlyTotal)}`;
-    document.getElementById('credits-sub').textContent  = `Resets ${new Date(c.resetAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}`;
-    const creditPct = Math.min(100, (c.credits / c.monthlyTotal) * 100);
-    const fill = document.getElementById('credits-fill');
-    fill.style.width = creditPct + '%';
-    if (creditPct < 20) fill.classList.add('warning');
+    if (statusRes.status === 'fulfilled') {
+      const statusData = await statusRes.value.json();
 
-    // Daily
-    document.getElementById('daily-val').textContent = `${fmt(c.dailyUsed)} / ${fmt(c.dailyLimit)}`;
-    document.getElementById('daily-sub').textContent = 'used today';
-    const dayPct = Math.min(100, (c.dailyUsed / c.dailyLimit) * 100);
-    const dayFill = document.getElementById('daily-fill');
-    dayFill.style.width = dayPct + '%';
-    if (dayPct > 80) dayFill.classList.add('warning');
-
-    // Plan status
-    const statusText = document.getElementById('plan-status-text');
-    if (status.subscriptionStatus === 'active') {
-      statusText.textContent = '✓ Active subscription';
-      statusText.style.color = '#86efac';
-    } else if (status.subscriptionStatus === 'cancelled') {
-      statusText.textContent = '⚠ Cancelled — access until period end';
-      statusText.style.color = '#fde68a';
-    } else {
-      statusText.textContent = 'Free plan';
-      statusText.style.color = '';
+      if (statusData?.success) {
+        renderBillingCards(statusData.billing || {});
+      }
     }
 
-    // Renewal
-    if (status.currentPeriodEnd) {
-      const d = new Date(status.currentPeriodEnd);
-      document.getElementById('renewal-val').textContent = d.toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'});
-      document.getElementById('renewal-sub').textContent = status.subscriptionStatus === 'cancelled' ? 'Access ends' : 'Next renewal';
-    } else {
-      document.getElementById('renewal-val').textContent = 'Monthly';
-      document.getElementById('renewal-sub').textContent = new Date(c.resetAt).toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+    if (historyRes.status === 'fulfilled') {
+      const historyData = await historyRes.value.json();
+
+      if (historyData?.success) {
+        renderBillingHistory(historyData.history || []);
+      }
     }
 
-    // History
-    const tbody = document.getElementById('history-body');
-    if (!history.history || history.history.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px">No transactions yet.</td></tr>`;
-    } else {
-      tbody.innerHTML = history.history.map(h => {
-        const amt = h.amount ? `₹${(h.amount/100).toFixed(0)}` : '—';
-        const date = new Date(h.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-        const statusCls = h.status === 'success' ? 'success' : h.status === 'failed' ? 'failed' : 'pending';
-        const eventLabel = h.event.replace('subscription.','').replace('payment.','Payment ');
-        return `<tr>
-          <td style="text-transform:capitalize">${eventLabel}</td>
-          <td style="text-transform:capitalize">${h.plan}</td>
-          <td>${amt}</td>
-          <td><span class="status-pill ${statusCls}">${h.status}</span></td>
-          <td style="color:var(--text-muted)">${date}</td>
-        </tr>`;
-      }).join('');
-    }
-
-  } catch(e) {
-    console.error('Billing load error:', e);
+  } catch (err) {
+    console.error('[BillingPage] load failure', err);
+  } finally {
+    hideBillingLoaders();
   }
 }
 
-function toggleCancel() {
-  const el = document.getElementById('cancel-confirm');
-  el.style.display = el.style.display === 'block' ? 'none' : 'block';
+function renderBillingCards(billing) {
+  document.getElementById('creditBalance').innerText = billing.credits || 0;
+  document.getElementById('totalSpent').innerText = billing.totalSpent || 0;
 }
 
-async function doCancel() {
-  const btn = document.getElementById('confirm-cancel-btn');
-  btn.disabled = true;
-  btn.textContent = 'Cancelling…';
-  try {
-    const res  = await fetch('/api/billing/cancel', { method: 'POST' });
-    const data = await res.json();
-    if (res.ok) {
-      showToast('Subscription cancelled. Access retained until period end.', 'success');
-      setTimeout(() => location.reload(), 2000);
-    } else {
-      showToast(data.message || 'Cancel failed. Try again.', 'error');
-      btn.disabled = false;
-      btn.textContent = 'Yes, cancel subscription';
-    }
-  } catch(e) {
-    showToast('Network error. Try again.', 'error');
-    btn.disabled = false;
-    btn.textContent = 'Yes, cancel subscription';
+function renderBillingHistory(history) {
+  const container = document.getElementById('billingHistory');
+
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (!history.length) {
+    container.innerHTML = '<p>No billing history yet.</p>';
+    return;
   }
+
+  history.forEach((item) => {
+    const row = document.createElement('div');
+
+    row.className = 'billing-row';
+
+    row.innerHTML = `
+      <div>${item.type}</div>
+      <div>${item.amount}</div>
+      <div>${item.status}</div>
+    `;
+
+    container.appendChild(row);
+  });
 }
 
-loadStatus();
+function hideBillingLoaders() {
+  document.querySelectorAll('.billing-loader').forEach((el) => {
+    el.style.display = 'none';
+  });
+}
+
+loadBillingPage();
 </script>
 
 <%- include('partials/footer') %>
