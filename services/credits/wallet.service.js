@@ -16,10 +16,10 @@ const mongoose   = require("mongoose");
 const User        = require("../../models/User");
 const Transaction = require("../../models/Transaction");
 const { createLogger } = require("../../utils/logger");
-const { isUnlimitedAccount, unlimitedAccessReason } = require("../../utils/credits/unlimitedAccess");
+const { hasUnlimitedAccess, unlimitedAccessReason } = require("../../utils/credits/unlimitedAccess");
 
 const log = createLogger("WALLET");
-const FREE_DAILY = parseInt(process.env.FREE_DAILY_CREDITS || "100", 10);
+const FREE_DAILY = parseInt(process.env.FREE_DAILY_CREDITS || "200", 10);
 
 // ── Deduct credits (atomic) ───────────────────────────────────────────────────
 
@@ -37,7 +37,7 @@ async function deductCredits(userId, cost, actionType = "default", description =
   const user = await User.findById(userId);
   if (!user) throw new Error("USER_NOT_FOUND");
 
-  if (isUnlimitedAccount(user)) {
+  if (hasUnlimitedAccess(user)) {
     const snapshot = user.walletSummary();
     log.info(`DEBIT bypassed for unlimited user=${userId} reason=${unlimitedAccessReason(user)} cost=${cost}`);
     return {
@@ -134,7 +134,7 @@ async function refundCredits(userId, amount, reason = "generation_failed") {
   if (amount <= 0) return;
 
   const user = await User.findById(userId);
-  if (user && isUnlimitedAccount(user)) {
+  if (user && hasUnlimitedAccess(user)) {
     log.info(`REFUND bypassed for unlimited user=${userId} reason=${unlimitedAccessReason(user)} amount=${amount}`);
     return;
   }
@@ -265,7 +265,7 @@ async function getWalletSummary(userId) {
   const summary = user.walletSummary();
   return {
     ...summary,
-    isUnlimited: isUnlimitedAccount(user),
+    isUnlimited: hasUnlimitedAccess(user),
     unlimitedReason: unlimitedAccessReason(user),
   };
 }

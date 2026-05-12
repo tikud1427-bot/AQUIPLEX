@@ -1,0 +1,12 @@
+{
+  "name": "todo-list-tool",
+  "version": "1.0.0",
+  "description": "To-Do List Tool",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

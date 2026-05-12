@@ -10,6 +10,7 @@ const { handleAquaRequest, detectIntent, buildProjectContext } =
   require("../core/aqua.orchestrator");
 
 const svc = require("../workspace/workspace.service");
+const User                            = require("../models/User");
 const { createLogger }            = require("../utils/logger");
 const { asyncHandler, sendError } = require("../middleware/asyncHandler");
 const { validateAquaExecute }     = require("../utils/validate");
@@ -133,22 +134,24 @@ router.post("/execute", usageGuard(aquaActionType), asyncHandler(async (req, res
   try {
     // handleAquaRequest expects a single payload object (orchestrator v5 signature)
     result = await handleAquaRequest({
-    userId,
-    projectId,
-    input:          message.trim(),
-    mode:           "chat",
-    projectFiles,
-    memory:         workspaceMemory,
+      userId,
+      projectId,
+      input:          message.trim(),
+      mode:           "chat",
+      projectFiles,
+      memory:         workspaceMemory,
       sessionHistory: Array.isArray(sessionHistory) ? sessionHistory : [],
     });
   } catch (genErr) {
     // Refund credits on generation failure
     if (creditDeducted && cost && userId) {
       await req.creditContext.refund();
-
     }
     throw genErr;
   }
+
+  
+  // ─────────────────────────────────────────────────────────────────────────
 
   let previewRefresh = false;
 

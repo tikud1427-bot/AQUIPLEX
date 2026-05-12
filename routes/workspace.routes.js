@@ -9,10 +9,12 @@ const path      = require("path");
 
 const Workspace = require("../models/Workspace");
 const Bundle    = require("../models/Bundle");
+
 const svc       = require("../workspace/workspace.service");
 const { createLogger }                        = require("../utils/logger");
 const { asyncHandler, sendError, sendSuccess } = require("../middleware/asyncHandler");
 const { validateSaveFile, validateEditFile }  = require("../utils/validate");
+
 
 const log = createLogger("WS_ROUTE");
 
@@ -239,6 +241,11 @@ router.post("/save-file", asyncHandler(async (req, res) => {
 router.post("/edit-file", asyncHandler(async (req, res) => {
   const userId = uid(req);
   if (!userId) return sendError(res, "Unauthorized", 401);
+
+  
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   const { projectId, fileName, instruction } = req.body || {};
   const v = validateEditFile({ projectId, fileName, instruction });
   if (!v.valid) return sendError(res, v.error, 400);

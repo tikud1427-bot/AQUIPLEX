@@ -25,7 +25,7 @@ const { createLogger }       = require("../../utils/logger");
 
 const log = createLogger("BILLING_ROUTES");
 const walletService = require("../../services/credits/wallet.service");
-const User = require("../../models/User");
+
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
 

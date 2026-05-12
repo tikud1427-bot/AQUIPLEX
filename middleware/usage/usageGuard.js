@@ -12,12 +12,20 @@
  *
  * Deduction happens AFTER the action succeeds (in route handler via commitCredit).
  * Or use usageGuard with deductOnEntry: true for pre-deduct (with refund on failure).
+ *
+ * Free build bypass:
+ *   Free users with 0 credits may generate ONE full app per daily reset cycle.
+ *   req.freeFullBuild = true signals the route handler to mark usage after success.
+ *   AI editing is NOT bypassed — ever.
  */
 
 const User          = require("../../models/User");
 const { getActionCost }  = require("../../utils/credits/packs");
 const { deductCredits, refundCredits } = require("../../services/credits/wallet.service");
-const { isUnlimitedAccount, unlimitedAccessReason } = require("../../utils/credits/unlimitedAccess");
+const {
+  hasUnlimitedAccess,
+  unlimitedAccessReason,
+} = require("../../utils/credits/unlimitedAccess");
 const { createLogger }   = require("../../utils/logger");
 
 const log = createLogger("USAGE_MW");
@@ -69,47 +77,47 @@ function usageGuard(actionTypeOrFn = "default", options = {}) {
 
       const cost  = getActionCost(actionType);
       const total = user.wallet.freeCredits + user.wallet.paidCredits;
-      const unlimited = isUnlimitedAccount(user);
+      const unlimited = hasUnlimitedAccess(user);
 
-if (unlimited) {
-  log.info("[UsageGuard] unlimited bypass granted", {
-    email: user.email,
-    reason: unlimitedAccessReason(user),
-  });
+      if (unlimited) {
+        log.info("[UsageGuard] unlimited bypass granted", {
+          email: user.email,
+          reason: unlimitedAccessReason(user),
+        });
 
-  req.creditContext = {
-    userId: uid,
-    cost,
-    actionType,
-    deducted: false,
-    unlimited: true,
+        req.creditContext = {
+          userId: uid,
+          cost,
+          actionType,
+          deducted: false,
+          unlimited: true,
 
-    refund: () => Promise.resolve(),
-    commit: () => Promise.resolve(),
+          refund: () => Promise.resolve(),
+          commit: () => Promise.resolve(),
 
-    balanceAfter: {
-      freeCredits: user.wallet?.freeCredits || 0,
-      paidCredits: user.wallet?.paidCredits || 0,
-      total,
-      isUnlimited: true,
-      unlimitedReason: unlimitedAccessReason(user),
-    },
-  };
+          balanceAfter: {
+            freeCredits: user.wallet?.freeCredits || 0,
+            paidCredits: user.wallet?.paidCredits || 0,
+            total,
+            isUnlimited: true,
+            unlimitedReason: unlimitedAccessReason(user),
+          },
+        };
 
-  return next();
-}
+        return next();
+      }
 
-if (total < cost) {
-  log.warn("[UsageGuard] insufficient credits", {
-    userId: uid,
-    email: user.email,
-    totalCredits: total,
-    costRequired: cost,
-    actionType,
-  });
+      if (total < cost) {
+        log.warn("[UsageGuard] insufficient credits", {
+          userId: uid,
+          email: user.email,
+          totalCredits: total,
+          costRequired: cost,
+          actionType,
+        });
 
-  return insufficientResponse(res, user, cost, actionType);
-}
+        return insufficientResponse(res, user, cost, actionType);
+      }
 
       if (deductOnEntry) {
         // Deduct now — refund via req.creditContext.refund() if action fails

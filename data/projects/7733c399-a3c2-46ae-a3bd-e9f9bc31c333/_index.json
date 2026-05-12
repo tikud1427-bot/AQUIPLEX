@@ -1,0 +1,23 @@
+{
+  "projectId": "7733c399-a3c2-46ae-a3bd-e9f9bc31c333",
+  "name": "car racing game",
+  "userId": "69b6cfebb7e3cd8899a4c459",
+  "files": [
+    "package.json",
+    "server.js",
+    "index.html",
+    "public/style.css",
+    "public/script.js",
+    "README.md",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-05-12T18:38:31.791Z",
+  "updatedAt": "2026-05-12T18:40:34.410Z",
+  "prompt": "car racing game",
+  "source": "fullstack",
+  "intent": "fullstack",
+  "qualityScore": 82,
+  "projectType": "game",
+  "designDirection": "Cyberpunk/Neon: dark background (#0a0a0f), electric cyan/magenta glows, HUD overlays, scanline effects"
+}

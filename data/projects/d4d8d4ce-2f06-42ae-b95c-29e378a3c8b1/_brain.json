@@ -1,0 +1,115 @@
+{
+  "projectId": "d4d8d4ce-2f06-42ae-b95c-29e378a3c8b1",
+  "createdAt": "2026-05-12T18:37:19.352Z",
+  "updatedAt": "2026-05-12T18:37:47.777Z",
+  "name": "ai to do list",
+  "projectType": "static",
+  "description": "ai to do list",
+  "framework": "vanilla",
+  "entryFile": "index.html",
+  "stylesheets": [
+    "style.css"
+  ],
+  "scripts": [
+    "script.js"
+  ],
+  "fileGraph": {
+    "index.html": [
+      "style.css",
+      "script.js"
+    ]
+  },
+  "components": [
+    "navbar",
+    "hero",
+    "cards",
+    "footer",
+    "form"
+  ],
+  "colorPalette": [
+    "#f7f7f7",
+    "#ffffff",
+    "#e5e5e5",
+    "#ffd700",
+    "#ff9900",
+    "#333333",
+    "#666666",
+    "#999999"
+  ],
+  "fontPrimary": "Playfair Display",
+  "fontSecondary": "",
+  "designTheme": "Luxury Editorial: off-white, serif + sans pairing, gold accent, editorial grid",
+  "cdnLibraries": [],
+  "codingStyle": {
+    "usesClasses": false,
+    "usesModules": false,
+    "usesLocalStorage": true,
+    "usesWebComponents": false,
+    "usesCanvas": false,
+    "usesWebAudio": false,
+    "usesAnimations": true,
+    "usesIntersectionObserver": true
+  },
+  "editHistory": [
+    {
+      "ts": "2026-05-12T18:37:47.776Z",
+      "files": [
+        "index.html"
+      ],
+      "instruction": "ui upgrade"
+    }
+  ],
+  "knownIssues": [],
+  "activeTasks": [],
+  "snapshots": [
+    {
+      "version": 2,
+      "label": "before: ui upgrade",
+      "ts": "2026-05-12T18:37:44.401Z",
+      "files": [
+        {
+          "fileName": "index.html",
+          "content": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>AI To-Do List</title>\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n    <link href=\"https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;700&display=swap\" rel=\"stylesheet\">\n    <link rel=\"stylesheet\" href=\"style.css\">\n</head>\n<body>\n    <header>\n        <nav id=\"nav\">\n            <ul>\n                <li><a href=\"#hero\">Home</a></li>\n                <li><a href=\"#features\">Features</a></li>\n                <li><a href=\"#pricing\">Pricing</a></li>\n                <li><a href=\"#testimonials\">Testimonials</a></li>\n                <li><a href=\"#contact\">Contact</a></li>\n            </ul>\n        </nav>\n    </header>\n    <section id=\"hero\">\n        <div class=\"hero-bg\"></div>\n        <h1 class=\"hero-headline\">AI To-Do List</h1>\n    </section>\n    <section id=\"features\">\n        <div class=\"section-title\">Features</div>\n        <div class=\"feature-cards\">\n            <div class=\"card\">\n                <h2>AI-Powered Tasks</h2>\n                <p>Automatically generate tasks based on your goals and priorities.</p>\n            </div>\n            <div class=\"card\">\n                <h2>Smart Reminders</h2>\n                <p>Receive reminders based on your schedule and task deadlines.</p>\n            </div>\n            <div class=\"card\">\n                <h2>Collaboration Tools</h2>\n                <p>Work with others in real-time to achieve common goals.</p>\n            </div>\n        </div>\n    </section>\n    <section id=\"pricing\">\n        <div class=\"section-title\">Pricing</div>\n        <div class=\"pricing-plans\">\n            <div class=\"plan\">\n                <h2>Basic</h2>\n                <p>$9.99/month</p>\n                <ul>\n                    <li>AI-Powered Tasks</li>\n                    <li>Smart Reminders</li>\n                </ul>\n            </div>\n            <div class=\"plan\">\n                <h2>Premium</h2>\n                <p>$19.99/month</p>\n                <ul>\n                    <li>AI-Powered Tasks</li>\n                    <li>Smart Reminders</li>\n                    <li>Collaboration Tools</li>\n                </ul>\n            </div>\n        </div>\n    </section>\n    <section id=\"testimonials\">\n        <div class=\"section-title\">Testimonials</div>\n        <div class=\"testimonial-cards\">\n            <div class=\"card\">\n                <p>&#8220;AI To-Do List has revolutionized my productivity!&#8221;</p>\n                <p>John Doe</p>\n            </div>\n            <div class=\"card\">\n                <p>&#8220;I can finally manage my tasks with ease!&#8221;</p>\n                <p>Jane Smith</p>\n            </div>\n        </div>\n    </section>\n    <section id=\"contact\">\n        <div class=\"section-title\">Contact</div>\n        <form>\n            <input type=\"email\" placeholder=\"Email\">\n            <textarea placeholder=\"Message\"></textarea>\n            <button>Send</button>\n        </form>\n    </section>\n    <footer>\n        <div class=\"footer-columns\">\n            <div class=\"column\">\n                <h2>About</h2>\n                <p>AI To-Do List is a cutting-edge task management tool.</p>\n            </div>\n            <div class=\"column\">\n                <h2>Support</h2>\n                <ul>\n                    <li>FAQ</li>\n                    <li>Contact Us</li>\n                </ul>\n            </div>\n            <div class=\"column\">\n                <h2>Newsletter</h2>\n                <form>\n                    <input type=\"email\" placeholder=\"Email\">\n                    <button>Subscribe</button>\n                </form>\n            </div>\n        </div>\n    </footer>\n    <script src=\"script.js\"></script>\n</body>\n</html>"
+        },
+        {
+          "fileName": "style.css",
+          "content": ":root {\n    --bg-primary: #f7f7f7;\n    --bg-secondary: #ffffff;\n    --bg-tertiary: #e5e5e5;\n    --accent-1: #ffd700;\n    --accent-2: #ff9900;\n    --text-primary: #333333;\n    --text-secondary: #666666;\n    --text-muted: #999999;\n    --surface: #ffffff;\n    --surface-hover: #f7f7f7;\n    --border: #cccccc;\n    --glow-color: #ffd700;\n}\n\nbody {\n    font-family: 'DM Sans', sans-serif;\n    margin: 0;\n    padding: 0;\n}\n\n#nav {\n    position: sticky;\n    top: 0;\n    background-color: var(--bg-primary);\n    padding: 1rem;\n    text-align: center;\n}\n\n#nav ul {\n    list-style: none;\n    margin: 0;\n    padding: 0;\n}\n\n#nav li {\n    display: inline-block;\n    margin-right: 20px;\n}\n\n#nav a {\n    color: var(--text-primary);\n    text-decoration: none;\n    transition: color 0.2s ease;\n}\n\n#nav a:hover {\n    color: var(--accent-1);\n}\n\n.hero-bg {\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100vh;\n    background-image: radial-gradient(at 50% 50%, #ffd700 0, #ffffff 100%);\n    background-size: 400% 400%;\n    animation: gradient 10s ease infinite;\n}\n\n@keyframes gradient {\n    0% {\n        background-position: 0% 50%;\n    }\n    50% {\n        background-position: 100% 50%;\n    }\n    100% {\n        background-position: 0% 50%;\n    }\n}\n\n.hero-headline {\n    font-family: 'Playfair Display', serif;\n    font-size: clamp(2rem, 5vw, 4rem);\n    color: var(--text-primary);\n    position: relative;\n    animation: stagger 1s ease;\n}\n\n@keyframes stagger {\n    0% {\n        opacity: 0;\n        transform: translateY(20px);\n    }\n    100% {\n        opacity: 1;\n        transform: translateY(0);\n    }\n}\n\n.section-title {\n    font-size: clamp(1.5rem, 3vw, 2.5rem);\n    color: var(--text-primary);\n    margin-bottom: 20px;\n}\n\n.card {\n    background-color: var(--surface);\n    padding: 20px;\n    border-radius: 16px;\n    border: 1px solid var(--border);\n    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);\n    margin-bottom: 20px;\n}\n\n.card:hover {\n    transform: translateY(-5px);\n    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);\n}\n\nbutton {\n    background-color: var(--accent-1);\n    color: var(--text-primary);\n    border: none;\n    padding: 10px 20px;\n    border-radius: 8px;\n    cursor: pointer;\n}\n\nbutton:hover {\n    background-color: var(--accent-2);\n}\n\nfooter {\n    background-color: var(--bg-primary);\n    padding: 20px;\n    text-align: center;\n}\n\n.footer-columns {\n    display: flex;\n    flex-wrap: wrap;\n    justify-content: center;\n}\n\n.column {\n    flex-basis: 30%;\n    margin: 20px;\n}\n\n.column h2 {\n    font-size: clamp(1.2rem, 2vw, 1.8rem);\n    color: var(--text-primary);\n    margin-bottom: 10px;\n}\n\n::selection {\n    background-color: var(--accent-1);\n    color: var(--text-primary);\n}\n\n::-webkit-scrollbar {\n    width: 10px;\n    height: 10px;\n}\n\n::-webkit-scrollbar-thumb {\n    background-color: var(--bg-tertiary);\n    border-radius: 5px;\n}\n\n::-webkit-scrollbar-track {\n    background-color: var(--bg-secondary);\n}"
+        },
+        {
+          "fileName": "script.js",
+          "content": "const nav = document.getElementById('nav');\nconst heroHeadline = document.querySelector('.hero-headline');\n\nnav.addEventListener('scroll', () => {\n    if (window.scrollY > 100) {\n        nav.classList.add('scrolled');\n    } else {\n        nav.classList.remove('scrolled');\n    }\n});\n\nheroHeadline.classList.add('animate');\n\nconst cards = document.querySelectorAll('.card');\n\ncards.forEach((card) => {\n    card.addEventListener('mouseover', () => {\n        card.classList.add('hover');\n    });\n    card.addEventListener('mouseout', () => {\n        card.classList.remove('hover');\n    });\n});\n\nconst buttons = document.querySelectorAll('button');\n\nbuttons.forEach((button) => {\n    button.addEventListener('mouseover', () => {\n        button.classList.add('hover');\n    });\n    button.addEventListener('mouseout', () => {\n        button.classList.remove('hover');\n    });\n});\n\nconst footerForm = document.querySelector('footer form');\n\nfooterForm.addEventListener('submit', (e) => {\n    e.preventDefault();\n    const email = document.querySelector('footer input[type=\"email\"]').value;\n    localStorage.setItem('email', email);\n});\n\nconst scrollObserver = new IntersectionObserver((entries) => {\n    entries.forEach((entry) => {\n        if (entry.isIntersecting) {\n            entry.target.classList.add('visible');\n        } else {\n            entry.target.classList.remove('visible');\n        }\n    });\n}, {\n    rootMargin: '50px',\n});\n\ndocument.querySelectorAll('.section-title, .card, .plan, .testimonial-cards .card').forEach((element) => {\n    scrollObserver.observe(element);\n});\n\ndocument.addEventListener('DOMContentLoaded', () => {\n    const staggerElements = document.querySelectorAll('.hero-headline, .section-title, .card, .plan, .testimonial-cards .card');\n\n    staggerElements.forEach((element, index) => {\n        element.style.animationDelay = `${index * 0.1}s`;\n        element.classList.add('animate');\n    });\n});"
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "label": "v1 — initial generation",
+      "ts": "2026-05-12T18:37:19.356Z",
+      "files": [
+        {
+          "fileName": "index.html",
+          "content": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>AI To-Do List</title>\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n    <link href=\"https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;700&display=swap\" rel=\"stylesheet\">\n    <link rel=\"stylesheet\" href=\"style.css\">\n</head>\n<body>\n    <header>\n        <nav id=\"nav\">\n            <ul>\n                <li><a href=\"#hero\">Home</a></li>\n                <li><a href=\"#features\">Features</a></li>\n                <li><a href=\"#pricing\">Pricing</a></li>\n                <li><a href=\"#testimonials\">Testimonials</a></li>\n                <li><a href=\"#contact\">Contact</a></li>\n            </ul>\n        </nav>\n    </header>\n    <section id=\"hero\">\n        <div class=\"hero-bg\"></div>\n        <h1 class=\"hero-headline\">AI To-Do List</h1>\n    </section>\n    <section id=\"features\">\n        <div class=\"section-title\">Features</div>\n        <div class=\"feature-cards\">\n            <div class=\"card\">\n                <h2>AI-Powered Tasks</h2>\n                <p>Automatically generate tasks based on your goals and priorities.</p>\n            </div>\n            <div class=\"card\">\n                <h2>Smart Reminders</h2>\n                <p>Receive reminders based on your schedule and task deadlines.</p>\n            </div>\n            <div class=\"card\">\n                <h2>Collaboration Tools</h2>\n                <p>Work with others in real-time to achieve common goals.</p>\n            </div>\n        </div>\n    </section>\n    <section id=\"pricing\">\n        <div class=\"section-title\">Pricing</div>\n        <div class=\"pricing-plans\">\n            <div class=\"plan\">\n                <h2>Basic</h2>\n                <p>$9.99/month</p>\n                <ul>\n                    <li>AI-Powered Tasks</li>\n                    <li>Smart Reminders</li>\n                </ul>\n            </div>\n            <div class=\"plan\">\n                <h2>Premium</h2>\n                <p>$19.99/month</p>\n                <ul>\n                    <li>AI-Powered Tasks</li>\n                    <li>Smart Reminders</li>\n                    <li>Collaboration Tools</li>\n                </ul>\n            </div>\n        </div>\n    </section>\n    <section id=\"testimonials\">\n        <div class=\"section-title\">Testimonials</div>\n        <div class=\"testimonial-cards\">\n            <div class=\"card\">\n                <p>&#8220;AI To-Do List has revolutionized my productivity!&#8221;</p>\n                <p>John Doe</p>\n            </div>\n            <div class=\"card\">\n                <p>&#8220;I can finally manage my tasks with ease!&#8221;</p>\n                <p>Jane Smith</p>\n            </div>\n        </div>\n    </section>\n    <section id=\"contact\">\n        <div class=\"section-title\">Contact</div>\n        <form>\n            <input type=\"email\" placeholder=\"Email\">\n            <textarea placeholder=\"Message\"></textarea>\n            <button>Send</button>\n        </form>\n    </section>\n    <footer>\n        <div class=\"footer-columns\">\n            <div class=\"column\">\n                <h2>About</h2>\n                <p>AI To-Do List is a cutting-edge task management tool.</p>\n            </div>\n            <div class=\"column\">\n                <h2>Support</h2>\n                <ul>\n                    <li>FAQ</li>\n                    <li>Contact Us</li>\n                </ul>\n            </div>\n            <div class=\"column\">\n                <h2>Newsletter</h2>\n                <form>\n                    <input type=\"email\" placeholder=\"Email\">\n                    <button>Subscribe</button>\n                </form>\n            </div>\n        </div>\n    </footer>\n    <script src=\"script.js\"></script>\n</body>\n</html>"
+        },
+        {
+          "fileName": "style.css",
+          "content": ":root {\n    --bg-primary: #f7f7f7;\n    --bg-secondary: #ffffff;\n    --bg-tertiary: #e5e5e5;\n    --accent-1: #ffd700;\n    --accent-2: #ff9900;\n    --text-primary: #333333;\n    --text-secondary: #666666;\n    --text-muted: #999999;\n    --surface: #ffffff;\n    --surface-hover: #f7f7f7;\n    --border: #cccccc;\n    --glow-color: #ffd700;\n}\n\nbody {\n    font-family: 'DM Sans', sans-serif;\n    margin: 0;\n    padding: 0;\n}\n\n#nav {\n    position: sticky;\n    top: 0;\n    background-color: var(--bg-primary);\n    padding: 1rem;\n    text-align: center;\n}\n\n#nav ul {\n    list-style: none;\n    margin: 0;\n    padding: 0;\n}\n\n#nav li {\n    display: inline-block;\n    margin-right: 20px;\n}\n\n#nav a {\n    color: var(--text-primary);\n    text-decoration: none;\n    transition: color 0.2s ease;\n}\n\n#nav a:hover {\n    color: var(--accent-1);\n}\n\n.hero-bg {\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100vh;\n    background-image: radial-gradient(at 50% 50%, #ffd700 0, #ffffff 100%);\n    background-size: 400% 400%;\n    animation: gradient 10s ease infinite;\n}\n\n@keyframes gradient {\n    0% {\n        background-position: 0% 50%;\n    }\n    50% {\n        background-position: 100% 50%;\n    }\n    100% {\n        background-position: 0% 50%;\n    }\n}\n\n.hero-headline {\n    font-family: 'Playfair Display', serif;\n    font-size: clamp(2rem, 5vw, 4rem);\n    color: var(--text-primary);\n    position: relative;\n    animation: stagger 1s ease;\n}\n\n@keyframes stagger {\n    0% {\n        opacity: 0;\n        transform: translateY(20px);\n    }\n    100% {\n        opacity: 1;\n        transform: translateY(0);\n    }\n}\n\n.section-title {\n    font-size: clamp(1.5rem, 3vw, 2.5rem);\n    color: var(--text-primary);\n    margin-bottom: 20px;\n}\n\n.card {\n    background-color: var(--surface);\n    padding: 20px;\n    border-radius: 16px;\n    border: 1px solid var(--border);\n    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);\n    margin-bottom: 20px;\n}\n\n.card:hover {\n    transform: translateY(-5px);\n    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);\n}\n\nbutton {\n    background-color: var(--accent-1);\n    color: var(--text-primary);\n    border: none;\n    padding: 10px 20px;\n    border-radius: 8px;\n    cursor: pointer;\n}\n\nbutton:hover {\n    background-color: var(--accent-2);\n}\n\nfooter {\n    background-color: var(--bg-primary);\n    padding: 20px;\n    text-align: center;\n}\n\n.footer-columns {\n    display: flex;\n    flex-wrap: wrap;\n    justify-content: center;\n}\n\n.column {\n    flex-basis: 30%;\n    margin: 20px;\n}\n\n.column h2 {\n    font-size: clamp(1.2rem, 2vw, 1.8rem);\n    color: var(--text-primary);\n    margin-bottom: 10px;\n}\n\n::selection {\n    background-color: var(--accent-1);\n    color: var(--text-primary);\n}\n\n::-webkit-scrollbar {\n    width: 10px;\n    height: 10px;\n}\n\n::-webkit-scrollbar-thumb {\n    background-color: var(--bg-tertiary);\n    border-radius: 5px;\n}\n\n::-webkit-scrollbar-track {\n    background-color: var(--bg-secondary);\n}"
+        },
+        {
+          "fileName": "script.js",
+          "content": "const nav = document.getElementById('nav');\nconst heroHeadline = document.querySelector('.hero-headline');\n\nnav.addEventListener('scroll', () => {\n    if (window.scrollY > 100) {\n        nav.classList.add('scrolled');\n    } else {\n        nav.classList.remove('scrolled');\n    }\n});\n\nheroHeadline.classList.add('animate');\n\nconst cards = document.querySelectorAll('.card');\n\ncards.forEach((card) => {\n    card.addEventListener('mouseover', () => {\n        card.classList.add('hover');\n    });\n    card.addEventListener('mouseout', () => {\n        card.classList.remove('hover');\n    });\n});\n\nconst buttons = document.querySelectorAll('button');\n\nbuttons.forEach((button) => {\n    button.addEventListener('mouseover', () => {\n        button.classList.add('hover');\n    });\n    button.addEventListener('mouseout', () => {\n        button.classList.remove('hover');\n    });\n});\n\nconst footerForm = document.querySelector('footer form');\n\nfooterForm.addEventListener('submit', (e) => {\n    e.preventDefault();\n    const email = document.querySelector('footer input[type=\"email\"]').value;\n    localStorage.setItem('email', email);\n});\n\nconst scrollObserver = new IntersectionObserver((entries) => {\n    entries.forEach((entry) => {\n        if (entry.isIntersecting) {\n            entry.target.classList.add('visible');\n        } else {\n            entry.target.classList.remove('visible');\n        }\n    });\n}, {\n    rootMargin: '50px',\n});\n\ndocument.querySelectorAll('.section-title, .card, .plan, .testimonial-cards .card').forEach((element) => {\n    scrollObserver.observe(element);\n});\n\ndocument.addEventListener('DOMContentLoaded', () => {\n    const staggerElements = document.querySelectorAll('.hero-headline, .section-title, .card, .plan, .testimonial-cards .card');\n\n    staggerElements.forEach((element, index) => {\n        element.style.animationDelay = `${index * 0.1}s`;\n        element.classList.add('animate');\n    });\n});"
+        }
+      ]
+    }
+  ],
+  "isFullstack": true,
+  "stack": {
+    "frontend": "",
+    "backend": "",
+    "database": "",
+    "auth": ""
+  },
+  "routes": [],
+  "dbModels": [],
+  "envVars": [],
+  "deployTarget": ""
+}

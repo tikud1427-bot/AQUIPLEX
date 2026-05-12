@@ -1,0 +1,91 @@
+{
+  "projectId": "38a42dd7-4e16-402f-9fd4-ae2e23cd9b11",
+  "createdAt": "2026-05-12T18:13:50.422Z",
+  "updatedAt": "2026-05-12T18:13:50.778Z",
+  "name": "make a to-do list tool",
+  "projectType": "tool",
+  "description": "make a to-do list tool",
+  "framework": "vanilla",
+  "entryFile": "index.html",
+  "stylesheets": [
+    "style.css"
+  ],
+  "scripts": [
+    "server.js",
+    "script.js"
+  ],
+  "fileGraph": {
+    "index.html": [
+      "style.css",
+      "script.js"
+    ]
+  },
+  "components": [],
+  "colorPalette": [
+    "#007bff",
+    "#f9f9f9",
+    "#fdfbfb",
+    "#ebedee"
+  ],
+  "fontPrimary": "Montserrat",
+  "fontSecondary": "",
+  "designTheme": "Monochrome Pro: near-black, white typography, single accent, ultra-clean micro-interactions",
+  "cdnLibraries": [],
+  "codingStyle": {
+    "usesClasses": false,
+    "usesModules": false,
+    "usesLocalStorage": false,
+    "usesWebComponents": false,
+    "usesCanvas": false,
+    "usesWebAudio": false,
+    "usesAnimations": true,
+    "usesIntersectionObserver": false
+  },
+  "editHistory": [],
+  "knownIssues": [],
+  "activeTasks": [],
+  "snapshots": [
+    {
+      "version": 1,
+      "label": "v1 — initial generation",
+      "ts": "2026-05-12T18:13:50.778Z",
+      "files": [
+        {
+          "fileName": "package.json",
+          "content": "{\n  \"name\": \"todo-list-tool\",\n  \"version\": \"1.0.0\",\n  \"description\": \"To-Do List Tool\",\n  \"main\": \"server.js\",\n  \"scripts\": {\n    \"start\": \"node server.js\"\n  },\n  \"dependencies\": {\n    \"express\": \"^4.18.2\"\n  }\n}"
+        },
+        {
+          "fileName": "server.js",
+          "content": "require('dotenv').config();\nconst express = require('express');\nconst app = express();\nconst port = process.env.PORT;\n\napp.use(express.static(__dirname));\n\napp.get('/', (req, res) => {\n  res.sendFile(__dirname + '/index.html');\n});\n\napp.get('/api/health', (req, res) => {\n  res.status(200).send('OK');\n});\n\napp.listen(port, () => {\n  console.log(`Server started on port ${port}`);\n});"
+        },
+        {
+          "fileName": "index.html",
+          "content": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>To-Do List Tool</title>\n  <link rel=\"stylesheet\" href=\"style.css\">\n  <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n  <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n  <link href=\"https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap\" rel=\"stylesheet\">\n</head>\n<body>\n  <div class=\"container\">\n    <h1>To-Do List Tool</h1>\n    <input id=\"todo-input\" type=\"text\" placeholder=\"Type a task...\">\n    <button id=\"add-btn\">Add</button>\n    <ul id=\"todo-list\"></ul>\n    <button id=\"download-btn\">Download</button>\n    <div id=\"history-panel\"></div>\n  </div>\n\n  <script src=\"script.js\"></script>\n</body>\n</html>"
+        },
+        {
+          "fileName": "style.css",
+          "content": ":root {\n  --primary-color: #333;\n  --accent-color: #007bff;\n  --background-color: #f9f9f9;\n  --text-color: #fff;\n  --border-radius: 16px;\n  --box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);\n  --spacing: 16px;\n}\n\nbody {\n  font-family: 'Montserrat', sans-serif;\n  background-image: linear-gradient(120deg, #fdfbfb 0%, #ebedee 100%);\n  background-size: 100% 100%;\n  height: 100vh;\n  margin: 0;\n  display: flex;\n  justify-content: center;\n  align-items: center;\n}\n\n.container {\n  background-color: var(--background-color);\n  padding: var(--spacing);\n  border-radius: var(--border-radius);\n  box-shadow: var(--box-shadow);\n  width: 400px;\n}\n\nh1 {\n  color: var(--primary-color);\n  text-align: center;\n}\n\n#todo-input {\n  width: 100%;\n  padding: var(--spacing);\n  border: none;\n  border-radius: var(--border-radius);\n  box-shadow: var(--box-shadow);\n  font-size: 16px;\n}\n\n#add-btn {\n  background-color: var(--accent-color);\n  color: var(--text-color);\n  padding: var(--spacing);\n  border: none;\n  border-radius: var(--border-radius);\n  cursor: pointer;\n}\n\n#add-btn:hover {\n  transform: scale(0.96);\n  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);\n}\n\n#todo-list {\n  list-style: none;\n  padding: 0;\n  margin: 0;\n}\n\n#todo-list li {\n  padding: var(--spacing);\n  border-bottom: 1px solid #ccc;\n}\n\n#todo-list li:last-child {\n  border-bottom: none;\n}\n\n#download-btn {\n  background-color: var(--accent-color);\n  color: var(--text-color);\n  padding: var(--spacing);\n  border: none;\n  border-radius: var(--border-radius);\n  cursor: pointer;\n}\n\n#download-btn:hover {\n  transform: scale(0.96);\n  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);\n}\n\n#history-panel {\n  margin-top: var(--spacing);\n}\n\n.copied {\n  position: absolute;\n  background-color: var(--accent-color);\n  color: var(--text-color);\n  padding: var(--spacing);\n  border-radius: var(--border-radius);\n  opacity: 0;\n  transition: opacity 0.3s;\n}\n\n.copied.show {\n  opacity: 1;\n}"
+        },
+        {
+          "fileName": "script.js",
+          "content": "const todoInput = document.getElementById('todo-input');\nconst addBtn = document.getElementById('add-btn');\nconst todoList = document.getElementById('todo-list');\nconst downloadBtn = document.getElementById('download-btn');\nconst historyPanel = document.getElementById('history-panel');\n\nlet todos = [];\nlet history = [];\n\n// Load sample data\ntodos = ['Buy groceries', 'Do laundry', 'Finish project'];\nrenderTodoList();\n\n// Debounce input\nlet debounceTimeout;\ntodoInput.addEventListener('input', () => {\n  clearTimeout(debounceTimeout);\n  debounceTimeout = setTimeout(() => {\n    const newTodo = todoInput.value.trim();\n    if (newTodo) {\n      todos.push(newTodo);\n      renderTodoList();\n      history.push({ action: 'add', todo: newTodo });\n      renderHistoryPanel();\n      todoInput.value = '';\n    }\n  }, 150);\n});\n\n// Add todo on enter key press\ntodoInput.addEventListener('keydown', (e) => {\n  if (e.key === 'Enter') {\n    addBtn.click();\n  }\n});\n\n// Add todo on button click\naddBtn.addEventListener('click', () => {\n  const newTodo = todoInput.value.trim();\n  if (newTodo) {\n    todos.push(newTodo);\n    renderTodoList();\n    history.push({ action: 'add', todo: newTodo });\n    renderHistoryPanel();\n    todoInput.value = '';\n  }\n});\n\n// Download todos as file\ndownloadBtn.addEventListener('click', () => {\n  const blob = new Blob([todos.join('\\n')], { type: 'text/plain' });\n  const link = document.createElement('a');\n  link.href = URL.createObjectURL(blob);\n  link.download = 'todos.txt';\n  link.click();\n});\n\n// Render todo list\nfunction renderTodoList() {\n  todoList.innerHTML = '';\n  todos.forEach((todo, index) => {\n    const li = document.createElement('li');\n    li.textContent = todo;\n    li.addEventListener('click', () => {\n      navigator.clipboard.writeText(todo);\n      const copied = document.createElement('span');\n      copied.textContent = 'Copied!';\n      copied.classList.add('copied');\n      li.appendChild(copied);\n      setTimeout(() => {\n        copied.classList.remove('show');\n        setTimeout(() => {\n          copied.remove();\n        }, 300);\n      }, 1000);\n    });\n    todoList.appendChild(li);\n  });\n}\n\n// Render history panel\nfunction renderHistoryPanel() {\n  historyPanel.innerHTML = '';\n  history.slice(-10).forEach((item) => {\n    const p = document.createElement('p');\n    p.textContent = `${item.action} ${item.todo}`;\n    historyPanel.appendChild(p);\n  });\n}\n\n// Keyboard shortcuts\ndocument.addEventListener('keydown', (e) => {\n  if (e.key === 'Escape') {\n    todoInput.value = '';\n  } else if (e.key === 'z' && e.ctrlKey) {\n    if (history.length) {\n      const lastAction = history.pop();\n      if (lastAction.action === 'add') {\n        todos.pop();\n        renderTodoList();\n        renderHistoryPanel();\n      }\n    }\n  }\n});"
+        },
+        {
+          "fileName": "README.md",
+          "content": "# To-Do List Tool\n\n## Setup\n\n1. Clone the repository: `git clone https://github.com/your-username/todo-list-tool.git`\n2. Install dependencies: `npm install`\n3. Start the server: `npm start`\n\n## Environment Variables\n\n| Variable | Description |\n| --- | --- |\n| PORT | Server port |\n\n## API Documentation\n\n### GET /\n\nServe the frontend.\n\n### GET /api/health\n\nHealth check.\n\n## Deploy\n\n1. Create a new project on Vercel.\n2. Set the `PORT` environment variable to `3000`.\n3. Deploy the project.\n\n## Features\n\n* Zero-friction: usable immediately on load, sample data pre-filled\n* Real-time output as user types (debounce 150ms)\n* Copy-to-clipboard on all outputs ('Copied!' flash)\n* History panel: last 10 operations with restore\n* Keyboard shortcuts (Enter=run, Escape=clear, Ctrl+Z=undo)\n* Download output as file (Blob API)\n* URL hash state sharing\n* Error states with inline validation and hints\n* Empty states with illustrated guide text"
+        }
+      ]
+    }
+  ],
+  "isFullstack": true,
+  "stack": {
+    "frontend": "vanilla",
+    "backend": "none",
+    "database": "none",
+    "auth": "none"
+  },
+  "routes": [],
+  "dbModels": [],
+  "envVars": [],
+  "deployTarget": "vercel"
+}

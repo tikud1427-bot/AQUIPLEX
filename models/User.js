@@ -13,25 +13,49 @@
  *   - Added:   wallet.freeResetAt     — next daily reset timestamp
  *   - Added:   wallet.totalEarned     — lifetime paid credits purchased
  *   - Added:   wallet.totalSpent      — lifetime credits consumed
+ *   - Added:   wallet.freeFullBuildUsed — tracks if free build was used this cycle
+ *   - Added:   wallet.aiEditLockedUntil — AI editing locked until this timestamp
  *
  * Consumption order: freeCredits first → paidCredits
  */
 
 const mongoose = require("mongoose");
 const crypto   = require("crypto");
-const { isUnlimitedAccount, unlimitedAccessReason } = require("../utils/credits/unlimitedAccess");
+const { hasUnlimitedAccess, unlimitedAccessReason } = require("../utils/credits/unlimitedAccess");
 
-const FREE_DAILY_CREDITS = parseInt(process.env.FREE_DAILY_CREDITS || "100", 10);
+const FREE_DAILY_CREDITS = parseInt(process.env.FREE_DAILY_CREDITS || "200", 10);
 
 const walletSchema = new mongoose.Schema(
   {
-    freeCredits:  { type: Number, default: FREE_DAILY_CREDITS, min: 0 },
-    paidCredits:  { type: Number, default: 0,                  min: 0 },
-    freeResetAt:  { type: Date,   default: () => nextDayReset() },
-    totalEarned:  { type: Number, default: 0, min: 0 },  // lifetime paid credits added
-    totalSpent:   { type: Number, default: 0, min: 0 },  // lifetime credits consumed
-  },
-  { _id: false }
+    freeCredits: {
+      type: Number,
+      default: FREE_DAILY_CREDITS,
+      min: 0,
+    },
+
+    paidCredits: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    freeResetAt: {
+      type: Date,
+      default: () => nextDayReset(),
+    },
+
+    totalEarned: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalSpent: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+  }
 );
 
 const userSchema = new mongoose.Schema(
@@ -67,8 +91,8 @@ userSchema.pre("save", function (next) {
 
 // ── Access helpers ────────────────────────────────────────────────────────────
 
-userSchema.methods.isUnlimitedAccount = function () {
-  return isUnlimitedAccount(this);
+userSchema.methods.hasUnlimitedAccount = function () {
+  return hasUnlimitedAccess(this);
 };
 
 userSchema.methods.unlimitedAccessReason = function () {
@@ -82,11 +106,14 @@ userSchema.methods.unlimitedAccessReason = function () {
  * Returns true if reset occurred.
  */
 userSchema.methods.resetFreeCreditsIfNeeded = function () {
-  if (this.isUnlimitedAccount()) return false;
+  if (this.hasUnlimitedAccount()) return false;
   const now = new Date();
   if (this.wallet.freeResetAt && now >= this.wallet.freeResetAt) {
     this.wallet.freeCredits = FREE_DAILY_CREDITS;
     this.wallet.freeResetAt = nextDayReset();
+
+    
+
     return true;
   }
   return false;
@@ -96,7 +123,7 @@ userSchema.methods.resetFreeCreditsIfNeeded = function () {
  * totalAvailableCredits — free + paid.
  */
 userSchema.methods.totalAvailableCredits = function () {
-  if (this.isUnlimitedAccount()) return Number.MAX_SAFE_INTEGER;
+  if (this.hasUnlimitedAccount()) return Number.MAX_SAFE_INTEGER;
   this.resetFreeCreditsIfNeeded();
   return this.wallet.freeCredits + this.wallet.paidCredits;
 };
@@ -105,7 +132,7 @@ userSchema.methods.totalAvailableCredits = function () {
  * hasEnoughCredits — check without mutating.
  */
 userSchema.methods.hasEnoughCredits = function (cost) {
-  if (this.isUnlimitedAccount()) return true;
+  if (this.hasUnlimitedAccount()) return true;
   this.resetFreeCreditsIfNeeded();
   return this.totalAvailableCredits() >= cost;
 };
@@ -116,7 +143,7 @@ userSchema.methods.hasEnoughCredits = function (cost) {
  * Throws if insufficient.
  */
 userSchema.methods.deductCredits = function (cost) {
-  if (this.isUnlimitedAccount()) return;
+  if (this.hasUnlimitedAccount()) return;
   this.resetFreeCreditsIfNeeded();
   const total = this.wallet.freeCredits + this.wallet.paidCredits;
   if (total < cost) throw new Error("INSUFFICIENT_CREDITS");
@@ -153,7 +180,7 @@ userSchema.methods.walletSummary = function () {
     freeDailyMax: FREE_DAILY_CREDITS,
     totalEarned:  this.wallet.totalEarned,
     totalSpent:   this.wallet.totalSpent,
-    isUnlimited:  this.isUnlimitedAccount(),
+    isUnlimited:  this.hasUnlimitedAccount(),
     unlimitedReason: this.unlimitedAccessReason(),
   };
 };

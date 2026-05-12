@@ -210,7 +210,9 @@ async function applyEdit() {
 
     const data = await res.json();
 
-    if (!res.ok || !data.success) throw new Error(data.error || "Edit failed");
+    if (!res.ok || !data.success) {
+  throw new Error(data.error || "Edit failed");
+}
 
     if (!data.updatedFiles || data.updatedFiles.length === 0) {
       throw new Error("No changes applied");
