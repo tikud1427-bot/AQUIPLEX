@@ -2,7 +2,6 @@
  * index.js — Aqua AI Server
  */
 
-console.log("🔥 THIS INDEX.JS IS RUNNING");
 require("dotenv").config();
 
 // ── Startup validation & index self-healing ───────────────────────────────────
@@ -42,8 +41,6 @@ const fileSess = require("./engine/file.session");
 
 // ── Static data ───────────────────────────────────────────────────────────────
 const blogs = require("./blogs");
-console.log("BLOGS:", blogs);
-console.log("BLOGS LENGTH:", blogs ? blogs.length : "NO BLOGS");
 let dynamicBlogs = [];
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1881,18 +1878,21 @@ app.get("/download", (req, res) => {
 
 app.get("/write", (req, res) => res.render("write"));
 
+// /blog → /blogs canonical redirect
+app.get("/blog", (req, res) => res.redirect(301, "/blogs"));
+
 app.get("/blogs", (req, res) => {
-  console.log("📋 /blogs LIST route hit");
   const allBlogs = [...dynamicBlogs, ...blogs];
   res.render("blogs", { blogs: allBlogs });
 });
 
 app.get("/blogs/:slug", (req, res) => {
-  console.log("🔥 BLOG ROUTE HIT — slug:", req.params.slug);
   const allBlogs = [...dynamicBlogs, ...blogs];
   const blog     = allBlogs.find((b) => b.slug === req.params.slug);
-  console.log("Blog found:", blog ? blog.title : "NOT FOUND");
-  if (!blog) return res.status(404).send("Blog not found");
+  if (!blog) {
+    try { return res.status(404).render("404"); } catch (_) {}
+    return res.status(404).send("Blog not found");
+  }
   res.render("blog-detail", { blog });
 });
 
@@ -1912,11 +1912,64 @@ app.post("/write", (req, res) => {
   res.redirect("/blogs");
 });
 
+// ── Billing page ───────────────────────────────────────────────────────────────
+app.get("/billing", async (req, res) => {
+  try {
+    let billingUser = null;
+    if (req.session && req.session.userId) {
+      const u = await User.findById(req.session.userId).select("wallet email plan").lean();
+      if (u) billingUser = u;
+    }
+    return res.render("billing", { billingUser, user: billingUser });
+  } catch (err) {
+    console.error("[billing page]", err.message);
+    return res.render("billing", { billingUser: null, user: null });
+  }
+});
+
+// ── Categories page ────────────────────────────────────────────────────────────
+app.get("/categories", async (req, res) => {
+  try {
+    const allTools = await Tool.find({ status: { $in: ["approved", null, undefined] } }).lean();
+    const catMap = {};
+    allTools.forEach((t) => {
+      const cat = t.category || "Uncategorized";
+      if (!catMap[cat]) catMap[cat] = 0;
+      catMap[cat]++;
+    });
+    const categories = Object.entries(catMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+    res.render("categories", { categories });
+  } catch (err) {
+    console.error("[categories]", err.message);
+    res.status(500).send("Error loading categories");
+  }
+});
+
+// ── Lab page ───────────────────────────────────────────────────────────────────
+app.get("/lab", (req, res) => res.render("lab"));
+
+// ── Every page ─────────────────────────────────────────────────────────────────
+app.get("/every", async (req, res) => {
+  try {
+    const tools = await Tool.find({ status: { $in: ["approved", null, undefined] } }).lean();
+    res.render("every", { tools });
+  } catch (err) {
+    console.error("[every]", err.message);
+    res.status(500).send("Error loading page");
+  }
+});
+
 // ═════════════════════════════════════════════════════════════════════════════
 // ERROR HANDLERS
 // ═════════════════════════════════════════════════════════════════════════════
 
-app.use((req, res) => res.status(404).send("Page not found"));
+app.use((req, res) => {
+  // Try to render a 404 view, fall back to plain text
+  try { return res.status(404).render("404"); } catch (_) {}
+  res.status(404).send("Page not found");
+});
 
 app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);

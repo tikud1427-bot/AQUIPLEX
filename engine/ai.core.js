@@ -151,7 +151,7 @@ async function generateAI(messages, opts = {}) {
       if (!cleaned2.length || cleaned2[0].role !== "user") cleaned2.unshift({role:"user",content:"Hello"});
       const aRes = await withRetry(() =>
         axios.post("https://api.anthropic.com/v1/messages", {
-          model:      "claude-haiku-4-5-20251001",
+          model:      process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001",
           max_tokens: maxTokens || 1024,
           system:     sysMsg2?.content || undefined,
           messages:   cleaned2,

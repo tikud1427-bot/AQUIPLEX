@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= bundle.title %> | Aquiplex Bundle</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="icon" href="/logo/favicon.ico" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #020617;
+      color: #e2e8f0;
+      font-family: "Inter", system-ui, sans-serif;
+      min-height: 100vh;
+      padding: 40px 20px 80px;
+    }
+    .bundle-wrap { max-width: 860px; margin: 0 auto; }
+    .bundle-header { margin-bottom: 32px; }
+    .bundle-header h1 { font-size: 2rem; font-weight: 800; color: #fff; margin-bottom: 8px; }
+    .bundle-header p  { color: rgba(255,255,255,0.55); font-size: 1rem; }
+    .bundle-meta { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; }
+    .meta-badge {
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.25); color: #00d4ff;
+    }
+    .steps-list { display: flex; flex-direction: column; gap: 16px; }
+    .step-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 20px 24px;
+    }
+    .step-num { font-size: 12px; color: rgba(255,255,255,0.4); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .05em; }
+    .step-title { font-size: 1.1rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .step-desc  { color: rgba(255,255,255,0.6); font-size: .92rem; line-height: 1.6; }
+    .resources  { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .resource-tag {
+      padding: 3px 10px; border-radius: 8px; font-size: 11px;
+      background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3); color: #a78bfa;
+    }
+    .btn-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-bottom: 24px; padding: 8px 18px; border-radius: 10px;
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+      color: #fff; text-decoration: none; font-size: 14px; font-weight: 500;
+      transition: background .2s;
+    }
+    .btn-back:hover { background: rgba(255,255,255,0.12); }
+    .status-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 8px; font-size: 12px;
+      font-weight: 600; text-transform: uppercase;
+    }
+    .status-draft     { background: rgba(245,158,11,0.15); color: #f59e0b; }
+    .status-running   { background: rgba(0,212,255,0.15);  color: #00d4ff; }
+    .status-completed { background: rgba(34,197,94,0.15);  color: #22c55e; }
+  </style>
+</head>
+<body>
+  <%- include('partials/nav') %>
+
+  <div class="bundle-wrap">
+    <a href="/bundles" class="btn-back">← Back to Bundles</a>
+
+    <div class="bundle-header">
+      <h1><%= bundle.title %></h1>
+      <% if (bundle.goal) { %>
+        <p><%= bundle.goal %></p>
+      <% } %>
+      <div class="bundle-meta">
+        <span class="meta-badge"><%= bundle.steps ? bundle.steps.length : 0 %> Steps</span>
+        <span class="status-badge status-<%= bundle.status || 'draft' %>"><%= (bundle.status || 'draft').toUpperCase() %></span>
+      </div>
+    </div>
+
+    <div class="steps-list">
+      <% if (bundle.steps && bundle.steps.length) { %>
+        <% bundle.steps.forEach(function(step, i) { %>
+          <div class="step-card">
+            <div class="step-num">Step <%= i + 1 %></div>
+            <div class="step-title"><%= step.title %></div>
+            <div class="step-desc"><%= step.description %></div>
+            <% if (step.resources && step.resources.length) { %>
+              <div class="resources">
+                <% step.resources.forEach(function(r) { %>
+                  <span class="resource-tag"><%= r %></span>
+                <% }) %>
+              </div>
+            <% } %>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <p style="color:rgba(255,255,255,0.4)">No steps found for this bundle.</p>
+      <% } %>
+    </div>
+  </div>
+</body>
+</html>
