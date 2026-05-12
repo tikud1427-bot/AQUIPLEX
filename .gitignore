@@ -24,4 +24,5 @@ logs
 *.tar.gz
 
 # Vite (optional safe ignore)
-vite.config.ts.*public/uploads/
+vite.config.ts.*
+public/uploads/
