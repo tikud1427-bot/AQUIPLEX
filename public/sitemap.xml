@@ -4,7 +4,7 @@
   <!-- ROOT -->
   <url>
     <loc>https://aquiplex.com/</loc>
-    <lastmod>2026-05-12</lastmod>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
@@ -12,104 +12,52 @@
   <!-- CORE PAGES -->
   <url>
     <loc>https://aquiplex.com/home</loc>
-    <lastmod>2026-05-12</lastmod>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
   <url>
     <loc>https://aquiplex.com/chatbot</loc>
-    <lastmod>2026-05-12</lastmod>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
-  </url>
-
-  <!-- TOOL DISCOVERY -->
-  <url>
-    <loc>https://aquiplex.com/tools</loc>
-    <lastmod>2026-05-12</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
-  </url>
-
-  <url>
-    <loc>https://aquiplex.com/trending</loc>
-    <lastmod>2026-05-12</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.85</priority>
-  </url>
-
-  <url>
-    <loc>https://aquiplex.com/categories</loc>
-    <lastmod>2026-05-12</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
   </url>
 
   <!-- FEATURE PAGES -->
   <url>
     <loc>https://aquiplex.com/aqua-ai</loc>
-    <lastmod>2026-05-12</lastmod>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
 
   <url>
     <loc>https://aquiplex.com/aqua-project-engine</loc>
-    <lastmod>2026-05-12</lastmod>
+    <lastmod>2026-05-01</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
   </url>
 
+  <!-- REVENUE -->
   <url>
     <loc>https://aquiplex.com/bundles</loc>
-    <lastmod>2026-05-12</lastmod>
+    <lastmod>2026-04-20</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
-  </url>
-
-  <url>
-    <loc>https://aquiplex.com/lab</loc>
-    <lastmod>2026-05-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
-  </url>
-
-  <!-- BILLING -->
-  <url>
-    <loc>https://aquiplex.com/pricing</loc>
-    <lastmod>2026-05-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.75</priority>
-  </url>
-
-  <!-- BLOG -->
-  <url>
-    <loc>https://aquiplex.com/blogs</loc>
-    <lastmod>2026-05-12</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.7</priority>
   </url>
 
   <!-- TRUST -->
   <url>
     <loc>https://aquiplex.com/about</loc>
-    <lastmod>2026-05-12</lastmod>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
 
   <url>
     <loc>https://aquiplex.com/founders</loc>
-    <lastmod>2026-05-12</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
-  </url>
-
-  <!-- TOOL SUBMIT -->
-  <url>
-    <loc>https://aquiplex.com/submit</loc>
-    <lastmod>2026-05-12</lastmod>
+    <lastmod>2026-04-10</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

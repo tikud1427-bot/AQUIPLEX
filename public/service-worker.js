@@ -1,13 +1,11 @@
-const CACHE_NAME = "aquiplex-v2";
+const CACHE_NAME = "aquiplex-v1";
 
-// Only cache paths that actually exist as static files.
-// EJS-rendered pages (/, /home, etc.) are excluded to avoid stale HTML.
 const urlsToCache = [
+  "/",
+  "/index.html",
   "/css/styles.css",
-  "/css/home.css",
-  "/css/workspace.css",
-  "/js/script.js",
-  "/logo/favicon.ico"
+  "/logo/icon-192.png",
+  "/logo/icon-512.png"
 ];
 
 self.addEventListener("install", (event) => {
