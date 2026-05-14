@@ -1,0 +1,22 @@
+{
+  "projectId": "75a9c85d-7ac6-4aff-b10a-14fe5d5eac77",
+  "name": "book reading tool",
+  "userId": "69b6c6d87c83e9504c4e0cde",
+  "files": [
+    "package.json",
+    "server.js",
+    "index.html",
+    "style.css",
+    "script.js",
+    "README.md",
+    "env.example.txt"
+  ],
+  "createdAt": "2026-05-14T13:58:49.449Z",
+  "updatedAt": "2026-05-14T13:59:04.316Z",
+  "prompt": "book reading tool",
+  "source": "fullstack",
+  "intent": "fullstack",
+  "qualityScore": 98,
+  "projectType": "tool",
+  "designDirection": "Warm Minimal: warm off-white (#fdf8f0), deep brown text, amber/terracotta accent"
+}

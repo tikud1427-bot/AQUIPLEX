@@ -1,0 +1,15 @@
+{
+  "projectId": "75a9c85d-7ac6-4aff-b10a-14fe5d5eac77",
+  "userId": "69b6c6d87c83e9504c4e0cde",
+  "name": "book reading tool",
+  "files": [
+    "package.json",
+    "server.js",
+    "index.html",
+    "style.css",
+    "script.js",
+    "README.md",
+    "env.example.txt"
+  ],
+  "updatedAt": "2026-05-14T13:59:04.337Z"
+}

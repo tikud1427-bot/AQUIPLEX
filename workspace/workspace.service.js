@@ -72,13 +72,12 @@ const DEPRECATION_SIGNALS = [
 
 function getDynamicTokens(modelId) {
   if (!modelId || typeof modelId !== "string") return 4000;
-  if (modelId.includes("anthropic"))   return 8000;  // Claude: generous
-  if (modelId.includes("together"))    return 8000;  // Together: large models
-  if (modelId.includes("gemini"))      return 8000;  // Gemini free: 8k output
+  if (modelId.includes("anthropic"))   return 8000;
+  if (modelId.includes("gemini"))      return 8000;
   if (modelId.includes("llama-3.3") || modelId.includes("llama-3.1-70b")) return 8000;
   if (modelId.includes("qwen"))        return 6000;
   if (modelId.includes("deepseek"))    return 6000;
-  if (modelId.includes("groq"))        return 5000;  // Groq TPM-limited — be conservative
+  if (modelId.includes("groq"))        return 5000;
   if (modelId.includes("openrouter"))  return 4000;
   return 4000;
 }
@@ -90,15 +89,13 @@ function getDynamicTokens(modelId) {
 function buildModelRegistry() {
   const models = [];
 
-  // ── TIER 0: Anthropic Claude — most powerful, OpenAI-compatible via SDK ──
-  // Uses ANTHROPIC_API_KEY. claude-haiku-4-5 has generous free/cheap tier.
+  // ── TIER 0: Anthropic Claude — optional, if key present ─────────────────
   if (process.env.ANTHROPIC_API_KEY) {
     models.push({
       id: "anthropic:claude-haiku-4-5",
       isAnthropic: true,
       anthropicModel: "claude-haiku-4-5-20251001",
     });
-    // Sonnet as strong fallback (paid but powerful)
     models.push({
       id: "anthropic:claude-sonnet-4-5",
       isAnthropic: true,
@@ -106,9 +103,7 @@ function buildModelRegistry() {
     });
   }
 
-  // ── TIER 1: Groq free tier — fastest inference, 100% free ───────────────
-  // NOTE: mixtral-8x7b and gemma2-9b are DECOMMISSIONED — removed.
-  // llama-3.1-8b-instant has 6k TPM limit — only use for small tasks.
+  // ── TIER 1: Groq — primary free inference, fast ──────────────────────────
   if (process.env.GROQ_API_KEY) {
     const h = {
       "Authorization": `Bearer ${process.env.GROQ_API_KEY}`,
@@ -116,53 +111,21 @@ function buildModelRegistry() {
     };
     const groqBase = "https://api.groq.com/openai/v1/chat/completions";
 
-    // Best free model on Groq (130k ctx, 12k TPM)
-    models.push({ id: "groq:llama-3.3-70b-versatile",  url: groqBase, headers: h, modelName: "llama-3.3-70b-versatile", tpmLimit: 12000 });
-    // llama-3.1-70b — alternate 70b, different rate bucket
-    models.push({ id: "groq:llama-3.1-70b-versatile",  url: groqBase, headers: h, modelName: "llama-3.1-70b-versatile", tpmLimit: 12000 });
-    // Deepseek r1 distill on Groq — great for code (70b distill)
+    // PRIMARY: qwen3-32b — best balance (fast + excellent code + free)
+    models.push({ id: "groq:qwen/qwen3-32b",             url: groqBase, headers: h, modelName: "qwen/qwen3-32b",             tpmLimit: 12000 });
+    // STRONG: llama-3.3-70b — heavy code / long generation
+    models.push({ id: "groq:llama-3.3-70b-versatile",    url: groqBase, headers: h, modelName: "llama-3.3-70b-versatile",    tpmLimit: 12000 });
+    // ALTERNATE 70b
+    models.push({ id: "groq:llama-3.1-70b-versatile",    url: groqBase, headers: h, modelName: "llama-3.1-70b-versatile",    tpmLimit: 12000 });
+    // Deepseek r1 distill — strong coder
     models.push({ id: "groq:deepseek-r1-distill-llama-70b", url: groqBase, headers: h, modelName: "deepseek-r1-distill-llama-70b", tpmLimit: 6000 });
-    // Qwen on Groq — strong coder
-    models.push({ id: "groq:qwen-qwq-32b",             url: groqBase, headers: h, modelName: "qwen-qwq-32b", tpmLimit: 6000 });
-    // llama4 scout — large context, free
-    models.push({ id: "groq:meta-llama/llama-4-scout-17b-16e-instruct", url: groqBase, headers: h, modelName: "meta-llama/llama-4-scout-17b-16e-instruct", tpmLimit: 30000 });
-    // 8b instant — last resort (low token limit, fast)
-    models.push({ id: "groq:llama-3.1-8b-instant",     url: groqBase, headers: h, modelName: "llama-3.1-8b-instant", tpmLimit: 6000, smallModel: true });
+    // qwen-qwq-32b — reasoning
+    models.push({ id: "groq:qwen-qwq-32b",               url: groqBase, headers: h, modelName: "qwen-qwq-32b",               tpmLimit: 6000 });
+    // TINY: 8b instant — for small/fast ops only
+    models.push({ id: "groq:llama-3.1-8b-instant",       url: groqBase, headers: h, modelName: "llama-3.1-8b-instant",       tpmLimit: 6000, smallModel: true });
   }
 
-  // ── TIER 2: Gemini free — 15 req/min, 1M+ tokens/day ───────────────────
-  // REMOVED: gemini-1.5-flash-latest, gemini-1.5-flash-8b (404 deprecated)
-  const geminiKey = process.env.Gemini_API_Key || process.env.GEMINI_API_KEY;
-  if (geminiKey) {
-    // 2.0 Flash — primary free Gemini
-    models.push({ id: "gemini:gemini-2.0-flash",         isGemini: true, apiKey: geminiKey, geminiModel: "gemini-2.0-flash" });
-    // 2.0 Flash Lite — higher throughput, lighter
-    models.push({ id: "gemini:gemini-2.0-flash-lite",    isGemini: true, apiKey: geminiKey, geminiModel: "gemini-2.0-flash-lite" });
-    // 2.5 Flash preview — most capable free Gemini (if available)
-    models.push({ id: "gemini:gemini-2.5-flash-preview", isGemini: true, apiKey: geminiKey, geminiModel: "gemini-2.5-flash-preview-04-17" });
-    // 1.5 Flash 002 — stable, still active (not -latest which is gone)
-    models.push({ id: "gemini:gemini-1.5-flash-002",     isGemini: true, apiKey: geminiKey, geminiModel: "gemini-1.5-flash-002" });
-  }
-
-  // ── TIER 3: Together AI free — FLUX image + free LLM tier ───────────────
-  if (process.env.TOGETHER_API_KEY) {
-    const h = {
-      "Authorization": `Bearer ${process.env.TOGETHER_API_KEY}`,
-      "Content-Type":  "application/json",
-    };
-    const togetherBase = "https://api.together.xyz/v1/chat/completions";
-    // Llama 3.3 70b — free on Together (different rate bucket from Groq)
-    models.push({ id: "together:llama-3.3-70b",   url: togetherBase, headers: h, modelName: "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free" });
-    // Llama 3.1 405b — massive model, free tier on Together
-    models.push({ id: "together:llama-3.1-405b",  url: togetherBase, headers: h, modelName: "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo" });
-    // Qwen 2.5 72b coder — excellent for code gen
-    models.push({ id: "together:qwen2.5-72b",     url: togetherBase, headers: h, modelName: "Qwen/Qwen2.5-72B-Instruct-Turbo" });
-    // DeepSeek-V3 — state of art code gen, free on Together
-    models.push({ id: "together:deepseek-v3",     url: togetherBase, headers: h, modelName: "deepseek-ai/DeepSeek-V3" });
-  }
-
-  // ── TIER 4: OpenRouter free models — updated 2025 endpoints ─────────────
-  // REMOVED: mistral-7b-instruct:free, llama-3-8b-instruct:free, gemma-2-9b-it:free (all 404)
+  // ── TIER 2: OpenRouter free — reasoning + fallback ───────────────────────
   if (process.env.OPENROUTER_API_KEY) {
     const h = {
       "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -171,14 +134,21 @@ function buildModelRegistry() {
       "X-Title":       "Aquiplex",
     };
     const orBase = "https://openrouter.ai/api/v1/chat/completions";
-    // Current working free models on OpenRouter (verified 2025)
-    models.push({ id: "openrouter:llama-3.3-70b-free",    url: orBase, headers: h, modelName: "meta-llama/llama-3.3-70b-instruct:free" });
-    models.push({ id: "openrouter:deepseek-r1-free",       url: orBase, headers: h, modelName: "deepseek/deepseek-r1:free" });
-    models.push({ id: "openrouter:deepseek-v3-free",       url: orBase, headers: h, modelName: "deepseek/deepseek-chat-v3-0324:free" });
-    models.push({ id: "openrouter:gemma-3-27b-free",       url: orBase, headers: h, modelName: "google/gemma-3-27b-it:free" });
-    models.push({ id: "openrouter:qwen3-235b-free",        url: orBase, headers: h, modelName: "qwen/qwen3-235b-a22b:free" });
-    models.push({ id: "openrouter:llama-4-maverick-free",  url: orBase, headers: h, modelName: "meta-llama/llama-4-maverick:free" });
-    models.push({ id: "openrouter:mistral-nemo-free",      url: orBase, headers: h, modelName: "mistralai/mistral-nemo:free" });
+    // Reasoning: 235b Qwen — only for complex tasks
+    models.push({ id: "openrouter:qwen3-235b-free",       url: orBase, headers: h, modelName: "qwen/qwen3-235b-a22b:free" });
+    // Fallback pool
+    models.push({ id: "openrouter:deepseek-v3-free",      url: orBase, headers: h, modelName: "deepseek/deepseek-chat-v3-0324:free" });
+    models.push({ id: "openrouter:gemma-3-27b-free",      url: orBase, headers: h, modelName: "google/gemma-3-27b-it:free" });
+    models.push({ id: "openrouter:llama-3.3-70b-free",   url: orBase, headers: h, modelName: "meta-llama/llama-3.3-70b-instruct:free" });
+  }
+
+  // ── TIER 3: Gemini free — last resort ────────────────────────────────────
+  const geminiKey = process.env.Gemini_API_Key || process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    models.push({ id: "gemini:gemini-2.5-flash",          isGemini: true, apiKey: geminiKey, geminiModel: "gemini-2.5-flash" });
+    models.push({ id: "gemini:gemini-2.0-flash",          isGemini: true, apiKey: geminiKey, geminiModel: "gemini-2.0-flash" });
+    models.push({ id: "gemini:gemini-2.0-flash-lite",     isGemini: true, apiKey: geminiKey, geminiModel: "gemini-2.0-flash-lite" });
+    models.push({ id: "gemini:gemini-1.5-flash-002",      isGemini: true, apiKey: geminiKey, geminiModel: "gemini-1.5-flash-002" });
   }
 
   return models;
@@ -1060,8 +1030,7 @@ console.log("[Aquiplex] Fallback page loaded — all AI models failed.");`;
 
 function _getInteractiveToks(modelId) {
   if (typeof modelId !== "string") return 4000;
-  if (modelId.includes("anthropic"))   return 8000;  // Claude supports large output
-  if (modelId.includes("together"))    return 6000;
+  if (modelId.includes("anthropic"))   return 8000;
   if (modelId.includes("gemini"))      return 6000;
   if (modelId.includes("llama-3.3") || modelId.includes("llama-3.1-70b")) return 5000;
   if (modelId.includes("qwen"))        return 5000;

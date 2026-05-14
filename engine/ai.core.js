@@ -3,9 +3,15 @@
 /**
  * engine/ai.core.js — AQUIPLEX Unified AI Engine
  *
- * Cascade: Groq → OpenRouter → Gemini
- * Images:  Together → Pollinations
+ * Cascade: Groq (primary) → OpenRouter (fallback/reasoning) → Gemini (last)
+ * Images:  Pollinations (primary, no-auth) → HuggingFace (optional fallback)
  * Search:  Serper + generateAI
+ *
+ * Smart routing:
+ *   tiny/simple → llama-3.1-8b-instant   (Groq)
+ *   normal chat/code → qwen/qwen3-32b    (Groq)
+ *   heavy/long → llama-3.3-70b-versatile (Groq)
+ *   hard reasoning → qwen3-235b-a22b:free (OpenRouter)
  */
 
 const axios = require("axios");
@@ -39,30 +45,108 @@ const AQUA_CONTEXT = `You are operating inside the Aquiplex platform. Here is wh
 Use this context to guide users toward relevant platform features when appropriate.`;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MODEL TIERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Groq models
+const MODEL_TINY    = process.env.GROQ_TINY_MODEL    || "llama-3.1-8b-instant";
+const MODEL_DEFAULT = process.env.GROQ_DEFAULT_MODEL || "qwen/qwen3-32b";
+const MODEL_STRONG  = process.env.GROQ_STRONG_MODEL  || "llama-3.3-70b-versatile";
+
+// Kept for back-compat exports
+const FAST_MODEL  = MODEL_DEFAULT;
+const SMART_MODEL = MODEL_STRONG;
+
+// OpenRouter reasoning model — only for hard prompts
+const OR_REASONING_MODEL = "qwen/qwen3-235b-a22b:free";
+
+// OpenRouter fallback pool (ordered)
+const OR_FALLBACK_MODELS = [
+  "deepseek/deepseek-chat-v3-0324:free",
+  "google/gemma-3-27b-it:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROVIDER HEALTH / COOLDOWN
+// ─────────────────────────────────────────────────────────────────────────────
+
+const _providerCooldown = new Map();
+const PROVIDER_COOL_MS  = 60_000;
+
+function _isProviderCooling(name) {
+  const until = _providerCooldown.get(name);
+  return until && Date.now() < until;
+}
+
+function _coolProvider(name, ms = PROVIDER_COOL_MS) {
+  _providerCooldown.set(name, Date.now() + ms);
+  console.warn(`[ai.core] Provider ${name} in cooldown for ${ms / 1000}s`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RETRY HELPER
 // ─────────────────────────────────────────────────────────────────────────────
+
+const NO_RETRY_CODES = new Set([401, 402, 403, 404]);
 
 async function withRetry(fn, retries = 2, delayMs = 500) {
   for (let i = 0; i <= retries; i++) {
     try {
       return await fn();
     } catch (err) {
-      // Don't retry on 413 (too large) or 404 (not found)
-      const msg = err?.message || "";
-      if (msg.includes("413") || msg.includes("404")) throw err;
+      const msg  = err?.message || "";
+      const code = err?.response?.status || 0;
+      // Hard-stop: never retry auth/not-found/credit errors
+      if (NO_RETRY_CODES.has(code)) throw err;
+      if (msg.includes("401") || msg.includes("403") || msg.includes("404") || msg.includes("402")) throw err;
       if (i === retries) throw err;
-      // On 429, wait longer
-      const wait = msg.includes("429") ? delayMs * 4 * (i + 1) : delayMs * (i + 1);
+      const wait = (msg.includes("429") || code === 429)
+        ? delayMs * 6 * (i + 1)
+        : delayMs * (i + 1);
       await new Promise((r) => setTimeout(r, wait));
     }
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PROMPT COMPLEXITY CLASSIFIER
+// Returns "tiny" | "normal" | "heavy" | "reasoning"
+// ─────────────────────────────────────────────────────────────────────────────
+
+function classifyPromptComplexity(messages) {
+  const lastUser = [...messages].reverse().find(m => m.role === "user");
+  const text = (lastUser?.content || "").toLowerCase();
+  const len  = text.length;
+
+  const REASONING_SIGNALS = [
+    /\b(architect|design system|complex|algorithm|optimize|debug.*hard|explain.*deep|why does|how does.*work|proof|derive|formal|specification)\b/,
+    /\b(refactor.*entire|redesign|overhaul|best approach for|trade-off|compare.*approaches)\b/,
+  ];
+  if (len > 1500 || REASONING_SIGNALS.some(r => r.test(text))) return "reasoning";
+
+  const HEAVY_SIGNALS = [
+    /\b(generate|build|create|write|implement|code|develop|make)\b/,
+    /\b(full.*app|entire|complete|all files|every file|project)\b/,
+  ];
+  if (len > 600 || HEAVY_SIGNALS.some(r => r.test(text))) return "heavy";
+
+  if (len < 120 && !/\b(code|build|generate|implement|write)\b/.test(text)) return "tiny";
+
+  return "normal";
+}
+
+function _selectGroqModel(complexity) {
+  switch (complexity) {
+    case "tiny":      return MODEL_TINY;
+    case "reasoning": return MODEL_STRONG; // Groq first for reasoning too (faster)
+    case "heavy":     return MODEL_STRONG;
+    default:          return MODEL_DEFAULT;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // NORMALISE MESSAGES
-// Accepts Anthropic-style [{role,content}] arrays with optional system messages.
-// Strips system messages out for providers that take them inline,
-// and prepends AQUA_IDENTITY + AQUA_CONTEXT as the first system entry.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function _normalise(messages, injectIdentity = true) {
@@ -85,7 +169,6 @@ function _normalise(messages, injectIdentity = true) {
     ? [{ role: "system", content: systemParts.join("\n\n") }]
     : [];
 
-  // Ensure alternating user/assistant (OpenAI-style requirement)
   const cleaned = [];
   for (const m of nonSystem) {
     if (cleaned.length && cleaned[cleaned.length - 1].role === m.role) {
@@ -102,7 +185,106 @@ function _normalise(messages, injectIdentity = true) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// generateAI  (Groq → OpenRouter → Gemini)
+// GROQ CALLER
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function _callGroq(model, combined, temperature, maxTokens) {
+  if (!process.env.GROQ_API_KEY || _isProviderCooling("groq")) return null;
+  try {
+    const res = await withRetry(() =>
+      axios.post("https://api.groq.com/openai/v1/chat/completions", {
+        model,
+        messages:   combined,
+        temperature,
+        max_tokens: maxTokens,
+      }, {
+        headers: {
+          Authorization:  `Bearer ${process.env.GROQ_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 12000,
+      })
+    );
+    const content = res.data?.choices?.[0]?.message?.content;
+    if (content) return content;
+    return null;
+  } catch (err) {
+    const code = err?.response?.status;
+    if (code === 401 || code === 403) {
+      _coolProvider("groq", 300_000);
+    } else if (code === 429) {
+      _coolProvider("groq", 15_000);
+    }
+    console.error(`[ai.core] Groq ${model} failed: ${err.message}`);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OPENROUTER CALLER
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function _callOpenRouter(model, combined, temperature, maxTokens) {
+  if (!process.env.OPENROUTER_API_KEY || _isProviderCooling("openrouter")) return null;
+  try {
+    const res = await axios.post(
+      "https://openrouter.ai/api/v1/chat/completions",
+      { model, messages: combined, temperature, max_tokens: maxTokens },
+      {
+        headers: {
+          Authorization:  `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        timeout: 20000,
+      }
+    );
+    const content = res.data?.choices?.[0]?.message?.content;
+    return content || null;
+  } catch (err) {
+    const code = err?.response?.status;
+    if (code === 401 || code === 403) {
+      _coolProvider("openrouter", 300_000);
+    } else if (code === 429) {
+      _coolProvider("openrouter", 15_000);
+    }
+    console.error(`[ai.core] OpenRouter ${model} failed: ${err.message}`);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GEMINI CALLER
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function _callGemini(combined, temperature, maxTokens) {
+  const _geminiKey = process.env.Gemini_API_Key || process.env.GEMINI_API_KEY;
+  if (!_geminiKey || _isProviderCooling("gemini")) return null;
+  const geminiModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-flash-002"];
+  const userText   = combined.filter(m => m.role !== "system").map(m => typeof m.content === "string" ? m.content : "").join("\n");
+  const systemText = combined.filter(m => m.role === "system").map(m => m.content).join("\n");
+  for (const gm of geminiModels) {
+    try {
+      const res = await axios.post(
+        `https://generativelanguage.googleapis.com/v1beta/models/${gm}:generateContent?key=${_geminiKey}`,
+        {
+          contents:         [{ parts: [{ text: `${systemText}\n\nUser: ${userText}` }] }],
+          generationConfig: { temperature, maxOutputTokens: maxTokens },
+        },
+        { timeout: 18000 }
+      );
+      const content = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (content) return content;
+    } catch (err) {
+      const code = err?.response?.status;
+      if (code === 401 || code === 403) { _coolProvider("gemini", 300_000); return null; }
+      console.error(`[ai.core] Gemini ${gm} failed: ${err.message}`);
+    }
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// generateAI  — smart routing: Groq → OpenRouter → Gemini
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -110,190 +292,50 @@ function _normalise(messages, injectIdentity = true) {
  * @param {{ temperature?:number, maxTokens?:number, model?:string }} opts
  * @returns {Promise<string>}
  */
-// ─────────────────────────────────────────────────────────────────────────────
-// MODEL TIERS
-// Fast  → quick ops: intent classify, memory extract, chat titles, suggested prompts
-// Smart → heavy ops: code gen, project gen, file edit, file analysis, explain
-// ─────────────────────────────────────────────────────────────────────────────
-
-const FAST_MODEL  = process.env.GROQ_FAST_MODEL  || "llama-3.3-70b-versatile";
-const SMART_MODEL = process.env.GROQ_SMART_MODEL || "llama-3.3-70b-versatile";  // free on Groq
-
-// ── OpenRouter updated free models (2025) ─────────────────────────────────
-const OR_FREE_MODELS = [
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "deepseek/deepseek-chat-v3-0324:free",
-  "deepseek/deepseek-r1:free",
-  "google/gemma-3-27b-it:free",
-  "qwen/qwen3-235b-a22b:free",
-  "meta-llama/llama-4-maverick:free",
-  "mistralai/mistral-nemo:free",
-];
-
 async function generateAI(messages, opts = {}) {
   const { temperature = 0.7, maxTokens = 1024 } = opts;
-  // Caller can pass model: SMART_MODEL for heavy tasks; defaults to FAST_MODEL
-  const groqModel = opts.model || FAST_MODEL;
   const { systemMsg, nonSystem } = _normalise(messages);
   const combined = [...systemMsg, ...nonSystem];
 
-  // ── 0a. Anthropic Claude — most powerful, primary if key available ────────
-  if (process.env.ANTHROPIC_API_KEY) {
-    try {
-      const sysMsg2  = messages.find(m => m.role === "system");
-      const userMsgs = messages.filter(m => m.role !== "system");
-      const cleaned2 = [];
-      for (const m of userMsgs) {
-        if (cleaned2.length && cleaned2[cleaned2.length-1].role === m.role) {
-          cleaned2[cleaned2.length-1].content += "\n" + m.content;
-        } else { cleaned2.push({...m}); }
-      }
-      if (!cleaned2.length || cleaned2[0].role !== "user") cleaned2.unshift({role:"user",content:"Hello"});
-      const aRes = await withRetry(() =>
-        axios.post("https://api.anthropic.com/v1/messages", {
-          model:      process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001",
-          max_tokens: maxTokens || 1024,
-          system:     sysMsg2?.content || undefined,
-          messages:   cleaned2,
-        }, {
-          headers: {
-            "x-api-key":         process.env.ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01",
-            "Content-Type":      "application/json",
-          },
-          timeout: 15000,
-        })
-      );
-      const aContent = aRes.data?.content?.filter(b => b.type === "text").map(b => b.text).join("") || "";
-      if (aContent) return aContent;
-      throw new Error("Empty Anthropic response");
-    } catch (err) {
-      console.error(`[ai.core] Anthropic failed: ${err.message}`);
-    }
-  }
+  const complexity   = classifyPromptComplexity(messages);
+  const groqModel    = opts.model || _selectGroqModel(complexity);
 
-  // ── 0b. Together AI free — Llama 405b, DeepSeek-V3 ─────────────────────
-  if (process.env.TOGETHER_API_KEY) {
-    const togetherModels = [
-      "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
-      "deepseek-ai/DeepSeek-V3",
-    ];
-    for (const tm of togetherModels) {
-      try {
-        const tres = await withRetry(() =>
-          axios.post("https://api.together.xyz/v1/chat/completions", {
-            model: tm, messages: combined, temperature, max_tokens: maxTokens,
-          }, {
-            headers: { Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`, "Content-Type": "application/json" },
-            timeout: 15000,
-          })
-        );
-        const tc = tres.data?.choices?.[0]?.message?.content;
-        if (tc) return tc;
-      } catch (err) {
-        console.error(`[ai.core] Together ${tm} failed: ${err.message}`);
-      }
-    }
-  }
-
-  // ── 1. Groq ──────────────────────────────────────────────────────────────
+  // ── 1. Groq — primary fast inference ─────────────────────────────────────
   if (process.env.GROQ_API_KEY) {
-    try {
-      const groqModels = [
-        groqModel,
-        "llama-3.1-70b-versatile",
-        "deepseek-r1-distill-llama-70b",
-        "qwen-qwq-32b",
-        "meta-llama/llama-4-scout-17b-16e-instruct",
-      ].filter((v, i, a) => a.indexOf(v) === i);
-      for (const gm of groqModels) {
-        try {
-          const res = await withRetry(() =>
-            axios.post("https://api.groq.com/openai/v1/chat/completions", {
-              model: gm, messages: combined, temperature, max_tokens: maxTokens,
-            }, {
-              headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}`, "Content-Type": "application/json" },
-              timeout: 10000,
-            })
-          );
-          const content = res.data?.choices?.[0]?.message?.content;
-          if (content) return content;
-        } catch (err) {
-          console.error(`[ai.core] Groq ${gm} failed: ${err.message}`);
-        }
-      }
-    } catch (err) {
-      console.error(`[ai.core] Groq section failed: ${err.message}`);
+    // For reasoning complexity try strong model first, then default
+    const groqCandidates = complexity === "reasoning"
+      ? [MODEL_STRONG, MODEL_DEFAULT]
+      : [groqModel];
+
+    for (const gm of groqCandidates) {
+      const result = await _callGroq(gm, combined, temperature, maxTokens);
+      if (result) return result;
     }
   }
 
-  // ── 2. OpenRouter ─────────────────────────────────────────────────────────
+  // ── 2. OpenRouter — reasoning model for hard prompts, else fallbacks ──────
   if (process.env.OPENROUTER_API_KEY) {
-    for (const orModel of OR_FREE_MODELS) {
-    try {
-      const res = await axios.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          model:      orModel,
-          messages:   combined,
-          temperature,
-          max_tokens: maxTokens,
-        },
-        {
-          headers: {
-            Authorization:  `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 15000,
-        },
-      );
-      const content = res.data?.choices?.[0]?.message?.content;
-      if (content) return content;
-      throw new Error("Empty response from OpenRouter");
-    } catch (err) {
-      console.error(`[ai.core] OpenRouter ${orModel} failed: ${err.message}`);
-      // try next model
+    // Hard reasoning → try dedicated 235b model first
+    if (complexity === "reasoning") {
+      const result = await _callOpenRouter(OR_REASONING_MODEL, combined, temperature, maxTokens);
+      if (result) return result;
     }
-    } // end for OR_FREE_MODELS
+    // Fallback pool
+    for (const orModel of OR_FALLBACK_MODELS) {
+      const result = await _callOpenRouter(orModel, combined, temperature, maxTokens);
+      if (result) return result;
+    }
   }
 
-  // ── 3. Gemini (multi-model fallback) ────────────────────────────────────
-  const _geminiKey = process.env.Gemini_API_Key || process.env.GEMINI_API_KEY;
-  if (_geminiKey) {
-    const geminiModels = [
-      "gemini-2.0-flash",
-      "gemini-2.0-flash-lite",
-      "gemini-2.5-flash-preview-04-17",
-      "gemini-1.5-flash-002",
-    ];
-    const userText = nonSystem
-      .filter((m) => m.role !== "system")
-      .map((m) => (typeof m.content === "string" ? m.content : ""))
-      .join("\n");
-    const systemText = [...systemMsg.map((m) => m.content)].join("\n");
-    for (const gm of geminiModels) {
-      try {
-        const res = await axios.post(
-          `https://generativelanguage.googleapis.com/v1beta/models/${gm}:generateContent?key=${_geminiKey}`,
-          {
-            contents:         [{ parts: [{ text: `${systemText}\n\nUser: ${userText}` }] }],
-            generationConfig: { temperature, maxOutputTokens: maxTokens },
-          },
-          { timeout: 15000 },
-        );
-        const content = res.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (content) return content;
-      } catch (err) {
-        console.error(`[ai.core] Gemini ${gm} failed: ${err.message}`);
-      }
-    }
-  }
+  // ── 3. Gemini — last resort ───────────────────────────────────────────────
+  const gemResult = await _callGemini(combined, temperature, maxTokens);
+  if (gemResult) return gemResult;
 
   return "⚠️ All AI services are currently unavailable. Please check your API keys and try again.";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// generateImage  (Together → Pollinations)
+// generateImage  — Pollinations primary (free, no auth)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -302,46 +344,14 @@ async function generateAI(messages, opts = {}) {
  * @returns {Promise<string|null>}  image URL or null
  */
 async function generateImage(prompt, opts = {}) {
-  // ── 1. Together AI ────────────────────────────────────────────────────────
-  if (process.env.TOGETHER_API_KEY) {
-    try {
-      const res = await axios.post(
-        "https://api.together.xyz/v1/images/generations",
-        {
-          model:  "black-forest-labs/FLUX.1-schnell-Free",
-          prompt,
-          n:      1,
-          width:  1024,
-          height: 1024,
-        },
-        {
-          headers: {
-            Authorization:  `Bearer ${process.env.TOGETHER_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          timeout: 30000,
-        },
-      );
-      const url = res.data?.data?.[0]?.url;
-      if (url) return url;
-      throw new Error("No image URL from Together");
-    } catch (err) {
-      console.error(`[ai.core] Together image failed: ${err.message}`);
-    }
-  }
-
-  // ── 2. Pollinations (free, no key) ────────────────────────────────────────
   try {
-    const encoded = encodeURIComponent(prompt);
-    const url     = `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&nologo=true`;
-    // Verify reachable
-    await axios.head(url, { timeout: 10000 });
-    return url;
+    const encoded = encodeURIComponent((prompt || "").trim().slice(0, 500));
+    const seed = Math.floor(Math.random() * 999999);
+    return `https://image.pollinations.ai/prompt/${encoded}?width=1024&height=1024&seed=${seed}&nologo=true&enhance=true`;
   } catch (err) {
-    console.error(`[ai.core] Pollinations image failed: ${err.message}`);
+    console.error(`[ai.core] Image generation failed: ${err.message}`);
+    return null;
   }
-
-  return null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -369,7 +379,7 @@ async function generateSearch(messages, opts = {}) {
             "Content-Type": "application/json",
           },
           timeout: 8000,
-        },
+        }
       );
       const organic = res.data?.organic || [];
       sources = organic.map((r) => ({
@@ -400,4 +410,14 @@ async function generateSearch(messages, opts = {}) {
 // EXPORTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-module.exports = { generateAI, generateImage, generateSearch, FAST_MODEL, SMART_MODEL };
+module.exports = {
+  generateAI,
+  generateImage,
+  generateSearch,
+  FAST_MODEL,
+  SMART_MODEL,
+  MODEL_TINY,
+  MODEL_DEFAULT,
+  MODEL_STRONG,
+  classifyPromptComplexity,
+};

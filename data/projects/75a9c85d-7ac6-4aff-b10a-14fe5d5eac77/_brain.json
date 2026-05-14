@@ -1,0 +1,110 @@
+{
+  "projectId": "75a9c85d-7ac6-4aff-b10a-14fe5d5eac77",
+  "createdAt": "2026-05-14T13:59:04.319Z",
+  "updatedAt": "2026-05-14T13:59:04.329Z",
+  "name": "book reading tool",
+  "projectType": "saas",
+  "description": "book reading tool",
+  "framework": "vanilla",
+  "entryFile": "index.html",
+  "stylesheets": [
+    "style.css"
+  ],
+  "scripts": [
+    "server.js",
+    "script.js"
+  ],
+  "fileGraph": {
+    "index.html": [
+      "style.css",
+      "script.js"
+    ]
+  },
+  "components": [
+    "navbar"
+  ],
+  "colorPalette": [
+    "#fdf8f0",
+    "#452b1f",
+    "#ffc107"
+  ],
+  "fontPrimary": "Open Sans",
+  "fontSecondary": "",
+  "designTheme": "Warm Minimal: warm off-white (#fdf8f0), deep brown text, amber/terracotta accent",
+  "cdnLibraries": [],
+  "codingStyle": {
+    "usesClasses": false,
+    "usesModules": false,
+    "usesLocalStorage": true,
+    "usesWebComponents": false,
+    "usesCanvas": false,
+    "usesWebAudio": false,
+    "usesAnimations": true,
+    "usesIntersectionObserver": false
+  },
+  "editHistory": [],
+  "knownIssues": [],
+  "activeTasks": [],
+  "snapshots": [
+    {
+      "version": 1,
+      "label": "v1 — initial generation",
+      "ts": "2026-05-14T13:59:04.329Z",
+      "files": [
+        {
+          "fileName": "package.json",
+          "content": "{\n  \"name\": \"my-app\",\n  \"version\": \"1.0.0\",\n  \"description\": \"Book reading tool\",\n  \"main\": \"index.html\",\n  \"scripts\": {\n    \"start\": \"node server.js\"\n  },\n  \"keywords\": [],\n  \"author\": \"Your Name\",\n  \"license\": \"MIT\",\n  \"dependencies\": {\n    \"express\": \"^4.17.1\",\n    \"body-parser\": \"^1.20.0\"\n  },\n  \"devDependencies\": {\n    \"nodemon\": \"^2.0.12\"\n  }\n}"
+        },
+        {
+          "fileName": "server.js",
+          "content": "const express = require('express');\nconst bodyParser = require('body-parser');\nconst path = require('path');\nconst fs = require('fs');\nconst port = process.env.PORT || 3000;\n\nconst app = express();\n\napp.use(bodyParser.json());\napp.use(bodyParser.urlencoded({ extended: true }));\n\napp.get('/', (req, res) => {\n  res.sendFile(path.join(__dirname, 'index.html'));\n});\n\napp.get('/api/health', (req, res) => {\n  res.send({ status: 'ok' });\n});\n\napp.listen(port, () => {\n  console.log(`Server listening on port ${port}`);\n});"
+        },
+        {
+          "fileName": "index.html",
+          "content": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>My App</title>\n  <link rel=\"stylesheet\" href=\"style.css\">\n  <link href=\"https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap\" rel=\"stylesheet\">\n</head>\n<body>\n  <header>\n    <nav>\n      <ul>\n        <li><a href=\"#history\">History</a></li>\n        <li><a href=\"#output\">Output</a></li>\n      </ul>\n    </nav>\n  </header>\n  <main>\n    <section id=\"history\">\n      <h2>History</h2>\n      <ul id=\"history-list\">\n        <!-- history items will be rendered here -->\n      </ul>\n    </section>\n    <section id=\"output\">\n      <h2>Output</h2>\n      <div id=\"output-container\">\n        <!-- output will be rendered here -->\n      </div>\n      <button id=\"run-button\">Run</button>\n      <button id=\"clear-button\">Clear</button>\n      <button id=\"undo-button\">Undo</button>\n      <button id=\"download-button\">Download</button>\n    </section>\n  </main>\n  <script src=\"script.js\"></script>\n</body>\n</html>"
+        },
+        {
+          "fileName": "style.css",
+          "content": ":root {\n  --warm-white: #fdf8f0;\n  --deep-brown: #452b1f;\n  --amber: #ffc107;\n  --spacing: 16px;\n  --radius: 16px;\n}\n\nbody {\n  font-family: 'Open Sans', sans-serif;\n  background-color: var(--warm-white);\n  margin: 0;\n  padding: 0;\n}\n\nheader {\n  background-color: var(--deep-brown);\n  color: var(--warm-white);\n  padding: 16px;\n  text-align: center;\n}\n\nnav ul {\n  list-style: none;\n  margin: 0;\n  padding: 0;\n  display: flex;\n  justify-content: space-between;\n}\n\nnav li {\n  margin-right: 16px;\n}\n\nnav a {\n  color: var(--warm-white);\n  text-decoration: none;\n}\n\nmain {\n  display: flex;\n  flex-direction: column;\n  align-items: center;\n  padding: 16px;\n}\n\nsection {\n  background-color: var(--warm-white);\n  padding: 16px;\n  border-radius: var(--radius);\n  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);\n  margin-bottom: 16px;\n}\n\nh2 {\n  margin-top: 0;\n}\n\n#history-list {\n  list-style: none;\n  margin: 0;\n  padding: 0;\n}\n\n#history-list li {\n  padding: 8px;\n  border-bottom: 1px solid #ccc;\n}\n\n#history-list li:last-child {\n  border-bottom: none;\n}\n\n#output-container {\n  padding: 16px;\n  border-radius: var(--radius);\n  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);\n  background-color: var(--warm-white);\n}\n\n#run-button, #clear-button, #undo-button, #download-button {\n  background-color: var(--amber);\n  color: var(--deep-brown);\n  padding: 8px 16px;\n  border: none;\n  border-radius: var(--radius);\n  cursor: pointer;\n}\n\n#run-button:hover, #clear-button:hover, #undo-button:hover, #download-button:hover {\n  background-color: var(--deep-brown);\n  color: var(--warm-white);\n}\n\n#run-button:active, #clear-button:active, #undo-button:active, #download-button:active {\n  transform: scale(0.96);\n}\n\n::-webkit-scrollbar {\n  width: 10px;\n  height: 10px;\n}\n\n::-webkit-scrollbar-thumb {\n  background-color: var(--deep-brown);\n  border-radius: var(--radius);\n}\n\n::-webkit-scrollbar-track {\n  background-color: var(--warm-white);\n}\n\n::selection {\n  background-color: var(--amber);\n  color: var(--deep-brown);\n}"
+        },
+        {
+          "fileName": "script.js",
+          "content": "const historyList = document.getElementById('history-list');\nconst outputContainer = document.getElementById('output-container');\nconst runButton = document.getElementById('run-button');\nconst clearButton = document.getElementById('clear-button');\nconst undoButton = document.getElementById('undo-button');\nconst downloadButton = document.getElementById('download-button');\nconst inputField = document.getElementById('input-field');\nconst history = JSON.parse(localStorage.getItem('history')) || [];\n\ninputField.addEventListener('input', debounce(() => {\n  const output = inputField.value;\n  outputContainer.innerText = output;\n  history.push(output);\n  localStorage.setItem('history', JSON.stringify(history));\n  renderHistory();\n}, 150));\n\nrunButton.addEventListener('click', () => {\n  const output = inputField.value;\n  console.log(output);\n});\n\nclearButton.addEventListener('click', () => {\n  inputField.value = '';\n  outputContainer.innerText = '';\n  history.length = 0;\n  localStorage.setItem('history', JSON.stringify(history));\n  renderHistory();\n});\n\nundoButton.addEventListener('click', () => {\n  if (history.length > 0) {\n    history.pop();\n    localStorage.setItem('history', JSON.stringify(history));\n    renderHistory();\n  }\n});\n\ndownloadButton.addEventListener('click', () => {\n  const blob = new Blob([inputField.value], { type: 'text/plain' });\n  const url = URL.createObjectURL(blob);\n  const a = document.createElement('a');\n  a.href = url;\n  a.download = 'output.txt';\n  a.click();\n  URL.revokeObjectURL(url);\n});\n\nfunction renderHistory() {\n  historyList.innerHTML = '';\n  history.forEach((item, index) => {\n    const li = document.createElement('li');\n    li.textContent = item;\n    li.style.padding = '8px';\n    li.style.borderBottom = '1px solid #ccc';\n    if (index === history.length - 1) {\n      li.style.borderBottom = 'none';\n    }\n    historyList.appendChild(li);\n  });\n}\n\nfunction debounce(func, wait) {\n  let timeout;\n  return function() {\n    const context = this;\n    const args = arguments;\n    clearTimeout(timeout);\n    timeout = setTimeout(() => {\n      func.apply(context, args);\n    }, wait);\n  };\n}\n\nwindow.addEventListener('hashchange', () => {\n  const hash = window.location.hash;\n  if (hash === '#history') {\n    historyList.scrollIntoView();\n  } else if (hash === '#output') {\n    outputContainer.scrollIntoView();\n  }\n});\n\ndocument.addEventListener('keydown', (e) => {\n  if (e.key === 'Enter') {\n    runButton.click();\n  } else if (e.key === 'Escape') {\n    clearButton.click();\n  } else if (e.key === 'z' && e.ctrlKey) {\n    undoButton.click();\n  }\n});"
+        },
+        {
+          "fileName": "README.md",
+          "content": "# My App\n\n## Setup\n\n1. Clone the repository: `git clone https://github.com/your-username/my-app.git`\n2. Install dependencies: `npm install`\n3. Start the server: `npm start`\n4. Open your browser and navigate to `http://localhost:3000`\n\n## Environment Variables\n\n| Variable | Description | Default Value |\n| --- | --- | --- |\n| PORT | Port number to listen on | 3000 |\n| NODE_ENV | Environment (development or production) | development |\n\n## API Documentation\n\n### GET /\n\n* Serves the frontend\n\n### GET /api/health\n\n* Returns a health check response\n\n## Deploy Instructions\n\n1. Build the project: `npm run build`\n2. Deploy to Render: `render deploy`\n\n## Keyboard Shortcuts\n\n* Enter: Run the input\n* Escape: Clear the input\n* Ctrl+Z: Undo the last operation"
+        },
+        {
+          "fileName": "env.example.txt",
+          "content": "PORT=3000\nNODE_ENV=development"
+        }
+      ]
+    }
+  ],
+  "isFullstack": true,
+  "stack": {
+    "frontend": "vanilla",
+    "backend": "express",
+    "database": "none",
+    "auth": "none"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/",
+      "description": "Serve frontend"
+    },
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "description": "Health check"
+    }
+  ],
+  "dbModels": [],
+  "envVars": [
+    "PORT=3000",
+    "NODE_ENV=development"
+  ],
+  "deployTarget": "render"
+}

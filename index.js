@@ -1482,7 +1482,7 @@ app.post("/chat", chatLimiter, requireLogin, upload.single("file"), usageGuard((
 
     // ── Refiner ────────────────────────────────────────────────────────────────
     let refinedMessage = message;
-    if (req.body.refiner === "true" && message) {
+    if (req.body.refiner === "true" && message && mode !== "image") {
       try {
         refinedMessage = await generateAI([
           { role: "system", content: "Rewrite user input into a clear, detailed AI prompt. Return ONLY the improved prompt, nothing else. Max 200 words." },

@@ -484,7 +484,7 @@ async function send() {
       const data = await res.json();
       const div  = createBotBubble("image");
       const imgHtml = data.image
-        ? `<img src="${data.image}" alt="Generated image" style="max-width:100%;border-radius:10px;margin-top:10px;" onerror="this.style.display='none'" />
+        ? `<img src="${data.image}" alt="Generated image" style="max-width:100%;border-radius:10px;margin-top:10px;display:block;" onerror="this.outerHTML='<div style=&quot;margin-top:10px;padding:10px;border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fca5a5;background:rgba(127,29,29,.12)">⚠️ Image failed to load. <a href=&quot;${data.image}&quot; target=&quot;_blank&quot; style=&quot;color:#60a5fa&quot;>Open image</a></div>'" />
            <div class="msg-actions">
              <a href="${data.image}" target="_blank" class="msg-action-btn">⬇ Download</a>
            </div>`
