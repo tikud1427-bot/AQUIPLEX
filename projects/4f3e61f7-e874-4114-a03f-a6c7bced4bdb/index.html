@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusForge</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header id="header">
+        <h1 id="title">FocusForge</h1>
+        <p id="tagline">Sharpen your productivity with precision timing</p>
+    </header>
+    <main id="main">
+        <section id="pomodoro-timer">
+            <h2 id="timer-title">Pomodoro Timer</h2>
+            <div id="timer-container">
+                <input id="work-duration" type="number" value="25">
+                <input id="break-duration" type="number" value="5">
+                <button id="start-timer">Start</button>
+                <button id="stop-timer">Stop</button>
+            </div>
+        </section>
+        <section id="analytics">
+            <h2 id="analytics-title">Analytics</h2>
+            <div id="charts-container">
+                <div id="chart-1"></div>
+                <div id="chart-2"></div>
+            </div>
+        </section>
+        <section id="integrations">
+            <h2 id="integrations-title">Integrations</h2>
+            <div id="integrations-container">
+                <button id="trello-integration">Trello</button>
+                <button id="asana-integration">Asana</button>
+                <button id="todoist-integration">Todoist</button>
+            </div>
+        </section>
+        <section id="ambient-sounds">
+            <h2 id="ambient-sounds-title">Ambient Sounds</h2>
+            <div id="sounds-container">
+                <button id="sound-1">Sound 1</button>
+                <button id="sound-2">Sound 2</button>
+                <button id="sound-3">Sound 3</button>
+            </div>
+        </section>
+        <section id="lockdown-mode">
+            <h2 id="lockdown-mode-title">Lockdown Mode</h2>
+            <button id="lockdown-mode-toggle">Toggle</button>
+        </section>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>

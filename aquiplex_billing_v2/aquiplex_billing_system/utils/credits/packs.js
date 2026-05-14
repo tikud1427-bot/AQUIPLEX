@@ -93,6 +93,9 @@ const CREDIT_COSTS = {
   // File analysis
   file_analysis:             8,
 
+  // Passthrough — no cost (non-AI actions, local-only repair, etc.)
+  free:                      0,
+
   // Fallback
   default:                   5,
 };

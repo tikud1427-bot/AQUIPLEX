@@ -15,16 +15,39 @@ const { createLogger }            = require("../utils/logger");
 const { asyncHandler, sendError } = require("../middleware/asyncHandler");
 const { validateAquaExecute }     = require("../utils/validate");
 const { usageGuard }              = require("../middleware/usage/usageGuard");
-const { deductCredits, refundCredits } = require("../services/credits/wallet.service");
+// featureGuard and direct credit ops removed — handled by usageGuard middleware
 
 
-// Credit cost: map action type dynamically from request body
+// Credit cost: map action type dynamically from request body.
+// IMPORTANT: Only charge full_app_gen / backend_gen when NO projectId exists
+// (i.e. brand-new generation). When projectId present = editing = section_gen cost.
+// Prevents chat messages containing "generate" from being billed as 150-credit full builds.
 function aquaActionType(req) {
-  const msg = (req.body?.message || "").toLowerCase();
-  if (msg.includes("generate") || msg.includes("build") || msg.includes("create app")) return "full_app_gen";
+  const msg       = (req.body?.message || "").toLowerCase();
+  const projectId = req.body?.projectId;
+
+  // Editing an existing project — always a lighter operation
+  if (projectId) {
+    if (msg.includes("deploy") || msg.includes("backend")) return "backend_gen";
+    return "section_gen"; // edits are section-level cost
+  }
+
+  // New generation (no projectId) — check for explicit build intent
+  const isFullBuild =
+    msg.includes("build me") ||
+    msg.includes("create app") ||
+    msg.includes("make me a") ||
+    msg.includes("build a website") ||
+    msg.includes("create a website") ||
+    msg.includes("generate a website") ||
+    msg.includes("generate website");
+
+  if (isFullBuild) return "full_app_gen";
   if (msg.includes("deploy") || msg.includes("backend")) return "backend_gen";
   if (msg.includes("section") || msg.includes("component")) return "component_gen";
-  return "section_gen"; // default medium cost
+
+  // Default: treat as a section/chat-level action (not full 150-credit build)
+  return "section_gen";
 }
 
 const log = createLogger("AQUA_ROUTE");
@@ -102,9 +125,51 @@ router.post("/execute", usageGuard(aquaActionType), asyncHandler(async (req, res
   if (!userId) return sendError(res, "Unauthorized", 401);
   const { cost, actionType: _actionType } = req.creditContext || {};
 
+  log.info(`[AQUA] execute start userId=${userId} actionType=${_actionType} cost=${cost}`);
+
   const { message, projectId, fileName, sessionHistory } = req.body || {};
   const validation = validateAquaExecute({ message, projectId, fileName });
   if (!validation.valid) return sendError(res, validation.error, 400);
+
+  // ── Per-feature daily limit enforcement ──────────────────────────────────
+  const msg = (message || "").toLowerCase();
+  const isGeneration = msg.includes("generate") || msg.includes("build") || msg.includes("create") || !projectId;
+  const isEdit       = !!projectId && (msg.includes("edit") || msg.includes("update") || msg.includes("change") || msg.includes("fix") || msg.includes("add") || msg.includes("make"));
+
+  const featureUser = await User.findById(userId);
+  if (featureUser && !featureUser.hasUnlimitedAccount()) {
+    featureUser.resetDailyUsageIfNeeded();
+
+    if (isGeneration && !projectId) {
+      const { allowed, used, limit } = featureUser.checkFeatureLimit("websiteGen");
+      if (!allowed) {
+        return res.status(429).json({
+          error:      "DAILY_LIMIT_REACHED",
+          feature:    "websiteGen",
+          message:    `You've used your ${limit} free website generation for today.`,
+          detail:     "Buy credits to generate more websites now, or wait until midnight for your free quota to reset.",
+          upgradeUrl: "/wallet",
+          resetAt:    featureUser.wallet.freeResetAt,
+          cta:        "Buy Credits",
+        });
+      }
+    }
+
+    if (isEdit && projectId) {
+      const { allowed, used, limit } = featureUser.checkFeatureLimit("websiteEdit");
+      if (!allowed) {
+        return res.status(429).json({
+          error:      "DAILY_LIMIT_REACHED",
+          feature:    "websiteEdit",
+          message:    `You've used all ${limit} free website edits for today.`,
+          detail:     "Buy credits to keep editing, or wait until midnight for your free quota to reset.",
+          upgradeUrl: "/wallet",
+          resetAt:    featureUser.wallet.freeResetAt,
+          cta:        "Buy Credits",
+        });
+      }
+    }
+  }
 
   let projectFiles = [];
   if (projectId) {
@@ -120,15 +185,8 @@ router.post("/execute", usageGuard(aquaActionType), asyncHandler(async (req, res
     workspaceMemory = wsState?.workspace?.workspaceMemory || {};
   } catch { /* non-fatal */ }
 
-  // Deduct credits before generation; refund on failure
-  let creditDeducted = false;
-  if (cost && userId) {
-    try {
-      creditDeducted = true;
-    } catch (creditErr) {
-      return res.status(402).json({ error: creditErr.message, message: "Not enough Aqua Credits.", upgradeUrl: "/pricing" });
-    }
-  }
+  // Credits already deducted by usageGuard (deductOnEntry: true).
+  // On generation failure, req.creditContext.refund() handles the refund below.
 
   let result;
   try {
@@ -143,10 +201,9 @@ router.post("/execute", usageGuard(aquaActionType), asyncHandler(async (req, res
       sessionHistory: Array.isArray(sessionHistory) ? sessionHistory : [],
     });
   } catch (genErr) {
-    // Refund credits on generation failure
-    if (creditDeducted && cost && userId) {
-      await req.creditContext.refund();
-    }
+    // Refund credits on generation failure (guard deducted on entry)
+    await req.creditContext?.refund?.();
+    log.error(`[AQUA] generation failed, refund issued userId=${userId} err=${genErr.message}`);
     throw genErr;
   }
 
@@ -158,11 +215,21 @@ router.post("/execute", usageGuard(aquaActionType), asyncHandler(async (req, res
   if (result.action === "generated" && result.files?.length) {
     mirrorGeneratedFiles(result.projectId, result.files);
     previewRefresh = true;
+    // Increment websiteGen counter
+    if (featureUser && !featureUser.hasUnlimitedAccount() && !projectId) {
+      featureUser.incrementFeatureUsage("websiteGen");
+      featureUser.save().catch(() => {});
+    }
   }
 
   if ((result.action === "edited" || result.action === "multi_edited") && result.updatedFiles?.length) {
     setImmediate(() => mirrorUpdatedFiles(userId, result.projectId, result.updatedFiles));
     previewRefresh = true;
+    // Increment websiteEdit counter
+    if (featureUser && !featureUser.hasUnlimitedAccount() && projectId) {
+      featureUser.incrementFeatureUsage("websiteEdit");
+      featureUser.save().catch(() => {});
+    }
   }
 
   if (result.projectId) {

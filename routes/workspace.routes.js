@@ -14,6 +14,8 @@ const svc       = require("../workspace/workspace.service");
 const { createLogger }                        = require("../utils/logger");
 const { asyncHandler, sendError, sendSuccess } = require("../middleware/asyncHandler");
 const { validateSaveFile, validateEditFile }  = require("../utils/validate");
+const { usageGuard }                          = require("../middleware/usage/usageGuard");
+const User                                    = require("../models/User");
 
 
 const log = createLogger("WS_ROUTE");
@@ -238,23 +240,42 @@ router.post("/save-file", asyncHandler(async (req, res) => {
   res.json({ success: true, data: result });
 }));
 
-router.post("/edit-file", asyncHandler(async (req, res) => {
+router.post("/edit-file", usageGuard("feature_update"), asyncHandler(async (req, res) => {
   const userId = uid(req);
   if (!userId) return sendError(res, "Unauthorized", 401);
-
-  
-
-  // ─────────────────────────────────────────────────────────────────────────
 
   const { projectId, fileName, instruction } = req.body || {};
   const v = validateEditFile({ projectId, fileName, instruction });
   if (!v.valid) return sendError(res, v.error, 400);
 
-  const result = await svc.editProjectFile(userId, projectId, fileName, instruction);
+  // ── Feature daily limit check for websiteEdit ────────────────────────────
+  const editFUser = await User.findById(userId);
+  if (editFUser && !editFUser.hasUnlimitedAccount()) {
+    editFUser.resetDailyUsageIfNeeded();
+    const { allowed, used, limit } = editFUser.checkFeatureLimit("websiteEdit");
+    if (!allowed) {
+      await req.creditContext?.refund?.();
+      return res.status(429).json({
+        success:    false,
+        error:      "DAILY_LIMIT_REACHED",
+        feature:    "websiteEdit",
+        message:    `You've used all ${limit} free website edits for today.`,
+        detail:     "Buy credits to keep editing, or wait until midnight for your free quota to reset.",
+        upgradeUrl: "/wallet",
+        resetAt:    editFUser.wallet.freeResetAt,
+        cta:        "Buy Credits",
+      });
+    }
+  }
 
-  // Mirror updated files to disk BEFORE sending response.
-  // Previously used setImmediate (fire-and-forget) which caused blank previews:
-  // the client refreshed the iframe before files were written to disk.
+  let result;
+  try {
+    result = await svc.editProjectFile(userId, projectId, fileName, instruction);
+  } catch (editErr) {
+    await req.creditContext?.refund?.();
+    throw editErr;
+  }
+
   if (Array.isArray(result.updatedFiles) && result.updatedFiles.length > 0) {
     for (const updatedFileName of result.updatedFiles) {
       try {
@@ -264,9 +285,14 @@ router.post("/edit-file", asyncHandler(async (req, res) => {
         log.warn(`Mirror read failed for ${updatedFileName}: ${e.message}`);
       }
     }
+    // Increment free-tier websiteEdit counter on success
+    if (editFUser && !editFUser.hasUnlimitedAccount()) {
+      editFUser.incrementFeatureUsage("websiteEdit");
+      editFUser.save().catch(() => {});
+    }
   }
 
-  res.json({ success: true, data: result });
+  res.json({ success: true, ...result });
 }));
 
 module.exports = router;

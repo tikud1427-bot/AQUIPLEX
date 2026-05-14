@@ -1,118 +1,55 @@
 "use strict";
-const User       = require("../../models/User");
-const BillingLog = require("../../models/BillingLog");
-const { inferActionCost } = require("../../utils/subscription/plans");
+/**
+ * services/credits/credits.service.js
+ * AQUIPLEX — LEGACY SHIM (v1 → v2 compatibility layer)
+ *
+ * The old v1 credits system used: monthlyCredits, subscriptionStatus,
+ * creditsResetAt, dailyUsage (number), _resetIfNeeded(), creditSummary().
+ *
+ * All of these are REMOVED from User.js in v2.
+ * This file is kept ONLY for backward compatibility if any stale import
+ * still requires it. It delegates to the live wallet.service.
+ *
+ * DO NOT add new logic here. Use wallet.service.js for all credit ops.
+ */
+
 const { createLogger } = require("../../utils/logger");
+const walletSvc = require("./wallet.service");
 
-const log = createLogger("CREDITS");
-
-// ── Deduct credits ─────────────────────────────────────────────────────────────
+const log = createLogger("CREDITS_LEGACY");
 
 async function deductCredits(userId, cost, actionType = "unknown") {
-  const user = await User.findById(userId);
-  if (!user) throw new Error("USER_NOT_FOUND");
-
-  // Downgrade if 30-day window expired
-  await checkAndDowngradeIfExpired(user);
-
-  user._resetIfNeeded();
-
-  if (user.credits < cost) throw new Error("INSUFFICIENT_CREDITS");
-  const dailyLimit = user._dailyLimit();
-  if (user.dailyUsage + cost > dailyLimit) throw new Error("DAILY_LIMIT_EXCEEDED");
-
-  user.credits    -= cost;
-  user.dailyUsage += cost;
-  await user.save();
-
-  log.info(`Deducted ${cost} credits from user=${userId} action=${actionType} remaining=${user.credits}`);
-  return { remaining: user.credits, deducted: cost };
+  log.warn(`[LEGACY credits.service] deductCredits called — delegating to wallet.service userId=${userId} cost=${cost}`);
+  return walletSvc.deductCredits(userId, cost, actionType);
 }
-
-// ── Refund credits ────────────────────────────────────────────────────────────
 
 async function refundCredits(userId, cost, reason = "generation_failed") {
-  const user = await User.findById(userId);
-  if (!user) return;
-
-  user.credits    = Math.min(user.credits + cost, user.monthlyCredits);
-  user.dailyUsage = Math.max(0, user.dailyUsage - cost);
-  await user.save();
-
-  log.info(`Refunded ${cost} credits to user=${userId} reason=${reason}`);
-  return { refunded: cost, remaining: user.credits };
+  log.warn(`[LEGACY credits.service] refundCredits called — delegating to wallet.service userId=${userId} amount=${cost}`);
+  return walletSvc.refundCredits(userId, cost, reason);
 }
-
-// ── Credit summary ────────────────────────────────────────────────────────────
 
 async function getCreditSummary(userId) {
-  const user = await User.findById(userId);
-  if (!user) throw new Error("USER_NOT_FOUND");
-
-  await checkAndDowngradeIfExpired(user);
-  user._resetIfNeeded();
-  await user.save();
-  return user.creditSummary();
+  log.warn(`[LEGACY credits.service] getCreditSummary called — delegating to wallet.service userId=${userId}`);
+  return walletSvc.getWalletSummary(userId);
 }
-
-// ── Cost estimation ───────────────────────────────────────────────────────────
 
 function estimateCost(actionType) {
-  return inferActionCost(actionType);
-}
-
-// ── Monthly reset cron ────────────────────────────────────────────────────────
-
-async function runMonthlyResetCron() {
-  const now   = new Date();
-  const users = await User.find({ creditsResetAt: { $lte: now } });
-  let count   = 0;
-
-  for (const user of users) {
-    try {
-      user._resetIfNeeded();
-      await user.save();
-      count++;
-    } catch (e) {
-      log.error(`Monthly reset failed for user=${user._id}: ${e.message}`);
-    }
-  }
-
-  log.info(`Monthly reset complete: ${count} users updated`);
-  return { resetCount: count };
+  const { getActionCost } = require("../../utils/credits/packs");
+  return getActionCost(actionType);
 }
 
 /**
- * checkAndDowngradeIfExpired
- *
- * Call on any user-facing action to lazily enforce 30-day billing window.
- * Returns true if user was downgraded.
+ * runMonthlyResetCron — v1 monthly reset. No-op in v2 (daily reset only).
+ */
+async function runMonthlyResetCron() {
+  log.info("[LEGACY credits.service] runMonthlyResetCron called — no-op in v2 wallet system");
+  return { resetCount: 0, message: "v2 wallet system uses lazy daily reset only" };
+}
+
+/**
+ * checkAndDowngradeIfExpired — v1 subscription downgrade. No-op in v2.
  */
 async function checkAndDowngradeIfExpired(user) {
-  const now = new Date();
-
-  // Active plan expired
-  if (
-    user.subscriptionStatus === "active" &&
-    user.currentPeriodEnd &&
-    now >= new Date(user.currentPeriodEnd)
-  ) {
-    log.info(`Downgrading user=${user._id} — 30-day window expired`);
-    await user.resetToFreePlan();
-    return true;
-  }
-
-  // Cancelled plan — keep access until end, then downgrade
-  if (
-    user.subscriptionStatus === "cancelled" &&
-    user.currentPeriodEnd &&
-    now >= new Date(user.currentPeriodEnd)
-  ) {
-    log.info(`Downgrading user=${user._id} — cancelled plan period ended`);
-    await user.resetToFreePlan();
-    return true;
-  }
-
   return false;
 }
 

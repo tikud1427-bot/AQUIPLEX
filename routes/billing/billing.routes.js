@@ -1,31 +1,26 @@
 "use strict";
 /**
  * routes/billing/billing.routes.js
- * AQUIPLEX v2 — Billing API routes (authenticated REST endpoints only).
+ * AQUIPLEX — Billing API routes (Batch 5 repaired).
  *
- * Routes:
- *   POST /api/billing/create-order      → create Razorpay order
- *   POST /api/billing/verify-payment    → verify after checkout success
- *   GET  /api/billing/wallet            → wallet summary
- *   GET  /api/billing/history           → transaction history
- *   GET  /api/billing/payments          → payment history
- *   GET  /api/billing/packs             → available credit packs
- *
- * NOTE: POST /api/billing/webhook is handled in index.js BEFORE express.json()
- * because it requires raw body. DO NOT add a webhook route here.
+ * Fixed:
+ *  - /api/billing/status now returns freeLimits + freeDailyMax + derived plan
+ *  - /api/billing/cancel added (was missing — caused JS error on cancel click)
+ *  - defensive guards on all responses
+ *  - consistent shape: { success, billing|history|... }
  */
 
 const express  = require("express");
 const router   = express.Router();
 
 const { createOrder, verifyPayment, getUserPaymentHistory } = require("../../services/billing/razorpay.service");
-const { getWalletSummary, getTransactionHistory } = require("../../services/credits/wallet.service");
+const { getWalletSummary, getTransactionHistory }           = require("../../services/credits/wallet.service");
 const { allPacksArray }      = require("../../utils/credits/packs");
 const { createLogger }       = require("../../utils/logger");
+const User                   = require("../../models/User");
+const { hasUnlimitedAccess } = require("../../utils/credits/unlimitedAccess");
 
 const log = createLogger("BILLING_ROUTES");
-const walletService = require("../../services/credits/wallet.service");
-
 
 // ── Auth helper ───────────────────────────────────────────────────────────────
 
@@ -41,9 +36,20 @@ function getUid(req) {
 
 function requireLogin(req, res, next) {
   const uid = getUid(req);
-  if (!uid) return res.status(401).json({ error: "LOGIN_REQUIRED" });
+  if (!uid) return res.status(401).json({ success: false, error: "LOGIN_REQUIRED" });
   req.uid = uid.toString();
   next();
+}
+
+/**
+ * Derive a display plan string from user fields.
+ * The User model removed the `plan` field in v2 — derive from role + isUnlimited.
+ */
+function derivePlan(user) {
+  if (!user) return "free";
+  if (user.role === "admin")       return "admin";
+  if (user.isUnlimited === true)   return "pro";
+  return "free";
 }
 
 // ── POST /api/billing/create-order ───────────────────────────────────────────
@@ -54,6 +60,7 @@ router.post("/create-order", requireLogin, async (req, res) => {
     const validPacks = ["starter", "growth", "pro", "max"];
     if (!validPacks.includes(packId)) {
       return res.status(400).json({
+        success: false,
         error:   "INVALID_PACK",
         message: "Choose a valid credit pack: starter, growth, pro, or max.",
       });
@@ -65,7 +72,7 @@ router.post("/create-order", requireLogin, async (req, res) => {
 
   } catch (err) {
     log.error("create-order error:", err.message);
-    return res.status(500).json({ error: "ORDER_CREATION_FAILED", message: err.message });
+    return res.status(500).json({ success: false, error: "ORDER_CREATION_FAILED", message: err.message });
   }
 });
 
@@ -77,6 +84,7 @@ router.post("/verify-payment", requireLogin, async (req, res) => {
 
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({
+        success: false,
         error:   "MISSING_PARAMS",
         message: "razorpay_order_id, razorpay_payment_id, razorpay_signature required.",
       });
@@ -95,7 +103,7 @@ router.post("/verify-payment", requireLogin, async (req, res) => {
   } catch (err) {
     log.error("verify-payment error:", err.message);
     const status = err.message === "INVALID_SIGNATURE" ? 400 : 500;
-    return res.status(status).json({ error: err.message });
+    return res.status(status).json({ success: false, error: err.message });
   }
 });
 
@@ -107,97 +115,136 @@ router.get("/wallet", requireLogin, async (req, res) => {
     return res.json({ success: true, wallet: summary });
   } catch (err) {
     log.error("wallet fetch error:", err.message);
-    return res.status(500).json({ error: "WALLET_FETCH_FAILED" });
+    return res.status(500).json({ success: false, error: "WALLET_FETCH_FAILED" });
   }
 });
 
-// —— GET /api/billing/status ——————————————————————————————
+// ── GET /api/billing/status ───────────────────────────────────────────────────
+// Returns: { success, billing: { plan, freeCredits, paidCredits, totalCredits,
+//   freeDailyMax, freeResetAt, isUnlimited, dailyUsage, freeLimits } }
+
 router.get("/status", requireLogin, async (req, res) => {
   try {
-    const user = await User.findById(req.uid).lean();
+    // Need Mongoose instance for methods — do NOT use .lean()
+    const fullUser = await User.findById(req.uid);
 
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: "USER_NOT_FOUND",
-      });
+    if (!fullUser) {
+      return res.status(404).json({ success: false, error: "USER_NOT_FOUND" });
     }
 
-    const wallet = user.wallet || {};
+    // Lazy reset before reading
+    fullUser.resetDailyUsageIfNeeded();
+
+    const wallet = fullUser.wallet || {};
+    const freeCredits  = Number(wallet.freeCredits  || 0);
+    const paidCredits  = Number(wallet.paidCredits  || 0);
+    const freeDailyMax = parseInt(process.env.FREE_DAILY_CREDITS || "200", 10);
+
+    // getDailyUsageSnapshot already embeds per-feature limits
+    const dailyUsageSnapshot = fullUser.getDailyUsageSnapshot();
+
+    // Build freeLimits from snapshot so frontend can reference it separately
+    const freeLimits = {};
+    for (const [key, val] of Object.entries(dailyUsageSnapshot)) {
+      freeLimits[key] = val.limit;
+    }
 
     return res.json({
       success: true,
-
       billing: {
-        credits: Number(wallet.balance || 0),
-        lifetimeCredits: Number(
-          wallet.lifetimePurchasedCredits || 0
-        ),
-        totalSpent: Number(wallet.totalSpent || 0),
+        plan:         derivePlan(fullUser),
+        freeCredits,
+        paidCredits,
+        totalCredits: freeCredits + paidCredits,
+        freeDailyMax,
+        totalEarned:  Number(wallet.totalEarned || 0),
+        totalSpent:   Number(wallet.totalSpent  || 0),
+        freeResetAt:  wallet.freeResetAt || null,
+        isUnlimited:  hasUnlimitedAccess(fullUser),
+        dailyUsage:   dailyUsageSnapshot,
+        freeLimits,
       },
-
-      subscription: user.subscription || null,
     });
 
   } catch (err) {
     log.error("billing status error:", err.message);
-
-    return res.status(500).json({
-      success: false,
-      error: "STATUS_FETCH_FAILED",
-    });
+    return res.status(500).json({ success: false, error: "STATUS_FETCH_FAILED" });
   }
 });
 
-// —— GET /api/billing/history ——————————————————————————————
+// ── GET /api/billing/history ──────────────────────────────────────────────────
+
 router.get("/history", requireLogin, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit || "30", 10), 100);
+    const skip  = Math.max(parseInt(req.query.skip  || "0",  10), 0);
 
-    const skip = parseInt(req.query.skip || "0", 10);
-
-    const history = await getTransactionHistory(
-      req.uid,
-      limit,
-      skip
-    );
+    const history = await getTransactionHistory(req.uid, limit, skip);
 
     const normalizedHistory = Array.isArray(history)
       ? history.map((tx) => ({
-          id: tx._id || null,
-          type: tx.type || "wallet",
-          amount: Number(tx.amount || 0),
-          credits: Number(tx.credits || 0),
-          status: tx.status || "completed",
+          id:        tx._id   || null,
+          type:      tx.type  || "wallet",
+          amount:    Number(tx.amount  || 0),
+          credits:   Number(tx.credits || tx.amount || 0),
+          status:    tx.status    || "completed",
           createdAt: tx.createdAt || null,
         }))
       : [];
 
-    return res.json({
-      success: true,
-      history: normalizedHistory,
-    });
+    return res.json({ success: true, history: normalizedHistory });
 
   } catch (err) {
     log.error("history fetch error:", err.message);
-
-    return res.status(500).json({
-      success: false,
-      error: "HISTORY_FETCH_FAILED",
-      history: [],
-    });
+    return res.status(500).json({ success: false, error: "HISTORY_FETCH_FAILED", history: [] });
   }
 });
+
+// ── POST /api/billing/cancel ──────────────────────────────────────────────────
+// Free-tier users have no subscription to cancel; handle gracefully.
+// Paid tiers: mark isUnlimited = false (simplified cancel — no Razorpay sub mgmt yet).
+
+router.post("/cancel", requireLogin, async (req, res) => {
+  try {
+    const user = await User.findById(req.uid);
+    if (!user) {
+      return res.status(404).json({ success: false, error: "USER_NOT_FOUND" });
+    }
+
+    if (!hasUnlimitedAccess(user)) {
+      return res.status(400).json({
+        success: false,
+        error:   "NO_ACTIVE_SUBSCRIPTION",
+        message: "No active paid subscription to cancel.",
+      });
+    }
+
+    // Downgrade: revoke unlimited flag
+    user.isUnlimited = false;
+    await user.save();
+
+    log.info(`Subscription cancelled: user=${req.uid}`);
+    return res.json({
+      success: true,
+      message: "Subscription cancelled. You've been moved to the free plan.",
+    });
+
+  } catch (err) {
+    log.error("cancel error:", err.message);
+    return res.status(500).json({ success: false, error: "CANCEL_FAILED", message: err.message });
+  }
+});
+
 // ── GET /api/billing/payments ─────────────────────────────────────────────────
 
 router.get("/payments", requireLogin, async (req, res) => {
   try {
     const limit    = Math.min(parseInt(req.query.limit || "20", 10), 50);
     const payments = await getUserPaymentHistory(req.uid, limit);
-    return res.json({ success: true, payments });
+    return res.json({ success: true, payments: payments || [] });
   } catch (err) {
     log.error("payments fetch error:", err.message);
-    return res.status(500).json({ error: "PAYMENTS_FETCH_FAILED" });
+    return res.status(500).json({ success: false, error: "PAYMENTS_FETCH_FAILED", payments: [] });
   }
 });
 

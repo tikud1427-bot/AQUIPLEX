@@ -1,0 +1,78 @@
+{
+  "projectId": "77a0bbeb-356e-4184-9b11-24bfea6334bd",
+  "createdAt": "2026-05-14T06:11:10.731Z",
+  "updatedAt": "2026-05-14T06:11:10.740Z",
+  "name": "[Aqua remembers about you]\n- goal: functional\n- functional_upgrade: true\n- ui_upgrade: true\n- week_theme: Elevate Your D",
+  "projectType": "static",
+  "description": "[Aqua remembers about you]\n- goal: functional\n- functional_upgrade: true\n- ui_upgrade: true\n- week_theme: Elevate Your Day\n- caption_prompts: Start your week off right with a mindful morning routine. ",
+  "framework": "vanilla",
+  "entryFile": "index.html",
+  "stylesheets": [
+    "style.css"
+  ],
+  "scripts": [
+    "script.js"
+  ],
+  "fileGraph": {
+    "index.html": [
+      "style.css",
+      "script.js"
+    ]
+  },
+  "components": [
+    "navbar"
+  ],
+  "colorPalette": [
+    "#66d9ef",
+    "#f7f7f7"
+  ],
+  "fontPrimary": "Montserrat",
+  "fontSecondary": "",
+  "designTheme": "Bold Brutalist: white bg, thick borders, massive display type, black + 1 vivid accent",
+  "cdnLibraries": [],
+  "codingStyle": {
+    "usesClasses": false,
+    "usesModules": false,
+    "usesLocalStorage": true,
+    "usesWebComponents": false,
+    "usesCanvas": false,
+    "usesWebAudio": false,
+    "usesAnimations": true,
+    "usesIntersectionObserver": true
+  },
+  "editHistory": [],
+  "knownIssues": [],
+  "activeTasks": [],
+  "snapshots": [
+    {
+      "version": 1,
+      "label": "v1 — initial generation",
+      "ts": "2026-05-14T06:11:10.740Z",
+      "files": [
+        {
+          "fileName": "index.html",
+          "content": "<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Elevate</title>\n    <link rel=\"stylesheet\" href=\"style.css\">\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n    <link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n    <link href=\"https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap\" rel=\"stylesheet\">\n</head>\n<body>\n    <header id=\"header\">\n        <nav id=\"nav\">\n            <button id=\"menu-btn\" aria-label=\"Menu\">Menu</button>\n            <ul id=\"nav-list\">\n                <li><a href=\"#home\" id=\"home-link\">Home</a></li>\n                <li><a href=\"#features\" id=\"features-link\">Features</a></li>\n                <li><a href=\"#products\" id=\"products-link\">Products</a></li>\n            </ul>\n        </nav>\n    </header>\n    <main id=\"main\">\n        <section id=\"hero\" class=\"section\">\n            <h1 id=\"hero-title\" class=\"title\">Transform your morning, transform your day</h1>\n            <p id=\"hero-text\" class=\"text\">Start your day with a personalized morning routine, tailored to your needs and preferences.</p>\n            <button id=\"get-started-btn\" class=\"btn\">Get Started</button>\n        </section>\n        <section id=\"features\" class=\"section\">\n            <h2 id=\"features-title\" class=\"title\">Features</h2>\n            <ul id=\"features-list\">\n                <li id=\"feature-1\" class=\"feature\">\n                    <h3 id=\"feature-1-title\" class=\"title\">Personalized Morning Routine Planner</h3>\n                    <p id=\"feature-1-text\" class=\"text\">Create a customized morning routine with meditation, yoga, and journaling exercises.</p>\n                </li>\n                <li id=\"feature-2\" class=\"feature\">\n                    <h3 id=\"feature-2-title\" class=\"title\">Mood-Tracking Feature</h3>\n                    <p id=\"feature-2-text\" class=\"text\">Track your emotions and receive AI-driven recommendations for music, aromatherapy, and ambient lighting.</p>\n                </li>\n                <li id=\"feature-3\" class=\"feature\">\n                    <h3 id=\"feature-3-title\" class=\"title\">Integration with Fitness Trackers and Health Apps</h3>\n                    <p id=\"feature-3-text\" class=\"text\">Monitor your progress and set realistic goals with our integration with popular fitness trackers and health apps.</p>\n                </li>\n            </ul>\n        </section>\n        <section id=\"products\" class=\"section\">\n            <h2 id=\"products-title\" class=\"title\">Products</h2>\n            <ul id=\"products-list\">\n                <li id=\"product-1\" class=\"product\">\n                    <h3 id=\"product-1-title\" class=\"title\">Morning Yoga Routines for Beginners</h3>\n                    <p id=\"product-1-text\" class=\"text\">Start your day with our guided morning yoga routines, perfect for beginners.</p>\n                    <button id=\"product-1-btn\" class=\"btn\">Learn More</button>\n                </li>\n                <li id=\"product-2\" class=\"product\">\n                    <h3 id=\"product-2-title\" class=\"title\">Guided Meditation Sessions</h3>\n                    <p id=\"product-2-text\" class=\"text\">Reduce stress and anxiety with our guided meditation sessions, tailored to your needs.</p>\n                    <button id=\"product-2-btn\" class=\"btn\">Learn More</button>\n                </li>\n                <li id=\"product-3\" class=\"product\">\n                    <h3 id=\"product-3-title\" class=\"title\">Healthy Breakfast Recipes and Meal Planning Tips</h3>\n                    <p id=\"product-3-text\" class=\"text\">Start your day with a healthy breakfast and get tips on meal planning with our expert advice.</p>\n                    <button id=\"product-3-btn\" class=\"btn\">Learn More</button>\n                </li>\n            </ul>\n        </section>\n    </main>\n    <script src=\"script.js\"></script>\n</body>\n</html>"
+        },
+        {
+          "fileName": "style.css",
+          "content": ":root {\n    --primary-color: #333;\n    --accent-color: #66d9ef;\n    --background-color: #f7f7f7;\n    --text-color: #333;\n    --border-radius: 16px;\n    --box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);\n    --font-family: 'Montserrat', sans-serif;\n}\n\n* {\n    box-sizing: border-box;\n    margin: 0;\n    padding: 0;\n}\n\nbody {\n    font-family: var(--font-family);\n    background-color: var(--background-color);\n    color: var(--text-color);\n    line-height: 1.6;\n    scroll-behavior: smooth;\n}\n\nheader {\n    background-color: var(--primary-color);\n    color: #fff;\n    padding: 1em;\n    text-align: center;\n}\n\nnav {\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n}\n\n#nav-list {\n    list-style: none;\n    margin: 0;\n    padding: 0;\n    display: flex;\n}\n\n#nav-list li {\n    margin-right: 20px;\n}\n\n#nav-list a {\n    color: #fff;\n    text-decoration: none;\n}\n\n#nav-list a:hover {\n    color: var(--accent-color);\n}\n\n#menu-btn {\n    background-color: var(--primary-color);\n    color: #fff;\n    border: none;\n    padding: 10px 20px;\n    font-size: 16px;\n    cursor: pointer;\n}\n\n#menu-btn:hover {\n    background-color: var(--accent-color);\n}\n\nmain {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    padding: 2em;\n}\n\n.section {\n    background-color: #fff;\n    padding: 2em;\n    border-radius: var(--border-radius);\n    box-shadow: var(--box-shadow);\n    margin-bottom: 20px;\n}\n\n.title {\n    font-weight: bold;\n    font-size: 24px;\n    margin-bottom: 10px;\n}\n\n.text {\n    font-size: 16px;\n    margin-bottom: 20px;\n}\n\n.btn {\n    background-color: var(--accent-color);\n    color: #fff;\n    border: none;\n    padding: 10px 20px;\n    font-size: 16px;\n    cursor: pointer;\n    border-radius: var(--border-radius);\n    box-shadow: var(--box-shadow);\n}\n\n.btn:hover {\n    transform: scale(0.96);\n    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);\n}\n\n.feature {\n    margin-bottom: 20px;\n}\n\n.product {\n    margin-bottom: 20px;\n}\n\n#hero {\n    background-image: linear-gradient(to bottom, var(--accent-color), #fff);\n    background-size: 100% 300px;\n    background-position: 0% 100%;\n    height: 100vh;\n    display: flex;\n    justify-content: center;\n    align-items: center;\n    color: #fff;\n}\n\n#hero-title {\n    font-size: 48px;\n    font-weight: bold;\n    margin-bottom: 10px;\n}\n\n#hero-text {\n    font-size: 18px;\n    margin-bottom: 20px;\n}\n\n#get-started-btn {\n    background-color: var(--primary-color);\n    color: #fff;\n    border: none;\n    padding: 10px 20px;\n    font-size: 16px;\n    cursor: pointer;\n}\n\n#get-started-btn:hover {\n    transform: scale(0.96);\n    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);\n}\n\n/* Animations */\n@keyframes fadeUp {\n    from {\n        opacity: 0;\n        transform: translateY(20px);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0);\n    }\n}\n\n@keyframes slideIn {\n    from {\n        opacity: 0;\n        transform: translateX(20px);\n    }\n    to {\n        opacity: 1;\n        transform: translateX(0);\n    }\n}\n\n.section {\n    animation: fadeUp 0.5s ease;\n    animation-delay: 0.5s;\n}\n\n.feature {\n    animation: slideIn 0.5s ease;\n    animation-delay: 1s;\n}\n\n.product {\n    animation: slideIn 0.5s ease;\n    animation-delay: 1.5s;\n}\n\n/* Scrollbar */\n::-webkit-scrollbar {\n    width: 10px;\n    height: 10px;\n}\n\n::-webkit-scrollbar-thumb {\n    background-color: var(--accent-color);\n    border-radius: 10px;\n}\n\n::-webkit-scrollbar-track {\n    background-color: #fff;\n}\n\n/* Selection */\n::selection {\n    background-color: var(--accent-color);\n    color: #fff;\n}"
+        },
+        {
+          "fileName": "script.js",
+          "content": "// Get all elements\nconst header = document.getElementById('header');\nconst nav = document.getElementById('nav');\nconst menuBtn = document.getElementById('menu-btn');\nconst navList = document.getElementById('nav-list');\nconst homeLink = document.getElementById('home-link');\nconst featuresLink = document.getElementById('features-link');\nconst productsLink = document.getElementById('products-link');\nconst heroTitle = document.getElementById('hero-title');\nconst heroText = document.getElementById('hero-text');\nconst getStartedBtn = document.getElementById('get-started-btn');\nconst featuresTitle = document.getElementById('features-title');\nconst featuresList = document.getElementById('features-list');\nconst feature1Title = document.getElementById('feature-1-title');\nconst feature1Text = document.getElementById('feature-1-text');\nconst feature2Title = document.getElementById('feature-2-title');\nconst feature2Text = document.getElementById('feature-2-text');\nconst feature3Title = document.getElementById('feature-3-title');\nconst feature3Text = document.getElementById('feature-3-text');\nconst productsTitle = document.getElementById('products-title');\nconst productsList = document.getElementById('products-list');\nconst product1Title = document.getElementById('product-1-title');\nconst product1Text = document.getElementById('product-1-text');\nconst product1Btn = document.getElementById('product-1-btn');\nconst product2Title = document.getElementById('product-2-title');\nconst product2Text = document.getElementById('product-2-text');\nconst product2Btn = document.getElementById('product-2-btn');\nconst product3Title = document.getElementById('product-3-title');\nconst product3Text = document.getElementById('product-3-text');\nconst product3Btn = document.getElementById('product-3-btn');\n\n// Add event listeners\nmenuBtn.addEventListener('click', () => {\n  navList.classList.toggle('active');\n});\n\nhomeLink.addEventListener('click', () => {\n  window.location.href = '#home';\n});\n\nfeaturesLink.addEventListener('click', () => {\n  window.location.href = '#features';\n});\n\nproductsLink.addEventListener('click', () => {\n  window.location.href = '#products';\n});\n\ngetStartedBtn.addEventListener('click', () => {\n  window.location.href = '#features';\n});\n\nproduct1Btn.addEventListener('click', () => {\n  window.location.href = '#products';\n});\n\nproduct2Btn.addEventListener('click', () => {\n  window.location.href = '#products';\n});\n\nproduct3Btn.addEventListener('click', () => {\n  window.location.href = '#products';\n});\n\n// IntersectionObserver\nconst observer = new IntersectionObserver((entries) => {\n  entries.forEach((entry) => {\n    if (entry.isIntersecting) {\n      entry.target.classList.add('visible');\n    } else {\n      entry.target.classList.remove('visible');\n    }\n  });\n}, {\n  threshold: 0.5,\n});\n\n// Observe sections\nobserver.observe(header);\nobserver.observe(nav);\nobserver.observe(heroTitle);\nobserver.observe(heroText);\nobserver.observe(getStartedBtn);\nobserver.observe(featuresTitle);\nobserver.observe(featuresList);\nobserver.observe(productsTitle);\nobserver.observe(productsList);\n\n// LocalStorage\nconst storedData = localStorage.getItem('elevateData');\nif (storedData) {\n  const data = JSON.parse(storedData);\n  // Use stored data\n} else {\n  const data = {\n    morningRoutine: [],\n    moodTracking: [],\n    fitnessTrackers: [],\n  };\n  localStorage.setItem('elevateData', JSON.stringify(data));\n}\n\n// Page-load staggered animations\nsetTimeout(() => {\n  heroTitle.classList.add('animate');\n}, 50);\n\nsetTimeout(() => {\n  heroText.classList.add('animate');\n}, 100);\n\nsetTimeout(() => {\n  getStartedBtn.classList.add('animate');\n}, 150);\n\n// Hover effects\ngetStartedBtn.addEventListener('mouseover', () => {\n  getStartedBtn.style.transform = 'scale(1.05)';\n  getStartedBtn.style.boxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)';\n});\n\ngetStartedBtn.addEventListener('mouseout', () => {\n  getStartedBtn.style.transform = 'scale(1)';\n  getStartedBtn.style.boxShadow = 'none';\n});\n\nproduct1Btn.addEventListener('mouseover', () => {\n  product1Btn.style.transform = 'scale(1.05)';\n  product1Btn.style.boxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)';\n});\n\nproduct1Btn.addEventListener('mouseout', () => {\n  product1Btn.style.transform = 'scale(1)';\n  product1Btn.style.boxShadow = 'none';\n});\n\nproduct2Btn.addEventListener('mouseover', () => {\n  product2Btn.style.transform = 'scale(1.05)';\n  product2Btn.style.boxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)';\n});\n\nproduct2Btn.addEventListener('mouseout', () => {\n  product2Btn.style.transform = 'scale(1)';\n  product2Btn.style.boxShadow = 'none';\n});\n\nproduct3Btn.addEventListener('mouseover', () => {\n  product3Btn.style.transform = 'scale(1.05)';\n  product3Btn.style.boxShadow = '0px 0px 10px rgba(0, 0, 0, 0.5)';\n});\n\nproduct3Btn.addEventListener('mouseout', () => {\n  product3Btn.style.transform = 'scale(1)';\n  product3Btn.style.boxShadow = 'none';\n});"
+        }
+      ]
+    }
+  ],
+  "isFullstack": true,
+  "stack": {
+    "frontend": "",
+    "backend": "",
+    "database": "",
+    "auth": ""
+  },
+  "routes": [],
+  "dbModels": [],
+  "envVars": [],
+  "deployTarget": ""
+}

@@ -1,175 +1,59 @@
 "use strict";
 /**
  * middleware/usage/usageGuard.js
- * AQUIPLEX v2 — Credit-check middleware for AI action routes.
+ * AQUIPLEX — Express middleware wrapper for credit checking.
  *
- * Usage:
+ * This file ONLY handles Express plumbing: calling next(), sending res.
+ * All validation logic lives in checkUsage.js.
+ *
+ * Usage (Express routes only):
  *   router.post('/generate', usageGuard('full_app_gen'), handler)
  *   router.post('/chat',     usageGuard((req) => req.body.mode === 'deep' ? 'deep_research' : 'chat_message'), handler)
  *
+ * For non-Express callers (sockets, services, cron):
+ *   const { checkUsage } = require("./checkUsage");
+ *   const result = await checkUsage({ userId, actionType: "chat_message" });
+ *
  * After guard passes:
- *   req.creditContext = { userId, cost, actionType, walletSnapshot }
- *
- * Deduction happens AFTER the action succeeds (in route handler via commitCredit).
- * Or use usageGuard with deductOnEntry: true for pre-deduct (with refund on failure).
- *
- * Free build bypass:
- *   Free users with 0 credits may generate ONE full app per daily reset cycle.
- *   req.freeFullBuild = true signals the route handler to mark usage after success.
- *   AI editing is NOT bypassed — ever.
+ *   req.creditContext = { userId, cost, actionType, deducted, refund(), commit(), balanceAfter }
  */
 
-const User          = require("../../models/User");
-const { getActionCost }  = require("../../utils/credits/packs");
-const { deductCredits, refundCredits } = require("../../services/credits/wallet.service");
-const {
-  hasUnlimitedAccess,
-  unlimitedAccessReason,
-} = require("../../utils/credits/unlimitedAccess");
-const { createLogger }   = require("../../utils/logger");
+const { checkUsage, getUid } = require("./checkUsage");
+const { createLogger }       = require("../../utils/logger");
 
 const log = createLogger("USAGE_MW");
 
-// ── Auth helper ───────────────────────────────────────────────────────────────
-
-function getUid(req) {
-  return (
-    req.session?.userId    ||
-    req.session?.user?._id ||
-    req.user?._id          ||
-    req.user?.id           ||
-    null
-  );
-}
-
-// ── Main guard ────────────────────────────────────────────────────────────────
-
-/**
- * usageGuard(actionTypeOrFn, options)
- *
- * options.deductOnEntry (default: true)
- *   true  → deduct before action, refund on failure. Use req.creditContext.refund() on error.
- *   false → only check balance. Call req.creditContext.commit() after successful action.
- */
 function usageGuard(actionTypeOrFn = "default", options = {}) {
-  const deductOnEntry = options.deductOnEntry !== false; // default true
+  const deductOnEntry = options.deductOnEntry !== false;
 
   return async (req, res, next) => {
-    const uid = getUid(req);
-    if (!uid) {
-      return res.status(401).json({
-        error:   "LOGIN_REQUIRED",
-        message: "Please sign in to continue.",
-      });
-    }
-
     try {
-      const user = await User.findById(uid);
-      if (!user) return res.status(401).json({ error: "USER_NOT_FOUND" });
-
-      // Lazy daily reset
-      const wasReset = user.resetFreeCreditsIfNeeded();
-      if (wasReset) await user.save();
-
+      const userId = getUid(req);
       const actionType = typeof actionTypeOrFn === "function"
         ? actionTypeOrFn(req)
         : actionTypeOrFn;
 
-      const cost  = getActionCost(actionType);
-      const total = user.wallet.freeCredits + user.wallet.paidCredits;
-      const unlimited = hasUnlimitedAccess(user);
+      log.info(`[usageGuard] checking userId=${userId} actionType=${actionType} route=${req.originalUrl}`);
 
-      if (unlimited) {
-        log.info("[UsageGuard] unlimited bypass granted", {
-          email: user.email,
-          reason: unlimitedAccessReason(user),
-        });
+      const result = await checkUsage({ userId, actionType, deductOnEntry });
 
-        req.creditContext = {
-          userId: uid,
-          cost,
-          actionType,
-          deducted: false,
-          unlimited: true,
-
-          refund: () => Promise.resolve(),
-          commit: () => Promise.resolve(),
-
-          balanceAfter: {
-            freeCredits: user.wallet?.freeCredits || 0,
-            paidCredits: user.wallet?.paidCredits || 0,
-            total,
-            isUnlimited: true,
-            unlimitedReason: unlimitedAccessReason(user),
-          },
-        };
-
-        return next();
+      if (!result.allowed) {
+        const { allowed, status, ...body } = result;
+        return res.status(status || 500).json(body);
       }
 
-      if (total < cost) {
-        log.warn("[UsageGuard] insufficient credits", {
-          userId: uid,
-          email: user.email,
-          totalCredits: total,
-          costRequired: cost,
-          actionType,
-        });
-
-        return insufficientResponse(res, user, cost, actionType);
-      }
-
-      if (deductOnEntry) {
-        // Deduct now — refund via req.creditContext.refund() if action fails
-        const deductResult = await deductCredits(uid, cost, actionType);
-
-        req.creditContext = {
-          userId:     uid,
-          cost,
-          actionType,
-          deducted:   true,
-          refund:     () => refundCredits(uid, cost, `${actionType}_failed`),
-          commit:     () => Promise.resolve(), // no-op (already deducted)
-          balanceAfter: deductResult.balanceAfter,
-        };
-      } else {
-        // Check-only mode — commit later
-        req.creditContext = {
-          userId:     uid,
-          cost,
-          actionType,
-          deducted:   false,
-          refund:     () => Promise.resolve(),
-          commit:     () => deductCredits(uid, cost, actionType),
-        };
-      }
-
+      req.creditContext = result.creditContext;
+      log.info(`[usageGuard] PASS userId=${userId} actionType=${actionType} cost=${result.cost} route=${req.originalUrl}`);
       next();
 
     } catch (err) {
-      log.error("usageGuard error:", err.message);
-      return res.status(500).json({ error: "USAGE_CHECK_FAILED" });
+      log.error("[usageGuard] unexpected error:", err.message, "\n", err.stack);
+      return res.status(500).json({
+        error:   "USAGE_CHECK_FAILED",
+        message: "We couldn't verify your usage right now. Please try again in a moment.",
+      });
     }
   };
-}
-
-// ── Insufficient credits response ─────────────────────────────────────────────
-
-function insufficientResponse(res, user, costRequired, actionType) {
-  const freeCredits = user.wallet?.freeCredits || 0;
-  const paidCredits = user.wallet?.paidCredits || 0;
-
-  return res.status(402).json({
-    error:        "INSUFFICIENT_CREDITS",
-    message:      "You don't have enough credits. Top up your wallet to continue.",
-    upgradeUrl:   "/wallet",
-    freeCredits,
-    paidCredits,
-    totalCredits: freeCredits + paidCredits,
-    costRequired,
-    actionType,
-    cta:          "Buy Credits",
-  });
 }
 
 module.exports = { usageGuard };

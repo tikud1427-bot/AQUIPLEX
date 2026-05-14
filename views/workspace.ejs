@@ -47,6 +47,15 @@ kbd {
   transition: opacity .2s, transform .2s;
 }
 .aq-aqua-panel.hidden { opacity: 0; pointer-events: none; transform: translateY(12px); }
+@media (max-width: 480px) {
+  .aq-aqua-panel {
+    width: calc(100vw - 24px);
+    right: 12px;
+    left: 12px;
+    bottom: 70px;
+    max-height: 60vh;
+  }
+}
 .aq-aqua-hdr {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,0.06);
@@ -154,6 +163,7 @@ kbd {
       </button>
     </div>
 
+    <div id="aqua-hud-slot" style="display:flex;align-items:center;margin-right:8px;"></div>
     <div class="aq-topbar-right">
       <div class="aq-status-pill" title="Connected">
         <div class="aq-status-dot"></div><span>ONLINE</span>
@@ -818,6 +828,17 @@ async function generateProject() {
       body: JSON.stringify({ projectId, prompt }),
     });
     const genData = await genRes.json();
+
+    // Handle credit/limit errors with friendly UI
+    if (!genRes.ok) {
+      if (genRes.status === 429) {
+        throw new Error(`⏱️ ${genData.message || "Daily website generation limit reached."} ${genData.detail || "Buy credits or wait until midnight."}`);
+      }
+      if (genRes.status === 402) {
+        throw new Error(`💳 ${genData.message || "Not enough credits."} You have ${genData.totalCredits ?? 0} credits; this needs ${genData.costRequired ?? 150}.`);
+      }
+      throw new Error(genData.error || genData.message || "Generation failed");
+    }
     if (!genData.success) throw new Error(genData.error || "Generation failed");
 
     STATE.projectId    = String(projectId);
@@ -994,11 +1015,23 @@ async function aiEditFile() {
       body: JSON.stringify({ projectId: STATE.projectId, fileName: STATE.activeFile, instruction }),
     });
     const data = await res.json();
+
+    // Handle credit/limit errors with friendly messages
+    if (!res.ok) {
+      if (res.status === 429) {
+        toast(`⏱️ ${data.message || "Daily edit limit reached."} Buy credits or wait until midnight.`, "error", 6000);
+        return;
+      }
+      if (res.status === 402) {
+        toast(`💳 ${data.message || "Not enough credits for AI editing."}`, "error", 6000);
+        return;
+      }
+      throw new Error(data.error || data.message || "Edit failed");
+    }
     if (!data.success) throw new Error(data.error || "Edit failed");
+
     document.getElementById("aiEditInput").value = "";
     await loadFile(STATE.activeFile);
-    // Mirror is now synchronous on the server (files written before response sent).
-    // Safe to refresh preview immediately.
     safeRefreshPreview();
     toast("Edit applied ✓", "success");
   } catch(e) { toast("AI edit failed: " + e.message, "error"); }
@@ -1222,7 +1255,24 @@ async function aquaSend() {
       }),
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.error || "Request failed");
+
+    // ── Handle billing/limit errors gracefully (no blank output) ─────────────
+    if (!res.ok || !data.success) {
+      if (res.status === 429 || data.error === "DAILY_LIMIT_REACHED") {
+        const limitMsg = data.message || "You've reached your daily free allowance for this feature.";
+        const detail   = data.detail || "Wait until midnight or buy credits to continue.";
+        _aquaAppendMsg("assistant", `<div style="background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);border-radius:8px;padding:10px 12px;font-size:0.85rem;"><strong>⏱️ Daily limit reached</strong><br><span style="opacity:0.8">${limitMsg}</span><br><span style="font-size:0.8rem;opacity:0.6">${detail}</span><br><a href="${data.upgradeUrl || '/wallet'}" style="color:#00d4ff;font-size:0.82rem;display:inline-block;margin-top:6px;">⚡ Buy Credits</a></div>`);
+        if (window.AquaPaywall) window.AquaPaywall.showAuto(data);
+        return;
+      }
+      if (res.status === 402 || data.error === "INSUFFICIENT_CREDITS") {
+        const creditMsg = data.message || "Not enough credits for this action.";
+        _aquaAppendMsg("assistant", `<div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;padding:10px 12px;font-size:0.85rem;"><strong>💳 Out of credits</strong><br><span style="opacity:0.8">${creditMsg}</span><br><span style="font-size:0.8rem;opacity:0.6">You have <strong>${data.totalCredits ?? 0}</strong> credits. This action needs <strong>${data.costRequired ?? "—"}</strong>.</span><br><a href="${data.upgradeUrl || '/wallet'}" style="color:#00d4ff;font-size:0.82rem;display:inline-block;margin-top:6px;">⚡ Top Up Wallet</a></div>`);
+        if (window.AquaPaywall) window.AquaPaywall.showAuto(data);
+        return;
+      }
+      throw new Error(data.error || data.message || "Request failed");
+    }
 
     _aquaAppendMsg("assistant", data.message || data.reply || "Done.");
 
@@ -1863,8 +1913,14 @@ async function viewProjectPlan() {
     toast(`Graph fetch failed: ${e.message}`, "error");
   }
 }
+
+// ── Init usage HUD (shows free credit counters in topbar) ────────────────────
+document.addEventListener("DOMContentLoaded", function() {
+  if (window.AquaPaywall) window.AquaPaywall.initHUD("#aqua-hud-slot");
+});
 </script>
 
+<script src="/js/aqua-paywall.js"></script>
 <script src="/js/aqua-client.js"></script>
 </body>
 </html>

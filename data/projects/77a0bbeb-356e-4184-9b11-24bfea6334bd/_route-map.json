@@ -1,0 +1,23 @@
+{
+  "projectId": "77a0bbeb-356e-4184-9b11-24bfea6334bd",
+  "frontend": [
+    {
+      "route": "/",
+      "purpose": "landing page"
+    },
+    {
+      "route": "/products",
+      "purpose": "product list page"
+    },
+    {
+      "route": "/cart",
+      "purpose": "shopping cart page"
+    },
+    {
+      "route": "/checkout",
+      "purpose": "checkout page"
+    }
+  ],
+  "backend": [],
+  "updatedAt": "2026-05-14T06:11:01.738Z"
+}

@@ -1,0 +1,42 @@
+{
+  "projectId": "77a0bbeb-356e-4184-9b11-24bfea6334bd",
+  "components": [
+    {
+      "name": "header",
+      "tagType": "header",
+      "type": "section",
+      "sourceFile": "index.html"
+    },
+    {
+      "name": "nav",
+      "tagType": "nav",
+      "type": "section",
+      "sourceFile": "index.html"
+    },
+    {
+      "name": "main",
+      "tagType": "main",
+      "type": "section",
+      "sourceFile": "index.html"
+    },
+    {
+      "name": "hero",
+      "tagType": "section",
+      "type": "section",
+      "sourceFile": "index.html"
+    },
+    {
+      "name": "features",
+      "tagType": "section",
+      "type": "section",
+      "sourceFile": "index.html"
+    },
+    {
+      "name": "products",
+      "tagType": "section",
+      "type": "section",
+      "sourceFile": "index.html"
+    }
+  ],
+  "updatedAt": "2026-05-14T06:11:10.746Z"
+}

@@ -211,8 +211,12 @@ async function applyEdit() {
     const data = await res.json();
 
     if (!res.ok || !data.success) {
-  throw new Error(data.error || "Edit failed");
-}
+      const rawErr = data.error || '';
+      const isCode = rawErr === rawErr.toUpperCase() || rawErr.includes('_FAILED') || rawErr.includes('_ERROR');
+      const msg = data.message && !data.message.includes('_') ? data.message
+                : isCode ? 'Edit failed. Please try again.' : rawErr || 'Edit failed';
+      throw new Error(msg);
+    }
 
     if (!data.updatedFiles || data.updatedFiles.length === 0) {
       throw new Error("No changes applied");

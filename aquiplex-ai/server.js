@@ -1,3 +1,10 @@
+// DISABLED — This standalone Aqua AI server is superseded by the main index.js.
+// It has NO auth, NO credit system, NO rate limiting.
+// If accidentally started on a public port it exposes unlimited free AI access.
+// DO NOT run this in production. The main server (index.js) handles all /chat routes.
+// To re-enable for local testing only: remove the line below and add proper auth.
+throw new Error("[aquiplex-ai/server.js] This standalone server is disabled in production. Use index.js.");
+
 require("dotenv").config();
 const express = require("express");
 const fetch = require("node-fetch");

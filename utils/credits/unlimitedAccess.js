@@ -22,18 +22,37 @@ function hasUnlimitedAccess(user) {
   const email = normalizeEmail(user.email);
   if (!email) return false;
 
+  // Check env allowlist
   const allowlist = getUnlimitedEmails();
-  const allowed = allowlist.includes(email);
-
-  if (allowed) {
-    console.info("[UnlimitedAccess] allowlisted account", {
-      email,
-    });
+  if (allowlist.includes(email)) {
+    console.info("[UnlimitedAccess] allowlisted account", { email });
+    return true;
   }
 
-  return allowed;
+  // Check isUnlimited flag on user document (admin-set)
+  if (user.isUnlimited === true) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * unlimitedAccessReason — returns a human-readable reason string, or null.
+ * Called for logging only. Never returns a falsy value that blocks access.
+ */
+function unlimitedAccessReason(user) {
+  if (!user) return null;
+
+  const email = normalizeEmail(user.email);
+  const allowlist = getUnlimitedEmails();
+
+  if (email && allowlist.includes(email)) return "email_allowlist";
+  if (user.isUnlimited === true) return "isUnlimited_flag";
+  return null;
 }
 
 module.exports = {
   hasUnlimitedAccess,
+  unlimitedAccessReason,
 };

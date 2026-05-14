@@ -22,8 +22,27 @@
 const mongoose = require("mongoose");
 const crypto   = require("crypto");
 const { hasUnlimitedAccess, unlimitedAccessReason } = require("../utils/credits/unlimitedAccess");
+const { getISTDateStr, nextISTMidnight } = require("../utils/date/getISTDayRange");
 
 const FREE_DAILY_CREDITS = parseInt(process.env.FREE_DAILY_CREDITS || "200", 10);
+
+// ── Per-feature daily limits (free tier) ─────────────────────────────────────
+const FREE_LIMITS = {
+  imageGen:    parseInt(process.env.FREE_LIMIT_IMAGE    || "2",  10),
+  codeMode:    parseInt(process.env.FREE_LIMIT_CODE     || "1",  10),
+  webSearch:   parseInt(process.env.FREE_LIMIT_SEARCH   || "3",  10),
+  websiteGen:  parseInt(process.env.FREE_LIMIT_WEBSITE  || "1",  10),
+  websiteEdit: parseInt(process.env.FREE_LIMIT_WEBEDIT  || "2",  10),
+};
+
+const dailyUsageSchema = new mongoose.Schema({
+  date:        { type: String, default: () => todayStr() }, // "YYYY-MM-DD"
+  imageGen:    { type: Number, default: 0, min: 0 },
+  codeMode:    { type: Number, default: 0, min: 0 },
+  webSearch:   { type: Number, default: 0, min: 0 },
+  websiteGen:  { type: Number, default: 0, min: 0 },
+  websiteEdit: { type: Number, default: 0, min: 0 },
+}, { _id: false });
 
 const walletSchema = new mongoose.Schema(
   {
@@ -69,6 +88,9 @@ const userSchema = new mongoose.Schema(
     // ── Wallet ──────────────────────────────────────────────────────────────
     wallet: { type: walletSchema, default: () => ({}) },
 
+    // ── Daily feature usage counters (free tier) ─────────────────────────────
+    dailyUsage: { type: dailyUsageSchema, default: () => ({}) },
+
     // ── Profile ─────────────────────────────────────────────────────────────
     billingEmail: { type: String, default: null },
     phone:        { type: String, default: null },
@@ -82,11 +104,10 @@ const userSchema = new mongoose.Schema(
 
 // ── Pre-save: generate referral code ─────────────────────────────────────────
 
-userSchema.pre("save", function (next) {
+userSchema.pre("save", function () {
   if (!this.referralCode) {
     this.referralCode = crypto.randomBytes(4).toString("hex").toUpperCase();
   }
-  next();
 });
 
 // ── Access helpers ────────────────────────────────────────────────────────────
@@ -182,16 +203,82 @@ userSchema.methods.walletSummary = function () {
     totalSpent:   this.wallet.totalSpent,
     isUnlimited:  this.hasUnlimitedAccount(),
     unlimitedReason: this.unlimitedAccessReason(),
+    dailyUsage:   this.getDailyUsageSnapshot(),
+    freeLimits:   FREE_LIMITS,
   };
+};
+
+// ── Daily feature usage methods ───────────────────────────────────────────────
+
+/**
+ * resetDailyUsageIfNeeded — lazy daily reset for feature counters.
+ */
+userSchema.methods.resetDailyUsageIfNeeded = function () {
+  const today = todayStr();
+  if (!this.dailyUsage || this.dailyUsage.date !== today) {
+    this.dailyUsage = {
+      date:        today,
+      imageGen:    0,
+      codeMode:    0,
+      webSearch:   0,
+      websiteGen:  0,
+      websiteEdit: 0,
+    };
+    return true;
+  }
+  return false;
+};
+
+/**
+ * checkFeatureLimit — returns { allowed, used, limit, feature }.
+ * Does NOT increment. Call incrementFeatureUsage after successful action.
+ */
+userSchema.methods.checkFeatureLimit = function (feature) {
+  if (this.hasUnlimitedAccount()) return { allowed: true, used: 0, limit: Infinity, feature };
+  this.resetDailyUsageIfNeeded();
+  const limit = FREE_LIMITS[feature];
+  if (limit === undefined) return { allowed: true, used: 0, limit: Infinity, feature };
+  const used = this.dailyUsage[feature] || 0;
+  return { allowed: used < limit, used, limit, feature };
+};
+
+/**
+ * incrementFeatureUsage — bump counter. DOES NOT save.
+ */
+userSchema.methods.incrementFeatureUsage = function (feature) {
+  if (this.hasUnlimitedAccount()) return;
+  this.resetDailyUsageIfNeeded();
+  if (this.dailyUsage[feature] !== undefined) {
+    this.dailyUsage[feature] += 1;
+  }
+};
+
+/**
+ * getDailyUsageSnapshot — public snapshot of today's usage + limits.
+ */
+userSchema.methods.getDailyUsageSnapshot = function () {
+  this.resetDailyUsageIfNeeded();
+  const snapshot = {};
+  for (const [key, limit] of Object.entries(FREE_LIMITS)) {
+    snapshot[key] = {
+      used:      this.dailyUsage[key] || 0,
+      limit,
+      remaining: Math.max(0, limit - (this.dailyUsage[key] || 0)),
+    };
+  }
+  return snapshot;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function nextDayReset() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(0, 0, 0, 0);
-  return d;
+  // Use IST midnight so Indian users reset at 00:00 IST, not 00:00 UTC (05:30 IST)
+  return nextISTMidnight();
+}
+
+function todayStr() {
+  // Use IST date string so "today" matches the IST calendar day
+  return getISTDateStr(); // "YYYY-MM-DD" in IST
 }
 
 module.exports = mongoose.model("User", userSchema);

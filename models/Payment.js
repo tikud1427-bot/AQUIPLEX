@@ -82,8 +82,8 @@ const paymentSchema = new mongoose.Schema(
 // Compound index for payment history queries
 paymentSchema.index({ user: 1, createdAt: -1 });
 
-// Explicit index for webhook lookup by orderId
-paymentSchema.index({ razorpayOrderId: 1 });
+// NOTE: razorpayOrderId unique index is defined inline above (unique: true).
+// DO NOT add paymentSchema.index({ razorpayOrderId: 1 }) here — duplicate index warning.
 
 // NOTE: webhookId sparse+unique is defined inline above.
 // DO NOT add paymentSchema.index({ webhookId: 1 }, { unique: true, sparse: true }) here.

@@ -34,6 +34,8 @@ const Workspace = require("./models/Workspace");
 const { extractMemory, getUserMemory, getMemoryList, deleteMemoryEntry } = require("./memory/memory.service");
 const { handleAquaRequest }            = require("./core/aqua.orchestrator");
 const ai                               = require("./engine/ai.core");
+const { usageGuard }                   = require("./middleware/usage/usageGuard");
+const { featureGuard }                 = require("./middleware/usage/featureGuard");
 
 // ── File Intelligence imports ─────────────────────────────────────────────────
 const { parseUploadedFile, buildFileContext, cleanupFile } = require("./engine/file.parser");
@@ -320,13 +322,26 @@ try {
   sessionStore = MongoStore.create({ mongoUrl: process.env.MONGO_URI });
   console.log("✅ Session store: MongoDB (connect-mongo)");
 } catch (_) {
-  console.warn("⚠️  connect-mongo not found — using memory store (sessions reset on restart). Run: npm install connect-mongo");
-  sessionStore = undefined; // express-session default = MemoryStore
+  try {
+    const MemoryStoreFactory = require("memorystore");
+    const MemoryStore = MemoryStoreFactory(require("express-session"));
+    sessionStore = new MemoryStore({ checkPeriod: 86400000 }); // prune expired every 24h
+    console.log("✅ Session store: memorystore (in-process, resets on restart — add connect-mongo for persistence)");
+  } catch (_2) {
+    sessionStore = undefined;
+    console.warn("⚠️  No persistent session store — using bare MemoryStore. Run: npm install connect-mongo");
+  }
 }
 
 app.use(
   session({
-    secret:            process.env.SESSION_SECRET || "aqua-secret-fallback",
+    secret:            (() => {
+      const s = process.env.SESSION_SECRET;
+      if (!s && process.env.NODE_ENV === 'production') {
+        console.error('[FATAL] SESSION_SECRET env var is not set in production. Sessions are insecure. Set SESSION_SECRET.');
+      }
+      return s || 'aqua-secret-fallback-dev-only';
+    })(),
     resave:            false,
     saveUninitialized: false,
     name:              "aidex_session",
@@ -1399,7 +1414,18 @@ app.post("/api/suggest-prompts", chatLimiter, async (req, res) => {
 // CHAT ROUTE — primary AI endpoint
 // ═════════════════════════════════════════════════════════════════════════════
 
-app.post("/chat", chatLimiter, upload.single("file"), async (req, res) => {
+// BILLING FIX: upload.single runs BEFORE usageGuard so req.file is populated
+// when the action-type function evaluates cost. Previously usageGuard ran first
+// causing all file uploads to be billed as chat_message (5cr) not chat_with_file (8cr).
+// Also: failed multer parses now never reach usageGuard, so no credits deducted.
+app.post("/chat", chatLimiter, requireLogin, upload.single("file"), usageGuard((req) => {
+  // req.file is now reliably set by multer before this runs
+  if (req.file) return "chat_with_file";
+  const mode = (req.body && req.body.mode) || "";
+  if (mode === "deep" || mode === "research") return "deep_research";
+  if (mode === "image") return "image_generate";
+  return "chat_message";
+}), async (req, res) => {
   let { message, history, mode, chatId, stream, projectId, fileName, sessionHistory } = req.body;
 
   stream = stream === "true" || stream === true;
@@ -1492,12 +1518,57 @@ app.post("/chat", chatLimiter, upload.single("file"), async (req, res) => {
     // ── IMAGE MODE ─────────────────────────────────────────────────────────────
     if (mode === "image") {
       if (!message) return res.json({ reply: "⚠️ Please describe the image you want to generate." });
+      // Feature limit check (also checked by usageGuard at route level for credits)
+      const imgUser = await User.findById(req.session?.userId);
+      if (imgUser && !imgUser.hasUnlimitedAccount()) {
+        imgUser.resetDailyUsageIfNeeded();
+        const { allowed, used, limit } = imgUser.checkFeatureLimit("imageGen");
+        if (!allowed) {
+          await req.creditContext?.refund?.(); // refund credits already deducted by usageGuard
+          return res.status(429).json({
+            error:        "DAILY_LIMIT_REACHED",
+            feature:      "imageGen",
+            featureLabel: "Image Generation",
+            message:      `You've used all ${limit} free image generation${limit===1?"":"s"} for today.`,
+            detail:       "Buy credits to continue, or wait until midnight when your quota resets.",
+            upgradeUrl:   "/wallet",
+            resetAt:      imgUser.wallet?.freeResetAt || null,
+            cta:          "Buy Credits",
+          });
+        }
+      }
+      // Generate first, then count usage (don't count if generation fails)
       const result = await generateImage(message);
+      if (imgUser && !imgUser.hasUnlimitedAccount()) {
+        imgUser.incrementFeatureUsage("imageGen");
+        imgUser.save().catch(() => {});
+      }
       return res.json({ reply: "🖼️ Here's your generated image:", image: result.url, provider: result.provider });
     }
 
     // ── SEARCH MODE ────────────────────────────────────────────────────────────
     if (mode === "search") {
+      // Feature limit check
+      const srchUser = await User.findById(req.session?.userId);
+      if (srchUser && !srchUser.hasUnlimitedAccount()) {
+        srchUser.resetDailyUsageIfNeeded();
+        const { allowed, used, limit } = srchUser.checkFeatureLimit("webSearch");
+        if (!allowed) {
+          await req.creditContext?.refund?.();
+          return res.status(429).json({
+            error:        "DAILY_LIMIT_REACHED",
+            feature:      "webSearch",
+            featureLabel: "Web Search",
+            message:      `You've used all ${limit} free web search${limit===1?"":"es"} for today.`,
+            detail:       "Buy credits to continue, or wait until midnight when your quota resets.",
+            upgradeUrl:   "/wallet",
+            resetAt:      srchUser.wallet?.freeResetAt || null,
+            cta:          "Buy Credits",
+          });
+        }
+      }
+      // Increment after success (below)
+      let _srchUserRef = srchUser;
       try {
         const search = await axios.post(
           "https://google.serper.dev/search",
@@ -1513,6 +1584,11 @@ app.post("/chat", chatLimiter, upload.single("file"), async (req, res) => {
           { role: "system", content: "Summarize search results clearly and concisely. Mention sources when relevant. Use markdown formatting." },
           { role: "user",   content: `Question: ${message}\n\nSearch results:\n${resultsText}` },
         ]);
+        // Increment webSearch usage after successful search
+        if (_srchUserRef && !_srchUserRef.hasUnlimitedAccount()) {
+          _srchUserRef.incrementFeatureUsage("webSearch");
+          _srchUserRef.save().catch(() => {});
+        }
         const savedChat = await saveChat([...messages, { role: "assistant", content: reply }], chatId, req.session && req.session.userId, message);
         return res.json({ reply, chatId: savedChat?._id, sources: results.slice(0, 3).map((r) => ({ title: r.title, link: r.link })) });
       } catch {
@@ -1522,8 +1598,32 @@ app.post("/chat", chatLimiter, upload.single("file"), async (req, res) => {
 
     // ── CODE MODE ──────────────────────────────────────────────────────────────
     if (mode === "code") {
+      // Feature limit check
+      const codeUser = await User.findById(req.session?.userId);
+      if (codeUser && !codeUser.hasUnlimitedAccount()) {
+        codeUser.resetDailyUsageIfNeeded();
+        const { allowed, used, limit } = codeUser.checkFeatureLimit("codeMode");
+        if (!allowed) {
+          await req.creditContext?.refund?.(); // refund guard-deducted credits
+          return res.status(429).json({
+            error:        "DAILY_LIMIT_REACHED",
+            feature:      "codeMode",
+            featureLabel: "Code Mode",
+            message:      `You've used your ${limit} free code mode session${limit===1?"":"s"} for today.`,
+            detail:       "Buy credits to continue, or wait until midnight when your quota resets.",
+            upgradeUrl:   "/wallet",
+            resetAt:      codeUser.wallet?.freeResetAt || null,
+            cta:          "Buy Credits",
+          });
+        }
+      }
       try {
         const reply     = await generateCodeAI(messages.filter((m) => m.role !== "system"));
+        // Increment usage only after successful generation
+        if (codeUser && !codeUser.hasUnlimitedAccount()) {
+          codeUser.incrementFeatureUsage("codeMode");
+          codeUser.save().catch(() => {});
+        }
         const savedChat = await saveChat([...messages, { role: "assistant", content: reply }], chatId, req.session && req.session.userId, message);
         return res.json({ reply, chatId: savedChat?._id });
       } catch (err) {
@@ -1737,6 +1837,10 @@ app.post("/chat", chatLimiter, upload.single("file"), async (req, res) => {
 
   } catch (err) {
     console.error("CHAT ERROR:", err.message);
+    // Refund credits if AI call failed (usageGuard deducted on entry)
+    if (req.creditContext) {
+      req.creditContext.refund().catch(() => {});
+    }
     res.status(500).json({ reply: `⚠️ Chat error: ${err.message}` });
   }
 });
@@ -1776,7 +1880,7 @@ app.get(
   (req, res) => {
     req.session.user   = { _id: req.user._id, email: req.user.email, username: req.user.email.split("@")[0] };
     req.session.userId = req.user._id;
-    res.redirect("/home");
+    req.session.save(() => res.redirect("/home"));
   },
 );
 
@@ -1917,8 +2021,15 @@ app.get("/billing", async (req, res) => {
   try {
     let billingUser = null;
     if (req.session && req.session.userId) {
-      const u = await User.findById(req.session.userId).select("wallet email plan").lean();
-      if (u) billingUser = u;
+      // FIXED: `plan` field removed in v2 — derive from role + isUnlimited
+      const u = await User.findById(req.session.userId)
+        .select("wallet email role isUnlimited")
+        .lean();
+      if (u) {
+        // Compute plan string so templates don't get undefined
+        u.plan = u.role === "admin" ? "admin" : (u.isUnlimited ? "pro" : "free");
+        billingUser = u;
+      }
     }
     return res.render("billing", { billingUser, user: billingUser });
   } catch (err) {

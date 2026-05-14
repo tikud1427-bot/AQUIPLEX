@@ -1,0 +1,39 @@
+{
+  "projectId": "77a0bbeb-356e-4184-9b11-24bfea6334bd",
+  "title": "Ecommerce Website",
+  "description": "A web application for online shopping and product management",
+  "type": "webapp",
+  "complexity": "simple",
+  "stack": {
+    "framework": "vanilla",
+    "runtime": "browser",
+    "database": "none",
+    "auth": "none",
+    "styling": "css",
+    "deployment": "netlify"
+  },
+  "designSystem": {
+    "primaryColor": "#0f172a",
+    "accentColor": "#6366f1",
+    "fontPrimary": "Syne",
+    "theme": "dark-modern"
+  },
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "features": [
+    "user authentication",
+    "product filtering",
+    "payment gateway integration"
+  ],
+  "deployment": {
+    "target": "netlify",
+    "port": 3000,
+    "buildCmd": "",
+    "startCmd": ""
+  },
+  "createdAt": "2026-05-14T06:11:01.728Z",
+  "updatedAt": "2026-05-14T06:11:01.728Z"
+}

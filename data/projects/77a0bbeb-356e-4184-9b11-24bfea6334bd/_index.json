@@ -1,0 +1,18 @@
+{
+  "projectId": "77a0bbeb-356e-4184-9b11-24bfea6334bd",
+  "name": "[Aqua remembers about you]\n- goal: functional\n- functional_upgrade: true\n- ui_upgrade: true\n- week_theme: Elevate Your D",
+  "userId": "69b6cfebb7e3cd8899a4c459",
+  "files": [
+    "index.html",
+    "style.css",
+    "script.js"
+  ],
+  "createdAt": "2026-05-14T06:10:52.663Z",
+  "updatedAt": "2026-05-14T06:11:10.729Z",
+  "prompt": "[Aqua remembers about you]\n- goal: functional\n- functional_upgrade: true\n- ui_upgrade: true\n- week_theme: Elevate Your Day\n- caption_prompts: Start your week off right with a mindful morning routine. Prioritize self-care, and set intentions for the day ahead.\n- main_topic: Instagram content ideas for a lifestyle brand\n- post_topic: Morning Routine Inspiration\n- visual_image: serene, natural setting with a person meditating or practicing yoga\n- fact_name: fully functional\n\n\nUser request: build a ",
+  "source": "ai_two_pass",
+  "intent": "tool",
+  "qualityScore": 90,
+  "projectType": "static",
+  "designDirection": "Bold Brutalist: white bg, thick borders, massive display type, black + 1 vivid accent"
+}

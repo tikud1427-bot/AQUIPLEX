@@ -28,6 +28,7 @@ const svc        = require("../workspace/workspace.service");
 const deployGen  = require("../engine/deploy.generator");
 const { createLogger }                         = require("../utils/logger");
 const { asyncHandler, sendError, sendSuccess } = require("../middleware/asyncHandler");
+const { usageGuard }                           = require("../middleware/usage/usageGuard");
 
 const log          = createLogger("EXPORT_ROUTES");
 const PROJECTS_DIR = path.join(__dirname, "../data/projects");
@@ -147,7 +148,7 @@ router.post("/templates/:name/seed", requireLogin, asyncHandler(async (req, res)
 }));
 
 // POST /workspace/project/:id/plan — generate architecture plan
-router.post("/project/:id/plan", requireLogin, asyncHandler(async (req, res) => {
+router.post("/project/:id/plan", requireLogin, usageGuard("section_gen"), asyncHandler(async (req, res) => {
   const userId    = uid(req);
   const projectId = req.params.id;
   const { prompt } = req.body;
@@ -175,7 +176,7 @@ router.get("/project/:id/graph/summary", requireLogin, asyncHandler(async (req, 
 }));
 
 // POST /workspace/project/:id/agent-gen — run full multi-agent pipeline
-router.post("/project/:id/agent-gen", requireLogin, asyncHandler(async (req, res) => {
+router.post("/project/:id/agent-gen", requireLogin, usageGuard("multi_agent_orchestration"), asyncHandler(async (req, res) => {
   const userId    = uid(req);
   const projectId = req.params.id;
   const { prompt } = req.body;
@@ -185,17 +186,23 @@ router.post("/project/:id/agent-gen", requireLogin, asyncHandler(async (req, res
   // Collect status events for response (non-streaming version)
   const statusEvents = [];
 
-  const result = await agentOrch.runAgentPipeline(
-    prompt.trim(),
-    projectId,
-    {
-      onStatus: (event) => statusEvents.push(event),
-      saveFiles: async (files) => {
-        const fileArray = Object.entries(files).map(([fileName, content]) => ({ fileName, content }));
-        await svc.saveProjectFiles(userId, projectId, fileArray);
-      },
-    }
-  );
+  let result;
+  try {
+    result = await agentOrch.runAgentPipeline(
+      prompt.trim(),
+      projectId,
+      {
+        onStatus: (event) => statusEvents.push(event),
+        saveFiles: async (files) => {
+          const fileArray = Object.entries(files).map(([fileName, content]) => ({ fileName, content }));
+          await svc.saveProjectFiles(userId, projectId, fileArray);
+        },
+      }
+    );
+  } catch (agentErr) {
+    await req.creditContext?.refund?.();
+    throw agentErr;
+  }
 
   sendSuccess(res, {
     projectId,
@@ -209,7 +216,7 @@ router.post("/project/:id/agent-gen", requireLogin, asyncHandler(async (req, res
 }));
 
 // POST /workspace/project/:id/agent-gen/stream — streaming version with SSE
-router.post("/project/:id/agent-gen/stream", requireLogin, async (req, res) => {
+router.post("/project/:id/agent-gen/stream", requireLogin, usageGuard("multi_agent_orchestration"), async (req, res) => {
   const userId    = uid(req);
   const projectId = req.params.id;
   const { prompt } = req.body;
@@ -259,6 +266,7 @@ router.post("/project/:id/agent-gen/stream", requireLogin, async (req, res) => {
     });
   } catch (err) {
     log.error(`Agent pipeline error: ${err.message}`);
+    await req.creditContext?.refund?.();
     sendEvent({ type: "error", message: err.message });
   } finally {
     done = true;

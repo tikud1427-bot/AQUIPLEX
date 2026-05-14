@@ -12,6 +12,8 @@ const Bundle    = require("../models/Bundle");
 const svc       = require("../workspace/workspace.service");
 const { createLogger }            = require("../utils/logger");
 const { asyncHandler, sendError } = require("../middleware/asyncHandler");
+const { usageGuard }              = require("../middleware/usage/usageGuard");
+const User                        = require("../models/User");
 
 const log = createLogger("PROJECT_ROUTE");
 
@@ -139,7 +141,7 @@ router.post("/create", asyncHandler(async (req, res) => {
   res.json({ success: true, projectId, name: name || "Untitled Project" });
 }));
 
-router.post("/generate", asyncHandler(async (req, res) => {
+router.post("/generate", usageGuard("full_app_gen"), asyncHandler(async (req, res) => {
   const userId = uid(req);
   if (!userId) return sendError(res, "Unauthorized", 401);
 
@@ -147,7 +149,33 @@ router.post("/generate", asyncHandler(async (req, res) => {
   if (!prompt)    return sendError(res, "prompt required", 400);
   if (!projectId) return sendError(res, "projectId required", 400);
 
-  const result = await svc.generateProject(userId, projectId, prompt);
+  // ── Feature daily limit check ────────────────────────────────────────────
+  const featureUser = await User.findById(userId);
+  if (featureUser && !featureUser.hasUnlimitedAccount()) {
+    featureUser.resetDailyUsageIfNeeded();
+    const { allowed, used, limit } = featureUser.checkFeatureLimit("websiteGen");
+    if (!allowed) {
+      await req.creditContext?.refund?.();
+      return res.status(429).json({
+        success:    false,
+        error:      "DAILY_LIMIT_REACHED",
+        feature:    "websiteGen",
+        message:    `You've used your ${limit} free website generation for today.`,
+        detail:     "Buy credits to generate more websites now, or wait until midnight for your free quota to reset.",
+        upgradeUrl: "/wallet",
+        resetAt:    featureUser.wallet.freeResetAt,
+        cta:        "Buy Credits",
+      });
+    }
+  }
+
+  let result;
+  try {
+    result = await svc.generateProject(userId, projectId, prompt);
+  } catch (genErr) {
+    await req.creditContext?.refund?.();
+    throw genErr;
+  }
 
   if (Array.isArray(result.fileData) && result.fileData.length > 0) {
     mirrorFilesToRoot(result.projectId, result.fileData);
@@ -158,12 +186,17 @@ router.post("/generate", asyncHandler(async (req, res) => {
       files:     result.fileData.map(f => f.fileName),
       updatedAt: new Date().toISOString(),
     });
+    // Increment free-tier websiteGen counter
+    if (featureUser && !featureUser.hasUnlimitedAccount()) {
+      featureUser.incrementFeatureUsage("websiteGen");
+      featureUser.save().catch(() => {});
+    }
   }
 
   res.json(result);
 }));
 
-router.post("/edit", asyncHandler(async (req, res) => {
+router.post("/edit", usageGuard("feature_update"), asyncHandler(async (req, res) => {
   const userId = uid(req);
   if (!userId) return sendError(res, "Unauthorized", 401);
 
@@ -172,7 +205,33 @@ router.post("/edit", asyncHandler(async (req, res) => {
     return sendError(res, "projectId, fileName, and instruction required", 400);
   }
 
-  const result = await svc.editProjectFile(userId, projectId, fileName, instruction);
+  // ── Feature daily limit check for websiteEdit ────────────────────────────
+  const editFeatureUser = await User.findById(userId);
+  if (editFeatureUser && !editFeatureUser.hasUnlimitedAccount()) {
+    editFeatureUser.resetDailyUsageIfNeeded();
+    const { allowed, used, limit } = editFeatureUser.checkFeatureLimit("websiteEdit");
+    if (!allowed) {
+      await req.creditContext?.refund?.();
+      return res.status(429).json({
+        success:    false,
+        error:      "DAILY_LIMIT_REACHED",
+        feature:    "websiteEdit",
+        message:    `You've used all ${limit} free website edits for today.`,
+        detail:     "Buy credits to keep editing, or wait until midnight for your free quota to reset.",
+        upgradeUrl: "/wallet",
+        resetAt:    editFeatureUser.wallet.freeResetAt,
+        cta:        "Buy Credits",
+      });
+    }
+  }
+
+  let result;
+  try {
+    result = await svc.editProjectFile(userId, projectId, fileName, instruction);
+  } catch (editErr) {
+    await req.creditContext?.refund?.();
+    throw editErr;
+  }
 
   if (Array.isArray(result.updatedFiles)) {
     for (const updatedFileName of result.updatedFiles) {
@@ -191,6 +250,12 @@ router.post("/edit", asyncHandler(async (req, res) => {
         log.warn(`post-edit mirror failed: ${e.message}`);
       }
     }
+  }
+
+  // Increment free-tier websiteEdit counter on success
+  if (editFeatureUser && !editFeatureUser.hasUnlimitedAccount()) {
+    editFeatureUser.incrementFeatureUsage("websiteEdit");
+    editFeatureUser.save().catch(() => {});
   }
 
   res.json(result);
@@ -412,7 +477,7 @@ router.get("/:id/quality", asyncHandler(async (req, res) => {
  *
  * Returns: { score, repairs[], issues[], mode, saved }
  */
-router.post("/:id/repair", asyncHandler(async (req, res) => {
+router.post("/:id/repair", usageGuard((req) => req.body?.aiRepair ? "code_debug" : "free"), asyncHandler(async (req, res) => {
   const userId = uid(req);
   if (!userId) return sendError(res, "Unauthorized", 401);
 
@@ -436,7 +501,13 @@ router.post("/:id/repair", asyncHandler(async (req, res) => {
     }
   }
 
-  const result = await validateAndRepair(fileData, { callAI, skipRepair: false });
+  let result;
+  try {
+    result = await validateAndRepair(fileData, { callAI, skipRepair: false });
+  } catch (repairErr) {
+    if (aiRepair) await req.creditContext?.refund?.();
+    throw repairErr;
+  }
 
   // Save repaired files back
   const saved = [];

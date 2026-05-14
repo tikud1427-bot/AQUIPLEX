@@ -1,0 +1,19 @@
+{
+  "projectId": "77a0bbeb-356e-4184-9b11-24bfea6334bd",
+  "nodes": [
+    "script.js"
+  ],
+  "edges": [],
+  "updatedAt": "2026-05-14T06:11:10.747Z"
+}  "from": "index.html",
+      "to": "style.css",
+      "type": "stylesheet"
+    },
+    {
+      "from": "index.html",
+      "to": "script.js",
+      "type": "script"
+    }
+  ],
+  "updatedAt": "2026-05-14T06:11:10.745Z"
+}

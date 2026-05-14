@@ -86,9 +86,16 @@ class AquaClient {
     try {
       const res = await fetch(`${this.baseUrl}/chat`, fetchOpts);
       data = await res.json();
-      if (!res.ok) throw new Error(data.reply || data.error || `HTTP ${res.status}`);
+      if (!res.ok) {
+        // Surface friendly server messages (402 credits, 429 limit, etc.)
+        const rawErr = data?.error || ''; const isCode = rawErr === rawErr.toUpperCase() || rawErr.includes('_FAILED'); const msg = data?.message && !data.message.includes('_') ? data.message : data?.reply || (!isCode && rawErr ? rawErr : null) || `Request failed (HTTP ${res.status})`;
+        const err = new Error(msg);
+        err.status = res.status;
+        err.data   = data;
+        throw err;
+      }
     } catch (err) {
-      if (typeof onError === "function") onError(err.message || "Request failed");
+      if (typeof onError === "function") onError(err.message || "Request failed", err.data);
       return null;
     }
 
@@ -111,7 +118,16 @@ class AquaClient {
     let fullText = "";
     try {
       const res = await fetch(`${this.baseUrl}/chat`, fetchOpts);
-      if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        let errData = {};
+        try { errData = await res.json(); } catch {}
+        const rawErrS = errData?.error || ''; const isCodeS = rawErrS === rawErrS.toUpperCase() || rawErrS.includes('_FAILED'); const msg = errData?.message && !errData.message.includes('_') ? errData.message : errData?.reply || (!isCodeS && rawErrS ? rawErrS : null) || `Request failed (HTTP ${res.status})`;
+        const err = new Error(msg);
+        err.status = res.status;
+        err.data   = errData;
+        throw err;
+      }
+      if (!res.body) throw new Error("No response body");
 
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
@@ -146,7 +162,7 @@ class AquaClient {
         this._syncSessionFiles();
       }
     } catch (err) {
-      if (typeof onError === "function") onError(err.message || "Stream failed");
+      if (typeof onError === "function") onError(err.message || "Stream failed", err.data);
     }
     return fullText;
   }
@@ -238,11 +254,15 @@ class AquaClient {
              document.getElementById("active-file-name")?.textContent?.trim() || null;
     }
 
-    function appendMessage(role, text) {
+    function appendMessage(role, text, html) {
       if (!chatLog) return;
       const el = document.createElement("div");
       el.className = `aqua-msg aqua-msg--${role}`;
-      el.textContent = text;
+      if (html) {
+        el.innerHTML = html;
+      } else {
+        el.textContent = text;
+      }
       chatLog.appendChild(el);
       chatLog.scrollTop = chatLog.scrollHeight;
     }
@@ -277,7 +297,25 @@ class AquaClient {
           if (previewIframe) { const s = previewIframe.src; previewIframe.src = ""; previewIframe.src = s; }
         },
 
-        onError: (err) => appendMessage("error", `⚠️ ${err}`),
+        onError: (errMsg, errData) => {
+          if (errData?.error === "DAILY_LIMIT_REACHED") {
+            appendMessage("error", "", `
+              <div style="background:rgba(234,179,8,0.1);border:1px solid rgba(234,179,8,0.3);border-radius:8px;padding:10px 12px;font-size:0.85rem;">
+                <strong>⏱️ Daily limit reached</strong><br>
+                <span style="opacity:0.8">${errData.message || "Free allowance used for today."}</span><br>
+                <a href="${errData.upgradeUrl || '/wallet'}" style="color:#00d4ff;font-size:0.8rem;">⚡ Buy Credits</a>
+              </div>`);
+          } else if (errData?.error === "INSUFFICIENT_CREDITS") {
+            appendMessage("error", "", `
+              <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px 12px;font-size:0.85rem;">
+                <strong>💳 Out of credits</strong><br>
+                <span style="opacity:0.8">${errData.message || "Not enough credits."}</span><br>
+                <a href="${errData.upgradeUrl || '/wallet'}" style="color:#00d4ff;font-size:0.8rem;">⚡ Top Up Wallet</a>
+              </div>`);
+          } else {
+            appendMessage("error", `⚠️ ${errMsg}`);
+          }
+        },
       });
 
       if (result?.intent) showIntentBadge(result.intent);
