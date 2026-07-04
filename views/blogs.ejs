@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Aquiplex Blog | AI Tools, Automation & Productivity Insights</title>
+
+  <meta name="description" content="Explore Aquiplex blog — learn about AI tools, automation strategies, productivity hacks, and how to build faster using AI.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Aquiplex Blog">
+  <meta property="og:description" content="AI tools, automation, and productivity insights.">
+  <meta property="og:type" content="website">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #0b0b0b;
+      color: #ffffff;
+      font-family: Inter, sans-serif;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+      padding: 40px 16px;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      color: #aaa;
+      margin-bottom: 30px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .write-btn {
+      background: #111;
+      border: 1px solid #333;
+      padding: 10px 16px;
+      border-radius: 8px;
+      color: #4da6ff;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: 0.2s;
+    }
+
+    .write-btn:hover {
+      background: #1a1a1a;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      background: #111;
+      padding: 18px;
+      border-radius: 12px;
+      transition: 0.25s;
+      border: 1px solid transparent;
+    }
+
+    .card:hover {
+      transform: translateY(-3px);
+      border-color: #333;
+    }
+
+    .card h2 {
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+
+    .card p {
+      font-size: 0.95rem;
+      color: #aaa;
+      margin-bottom: 10px;
+    }
+
+    .meta {
+      font-size: 0.8rem;
+      color: #666;
+    }
+
+    .read-link {
+      display: inline-block;
+      margin-top: 10px;
+      color: #4da6ff;
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+
+    .read-link:hover {
+      text-decoration: underline;
+    }
+
+    .empty-state {
+      margin-top: 40px;
+      color: #777;
+      text-align: center;
+    }
+
+    @media (min-width: 600px) {
+      .grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 900px) {
+      .grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <div class="top-bar">
+    <div>
+      <h1>Insights for Builders</h1>
+      <div class="subtitle">Learn AI, automation, and productivity systems</div>
+    </div>
+
+    <!-- WRITE BLOG BUTTON -->
+    <a href="/write" class="write-btn">✍️ Write a Blog</a>
+  </div>
+
+  <% if (blogs.length === 0) { %>
+    <div class="empty-state">
+      No blogs yet. Be the first to write one 🚀
+    </div>
+  <% } %>
+
+  <div class="grid">
+    <% blogs.forEach(blog => { %>
+      <div class="card">
+        <h2><%= blog.title %></h2>
+        <p><%= blog.description %></p>
+
+        <div class="meta">
+          <%= blog.readTime %> • <%= blog.createdAt %>
+          <% if (blog.author) { %>
+            • ✍️ <%= blog.author %>
+          <% } %>
+        </div>
+
+        <a class="read-link" href="/blogs/<%= blog.slug %>">
+          Read →
+        </a>
+      </div>
+    <% }) %>
+  </div>
+
+</div>
+
+</body>
+</html>

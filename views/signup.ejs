@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign Up | AIDEX</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<%- include('partials/nav') %>
+
+<div class="auth-wrapper">
+
+  <div class="auth-card">
+
+    <h2>Create account</h2>
+    <p class="auth-subtitle">Start building your AI workspace</p>
+
+    <!-- 🔥 GOOGLE SIGNUP -->
+    <a href="/auth/google" class="google-btn">
+      <img src="https://developers.google.com/identity/images/g-logo.png" />
+      Sign up with Google
+    </a>
+
+    <!-- Divider -->
+    <div class="auth-divider">
+      <span>or use email</span>
+    </div>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <p class="auth-error"><%= error %></p>
+    <% } %>
+
+    <!-- EMAIL SIGNUP -->
+    <form action="/signup" method="POST" class="auth-form">
+      <input type="email" name="email" placeholder="Email address" required>
+      <input type="password" name="password" placeholder="Password" required>
+
+      <button type="submit" class="auth-btn">Create Account</button>
+    </form>
+
+    <p class="auth-switch">
+      Already have an account?
+      <a href="/login">Login</a>
+    </p>
+
+  </div>
+
+</div>
+
+</body>
+</html>

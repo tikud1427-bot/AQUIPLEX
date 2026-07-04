@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing — Aquiplex</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <style>
+    :root {
+      --bg:     #08080f;
+      --blue:   #00d4ff;
+      --purple: #7c3aed;
+      --border: rgba(255,255,255,0.08);
+      --muted:  rgba(255,255,255,0.45);
+      --card:   rgba(255,255,255,0.03);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: #fff;
+      font-family: 'Inter', -apple-system, sans-serif;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Hero ── */
+    .pricing-hero {
+      text-align: center;
+      padding: 88px 24px 56px;
+    }
+    .pricing-hero .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,212,255,0.1);
+      border: 1px solid rgba(0,212,255,0.3);
+      color: var(--blue);
+      padding: 6px 16px;
+      border-radius: 99px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+    }
+    .pricing-hero h1 {
+      font-size: clamp(2rem, 5vw, 3.6rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #fff 30%, var(--blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 18px;
+    }
+    .pricing-hero p {
+      color: var(--muted);
+      font-size: 1.05rem;
+      max-width: 500px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ── Free tier callout ── */
+    .free-callout {
+      max-width: 680px;
+      margin: 0 auto 56px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .free-callout-left h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .free-callout-left p {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .free-callout a {
+      flex-shrink: 0;
+      padding: 10px 22px;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      color: #fff;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: background 0.2s;
+    }
+    .free-callout a:hover { background: rgba(255,255,255,0.07); }
+
+    /* ── Packs section ── */
+    .section-label {
+      text-align: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    .packs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      max-width: 1000px;
+      margin: 0 auto 72px;
+      padding: 0 20px;
+    }
+
+    .pack-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px 24px;
+      position: relative;
+      transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+      overflow: hidden;
+    }
+    .pack-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,212,255,0.3), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .pack-card:hover { border-color: rgba(0,212,255,0.3); transform: translateY(-3px); box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    .pack-card:hover::before { opacity: 1; }
+
+    .pack-card.popular {
+      border-color: rgba(0,212,255,0.45);
+      background: linear-gradient(160deg, rgba(0,212,255,0.06) 0%, rgba(124,58,237,0.05) 100%);
+    }
+    .pack-card.popular::before { opacity: 1; }
+
+    .popular-badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: linear-gradient(135deg, var(--blue), #0ea5e9);
+      color: #000;
+      font-size: 0.58rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      padding: 3px 9px;
+      border-radius: 99px;
+      text-transform: uppercase;
+    }
+    .best-deal-badge {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: linear-gradient(135deg, #a78bfa, var(--purple));
+      color: #fff;
+      font-size: 0.58rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      padding: 3px 9px;
+      border-radius: 99px;
+      text-transform: uppercase;
+    }
+
+    .pack-price {
+      font-size: 2.4rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .pack-credits-line {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--blue);
+      margin-bottom: 8px;
+    }
+    .pack-name {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 16px;
+    }
+    .pack-cpr {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .btn-pack {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: #fff;
+      border-radius: 12px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .btn-pack:hover {
+      background: rgba(0,212,255,0.1);
+      border-color: rgba(0,212,255,0.35);
+      color: var(--blue);
+    }
+    .pack-card.popular .btn-pack {
+      background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(124,58,237,0.15));
+      border-color: rgba(0,212,255,0.5);
+      color: var(--blue);
+    }
+    .btn-pack.loading { opacity: 0.7; pointer-events: none; }
+
+    /* ── FAQ / credit table ── */
+    .credit-table-section {
+      max-width: 700px;
+      margin: 0 auto 80px;
+      padding: 0 20px;
+    }
+    .credit-table-section h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 28px;
+      letter-spacing: -0.02em;
+    }
+    .credit-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .credit-table th {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      padding: 10px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .credit-table td {
+      padding: 14px 16px;
+      font-size: 0.875rem;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    .credit-table tr:last-child td { border-bottom: none; }
+    .credit-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .credit-cost { font-weight: 700; color: var(--blue); }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; top: 20px; right: 20px; z-index: 9999;
+      padding: 14px 20px; border-radius: 12px; font-size: 0.875rem; font-weight: 600;
+      display: none; animation: fadeIn 0.3s ease;
+    }
+    .toast.success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.4); color: #4ade80; display: block; }
+    .toast.error   { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); color: #fca5a5; display: block; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+
+    @media (max-width: 640px) {
+      .packs-grid { grid-template-columns: 1fr 1fr; gap: 14px; }
+      .free-callout { flex-direction: column; text-align: center; }
+    }
+    @media (max-width: 420px) {
+      .packs-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<%- include('partials/nav') %>
+
+<div class="toast" id="toast"></div>
+
+<!-- Hero -->
+<div class="pricing-hero">
+  <div class="badge">⚡ Prepaid AI Credits</div>
+  <h1>Pay once.<br>Build forever.</h1>
+  <p>No subscriptions. No recurring charges. Buy credits when you need them — they never expire.</p>
+</div>
+
+<!-- Free tier -->
+<div class="free-callout">
+  <div class="free-callout-left">
+    <h3>Free plan — always available</h3>
+    <p><%= process.env.FREE_DAILY_CREDITS || 100 %> free credits every day, automatically reset at midnight. No card required.</p>
+  </div>
+  <a href="/signup">Start free →</a>
+</div>
+
+<!-- Packs -->
+<p class="section-label">Credit Packs</p>
+
+<div class="packs-grid" id="packsGrid">
+  <!-- Rendered by JS or server -->
+</div>
+
+<!-- Credit cost table -->
+<div class="credit-table-section">
+  <h2>What do credits cost?</h2>
+  <table class="credit-table">
+    <thead>
+      <tr>
+        <th>Action</th>
+        <th>Credits</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Chat message</td><td class="credit-cost">5</td></tr>
+      <tr><td>Chat with file analysis</td><td class="credit-cost">8</td></tr>
+      <tr><td>Code review</td><td class="credit-cost">10</td></tr>
+      <tr><td>Code generation</td><td class="credit-cost">20</td></tr>
+      <tr><td>Section / component generation</td><td class="credit-cost">15–20</td></tr>
+      <tr><td>Feature update</td><td class="credit-cost">25</td></tr>
+      <tr><td>Image generation</td><td class="credit-cost">30</td></tr>
+      <tr><td>Deep research</td><td class="credit-cost">40</td></tr>
+      <tr><td>Full app generation</td><td class="credit-cost">150</td></tr>
+      <tr><td>Multi-agent orchestration</td><td class="credit-cost">200</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<%- include('partials/footer') %>
+
+<script>
+(function () {
+  const RZP_KEY    = '<%= process.env.RAZORPAY_KEY_ID || "" %>';
+  const USER_EMAIL = '<%= pricingUser?.email || "" %>';
+  const USER_PHONE = '<%= pricingUser?.phone || "" %>';
+  const IS_LOGGED  = !!USER_EMAIL;
+
+  function fmt(n) { return Number(n).toLocaleString('en-IN'); }
+
+  function showToast(msg, type = 'success') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className   = 'toast ' + type;
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.className = 'toast'; }, 4200);
+  }
+
+  async function loadPacks() {
+    const r = await fetch('/api/billing/packs');
+    const d = await r.json();
+    renderPacks(d.packs || []);
+  }
+
+  function renderPacks(packs) {
+    const grid = document.getElementById('packsGrid');
+    grid.innerHTML = packs.map(p => {
+      const cpr  = (p.priceINR / p.credits * 100).toFixed(1);
+      const badge = p.badge === 'MOST POPULAR'
+        ? `<span class="popular-badge">Most popular</span>`
+        : p.badge === 'BEST DEAL'
+          ? `<span class="best-deal-badge">Best deal</span>`
+          : '';
+
+      return `<div class="pack-card ${p.badge === 'MOST POPULAR' ? 'popular' : ''}">
+        ${badge}
+        <div class="pack-price">₹${p.priceINR}</div>
+        <div class="pack-credits-line">${fmt(p.credits)} credits</div>
+        <div class="pack-name">${p.name}</div>
+        <div class="pack-cpr">₹${cpr} per 100 credits</div>
+        <button class="btn-pack" onclick="buyPack('${p.id}', this)">
+          ${IS_LOGGED ? 'Buy Now' : 'Sign up to buy'}
+        </button>
+      </div>`;
+    }).join('');
+  }
+
+  window.buyPack = async function (packId, btn) {
+    if (!IS_LOGGED) {
+      window.location.href = '/signup?next=/pricing';
+      return;
+    }
+
+    btn.classList.add('loading');
+    btn.textContent = 'Preparing…';
+
+    try {
+      const r = await fetch('/api/billing/create-order', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ packId }),
+      });
+      const d = await r.json();
+      if (!d.success) throw new Error(d.message || 'Order creation failed');
+
+      const order = d.order;
+
+      const rzp = new Razorpay({
+        key:         RZP_KEY,
+        order_id:    order.orderId,
+        amount:      order.amount,
+        currency:    'INR',
+        name:        'Aquiplex',
+        description: order.packName + ' — ' + fmt(order.credits) + ' credits',
+        image:       '/logo/favicon.ico',
+        prefill: { email: USER_EMAIL, contact: USER_PHONE },
+        theme:       { color: '#00d4ff' },
+        modal: {
+          backdropclose: false,
+          ondismiss() {
+            btn.classList.remove('loading');
+            btn.textContent = 'Buy Now';
+          },
+        },
+        handler: async function (response) {
+          btn.textContent = 'Verifying…';
+          try {
+            const vr = await fetch('/api/billing/verify-payment', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({
+                razorpay_order_id:   response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature:  response.razorpay_signature,
+              }),
+            });
+            const vd = await vr.json();
+            if (vd.success) {
+              showToast('🎉 ' + fmt(vd.credits) + ' credits added! Redirecting…');
+              setTimeout(() => { window.location.href = '/wallet'; }, 1800);
+            } else {
+              showToast('Payment error: ' + (vd.error || 'Unknown'), 'error');
+              btn.classList.remove('loading');
+              btn.textContent = 'Buy Now';
+            }
+          } catch (e) {
+            showToast('Verification failed. Contact support.', 'error');
+            btn.classList.remove('loading');
+            btn.textContent = 'Buy Now';
+          }
+        },
+      });
+
+      rzp.on('payment.failed', (resp) => {
+        showToast('Payment failed: ' + (resp.error?.description || 'Try again'), 'error');
+        btn.classList.remove('loading');
+        btn.textContent = 'Buy Now';
+      });
+
+      rzp.open();
+
+    } catch (e) {
+      showToast(e.message || 'Something went wrong', 'error');
+      btn.classList.remove('loading');
+      btn.textContent = 'Buy Now';
+    }
+  };
+
+  loadPacks();
+})();
+</script>
+
+</body>
+</html>

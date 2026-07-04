@@ -1,0 +1,8 @@
+Perform deep analysis.
+
+Always:
+
+- compare alternatives
+- explain tradeoffs
+- identify assumptions
+- provide conclusions

@@ -1,0 +1,2862 @@
+{
+  "18a3c74f-7ada-46f2-af28-846c0bd8fc15": {
+    "id": "18a3c74f-7ada-46f2-af28-846c0bd8fc15",
+    "createdAt": 1783165737181,
+    "meta": {
+      "name": "aqua-ai-day5-universal-upload",
+      "createdBy": "unified-upload"
+    },
+    "projectType": "nodejs-react",
+    "files": [
+      {
+        "path": "aqua/.env",
+        "lang": "env",
+        "size": 1221,
+        "summary": ".env [env] | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/orchestrator/multiLabelClassifier.js",
+        "lang": "javascript",
+        "size": 3717,
+        "summary": "AQUA Adaptive Tool Orchestrator — Multi-Label Classifier | multiLabelClassifier.js [javascript] | Functions: classifyMultiLabel | Exports: classifyMultiLabel",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/orchestrator/capabilityRegistry.js",
+        "lang": "javascript",
+        "size": 1916,
+        "summary": "AQUA Adaptive Tool Orchestrator — Capability Registry | capabilityRegistry.js [javascript] | Functions: registerCapability, getCapability, listCapabilities, getAllCapabilities | Exports: registerCapability, getCapability, listCapabilities, getAllCapabilities",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/orchestrator/executionProfiles.js",
+        "lang": "javascript",
+        "size": 10676,
+        "summary": "AQUA Adaptive Tool Orchestrator — Execution Profiles | executionProfiles.js [javascript] | Functions: selectProfile, getProfile, listProfiles | Exports: selectProfile, getProfile, listProfiles",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/orchestrator/capabilities.js",
+        "lang": "javascript",
+        "size": 8430,
+        "summary": "AQUA Adaptive Tool Orchestrator — Capability Definitions | capabilities.js [javascript] | Functions: inProfile, define",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/orchestrator/tests/executionProfiles.test.js",
+        "lang": "javascript",
+        "size": 2367,
+        "summary": "executionProfiles.test.js [javascript] | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/orchestrator/tests/toolOrchestrator.test.js",
+        "lang": "javascript",
+        "size": 5728,
+        "summary": "toolOrchestrator.test.js [javascript] | Functions: capability | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/orchestrator/verificationStrategy.js",
+        "lang": "javascript",
+        "size": 2615,
+        "summary": "AQUA Adaptive Tool Orchestrator — Verification Strategy | verificationStrategy.js [javascript] | Functions: shouldVerify | Exports: shouldVerify",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/orchestrator/toolOrchestrator.js",
+        "lang": "javascript",
+        "size": 6436,
+        "summary": "AQUA Adaptive Tool Orchestrator — Main Entry Point | toolOrchestrator.js [javascript] | Functions: orchestrate, roughTier, formatOrchestratorLog, capitalize | Exports: orchestrate, formatOrchestratorLog",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/providers/groq.js",
+        "lang": "javascript",
+        "size": 10570,
+        "summary": "Groq Provider v3 | groq.js [javascript] | Functions: getKeys, hasConfiguredKeys, onCooldown, applyCooldown, getClient, nextKey, generateGroq, streamGroq | Exports: hasConfiguredKeys, generateGroq, streamGroq",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/providers/router.js",
+        "lang": "javascript",
+        "size": 18681,
+        "summary": "AQUA Provider Router v4 | router.js [javascript] | Functions: scoreProvider, rankProviders, timedAbort, callProvider, generateText, callProviderStream, generateTextStream | Exports: generateText, generateTextStream | Role: routing/controller",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/providers/openrouter.js",
+        "lang": "javascript",
+        "size": 11280,
+        "summary": "AQUA OpenRouter Provider v4 | openrouter.js [javascript] | Functions: getKeys, hasConfiguredKeys, nextKey, getClient, generateOpenRouter, streamOpenRouter | Exports: hasConfiguredKeys, generateOpenRouter, streamOpenRouter | Role: routing/controller",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/providers/tests/modelRegistry.test.js",
+        "lang": "javascript",
+        "size": 8707,
+        "summary": "modelRegistry.test.js [javascript] | Role: data model",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/providers/tests/providerErrors.test.js",
+        "lang": "javascript",
+        "size": 3540,
+        "summary": "providerErrors.test.js [javascript] | Functions: errWith | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/providers/providerErrors.js",
+        "lang": "javascript",
+        "size": 3839,
+        "summary": "AQUA Provider Errors — Shared Error Classification | providerErrors.js [javascript] | Functions: extractStatus, classifyProviderError, describeError | Exports: extractStatus, classifyProviderError, describeError",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/providers/modelRegistry.js",
+        "lang": "javascript",
+        "size": 14484,
+        "summary": "AQUA Model Registry (Issue 5) | modelRegistry.js [javascript] | Functions: model, isAvailable, findEntry, pickModel, getCandidateModels, getModelSpec, markModelUnavailable, markModelRateLimited | Exports: pickModel, getCandidateModels, getModelSpec, markModelUnavailable, markModelRateLimited, markModelTempFailed | Role: data model",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/providers/gemini.js",
+        "lang": "javascript",
+        "size": 15276,
+        "summary": "Gemini Provider v3 | gemini.js [javascript] | Functions: getKeys, hasConfiguredKeys, getClient, onCooldown, applyCooldown, nextKey, toContents, generateGemini | Exports: hasConfiguredKeys, generateGemini, streamGemini, analyzeMediaWithGemini",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/intelligence/synthesizer.js",
+        "lang": "javascript",
+        "size": 1871,
+        "summary": "AQUA Internal Intelligence Engine — Synthesizer | synthesizer.js [javascript] | Functions: synthesize | Exports: synthesize",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/intelligence/agentRegistry.js",
+        "lang": "javascript",
+        "size": 1548,
+        "summary": "AQUA Internal Intelligence Engine — Agent Plugin Registry | agentRegistry.js [javascript] | Functions: registerAgent, getAgent, listAgents | Exports: registerAgent, getAgent, listAgents",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/intelligence/reasoningEngine.js",
+        "lang": "javascript",
+        "size": 2210,
+        "summary": "AQUA Internal Intelligence Engine — Reasoning Engine | reasoningEngine.js [javascript] | Functions: selectStrategyName, runReasoning | Exports: runReasoning",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/intelligence/internalIntelligenceEngine.js",
+        "lang": "javascript",
+        "size": 2276,
+        "summary": "AQUA Internal Intelligence Engine — Orchestrator | internalIntelligenceEngine.js [javascript] | Functions: runIntelligencePipeline | Exports: runIntelligencePipeline",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/intelligence/critic.js",
+        "lang": "javascript",
+        "size": 3304,
+        "summary": "AQUA Internal Intelligence Engine — Critic | critic.js [javascript] | Functions: reviewReasoning, getFocusRisks | Exports: reviewReasoning, getFocusRisks",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/intelligence/verificationAgent.test.js",
+        "lang": "javascript",
+        "size": 4926,
+        "summary": "verificationAgent.test.js [javascript] | Functions: fakeGenerate | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/intelligence/strategyRegistry.js",
+        "lang": "javascript",
+        "size": 4247,
+        "summary": "AQUA Internal Intelligence Engine — Strategy Registry | strategyRegistry.js [javascript] | Functions: registerStrategy, getStrategy, listStrategies | Exports: registerStrategy, getStrategy, listStrategies",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/intelligence/planner.js",
+        "lang": "javascript",
+        "size": 1715,
+        "summary": "AQUA Internal Intelligence Engine — Planner | planner.js [javascript] | Functions: createPlan | Exports: createPlan",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/intelligence/verificationAgent.js",
+        "lang": "javascript",
+        "size": 7401,
+        "summary": "AQUA Internal Intelligence Engine — Verification Agent | verificationAgent.js [javascript] | Functions: buildCritiquePrompt, runVerification | Exports: runVerification",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/intelligence/pipelineRegistry.js",
+        "lang": "javascript",
+        "size": 3795,
+        "summary": "AQUA Internal Intelligence Engine — Pipeline Registry | pipelineRegistry.js [javascript] | Functions: getPipeline | Exports: PIPELINES, DEFAULT_PIPELINE, getPipeline",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/upload/uploadClassifier.js",
+        "lang": "javascript",
+        "size": 6885,
+        "summary": "AQUA Upload Classifier — Day 5 Universal Upload | uploadClassifier.js [javascript] | Functions: startsWith, sniffMagic, classifyUpload, isKnownExtensionless | Exports: sniffMagic, classifyUpload, SUPPORTED_FORMATS",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/upload/archiveExtractor.js",
+        "lang": "javascript",
+        "size": 8980,
+        "summary": "AQUA Archive Extractor — Day 5 | archiveExtractor.js [javascript] | Functions: readTarString, readTarOctal, isZeroBlock, parseTar, sanitizeEntryPath, entriesToRawFiles, extractArchive | Exports: parseTar, extractArchive",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/upload/tests/upload.test.js",
+        "lang": "javascript",
+        "size": 7955,
+        "summary": "Day 5 — Universal Upload pipeline tests (node:test). | upload.test.js [javascript] | Functions: makeTar, makeZip | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/upload/documentPipeline.js",
+        "lang": "javascript",
+        "size": 8054,
+        "summary": "AQUA Document Pipeline — Day 5 | documentPipeline.js [javascript] | Functions: isPipelineDocumentExt, stripXml, parseOdt, parseEpub, parseCsv, splitSections, detectLanguage, processDocument | Exports: PIPELINE_DOCUMENT_EXTS, isPipelineDocumentExt, processDocument",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/upload/mediaPipeline.js",
+        "lang": "javascript",
+        "size": 5955,
+        "summary": "AQUA Media Pipeline — Day 5 | mediaPipeline.js [javascript] | Functions: cacheKey, cacheGet, cacheSet, processMedia, normalize | Exports: processMedia",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/upload/attachmentStore.js",
+        "lang": "javascript",
+        "size": 5222,
+        "summary": "AQUA Attachment Store — Day 5 | attachmentStore.js [javascript] | Functions: attachToConversation, getAttachments, removeAttachment, clearAttachments, serializeAttachment, formatAttachmentsForPrompt, getAttachmentStats | Exports: attachToConversation, getAttachments, removeAttachment, clearAttachments, serializeAttachment, formatAttachmentsForPrompt | Role: state management",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/patchGenerator.js",
+        "lang": "javascript",
+        "size": 2075,
+        "summary": "AQUA Patch Generator | patchGenerator.js [javascript] | Functions: formatPatch, formatPatchForPrompt, _diff | Exports: formatPatch, formatPatchForPrompt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/documentParser.js",
+        "lang": "javascript",
+        "size": 6473,
+        "summary": "AQUA Document Parser | documentParser.js [javascript] | Functions: isDocumentExt, parsePdf, parseDocx, parseXlsx, decodeXmlEntities, parsePptx, parseDocument | Exports: DOCUMENT_EXTS, isDocumentExt, parseDocument",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/workspaceManager.js",
+        "lang": "javascript",
+        "size": 1607,
+        "summary": "AQUA Workspace Manager | workspaceManager.js [javascript] | Functions: createWorkspace, getWorkspace, updateWorkspace, deleteWorkspace, listWorkspaces | Exports: createWorkspace, getWorkspace, updateWorkspace, deleteWorkspace, listWorkspaces, getProjectStats",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/fileParser.js",
+        "lang": "javascript",
+        "size": 12254,
+        "summary": "AQUA File Parser | fileParser.js [javascript] | Functions: parseFile, parseJS, parsePython, parseJava, parseGo, parseRust, parseCSharp, parsePHP | Exports: parseFile",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/fileIngester.js",
+        "lang": "javascript",
+        "size": 12511,
+        "summary": "AQUA File Ingester | fileIngester.js [javascript] | Functions: detectLanguage, shouldIgnore, detectProjectType, ingestFiles, ingestDocumentFile, extractZip, buildStructure, isBinary | Exports: detectLanguage, shouldIgnore, detectProjectType, ingestFiles, extractZip, buildStructure",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/tests/workspaceAnalyzer.test.js",
+        "lang": "javascript",
+        "size": 6365,
+        "summary": "Workspace Analyzer tests | workspaceAnalyzer.test.js [javascript] | Functions: F | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/tests/editEngine.test.js",
+        "lang": "javascript",
+        "size": 10125,
+        "summary": "Day 4 tests — diffEngine + editEngine (no LLM: operations applied directly). | editEngine.test.js [javascript] | Functions: test, makeProposal, internalStore | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/tests/editRoutes.test.js",
+        "lang": "javascript",
+        "size": 5273,
+        "summary": "Day 4 — HTTP integration test for the edit routes. | editRoutes.test.js [javascript] | Functions: test, craftProposal, req | Role: routing/controller",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/tests/project.test.js",
+        "lang": "javascript",
+        "size": 21903,
+        "summary": "AQUA Project Intelligence Engine — Tests | project.test.js [javascript] | Classes: App, UserService | Functions: freshWsId, createApp, authenticate, tinyPdfBase64, handler | Exports: App, createApp, handler, authenticate | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/tests/documentParser.test.js",
+        "lang": "javascript",
+        "size": 8503,
+        "summary": "AQUA Document Parser — Tests | documentParser.test.js [javascript] | Functions: buildPdf, buildDocx, buildPptx, buildXlsx | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/ingestionPipeline.js",
+        "lang": "javascript",
+        "size": 5329,
+        "summary": "AQUA Workspace Ingestion Pipeline — Day 5 unification | ingestionPipeline.js [javascript] | Functions: runWorkspaceIngestion | Exports: runWorkspaceIngestion",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/projectIndex.js",
+        "lang": "javascript",
+        "size": 4649,
+        "summary": "AQUA Project Index | projectIndex.js [javascript] | Functions: buildIndex, _indexSymbols, _addSymbol, _indexImports, _indexPathKeywords, getIndex, clearIndex, queryIndex | Exports: buildIndex, getIndex, clearIndex, queryIndex, getIndexStats",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/projectMemory.js",
+        "lang": "javascript",
+        "size": 1998,
+        "summary": "AQUA Project Memory | projectMemory.js [javascript] | Functions: loadFromDisk, scheduleSave, saveWorkspace, loadWorkspace, deleteWorkspaceData, getAllWorkspaceIds, getProjectStats | Exports: saveWorkspace, loadWorkspace, deleteWorkspaceData, getAllWorkspaceIds, getProjectStats",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/projectRetriever.js",
+        "lang": "javascript",
+        "size": 8890,
+        "summary": "AQUA Project Retriever | projectRetriever.js [javascript] | Functions: retrieveProjectContext, _score, _topicBonus, _findSymbols, formatProjectContext | Exports: retrieveProjectContext, formatProjectContext",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/diffEngine.js",
+        "lang": "javascript",
+        "size": 6944,
+        "summary": "AQUA Diff Engine (Day 4) | diffEngine.js [javascript] | Functions: computeLineOps, _lcsOps, buildHunks, _nextOldLine, _nextNewLine, diffFile, renderUnified | Exports: computeLineOps, buildHunks, diffFile, renderUnified",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/dependencyGraph.js",
+        "lang": "javascript",
+        "size": 4640,
+        "summary": "AQUA Dependency Graph | dependencyGraph.js [javascript] | Functions: buildDependencyGraph, _resolveLocal, _normPath, getGraph, clearGraph, whoImports, whatImports, serializeGraph | Exports: buildDependencyGraph, getGraph, clearGraph, whoImports, whatImports, serializeGraph",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/projectSummarizer.js",
+        "lang": "javascript",
+        "size": 5758,
+        "summary": "AQUA Project Summarizer | projectSummarizer.js [javascript] | Functions: summarizeFile, summarizeDirectory, summarizeProject, enrichWithSummaries, _isEntryPoint, _topLevelDirs, _inferRole | Exports: summarizeFile, summarizeDirectory, summarizeProject, enrichWithSummaries",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/editEngine.js",
+        "lang": "javascript",
+        "size": 32186,
+        "summary": "AQUA Edit Engine (Day 4) — patch-first repository editing. | editEngine.js [javascript] | Functions: contentHash, locateTargetFiles, buildEditSystemPrompt, buildEditUserMessage, parseEditJson, findSnippet, applyOperation, checkBrackets | Exports: contentHash, locateTargetFiles, findSnippet, applyOperation, checkBrackets, verifyProposedFiles",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/project/workspaceAnalyzer.js",
+        "lang": "javascript",
+        "size": 28811,
+        "summary": "AQUA Workspace Analyzer | workspaceAnalyzer.js [javascript] | Functions: analyzeWorkspace, _readManifests, _identity, _typeLabel, _langCounts, _stack, _authMethods, _structure | Exports: analyzeWorkspace, formatOverviewForPrompt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/prompts/creative.txt",
+        "lang": "unknown",
+        "size": 285,
+        "summary": "creative.txt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/prompts/reasoning.txt",
+        "lang": "unknown",
+        "size": 311,
+        "summary": "reasoning.txt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/prompts/coding.txt",
+        "lang": "unknown",
+        "size": 184,
+        "summary": "coding.txt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/prompts/planning.txt",
+        "lang": "unknown",
+        "size": 473,
+        "summary": "planning.txt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/prompts/architecture.txt",
+        "lang": "unknown",
+        "size": 852,
+        "summary": "architecture.txt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/prompts/research.txt",
+        "lang": "unknown",
+        "size": 120,
+        "summary": "research.txt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/prompts/project.txt",
+        "lang": "unknown",
+        "size": 1139,
+        "summary": "project.txt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/prompts/system.txt",
+        "lang": "unknown",
+        "size": 562,
+        "summary": "system.txt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/classifier.js",
+        "lang": "javascript",
+        "size": 20665,
+        "summary": "AQUA Task Classifier v5 | classifier.js [javascript] | Functions: scoreTask, classifyTask, classifyTaskSimple, getTaskComplexity, getEffectiveComplexity | Exports: scoreTask, classifyTask, classifyTaskSimple, getTaskComplexity, getEffectiveComplexity",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/startupValidation.js",
+        "lang": "javascript",
+        "size": 2540,
+        "summary": "AQUA Startup Validation (Issue 6) | startupValidation.js [javascript] | Functions: runStartupValidation | Exports: runStartupValidation",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/observability.js",
+        "lang": "javascript",
+        "size": 14203,
+        "summary": "AQUA Observability v2 | observability.js [javascript] | Functions: ensureProvider, ensureTask, pushLatency, createContext, recordAttempt, logMemoryEvent, logPlanEvent, logIntelligenceEvent | Exports: createContext, recordAttempt, logMemoryEvent, logPlanEvent, logIntelligenceEvent, logOrchestratorEvent",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/strategy.js",
+        "lang": "javascript",
+        "size": 1561,
+        "summary": "AQUA Provider Strategy | strategy.js [javascript] | Functions: getProviderStrategy | Exports: getProviderStrategy",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/health.js",
+        "lang": "javascript",
+        "size": 7877,
+        "summary": "AQUA Health Monitor v3 — Circuit Breaker | health.js [javascript] | Functions: fresh, successRate, avgLatencyMs, computeScore, push, transitionToOpen, transitionToClosed, transitionToHalfOpen | Exports: isProviderHealthy, getHealthScore, getProviderState, markSuccess, markFailure, __resetForTests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/tokenManager.js",
+        "lang": "javascript",
+        "size": 444,
+        "summary": "tokenManager.js [javascript] | Functions: estimateTokens, buildContextWindow | Exports: estimateTokens, buildContextWindow | Role: authentication",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/contextOptimizer.js",
+        "lang": "javascript",
+        "size": 1979,
+        "summary": "AQUA Context Optimizer (Phase 4) | contextOptimizer.js [javascript] | Functions: computeContextBudget, optimizeContext | Exports: computeContextBudget, optimizeContext | Role: state management",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/timeoutManager.js",
+        "lang": "javascript",
+        "size": 3422,
+        "summary": "AQUA Timeout Manager | timeoutManager.js [javascript] | Functions: complexityMultiplier, getTimeout | Exports: getTimeout, BASE_TIMEOUTS",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/executionPlanner.js",
+        "lang": "javascript",
+        "size": 2497,
+        "summary": "AQUA Execution Planner (Phase 4) | executionPlanner.js [javascript] | Functions: createExecutionPlan | Exports: createExecutionPlan",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/tests/health.test.js",
+        "lang": "javascript",
+        "size": 5408,
+        "summary": "health.test.js [javascript] | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/tests/classifier.test.js",
+        "lang": "javascript",
+        "size": 7295,
+        "summary": "classifier.test.js [javascript] | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/reasoningStrategy.js",
+        "lang": "javascript",
+        "size": 1292,
+        "summary": "AQUA Reasoning Strategy (Phase 4) | reasoningStrategy.js [javascript] | Functions: getReasoningStrategy | Exports: getReasoningStrategy",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/promptBuilder.js",
+        "lang": "javascript",
+        "size": 4265,
+        "summary": "AQUA Prompt Builder v3 | promptBuilder.js [javascript] | Functions: load, buildSystemPrompt, reloadPrompts | Exports: buildSystemPrompt, reloadPrompts",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/core/validator.js",
+        "lang": "javascript",
+        "size": 4786,
+        "summary": "AQUA Response Validator v2 — Intent-Aware | validator.js [javascript] | Functions: validateResponse | Exports: validateResponse",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/routes/memory.js",
+        "lang": "javascript",
+        "size": 2167,
+        "summary": "AQUA Memory Inspector Route | memory.js [javascript] | Role: routing/controller",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/routes/upload.js",
+        "lang": "javascript",
+        "size": 11753,
+        "summary": "AQUA Unified Upload — Day 5 | upload.js [javascript] | Functions: handleRepositoryUpload | Role: routing/controller",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/routes/health.js",
+        "lang": "javascript",
+        "size": 2755,
+        "summary": "health.js [javascript] | Role: routing/controller",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/routes/conversations.js",
+        "lang": "javascript",
+        "size": 2151,
+        "summary": "AQUA Conversations Route | conversations.js [javascript] | Role: routing/controller",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/routes/project.js",
+        "lang": "javascript",
+        "size": 13882,
+        "summary": "AQUA Project Intelligence Engine — HTTP Routes | project.js [javascript] | Role: routing/controller",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/routes/chat.js",
+        "lang": "javascript",
+        "size": 31560,
+        "summary": "Shared pre-generation pipeline — identical for /chat and /chat/stream. | chat.js [javascript] | Functions: isEditIntent, composePatchExplanation, buildEditResponsePayload, prepareTurn, runVerification, buildResponsePayload | Role: routing/controller",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/memoryExtractor.js",
+        "lang": "javascript",
+        "size": 6881,
+        "summary": "Fuzzy-resolve a user-provided key to the closest canonical schema key. | memoryExtractor.js [javascript] | Functions: resolveCanonicalKey, extractFactsWithReport, extractFacts, extractCandidates, detectMemoryUpdate, detectForget, toLegacyFact, finalizeReport | Exports: resolveCanonicalKey, extractFactsWithReport, extractFacts, extractCandidates, detectMemoryUpdate, detectForget",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/conversationStore.js",
+        "lang": "javascript",
+        "size": 7779,
+        "summary": "AQUA Conversation Store v3 | conversationStore.js [javascript] | Functions: loadFromDisk, scheduleSave, createConversation, getOrCreateConversation, conversationExists, getConversation, addMessage, getConversationMeta | Exports: createConversation, getOrCreateConversation, conversationExists, getConversation, addMessage, getConversationMeta | Role: state management",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/candidateExtractor.js",
+        "lang": "javascript",
+        "size": 6498,
+        "summary": "candidateExtractor.js [javascript] | Functions: isPersonalStatement, adjustConfidence, extractCustomFacts, extractCandidatesFromSentence, extractAllCandidates, makeCandidate | Exports: extractCandidatesFromSentence, extractAllCandidates",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/entityNormalizer.js",
+        "lang": "javascript",
+        "size": 2746,
+        "summary": "entityNormalizer.js [javascript] | Functions: normalizeCandidates, normalizeCandidate | Exports: normalizeCandidates, normalizeCandidate | Role: data model",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/sentenceParser.js",
+        "lang": "javascript",
+        "size": 2018,
+        "summary": "AQUA Sentence Parser v3 | sentenceParser.js [javascript] | Functions: splitSentences, parseMessage | Exports: splitSentences, parseMessage",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/memoryRetriever.js",
+        "lang": "javascript",
+        "size": 11446,
+        "summary": "memoryRetriever.js [javascript] | Functions: isMemoryQuery, detectCategoryIntent, detectSemanticConcepts, detectKeyIntent, scoreRelevance, retrieveRelevantFacts, formatFactsForPrompt, formatValue | Exports: isMemoryQuery, retrieveRelevantFacts, formatFactsForPrompt",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/memoryResolver.js",
+        "lang": "javascript",
+        "size": 5161,
+        "summary": "AQUA Memory Resolver v3 | memoryResolver.js [javascript] | Functions: resolveCandidates, resolveOne, resolveCollection, normalizeForCompare, itemIdentityKey | Exports: RESOLUTION_ACTIONS, resolveCandidates",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/duplicateDetector.js",
+        "lang": "javascript",
+        "size": 3491,
+        "summary": "AQUA Duplicate Detector v3 | duplicateDetector.js [javascript] | Functions: deduplicateIntraMessage, itemIdentityKey | Exports: deduplicateIntraMessage",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/tests/memoryRetrieval.test.js",
+        "lang": "javascript",
+        "size": 3959,
+        "summary": "memoryRetrieval.test.js [javascript] | Functions: clearAll, store | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/tests/memoryIntegration.test.js",
+        "lang": "javascript",
+        "size": 9692,
+        "summary": "memoryIntegration.test.js [javascript] | Functions: freshConv | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/tests/memoryBugs.test.js",
+        "lang": "javascript",
+        "size": 7353,
+        "summary": "memoryBugs.test.js [javascript] | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/tests/memoryV3.test.js",
+        "lang": "javascript",
+        "size": 6495,
+        "summary": "memoryV3.test.js [javascript] | Functions: findByKey, clearAll | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/tests/memoryConflictResolver.test.js",
+        "lang": "javascript",
+        "size": 5268,
+        "summary": "Unit tests — AQUA Memory Conflict Resolver | memoryConflictResolver.test.js [javascript] | Functions: makeFact | Role: tests",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/memorySchema.js",
+        "lang": "javascript",
+        "size": 26672,
+        "summary": "memorySchema.js [javascript] | Functions: getSchema, getSchemaByCategory, getWordIndex, normalizeTrim, normalizeLower, normalizeName, normalizeLanguage, normalizeFramework | Exports: CATEGORIES, CONFLICT_POLICIES, MEMORY_SCHEMA, SCHEMA_BY_KEY, SCHEMA_BY_ALIAS, getSchema | Role: data model",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/memoryConflictResolver.js",
+        "lang": "javascript",
+        "size": 5250,
+        "summary": "memoryConflictResolver.js [javascript] | Functions: detectCorrection, resolveMemoryConflict, resolveCollectionMerge, itemKey, detectContradiction, norm | Exports: CORRECTION_PHRASES, detectCorrection, resolveMemoryConflict, resolveCollectionMerge, detectContradiction",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/src/memory/longTermMemory.js",
+        "lang": "javascript",
+        "size": 7658,
+        "summary": "longTermMemory.js [javascript] | Functions: loadFromDisk, scheduleSave, getOrCreate, buildVersionHistory, makeFactId, upgradeFact, storeFact, storeResolved | Exports: storeFact, storeResolved, getFacts, getFact, clearFacts, storeFacts",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/.aqua-memory.json",
+        "lang": "json",
+        "size": 21594,
+        "summary": ".aqua-memory.json [json]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/.aqua-projects.json",
+        "lang": "json",
+        "size": 572518,
+        "summary": ".aqua-projects.json [json]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/.aqua-history.json",
+        "lang": "json",
+        "size": 728328,
+        "summary": ".aqua-history.json [json]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/package.json",
+        "lang": "json",
+        "size": 643,
+        "summary": "package.json [json] | Deps: @google/genai, adm-zip, cors, dotenv, express, groq-sdk, mammoth, openai",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua/server.js",
+        "lang": "javascript",
+        "size": 3510,
+        "summary": "server.js [javascript]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/types/index.ts",
+        "lang": "typescript",
+        "size": 94,
+        "summary": "index.ts [typescript]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/types/api.ts",
+        "lang": "typescript",
+        "size": 8908,
+        "summary": "Types mirrored 1:1 from the AQUA backend (aqua/src/routes/*.js). | api.ts [typescript]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/types/ui.ts",
+        "lang": "typescript",
+        "size": 399,
+        "summary": "ui.ts [typescript]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/types/chat.ts",
+        "lang": "typescript",
+        "size": 2494,
+        "summary": "'sending'   — request in flight, no tokens yet (thinking / pipeline stages) | chat.ts [typescript]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/types/patch.ts",
+        "lang": "typescript",
+        "size": 2094,
+        "summary": "Day 4 — Patch-first editing types. | patch.ts [typescript]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/stores/chatStore.ts",
+        "lang": "typescript",
+        "size": 15816,
+        "summary": "Shared core for every turn. Streams via SSE; falls back to the legacy | chatStore.ts [typescript] | Functions: makeId, userMessage, pendingAssistantMessage, toDiagnostics | Exports: useChatStore | Role: state management",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/stores/uploadStore.ts",
+        "lang": "typescript",
+        "size": 3896,
+        "summary": "uploadStore.ts [typescript] | Exports: useUploadStore | Role: state management",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/stores/uiStore.ts",
+        "lang": "typescript",
+        "size": 1337,
+        "summary": "uiStore.ts [typescript] | Exports: useUiStore | Role: state management",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/stores/conversationStore.ts",
+        "lang": "typescript",
+        "size": 5219,
+        "summary": "conversationStore.ts [typescript] | Functions: deriveTitle | Exports: useConversationStore | Role: state management",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/stores/attachmentStore.ts",
+        "lang": "typescript",
+        "size": 7914,
+        "summary": "Universal upload state — Day 5. | attachmentStore.ts [typescript] | Functions: makeLocalId, adoptWorkspace | Exports: useAttachmentStore | Role: state management",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/stores/settingsStore.ts",
+        "lang": "typescript",
+        "size": 866,
+        "summary": "settingsStore.ts [typescript] | Exports: useSettingsStore | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/markdown/MarkdownRenderer.tsx",
+        "lang": "typescript",
+        "size": 6228,
+        "summary": "react-markdown v9 no longer passes an `inline` flag to the `code` | MarkdownRenderer.tsx [typescript] | Functions: splitMarkdownBlocks | Exports: MarkdownRenderer | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/markdown/CodeBlock.tsx",
+        "lang": "typescript",
+        "size": 9622,
+        "summary": "CodeBlock.tsx [typescript] | Functions: ensureLanguageRegistered, download | Exports: CodeBlock | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/tooltip.tsx",
+        "lang": "typescript",
+        "size": 1376,
+        "summary": "tooltip.tsx [typescript] | Functions: Tooltip | Exports: TooltipProvider, TooltipRoot, TooltipTrigger, TooltipContent, Tooltip | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/button.tsx",
+        "lang": "typescript",
+        "size": 1964,
+        "summary": "button.tsx [typescript] | Exports: Button | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/textarea.tsx",
+        "lang": "typescript",
+        "size": 598,
+        "summary": "textarea.tsx [typescript] | Exports: Textarea | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/dropdown-menu.tsx",
+        "lang": "typescript",
+        "size": 5838,
+        "summary": "dropdown-menu.tsx [typescript] | Exports: DropdownMenu, DropdownMenuTrigger, DropdownMenuGroup, DropdownMenuPortal, DropdownMenuSub, DropdownMenuRadioGroup | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/tabs.tsx",
+        "lang": "typescript",
+        "size": 1618,
+        "summary": "tabs.tsx [typescript] | Exports: Tabs, TabsList, TabsTrigger, TabsContent | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/avatar.tsx",
+        "lang": "typescript",
+        "size": 1335,
+        "summary": "avatar.tsx [typescript] | Exports: Avatar, AvatarImage, AvatarFallback | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/dialog.tsx",
+        "lang": "typescript",
+        "size": 3096,
+        "summary": "dialog.tsx [typescript] | Functions: DialogHeader, DialogFooter | Exports: Dialog, DialogTrigger, DialogPortal, DialogClose, DialogOverlay, DialogContent | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/badge.tsx",
+        "lang": "typescript",
+        "size": 1030,
+        "summary": "badge.tsx [typescript] | Functions: Badge | Exports: Badge | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/scroll-area.tsx",
+        "lang": "typescript",
+        "size": 948,
+        "summary": "scroll-area.tsx [typescript] | Exports: ScrollArea | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/input.tsx",
+        "lang": "typescript",
+        "size": 726,
+        "summary": "input.tsx [typescript] | Exports: Input | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/switch.tsx",
+        "lang": "typescript",
+        "size": 1149,
+        "summary": "switch.tsx [typescript] | Exports: Switch | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/skeleton.tsx",
+        "lang": "typescript",
+        "size": 231,
+        "summary": "skeleton.tsx [typescript] | Functions: Skeleton | Exports: Skeleton | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/ui/separator.tsx",
+        "lang": "typescript",
+        "size": 676,
+        "summary": "separator.tsx [typescript] | Exports: Separator | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/feedback/ErrorBoundary.tsx",
+        "lang": "typescript",
+        "size": 1478,
+        "summary": "ErrorBoundary.tsx [typescript] | Classes: ErrorBoundary | Exports: ErrorBoundary | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/feedback/ToastViewport.tsx",
+        "lang": "typescript",
+        "size": 2714,
+        "summary": "ToastViewport.tsx [typescript] | Functions: ToastRow, ToastViewport | Exports: ToastViewport | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/workspace/WorkspaceDashboard.tsx",
+        "lang": "typescript",
+        "size": 18642,
+        "summary": "WorkspaceDashboard.tsx [typescript] | Functions: formatBytes, Card, PillRow, EmptyLine, WorkspaceDashboard | Exports: WorkspaceDashboard | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/upload/ProjectUploadDialog.tsx",
+        "lang": "typescript",
+        "size": 8421,
+        "summary": "ProjectUploadDialog.tsx [typescript] | Functions: ProjectUploadDialog | Exports: ProjectUploadDialog | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/upload/AttachmentChip.tsx",
+        "lang": "typescript",
+        "size": 2745,
+        "summary": "Day 5 — universal attachment chip. Shows kind icon (or an image | AttachmentChip.tsx [typescript] | Functions: formatBytes, AttachmentChip | Exports: AttachmentChip | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/chat/ThinkingIndicator.tsx",
+        "lang": "typescript",
+        "size": 1481,
+        "summary": "Live thinking state shown between send and first token. | ThinkingIndicator.tsx [typescript] | Functions: ThinkingIndicator | Exports: ThinkingIndicator | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/chat/DiagnosticsPanel.tsx",
+        "lang": "typescript",
+        "size": 5735,
+        "summary": "DiagnosticsPanel.tsx [typescript] | Functions: DiagnosticsPanel | Exports: DiagnosticsPanel | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/chat/EmptyState.tsx",
+        "lang": "typescript",
+        "size": 4013,
+        "summary": "EmptyState.tsx [typescript] | Functions: greeting, EmptyState | Exports: EmptyState | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/chat/MessageList.tsx",
+        "lang": "typescript",
+        "size": 2508,
+        "summary": "MessageList.tsx [typescript] | Functions: HistorySkeleton, MessageList | Exports: MessageList | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/chat/MessageActions.tsx",
+        "lang": "typescript",
+        "size": 2583,
+        "summary": "MessageActions.tsx [typescript] | Functions: MessageActions | Exports: MessageActions | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/chat/MessageBubble.tsx",
+        "lang": "typescript",
+        "size": 9337,
+        "summary": "MessageBubble.tsx [typescript] | Functions: formatTime, WorkspaceContextChip | Exports: MessageBubble | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/chat/Composer.tsx",
+        "lang": "typescript",
+        "size": 8340,
+        "summary": "Day 5 — Universal Upload composer. | Composer.tsx [typescript] | Functions: Composer | Exports: Composer | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/layout/MobileSidebarDrawer.tsx",
+        "lang": "typescript",
+        "size": 1123,
+        "summary": "MobileSidebarDrawer.tsx [typescript] | Functions: MobileSidebarDrawer | Exports: MobileSidebarDrawer | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/layout/Header.tsx",
+        "lang": "typescript",
+        "size": 1657,
+        "summary": "Header.tsx [typescript] | Functions: Header | Exports: Header | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/layout/AppShell.tsx",
+        "lang": "typescript",
+        "size": 2039,
+        "summary": "AppShell.tsx [typescript] | Functions: AppShell | Exports: AppShell | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/settings/GeneralTab.tsx",
+        "lang": "typescript",
+        "size": 5042,
+        "summary": "GeneralTab.tsx [typescript] | Functions: GeneralTab | Exports: GeneralTab | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/settings/ShortcutsTab.tsx",
+        "lang": "typescript",
+        "size": 744,
+        "summary": "ShortcutsTab.tsx [typescript] | Functions: ShortcutsTab | Exports: ShortcutsTab | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/settings/AboutTab.tsx",
+        "lang": "typescript",
+        "size": 3589,
+        "summary": "AboutTab.tsx [typescript] | Functions: AboutTab | Exports: AboutTab | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/settings/MemoryTab.tsx",
+        "lang": "typescript",
+        "size": 3823,
+        "summary": "MemoryTab.tsx [typescript] | Functions: MemoryTab | Exports: MemoryTab | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/settings/SettingsDialog.tsx",
+        "lang": "typescript",
+        "size": 1486,
+        "summary": "SettingsDialog.tsx [typescript] | Functions: SettingsDialog | Exports: SettingsDialog | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/sidebar/SidebarSkeleton.tsx",
+        "lang": "typescript",
+        "size": 311,
+        "summary": "SidebarSkeleton.tsx [typescript] | Functions: SidebarSkeleton | Exports: SidebarSkeleton | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/sidebar/Sidebar.tsx",
+        "lang": "typescript",
+        "size": 7079,
+        "summary": "Sidebar.tsx [typescript] | Functions: Sidebar | Exports: searchInputId, Sidebar | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/sidebar/ConversationItem.tsx",
+        "lang": "typescript",
+        "size": 3794,
+        "summary": "ConversationItem.tsx [typescript] | Functions: ConversationItem | Exports: ConversationItem | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/patch/DiffView.tsx",
+        "lang": "typescript",
+        "size": 5332,
+        "summary": "Day 4 — professional diff rendering. | DiffView.tsx [typescript] | Functions: langForPath, DiffRow, GapRow | Exports: DiffView | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/components/patch/PatchCard.tsx",
+        "lang": "typescript",
+        "size": 13791,
+        "summary": "Day 4 — patch preview + review workflow. | PatchCard.tsx [typescript] | Functions: changeIcon, StatChip, StatusBadge, VerificationBar, FileSection | Exports: PatchCard | Role: UI component",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/providers/PreferencesProvider.tsx",
+        "lang": "typescript",
+        "size": 536,
+        "summary": "PreferencesProvider.tsx [typescript] | Functions: PreferencesProvider | Exports: PreferencesProvider",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/providers/ThemeProvider.tsx",
+        "lang": "typescript",
+        "size": 1229,
+        "summary": "Mirrors the inline bootstrap script in index.html (which prevents a flash | ThemeProvider.tsx [typescript] | Functions: resolveTheme, applyTheme, ThemeProvider | Exports: ThemeProvider",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/hooks/useAutoScroll.ts",
+        "lang": "typescript",
+        "size": 2594,
+        "summary": "Keeps a scroll container pinned to the bottom while new content streams | useAutoScroll.ts [typescript] | Exports: useAutoScroll | Role: React hook",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/hooks/useCopyToClipboard.ts",
+        "lang": "typescript",
+        "size": 635,
+        "summary": "useCopyToClipboard.ts [typescript] | Functions: useCopyToClipboard | Exports: useCopyToClipboard | Role: React hook",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/hooks/useKeyboardShortcuts.ts",
+        "lang": "typescript",
+        "size": 1874,
+        "summary": "useKeyboardShortcuts.ts [typescript] | Functions: useKeyboardShortcuts | Exports: modKey, SHORTCUTS, useKeyboardShortcuts | Role: React hook",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/hooks/useMediaQuery.ts",
+        "lang": "typescript",
+        "size": 574,
+        "summary": "useMediaQuery.ts [typescript] | Functions: useMediaQuery, useIsMobile | Exports: useMediaQuery, useIsMobile | Role: React hook",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/App.tsx",
+        "lang": "typescript",
+        "size": 527,
+        "summary": "App.tsx [typescript] | Functions: App | Exports: App",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/vite-env.d.ts",
+        "lang": "typescript",
+        "size": 38,
+        "summary": "vite-env.d.ts [typescript] | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/api/health.ts",
+        "lang": "typescript",
+        "size": 247,
+        "summary": "health.ts [typescript] | Functions: getHealth | Exports: getHealth",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/api/project.ts",
+        "lang": "typescript",
+        "size": 2208,
+        "summary": "project.ts [typescript] | Functions: getWorkspaceOverview, createWorkspace, uploadWorkspaceFiles, uploadWorkspaceZip, getWorkspace, listWorkspaces, deleteWorkspace | Exports: getWorkspaceOverview, createWorkspace, uploadWorkspaceFiles, uploadWorkspaceZip, getWorkspace, listWorkspaces",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/api/chatStream.ts",
+        "lang": "typescript",
+        "size": 5534,
+        "summary": "POST /chat/stream — Server-Sent Events over fetch. | chatStream.ts [typescript] | Classes: StreamUnsupportedError | Functions: streamChatMessage | Exports: StreamUnsupportedError, streamChatMessage",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/api/upload.ts",
+        "lang": "typescript",
+        "size": 2398,
+        "summary": "upload.ts [typescript] | Functions: uploadUnified, listConversationAttachments, deleteConversationAttachment | Exports: uploadUnified, listConversationAttachments, deleteConversationAttachment",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/api/memory.ts",
+        "lang": "typescript",
+        "size": 738,
+        "summary": "memory.ts [typescript] | Functions: listFacts, deleteFact, clearFacts | Exports: listFacts, deleteFact, clearFacts",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/api/conversations.ts",
+        "lang": "typescript",
+        "size": 792,
+        "summary": "conversations.ts [typescript] | Functions: listConversations, getConversation, deleteConversation | Exports: listConversations, getConversation, deleteConversation",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/api/chat.ts",
+        "lang": "typescript",
+        "size": 708,
+        "summary": "Legacy request/response endpoint (POST /chat) — returns the full answer in | chat.ts [typescript] | Functions: sendChatMessage | Exports: sendChatMessage",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/api/client.ts",
+        "lang": "typescript",
+        "size": 1983,
+        "summary": "Normalize any thrown value from an apiClient call into a single shape the | client.ts [typescript] | Functions: isCancel, normalizeError | Exports: API_BASE_URL, apiClient, isCancel, normalizeError",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/api/edits.ts",
+        "lang": "typescript",
+        "size": 2931,
+        "summary": "Day 4 — patch-first editing endpoints. | edits.ts [typescript] | Functions: proposeEdit, listEdits, getEdit, applyPatch, rejectPatch, revertPatch | Exports: proposeEdit, listEdits, getEdit, applyPatch, rejectPatch, revertPatch",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/main.tsx",
+        "lang": "typescript",
+        "size": 244,
+        "summary": "main.tsx [typescript]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/styles/globals.css",
+        "lang": "css",
+        "size": 5925,
+        "summary": "globals.css [css]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/lib/utils.ts",
+        "lang": "typescript",
+        "size": 237,
+        "summary": "utils.ts [typescript] | Functions: cn | Exports: cn | Role: utilities",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/Root.tsx",
+        "lang": "typescript",
+        "size": 192,
+        "summary": "Root.tsx [typescript] | Functions: Root | Exports: Root",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/utils/uploadKinds.ts",
+        "lang": "typescript",
+        "size": 2547,
+        "summary": "Client-side upload classification — mirrors aqua/src/upload/uploadClassifier.js. | uploadKinds.ts [typescript] | Functions: classifyFile, readAsBase64 | Exports: classifyFile, MAX_BYTES_BY_KIND, readAsBase64 | Role: utilities",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/utils/textFiles.ts",
+        "lang": "typescript",
+        "size": 2032,
+        "summary": "The composer's \"attach\" affordance inlines small text files directly into | textFiles.ts [typescript] | Functions: isAcceptedTextFile, readFileAsText, buildMessageWithAttachments | Exports: ACCEPTED_TEXT_EXTENSIONS, MAX_ATTACHMENT_BYTES, isAcceptedTextFile, readFileAsText, buildMessageWithAttachments | Role: utilities",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/utils/export.ts",
+        "lang": "typescript",
+        "size": 2203,
+        "summary": "No PDF-generation library is pulled in for this — the browser's own | export.ts [typescript] | Functions: exportMarkdown, exportPdf, shareText | Exports: exportMarkdown, exportPdf, shareText | Role: utilities",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/utils/projectFiles.ts",
+        "lang": "typescript",
+        "size": 2503,
+        "summary": "projectFiles.ts [typescript] | Functions: shouldIgnoreClientSide, readAsText, readAsBase64 | Exports: shouldIgnoreClientSide, readAsText, readAsBase64 | Role: utilities",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/pages/ChatPage.tsx",
+        "lang": "typescript",
+        "size": 2616,
+        "summary": "ChatPage.tsx [typescript] | Functions: ChatPage | Exports: ChatPage",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/src/routes/router.tsx",
+        "lang": "typescript",
+        "size": 357,
+        "summary": "router.tsx [typescript] | Exports: router | Role: routing/controller",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/eslint.config.js",
+        "lang": "javascript",
+        "size": 797,
+        "summary": "eslint.config.js [javascript] | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/tsconfig.app.json",
+        "lang": "json",
+        "size": 697,
+        "summary": "tsconfig.app.json [json] | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/README.md",
+        "lang": "markdown",
+        "size": 4451,
+        "summary": "AQUA AI — Frontend | README.md [markdown]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/index.html",
+        "lang": "html",
+        "size": 1868,
+        "summary": "index.html [html]",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/vite.config.ts",
+        "lang": "typescript",
+        "size": 1103,
+        "summary": "vite.config.ts [typescript] | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/tsconfig.node.json",
+        "lang": "json",
+        "size": 515,
+        "summary": "tsconfig.node.json [json] | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/.gitignore",
+        "lang": "unknown",
+        "size": 110,
+        "summary": ".gitignore",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/package.json",
+        "lang": "json",
+        "size": 1679,
+        "summary": "package.json [json] | Deps: @radix-ui/react-avatar, @radix-ui/react-dialog, @radix-ui/react-dropdown-menu, @radix-ui/react-popover, @radix-ui/react-scroll-area, @radix-ui/react-separator, @radix-ui/react-slot, @radix-ui/react-switch",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/.env.example",
+        "lang": "env",
+        "size": 182,
+        "summary": ".env.example [env] | Role: configuration",
+        "parsedAt": 1783165737311
+      },
+      {
+        "path": "aqua-frontend/tsconfig.json",
+        "lang": "json",
+        "size": 119,
+        "summary": "tsconfig.json [json] | Role: configuration",
+        "parsedAt": 1783165737311
+      }
+    ],
+    "structure": {
+      "aqua": {
+        ".env": {
+          "_file": true,
+          "lang": "env",
+          "size": 1221
+        },
+        "src": {
+          "orchestrator": {
+            "multiLabelClassifier.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 3717
+            },
+            "capabilityRegistry.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 1916
+            },
+            "executionProfiles.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 10676
+            },
+            "capabilities.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 8430
+            },
+            "tests": {
+              "executionProfiles.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 2367
+              },
+              "toolOrchestrator.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 5728
+              }
+            },
+            "verificationStrategy.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2615
+            },
+            "toolOrchestrator.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 6436
+            }
+          },
+          "providers": {
+            "groq.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 10570
+            },
+            "router.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 18681
+            },
+            "openrouter.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 11280
+            },
+            "tests": {
+              "modelRegistry.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 8707
+              },
+              "providerErrors.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 3540
+              }
+            },
+            "providerErrors.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 3839
+            },
+            "modelRegistry.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 14484
+            },
+            "gemini.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 15276
+            }
+          },
+          "intelligence": {
+            "synthesizer.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 1871
+            },
+            "agentRegistry.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 1548
+            },
+            "reasoningEngine.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2210
+            },
+            "internalIntelligenceEngine.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2276
+            },
+            "critic.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 3304
+            },
+            "verificationAgent.test.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 4926
+            },
+            "strategyRegistry.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 4247
+            },
+            "planner.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 1715
+            },
+            "verificationAgent.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 7401
+            },
+            "pipelineRegistry.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 3795
+            }
+          },
+          "upload": {
+            "uploadClassifier.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 6885
+            },
+            "archiveExtractor.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 8980
+            },
+            "tests": {
+              "upload.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 7955
+              }
+            },
+            "documentPipeline.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 8054
+            },
+            "mediaPipeline.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 5955
+            },
+            "attachmentStore.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 5222
+            }
+          },
+          "project": {
+            "patchGenerator.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2075
+            },
+            "documentParser.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 6473
+            },
+            "workspaceManager.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 1607
+            },
+            "fileParser.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 12254
+            },
+            "fileIngester.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 12511
+            },
+            "tests": {
+              "workspaceAnalyzer.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 6365
+              },
+              "editEngine.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 10125
+              },
+              "editRoutes.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 5273
+              },
+              "project.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 21903
+              },
+              "documentParser.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 8503
+              }
+            },
+            "ingestionPipeline.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 5329
+            },
+            "projectIndex.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 4649
+            },
+            "projectMemory.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 1998
+            },
+            "projectRetriever.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 8890
+            },
+            "diffEngine.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 6944
+            },
+            "dependencyGraph.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 4640
+            },
+            "projectSummarizer.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 5758
+            },
+            "editEngine.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 32186
+            },
+            "workspaceAnalyzer.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 28811
+            }
+          },
+          "prompts": {
+            "creative.txt": {
+              "_file": true,
+              "lang": "unknown",
+              "size": 285
+            },
+            "reasoning.txt": {
+              "_file": true,
+              "lang": "unknown",
+              "size": 311
+            },
+            "coding.txt": {
+              "_file": true,
+              "lang": "unknown",
+              "size": 184
+            },
+            "planning.txt": {
+              "_file": true,
+              "lang": "unknown",
+              "size": 473
+            },
+            "architecture.txt": {
+              "_file": true,
+              "lang": "unknown",
+              "size": 852
+            },
+            "research.txt": {
+              "_file": true,
+              "lang": "unknown",
+              "size": 120
+            },
+            "project.txt": {
+              "_file": true,
+              "lang": "unknown",
+              "size": 1139
+            },
+            "system.txt": {
+              "_file": true,
+              "lang": "unknown",
+              "size": 562
+            }
+          },
+          "core": {
+            "classifier.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 20665
+            },
+            "startupValidation.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2540
+            },
+            "observability.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 14203
+            },
+            "strategy.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 1561
+            },
+            "health.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 7877
+            },
+            "tokenManager.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 444
+            },
+            "contextOptimizer.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 1979
+            },
+            "timeoutManager.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 3422
+            },
+            "executionPlanner.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2497
+            },
+            "tests": {
+              "health.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 5408
+              },
+              "classifier.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 7295
+              }
+            },
+            "reasoningStrategy.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 1292
+            },
+            "promptBuilder.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 4265
+            },
+            "validator.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 4786
+            }
+          },
+          "routes": {
+            "memory.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2167
+            },
+            "upload.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 11753
+            },
+            "health.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2755
+            },
+            "conversations.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2151
+            },
+            "project.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 13882
+            },
+            "chat.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 31560
+            }
+          },
+          "memory": {
+            "memoryExtractor.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 6881
+            },
+            "conversationStore.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 7779
+            },
+            "candidateExtractor.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 6498
+            },
+            "entityNormalizer.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2746
+            },
+            "sentenceParser.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 2018
+            },
+            "memoryRetriever.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 11446
+            },
+            "memoryResolver.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 5161
+            },
+            "duplicateDetector.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 3491
+            },
+            "tests": {
+              "memoryRetrieval.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 3959
+              },
+              "memoryIntegration.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 9692
+              },
+              "memoryBugs.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 7353
+              },
+              "memoryV3.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 6495
+              },
+              "memoryConflictResolver.test.js": {
+                "_file": true,
+                "lang": "javascript",
+                "size": 5268
+              }
+            },
+            "memorySchema.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 26672
+            },
+            "memoryConflictResolver.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 5250
+            },
+            "longTermMemory.js": {
+              "_file": true,
+              "lang": "javascript",
+              "size": 7658
+            }
+          }
+        },
+        ".aqua-memory.json": {
+          "_file": true,
+          "lang": "json",
+          "size": 21594
+        },
+        ".aqua-projects.json": {
+          "_file": true,
+          "lang": "json",
+          "size": 572518
+        },
+        ".aqua-history.json": {
+          "_file": true,
+          "lang": "json",
+          "size": 728328
+        },
+        "package.json": {
+          "_file": true,
+          "lang": "json",
+          "size": 643
+        },
+        "server.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 3510
+        }
+      },
+      "aqua-frontend": {
+        "src": {
+          "types": {
+            "index.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 94
+            },
+            "api.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 8908
+            },
+            "ui.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 399
+            },
+            "chat.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2494
+            },
+            "patch.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2094
+            }
+          },
+          "stores": {
+            "chatStore.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 15816
+            },
+            "uploadStore.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 3896
+            },
+            "uiStore.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 1337
+            },
+            "conversationStore.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 5219
+            },
+            "attachmentStore.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 7914
+            },
+            "settingsStore.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 866
+            }
+          },
+          "components": {
+            "markdown": {
+              "MarkdownRenderer.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 6228
+              },
+              "CodeBlock.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 9622
+              }
+            },
+            "ui": {
+              "tooltip.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1376
+              },
+              "button.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1964
+              },
+              "textarea.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 598
+              },
+              "dropdown-menu.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 5838
+              },
+              "tabs.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1618
+              },
+              "avatar.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1335
+              },
+              "dialog.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 3096
+              },
+              "badge.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1030
+              },
+              "scroll-area.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 948
+              },
+              "input.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 726
+              },
+              "switch.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1149
+              },
+              "skeleton.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 231
+              },
+              "separator.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 676
+              }
+            },
+            "feedback": {
+              "ErrorBoundary.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1478
+              },
+              "ToastViewport.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 2714
+              }
+            },
+            "workspace": {
+              "WorkspaceDashboard.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 18642
+              }
+            },
+            "upload": {
+              "ProjectUploadDialog.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 8421
+              },
+              "AttachmentChip.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 2745
+              }
+            },
+            "chat": {
+              "ThinkingIndicator.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1481
+              },
+              "DiagnosticsPanel.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 5735
+              },
+              "EmptyState.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 4013
+              },
+              "MessageList.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 2508
+              },
+              "MessageActions.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 2583
+              },
+              "MessageBubble.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 9337
+              },
+              "Composer.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 8340
+              }
+            },
+            "layout": {
+              "MobileSidebarDrawer.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1123
+              },
+              "Header.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1657
+              },
+              "AppShell.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 2039
+              }
+            },
+            "settings": {
+              "GeneralTab.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 5042
+              },
+              "ShortcutsTab.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 744
+              },
+              "AboutTab.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 3589
+              },
+              "MemoryTab.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 3823
+              },
+              "SettingsDialog.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 1486
+              }
+            },
+            "sidebar": {
+              "SidebarSkeleton.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 311
+              },
+              "Sidebar.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 7079
+              },
+              "ConversationItem.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 3794
+              }
+            },
+            "patch": {
+              "DiffView.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 5332
+              },
+              "PatchCard.tsx": {
+                "_file": true,
+                "lang": "typescript",
+                "size": 13791
+              }
+            }
+          },
+          "providers": {
+            "PreferencesProvider.tsx": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 536
+            },
+            "ThemeProvider.tsx": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 1229
+            }
+          },
+          "hooks": {
+            "useAutoScroll.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2594
+            },
+            "useCopyToClipboard.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 635
+            },
+            "useKeyboardShortcuts.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 1874
+            },
+            "useMediaQuery.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 574
+            }
+          },
+          "App.tsx": {
+            "_file": true,
+            "lang": "typescript",
+            "size": 527
+          },
+          "vite-env.d.ts": {
+            "_file": true,
+            "lang": "typescript",
+            "size": 38
+          },
+          "api": {
+            "health.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 247
+            },
+            "project.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2208
+            },
+            "chatStream.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 5534
+            },
+            "upload.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2398
+            },
+            "memory.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 738
+            },
+            "conversations.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 792
+            },
+            "chat.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 708
+            },
+            "client.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 1983
+            },
+            "edits.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2931
+            }
+          },
+          "main.tsx": {
+            "_file": true,
+            "lang": "typescript",
+            "size": 244
+          },
+          "styles": {
+            "globals.css": {
+              "_file": true,
+              "lang": "css",
+              "size": 5925
+            }
+          },
+          "lib": {
+            "utils.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 237
+            }
+          },
+          "Root.tsx": {
+            "_file": true,
+            "lang": "typescript",
+            "size": 192
+          },
+          "utils": {
+            "uploadKinds.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2547
+            },
+            "textFiles.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2032
+            },
+            "export.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2203
+            },
+            "projectFiles.ts": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2503
+            }
+          },
+          "pages": {
+            "ChatPage.tsx": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 2616
+            }
+          },
+          "routes": {
+            "router.tsx": {
+              "_file": true,
+              "lang": "typescript",
+              "size": 357
+            }
+          }
+        },
+        "eslint.config.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 797
+        },
+        "tsconfig.app.json": {
+          "_file": true,
+          "lang": "json",
+          "size": 697
+        },
+        "README.md": {
+          "_file": true,
+          "lang": "markdown",
+          "size": 4451
+        },
+        "index.html": {
+          "_file": true,
+          "lang": "html",
+          "size": 1868
+        },
+        "vite.config.ts": {
+          "_file": true,
+          "lang": "typescript",
+          "size": 1103
+        },
+        "tsconfig.node.json": {
+          "_file": true,
+          "lang": "json",
+          "size": 515
+        },
+        ".gitignore": {
+          "_file": true,
+          "lang": "unknown",
+          "size": 110
+        },
+        "package.json": {
+          "_file": true,
+          "lang": "json",
+          "size": 1679
+        },
+        ".env.example": {
+          "_file": true,
+          "lang": "env",
+          "size": 182
+        },
+        "tsconfig.json": {
+          "_file": true,
+          "lang": "json",
+          "size": 119
+        }
+      }
+    },
+    "indexStatus": "indexed",
+    "summary": "Type: nodejs-react | Files: 189 | Languages: javascript(89), typescript(78), unknown(9), json(8), env(2)\nTop-level dirs: aqua, aqua-frontend\nEntry points: aqua/server.js, aqua-frontend/src/types/index.ts, aqua-frontend/src/App.tsx, aqua-frontend/src/main.tsx",
+    "stats": {
+      "files": 189,
+      "languages": {
+        "env": 2,
+        "javascript": 89,
+        "unknown": 9,
+        "json": 8,
+        "typescript": 78,
+        "css": 1,
+        "markdown": 1,
+        "html": 1
+      }
+    },
+    "indexedAt": 1783165737311,
+    "overview": {
+      "generatedAt": 1783165737282,
+      "partial": false,
+      "name": "aqua-ai-day5-universal-upload",
+      "purpose": "Production frontend for the AQUA backend (`aqua/`), built with React 19, TypeScript, Vite 6, Tailwind CSS v4, Zustand, and Radix UI.",
+      "summary": "aqua-ai-day5-universal-upload is a React project with 189 source files, primarily javascript, typescript, json.",
+      "projectType": "nodejs-react",
+      "languages": {
+        "javascript": 89,
+        "typescript": 78,
+        "json": 8,
+        "env": 2,
+        "css": 1,
+        "markdown": 1,
+        "html": 1
+      },
+      "frameworks": [
+        "React",
+        "Express"
+      ],
+      "runtime": [
+        "Node.js",
+        "ESM modules",
+        "TypeScript"
+      ],
+      "packageManagers": [
+        "npm / yarn / pnpm"
+      ],
+      "buildTools": [
+        "Vite",
+        "TypeScript compiler"
+      ],
+      "frontendTech": [
+        "React",
+        "React DOM",
+        "React Router",
+        "Tailwind CSS",
+        "Zustand",
+        "Framer Motion",
+        "Lucide icons",
+        "Axios"
+      ],
+      "backendTech": [
+        "Express",
+        "CORS middleware"
+      ],
+      "databaseTech": [],
+      "authMethods": [],
+      "majorDependencies": [
+        "@google/genai",
+        "adm-zip",
+        "cors",
+        "dotenv",
+        "express",
+        "groq-sdk",
+        "mammoth",
+        "openai",
+        "pdf-parse",
+        "uuid",
+        "xlsx"
+      ],
+      "dependencyCount": 51,
+      "folderStructure": [
+        {
+          "dir": "aqua",
+          "files": 101,
+          "bytes": 1983509
+        },
+        {
+          "dir": "aqua/src",
+          "files": 95,
+          "bytes": 655695
+        },
+        {
+          "dir": "aqua-frontend",
+          "files": 88,
+          "bytes": 259202
+        },
+        {
+          "dir": "aqua-frontend/src",
+          "files": 78,
+          "bytes": 247681
+        }
+      ],
+      "largestFolders": [
+        {
+          "dir": "aqua",
+          "bytes": 1983509
+        },
+        {
+          "dir": "aqua/src",
+          "bytes": 655695
+        },
+        {
+          "dir": "aqua-frontend",
+          "bytes": 259202
+        },
+        {
+          "dir": "aqua-frontend/src",
+          "bytes": 247681
+        }
+      ],
+      "envVars": [
+        "AQUA_CORRECTION_PHRASES",
+        "GEMINI_KEY_1",
+        "GEMINI_KEY_2",
+        "GEMINI_KEY_3",
+        "GEMINI_KEY_4",
+        "GEMINI_KEY_5",
+        "GEMINI_KEY_6",
+        "GEMINI_KEY_7",
+        "GEMINI_KEY_8",
+        "GROQ_API_KEY_1",
+        "GROQ_API_KEY_2",
+        "GROQ_API_KEY_3",
+        "GROQ_API_KEY_4",
+        "JWT_SECRET",
+        "OPENROUTER_API_KEY_1",
+        "OPENROUTER_API_KEY_2",
+        "OPENROUTER_API_KEY_3",
+        "OPENROUTER_API_KEY_4",
+        "OPENROUTER_BASE_URL",
+        "PORT",
+        "STRIPE_KEY",
+        "VITE_API_URL"
+      ],
+      "configFiles": [
+        "aqua-frontend/.env.example",
+        "aqua-frontend/eslint.config.js",
+        "aqua-frontend/tsconfig.app.json",
+        "aqua-frontend/tsconfig.json",
+        "aqua-frontend/tsconfig.node.json",
+        "aqua-frontend/vite.config.ts",
+        "aqua/.env"
+      ],
+      "entryPoints": [
+        "aqua/server.js",
+        "aqua-frontend/index.html",
+        "aqua-frontend/src/App.tsx",
+        "aqua-frontend/src/main.tsx",
+        "aqua-frontend/src/types/index.ts"
+      ],
+      "coreModules": [
+        {
+          "file": "aqua/src/project/workspaceManager.js",
+          "importedBy": 8
+        },
+        {
+          "file": "aqua/src/project/projectIndex.js",
+          "importedBy": 8
+        },
+        {
+          "file": "aqua/src/memory/longTermMemory.js",
+          "importedBy": 8
+        },
+        {
+          "file": "aqua/src/memory/memorySchema.js",
+          "importedBy": 8
+        },
+        {
+          "file": "aqua-frontend/src/api/client.ts",
+          "importedBy": 8
+        },
+        {
+          "file": "aqua/src/core/classifier.js",
+          "importedBy": 6
+        },
+        {
+          "file": "aqua/src/providers/modelRegistry.js",
+          "importedBy": 6
+        },
+        {
+          "file": "aqua/src/memory/memoryConflictResolver.js",
+          "importedBy": 6
+        }
+      ],
+      "importantServices": [
+        {
+          "file": "aqua/src/providers/providerErrors.js",
+          "summary": "AQUA Provider Errors — Shared Error Classification"
+        },
+        {
+          "file": "aqua/src/intelligence/reasoningEngine.js",
+          "summary": "AQUA Internal Intelligence Engine — Reasoning Engine"
+        },
+        {
+          "file": "aqua/src/intelligence/internalIntelligenceEngine.js",
+          "summary": "AQUA Internal Intelligence Engine — Orchestrator"
+        },
+        {
+          "file": "aqua/src/upload/attachmentStore.js",
+          "summary": "AQUA Attachment Store — Day 5"
+        },
+        {
+          "file": "aqua/src/project/workspaceManager.js",
+          "summary": "AQUA Workspace Manager"
+        },
+        {
+          "file": "aqua/src/project/diffEngine.js",
+          "summary": "AQUA Diff Engine (Day 4)"
+        },
+        {
+          "file": "aqua/src/project/editEngine.js",
+          "summary": "AQUA Edit Engine (Day 4) — patch-first repository editing."
+        },
+        {
+          "file": "aqua/src/core/tokenManager.js",
+          "summary": "tokenManager.js [javascript]"
+        },
+        {
+          "file": "aqua/src/core/timeoutManager.js",
+          "summary": "AQUA Timeout Manager"
+        },
+        {
+          "file": "aqua/src/memory/conversationStore.js",
+          "summary": "AQUA Conversation Store v3"
+        }
+      ],
+      "apiRoutes": [
+        {
+          "method": "GET",
+          "path": "/health",
+          "file": "aqua/src/project/tests/workspaceAnalyzer.test.js"
+        },
+        {
+          "method": "POST",
+          "path": "/api/users",
+          "file": "aqua/src/project/tests/workspaceAnalyzer.test.js"
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/users/:id",
+          "file": "aqua/src/project/tests/workspaceAnalyzer.test.js"
+        },
+        {
+          "method": "MOUNT",
+          "path": "/project",
+          "file": "aqua/src/project/tests/editRoutes.test.js"
+        },
+        {
+          "method": "GET",
+          "path": "/:conversationId",
+          "file": "aqua/src/routes/memory.js"
+        },
+        {
+          "method": "GET",
+          "path": "/:conversationId/:key",
+          "file": "aqua/src/routes/memory.js"
+        },
+        {
+          "method": "DELETE",
+          "path": "/:conversationId/:key",
+          "file": "aqua/src/routes/memory.js"
+        },
+        {
+          "method": "DELETE",
+          "path": "/:conversationId",
+          "file": "aqua/src/routes/memory.js"
+        },
+        {
+          "method": "POST",
+          "path": "/",
+          "file": "aqua/src/routes/upload.js"
+        },
+        {
+          "method": "GET",
+          "path": "/formats",
+          "file": "aqua/src/routes/upload.js"
+        },
+        {
+          "method": "GET",
+          "path": "/attachments/:conversationId",
+          "file": "aqua/src/routes/upload.js"
+        },
+        {
+          "method": "DELETE",
+          "path": "/attachments/:conversationId/:attachmentId",
+          "file": "aqua/src/routes/upload.js"
+        },
+        {
+          "method": "GET",
+          "path": "/",
+          "file": "aqua/src/routes/health.js"
+        },
+        {
+          "method": "GET",
+          "path": "/uptime",
+          "file": "aqua/src/routes/health.js"
+        },
+        {
+          "method": "GET",
+          "path": "/logs",
+          "file": "aqua/src/routes/health.js"
+        },
+        {
+          "method": "GET",
+          "path": "/orchestrator",
+          "file": "aqua/src/routes/health.js"
+        },
+        {
+          "method": "GET",
+          "path": "/:id",
+          "file": "aqua/src/routes/conversations.js"
+        },
+        {
+          "method": "DELETE",
+          "path": "/:id",
+          "file": "aqua/src/routes/conversations.js"
+        },
+        {
+          "method": "POST",
+          "path": "/workspace",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "POST",
+          "path": "/workspace/:id/files",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "GET",
+          "path": "/workspace/:id",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "GET",
+          "path": "/workspace/:id/files",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "GET",
+          "path": "/workspace/:id/overview",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "GET",
+          "path": "/workspace/:id/graph",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "POST",
+          "path": "/workspace/:id/query",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "GET",
+          "path": "/workspaces",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "DELETE",
+          "path": "/workspace/:id",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "GET",
+          "path": "/workspace/:id/file-content",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "POST",
+          "path": "/workspace/:id/patch",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "POST",
+          "path": "/workspace/:id/edit",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "GET",
+          "path": "/workspace/:id/edits",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "GET",
+          "path": "/workspace/:id/edit/:proposalId",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "POST",
+          "path": "/workspace/:id/edit/:proposalId/apply",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "POST",
+          "path": "/workspace/:id/edit/:proposalId/reject",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "POST",
+          "path": "/workspace/:id/edit/:proposalId/revert",
+          "file": "aqua/src/routes/project.js"
+        },
+        {
+          "method": "POST",
+          "path": "/stream",
+          "file": "aqua/src/routes/chat.js"
+        },
+        {
+          "method": "MOUNT",
+          "path": "/chat",
+          "file": "aqua/server.js"
+        },
+        {
+          "method": "MOUNT",
+          "path": "/provider-health",
+          "file": "aqua/server.js"
+        },
+        {
+          "method": "MOUNT",
+          "path": "/conversations",
+          "file": "aqua/server.js"
+        },
+        {
+          "method": "MOUNT",
+          "path": "/memory",
+          "file": "aqua/server.js"
+        },
+        {
+          "method": "MOUNT",
+          "path": "/upload",
+          "file": "aqua/server.js"
+        }
+      ],
+      "externalIntegrations": [
+        "OpenAI API",
+        "Groq API"
+      ],
+      "stats": {
+        "fileCount": 189,
+        "totalBytes": 2242711,
+        "totalKB": 2190,
+        "functions": 505,
+        "classes": 4,
+        "interfaces": 88,
+        "components": 47,
+        "dependencyEdges": 220,
+        "configFileCount": 7
+      },
+      "todoCount": 1,
+      "todos": [
+        {
+          "tag": "TODO",
+          "text": "add rate limiting`, { functions: ['h'] }),",
+          "file": "aqua/src/project/tests/workspaceAnalyzer.test.js"
+        }
+      ],
+      "potentialTechDebt": [
+        "2 very large files (>40KB) — candidates for splitting: aqua/.aqua-projects.json, aqua/.aqua-history.json",
+        "2 files exceeded the 100KB ingest cap and were truncated during indexing.",
+        "1 circular dependency chain detected — e.g. aqua/src/memory/longTermMemory.js → aqua/src/memory/memoryResolver.js → aqua/src/memory/longTermMemory.js."
+      ],
+      "architecture": {
+        "frontend": "Built with React, React DOM, React Router, Tailwind CSS; UI lives in component directories.",
+        "backend": "Express, CORS middleware power the server side, organized around route modules.",
+        "apiLayer": "41 HTTP endpoints detected, composed via mounted routers.",
+        "dataLayer": "Custom data/persistence modules present (file- or memory-backed); no database driver dependency found.",
+        "authFlow": "No authentication mechanism detected.",
+        "storage": "File/storage handling modules present.",
+        "backgroundJobs": "No background job system detected.",
+        "serviceRelationships": "Most depended-upon modules: workspaceManager.js (8), projectIndex.js (8), longTermMemory.js (8), memorySchema.js (8).",
+        "dependencyFlow": "Execution starts at aqua/server.js; dependencies flow toward core modules like aqua/src/project/workspaceManager.js."
+      },
+      "suggestedImprovements": [
+        "Break circular dependencies by extracting shared logic into a leaf module.",
+        "Split the largest files into focused modules to improve maintainability.",
+        "Triage the 1 TODO/FIXME markers — convert stale ones into tracked issues.",
+        "Add a Dockerfile for reproducible builds and deployment.",
+        "API endpoints appear unauthenticated — consider adding an auth layer."
+      ],
+      "suggestedQuestions": [
+        "Explain the architecture of this project.",
+        "Walk me through the folder structure and what each part does.",
+        "Show me every API endpoint and what it does.",
+        "Trace what happens when aqua/server.js starts up.",
+        "Explain what aqua/src/project/workspaceManager.js does and what depends on it.",
+        "How is the OpenAI API integration implemented?",
+        "Which TODO items should I prioritize first?",
+        "Where should I start if I want to add a new feature?"
+      ],
+      "warnings": []
+    }
+  }
+}

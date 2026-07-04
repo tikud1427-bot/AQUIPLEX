@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>All Categories</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+
+<body>
+
+<%- include("partials/nav") %>
+
+<section class="section">
+  <h2 class="section-title">🌐 All Categories</h2>
+
+  <div class="categories">
+
+    <% categories.forEach(function(cat){ %>
+
+      <a class="category-card" href="/tools/category/<%= cat.toLowerCase().replace(/\s+/g, '-') %>">
+        <div class="category-icon">📂</div>
+        <div class="category-name"><%= cat %></div>
+      </a>
+
+    <% }) %>
+
+  </div>
+</section>
+      <%- include("partials/footer") %>
+
+</body>
+</html>

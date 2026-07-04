@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login | AIDEX</title>
+
+<link rel="stylesheet" href="/css/styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+<%- include("partials/nav") %>
+
+<div class="auth-wrapper">
+
+  <div class="auth-card">
+
+    <h2>Welcome back</h2>
+    <p class="auth-subtitle">Login to your account</p>
+
+    <!-- 🔥 GOOGLE LOGIN -->
+    <a href="/auth/google" class="google-btn">
+      <img src="https://developers.google.com/identity/images/g-logo.png" />
+      Continue with Google
+    </a>
+
+    <!-- Divider -->
+    <div class="auth-divider">
+      <span>or continue with email</span>
+    </div>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <p class="auth-error"><%= error %></p>
+    <% } %>
+
+    <!-- EMAIL LOGIN -->
+    <form action="/login" method="POST" class="auth-form">
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="password" name="password" placeholder="Password" required>
+
+      <button type="submit" class="auth-btn">Login</button>
+    </form>
+
+    <p class="auth-switch">
+      Don’t have an account?
+      <a href="/signup">Sign up</a>
+    </p>
+
+  </div>
+
+</div>
+
+</body>
+</html>

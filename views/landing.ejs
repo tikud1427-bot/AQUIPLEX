@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+    <title>Aquiplex — The AI Operating System That Plans, Reasons &amp; Executes</title>
+
+    <meta name="description" content="Aquiplex is an AI Operating System powered by Aqua — a memory-driven intelligence that decomposes goals, builds execution plans, and delivers real outputs. Not a chatbot. A cognitive system.">
+    <meta name="keywords" content="AI operating system, AI agent, goal execution AI, Aquiplex, Aqua AI, AI productivity, AI planning, autonomous AI, AI workspace, cognitive AI system, workflow automation">
+    <meta name="author" content="Aquiplex">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+    <meta name="theme-color" content="#03040d">
+
+    <link rel="canonical" href="https://aquiplex.com/" />
+
+    <link rel="icon" href="/logo/favicon.ico" sizes="any">
+    <link rel="icon" type="image/png" sizes="48x48" href="/logo/favicon-48x48.png">
+    <link rel="apple-touch-icon" href="/logo/apple-touch-icon.png">
+    <link rel="manifest" href="/logo/site.webmanifest">
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Aquiplex">
+    <meta property="og:title" content="Aquiplex — The AI Operating System That Executes Your Goals">
+    <meta property="og:description" content="Aqua is a memory-driven AI system that plans, reasons, and acts on your goals. Stop searching for AI tools — let Aquiplex execute for you.">
+    <meta property="og:url" content="https://aquiplex.com/">
+    <meta property="og:image" content="https://aquiplex.com/og/og-cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Aquiplex — Intelligence, Orchestrated">
+    <meta property="og:locale" content="en_US">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@aquiplex">
+    <meta name="twitter:creator" content="@aquiplex">
+    <meta name="twitter:title" content="Aquiplex — The AI Operating System That Executes Your Goals">
+    <meta name="twitter:description" content="Aqua is a memory-driven AI that plans and executes for you. Not a chatbot — a cognitive system built to act.">
+    <meta name="twitter:image" content="https://aquiplex.com/og/og-cover.png">
+    <meta name="twitter:image:alt" content="Aquiplex — Intelligence, Orchestrated">
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://aquiplex.com/#organization",
+          "name": "Aquiplex",
+          "url": "https://aquiplex.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://aquiplex.com/logo/logo.png",
+            "width": 512,
+            "height": 512
+          },
+          "description": "Aquiplex is an AI Operating System that helps individuals and teams plan, reason, and execute goals through a persistent, memory-driven AI called Aqua.",
+          "foundingDate": "2025",
+          "sameAs": [
+            "https://www.instagram.com/aquiplex?igsh=Zm5wYWI4YTlycG5k",
+            "https://www.linkedin.com/in/aquiplex-33b3a43bb",
+            "https://x.com/aquiplex15626"
+          ]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://aquiplex.com/#website",
+          "url": "https://aquiplex.com/",
+          "name": "Aquiplex",
+          "description": "The AI Operating System that plans, reasons, and executes your goals.",
+          "publisher": { "@id": "https://aquiplex.com/#organization" },
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": { "@type": "EntryPoint", "urlTemplate": "https://aquiplex.com/home?goal={search_term_string}" },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "@id": "https://aquiplex.com/#product",
+          "name": "Aqua AI — by Aquiplex",
+          "url": "https://aquiplex.com/",
+          "applicationCategory": "ProductivityApplication",
+          "operatingSystem": "Web",
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free to explore. Early access available." },
+          "description": "Aqua is the AI engine inside Aquiplex — a memory-driven, goal-orchestrating intelligence that decomposes intent, selects optimal AI capabilities, and delivers polished outputs.",
+          "publisher": { "@id": "https://aquiplex.com/#organization" },
+          "featureList": [
+            "Goal decomposition and execution planning",
+            "Persistent memory across sessions",
+            "Multi-model AI orchestration",
+            "Autonomous task completion",
+            "Natural language intent interface"
+          ]
+        },
+        {
+          "@type": "WebPage",
+          "@id": "https://aquiplex.com/#webpage",
+          "url": "https://aquiplex.com/",
+          "name": "Aquiplex — The AI Operating System That Plans, Reasons & Executes",
+          "isPartOf": { "@id": "https://aquiplex.com/#website" },
+          "about": { "@id": "https://aquiplex.com/#product" },
+          "description": "Aquiplex is an AI Operating System powered by Aqua — a cognitive system that turns goals into reality through memory, planning, and autonomous execution.",
+          "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [{ "@type": "ListItem", "position": 1, "name": "Home", "item": "https://aquiplex.com/" }]
+          }
+        }
+      ]
+    }
+    </script>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-XXXXXXXXXX');
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/landing.css">
+  </head>
+
+<body>
+
+  <!-- BACKGROUND CANVAS -->
+  <div class="bg-canvas" aria-hidden="true">
+    <div class="bg-base"></div>
+    <div class="bg-grid"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="orb orb-4"></div>
+    <div class="noise"></div>
+  </div>
+
+  <div class="particles" id="particles" aria-hidden="true"></div>
+  <div class="cursor-glow" id="cursorGlow" aria-hidden="true"></div>
+
+  <!-- NAVBAR -->
+  <header class="navbar" id="navbar">
+    <a href="/" class="logo" aria-label="Aquiplex home">
+      <img src="/logo/logo.png" alt="Aquiplex logo" width="28" height="28">
+      <span class="nav-wordmark">Aquiplex</span>
+      <span class="nav-tag">AI OS</span>
+    </a>
+    <nav class="nav-links" aria-label="Product navigation">
+      <a href="/aqua" class="nav-link">Aqua AI</a>
+      <a href="/aqua" class="nav-link">Workspace</a>
+      <a href="/aqua" class="nav-link">Project Builder</a>
+    </nav>
+    <div class="nav-buttons">
+      <a href="/login" class="btn-ghost">Log in</a>
+      <a href="/signup" class="btn-nav-cta">Get Access <span class="btn-arrow">→</span></a>
+    </div>
+    <!-- Mobile hamburger toggle -->
+    <button class="nav-mobile-toggle" id="landingNavToggle" onclick="toggleLandingNav()" aria-label="Open navigation menu" aria-expanded="false" aria-controls="landingNavDrawer">☰</button>
+  </header>
+
+  <!-- Mobile nav drawer (landing only) -->
+  <nav class="nav-mobile-drawer" id="landingNavDrawer" aria-label="Mobile navigation" role="navigation">
+    <a href="/aqua" class="nav-link">Aqua AI</a>
+    <a href="/aqua" class="nav-link">Workspace</a>
+    <a href="/aqua" class="nav-link">Project Builder</a>
+    <div class="nav-mobile-drawer-btns">
+      <a href="/login" class="btn-ghost">Log in</a>
+      <a href="/signup" class="btn-nav-cta">Get Access →</a>
+    </div>
+  </nav>
+
+  <script>
+  function toggleLandingNav() {
+    var drawer  = document.getElementById('landingNavDrawer');
+    var toggle  = document.getElementById('landingNavToggle');
+    if (!drawer) return;
+    var isOpen = drawer.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    toggle.textContent = isOpen ? '✕' : '☰';
+  }
+  document.addEventListener('click', function(e) {
+    var drawer = document.getElementById('landingNavDrawer');
+    var toggle = document.getElementById('landingNavToggle');
+    if (!drawer || !drawer.classList.contains('open')) return;
+    if (!drawer.contains(e.target) && !toggle.contains(e.target)) {
+      drawer.classList.remove('open');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.textContent = '☰';
+    }
+  });
+  </script>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 1 — CINEMATIC HERO
+  ═══════════════════════════════════════ -->
+  <section class="hero" aria-label="Hero">
+
+    <!-- LEFT: Text content -->
+    <div class="hero-left">
+
+      <div class="hero-announce" style="--d:0" aria-label="Announcement">
+        <span class="announce-dot"></span>
+        <span>Aqua V4.1</span>
+        <span style="opacity:0.4;margin:0 4px">·</span>
+        <span class="announce-text">Now in early access</span>
+      </div>
+
+      <h1 class="hero-title" style="--d:1">
+        <span class="line-1">Your AI Workspace</span>
+        <span class="line-accent">for Everything.</span>
+      </h1>
+
+      <p class="hero-sub" style="--d:2">
+        Chat with AI, build projects, generate apps, organize work, and execute goals — in one intelligent, memory-driven system.
+      </p>
+
+      <div class="hero-ctas" style="--d:3">
+        <a href="/aqua" class="btn-primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Start with Aqua AI
+        </a>
+        <a href="/aqua" class="btn-secondary">
+          Open Workspace
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+
+      <div class="hero-metrics" style="--d:4">
+        <div class="metric-item">
+          <span class="metric-val">10+</span>
+          <span class="metric-label">AI Models</span>
+        </div>
+        <div class="metric-sep"></div>
+        <div class="metric-item">
+          <span class="metric-val">5</span>
+          <span class="metric-label">Core Tools</span>
+        </div>
+        <div class="metric-sep"></div>
+        <div class="metric-item">
+          <span class="metric-val">∞</span>
+          <span class="metric-label">Possibilities</span>
+        </div>
+      </div>
+
+    </div><!-- /hero-left -->
+
+    <!-- RIGHT: Animated product window -->
+    <div class="hero-right" aria-hidden="true">
+      <div class="hero-visual">
+
+        <!-- Floating metrics card (top-right) -->
+        <div class="float-card float-card-1">
+          <div class="float-label">Tasks Executed</div>
+          <div class="float-val" id="counterVal">2,847</div>
+          <div class="float-badge">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V4M5 11l7-7 7 7"/></svg>
+            +14% today
+          </div>
+        </div>
+
+        <!-- Main window -->
+        <div class="visual-window">
+          <div class="visual-titlebar">
+            <div class="visual-dots">
+              <div class="visual-dot"></div>
+              <div class="visual-dot"></div>
+              <div class="visual-dot"></div>
+            </div>
+            <div class="visual-tab-row">
+              <div class="visual-tab active">Aqua AI</div>
+              <div class="visual-tab">Workspace</div>
+              <div class="visual-tab">Builder</div>
+            </div>
+            <div style="width:52px"></div>
+          </div>
+
+          <div class="visual-body" id="chatBody">
+            <!-- Messages injected by JS -->
+          </div>
+
+          <div class="visual-status">
+            <div class="status-dot"></div>
+            <span class="status-text">Aqua is online · Memory active</span>
+          </div>
+        </div>
+
+        <!-- Floating model card (bottom-left) -->
+        <div class="float-card float-card-2">
+          <div class="float-label">Active Model</div>
+          <div class="float-val" style="font-size:14px;font-family:var(--font-display)">AquaV4.5</div>
+          <div class="float-sub">Orchestrated by Aqua</div>
+        </div>
+
+      </div><!-- /hero-visual -->
+    </div><!-- /hero-right -->
+
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 2 — CORE PRODUCT PILLARS
+  ═══════════════════════════════════════ -->
+  <section class="pillars" aria-labelledby="pillars-title">
+    <div class="section-container">
+      <div class="pillars-header reveal">
+        <div class="section-eyebrow">Core Products</div>
+        <h2 class="section-title" id="pillars-title">Everything you need<br>to build, think, and ship.</h2>
+        <p class="section-sub">Three intelligent tools that work together as one unified AI operating system.</p>
+      </div>
+
+      <div class="pillars-grid">
+
+        <!-- Aqua AI -->
+        <div class="pillar-card pc-aqua reveal" style="--sd:0.05s">
+          <div class="pillar-icon-wrap">🧠</div>
+          <div class="pillar-label">Aqua AI</div>
+          <div class="pillar-name">The Most Powerful AI Chat You've Tried</div>
+          <div class="pillar-desc">
+            A multi-model AI chat system with persistent memory, goal decomposition, and real execution. Not a wrapper — an orchestrated intelligence.
+          </div>
+          <div class="pillar-features">
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>10+ AI models, one interface</div>
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>Memory across every session</div>
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>Goal decomposition & planning</div>
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>Web search + file analysis</div>
+          </div>
+          <a href="/aqua" class="pillar-cta">
+            Try Aqua AI
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+        <!-- Workspace -->
+        <div class="pillar-card pc-workspace reveal" style="--sd:0.15s">
+          <div class="pillar-icon-wrap">⚡</div>
+          <div class="pillar-label">Aqua Workspace</div>
+          <div class="pillar-name">Your Intelligent Command Center</div>
+          <div class="pillar-desc">
+            A full AI-powered workspace where you manage projects, collaborate with Aqua, run tools, and track everything — all in one place.
+          </div>
+          <div class="pillar-features">
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>Project & task management</div>
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>AI-assisted writing & planning</div>
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>File generation & editing</div>
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>Team collaboration ready</div>
+          </div>
+          <a href="/aqua" class="pillar-cta">
+            Open Workspace
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+        <!-- Project Builder -->
+        <div class="pillar-card pc-builder reveal" style="--sd:0.25s">
+          <div class="pillar-icon-wrap">🚀</div>
+          <div class="pillar-label">AI Project Builder</div>
+          <div class="pillar-name">Go From Idea to App in Minutes</div>
+          <div class="pillar-desc">
+            Describe your app, website, or tool. Aqua generates complete, production-ready code — with file structure, logic, and UI — in seconds.
+          </div>
+          <div class="pillar-features">
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>Full app generation from prompt</div>
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>Multi-file project scaffolding</div>
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>AI-powered code editing</div>
+            <div class="pillar-feat"><div class="pillar-feat-dot"></div>Live preview & export</div>
+          </div>
+          <a href="/aqua" class="pillar-cta">
+            Build a Project
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+      </div><!-- /pillars-grid -->
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 3 — HOW IT WORKS
+  ═══════════════════════════════════════ -->
+  <section class="how" id="how" aria-labelledby="how-title">
+    <div class="how-inner">
+      <div class="how-header reveal">
+        <div class="section-eyebrow">How It Works</div>
+        <h2 class="section-title" id="how-title">Three steps.<br>Zero friction.</h2>
+        <p class="section-sub">Aqua handles the complexity. You keep the vision.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step reveal" style="--sd:0.05s">
+          <div class="step-num">01</div>
+          <span class="step-icon">🧠</span>
+          <h3>Define Intent</h3>
+          <p>Describe your goal in plain language. No setup, no prompts to learn — just say what you want to build, write, or execute.</p>
+        </div>
+
+        <div class="step-connector reveal" style="--sd:0.12s"></div>
+
+        <div class="step reveal" style="--sd:0.15s">
+          <div class="step-num">02</div>
+          <span class="step-icon">⚙️</span>
+          <h3>Aqua Orchestrates</h3>
+          <p>The system decomposes your goal, selects optimal AI models, builds an execution plan, and tracks context across the session.</p>
+        </div>
+
+        <div class="step-connector reveal" style="--sd:0.22s"></div>
+
+        <div class="step reveal" style="--sd:0.25s">
+          <div class="step-num">03</div>
+          <span class="step-icon">✦</span>
+          <h3>Instant Output</h3>
+          <p>Watch your goal become reality. Polished results — not prompts to copy, not bullet points to act on. Real, usable outputs.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 4 — USE CASES
+  ═══════════════════════════════════════ -->
+  <section class="usecases" aria-labelledby="usecases-title">
+    <div class="usecases-inner">
+      <div class="usecases-header reveal">
+        <div class="section-eyebrow">Who It's For</div>
+        <h2 class="section-title" id="usecases-title">Built for builders.<br>Made for everyone.</h2>
+        <p class="section-sub">From students to founders — Aquiplex adapts to how you work and what you want to create.</p>
+      </div>
+
+      <div class="usecase-tabs" role="tablist">
+        <button class="uc-tab active" onclick="switchTab(0)" role="tab" aria-selected="true">Developers</button>
+        <button class="uc-tab" onclick="switchTab(1)" role="tab" aria-selected="false">Founders</button>
+        <button class="uc-tab" onclick="switchTab(2)" role="tab" aria-selected="false">Students</button>
+        <button class="uc-tab" onclick="switchTab(3)" role="tab" aria-selected="false">Creators</button>
+      </div>
+
+      <div class="usecase-panels">
+
+        <div class="usecase-panel active" id="uc-0">
+          <div class="uc-content">
+            <div class="uc-title">Generate, debug, and ship code faster than ever</div>
+            <div class="uc-desc">Describe what you want to build. Aqua generates full project scaffolds, fixes bugs with context memory, and writes documentation — so you stay in flow.</div>
+            <div class="uc-chips">
+              <span class="uc-chip">Full app generation</span>
+              <span class="uc-chip">AI code review</span>
+              <span class="uc-chip">Bug fixing</span>
+              <span class="uc-chip">API integration</span>
+              <span class="uc-chip">Documentation</span>
+            </div>
+            <a href="/aqua" class="uc-cta">Start building →</a>
+          </div>
+          <div class="uc-visual">
+            <div style="font-family:'Courier New',monospace;font-size:11.5px;color:rgba(0,229,255,0.7);line-height:1.8">
+              <span style="color:rgba(140,175,215,0.4)"># aqua.config.js</span><br>
+              <span style="color:#ff8c8c">const</span> <span style="color:var(--text)">app</span> <span style="color:var(--text-2)">=</span> <span style="color:#98dba8">aqua</span><span style="color:var(--text-2)">.</span><span style="color:rgba(0,229,255,0.8)">build</span><span style="color:var(--text-2)">(</span><span style="color:#ffd080">'SaaS dashboard'</span><span style="color:var(--text-2)">)</span><br>
+              &nbsp;&nbsp;<span style="color:var(--text-2)">.</span><span style="color:rgba(0,229,255,0.8)">withAuth</span><span style="color:var(--text-2)">()</span><br>
+              &nbsp;&nbsp;<span style="color:var(--text-2)">.</span><span style="color:rgba(0,229,255,0.8)">withDB</span><span style="color:var(--text-2)">(</span><span style="color:#ffd080">'mongodb'</span><span style="color:var(--text-2)">)</span><br>
+              &nbsp;&nbsp;<span style="color:var(--text-2)">.</span><span style="color:rgba(0,229,255,0.8)">withBilling</span><span style="color:var(--text-2)">(</span><span style="color:#ffd080">'razorpay'</span><span style="color:var(--text-2)">)</span><br>
+              &nbsp;&nbsp;<span style="color:var(--text-2)">.</span><span style="color:rgba(0,229,255,0.8)">deploy</span><span style="color:var(--text-2)">()</span><br><br>
+              <span style="color:rgba(140,175,215,0.4)">// ✓ 47 files generated</span><br>
+              <span style="color:rgba(140,175,215,0.4)">// ✓ Auth + DB + Billing ready</span><br>
+              <span style="color:rgba(140,175,215,0.4)">// ✓ Production-ready in 12s</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="usecase-panel" id="uc-1">
+          <div class="uc-content">
+            <div class="uc-title">Turn ideas into plans, pitch decks, and products</div>
+            <div class="uc-desc">From market research to investor decks, launch strategies to product roadmaps — Aqua helps founders move from concept to execution at the speed of thought.</div>
+            <div class="uc-chips">
+              <span class="uc-chip">Pitch decks</span>
+              <span class="uc-chip">Market research</span>
+              <span class="uc-chip">Business plans</span>
+              <span class="uc-chip">Go-to-market</span>
+              <span class="uc-chip">Financial models</span>
+            </div>
+            <a href="/aqua" class="uc-cta">Build your vision →</a>
+          </div>
+          <div class="uc-visual">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="background:var(--cyan-08);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--text-2)">
+                <div style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--cyan);letter-spacing:0.1em;margin-bottom:6px">MARKET ANALYSIS</div>
+                TAM: $4.2B → SAM: $820M → SOM: $41M
+              </div>
+              <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:12px;color:var(--text-2)">
+                <div style="font-family:var(--font-display);font-size:10px;font-weight:700;color:var(--blue);letter-spacing:0.1em;margin-bottom:6px">PITCH DECK</div>
+                12 slides · 3 min read · Investor-ready
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="usecase-panel" id="uc-2">
+          <div class="uc-content">
+            <div class="uc-title">Learn faster, write better, study smarter</div>
+            <div class="uc-desc">Aqua helps students research deeply, summarize complex material, write essays, solve problems, and prepare for exams — with full memory of your study context.</div>
+            <div class="uc-chips">
+              <span class="uc-chip">Essay writing</span>
+              <span class="uc-chip">Research synthesis</span>
+              <span class="uc-chip">Exam prep</span>
+              <span class="uc-chip">Problem solving</span>
+              <span class="uc-chip">Summarization</span>
+            </div>
+            <a href="/aqua" class="uc-cta">Study with Aqua →</a>
+          </div>
+          <div class="uc-visual">
+            <div style="font-size:12.5px;color:var(--text-2);line-height:1.7">
+              <div style="font-family:var(--font-display);font-size:10px;font-weight:700;color:rgba(155,109,255,0.8);letter-spacing:0.1em;margin-bottom:10px">AQUA EXPLAINS</div>
+              <p style="margin-bottom:8px">The Krebs cycle is a series of chemical reactions used by all aerobic organisms to release stored energy...</p>
+              <div style="border-left:2px solid rgba(155,109,255,0.3);padding-left:10px;color:var(--text-3);font-style:italic">Tip: Think of it as a biological wheel — each turn produces ATP, NADH, and FADH₂.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="usecase-panel" id="uc-3">
+          <div class="uc-content">
+            <div class="uc-title">Create content, grow audiences, build your brand</div>
+            <div class="uc-desc">Aqua helps creators produce scripts, captions, thumbnails ideas, newsletters, social strategies, and creative briefs — faster than any tool you've used.</div>
+            <div class="uc-chips">
+              <span class="uc-chip">Video scripts</span>
+              <span class="uc-chip">Social content</span>
+              <span class="uc-chip">Newsletters</span>
+              <span class="uc-chip">Brand strategy</span>
+              <span class="uc-chip">SEO writing</span>
+            </div>
+            <a href="/aqua" class="uc-cta">Create with Aqua →</a>
+          </div>
+          <div class="uc-visual">
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:12px;color:var(--text-2)">
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:8px;height:8px;border-radius:50%;background:#00cc88;flex-shrink:0"></div>
+                YouTube script — 12 min · Hook + 5 segments
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:8px;height:8px;border-radius:50%;background:var(--cyan);flex-shrink:0"></div>
+                30-day Instagram content calendar
+              </div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:8px;height:8px;border-radius:50%;background:var(--violet);flex-shrink:0"></div>
+                Newsletter: 847 words, 3 CTAs, SEO-ready
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /usecase-panels -->
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 5 — METRICS BAND
+  ═══════════════════════════════════════ -->
+  <section class="metrics-band" aria-label="Platform metrics">
+    <div class="metrics-grid">
+      <div class="metric-cell reveal" style="--sd:0.0s">
+        <div class="metric-num">10+</div>
+        <div class="metric-desc">AI models<br>orchestrated</div>
+      </div>
+      <div class="metric-cell reveal" style="--sd:0.08s">
+        <div class="metric-num">5</div>
+        <div class="metric-desc">Core tools<br>in one OS</div>
+      </div>
+      <div class="metric-cell reveal" style="--sd:0.16s">
+        <div class="metric-num">Free</div>
+        <div class="metric-desc">To start<br>today</div>
+      </div>
+      <div class="metric-cell reveal" style="--sd:0.24s">
+        <div class="metric-num">v2</div>
+        <div class="metric-desc">Aqua engine<br>now live</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 6 — SECONDARY TOOLS
+  ═══════════════════════════════════════ -->
+  <section class="tools" aria-labelledby="tools-title">
+    <div class="tools-inner">
+      <div class="tools-header reveal">
+        <div class="section-eyebrow">Utility Suite</div>
+        <h2 class="section-title" id="tools-title">More tools.<br>Inside your workspace.</h2>
+        <p class="section-sub">A growing collection of AI-powered utilities — all accessible from your Aquiplex account.</p>
+      </div>
+
+      <div class="tools-grid">
+        <a href="/home" class="tool-card reveal" style="--sd:0.04s">
+          <div class="tool-icon">🖼️</div>
+          <div class="tool-name">AI Image Generator</div>
+          <div class="tool-desc">Create stunning visuals from text descriptions in seconds.</div>
+          <div class="tool-arrow">↗</div>
+        </a>
+        <a href="/home" class="tool-card reveal" style="--sd:0.08s">
+          <div class="tool-icon">📄</div>
+          <div class="tool-name">Document Analyzer</div>
+          <div class="tool-desc">Upload PDFs and get instant summaries, insights, and answers.</div>
+          <div class="tool-arrow">↗</div>
+        </a>
+        <a href="/home" class="tool-card reveal" style="--sd:0.12s">
+          <div class="tool-icon">🔍</div>
+          <div class="tool-name">AI Web Search</div>
+          <div class="tool-desc">Search the web with AI-synthesized answers, not just links.</div>
+          <div class="tool-arrow">↗</div>
+        </a>
+        <a href="/home" class="tool-card reveal" style="--sd:0.16s">
+          <div class="tool-icon">✍️</div>
+          <div class="tool-name">Writing Assistant</div>
+          <div class="tool-desc">Edit, rewrite, expand, or improve any piece of writing.</div>
+          <div class="tool-arrow">↗</div>
+        </a>
+        <a href="/home" class="tool-card reveal" style="--sd:0.20s">
+          <div class="tool-icon">💻</div>
+          <div class="tool-name">Code Executor</div>
+          <div class="tool-desc">Write and run code with AI explanations and error fixing.</div>
+          <div class="tool-arrow">↗</div>
+        </a>
+        <a href="/home" class="tool-card reveal" style="--sd:0.24s">
+          <div class="tool-icon">🎙️</div>
+          <div class="tool-name">Voice to Text</div>
+          <div class="tool-desc">Transcribe audio and convert speech to structured content.</div>
+          <div class="tool-arrow">↗</div>
+        </a>
+        <a href="/home" class="tool-card reveal" style="--sd:0.28s">
+          <div class="tool-icon">🌐</div>
+          <div class="tool-name">Translator</div>
+          <div class="tool-desc">Translate content across 50+ languages with cultural context.</div>
+          <div class="tool-arrow">↗</div>
+        </a>
+        <a href="/home" class="tool-card reveal" style="--sd:0.32s">
+          <div class="tool-icon">📊</div>
+          <div class="tool-name">Data Analyst</div>
+          <div class="tool-desc">Upload spreadsheets and get instant charts, insights, and reports.</div>
+          <div class="tool-arrow">↗</div>
+        </a>
+      </div>
+
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ═══════════════════════════════════════
+       SECTION 7 — FINAL CTA
+  ═══════════════════════════════════════ -->
+  <section class="cta-final" aria-labelledby="cta-title">
+    <div class="cta-glow" aria-hidden="true"></div>
+    <div class="cta-inner reveal">
+      <div class="section-eyebrow" style="justify-content:center;margin-bottom:20px">Ready?</div>
+      <h2 class="cta-title" id="cta-title">
+        Stop searching.<br>
+        <em>Start executing.</em>
+      </h2>
+      <p class="cta-sub">
+        Every second spent looking for the right AI tool is a second Aqua could have already finished.
+      </p>
+      <div class="cta-buttons">
+        <a href="/aqua" class="btn-cta">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Open Aquiplex Free
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+      <div class="cta-note">
+        <span class="online-dot"></span>
+        System online · No account required to explore
+      </div>
+    </div>
+  </section>
+
+  <!-- SEO CONTENT SECTION -->
+  <section class="seo-landing-section" aria-label="About Aquiplex AI Operating System">
+    <h2>What is Aquiplex?</h2>
+    <p>
+      Aquiplex is an AI Operating System — a new category of software that goes beyond chatbots and prompt tools. At its core is Aqua, a memory-driven intelligence designed to understand your goals, build a logical execution plan, and deliver results you can actually use.
+    </p>
+    <p>
+      Traditional AI tools require you to know exactly what to ask and how to ask it. Aquiplex inverts this relationship. You describe what you want to accomplish, and Aqua figures out the best approach — selecting the right capabilities, structuring the workflow, and producing polished outputs.
+    </p>
+
+    <h3>AI Productivity Reimagined</h3>
+    <p>
+      Productivity in the AI era is not about using more tools — it is about using the right intelligence at the right moment. Whether you are writing a pitch deck, planning a product launch, building a social media strategy, or developing software, Aqua helps you move from idea to execution faster than any single AI tool can.
+    </p>
+
+    <h3>Built for Everyone Who Builds</h3>
+    <p>
+      Aquiplex is built for students, creators, developers, and entrepreneurs who are tired of juggling a dozen different AI subscriptions to accomplish one coherent goal. The platform consolidates the best of AI automation into a single intelligent experience.
+    </p>
+
+    <nav class="seo-landing-nav" aria-label="Explore Aquiplex">
+      <a href="/home">Explore the Platform</a>
+      <a href="/about">About Aquiplex</a>
+      <a href="/aqua">Aqua AI Chatbot</a>
+      <a href="/aqua">AI Workspace</a>
+      <a href="/aqua">Project Builder</a>
+      <a href="/signup">Get Early Access</a>
+    </nav>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <p>© 2026 Aquiplex · Intelligence, Orchestrated</p>
+  </footer>
+
+  <!-- ===== SCRIPTS ===== -->
+
+  <!-- Particles -->
+  <script>
+    (function() {
+      var container = document.getElementById('particles');
+      var isMobile = window.matchMedia('(max-width:767px)').matches;
+      var count = isMobile ? 12 : 35;
+      for (var i = 0; i < count; i++) {
+        var s = document.createElement('span');
+        s.style.cssText = [
+          'position:absolute',
+          'left:' + (Math.random() * 100) + '%',
+          'top:' + (Math.random() * 100) + '%',
+          'animation-duration:' + (9 + Math.random() * 16) + 's',
+          'animation-delay:' + (Math.random() * 12) + 's',
+          'animation-name:rise',
+          'width:' + (1 + Math.random() * 1.8) + 'px',
+          'height:' + (1 + Math.random() * 1.8) + 'px',
+          'opacity:0'
+        ].join(';');
+        container.appendChild(s);
+      }
+    })();
+  </script>
+
+  <!-- Cursor glow -->
+  <script>
+    if (window.matchMedia('(pointer:fine)').matches) {
+      var glow = document.getElementById('cursorGlow');
+      var cx = 0, cy = 0, tx = 0, ty = 0;
+      document.addEventListener('mousemove', function(e) { tx = e.clientX; ty = e.clientY; });
+      (function loop() {
+        cx += (tx - cx) * 0.08;
+        cy += (ty - cy) * 0.08;
+        glow.style.left = cx + 'px';
+        glow.style.top  = cy + 'px';
+        requestAnimationFrame(loop);
+      })();
+    }
+  </script>
+
+  <!-- Navbar scroll + Scroll reveal -->
+  <script>
+    (function() {
+      var navbar = document.getElementById('navbar');
+      window.addEventListener('scroll', function() {
+        navbar.classList.toggle('scrolled', window.scrollY > 20);
+      }, { passive: true });
+
+      var revealEls = document.querySelectorAll('.reveal');
+      var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            obs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.06 });
+      revealEls.forEach(function(el) { obs.observe(el); });
+    })();
+  </script>
+
+  <!-- Animated chat in hero visual -->
+  <script>
+    (function() {
+      var chatBody = document.getElementById('chatBody');
+      if (!chatBody) return;
+
+      var convos = [
+        [
+          { from:'user', text:'Build me a SaaS landing page with auth and billing' },
+          { from:'aqua', text:'On it. Scaffolding Next.js + Razorpay + Auth.js...', delay:1200 },
+          { from:'code', lines:[
+            '<span class="code-comment"># Generated in 11.2s</span>',
+            '<span class="code-keyword">✓</span> <span class="code-string">pages/index.jsx</span> — Hero + CTA',
+            '<span class="code-keyword">✓</span> <span class="code-string">api/auth.js</span> — Next-Auth config',
+            '<span class="code-keyword">✓</span> <span class="code-fn">billing/webhook.js</span> — Razorpay'
+          ], delay:2600 },
+          { from:'aqua', text:'47 files ready. Live preview available.', delay:3800 }
+        ],
+        [
+          { from:'user', text:'Write a pitch deck for my AI startup' },
+          { from:'aqua', text:'Analyzing your context and building slide structure...', delay:1000 },
+          { from:'aqua', text:'12-slide deck created: Problem → Solution → Market → Traction → Ask. Export to PDF?', delay:2400 }
+        ],
+        [
+          { from:'user', text:'Explain quantum entanglement simply' },
+          { from:'aqua', text:'Imagine two coins that always land opposite — no matter how far apart. That\'s entanglement: measuring one instantly determines the other.', delay:1100 },
+          { from:'aqua', text:'Want me to go deeper into the Bell theorem or EPR paradox?', delay:2600 }
+        ]
+      ];
+
+      var convoIndex = 0;
+
+      function runConvo() {
+        chatBody.innerHTML = '';
+        var msgs = convos[convoIndex % convos.length];
+        convoIndex++;
+
+        // Typing indicator first
+        var typingEl = createTypingIndicator();
+        chatBody.appendChild(typingEl);
+        setTimeout(function() { typingEl.classList.add('show'); }, 100);
+
+        var baseDelay = 600;
+
+        msgs.forEach(function(msg, i) {
+          var delay = baseDelay + (msg.delay || i * 900);
+          setTimeout(function() {
+            if (i === 0) { typingEl.remove(); }
+
+            var el = createMsgEl(msg);
+            chatBody.appendChild(el);
+            chatBody.scrollTop = chatBody.scrollHeight;
+
+            setTimeout(function() { el.classList.add('show'); }, 40);
+
+            // Show typing indicator between messages
+            if (i < msgs.length - 1 && msgs[i+1] && msgs[i+1].from !== 'user') {
+              var t2 = createTypingIndicator();
+              chatBody.appendChild(t2);
+              setTimeout(function() {
+                t2.classList.add('show');
+                chatBody.scrollTop = chatBody.scrollHeight;
+              }, 80);
+              setTimeout(function() { t2.remove(); }, (msgs[i+1].delay || 900) - (msg.delay || 0) - 200);
+            }
+          }, delay);
+        });
+
+        // Next convo
+        var totalDuration = msgs.reduce(function(max, m) { return Math.max(max, m.delay || 0); }, 0) + baseDelay + 4200;
+        setTimeout(runConvo, totalDuration);
+      }
+
+      function createTypingIndicator() {
+        var wrap = document.createElement('div');
+        wrap.className = 'chat-msg';
+        wrap.innerHTML = '<div class="chat-avatar aqua">A</div><div class="chat-bubble aqua-bubble"><div class="typing-dots"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>';
+        return wrap;
+      }
+
+      function createMsgEl(msg) {
+        if (msg.from === 'code') {
+          var el = document.createElement('div');
+          el.className = 'chat-code';
+          el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+          el.style.opacity = '0';
+          el.style.transform = 'translateY(8px)';
+          el.innerHTML = msg.lines.map(function(l) { return '<span class="code-line">' + l + '</span>'; }).join('');
+          setTimeout(function() { el.style.opacity = '1'; el.style.transform = 'translateY(0)'; }, 40);
+          return el;
+        }
+        var wrap = document.createElement('div');
+        wrap.className = 'chat-msg';
+        if (msg.from === 'user') {
+          wrap.innerHTML = '<div class="chat-avatar user">U</div><div class="chat-bubble user-bubble">' + escHtml(msg.text) + '</div>';
+        } else {
+          wrap.innerHTML = '<div class="chat-avatar aqua">A</div><div class="chat-bubble aqua-bubble">' + escHtml(msg.text) + '</div>';
+        }
+        return wrap;
+      }
+
+      function escHtml(s) {
+        return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      setTimeout(runConvo, 800);
+    })();
+  </script>
+
+  <!-- Use case tab switcher -->
+  <script>
+    function switchTab(idx) {
+      var tabs = document.querySelectorAll('.uc-tab');
+      var panels = document.querySelectorAll('.usecase-panel');
+      tabs.forEach(function(t, i) {
+        t.classList.toggle('active', i === idx);
+        t.setAttribute('aria-selected', i === idx ? 'true' : 'false');
+      });
+      panels.forEach(function(p, i) {
+        p.classList.toggle('active', i === idx);
+      });
+    }
+  </script>
+
+  <!-- Counter animation for float card -->
+  <script>
+    (function() {
+      var el = document.getElementById('counterVal');
+      if (!el) return;
+      var base = 2847;
+      setInterval(function() {
+        base += Math.floor(Math.random() * 3);
+        el.textContent = base.toLocaleString();
+      }, 4000);
+    })();
+  </script>
+
+</body>
+</html>

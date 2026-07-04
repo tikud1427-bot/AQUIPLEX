@@ -1,0 +1,694 @@
+/**
+AQUA Chat Route v5 — Full memory pipeline + Real Streaming (Day 3)
+
+Two endpoints, ONE pipeline:
+
+  POST /chat         — original request/response JSON (unchanged contract)
+  POST /chat/stream  — Server-Sent Events over POST fetch. Same pipeline,
+                       tokens streamed the moment the provider emits them.
+
+The pre-generation pipeline (classify → orchestrate → plan → intelligence →
+memory extract/update → memory retrieve → project retrieve → prompt build →
+context window) is factored into prepareTurn() and shared verbatim by both
+endpoints — /chat behavior is byte-identical to v4, /chat/stream additionally
+reports each REAL stage as it starts (no fake progress).
+
+SSE protocol (/chat/stream):
+  event: meta       { requestId, conversationId, isNewConversation }
+  event: stage      { id, label }            — genuine pipeline stage starting
+  event: provider   { provider, score, attempt }
+  event: provider_failed { provider, reason }— pre-first-token fallback only
+  event: token      { t }                    — raw text delta
+  event: replace    { text }                 — verification revised the answer
+  event: patch      { ...proposal }          — Day 4: patch-first edit proposal (diff hunks, stats, verification)
+  event: done       { ...same diagnostics payload as POST /chat, answer included }
+  event: error      { error, recoverable, fallbackChain }
+
+Streaming guarantees:
+  • Provider fallback only before the first token (see router.js
+    generateTextStream). Verification, when warranted, runs AFTER the stream
+    completes and emits `replace` if it revises — the draft stays visible
+    meanwhile.
+  • Client disconnect (Stop button / closed tab) aborts the provider call
+    immediately; whatever partial text the user saw is persisted to the
+    conversation so history matches the screen.
+  • Both endpoints persist user + assistant turns identically.
+
+Execution order (every request):
+ID management      — single getOrCreateConversation() call, unique requestId
+Classify           — once, result passed to router (no double classification)
+Plan               — Phase 4: complexity tier + reasoning mode from classification
+Internal Intelligence — Planner→Reasoning Engine→Critic→Synthesizer brief (no-op below medium complexity)
+Extract facts      — regex extraction from user message → long-term memory
+Handle forget/update — "forget my name" / "my language is now Go"
+Retrieve memories  — relevant facts ranked and fetched BEFORE prompt build
+Build system prompt — identity + memory block + reasoning directive + task module
+Build context window — recent conversation history (short-term memory), budget scaled by plan complexity
+Generate           — router with full fallback chain, biased by plan complexity
+Persist messages   — user + assistant saved to conversation store
+Respond            — includes conversationId so client can echo it next turn
+
+ROOT FIX (v4 — orphan entries + impossible log sequence, see conversationStore.js):
+getOrCreateConversation(id, meta) is the ONLY place that decides new-vs-existing.
+*/
+import express  from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import { generateText, generateTextStream } from '../providers/router.js';
+import { buildSystemPrompt }      from '../core/promptBuilder.js';
+import { buildContextWindow, estimateTokens } from '../core/tokenManager.js';
+import { classifyTask }           from '../core/classifier.js';
+import { createContext, logMemoryEvent, logPlanEvent, logIntelligenceEvent, logOrchestratorEvent, logVerificationEvent } from '../core/observability.js';
+import { createExecutionPlan }    from '../core/executionPlanner.js';
+import { getReasoningStrategy }   from '../core/reasoningStrategy.js';
+import { runIntelligencePipeline } from '../intelligence/internalIntelligenceEngine.js';
+import { orchestrate, formatOrchestratorLog } from '../orchestrator/toolOrchestrator.js';
+import { getAgent } from '../intelligence/agentRegistry.js';
+import '../intelligence/verificationAgent.js'; // side-effect: registers the 'verification' agent on load
+import { computeContextBudget, optimizeContext } from '../core/contextOptimizer.js';
+import {
+  getOrCreateConversation,
+  getConversation,
+  addMessage,
+} from '../memory/conversationStore.js';
+import { extractFacts, detectMemoryUpdate, detectForget, resolveCanonicalKey } from '../memory/memoryExtractor.js';
+import { storeFacts, storeFact, deleteFact }              from '../memory/longTermMemory.js';
+import { retrieveRelevantFacts, formatFactsForPrompt }    from '../memory/memoryRetriever.js';
+import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
+import { formatAttachmentsForPrompt, getAttachments }       from '../upload/attachmentStore.js';
+import { proposeEdit, serializeProposal }                   from '../project/editEngine.js';
+import { getIndex }                                         from '../project/projectIndex.js';
+
+const router = express.Router();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Day 4 — Conversational patch-first editing
+//
+// "Add rate limiting." against an indexed workspace should produce an
+// explained, previewable, verifiable PATCH — not a wall of regenerated code.
+// Detection is deliberately conservative: imperative edit verbs only, and
+// questions ("how would I add…?", trailing "?") always take the normal
+// explain path. Any edit-pipeline failure falls back to the normal chat
+// pipeline — an edit attempt can never make a request fail outright.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const EDIT_VERB_RE = /^(please\s+|now\s+|ok(ay)?[,\s]+)*\s*(add|implement|fix|refactor|rename|update|change|remove|delete|create|modify|extract|convert|migrate|introduce|wire|hook|integrate|replace|improve|harden|clean\s*up)\b/i;
+const QUESTION_RE  = /^(how|what|why|where|when|which|who|is|are|does|do|should|can|could|would|will|explain|describe|show\s+me|tell\s+me|walk\s+me)\b/i;
+const EXPLAIN_ONLY_RE = /\b(don'?t\s+(edit|change|modify)|explain\s+only|no\s+patch|just\s+explain)\b/i;
+
+function isEditIntent(userMessage, workspaceId) {
+  if (!workspaceId) return false;
+  if (!getIndex(workspaceId)) return false;          // index must be live — never guess-edit
+  const msg = userMessage.trim();
+  if (msg.endsWith('?')) return false;
+  if (QUESTION_RE.test(msg)) return false;
+  if (EXPLAIN_ONLY_RE.test(msg)) return false;
+  return EDIT_VERB_RE.test(msg);
+}
+
+/** Human-readable explanation of a proposal — persisted as the assistant turn. */
+function composePatchExplanation(p) {
+  const lines = [`### ${p.summary}`, ''];
+  if (p.reasoning) lines.push(`**Approach:** ${p.reasoning}`, '');
+  if (p.impact)    lines.push(`**Expected impact:** ${p.impact}`, '');
+
+  lines.push('**Files changed:**');
+  for (const f of p.files) {
+    const tag = f.changeType === 'create' ? 'new file' : f.changeType;
+    lines.push(`- \`${f.path}\` (${tag}, +${f.stats.added} −${f.stats.removed})${f.explanation ? ` — ${f.explanation}` : ''}`);
+  }
+
+  if (p.breakingChanges?.length) {
+    lines.push('', '**⚠️ Breaking changes:**');
+    for (const b of p.breakingChanges) lines.push(`- ${b}`);
+  }
+  if (p.risks?.length) {
+    lines.push('', '**Risks:**');
+    for (const r of p.risks) lines.push(`- ${r}`);
+  }
+  if (p.relatedFiles?.length) {
+    lines.push('', '**May need follow-up (imports edited files):**');
+    for (const rf of p.relatedFiles) lines.push(`- \`${rf.path}\` — ${rf.reason}`);
+  }
+  if (p.failedOperations?.length) {
+    lines.push('', '**Skipped operations:**');
+    for (const fo of p.failedOperations) lines.push(`- \`${fo.file}\`: ${fo.error}`);
+  }
+
+  const v = p.verification;
+  lines.push('', v.passed
+    ? `**Verification:** ${v.checks.length} static checks passed.`
+    : `**Verification:** ⚠️ ${v.warnings.length} warning(s) — ${v.warnings.join('; ')}`);
+
+  lines.push('', 'Review the diff below — nothing is applied until you approve it.');
+  return lines.join('\n');
+}
+
+/** Chat-response payload for an edit turn — same shape the UI already consumes. */
+function buildEditResponsePayload({ requestId, conversationId, isNew, proposal, answer, workspaceId }) {
+  const v = proposal.verification;
+  return {
+    success: true,
+    requestId,
+    conversationId,
+    isNewConversation: isNew,
+    mode: 'edit',
+
+    provider:      proposal.provider ?? 'unknown',
+    providerScore: 0,
+    taskType:      'coding',
+    taskLabels:    ['coding', 'edit'],
+    confidence:    1,
+    promptModules: ['edit-engine'],
+    latencyMs:     proposal.latencyMs,
+    fallbackChain: [],
+    answer,
+    truncated:     false,
+    finishReason:  'stop',
+
+    memory:  { extracted: 0, injected: 0, facts: [] },
+    plan:    { complexity: 'complex', multiStep: true, reasoningMode: 'edit', contextTokensBefore: 0, contextTokensAfter: 0 },
+    intelligence: { active: false, pipeline: [], strategy: 'patch-first-editing', criticFocus: [] },
+    verification: { warranted: true, reason: 'patch static verification', ran: v.ran, passed: v.passed, revised: false },
+    orchestration: {
+      profile: 'edit', profileLabel: 'Patch-first editing',
+      capabilitiesEnabled: ['edit_locate', 'edit_generate', 'edit_diff', 'edit_verify'],
+      capabilitiesSkipped: [], estimatedCost: 'medium', estimatedLatency: 'medium',
+      verificationEnabled: true, multiLabel: ['coding'], tags: ['edit'],
+    },
+
+    project: { workspaceId, contextInjected: true, filesReferenced: proposal.files.map(f => f.path) },
+    patch:   serializeProposal(proposal),
+  };
+}
+
+// Repo-intent override (additive): whole-repo questions ("explain this
+// repository", "where is authentication") often classify as conversation/
+// simple_qa, whose profiles skip project_retrieval — leaving the model
+// blind to an explicitly attached workspace. If the user's words clearly
+// reference the codebase, force retrieval regardless of profile.
+const REPO_INTENT_RE = /\b(repo(sitory)?|codebase|this project|the project|architecture|endpoint|api route|auth(entication|orization)?|database|db|folder|module|file|function|class|component|config(uration)?|dependenc|todo|fixme|business logic|trace|refactor|implement|where (is|should)|what would break)\b/i;
+
+/**
+ * Shared pre-generation pipeline — identical for /chat and /chat/stream.
+ * `onStage(id, label)` fires as each REAL stage begins (no-op for /chat);
+ * only stages that actually run are reported — never fake progress.
+ */
+function prepareTurn({ userMessage, workspaceId, conversationId, ctx, requestId, onStage = () => {} }) {
+  // ── 2. Classify (once — result passed to router, no double classification) ──
+  onStage('classify', 'Understanding your request…');
+  const { task: taskType, confidence, labels } = classifyTask(userMessage);
+  console.log(`[CLASSIFIER] task=${taskType} conf=${confidence.toFixed(2)} req=${requestId}`);
+
+  // ── 2a. Adaptive Tool Orchestrator (Phase 6) ────────────────────────────────
+  // Pure/deterministic, no LLM calls, no I/O — see toolOrchestrator.js.
+  // Conservative integration preserved from v4: never gates memory
+  // extraction/retrieval (cheap local ops); only narrows project retrieval
+  // and sizes budgets. See AQUA_PHASE6_NOTES.md.
+  const orchestration = orchestrate({
+    userMessage,
+    taskType,
+    confidence,
+    hasWorkspaceId: !!workspaceId,
+  });
+  logOrchestratorEvent(ctx, orchestration, formatOrchestratorLog(orchestration));
+
+  // ── 2b. Execution plan + reasoning strategy (Phase 4) ───────────────────────
+  const plan      = createExecutionPlan(taskType, confidence);
+  const reasoning = getReasoningStrategy(taskType, plan.complexity);
+  logPlanEvent(ctx, { ...plan, mode: reasoning.mode });
+
+  // ── 2c. Internal Intelligence Engine ─────────────────────────────────────────
+  const intelligence = runIntelligencePipeline({
+    taskType,
+    complexity: plan.complexity,
+    confidence,
+    userMessage,
+  });
+  logIntelligenceEvent(ctx, intelligence);
+
+  // ── 3. Extract facts from user message ──────────────────────────────────────
+  onStage('memory', 'Checking memory…');
+  const extractedFacts = extractFacts(userMessage);
+  if (extractedFacts.length) {
+    storeFacts(conversationId, extractedFacts);
+    logMemoryEvent(ctx, 'EXTRACTED', extractedFacts.map(f => `${f.key}=${f.value}`));
+  } else {
+    logMemoryEvent(ctx, 'EXTRACTED', []);
+  }
+
+  // ── 4. Handle explicit memory update / forget instructions ──────────────────
+  const forgetResult = detectForget(userMessage);
+  if (forgetResult.isForget && forgetResult.hint) {
+    const hintKey = resolveCanonicalKey(forgetResult.hint.replace(/my\s+/i, '').trim());
+    deleteFact(conversationId, hintKey);
+    logMemoryEvent(ctx, 'DELETED', [hintKey]);
+  }
+
+  const updateResult = detectMemoryUpdate(userMessage);
+  if (updateResult.isUpdate) {
+    storeFact(conversationId, {
+      key:          updateResult.key,
+      value:        updateResult.value,
+      confidence:   0.95,
+      importance:   9,
+      sourceText:   userMessage,
+      ts:           Date.now(),
+      isCorrection: true,
+    });
+    logMemoryEvent(ctx, 'UPDATED', [`${updateResult.key}=${updateResult.value}`]);
+  }
+
+  // ── 5. Retrieve relevant long-term memories ──────────────────────────────────
+  const relevantFacts = retrieveRelevantFacts(conversationId, userMessage, 10);
+  const memoryBlock   = formatFactsForPrompt(relevantFacts);
+  if (relevantFacts.length) {
+    logMemoryEvent(ctx, 'RETRIEVED', relevantFacts.map(f => `${f.key}=${f.value}`));
+    logMemoryEvent(ctx, 'INJECTED',  relevantFacts.map(f => f.key));
+  } else {
+    logMemoryEvent(ctx, 'NO_MEMORIES', []);
+  }
+
+  // ── 5b. Retrieve project context (Phase 5, gated by orchestrator in Phase 6) ──
+  let projectContext = '';
+  let projectFiles   = [];
+  const wantsProjectRetrieval = orchestration.enabled.some(c => c.id === 'project_retrieval');
+  const repoIntent = REPO_INTENT_RE.test(userMessage);
+  if (workspaceId && (wantsProjectRetrieval || repoIntent)) {
+    onStage('workspace', 'Reading workspace…');
+    if (!wantsProjectRetrieval) console.log(`[PROJECT] Repo-intent override — profile=${orchestration.profile.label} skipped project_retrieval but query references the codebase workspace=${workspaceId}`);
+    const rawContext = retrieveProjectContext(workspaceId, userMessage);
+    if (rawContext) {
+      projectContext = formatProjectContext(rawContext);
+      projectFiles   = rawContext.files.map(f => f.path ?? f.name ?? String(f)).filter(Boolean);
+      console.log(`[PROJECT] Context injected workspace=${workspaceId} files=${rawContext.files.length}`);
+    }
+  } else if (workspaceId) {
+    console.log(`[PROJECT] Skipped — profile=${orchestration.profile.label} does not require project_retrieval workspace=${workspaceId}`);
+  }
+
+  // ── 5c. Conversation attachments (Day 5 — Universal Upload) ─────────────────
+  // Anything uploaded via POST /upload (PDFs, images, spreadsheets, audio…)
+  // is registered against this conversationId in the attachment store with
+  // its content ALREADY extracted at upload time — zero re-processing here.
+  // Injected unconditionally (not orchestrator-gated): a user who just
+  // uploaded a file is about to ask about it; withholding it is never right.
+  const conversationAttachments = getAttachments(conversationId);
+  let attachmentContext = '';
+  if (conversationAttachments.length) {
+    onStage('attachments', 'Reading your files…');
+    attachmentContext = formatAttachmentsForPrompt(conversationId);
+    console.log(`[UPLOAD] Attachment context injected conversation=${conversationId} attachments=${conversationAttachments.length}`);
+  }
+
+  // ── 6. Build system prompt ────────────────────────────────────────────────────
+  onStage('prompt', 'Preparing response…');
+  // Attachment context rides the projectContext slot — same injection point,
+  // same budget handling in promptBuilder, no signature change.
+  const combinedContext = [attachmentContext, projectContext].filter(Boolean).join('\n\n');
+  const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoning.directive, combinedContext, intelligence.synthesis.text);
+
+  // ── 7. Build context window (short-term message history) ─────────────────────
+  const history    = getConversation(conversationId);
+  const ctxBudget  = computeContextBudget(plan.complexity, orchestration.budget.maxContextTokens);
+  const window     = buildContextWindow(history, ctxBudget);
+  const { messages, stats: contextStats } = optimizeContext([...window, { role: 'user', content: userMessage }]);
+
+  const promptTokens = estimateTokens(systemPrompt + messages.map(m => m.content).join(' '));
+
+  return {
+    taskType, confidence, labels,
+    orchestration, plan, reasoning, intelligence,
+    extractedFacts, relevantFacts,
+    projectContext, projectFiles,
+    attachments: conversationAttachments.map(a => ({ id: a.id, name: a.name, kind: a.kind })),
+    systemPrompt, promptModules,
+    messages, contextStats, promptTokens,
+  };
+}
+
+/** Verification pass — shared by both endpoints. Fails open by construction. */
+async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId }) {
+  let verification = { ran: false, passed: null, revised: false };
+  if (orchestration.verification.enabled) {
+    const verificationAgent = getAgent('verification');
+    if (verificationAgent) {
+      verification = await verificationAgent.run({
+        userMessage,
+        draftAnswer,
+        taskType,
+        requestId,
+        conversationId,
+        responseBudget: orchestration.budget,
+      });
+    }
+  }
+  return verification;
+}
+
+/** Diagnostics payload — identical shape between /chat JSON and /chat/stream `done`. */
+function buildResponsePayload({
+  requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
+  promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
+  extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
+}) {
+  return {
+    success:        true,
+    requestId,
+    conversationId,
+    isNewConversation: isNew,
+
+    provider:       result.provider,
+    providerScore:  +result.score.toFixed(1),
+    taskType,
+    taskLabels:     result.labels,
+    confidence:     +confidence.toFixed(2),
+    promptModules,
+    latencyMs:      result.latency,
+    fallbackChain:  result.fallbackChain,
+    answer:         finalAnswer,
+    truncated:      result.truncated ?? false,
+    finishReason:   result.finishReason ?? 'stop',
+
+    memory: {
+      extracted:  extractedFacts.length,
+      injected:   relevantFacts.length,
+      facts:      relevantFacts.map(f => ({ key: f.key, value: f.value })),
+    },
+
+    plan: {
+      complexity:           plan.complexity,
+      multiStep:             plan.multiStep,
+      reasoningMode:         reasoning.mode,
+      contextTokensBefore:   contextStats.tokensBefore,
+      contextTokensAfter:    contextStats.tokensAfter,
+    },
+
+    intelligence: {
+      active:         intelligence.plan.active,
+      pipeline:       intelligence.plan.pipeline.map(s => s.name),
+      strategy:       intelligence.reasoning.strategy ?? null,
+      criticFocus:    intelligence.critic.focusRisks ?? [],
+    },
+
+    verification: {
+      warranted:  orchestration.verification.enabled,
+      reason:     orchestration.verification.reason,
+      ran:        verification.ran,
+      passed:     verification.passed,
+      revised:    verification.revised,
+    },
+
+    orchestration: {
+      profile:            orchestration.profile.id,
+      profileLabel:       orchestration.profile.label,
+      capabilitiesEnabled: orchestration.enabled.map(c => c.id),
+      capabilitiesSkipped: orchestration.skipped.map(c => c.id),
+      estimatedCost:      orchestration.estimatedCost,
+      estimatedLatency:   orchestration.estimatedLatency,
+      verificationEnabled: orchestration.verification.enabled,
+      multiLabel:         orchestration.multiLabel.labels,
+      tags:               orchestration.multiLabel.tags,
+    },
+
+    ...(workspaceId ? {
+      project: {
+        workspaceId,
+        contextInjected: !!projectContext,
+        filesReferenced: projectFiles ?? [],
+      },
+    } : {}),
+
+    // Day 5 — Universal Upload: attachments grounding this answer.
+    ...(prep?.attachments?.length ? { attachments: prep.attachments } : {}),
+  };
+}
+
+// ── POST /chat — original request/response endpoint (contract unchanged) ─────
+router.post('/', async (req, res) => {
+  const requestId = uuidv4();
+  const { id: conversationId, isNew } = getOrCreateConversation(req.body?.conversationId ?? null, {
+    userAgent: req.headers['user-agent']?.slice(0, 80),
+    ip:        req.ip,
+    userId:    req.aquaUserId ?? null, // platform session identity (AQUIPLEX)
+  });
+  console.log(`[CHAT] ${isNew ? 'CONVERSATION_CREATED' : 'CONVERSATION_REUSED'} id=${conversationId} req=${requestId}`);
+  const ctx = createContext({ conversationId, requestId });
+
+  try {
+    const { message, workspaceId } = req.body ?? {};
+    if (!message || typeof message !== 'string' || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        requestId,
+        conversationId,
+        error: 'message is required and must be a non-empty string',
+      });
+    }
+    const userMessage = message.trim();
+
+    // ── Day 4: patch-first editing branch ────────────────────────────────────
+    if (isEditIntent(userMessage, workspaceId)) {
+      try {
+        const proposal = await proposeEdit({ workspaceId, instruction: userMessage, requestId, conversationId });
+        const answer = composePatchExplanation(proposal);
+        addMessage(conversationId, 'user',      userMessage);
+        addMessage(conversationId, 'assistant', answer);
+        return res.json(buildEditResponsePayload({ requestId, conversationId, isNew, proposal, answer, workspaceId }));
+      } catch (err) {
+        // Fall back to the normal explain pipeline — an edit attempt never
+        // fails the whole request. The model will answer conversationally.
+        console.warn(`[EDIT] falling back to chat pipeline (${err.code ?? 'ERROR'}): ${err.message}`);
+      }
+    }
+
+    const prep = prepareTurn({ userMessage, workspaceId, conversationId, ctx, requestId });
+    const {
+      taskType, confidence, orchestration, plan, reasoning, intelligence,
+      extractedFacts, relevantFacts, projectContext, projectFiles,
+      systemPrompt, promptModules, messages, contextStats,
+    } = prep;
+
+    // ── 8. Generate — router handles ranking + fallback + circuit breaker ──────
+    const result = await generateText(
+      userMessage,
+      systemPrompt,
+      messages,
+      ctx,
+      taskType,
+      plan,
+      orchestration.budget,
+    );
+
+    // ── 8b. Verification (Phase 6 decision → real pass) ─────────────────────────
+    let finalAnswer = result.text;
+    const verification = await runVerification({
+      orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId,
+    });
+    if (verification.revised && verification.finalAnswer) {
+      finalAnswer = verification.finalAnswer;
+    }
+    logVerificationEvent(ctx, verification);
+
+    // ── 9. Persist messages ──────────────────────────────────────────────────────
+    addMessage(conversationId, 'user',      userMessage);
+    addMessage(conversationId, 'assistant', finalAnswer);
+
+    // ── 10. Respond ──────────────────────────────────────────────────────────────
+    return res.json(buildResponsePayload({
+      requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
+      promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
+      extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
+    }));
+  } catch (err) {
+    console.error('[CHAT] Request failed:', err.message);
+    ctx.attempts ??= [];
+    return res.status(500).json({
+      success:        false,
+      requestId,
+      conversationId,
+      error:          err?.message ?? 'Internal server error',
+      fallbackChain:  ctx.attempts.map(a => ({ provider: a.provider, outcome: a.outcome })),
+    });
+  }
+});
+
+// ── POST /chat/stream — Server-Sent Events (Day 3 — Real Streaming) ──────────
+router.post('/stream', async (req, res) => {
+  const requestId = uuidv4();
+  const { id: conversationId, isNew } = getOrCreateConversation(req.body?.conversationId ?? null, {
+    userAgent: req.headers['user-agent']?.slice(0, 80),
+    ip:        req.ip,
+    userId:    req.aquaUserId ?? null, // platform session identity (AQUIPLEX)
+  });
+  console.log(`[CHAT] ${isNew ? 'CONVERSATION_CREATED' : 'CONVERSATION_REUSED'} id=${conversationId} req=${requestId} (stream)`);
+  const ctx = createContext({ conversationId, requestId });
+
+  const { message, workspaceId } = req.body ?? {};
+  if (!message || typeof message !== 'string' || !message.trim()) {
+    return res.status(400).json({
+      success: false,
+      requestId,
+      conversationId,
+      error: 'message is required and must be a non-empty string',
+    });
+  }
+  const userMessage = message.trim();
+
+  // ── SSE handshake ────────────────────────────────────────────────────────────
+  res.writeHead(200, {
+    'Content-Type':      'text/event-stream; charset=utf-8',
+    'Cache-Control':     'no-cache, no-transform',
+    'Connection':        'keep-alive',
+    'X-Accel-Buffering': 'no', // disable proxy buffering (nginx) — tokens must flush immediately
+  });
+  res.flushHeaders?.();
+
+  let closed = false;
+  const send = (event, data) => {
+    if (closed || res.writableEnded) return;
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  // Client disconnect (Stop button, closed tab, network drop) → abort provider.
+  const clientAbort = new AbortController();
+  res.on('close', () => {
+    if (!res.writableEnded) {
+      closed = true;
+      clientAbort.abort();
+      console.log(`[CHAT] client disconnected mid-stream req=${requestId}`);
+    }
+  });
+
+  // Heartbeat comment every 15s keeps proxies from timing out idle stretches
+  // (long verification passes, slow first token). SSE comments are invisible
+  // to EventSource-style parsers.
+  const heartbeat = setInterval(() => {
+    if (!closed && !res.writableEnded) res.write(': hb\n\n');
+  }, 15_000);
+
+  send('meta', { requestId, conversationId, isNewConversation: isNew });
+
+  try {
+    // ── Day 4: patch-first editing branch (streamed) ─────────────────────────
+    // Real pipeline stages stream as they start; the finished proposal arrives
+    // as a dedicated `patch` event; the explanation arrives as answer text.
+    if (isEditIntent(userMessage, workspaceId)) {
+      let editHandled = false;
+      try {
+        const proposal = await proposeEdit({
+          workspaceId, instruction: userMessage, requestId, conversationId,
+          onStage: (id, label) => send('stage', { id, label }),
+        });
+        const answer = composePatchExplanation(proposal);
+        send('workspace', { workspaceId, contextInjected: true, filesReferenced: proposal.files.map(f => f.path) });
+        send('patch', serializeProposal(proposal));
+        send('token', { t: answer });
+        addMessage(conversationId, 'user',      userMessage);
+        addMessage(conversationId, 'assistant', answer);
+        send('done', buildEditResponsePayload({ requestId, conversationId, isNew, proposal, answer, workspaceId }));
+        editHandled = true;
+      } catch (err) {
+        if (clientAbort.signal.aborted) throw err;
+        console.warn(`[EDIT] falling back to chat pipeline (${err.code ?? 'ERROR'}): ${err.message}`);
+      }
+      if (editHandled) {
+        clearInterval(heartbeat);
+        closed = true;
+        if (!res.writableEnded) res.end();
+        return;
+      }
+    }
+
+    // Pipeline stages stream to the client AS THEY START — every stage event
+    // corresponds to real work beginning, never a scripted animation.
+    const prep = prepareTurn({
+      userMessage, workspaceId, conversationId, ctx, requestId,
+      onStage: (id, label) => send('stage', { id, label }),
+    });
+    const {
+      taskType, confidence, orchestration, plan, reasoning, intelligence,
+      extractedFacts, relevantFacts, projectContext, projectFiles,
+      systemPrompt, promptModules, messages, contextStats,
+    } = prep;
+
+    // Surface workspace grounding before generation so the UI can show
+    // "answering from workspace X, files …" while tokens arrive.
+    if (workspaceId) {
+      send('workspace', {
+        workspaceId,
+        contextInjected: !!projectContext,
+        filesReferenced: projectFiles,
+      });
+    }
+
+    // ── 8. Generate (streamed) ───────────────────────────────────────────────────
+    send('stage', { id: 'generate', label: 'Generating response…' });
+
+    const result = await generateTextStream({
+      userMessage,
+      systemPrompt,
+      messages,
+      ctx,
+      preTaskType:    taskType,
+      executionPlan:  plan,
+      responseBudget: orchestration.budget,
+      clientSignal:   clientAbort.signal,
+      onEvent: (ev) => {
+        if (ev.type === 'token')            send('token', { t: ev.text });
+        else if (ev.type === 'provider_attempt') send('provider', { provider: ev.provider, score: ev.score, attempt: ev.attempt });
+        else if (ev.type === 'provider_failed')  send('provider_failed', { provider: ev.provider, reason: ev.reason });
+      },
+    });
+
+    // ── 8b. Verification — runs AFTER the stream; revision replaces the draft ──
+    let finalAnswer = result.text;
+    let verification = { ran: false, passed: null, revised: false };
+    if (orchestration.verification.enabled && !clientAbort.signal.aborted) {
+      send('stage', { id: 'verify', label: 'Verifying answer…' });
+      verification = await runVerification({
+        orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId,
+      });
+      if (verification.revised && verification.finalAnswer) {
+        finalAnswer = verification.finalAnswer;
+        send('replace', { text: finalAnswer });
+      }
+    }
+    logVerificationEvent(ctx, verification);
+
+    // ── 9. Persist ───────────────────────────────────────────────────────────────
+    addMessage(conversationId, 'user',      userMessage);
+    addMessage(conversationId, 'assistant', finalAnswer);
+
+    // ── 10. Done event — same diagnostics shape as POST /chat ───────────────────
+    send('done', buildResponsePayload({
+      requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
+      promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
+      extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
+    }));
+  } catch (err) {
+    if (err.message === 'CLIENT_ABORTED') {
+      // The user stopped generation. Persist exactly what they saw so
+      // conversation history matches the screen — never lose the turn.
+      const partial = err.partialText ?? '';
+      addMessage(conversationId, 'user', userMessage);
+      if (partial.trim()) addMessage(conversationId, 'assistant', partial);
+      console.log(`[CHAT] stream aborted by client req=${requestId} persistedChars=${partial.length}`);
+    } else {
+      console.error('[CHAT] Stream request failed:', err.message);
+      ctx.attempts ??= [];
+      send('error', {
+        error:         err?.message ?? 'Internal server error',
+        recoverable:   true,
+        requestId,
+        conversationId,
+        fallbackChain: ctx.attempts.map(a => ({ provider: a.provider, outcome: a.outcome })),
+      });
+    }
+  } finally {
+    clearInterval(heartbeat);
+    closed = true;
+    if (!res.writableEnded) res.end();
+  }
+});
+
+export default router;

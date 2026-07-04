@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof tool !== 'undefined' && tool ? tool.name : 'Tool' %> | Aquiplex</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="96x96" href="https://aquiplex.com/logo/favicon-96x96.png">
+  <link rel="icon" type="image/svg+xml" href="https://aquiplex.com/logo/favicon.svg">
+  <link rel="shortcut icon" href="https://aquiplex.com/logo/favicon.ico">
+  <link rel="apple-touch-icon" sizes="180x180" href="https://aquiplex.com/logo/apple-touch-icon.png">
+  <style>
+    .tool-page{max-width:780px;margin:0 auto;padding:40px 20px 80px}
+
+    .tool-header{display:flex;align-items:center;gap:20px;margin-bottom:32px;padding:28px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:20px}
+    .tool-logo-large{width:72px;height:72px;border-radius:16px;object-fit:cover;border:1px solid rgba(255,255,255,.12);flex-shrink:0}
+    .tool-header-info{flex:1;min-width:0}
+    .tool-header-info h1{font-size:1.6rem;font-weight:700;color:#f1f5f9;margin:0 0 6px}
+    .tool-header-info .cat-tag{font-size:.75rem;font-weight:600;color:#60a5fa;background:rgba(96,165,250,.12);border-radius:8px;padding:3px 10px;display:inline-block;margin-bottom:8px}
+    .badge-row-detail{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+    .badge{font-size:.65rem;font-weight:700;padding:3px 8px;border-radius:6px}
+    .badge-trending{background:rgba(251,146,60,.2);color:#fb923c;border:1px solid rgba(251,146,60,.3)}
+    .badge-new{background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.25)}
+    .badge-popular{background:rgba(167,139,250,.15);color:#a78bfa;border:1px solid rgba(167,139,250,.25)}
+
+    .tool-section{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:24px;margin-bottom:20px}
+    .tool-section h2{font-size:1rem;font-weight:600;color:#e2e8f0;margin:0 0 12px}
+    .tool-section p{font-size:.9rem;color:#94a3b8;line-height:1.7;margin:0}
+    .tool-section ul{margin:0;padding-left:20px}
+    .tool-section ul li{font-size:.88rem;color:#94a3b8;line-height:1.7;margin-bottom:4px}
+    .tool-section.highlight{background:linear-gradient(135deg,rgba(251,146,60,.07),rgba(244,114,182,.07));border-color:rgba(251,146,60,.2)}
+    .tool-section.highlight h2{color:#fb923c}
+    .tool-section.ai-card{background:linear-gradient(135deg,rgba(96,165,250,.06),rgba(167,139,250,.06));border-color:rgba(96,165,250,.2)}
+    .tool-section.ai-card h2{color:#a78bfa}
+
+    .tags{display:flex;flex-wrap:wrap;gap:8px}
+    .tag{font-size:.78rem;font-weight:500;color:#60a5fa;background:rgba(96,165,250,.1);border:1px solid rgba(96,165,250,.2);border-radius:8px;padding:4px 12px}
+
+    .tool-actions{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+    .visit-btn.big{flex:1;text-align:center;padding:14px 24px;border-radius:12px;font-size:.95rem;font-weight:700;color:#fff;background:linear-gradient(135deg,#3b82f6,#8b5cf6);text-decoration:none;transition:opacity .2s,transform .1s;display:flex;align-items:center;justify-content:center;gap:8px}
+    .visit-btn.big:hover{opacity:.88;transform:translateY(-2px)}
+    .like-btn-detail{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#94a3b8;font-family:'Poppins',sans-serif;font-size:.9rem;font-weight:500;padding:14px 22px;border-radius:12px;cursor:pointer;transition:all .2s}
+    .like-btn-detail:hover,.like-btn-detail.liked{background:rgba(239,68,68,.1);border-color:#ef4444;color:#ef4444}
+    .like-btn-detail i{font-size:.9rem;transition:transform .15s}
+    .like-btn-detail.pulse i{transform:scale(1.4)}
+    .like-btn-detail:disabled{opacity:.6;cursor:not-allowed}
+
+    .back-link{display:inline-flex;align-items:center;gap:6px;color:#64748b;text-decoration:none;font-size:.85rem;margin-bottom:24px;transition:color .2s}
+    .back-link:hover{color:#60a5fa}
+
+    @media(max-width:600px){.tool-header{flex-direction:column;text-align:center}.tool-actions{flex-direction:column}}
+  </style>
+</head>
+<body>
+
+<%- include("partials/nav") %>
+
+<main class="container">
+<div class="tool-page">
+
+  <a href="/tools" class="back-link"><i class="fa-solid fa-arrow-left"></i> Back to Tools</a>
+
+  <% if (typeof tool !== 'undefined' && tool) { %>
+
+    <!-- HEADER -->
+    <div class="tool-header">
+      <img
+        src="<%= tool.logo || '/logos/default.png' %>"
+        class="tool-logo-large"
+        onerror="this.src='/logos/default.png'"
+        alt="<%= tool.name || 'Tool' %>"
+      >
+      <div class="tool-header-info">
+        <h1><%= tool.name || 'Unnamed Tool' %></h1>
+        <% if (tool.category) { %>
+          <span class="cat-tag"><%= tool.category %></span>
+        <% } %>
+        <div class="badge-row-detail">
+          <% if (tool.isTrending) { %><span class="badge badge-trending">🔥 Trending</span><% } %>
+          <% if (tool.isNew) { %><span class="badge badge-new">🆕 New</span><% } %>
+          <% if (tool.isPopular && !tool.isTrending && !tool.isNew) { %><span class="badge badge-popular">⭐ Popular</span><% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="tool-section">
+      <h2>🧠 About this tool</h2>
+      <p><%= tool.description || 'No description available.' %></p>
+    </div>
+
+    <!-- AI INSIGHTS — only if exists and has content -->
+    <% if (typeof aiInsights !== 'undefined' && aiInsights) { %>
+      <% if (typeof aiInsights === 'object') { %>
+
+        <% if (aiInsights.why) { %>
+          <div class="tool-section highlight">
+            <h2>🔥 Why use this tool?</h2>
+            <p><%= aiInsights.why %></p>
+          </div>
+        <% } %>
+
+        <% if (aiInsights.bestFor && Array.isArray(aiInsights.bestFor) && aiInsights.bestFor.length > 0) { %>
+          <div class="tool-section">
+            <h2>🎯 Best For</h2>
+            <div class="tags">
+              <% aiInsights.bestFor.forEach(function(item){ %>
+                <span class="tag"><%= item %></span>
+              <% }) %>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (aiInsights.pros && Array.isArray(aiInsights.pros) && aiInsights.pros.length > 0) { %>
+          <div class="tool-section">
+            <h2>✅ Pros</h2>
+            <ul>
+              <% aiInsights.pros.forEach(function(p){ %>
+                <li><%= p %></li>
+              <% }) %>
+            </ul>
+          </div>
+        <% } %>
+
+        <% if (aiInsights.cons && Array.isArray(aiInsights.cons) && aiInsights.cons.length > 0) { %>
+          <div class="tool-section">
+            <h2>⚠️ Cons</h2>
+            <ul>
+              <% aiInsights.cons.forEach(function(c){ %>
+                <li><%= c %></li>
+              <% }) %>
+            </ul>
+          </div>
+        <% } %>
+
+      <% } else if (typeof aiInsights === 'string' && aiInsights.length > 0) { %>
+        <!-- aiInsights returned as plain text string -->
+        <div class="tool-section ai-card">
+          <h2>🤖 AI Insights</h2>
+          <p><%= aiInsights %></p>
+        </div>
+      <% } %>
+    <% } %>
+
+    <!-- KEY FEATURES (static fallback, always shown) -->
+    <div class="tool-section">
+      <h2>⚙️ Key Features</h2>
+      <ul>
+        <li>AI-powered automation to speed up your workflow</li>
+        <li>Clean, intuitive interface for all skill levels</li>
+        <li>Fast performance with reliable uptime</li>
+        <li>Suitable for beginners and professionals alike</li>
+      </ul>
+    </div>
+
+    <!-- STATS -->
+    <div class="tool-section">
+      <h2>📊 Stats</h2>
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:8px;color:#94a3b8;font-size:.88rem">
+          <i class="fa-solid fa-heart" style="color:#ef4444"></i>
+          <span id="detail-likes"><%= tool.likes || 0 %></span> likes
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;color:#94a3b8;font-size:.88rem">
+          <i class="fa-solid fa-arrow-pointer" style="color:#60a5fa"></i>
+          <span><%= tool.clicks || 0 %></span> visits
+        </div>
+        <% if (tool.category) { %>
+          <div style="display:flex;align-items:center;gap:8px;color:#94a3b8;font-size:.88rem">
+            <i class="fa-solid fa-tag" style="color:#a78bfa"></i>
+            <%= tool.category %>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="tool-actions">
+      <a href="/visit/<%= tool._id %>" target="_blank" class="visit-btn big">
+        🚀 Visit Tool
+      </a>
+      <button
+        class="like-btn-detail"
+        id="detail-like-btn"
+        data-id="<%= tool._id %>"
+        aria-label="Like this tool"
+      >
+        <i class="fa-regular fa-heart"></i>
+        <span id="detail-like-count"><%= tool.likes || 0 %></span>
+      </button>
+    </div>
+
+  <% } else { %>
+    <div style="text-align:center;padding:60px 20px;color:#64748b">
+      <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem;margin-bottom:16px;display:block;color:#fb923c"></i>
+      <h2 style="color:#94a3b8;margin-bottom:8px">Tool not found</h2>
+      <p><a href="/tools" style="color:#60a5fa;">← Back to tools</a></p>
+    </div>
+  <% } %>
+
+</div>
+</main>
+
+<%- include("partials/footer") %>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var btn = document.getElementById("detail-like-btn");
+  if (!btn) return;
+
+  btn.addEventListener("click", async function () {
+    var id = this.dataset.id;
+    if (!id || this.disabled) return;
+
+    this.disabled = true;
+    var icon    = this.querySelector("i");
+    var countEl = document.getElementById("detail-like-count");
+    var countEl2 = document.getElementById("detail-likes");
+
+    try {
+      var res = await fetch("/api/tools/" + id + "/like", { method: "POST" });
+
+      if (res.status === 401) {
+        alert("Please log in to like tools.");
+        return;
+      }
+
+      var data = await res.json();
+
+      if (typeof data.likes === "number") {
+        if (countEl)  countEl.textContent  = data.likes;
+        if (countEl2) countEl2.textContent = data.likes;
+      }
+
+      if (data.liked) {
+        icon.className = "fa-solid fa-heart";
+        btn.classList.add("liked");
+      } else {
+        icon.className = "fa-regular fa-heart";
+        btn.classList.remove("liked");
+      }
+
+      btn.classList.add("pulse");
+      setTimeout(function () { btn.classList.remove("pulse"); }, 300);
+
+    } catch (e) {
+      console.error("Like error:", e);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+});
+</script>
+</body>
+</html>

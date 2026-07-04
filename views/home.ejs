@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Aquiplex | AI Workspace — Chat, Build & Create with Aqua AI</title>
+  <meta name="description" content="Aquiplex is your AI workspace. Chat with Aqua AI, build projects, generate websites, write code, and organize work in one intelligent operating system.">
+  <meta name="keywords" content="AI workspace, Aquiplex, Aqua AI, AI chatbot, AI project builder, AI operating system, AI productivity, build with AI">
+  <meta name="author" content="Aquiplex">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <meta name="theme-color" content="#000000">
+  <link rel="canonical" href="https://aquiplex.com/" />
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Aquiplex">
+  <meta property="og:title" content="Aquiplex | AI Workspace — Chat, Build & Create with Aqua AI">
+  <meta property="og:description" content="Chat with Aqua AI, build projects, generate websites, write code, and organize work in one intelligent AI workspace.">
+  <meta property="og:url" content="https://aquiplex.com/">
+  <meta property="og:image" content="https://aquiplex.com/og/og-cover.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:locale" content="en_US">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:site" content="@aquiplex">
+  <meta name="twitter:title" content="Aquiplex | AI Workspace — Chat, Build & Create with Aqua AI">
+  <meta name="twitter:description" content="Chat with Aqua AI, build projects, generate websites, write code, and organize work in one intelligent AI workspace.">
+  <meta name="twitter:image" content="https://aquiplex.com/og/og-cover.png">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://aquiplex.com/#organization",
+        "name": "Aquiplex",
+        "url": "https://aquiplex.com/",
+        "logo": { "@type": "ImageObject", "url": "https://aquiplex.com/logo/logo.png", "width": 512, "height": 512 },
+        "description": "Aquiplex is an AI workspace where users can chat with Aqua AI, build projects, generate websites, write code, and organize all their work in one intelligent platform.",
+        "foundingDate": "2026",
+        "sameAs": ["https://www.instagram.com/aquiplex?igsh=Zm5wYWI4YTlycG5k","https://www.linkedin.com/in/aquiplex-33b3a43bb","https://x.com/aquiplex15626"]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://aquiplex.com/#website",
+        "url": "https://aquiplex.com/",
+        "name": "Aquiplex",
+        "publisher": { "@id": "https://aquiplex.com/#organization" }
+      }
+    ]
+  }
+  </script>
+
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-XXXXXXXXXX');</script>
+
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/home.css">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" href="/logo/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="48x48" href="/logo/favicon-48x48.png">
+  <link rel="apple-touch-icon" href="/logo/apple-touch-icon.png">
+  <link rel="manifest" href="/logo/site.webmanifest">
+</head>
+
+<body>
+
+  <!-- CUSTOM CURSOR (desktop only) -->
+  <div id="cursor" aria-hidden="true"></div>
+  <div id="cursor-ring" aria-hidden="true"></div>
+
+  <!-- AMBIENT BACKGROUND -->
+  <div class="ambient" aria-hidden="true">
+    <div class="ambient-orb ambient-orb-1"></div>
+    <div class="ambient-orb ambient-orb-2"></div>
+    <div class="ambient-orb ambient-orb-3"></div>
+    <div class="ambient-orb ambient-orb-4"></div>
+  </div>
+  <div class="grid-underlay" aria-hidden="true"></div>
+
+  <%- include("partials/nav") %>
+
+  <!-- FLOAT BUTTON -->
+  <button class="aqua-float" onclick="openAquaAI()" aria-label="Open Aqua AI">
+    <span>⚡</span>
+    <span>Ask Aqua</span>
+  </button>
+
+  <!-- AQUA POPUP -->
+  <div id="aquaPopup" class="aqua-popup hidden" role="dialog" aria-modal="true" aria-label="Aqua AI">
+    <div class="popup-header">
+      <div class="popup-brand">
+        <img src="/logo/aqua-favicon.png" alt="Aqua AI logo">
+        <span>Aqua AI</span>
+      </div>
+      <button onclick="closeAquaAI()" ontouchstart="closeAquaAI()" aria-label="Close">✕</button>
+    </div>
+    <div class="popup-body">
+      <p>Your AI workspace is ready. Chat, build, create — everything in one place.</p>
+      <a href="/aqua" class="btn-primary-os">Open Aqua AI →</a>
+    </div>
+  </div>
+
+
+  <!-- ══════════════════════════════════════
+       SECTION 1 — HERO
+  ══════════════════════════════════════ -->
+  <section class="hero-os" aria-label="Aquiplex AI Workspace">
+
+    <!-- LEFT -->
+    <div class="hero-left">
+      <div class="hero-badge">
+        <span class="badge-dot" aria-hidden="true"></span>
+        Aqua AI — Online &amp; Ready
+      </div>
+
+      <h1 class="hero-headline">
+        Your AI Workspace<br>
+        for <span class="g">Everything</span>
+      </h1>
+
+      <p class="hero-sub">
+        Chat with Aqua AI, build projects, generate content, write code, and manage your work — all in one intelligent workspace.
+      </p>
+
+      <div class="hero-ctas">
+        <a href="/aqua" class="btn-hero-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          Start with Aqua AI
+        </a>
+        <a href="<%= typeof user !== 'undefined' && user ? '/aqua' : '/signup' %>" class="btn-hero-ghost">
+          Open Workspace →
+        </a>
+      </div>
+    </div>
+
+    <!-- RIGHT — animated product preview -->
+    <div class="hero-right" aria-hidden="true">
+      <div class="hero-visual-wrap">
+        <div class="hero-visual-glow"></div>
+
+        <!-- floating decoration cards -->
+        <div class="hero-float-card card-2">
+          ✦ AI generating...
+        </div>
+
+        <div class="hero-visual" role="img" aria-label="Aqua AI workspace interface preview">
+          <!-- title bar -->
+          <div class="visual-titlebar">
+            <span class="visual-dot"></span>
+            <span class="visual-dot"></span>
+            <span class="visual-dot"></span>
+            <span class="visual-tab active">aqua-ai</span>
+            <span class="visual-tab">workspace</span>
+            <span class="visual-tab">builder</span>
+          </div>
+
+          <!-- chat messages -->
+          <div class="visual-chat" id="heroChat">
+            <div class="visual-msg user" style="animation-delay:0.8s">
+              Build me a SaaS landing page with pricing
+            </div>
+            <div class="visual-msg aqua" style="animation-delay:1.2s">
+              <span class="visual-msg-label">AQUA AI</span>
+              Generating your landing page structure...<br>
+              <span class="visual-check">✓</span> Hero section<br>
+              <span class="visual-check">✓</span> Features grid<br>
+              <span class="visual-check">✓</span> Pricing table<br>
+              <span class="visual-check">✓</span> Deploying to workspace<span class="visual-cursor"></span>
+            </div>
+          </div>
+
+          <!-- workspace strip -->
+          <div class="visual-strip">
+            <div class="ws-chip active">⚡ Aqua AI</div>
+            <div class="ws-chip">🗂 Workspace</div>
+            <div class="ws-chip">🔨 Builder</div>
+          </div>
+        </div>
+
+        <div class="hero-float-card card-1">
+          ✓ project deployed
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <hr class="os-divider">
+
+
+  <!-- ══════════════════════════════════════
+       SECTION 2 — CORE PRODUCTS
+  ══════════════════════════════════════ -->
+  <section class="section-wrap" aria-labelledby="products-heading">
+    <div class="section-inner">
+
+      <div class="section-header reveal">
+        <div class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span> Core Products</div>
+        <h2 class="section-heading" id="products-heading">
+          Three pillars.<br><span class="g">One workspace.</span>
+        </h2>
+        <p class="section-sub">
+          Everything you need to think, create, and build — connected under one intelligent platform.
+        </p>
+      </div>
+
+      <div class="pillars-grid">
+
+        <article class="pillar-card card-aqua reveal reveal-delay-1">
+          <div class="pillar-icon ai-icon" aria-hidden="true">🤖</div>
+          <div class="pillar-label cyan">Core Product 01</div>
+          <div class="pillar-name">Aqua AI</div>
+          <p class="pillar-desc">
+            Your intelligent assistant for chat, research, coding, writing, and reasoning. Ask anything. Build anything.
+          </p>
+          <div class="pillar-tags">
+            <span class="pillar-tag">Chat</span>
+            <span class="pillar-tag">Code</span>
+            <span class="pillar-tag">Research</span>
+            <span class="pillar-tag">Writing</span>
+          </div>
+          <a href="/aqua" class="pillar-cta cyan-cta">
+            Open Aqua AI <span class="pillar-cta-arrow">→</span>
+          </a>
+        </article>
+
+        <article class="pillar-card card-workspace reveal reveal-delay-2">
+          <div class="pillar-icon ws-icon" aria-hidden="true">🗂️</div>
+          <div class="pillar-label violet">Core Product 02</div>
+          <div class="pillar-name">Aqua Workspace</div>
+          <p class="pillar-desc">
+            Organize files, projects, and AI-generated outputs. Your persistent productivity layer — always ready.
+          </p>
+          <div class="pillar-tags">
+            <span class="pillar-tag">Files</span>
+            <span class="pillar-tag">Projects</span>
+            <span class="pillar-tag">Preview</span>
+            <span class="pillar-tag">AI Workflows</span>
+          </div>
+          <a href="<%= typeof user !== 'undefined' && user ? '/aqua' : '/signup' %>" class="pillar-cta violet-cta">
+            Open Workspace <span class="pillar-cta-arrow">→</span>
+          </a>
+        </article>
+
+        <article class="pillar-card card-builder reveal reveal-delay-3">
+          <div class="pillar-icon pb-icon" aria-hidden="true">🔨</div>
+          <div class="pillar-label emerald">Core Product 03</div>
+          <div class="pillar-name">Project Builder</div>
+          <p class="pillar-desc">
+            Generate full apps, websites, and startup roadmaps from a prompt. AI-powered project generation — no code required.
+          </p>
+          <div class="pillar-tags">
+            <span class="pillar-tag">Generate Apps</span>
+            <span class="pillar-tag">Websites</span>
+            <span class="pillar-tag">Roadmaps</span>
+          </div>
+          <a href="/bundles" class="pillar-cta emerald-cta">
+            Explore Builder <span class="pillar-cta-arrow">→</span>
+          </a>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <hr class="os-divider">
+
+
+  <!-- ══════════════════════════════════════
+       SECTION 3 — USE CASES
+  ══════════════════════════════════════ -->
+  <section class="section-wrap" aria-labelledby="usecases-heading">
+    <div class="section-inner">
+
+      <div class="section-header reveal">
+        <div class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span> Real Use Cases</div>
+        <h2 class="section-heading" id="usecases-heading">
+          What you can <span class="g">build today</span>
+        </h2>
+        <p class="section-sub">
+          See exactly how people are using Aquiplex to create real things — instantly.
+        </p>
+      </div>
+
+      <div class="usecases-grid">
+
+        <a href="/aqua" class="usecase-card reveal reveal-delay-1" aria-label="Build a SaaS landing page">
+          <div class="usecase-icon-wrap" aria-hidden="true">🚀</div>
+          <div class="usecase-text">
+            <div class="uc-title">Build a SaaS landing page</div>
+            <div class="uc-desc">Describe your product → Aqua generates hero, features, and pricing in seconds.</div>
+          </div>
+          <span class="usecase-arrow" aria-hidden="true">↗</span>
+        </a>
+
+        <a href="/bundles" class="usecase-card reveal reveal-delay-2" aria-label="Generate a startup roadmap">
+          <div class="usecase-icon-wrap" aria-hidden="true">🗺️</div>
+          <div class="usecase-text">
+            <div class="uc-title">Generate a startup roadmap</div>
+            <div class="uc-desc">From idea to execution plan — milestones, GTM strategy, and team structure.</div>
+          </div>
+          <span class="usecase-arrow" aria-hidden="true">↗</span>
+        </a>
+
+        <a href="/aqua" class="usecase-card reveal reveal-delay-3" aria-label="Research any topic with AI">
+          <div class="usecase-icon-wrap" aria-hidden="true">🔬</div>
+          <div class="usecase-text">
+            <div class="uc-title">Research any topic with AI</div>
+            <div class="uc-desc">Deep-dive any subject with structured summaries, citations, and analysis.</div>
+          </div>
+          <span class="usecase-arrow" aria-hidden="true">↗</span>
+        </a>
+
+        <a href="/aqua" class="usecase-card reveal reveal-delay-4" aria-label="Write and debug code">
+          <div class="usecase-icon-wrap" aria-hidden="true">💻</div>
+          <div class="usecase-text">
+            <div class="uc-title">Write and debug code</div>
+            <div class="uc-desc">From API integrations to full components — Aqua writes, explains, and fixes code.</div>
+          </div>
+          <span class="usecase-arrow" aria-hidden="true">↗</span>
+        </a>
+
+        <a href="/bundles" class="usecase-card wide reveal" aria-label="Generate a complete website from a prompt">
+          <div class="usecase-icon-wrap" aria-hidden="true">🌐</div>
+          <div class="usecase-text">
+            <div class="uc-title">Generate a complete website from a single prompt</div>
+            <div class="uc-desc">Describe what you need → Aquiplex's Project Builder creates a live, editable website in your workspace. Export. Deploy. Ship.</div>
+          </div>
+          <span class="usecase-arrow" aria-hidden="true">↗</span>
+        </a>
+
+      </div>
+    </div>
+  </section>
+
+  <hr class="os-divider">
+
+
+  <!-- ══════════════════════════════════════
+       SECTION 4 — SOCIAL PROOF
+  ══════════════════════════════════════ -->
+  <section class="section-wrap" aria-labelledby="stats-heading">
+    <div class="section-inner">
+
+      <div class="section-header reveal">
+        <div class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span> Trusted by Builders</div>
+        <h2 class="section-heading" id="stats-heading">
+          People are <span class="g">building with Aqua</span>
+        </h2>
+      </div>
+
+      <div class="stats-row reveal" role="list">
+        <div class="stat-cell" role="listitem">
+          <div class="stat-number">10K+</div>
+          <div class="stat-label">Prompts Generated</div>
+        </div>
+        <div class="stat-cell" role="listitem">
+          <div class="stat-number">2K+</div>
+          <div class="stat-label">Projects Created</div>
+        </div>
+        <div class="stat-cell" role="listitem">
+          <div class="stat-number">500+</div>
+          <div class="stat-label">Active Builders</div>
+        </div>
+        <div class="stat-cell" role="listitem">
+          <div class="stat-number">98%</div>
+          <div class="stat-label">Satisfaction Rate</div>
+        </div>
+      </div>
+
+      <div class="trust-row reveal" aria-label="Trust indicators">
+        <div class="trust-badge"><span class="trust-badge-icon">🔒</span> Secure &amp; Private</div>
+        <div class="trust-badge"><span class="trust-badge-icon">⚡</span> Instant Results</div>
+        <div class="trust-badge"><span class="trust-badge-icon">🌐</span> Works Anywhere</div>
+        <div class="trust-badge"><span class="trust-badge-icon">♾️</span> Always Improving</div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="os-divider">
+
+
+  <!-- ══════════════════════════════════════
+       SECTION 5 — TOOL DIRECTORY
+  ══════════════════════════════════════ -->
+  <% if (tools && tools.length > 0) { %>
+  <section class="tools-section reveal" aria-labelledby="integrations-heading">
+
+    <div style="text-align:center;margin-bottom:48px;">
+      <div class="eyebrow" style="display:inline-flex;"><span class="eyebrow-dot" aria-hidden="true"></span> AI Utilities</div>
+      <h2 class="section-heading" id="integrations-heading" style="margin-top:0;">
+        Explore extra <span class="g">AI tools</span>
+      </h2>
+      <p class="section-sub">
+        A curated directory of specialized AI utilities — all secondary to your core workspace.
+      </p>
+    </div>
+
+    <div class="categories-os" role="list" aria-label="Tool categories">
+      <a class="category-pill explore-all" href="/categories" role="listitem">🌐 Explore All</a>
+      <%
+      const categories = [
+        { name: "Writing AI", icon: "✍️" },
+        { name: "Image AI", icon: "🎨" },
+        { name: "Video AI", icon: "🎬" },
+        { name: "Coding AI", icon: "💻" },
+        { name: "ML AI", icon: "🤖" }
+      ];
+      categories.forEach(function(category){ %>
+      <a class="category-pill" href="/tools/category/<%= category.name.toLowerCase().replace(/\s+/g, '-') %>" role="listitem">
+        <%= category.icon %> <%= category.name %>
+      </a>
+      <% }) %>
+    </div>
+
+    <div class="tools-grid">
+      <% tools.slice(0, 4).forEach(function(tool){ %>
+      <div class="tool-card-os">
+        <img class="tool-logo-os" src="<%= tool.logo %>" alt="<%= tool.name %> AI tool logo" loading="lazy">
+        <div class="tool-name-os"><%= tool.name %></div>
+        <p class="tool-desc-os"><%= tool.description %></p>
+        <div class="tool-actions-os">
+          <a href="/tool/<%= tool._id %>" class="tool-btn primary-tool">Details</a>
+          <a href="/visit/<%= tool._id %>" target="_blank" rel="noopener noreferrer" class="tool-btn ghost-tool">Visit →</a>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+
+    <div style="text-align:center;margin-top:40px;">
+      <a href="/tools" class="btn-ghost-os">View all AI utilities →</a>
+    </div>
+
+  </section>
+  <hr class="os-divider">
+  <% } %>
+
+
+  <!-- ══════════════════════════════════════
+       FINAL CTA
+  ══════════════════════════════════════ -->
+  <section class="final-cta-section" aria-labelledby="final-cta-heading">
+    <div class="final-cta-inner reveal">
+      <h2 class="final-heading" id="final-cta-heading">
+        Stop searching.<br><span class="g">Start building.</span>
+      </h2>
+      <p class="final-sub">
+        You have an idea. Aqua has everything else. Your workspace is one click away.
+      </p>
+      <div class="final-actions">
+        <a href="/aqua" class="btn-primary-os">⚡ Start with Aqua AI</a>
+        <a href="<%= typeof user !== 'undefined' && user ? '/aqua' : '/signup' %>" class="btn-ghost-os">Open Workspace →</a>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- SEO CONTENT -->
+  <section class="seo-content-section" aria-label="About Aquiplex">
+    <h2>What is Aquiplex?</h2>
+    <p>
+      Aquiplex is an AI workspace built for the modern age of productivity. Unlike traditional AI chatbots that simply answer questions, Aquiplex — powered by Aqua AI — gives you a complete operating environment. Chat intelligently, build projects, generate websites, write code, and manage your work in one unified platform.
+    </p>
+    <p>
+      Whether you are a developer, creator, entrepreneur, or student, Aquiplex removes friction from your workflow. The platform combines a powerful AI assistant, a persistent workspace, and a project builder — giving you everything you need to turn ideas into real outcomes.
+    </p>
+    <h3>Why Aquiplex is Different</h3>
+    <p>
+      Most AI tools solve one problem. Aquiplex solves your whole workflow. Aqua AI handles intelligent conversation, research, and code generation. The Workspace organizes everything you create. The Project Builder generates full websites and apps from a single prompt. Together, they form an AI operating system designed around how you actually work.
+    </p>
+    <nav class="seo-nav-links" aria-label="Internal navigation">
+      <a href="/about">About Aquiplex</a>
+      <a href="/aqua">Aqua AI Chatbot</a>
+      <a href="/aqua">AI Workspace</a>
+      <a href="/bundles">Project Builder</a>
+      <a href="/pricing">Pricing</a>
+      <a href="/categories">Browse AI Utilities</a>
+    </nav>
+  </section>
+
+  <%- include("partials/footer") %>
+
+  <script>
+    // ── CURSOR ──
+    (function() {
+      const cursor = document.getElementById('cursor');
+      const ring = document.getElementById('cursor-ring');
+      if (!cursor || !ring) return;
+      let mx = -100, my = -100, rx = -100, ry = -100;
+      document.addEventListener('mousemove', function(e) {
+        mx = e.clientX; my = e.clientY;
+        cursor.style.left = mx + 'px';
+        cursor.style.top = my + 'px';
+      });
+      function animRing() {
+        rx += (mx - rx) * 0.12;
+        ry += (my - ry) * 0.12;
+        ring.style.left = rx + 'px';
+        ring.style.top = ry + 'px';
+        requestAnimationFrame(animRing);
+      }
+      animRing();
+      document.addEventListener('mouseleave', function() {
+        cursor.style.opacity = '0'; ring.style.opacity = '0';
+      });
+      document.addEventListener('mouseenter', function() {
+        cursor.style.opacity = '1'; ring.style.opacity = '1';
+      });
+    })();
+
+    // ── SCROLL REVEALS ──
+    (function() {
+      const els = document.querySelectorAll('.reveal');
+      const io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+      els.forEach(function(el) { io.observe(el); });
+    })();
+
+    // ── HERO 3D TILT (desktop only) ──
+    (function() {
+      const visual = document.querySelector('.hero-visual');
+      if (!visual || window.innerWidth < 768) return;
+      const wrap = document.querySelector('.hero-visual-wrap');
+      if (!wrap) return;
+      wrap.addEventListener('mousemove', function(e) {
+        const r = wrap.getBoundingClientRect();
+        const x = (e.clientX - r.left) / r.width - 0.5;
+        const y = (e.clientY - r.top) / r.height - 0.5;
+        visual.style.transform = 'perspective(1200px) rotateY(' + (-x * 10 - 6) + 'deg) rotateX(' + (y * 6 + 2) + 'deg)';
+      });
+      wrap.addEventListener('mouseleave', function() {
+        visual.style.transform = 'perspective(1200px) rotateY(-6deg) rotateX(2deg)';
+      });
+    })();
+
+    // ── AQUA POPUP ──
+    document.addEventListener("touchstart", function(){}, true);
+    function openAquaAI() {
+      const p = document.getElementById("aquaPopup");
+      if (p) p.classList.remove("hidden");
+    }
+    function closeAquaAI() {
+      const p = document.getElementById("aquaPopup");
+      if (p) p.classList.add("hidden");
+    }
+    document.addEventListener("keydown", function(e) { if (e.key === "Escape") closeAquaAI(); });
+    document.addEventListener("click", function(e) {
+      const popup = document.getElementById("aquaPopup");
+      const floatBtn = document.querySelector(".aqua-float");
+      if (popup && !popup.classList.contains("hidden")) {
+        if (!popup.contains(e.target) && !floatBtn.contains(e.target)) closeAquaAI();
+      }
+    });
+
+    // ── ANIMATED CHAT TYPING (hero) ──
+    (function() {
+      const msgs = document.querySelectorAll('#heroChat .visual-msg');
+      msgs.forEach(function(msg, i) {
+        msg.style.opacity = '0';
+        setTimeout(function() {
+          msg.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+          msg.style.transform = 'translateY(10px)';
+          msg.style.opacity = '0';
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              msg.style.opacity = '1';
+              msg.style.transform = 'translateY(0)';
+            });
+          });
+        }, 800 + i * 600);
+      });
+    })();
+  </script>
+
+</body>
+</html>
