@@ -5,6 +5,12 @@
   "type": "commonjs",
   "main": "index.js",
   "license": "MIT",
+
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
+
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
@@ -13,6 +19,7 @@
     "build": "npm run build:aqua",
     "test:aqua": "cd aqua && npm run test:edit && npm run test:upload"
   },
+
   "dependencies": {
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
