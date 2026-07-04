@@ -5,11 +5,14 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#020617",
-  "theme_color": "#020617",
-  "description": "Discover and explore the best AI tools in one place. Aquiplex helps you find, compare, and use powerful AI tools easily.",
+  "background_color": "#0b0e12",
+  "theme_color": "#0b0e12",
+  "description": "Aquiplex is an AI Operating System built around Aqua \u2014 a memory-driven intelligence that plans, reasons, and executes your goals.",
   "orientation": "any",
-  "categories": ["productivity", "tools", "ai"],
+  "categories": [
+    "productivity",
+    "ai"
+  ],
   "icons": [
     {
       "src": "/logo/icon-192.png",

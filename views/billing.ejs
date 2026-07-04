@@ -3,376 +3,189 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Billing — Aquiplex</title>
-  <link rel="stylesheet" href="/css/styles.css">
-  <style>
-    :root {
-      --aqua-blue:   #00d4ff;
-      --aqua-purple: #7c3aed;
-      --card-bg:     rgba(15, 15, 30, 0.95);
-      --border:      rgba(255,255,255,0.08);
-      --text-muted:  rgba(255,255,255,0.55);
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #080810; color: #fff; font-family: 'Inter', -apple-system, sans-serif; min-height: 100vh; }
-
-    .billing-wrap {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 60px 24px 80px;
-    }
-    .billing-wrap h1 { font-size: 2rem; font-weight: 800; margin-bottom: 8px; }
-    .billing-wrap .subtitle { color: var(--text-muted); margin-bottom: 40px; font-size: 0.95rem; }
-
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
-
-    .card {
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-    }
-    .card-label {
-      font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 1px; color: var(--text-muted); margin-bottom: 12px;
-    }
-    .card-value { font-size: 2rem; font-weight: 800; line-height: 1; }
-    .card-sub { font-size: 0.85rem; color: var(--text-muted); margin-top: 6px; }
-
-    /* Skeleton */
-    .skel {
-      display: inline-block;
-      background: linear-gradient(90deg,rgba(255,255,255,0.06) 25%,rgba(255,255,255,0.12) 50%,rgba(255,255,255,0.06) 75%);
-      background-size: 200% 100%;
-      animation: skel-sh 1.4s infinite;
-      border-radius: 6px;
-    }
-    @keyframes skel-sh { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
-    .skel-val  { height: 2rem; width: 120px; }
-    .skel-sub  { height: 0.8em; width: 160px; margin-top: 6px; }
-    .skel-row  { height: 44px; width: 100%; border-radius: 8px; margin-bottom: 8px; }
-
-    /* Plan badge */
-    .plan-badge { display: inline-block; padding: 4px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
-    .plan-badge.free    { background: rgba(255,255,255,0.08); color: #aaa; }
-    .plan-badge.starter { background: rgba(0,212,255,0.12); color: var(--aqua-blue); border: 1px solid rgba(0,212,255,0.3); }
-    .plan-badge.pro     { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.4); }
-    .plan-badge.team    { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
-
-    /* Progress */
-    .progress-bar { background: rgba(255,255,255,0.08); border-radius: 999px; height: 8px; overflow: hidden; margin-top: 12px; }
-    .progress-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg,var(--aqua-blue),var(--aqua-purple)); transition: width 0.6s ease; width: 0%; }
-    .progress-fill.warning { background: linear-gradient(90deg,#f59e0b,#ef4444); }
-
-    /* Usage grid */
-    .usage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-top: 16px; }
-    .usage-item { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
-    .usage-item .u-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-    .usage-item .u-val   { font-size: 1rem; font-weight: 700; }
-    .usage-item .u-bar   { height: 4px; background: rgba(255,255,255,0.08); border-radius: 999px; margin-top: 6px; overflow: hidden; }
-    .usage-item .u-fill  { height: 100%; border-radius: 999px; background: linear-gradient(90deg,var(--aqua-blue),var(--aqua-purple)); transition: width 0.6s; }
-    .usage-item .u-fill.full { background: #ef4444; }
-    .usage-item .u-note  { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
-
-    /* History table */
-    .history-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-    .history-table th { text-align: left; padding: 12px 16px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
-    .history-table td { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.04); color: rgba(255,255,255,0.8); vertical-align: middle; }
-    .history-table tr:last-child td { border-bottom: none; }
-    .status-pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
-    .status-pill.completed,.status-pill.success { background: rgba(34,197,94,0.12); color: #86efac; }
-    .status-pill.failed  { background: rgba(239,68,68,0.12);  color: #fca5a5; }
-    .status-pill.pending { background: rgba(234,179,8,0.12);  color: #fde68a; }
-    .status-pill.debit   { background: rgba(239,68,68,0.10);  color: #fca5a5; }
-    .status-pill.purchase{ background: rgba(0,212,255,0.12);  color: var(--aqua-blue); }
-    .status-pill.refund  { background: rgba(34,197,94,0.10);  color: #86efac; }
-
-    /* Empty/error states */
-    .state-block { text-align: center; padding: 36px 16px; color: var(--text-muted); }
-    .state-block .state-icon { font-size: 2rem; margin-bottom: 10px; }
-    .state-block .state-msg  { font-size: 0.9rem; margin-bottom: 16px; line-height: 1.6; }
-    .retry-btn {
-      background: rgba(255,255,255,0.07); border: 1px solid var(--border); color: #fff;
-      padding: 8px 20px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; transition: background 0.2s;
-    }
-    .retry-btn:hover { background: rgba(255,255,255,0.12); }
-
-    /* Actions */
-    .actions-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 24px; }
-    .btn {
-      padding: 12px 24px; border-radius: 10px; font-size: 0.9rem; font-weight: 600;
-      border: none; cursor: pointer; transition: all 0.2s; text-decoration: none;
-      display: inline-flex; align-items: center; gap: 8px;
-    }
-    .btn:disabled { opacity: 0.5; pointer-events: none; }
-    .btn-primary { background: linear-gradient(135deg,var(--aqua-blue),var(--aqua-purple)); color: #fff; }
-    .btn-primary:hover { opacity: 0.9; }
-    .btn-ghost { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.7); border: 1px solid var(--border); }
-    .btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; }
-    .btn-danger { background: rgba(239,68,68,0.1); color: #fca5a5; border: 1px solid rgba(239,68,68,0.25); }
-    .btn-danger:hover { background: rgba(239,68,68,0.2); }
-
-    #cancel-confirm {
-      display: none;
-      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2);
-      border-radius: 12px; padding: 20px; margin-bottom: 24px;
-    }
-    #cancel-confirm p { font-size: 0.9rem; color: rgba(255,255,255,0.8); margin-bottom: 16px; line-height: 1.6; }
-    #cancel-confirm .btns { display: flex; gap: 10px; flex-wrap: wrap; }
-
-    /* Toast */
-    .toast {
-      position: fixed; bottom: 24px; right: 24px;
-      background: #1a1a2e; border: 1px solid var(--border); border-radius: 12px;
-      padding: 14px 20px; font-size: 0.9rem; z-index: 99999;
-      transform: translateY(80px); opacity: 0; transition: all 0.3s;
-      max-width: calc(100vw - 48px);
-    }
-    .toast.show { transform: translateY(0); opacity: 1; }
-    .toast.success { border-color: #22c55e; }
-    .toast.error   { border-color: #ef4444; }
-    .toast.info    { border-color: var(--aqua-blue); }
-
-    @media (max-width: 600px) {
-      .grid-2 { grid-template-columns: 1fr; }
-      .actions-row { flex-direction: column; }
-      .billing-wrap { padding: 32px 16px 60px; }
-      .billing-wrap h1 { font-size: 1.5rem; }
-      .history-table { font-size: 0.8rem; }
-      .history-table th,.history-table td { padding: 10px 10px; }
-    }
-  </style>
+  <title>Billing &amp; credits — Aquiplex</title>
+  <meta name="description" content="Manage your Aqua credits, daily usage, and transaction history.">
+  <link rel="icon" href="/logo/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/css/platform.css">
 </head>
-<body>
+<body class="px-page">
 
 <%- include('partials/nav') %>
 
-<div class="billing-wrap">
-  <h1>Billing & Credits</h1>
-  <p class="subtitle">Manage your Aqua Credits and daily usage.</p>
-
-  <!-- Status error (shown on load failure) -->
-  <div class="card state-block" id="status-error" style="display:none;margin-bottom:24px">
-    <div class="state-icon">⚠️</div>
-    <div class="state-msg">
-      We couldn't load your billing information right now.<br>
-      <strong style="color:#fff">Basic chat is still available for free.</strong><br>
-      Please retry in a moment.
-    </div>
-    <button class="retry-btn" onclick="loadStatus()">↻ Retry</button>
-  </div>
-
-  <!-- Plan + Credits -->
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-label">Current Plan</div>
-      <div style="margin-bottom:12px">
-        <span class="plan-badge free" id="plan-badge">
-          <%= ((typeof billingUser !== 'undefined' && billingUser ? billingUser.plan : (typeof user !== 'undefined' && user ? user.plan : null)) || 'free').toUpperCase() %>
-        </span>
-      </div>
-      <div class="card-sub" id="plan-status-text"><span class="skel skel-sub"></span></div>
-    </div>
-
-    <div class="card">
-      <div class="card-label">Aqua Credits</div>
-      <div class="card-value" id="credits-val"><span class="skel skel-val"></span></div>
-      <div class="card-sub" id="credits-sub"><span class="skel skel-sub"></span></div>
-      <div class="progress-bar" style="margin-top:14px">
-        <div class="progress-fill" id="credits-fill"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-label">Free Daily Quota</div>
-      <div class="card-value" id="daily-val"><span class="skel skel-val"></span></div>
-      <div class="card-sub" id="daily-sub"><span class="skel skel-sub"></span></div>
-      <div class="progress-bar" style="margin-top:14px">
-        <div class="progress-fill" id="daily-fill"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-label">Free Credits Reset</div>
-      <div class="card-value" style="font-size:1.25rem" id="renewal-val"><span class="skel skel-val"></span></div>
-      <div class="card-sub" id="renewal-sub"><span class="skel skel-sub"></span></div>
-    </div>
-  </div>
-
-  <!-- Feature usage breakdown -->
-  <div class="card" style="margin-bottom:24px">
-    <div class="card-label" style="margin-bottom:4px">Today's Feature Usage</div>
-    <div class="card-sub" style="margin-bottom:16px">Free plan daily limits • Resets at midnight</div>
-    <div class="usage-grid" id="usage-grid">
-      <div class="skel skel-row"></div>
-      <div class="skel skel-row"></div>
-      <div class="skel skel-row"></div>
-      <div class="skel skel-row"></div>
-      <div class="skel skel-row"></div>
-    </div>
-  </div>
-
-  <!-- Actions -->
-  <%
-    const _plan = ((typeof billingUser !== 'undefined' && billingUser ? billingUser.plan : (typeof user !== 'undefined' && user ? user.plan : null)) || 'free');
-  %>
-  <div class="actions-row">
-    <% if (_plan === 'free') { %>
-      <a href="/pricing" class="btn btn-primary">⚡ Upgrade Plan</a>
-    <% } else { %>
-      <a href="/pricing" class="btn btn-primary">⚡ Change Plan</a>
-      <button class="btn btn-danger" onclick="toggleCancel()">Cancel Subscription</button>
-    <% } %>
-    <a href="/pricing" class="btn btn-ghost">Compare Plans</a>
-  </div>
-
-  <!-- Cancel confirm -->
-  <div id="cancel-confirm">
-    <p>Are you sure? You'll keep access until the end of your billing period, then revert to the Free plan. Your projects are never deleted.</p>
-    <div class="btns">
-      <button class="btn btn-danger" onclick="doCancel()" id="confirm-cancel-btn">Yes, cancel subscription</button>
-      <button class="btn btn-ghost" onclick="toggleCancel()">Keep my plan</button>
-    </div>
-  </div>
-
-  <!-- Transaction history -->
-  <div class="card" style="margin-bottom:24px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-      <div class="card-label" style="margin-bottom:0">Transaction History</div>
-      <button class="retry-btn" id="history-retry-btn" onclick="loadHistory()" style="display:none">↻ Retry</button>
-    </div>
-
-    <!-- Loading -->
-    <div id="history-loading">
-      <div class="skel skel-row"></div>
-      <div class="skel skel-row"></div>
-      <div class="skel skel-row"></div>
-    </div>
-
-    <!-- Error -->
-    <div class="state-block" id="history-error" style="display:none">
-      <div class="state-icon">⚠️</div>
-      <div class="state-msg">Unable to load transaction history.<br>Please try again in a moment.</div>
-      <button class="retry-btn" onclick="loadHistory()">↻ Retry</button>
-    </div>
-
-    <!-- Empty -->
-    <div class="state-block" id="history-empty" style="display:none">
-      <div class="state-icon">📋</div>
-      <div class="state-msg">No transactions yet.<br>Credits you purchase or use will appear here.</div>
-    </div>
-
-    <!-- Table -->
-    <div id="history-table-wrap" style="display:none;overflow-x:auto">
-      <table class="history-table">
-        <thead>
-          <tr>
-            <th>Type</th>
-            <th>Credits</th>
-            <th>Status</th>
-            <th>Date</th>
-          </tr>
-        </thead>
-        <tbody id="history-body"></tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
-<script>
-// ── Toast ──────────────────────────────────────────────────────────────────────
-let _toastTimer;
-function showToast(msg, type, duration) {
-  type = type || 'info';
-  duration = duration || 4000;
-  var el = document.getElementById('toast');
-  if (!el) return;
-  el.textContent = msg;
-  el.className = 'toast show ' + type;
-  clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(function() { el.className = 'toast'; }, duration);
-}
+<main class="px-account">
+  <div class="px-container" style="max-width:860px;">
 
-// ── Fetch with timeout ─────────────────────────────────────────────────────────
+    <div class="px-dash-head">
+      <h1>Billing &amp; credits</h1>
+      <p>Manage your Aqua credits and daily usage.</p>
+    </div>
+
+    <!-- Status error -->
+    <div class="px-card px-state" id="status-error" style="display:none; margin-bottom:20px;">
+      We couldn't load your billing information right now.
+      <strong style="display:block; color:var(--px-text); margin-top:4px;">Basic chat is still available for free.</strong>
+      <button class="px-btn px-btn-secondary px-btn-sm" onclick="loadStatus()">Retry</button>
+    </div>
+
+    <!-- Plan + credits -->
+    <div class="px-stat-grid" style="margin-bottom:14px;">
+      <div class="px-stat">
+        <div class="px-stat-label">Current plan</div>
+        <div style="margin:6px 0 8px;">
+          <span class="px-badge" id="plan-badge">
+            <%= ((typeof billingUser !== 'undefined' && billingUser ? billingUser.plan : (typeof user !== 'undefined' && user ? user.plan : null)) || 'free').toUpperCase() %>
+          </span>
+        </div>
+        <div class="px-stat-sub" id="plan-status-text"><span class="px-skel"></span></div>
+      </div>
+
+      <div class="px-stat">
+        <div class="px-stat-label">Aqua credits</div>
+        <div class="px-stat-value" id="credits-val"><span class="px-skel"></span></div>
+        <div class="px-stat-sub" id="credits-sub"><span class="px-skel"></span></div>
+        <div class="px-bar-track"><div class="px-bar-fill" id="credits-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="px-stat-grid" style="margin-bottom:20px;">
+      <div class="px-stat">
+        <div class="px-stat-label">Free daily quota</div>
+        <div class="px-stat-value" id="daily-val"><span class="px-skel"></span></div>
+        <div class="px-stat-sub" id="daily-sub"><span class="px-skel"></span></div>
+        <div class="px-bar-track"><div class="px-bar-fill" id="daily-fill"></div></div>
+      </div>
+
+      <div class="px-stat">
+        <div class="px-stat-label">Free credits reset</div>
+        <div class="px-stat-value" style="font-size:17px;" id="renewal-val"><span class="px-skel"></span></div>
+        <div class="px-stat-sub" id="renewal-sub"><span class="px-skel"></span></div>
+      </div>
+    </div>
+
+    <!-- Feature usage -->
+    <div class="px-card px-card-pad" style="margin-bottom:20px;">
+      <div class="px-stat-label" style="margin-bottom:2px;">Today's feature usage</div>
+      <div class="px-stat-sub" style="margin-bottom:16px;">Free plan daily limits · resets at midnight</div>
+      <div class="px-usage-grid" id="usage-grid">
+        <div class="px-skel wide"></div>
+        <div class="px-skel wide"></div>
+        <div class="px-skel wide"></div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:36px;">
+      <a href="/pricing" class="px-btn px-btn-primary">Buy credits</a>
+      <a href="/wallet" class="px-btn px-btn-secondary">Open wallet</a>
+    </div>
+
+    <!-- Transaction history -->
+    <div class="px-card px-card-pad" style="margin-bottom:24px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+        <div class="px-stat-label" style="margin:0;">Transaction history</div>
+        <button class="px-btn px-btn-ghost px-btn-sm" id="history-retry-btn" onclick="loadHistory()" style="display:none;">Retry</button>
+      </div>
+
+      <div id="history-loading">
+        <div class="px-skel wide"></div>
+        <div class="px-skel wide"></div>
+        <div class="px-skel wide"></div>
+      </div>
+
+      <div class="px-state" id="history-error" style="display:none;">
+        Unable to load transaction history. Please try again in a moment.
+        <br><button class="px-btn px-btn-secondary px-btn-sm" onclick="loadHistory()">Retry</button>
+      </div>
+
+      <div class="px-empty" id="history-empty" style="display:none;">
+        No transactions yet. Credits you purchase or use will appear here.
+      </div>
+
+      <div id="history-table-wrap" style="display:none; overflow-x:auto;">
+        <table class="px-table">
+          <thead>
+            <tr><th>Type</th><th>Credits</th><th>Status</th><th>Date</th></tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<%- include('partials/footer') %>
+
+<script>
+// ── Utilities ──────────────────────────────────────────────────────────────────
 function fetchWT(url, opts, ms) {
-  opts = opts || {};
   ms = ms || 12000;
-  var ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
-  var tid = ctrl ? setTimeout(function() { ctrl.abort(); }, ms) : null;
-  var fetchOpts = Object.assign({}, opts, { credentials: 'include' });
-  if (ctrl) fetchOpts.signal = ctrl.signal;
-  return fetch(url, fetchOpts).then(function(res) {
-    if (tid) clearTimeout(tid);
+  var ctrl = new AbortController();
+  var t = setTimeout(function () { ctrl.abort(); }, ms);
+  var fetchOpts = Object.assign({ credentials: 'include', signal: ctrl.signal }, opts || {});
+  return fetch(url, fetchOpts).then(function (res) {
+    clearTimeout(t);
     return res;
-  }).catch(function(e) {
-    if (tid) clearTimeout(tid);
-    throw e;
+  }).catch(function (err) {
+    clearTimeout(t);
+    throw err;
   });
 }
 
-// ── Format helpers ─────────────────────────────────────────────────────────────
 function fmtDate(iso) {
   if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-  } catch(e) { return '—'; }
+  try { return new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }); }
+  catch (_) { return '—'; }
 }
 function fmtDateTime(iso) {
   if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString('en-IN', {
-      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-  } catch(e) { return '—'; }
+  try { return new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+  catch (_) { return '—'; }
 }
-function fmtNum(n) {
-  var v = Number(n);
-  return isNaN(v) ? '0' : v.toLocaleString('en-IN');
-}
+function fmtNum(n) { return Number(n || 0).toLocaleString('en-IN'); }
 function timeUntil(iso) {
-  if (!iso) return '';
-  var diff = new Date(iso) - Date.now();
-  if (diff <= 0) return 'resetting soon';
-  var h = Math.floor(diff / 3600000);
-  var m = Math.floor((diff % 3600000) / 60000);
+  var ms = new Date(iso) - Date.now();
+  if (isNaN(ms) || ms <= 0) return 'soon';
+  var h = Math.floor(ms / 3600e3), m = Math.floor((ms % 3600e3) / 60e3);
   return h > 0 ? ('in ' + h + 'h ' + m + 'm') : ('in ' + m + 'm');
+}
+function showToast(msg, type) {
+  var el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'toast ' + (type || 'success');
+  clearTimeout(el._t);
+  el._t = setTimeout(function () { el.className = 'toast'; }, 4200);
 }
 
 var FEATURE_LABELS = {
-  imageGen:    { label: 'Image Gen',    icon: '🖼️' },
-  codeMode:    { label: 'Code Mode',    icon: '💻' },
-  webSearch:   { label: 'Web Search',   icon: '🔍' },
-  websiteGen:  { label: 'Website Gen',  icon: '🌐' },
-  websiteEdit: { label: 'Website Edit', icon: '✏️' },
+  imageGen:    { label: 'Image generation' },
+  codeMode:    { label: 'Code mode' },
+  webSearch:   { label: 'Web search' },
+  websiteGen:  { label: 'Website build' },
+  websiteEdit: { label: 'Website edit' },
 };
 
 // ── Render status ──────────────────────────────────────────────────────────────
 function renderStatus(b) {
   b = b || {};
 
-  // Plan badge
   var badge = document.getElementById('plan-badge');
   if (badge) {
     var plan = (b.plan || 'free').toLowerCase();
-    badge.className = 'plan-badge ' + plan;
+    badge.className = 'px-badge' + (plan !== 'free' ? ' px-badge-accent' : '');
     badge.textContent = plan.toUpperCase();
   }
 
-  // Plan text
   var planText = document.getElementById('plan-status-text');
   if (planText) {
-    if (b.isUnlimited) {
-      planText.innerHTML = '<span style="color:#00d4ff">✨ Unlimited access active</span>';
-    } else {
-      planText.textContent = 'Active — free credits reset at midnight';
-    }
+    planText.textContent = b.isUnlimited
+      ? 'Unlimited access active'
+      : 'Active — free credits reset at midnight';
   }
 
-  // Credits
   var free = Number(b.freeCredits || 0);
   var paid = Number(b.paidCredits || 0);
   var total = free + paid;
@@ -388,14 +201,13 @@ function renderStatus(b) {
   if (cf) {
     var pct = freeDailyMax > 0 ? Math.min(100, Math.round((free / freeDailyMax) * 100)) : 0;
     cf.style.width = pct + '%';
-    cf.className = 'progress-fill' + (pct < 20 ? ' warning' : '');
+    cf.className = 'px-bar-fill' + (pct < 20 ? ' warning' : '');
   }
 
-  // Daily usage summary
   var dailyUsage = b.dailyUsage || {};
   var freeLimits = b.freeLimits || {};
   var totalUsed = 0, totalLimit = 0;
-  Object.keys(FEATURE_LABELS).forEach(function(key) {
+  Object.keys(FEATURE_LABELS).forEach(function (key) {
     var info = dailyUsage[key] || {};
     totalUsed  += Number(info.used  || 0);
     totalLimit += Number(info.limit || freeLimits[key] || 0);
@@ -405,25 +217,22 @@ function renderStatus(b) {
   if (dv) dv.textContent = totalUsed + ' / ' + totalLimit;
 
   var ds = document.getElementById('daily-sub');
-  if (ds) ds.textContent = 'features used today across all tools';
+  if (ds) ds.textContent = 'features used today';
 
   var df = document.getElementById('daily-fill');
   if (df) {
     var dpct = totalLimit > 0 ? Math.min(100, Math.round((totalUsed / totalLimit) * 100)) : 0;
     df.style.width = dpct + '%';
-    df.className = 'progress-fill' + (dpct >= 80 ? ' warning' : '');
+    df.className = 'px-bar-fill' + (dpct >= 80 ? ' warning' : '');
   }
 
-  // Renewal
   var rv = document.getElementById('renewal-val');
   var rs = document.getElementById('renewal-sub');
   if (rv) rv.textContent = b.freeResetAt ? fmtDate(b.freeResetAt) : 'Daily';
   if (rs) rs.textContent = b.freeResetAt ? ('Resets ' + timeUntil(b.freeResetAt)) : 'Free credits reset at midnight';
 
-  // Usage grid
   renderUsageGrid(dailyUsage, freeLimits);
 
-  // Hide error
   var se = document.getElementById('status-error');
   if (se) se.style.display = 'none';
 }
@@ -433,7 +242,7 @@ function renderUsageGrid(dailyUsage, freeLimits) {
   if (!grid) return;
   grid.innerHTML = '';
 
-  Object.keys(FEATURE_LABELS).forEach(function(key) {
+  Object.keys(FEATURE_LABELS).forEach(function (key) {
     var meta  = FEATURE_LABELS[key];
     var info  = dailyUsage[key] || {};
     var used  = Number(info.used  || 0);
@@ -443,25 +252,25 @@ function renderUsageGrid(dailyUsage, freeLimits) {
     var full  = pct >= 100;
 
     var item = document.createElement('div');
-    item.className = 'usage-item';
+    item.className = 'px-usage-item';
     item.innerHTML =
-      '<div class="u-label">' + meta.icon + ' ' + meta.label + '</div>' +
+      '<div class="u-label">' + meta.label + '</div>' +
       '<div class="u-val">' + used + ' / ' + limit + '</div>' +
       '<div class="u-bar"><div class="u-fill' + (full ? ' full' : '') + '" style="width:' + pct + '%"></div></div>' +
-      '<div class="u-note">' + (full ? '⚠️ Limit reached today' : (rem + ' remaining')) + '</div>';
+      '<div class="u-note">' + (full ? 'Limit reached today' : (rem + ' remaining')) + '</div>';
     grid.appendChild(item);
   });
 }
 
-// ── Load billing status ────────────────────────────────────────────────────────
+// ── Load status ────────────────────────────────────────────────────────────────
 function clearSkeletons() {
-  ['credits-val','daily-val','renewal-val'].forEach(function(id) {
+  ['credits-val', 'daily-val', 'renewal-val'].forEach(function (id) {
     var el = document.getElementById(id);
-    if (el && el.querySelector('.skel')) el.textContent = '—';
+    if (el && el.querySelector('.px-skel')) el.textContent = '—';
   });
-  ['credits-sub','daily-sub','renewal-sub','plan-status-text'].forEach(function(id) {
+  ['credits-sub', 'daily-sub', 'renewal-sub', 'plan-status-text'].forEach(function (id) {
     var el = document.getElementById(id);
-    if (el && el.querySelector('.skel')) el.textContent = '';
+    if (el && el.querySelector('.px-skel')) el.textContent = '';
   });
   var grid = document.getElementById('usage-grid');
   if (grid) grid.innerHTML = '';
@@ -471,16 +280,16 @@ function loadStatus() {
   var se = document.getElementById('status-error');
   if (se) se.style.display = 'none';
 
-  fetchWT('/api/billing/status').then(function(res) {
+  fetchWT('/api/billing/status').then(function (res) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
-  }).then(function(data) {
+  }).then(function (data) {
     if (data && data.success) {
       renderStatus(data.billing || {});
     } else {
       throw new Error('API error');
     }
-  }).catch(function(err) {
+  }).catch(function (err) {
     console.error('[Billing] status failed:', err.message || err);
     clearSkeletons();
     var se2 = document.getElementById('status-error');
@@ -490,11 +299,11 @@ function loadStatus() {
 
 // ── Load history ───────────────────────────────────────────────────────────────
 function loadHistory() {
-  var loadEl  = document.getElementById('history-loading');
-  var errEl   = document.getElementById('history-error');
-  var emptyEl = document.getElementById('history-empty');
-  var tableEl = document.getElementById('history-table-wrap');
-  var retryBtn= document.getElementById('history-retry-btn');
+  var loadEl   = document.getElementById('history-loading');
+  var errEl    = document.getElementById('history-error');
+  var emptyEl  = document.getElementById('history-empty');
+  var tableEl  = document.getElementById('history-table-wrap');
+  var retryBtn = document.getElementById('history-retry-btn');
 
   if (loadEl)  loadEl.style.display  = 'block';
   if (errEl)   errEl.style.display   = 'none';
@@ -502,10 +311,10 @@ function loadHistory() {
   if (tableEl) tableEl.style.display = 'none';
   if (retryBtn) retryBtn.style.display = 'none';
 
-  fetchWT('/api/billing/history?limit=30').then(function(res) {
+  fetchWT('/api/billing/history?limit=30').then(function (res) {
     if (!res.ok) throw new Error('HTTP ' + res.status);
     return res.json();
-  }).then(function(data) {
+  }).then(function (data) {
     if (loadEl) loadEl.style.display = 'none';
     if (!data || !data.success) throw new Error('API error');
 
@@ -521,69 +330,40 @@ function loadHistory() {
     tbody.innerHTML = '';
 
     var typeLabels = {
-      'debit':    '💸 Used',
-      'purchase': '💳 Purchased',
-      'refund':   '↩️ Refund',
-      'wallet':   '💰 Wallet',
-      'bonus':    '🎁 Bonus',
+      'debit':    'Used',
+      'purchase': 'Purchased',
+      'refund':   'Refund',
+      'wallet':   'Wallet',
+      'bonus':    'Bonus',
     };
 
-    history.forEach(function(tx) {
+    history.forEach(function (tx) {
       var type    = (tx.type || 'wallet').toLowerCase();
       var credits = Number(tx.credits || tx.amount || 0);
       var status  = (tx.status || 'completed').toLowerCase();
       var date    = fmtDateTime(tx.createdAt);
 
-      var label = typeLabels[type] || ('📄 ' + type.charAt(0).toUpperCase() + type.slice(1));
+      var label = typeLabels[type] || (type.charAt(0).toUpperCase() + type.slice(1));
       var credDisplay = type === 'debit'
-        ? '<span style="color:#fca5a5">−' + fmtNum(Math.abs(credits)) + '</span>'
-        : '<span style="color:#86efac">+' + fmtNum(Math.abs(credits)) + '</span>';
+        ? '<span class="px-txn-debit">−' + fmtNum(Math.abs(credits)) + '</span>'
+        : '<span class="px-txn-credit">+' + fmtNum(Math.abs(credits)) + '</span>';
 
       var tr = document.createElement('tr');
       tr.innerHTML =
         '<td>' + label + '</td>' +
         '<td>' + credDisplay + '</td>' +
         '<td><span class="status-pill ' + status + '">' + status + '</span></td>' +
-        '<td style="color:var(--text-muted)">' + date + '</td>';
+        '<td>' + date + '</td>';
       tbody.appendChild(tr);
     });
 
     if (tableEl) tableEl.style.display = 'block';
 
-  }).catch(function(err) {
+  }).catch(function (err) {
     console.error('[Billing] history failed:', err.message || err);
     if (loadEl)  loadEl.style.display  = 'none';
     if (errEl)   errEl.style.display   = 'block';
-    if (retryBtn) retryBtn.style.display = 'inline-block';
-  });
-}
-
-// ── Cancel ─────────────────────────────────────────────────────────────────────
-function toggleCancel() {
-  var cc = document.getElementById('cancel-confirm');
-  if (!cc) return;
-  cc.style.display = cc.style.display === 'block' ? 'none' : 'block';
-}
-
-function doCancel() {
-  var btn = document.getElementById('confirm-cancel-btn');
-  if (!btn || btn.disabled) return;
-  btn.disabled = true;
-  btn.textContent = 'Cancelling…';
-
-  fetchWT('/api/billing/cancel', { method: 'POST' }).then(function(res) {
-    return res.json().then(function(d) { return { ok: res.ok, data: d }; });
-  }).then(function(r) {
-    if (r.ok && r.data && r.data.success) {
-      showToast('Subscription cancelled. Access continues until period end.', 'success');
-      toggleCancel();
-      setTimeout(function() { location.reload(); }, 2200);
-    } else {
-      throw new Error((r.data && r.data.message) || 'Cancel failed');
-    }
-  }).catch(function(err) {
-    showToast('Could not cancel: ' + (err.message || 'Unknown error'), 'error');
-    if (btn) { btn.disabled = false; btn.textContent = 'Yes, cancel subscription'; }
+    if (retryBtn) retryBtn.style.display = 'inline-flex';
   });
 }
 
@@ -592,6 +372,5 @@ loadStatus();
 loadHistory();
 </script>
 
-<%- include('partials/footer') %>
 </body>
 </html>

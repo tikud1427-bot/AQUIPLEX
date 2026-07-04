@@ -1,57 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sign Up | AIDEX</title>
-
-<link rel="stylesheet" href="/css/styles.css">
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create account — Aquiplex</title>
+  <link rel="icon" href="/logo/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/css/platform.css">
 </head>
-
-<body>
+<body class="px-page">
 
 <%- include('partials/nav') %>
 
-<div class="auth-wrapper">
+<main class="px-auth-wrap">
+  <div class="px-auth-card">
+    <h1>Create your account</h1>
+    <p class="px-auth-sub">Free credits every day. No card required.</p>
 
-  <div class="auth-card">
-
-    <h2>Create account</h2>
-    <p class="auth-subtitle">Start building your AI workspace</p>
-
-    <!-- 🔥 GOOGLE SIGNUP -->
-    <a href="/auth/google" class="google-btn">
-      <img src="https://developers.google.com/identity/images/g-logo.png" />
+    <a href="/auth/google" class="px-auth-google">
+      <img src="https://developers.google.com/identity/images/g-logo.png" alt="">
       Sign up with Google
     </a>
 
-    <!-- Divider -->
-    <div class="auth-divider">
-      <span>or use email</span>
-    </div>
+    <div class="px-auth-divider"><span>or use email</span></div>
 
     <% if (typeof error !== 'undefined' && error) { %>
-      <p class="auth-error"><%= error %></p>
+      <p class="px-auth-error"><%= error %></p>
     <% } %>
 
-    <!-- EMAIL SIGNUP -->
-    <form action="/signup" method="POST" class="auth-form">
-      <input type="email" name="email" placeholder="Email address" required>
-      <input type="password" name="password" placeholder="Password" required>
-
-      <button type="submit" class="auth-btn">Create Account</button>
+    <form action="/signup" method="POST" class="px-auth-form">
+      <div>
+        <label class="px-label" for="email">Email</label>
+        <input class="px-input" id="email" type="email" name="email" autocomplete="email" required>
+      </div>
+      <div>
+        <label class="px-label" for="password">Password</label>
+        <input class="px-input" id="password" type="password" name="password" autocomplete="new-password" required>
+      </div>
+      <button type="submit" class="px-btn px-btn-primary px-btn-lg" style="width:100%; margin-top:6px;">Create account</button>
     </form>
 
-    <p class="auth-switch">
-      Already have an account?
-      <a href="/login">Login</a>
-    </p>
-
+    <p class="px-auth-switch">Already have an account? <a href="/login">Log in</a></p>
   </div>
-
-</div>
+</main>
 
 </body>
 </html>

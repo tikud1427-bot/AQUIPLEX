@@ -1,9 +1,9 @@
-const CACHE_NAME = "aquiplex-v1";
+const CACHE_NAME = "aquiplex-v2";
 
 const urlsToCache = [
   "/",
   "/index.html",
-  "/css/styles.css",
+  "/css/platform.css",
   "/logo/icon-192.png",
   "/logo/icon-512.png"
 ];

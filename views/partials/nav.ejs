@@ -1,352 +1,147 @@
-<header class="main-header">
-  <div class="header-container">
+<link rel="stylesheet" href="/css/platform.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;550;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500&display=swap" rel="stylesheet">
 
-    <!-- LOGO -->
-    <a href="/" class="logo">
-      <img src="/logo/logo.png" alt="AQUIPLEX" class="logo-img">
-      <span class="logo-text">AQUIPLEX</span>
+<header class="px-nav">
+  <div class="px-nav-inner">
+
+    <a href="/" class="px-nav-logo" aria-label="Aquiplex home">
+      <img src="/logo/logo.png" alt="">
+      <span class="px-nav-wordmark">AQUIPLEX</span>
     </a>
 
-    <!-- CENTER NAV (DESKTOP) -->
-    <nav class="nav-links" aria-label="Main navigation">
-      <a href="/aqua" class="aqua-ai-link">
-        <img src="/logo/aqua-favicon.png" alt="">
-        Aqua AI
-      </a>
-      <a href="/bundles">Projects</a>
-      <a href="/pricing">Pricing</a>
-
-      <!-- More dropdown -->
-      <div class="nav-more">
-        <span>More ▾</span>
-        <div class="dropdown">
-          <a href="/tools">🔧 AI Utilities</a>
-          <a href="/trending">🔥 Trending</a>
-          <a href="/about">About</a>
-          <a href="/submit">Submit a Tool</a>
+    <nav class="px-nav-links" aria-label="Main navigation">
+      <a href="/aqua" class="px-nav-link">Aqua AI</a>
+      <a href="/bundles" class="px-nav-link">Projects</a>
+      <a href="/pricing" class="px-nav-link">Pricing</a>
+      <div class="px-nav-more" id="pxNavMore">
+        <button type="button" onclick="pxToggleMore(event)" aria-expanded="false" aria-controls="pxMoreDropdown">
+          Company
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="px-nav-dropdown" id="pxMoreDropdown" role="menu">
+          <a href="/about" role="menuitem">About</a>
+          <a href="/founders" role="menuitem">Founders</a>
+          <a href="/blogs" role="menuitem">Blog</a>
         </div>
       </div>
     </nav>
 
-    <!-- RIGHT ACTIONS -->
-    <div class="header-actions">
+    <div class="px-nav-actions">
       <% if (typeof user !== "undefined" && user) { %>
 
-        <!-- Plan badge -->
         <% if (user.plan && user.plan !== 'free') { %>
-          <a href="/billing" class="nav-plan-badge nav-plan-<%= user.plan %>"><%= user.plan.toUpperCase() %></a>
+          <a href="/billing" class="px-nav-plan plan-<%= user.plan %>"><%= user.plan.toUpperCase() %></a>
         <% } else { %>
-          <a href="/pricing" class="nav-upgrade-link">⚡ Upgrade</a>
+          <a href="/pricing" class="px-nav-plan">Upgrade</a>
         <% } %>
 
-        <!-- Primary workspace CTA -->
-        <a href="/aqua" class="btn primary nav-workspace-cta" aria-label="Open AQUA">
-          ⚡ Open AQUA
-        </a>
+        <a href="/aqua" class="px-btn px-btn-primary px-btn-sm">Open Aqua</a>
 
-        <!-- User dropdown -->
-        <div class="nav-user-menu">
-          <button class="nav-user-btn" onclick="toggleUserMenu(event)" aria-label="User menu" aria-expanded="false" aria-controls="navUserDropdown">
-            <span class="nav-avatar"><%= (user.username || user.email || 'U')[0].toUpperCase() %></span>
+        <div class="px-nav-user">
+          <button class="px-nav-avatar-btn" onclick="toggleUserMenu(event)" aria-label="Account menu" aria-expanded="false" aria-controls="navUserDropdown">
+            <%= (user.username || user.email || 'U')[0].toUpperCase() %>
           </button>
-          <div class="nav-user-dropdown" id="navUserDropdown" role="menu">
-            <div class="nav-user-email"><%= user.email || user.username %></div>
-            <div class="nav-user-plan-row">
-              <span class="nav-inline-badge nav-plan-<%= user.plan || 'free' %>"><%= (user.plan || 'free').toUpperCase() %></span>
+          <div class="px-nav-user-dropdown" id="navUserDropdown" role="menu">
+            <div class="px-nav-user-meta">
+              <div class="px-nav-user-email"><%= user.email || user.username %></div>
             </div>
-            <a href="/billing" class="nav-dropdown-item" role="menuitem">💳 Billing & Credits</a>
-            <a href="/pricing" class="nav-dropdown-item upgrade" role="menuitem">⚡ Upgrade Plan</a>
-            <div class="nav-dropdown-divider"></div>
-            <a href="/logout" class="nav-dropdown-item" role="menuitem">Logout</a>
+            <div class="px-nav-user-planrow">
+              <span class="px-badge <%= (user.plan && user.plan !== 'free') ? 'px-badge-accent' : '' %>"><%= (user.plan || 'free').toUpperCase() %></span>
+            </div>
+            <div class="px-nav-divider"></div>
+            <a href="/billing" class="px-nav-item" role="menuitem">Billing &amp; credits</a>
+            <a href="/wallet" class="px-nav-item" role="menuitem">Wallet</a>
+            <a href="/pricing" class="px-nav-item" role="menuitem">Upgrade plan</a>
+            <div class="px-nav-divider"></div>
+            <a href="/logout" class="px-nav-item" role="menuitem">Log out</a>
           </div>
         </div>
 
       <% } else { %>
-        <a href="/login" class="btn ghost">Login</a>
-        <a href="/signup" class="btn primary nav-get-started">Get Started</a>
+        <a href="/login" class="px-btn px-btn-ghost px-btn-sm">Log in</a>
+        <a href="/signup" class="px-btn px-btn-primary px-btn-sm">Get started</a>
       <% } %>
-    </div>
 
-    <!-- MOBILE TOGGLE -->
-    <button class="menu-toggle" onclick="toggleMenu()" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">☰</button>
+      <button class="px-nav-burger" onclick="toggleMenu()" aria-label="Open menu" aria-expanded="false" aria-controls="mobileMenu">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 4h12M2 8h12M2 12h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      </button>
+    </div>
 
   </div>
 
-  <!-- MOBILE MENU -->
-  <div class="mobile-menu" id="mobileMenu" role="navigation" aria-label="Mobile navigation">
-
+  <div class="px-nav-mobile" id="mobileMenu" role="navigation" aria-label="Mobile navigation">
     <% if (typeof user !== "undefined" && user) { %>
-      <a href="/aqua" class="btn ai-btn mobile-primary-cta">⚡ Open Aqua AI</a>
+      <a href="/aqua" class="px-btn px-btn-primary">Open Aqua</a>
       <% if (user.plan === 'free' || !user.plan) { %>
-        <a href="/pricing" class="btn mobile-upgrade-cta">✦ Upgrade to Pro</a>
+        <a href="/pricing" class="px-btn px-btn-secondary">Upgrade plan</a>
       <% } else { %>
-        <a href="/billing" class="btn mobile-upgrade-cta">💳 <%= (user.plan || 'free').toUpperCase() %> Plan</a>
+        <a href="/billing" class="px-btn px-btn-secondary"><%= (user.plan || 'free').toUpperCase() %> plan · Billing</a>
       <% } %>
     <% } else { %>
-      <a href="/aqua" class="btn ai-btn mobile-primary-cta">⚡ Try Aqua AI Free</a>
-      <a href="/signup" class="btn primary mobile-workspace-cta">Get Started</a>
-      <a href="/login" style="text-align:center;color:#7c8db5;font-size:0.9rem;">Already have an account? Login</a>
+      <a href="/signup" class="px-btn px-btn-primary">Get started</a>
+      <a href="/login" class="px-btn px-btn-secondary">Log in</a>
     <% } %>
 
-    <div class="mobile-nav-divider"></div>
-
+    <div class="px-nav-mobile-divider"></div>
     <a href="/aqua">Aqua AI</a>
     <a href="/bundles">Projects</a>
     <a href="/pricing">Pricing</a>
-
-    <div class="mobile-nav-divider"></div>
-
-    <a href="/tools" style="color:#7c8db5;font-size:0.88rem;">🔧 AI Utilities</a>
-    <a href="/trending" style="color:#7c8db5;font-size:0.88rem;">🔥 Trending</a>
-    <a href="/about" style="color:#7c8db5;font-size:0.88rem;">About</a>
-
+    <div class="px-nav-mobile-divider"></div>
+    <a href="/about">About</a>
+    <a href="/founders">Founders</a>
+    <a href="/blogs">Blog</a>
     <% if (typeof user !== "undefined" && user) { %>
-      <a href="/logout" style="color:#7c8db5;font-size:0.88rem;">Logout</a>
+      <div class="px-nav-mobile-divider"></div>
+      <a href="/logout">Log out</a>
     <% } %>
-
   </div>
 </header>
 
-<style>
-/* ── GLOBAL NAV OVERFLOW PROTECTION ── */
-.main-header { overflow: visible; }
-.header-container {
-  flex-wrap: nowrap;
-  min-width: 0;
-  gap: 8px;
-}
-.logo {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex-shrink: 1;
-  text-decoration: none;
-  color: inherit;
-}
-.logo-img {
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  object-fit: contain;
-}
-.logo-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-size: 20px;
-  font-weight: 700;
-  color: #38bdf8;
-}
-
-/* ── Shrink actions on mid-size screens ── */
-@media (max-width: 900px) and (min-width: 769px) {
-  .nav-workspace-cta { padding: 7px 12px !important; font-size: 12px !important; }
-  .nav-upgrade-link { font-size: 0.78rem !important; }
-  .nav-plan-badge { font-size: 0.65rem !important; }
-}
-
-/* ── Mobile menu max-height + scroll ── */
-.mobile-menu {
-  position: absolute;
-  top: 70px;
-  left: 0;
-  width: 100%;
-  max-height: calc(100vh - 70px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  box-sizing: border-box;
-  z-index: 9998;
-  -webkit-overflow-scrolling: touch;
-}
-
-/* ── Touch-friendly tap targets in mobile menu ── */
-.mobile-menu a,
-.mobile-menu .btn {
-  min-height: 44px;
-  display: flex !important;
-  align-items: center;
-  box-sizing: border-box;
-  width: 100%;
-}
-
-/* ── Prevent logo text overflow on very small screens ── */
-@media (max-width: 375px) {
-  .logo-text { font-size: 16px; }
-  .logo-img  { width: 24px; height: 24px; }
-}
-@media (max-width: 320px) {
-  .logo-text { font-size: 14px; }
-}
-
-/* ── NAV WORKSPACE CTA ── */
-.nav-workspace-cta {
-  background: linear-gradient(135deg, #38bdf8, #6366f1) !important;
-  color: #fff !important;
-  border: none !important;
-  border-radius: 8px !important;
-  padding: 8px 18px !important;
-  font-weight: 700 !important;
-  letter-spacing: 0.01em !important;
-  box-shadow: 0 0 14px rgba(56,189,248,0.3) !important;
-  transition: box-shadow 0.2s, transform 0.15s !important;
-  white-space: nowrap;
-}
-.nav-workspace-cta:hover {
-  box-shadow: 0 0 24px rgba(56,189,248,0.5) !important;
-  transform: translateY(-1px) !important;
-}
-
-/* ── GET STARTED CTA (logged out) ── */
-.nav-get-started {
-  background: linear-gradient(135deg, #38bdf8, #6366f1) !important;
-  color: #fff !important;
-  border: none !important;
-  border-radius: 8px !important;
-  padding: 9px 20px !important;
-  font-weight: 700 !important;
-  box-shadow: 0 0 14px rgba(56,189,248,0.3) !important;
-  transition: box-shadow 0.2s, transform 0.15s !important;
-  white-space: nowrap;
-}
-.nav-get-started:hover {
-  box-shadow: 0 0 24px rgba(56,189,248,0.5) !important;
-  transform: translateY(-1px) !important;
-}
-
-/* ── UPGRADE LINK ── */
-.nav-upgrade-link {
-  color: #f59e0b !important;
-  font-weight: 700 !important;
-  font-size: 0.85rem !important;
-}
-
-/* ── PLAN BADGES ── */
-.nav-plan-badge {
-  font-size: 0.72rem !important;
-  font-weight: 700 !important;
-  padding: 3px 10px !important;
-  border-radius: 999px !important;
-  text-decoration: none !important;
-}
-.nav-plan-starter { background: rgba(0,212,255,0.12); color: #00d4ff; border: 1px solid rgba(0,212,255,0.3); }
-.nav-plan-pro     { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.4); }
-.nav-plan-team    { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
-
-/* ── MOBILE CTAs ── */
-.mobile-primary-cta {
-  background: linear-gradient(135deg, #38bdf8, #6366f1) !important;
-  color: #fff !important;
-  text-align: center; width: 100%; padding: 14px 0 !important;
-  font-size: 1rem !important; border-radius: 10px !important;
-  display: block !important; margin-bottom: 8px !important;
-  font-weight: 700 !important;
-  box-shadow: 0 0 18px rgba(56,189,248,0.3) !important;
-}
-.mobile-workspace-cta {
-  background: rgba(255,255,255,0.05) !important;
-  color: var(--text-primary, #eef2ff) !important;
-  border: 1px solid rgba(255,255,255,0.1) !important;
-  text-align: center; width: 100%; padding: 12px 0 !important;
-  font-size: 0.95rem !important; border-radius: 10px !important;
-  display: block !important; margin-bottom: 8px !important;
-  font-weight: 600 !important;
-}
-.mobile-upgrade-cta {
-  background: rgba(245,158,11,0.08) !important;
-  color: #f59e0b !important;
-  border: 1px solid rgba(245,158,11,0.25) !important;
-  text-align: center; width: 100%; padding: 11px 0 !important;
-  font-size: 0.88rem !important; border-radius: 10px !important;
-  display: block !important; margin-bottom: 4px !important;
-  font-weight: 700 !important;
-}
-.mobile-nav-divider {
-  height: 1px; background: rgba(255,255,255,0.06);
-  margin: 12px 0;
-}
-
-/* ── AQUA AI LINK ── */
-.aqua-ai-link { display: flex; align-items: center; gap: 6px; }
-.aqua-ai-link img { width: 15px; height: 15px; object-fit: contain; filter: drop-shadow(0 0 4px rgba(56,189,248,0.4)); }
-.aqua-ai-link:hover img { filter: drop-shadow(0 0 8px rgba(56,189,248,0.7)); }
-
-/* ── USER MENU ── */
-.nav-user-menu { position: relative; }
-.nav-user-btn {
-  background: none; border: 1px solid rgba(255,255,255,0.12); border-radius: 50%;
-  width: 34px; height: 34px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  transition: border-color 0.2s;
-}
-.nav-user-btn:hover { border-color: rgba(56,189,248,0.5); }
-.nav-avatar {
-  width: 26px; height: 26px; border-radius: 50%;
-  background: linear-gradient(135deg, #38bdf8, #6366f1);
-  color: #fff; font-size: 0.72rem; font-weight: 700;
-  display: flex; align-items: center; justify-content: center;
-}
-.nav-user-dropdown {
-  display: none; position: absolute; top: calc(100% + 10px); right: 0;
-  background: #0f0f1e; border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 14px; min-width: 200px; padding: 8px;
-  box-shadow: 0 16px 48px rgba(0,0,0,0.55); z-index: 9999;
-}
-.nav-user-dropdown.open { display: block; }
-.nav-user-email { padding: 8px 12px 4px; font-size: 0.78rem; color: rgba(255,255,255,0.45); word-break: break-all; }
-.nav-user-plan-row { padding: 4px 12px 10px; }
-.nav-inline-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; display: inline-block; }
-.nav-plan-free    { background: rgba(255,255,255,0.08); color: #aaa; }
-.nav-plan-starter { background: rgba(0,212,255,0.12); color: #00d4ff; border: 1px solid rgba(0,212,255,0.3); }
-.nav-plan-pro     { background: rgba(124,58,237,0.15); color: #a78bfa; border: 1px solid rgba(124,58,237,0.4); }
-.nav-plan-team    { background: rgba(34,197,94,0.12); color: #86efac; border: 1px solid rgba(34,197,94,0.3); }
-.nav-dropdown-item {
-  display: block; padding: 9px 12px; border-radius: 8px;
-  font-size: 0.85rem; color: rgba(255,255,255,0.72);
-  text-decoration: none; transition: background 0.15s;
-}
-.nav-dropdown-item:hover { background: rgba(255,255,255,0.07); color: #fff; }
-.nav-dropdown-item.upgrade { color: #f59e0b; font-weight: 600; }
-.nav-dropdown-item.upgrade:hover { background: rgba(245,158,11,0.08); }
-.nav-dropdown-divider { height: 1px; background: rgba(255,255,255,0.07); margin: 6px 0; }
-
-.mobile-menu { box-sizing: border-box; overflow-x: hidden; }
-</style>
-
 <script>
 function toggleMenu() {
-  const menu   = document.getElementById("mobileMenu");
-  const toggle = document.querySelector(".menu-toggle");
+  var menu = document.getElementById("mobileMenu");
+  var toggle = document.querySelector(".px-nav-burger");
   if (!menu) return;
-  const isOpen = menu.classList.toggle("active");
+  var isOpen = menu.classList.toggle("open");
   if (toggle) toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
 }
-
-document.addEventListener("click", function(e) {
-  const menu   = document.getElementById("mobileMenu");
-  const toggle = document.querySelector(".menu-toggle");
-  if (!menu || !menu.classList.contains("active")) return;
-  if (!menu.contains(e.target) && !toggle.contains(e.target)) {
-    menu.classList.remove("active");
-    toggle.setAttribute("aria-expanded", "false");
-  }
-});
-
 function toggleUserMenu(e) {
   e.stopPropagation();
-  const dd  = document.getElementById("navUserDropdown");
-  const btn = e.currentTarget;
+  var dd = document.getElementById("navUserDropdown");
   if (!dd) return;
-  const isOpen = dd.classList.toggle("open");
-  btn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  var isOpen = dd.classList.toggle("open");
+  e.currentTarget.setAttribute("aria-expanded", isOpen ? "true" : "false");
 }
-
-document.addEventListener("click", function(e) {
-  const dd = document.getElementById("navUserDropdown");
-  if (dd && dd.classList.contains("open")) {
-    if (!dd.contains(e.target) && !e.target.closest(".nav-user-btn")) {
-      dd.classList.remove("open");
-    }
+function pxToggleMore(e) {
+  e.stopPropagation();
+  var wrap = document.getElementById("pxNavMore");
+  if (!wrap) return;
+  var isOpen = wrap.classList.toggle("open");
+  e.currentTarget.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+document.addEventListener("click", function (e) {
+  var menu = document.getElementById("mobileMenu");
+  var toggle = document.querySelector(".px-nav-burger");
+  if (menu && menu.classList.contains("open") && !menu.contains(e.target) && toggle && !toggle.contains(e.target)) {
+    menu.classList.remove("open");
+    toggle.setAttribute("aria-expanded", "false");
   }
+  var dd = document.getElementById("navUserDropdown");
+  if (dd && dd.classList.contains("open") && !dd.contains(e.target) && !e.target.closest(".px-nav-avatar-btn")) {
+    dd.classList.remove("open");
+  }
+  var more = document.getElementById("pxNavMore");
+  if (more && more.classList.contains("open") && !more.contains(e.target)) {
+    more.classList.remove("open");
+  }
+});
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "Escape") return;
+  ["mobileMenu", "navUserDropdown", "pxNavMore"].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.classList.remove("open");
+  });
 });
 </script>

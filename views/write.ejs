@@ -1,18 +1,41 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Write Blog</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Write a post — Aquiplex</title>
+  <link rel="icon" href="/logo/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/css/platform.css">
 </head>
-<body>
+<body class="px-page">
 
-<h1>Write a Blog</h1>
+<%- include("partials/nav") %>
 
-<form method="POST" action="/write">
-  <input type="text" name="title" placeholder="Title" required><br><br>
-  <textarea name="content" placeholder="Write your blog..." required></textarea><br><br>
-  <button type="submit">Publish</button>
-</form>
+<main class="px-account">
+  <div class="px-narrow" style="max-width:720px;">
+    <div class="px-dash-head">
+      <h1>Write a post</h1>
+      <p>Share notes, learnings, or updates on the Aquiplex blog.</p>
+    </div>
+
+    <form method="POST" action="/write" class="px-card px-card-pad" style="display:flex; flex-direction:column; gap:16px;">
+      <div>
+        <label class="px-label" for="title">Title</label>
+        <input class="px-input" id="title" type="text" name="title" placeholder="A clear, specific title" required>
+      </div>
+      <div>
+        <label class="px-label" for="content">Content</label>
+        <textarea class="px-textarea" id="content" name="content" rows="14" placeholder="Write your post…" required style="resize:vertical; min-height:260px;"></textarea>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button type="submit" class="px-btn px-btn-primary">Publish</button>
+        <a href="/blogs" class="px-btn px-btn-ghost">Cancel</a>
+      </div>
+    </form>
+  </div>
+</main>
+
+<%- include("partials/footer") %>
 
 </body>
 </html>

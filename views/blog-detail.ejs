@@ -1,17 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <title><%= blog.title %> | Aquiplex Blog</title>
-
- <meta name="description" content="<%= (blog.description || 'Aquiplex blog').replace(/"/g, '') %>">
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Open Graph -->
+  <title><%= blog.title %> — Aquiplex Blog</title>
+  <meta name="description" content="<%= (blog.description || 'Aquiplex blog').replace(/"/g, '') %>">
   <meta property="og:title" content="<%= blog.title %>">
   <meta property="og:description" content="<%= (blog.description || 'Aquiplex blog').replace(/"/g, '') %>">
   <meta property="og:type" content="article">
-
-  <!-- Basic schema -->
   <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -24,77 +20,26 @@
   "datePublished": "<%= blog.createdAt %>",
   "description": "<%= (blog.description || '').replace(/"/g, '\\"') %>"
 }
-</script>
-
-  <style>
-    body {
-      background: #0b0b0b;
-      color: white;
-      font-family: Inter, sans-serif;
-      margin: 0;
-    }
-
-    .container {
-      max-width: 800px;
-      margin: auto;
-      padding: 40px 16px;
-    }
-
-    h1 { font-size: 2rem; }
-
-    .meta {
-      color: #888;
-      margin-bottom: 20px;
-    }
-
-    .author {
-      margin-top: 10px;
-      color: #4da6ff;
-    }
-
-    .content p {
-      margin-bottom: 16px;
-      color: #ccc;
-      line-height: 1.7;
-    }
-
-    .cta {
-      margin-top: 40px;
-      padding: 20px;
-      background: #111;
-      border-radius: 12px;
-      text-align: center;
-    }
-  </style>
+  </script>
+  <link rel="icon" href="/logo/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/css/platform.css">
 </head>
+<body class="px-page">
 
-<body>
+<%- include("partials/nav") %>
 
-<div class="container">
-  <h1><%= blog.title %></h1>
-
-  <div class="meta">
-    <%= blog.readTime || "2 min read" %> • <%= blog.createdAt || "Today" %>
-  </div>
-
-  <% if (blog.author) { %>
-    <div class="author">
-      ✍️ <%= blog.author %>
-      <% if (blog.link) { %>
-        • <a href="<%= blog.link %>" target="_blank">Profile</a>
-      <% } %>
+<main style="padding:132px 0 120px;">
+  <article class="px-prose">
+    <a href="/blogs" class="px-btn px-btn-ghost px-btn-sm" style="margin-bottom:26px;">← All posts</a>
+    <h1><%= blog.title %></h1>
+    <div class="px-blog-meta" style="margin-bottom:36px;">
+      <%= blog.readTime %> · <%= blog.createdAt %><% if (blog.author) { %> · <%= blog.author %><% } %>
     </div>
-  <% } %>
+    <div class="px-prose-body"><%= blog.content %></div>
+  </article>
+</main>
 
-  <div class="content">
-    <%- blog.content %>
-  </div>
-
-  <div class="cta">
-    <p>Build faster with Aquiplex</p>
-    <a href="/aqua">Start Now →</a>
-  </div>
-</div>
+<%- include("partials/footer") %>
 
 </body>
 </html>

@@ -371,155 +371,33 @@ app.get("/landing", async (req, res) => {
   res.render("landing");
 });
 
-app.get("/home", async (req, res) => {
+app.get("/home", requireLogin, async (req, res) => {
   try {
-    const tools         = await Tool.find({ status: { $in: ["approved", null, undefined] } }).limit(12).lean();
-    const allTools      = await Tool.find({ status: { $in: ["approved", null, undefined] } }).lean();
-    const trendingTools = await getTrendingTools(10);
-    const trendingIds   = trendingTools.map((t) => t._id.toString());
-    res.render("home", { tools: tools || [], trendingIds: trendingIds || [], allTools: allTools || [] });
+    // Workspace home: the user's own recent projects. Conversations,
+    // workspaces, and usage are fetched client-side from existing APIs.
+    const bundles = await Bundle.find({ userId: req.session.userId })
+      .sort({ updatedAt: -1, createdAt: -1 })
+      .limit(5)
+      .select("title status steps createdAt")
+      .lean();
+    res.render("home", { bundles: bundles || [] });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error loading home");
+    res.render("home", { bundles: [] });
   }
 });
 
-app.get("/tools", async (req, res) => {
-  try {
-    const searchQuery = req.query.q;
-    let tools = await Tool.find({ status: { $in: ["approved", null, undefined] } }).lean();
+// ── Retired marketplace surface ───────────────────────────────────────────────
+// Aquiplex is an AI Operating System built around Aqua — not a tools directory.
+// The old directory URLs stay alive (no dead links, SEO-safe 301s) but resolve
+// into the product. Backend tool APIs (/api/tools/*, /visit/:id, admin review)
+// remain untouched.
+const marketplaceRedirect = (req, res) =>
+  res.redirect(301, req.session && req.session.userId ? "/home" : "/landing");
 
-    if (searchQuery) {
-      let aiData;
-      try {
-        const aiRes = await axios.post(
-          "https://api.groq.com/openai/v1/chat/completions",
-          {
-            model: "llama-3.1-8b-instant",
-            messages: [
-              {
-                role: "system",
-                content: `Convert user query into JSON: {"intent":"","keywords":[],"categories":[]}. Return ONLY JSON.`,
-              },
-              { role: "user", content: searchQuery },
-            ],
-            temperature: 0.3,
-          },
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            timeout: 8000,
-          }
-        );
+app.get("/tools", marketplaceRedirect);
 
-        let text = aiRes.data.choices[0].message.content;
-        text = text.replace(/```json|```/g, "").trim();
-
-        const match = text.match(/\{[\s\S]*\}/);
-        if (match) aiData = JSON.parse(match[0]);
-        else throw new Error("No JSON");
-
-      } catch {
-        aiData = { intent: searchQuery, keywords: [searchQuery], categories: [] };
-      }
-
-      tools = tools
-        .map((tool) => {
-          let score = 0;
-
-          const name = (tool.name || "").toLowerCase();
-          const desc = (tool.description || "").toLowerCase();
-          const cat  = (tool.category || "").toLowerCase();
-
-          const keywords = [...(aiData.keywords || []), aiData.intent]
-            .map((k) => (k || "").toLowerCase())
-            .filter(Boolean);
-
-          keywords.forEach((k) => {
-            if (name.includes(k)) score += 5;
-            if (desc.includes(k)) score += 3;
-            if (cat.includes(k))  score += 4;
-          });
-
-          return { ...tool, score };
-        })
-        .filter((t) => t.score > 0)
-        .sort((a, b) => b.score - a.score);
-    }
-
-    // Categories from all tools (not just filtered)
-    const allToolsForCats = searchQuery ? await Tool.find({ status: { $in: ["approved", null, undefined] } }).lean() : tools;
-    const categories = [...new Set(allToolsForCats.map(t => t.category).filter(Boolean))].sort();
-
-    // Trending IDs
-    const trendingTools = await getTrendingTools(10);
-    const trendingIds   = new Set(trendingTools.map(t => t._id.toString()));
-
-    // AI recommended: top matching query OR top liked/clicked
-    let recommended = [];
-    try {
-      if (searchQuery) {
-        recommended = tools.slice(0, 4).map(t => ({
-          _id: t._id, name: t.name, url: t.url, category: t.category,
-          logo: t.logo, description: t.description,
-          isTrending: trendingIds.has(t._id.toString()),
-        }));
-      } else {
-        const top = await Tool.find({ status: { $in: ["approved", null, undefined] } }).sort({ likes: -1, clicks: -1 }).limit(4).lean();
-        recommended = top.map(t => ({
-          _id: t._id, name: t.name, url: t.url, category: t.category,
-          logo: t.logo, description: t.description,
-          isTrending: trendingIds.has(t._id.toString()),
-        }));
-      }
-    } catch { recommended = []; }
-
-    // Annotate tools with badges
-    const nowMs = Date.now();
-    const toolsAnnotated = tools.map(t => ({
-      ...t,
-      isTrending: trendingIds.has(t._id.toString()),
-      isNew: t.createdAt && (nowMs - new Date(t.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000,
-      isPopular: (t.likes || 0) > 10,
-    }));
-
-    res.render("tools", {
-      tools: toolsAnnotated,
-      searchQuery: searchQuery || "",
-      categories,
-      trendingIds: [...trendingIds],
-      recommended,
-      categoryFilter: req.query.cat || "",
-    });
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error loading tools");
-  }
-});
-
-app.get("/tools/:id", async (req, res) => {
-  try {
-    const tool = await Tool.findById(req.params.id).lean();
-
-    let aiInsights = null;
-
-    try {
-      const aiRes = await generateAI([
-        { role: "system", content: "Give short insights about this AI tool." },
-        { role: "user", content: `${tool.name}: ${tool.description}` }
-      ]);
-      aiInsights = aiRes;
-    } catch {}
-
-    res.render("tool-details", { tool, aiInsights });
-
-  } catch (err) {
-    res.status(500).send("Error loading tool");
-  }
-});
+app.get("/tools/:id", marketplaceRedirect);
 
 app.get("/bundles", (req, res) => res.render("bundles"));
 
@@ -709,17 +587,9 @@ app.post("/api/tools/:id/like", async (req, res) => {
   res.json({ likes: tool.likes, liked: true });
 });
 
-app.get("/trending", async (req, res) => {
-  try {
-    const tools = await getTrendingTools(20);
-    res.render("trending", { tools });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error loading trending page");
-  }
-});
+app.get("/trending", marketplaceRedirect);
 
-app.get("/submit", (req, res) => res.render("submit"));
+app.get("/submit", marketplaceRedirect);
 
 app.post("/submit", upload.single("logo"), async (req, res) => {
   try {
@@ -743,10 +613,10 @@ app.post("/submit", upload.single("logo"), async (req, res) => {
     }).save();
 
     res.send(`
-      <html><head><meta http-equiv="refresh" content="3;url=/tools"></head>
+      <html><head><meta http-equiv="refresh" content="3;url=/home"></head>
       <body style="font-family:sans-serif;text-align:center;padding:4rem">
-        <h2>✅ Tool submitted!</h2>
-        <p>Your tool is under review and will appear once approved. Redirecting…</p>
+        <h2>Submission received</h2>
+        <p>Thanks — your submission is under review. Redirecting to your workspace…</p>
       </body></html>
     `);
   } catch (err) {
@@ -1224,25 +1094,8 @@ app.get("/billing", async (req, res) => {
   }
 });
 
-// ── Categories page ────────────────────────────────────────────────────────────
-app.get("/categories", async (req, res) => {
-  try {
-    const allTools = await Tool.find({ status: { $in: ["approved", null, undefined] } }).lean();
-    const catMap = {};
-    allTools.forEach((t) => {
-      const cat = t.category || "Uncategorized";
-      if (!catMap[cat]) catMap[cat] = 0;
-      catMap[cat]++;
-    });
-    const categories = Object.entries(catMap)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count);
-    res.render("categories", { categories });
-  } catch (err) {
-    console.error("[categories]", err.message);
-    res.status(500).send("Error loading categories");
-  }
-});
+// ── Categories page (retired marketplace surface) ─────────────────────────────
+app.get("/categories", marketplaceRedirect);
 
 // ═════════════════════════════════════════════════════════════════════════════
 // ERROR HANDLERS

@@ -10,40 +10,40 @@
    Dark theme:  Claude Dark / ChatGPT Dark / Raycast / Vercel Dark
    ────────────────────────────────────────────────────────────────────── */
 :root {
-  --background: #f8fafc;
+  --background: #fafaf8;
   --surface: #ffffff;
-  --surface-secondary: #f1f5f9;
-  --border: #e2e8f0;
-  --primary: #2563eb;
+  --surface-secondary: #f3f3f0;
+  --border: #e8e6e1;
+  --primary: #106b7e;
   --primary-foreground: #ffffff;
-  --accent: #06b6d4;
-  --text: #0f172a;
-  --text-secondary: #475569;
+  --accent: #0d5967;
+  --text: #17191d;
+  --text-secondary: #5c6470;
 
-  --danger: #dc2626;
-  --warning: #d97706;
-  --success: #16a34a;
+  --danger: #c2453e;
+  --warning: #b07a2e;
+  --success: #2e7d4f;
 
-  --radius: 0.75rem;
+  --radius: 0.625rem;
 
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 .dark {
-  --background: #0f172a;
-  --surface: #111827;
-  --surface-secondary: #1e293b;
-  --border: #334155;
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
-  --accent: #22d3ee;
-  --text: #f8fafc;
-  --text-secondary: #cbd5e1;
+  --background: #0b0e12;
+  --surface: #11151b;
+  --surface-secondary: #171c24;
+  --border: #232a34;
+  --primary: #4fa3b8;
+  --primary-foreground: #0b0e12;
+  --accent: #6fbdd0;
+  --text: #e8ecf1;
+  --text-secondary: #9aa4b2;
 
-  --danger: #f87171;
-  --warning: #fbbf24;
-  --success: #4ade80;
+  --danger: #e5726b;
+  --warning: #d8a35a;
+  --success: #6fbf8f;
 }
 
 /* Map tokens into Tailwind's theme so utilities like bg-background,
