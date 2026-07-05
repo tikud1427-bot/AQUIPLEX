@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Projects — Aquiplex</title>
   <meta name="description" content="Turn a goal into a plan Aqua executes — step by step, with memory and context.">
   <link rel="icon" href="/logo/favicon.ico" sizes="any">
@@ -11,11 +11,11 @@
     /* Projects (Aqua Project Engine) — restyled onto the px design system.
        Class names are preserved because the page's JS renders into them. */
 
-    body.bundle-page { padding-top: 56px; }
+    body.bundle-page { padding-top: 60px; }
 
-    #app-root { max-width: var(--px-w-content); margin: 0 auto; padding: 0 24px; }
+    #app-root { max-width: var(--px-w-content); margin: 0 auto; padding: 0 var(--px-gutter); }
 
-    .ape-hero { text-align: center; padding: 64px 20px 40px; }
+    .ape-hero { text-align: center; padding: clamp(40px, 8vw, 64px) 0 clamp(28px, 5vw, 40px); }
     .ape-hero h1 {
       font-family: var(--px-font-display);
       font-size: clamp(28px, 4.5vw, 42px);
@@ -34,7 +34,7 @@
       background: var(--px-surface);
       border: 1px solid var(--px-line);
       border-radius: var(--px-radius-lg);
-      padding: 28px;
+      padding: clamp(20px, 4vw, 28px);
       text-align: center;
     }
     .goal-card label {
@@ -97,11 +97,11 @@
     /* ── Questions ── */
     .questions-card {
       max-width: 720px;
-      margin: 0 auto 40px;
+      margin: 0 auto clamp(28px, 5vw, 40px);
       background: var(--px-surface);
       border: 1px solid var(--px-line);
       border-radius: var(--px-radius-lg);
-      padding: 28px;
+      padding: clamp(20px, 4vw, 28px);
     }
     .questions-card h3 { font-size: 16px; font-weight: 600; color: var(--px-text); margin: 0 0 18px; }
     .q-item { margin-bottom: 16px; }
@@ -124,7 +124,7 @@
       display: grid;
       grid-template-columns: 280px 1fr;
       gap: 20px;
-      padding-bottom: 96px;
+      padding-bottom: calc(clamp(64px, 11vw, 96px) + env(safe-area-inset-bottom));
     }
     @media (max-width: 860px) {
       .dashboard { grid-template-columns: 1fr; }
@@ -210,7 +210,7 @@
       background: var(--px-surface);
       border: 1px solid var(--px-line);
       border-radius: var(--px-radius-lg);
-      padding: 24px 26px;
+      padding: clamp(18px, 3.5vw, 24px) clamp(18px, 4vw, 26px);
       margin-bottom: 16px;
     }
     .project-header h2 {
@@ -251,8 +251,9 @@
       align-items: center;
       justify-content: space-between;
       gap: 14px;
-      padding: 16px 20px;
+      padding: 14px clamp(14px, 3vw, 20px);
       cursor: pointer;
+      min-height: 44px;
     }
     .step-card-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .step-num {
@@ -293,7 +294,7 @@
     .badge-done    { border-color: color-mix(in srgb, var(--px-success) 50%, transparent); color: var(--px-success); }
     .badge-failed  { border-color: color-mix(in srgb, var(--px-danger) 50%, transparent); color: var(--px-danger); }
 
-    .step-card-body { padding: 0 20px 20px; }
+    .step-card-body { padding: 0 clamp(14px, 3vw, 20px) clamp(16px, 3vw, 20px); }
     .step-desc { color: var(--px-text-2); font-size: 13.5px; line-height: 1.65; margin-bottom: 14px; }
     .step-duration { font-size: 12px; color: var(--px-text-3); }
 
@@ -314,6 +315,9 @@
     .btn-execute:disabled { opacity: 0.55; cursor: default; }
     .btn-re-execute { background: transparent; border: 1px solid var(--px-line-strong); color: var(--px-text-2); }
     .btn-re-execute:hover { border-color: var(--px-text-3); color: var(--px-text); background: var(--px-surface-2); }
+    @media (pointer: coarse) {
+      .btn-execute, .btn-re-execute, .btn-primary, .quick-btn { min-height: 44px; }
+    }
 
     .output-area {
       background: var(--px-bg);
@@ -809,8 +813,8 @@ async function executeStep(stepIndex) {
     setBadge(stepIndex, "failed");
     outputArea.innerHTML = `
       <div class="output-area">
-        <div class="output-label" style="color:#ef4444;">EXECUTION FAILED</div>
-        <div class="output-content" style="color:#ef4444;">${escHtml(err.message)}</div>
+        <div class="output-label" style="color:var(--px-danger);">EXECUTION FAILED</div>
+        <div class="output-content" style="color:var(--px-danger);">${escHtml(err.message)}</div>
       </div>
     `;
     toast("Execution failed: " + err.message, "error");
@@ -1072,7 +1076,7 @@ function showLoadingInPhase(phase) {
     document.getElementById("questions-list").innerHTML = `
       <div style="text-align:center; padding:28px 0;">
         <span class="spinner" style="width:28px;height:28px;border-width:3px;"></span>
-        <p style="margin-top:12px; color:#64748b;">Generating your plan…</p>
+        <p style="margin-top:12px; color:var(--px-text-3);">Generating your plan…</p>
       </div>
     `;
   }

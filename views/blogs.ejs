@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Blog — Aquiplex</title>
   <meta name="description" content="Notes from the Aquiplex team on building Aqua — memory, planning, execution, and the AI operating system.">
   <meta property="og:title" content="Aquiplex Blog">
@@ -26,7 +26,7 @@
   </div>
 </section>
 
-<main style="padding-bottom:120px;">
+<main style="padding-bottom:clamp(72px,12vw,120px);">
   <% if (!blogs || blogs.length === 0) { %>
     <div class="px-narrow">
       <div class="px-empty">No posts yet. Be the first to <a href="/write">write one</a>.</div>

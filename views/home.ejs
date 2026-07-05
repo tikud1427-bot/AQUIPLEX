@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Workspace — Aquiplex</title>
   <meta name="description" content="Your Aquiplex workspace — continue with Aqua, pick up projects, and see your usage at a glance.">
   <link rel="icon" href="/logo/favicon.ico" sizes="any">
@@ -27,14 +27,14 @@
         <h2>Continue with Aqua</h2>
         <p>Aqua remembers your projects, preferences, and context. Ask, plan, and execute — all in one place.</p>
       </div>
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <div class="px-continue-actions">
         <a href="/aqua" class="px-btn px-btn-primary px-btn-lg">Open Aqua</a>
         <a href="/bundles" class="px-btn px-btn-secondary px-btn-lg">New project</a>
       </div>
     </section>
 
     <!-- quick actions -->
-    <div class="px-quick-grid" style="margin-bottom:36px;">
+    <div class="px-quick-grid">
       <a href="/aqua" class="px-quick">
         <div class="px-quick-icon"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v8H6l-3 3v-3H2V3z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
         <h3>New chat</h3>
@@ -128,7 +128,7 @@
             <div class="px-stat-sub">Free credits refresh daily at midnight.</div>
           </div>
 
-          <a href="/pricing" class="px-btn px-btn-secondary" style="width:100%; margin-top:20px; justify-content:center;">Buy credits</a>
+          <a href="/pricing" class="px-btn px-btn-secondary px-btn-block" style="margin-top:20px;">Buy credits</a>
         </section>
       </aside>
 

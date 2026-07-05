@@ -105,6 +105,7 @@ function toggleMenu() {
   var toggle = document.querySelector(".px-nav-burger");
   if (!menu) return;
   var isOpen = menu.classList.toggle("open");
+  document.body.classList.toggle("px-menu-open", isOpen);
   if (toggle) toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
 }
 function toggleUserMenu(e) {
@@ -126,6 +127,7 @@ document.addEventListener("click", function (e) {
   var toggle = document.querySelector(".px-nav-burger");
   if (menu && menu.classList.contains("open") && !menu.contains(e.target) && toggle && !toggle.contains(e.target)) {
     menu.classList.remove("open");
+    document.body.classList.remove("px-menu-open");
     toggle.setAttribute("aria-expanded", "false");
   }
   var dd = document.getElementById("navUserDropdown");
@@ -143,5 +145,6 @@ document.addEventListener("keydown", function (e) {
     var el = document.getElementById(id);
     if (el) el.classList.remove("open");
   });
+  document.body.classList.remove("px-menu-open");
 });
 </script>

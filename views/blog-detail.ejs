@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title><%= blog.title %> — Aquiplex Blog</title>
   <meta name="description" content="<%= (blog.description || 'Aquiplex blog').replace(/"/g, '') %>">
   <meta property="og:title" content="<%= blog.title %>">
@@ -28,7 +28,7 @@
 
 <%- include("partials/nav") %>
 
-<main style="padding:132px 0 120px;">
+<main style="padding:clamp(104px,15vw,132px) 0 clamp(80px,13vw,120px);">
   <article class="px-prose">
     <a href="/blogs" class="px-btn px-btn-ghost px-btn-sm" style="margin-bottom:26px;">← All posts</a>
     <h1><%= blog.title %></h1>
