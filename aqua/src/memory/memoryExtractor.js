@@ -53,9 +53,9 @@ const log = {
 const FORGET_PATTERNS = [/forget (?:that )?(?:my )?(.+)/i, /don't remember (?:that )?(?:my )?(.+)/i];
 const UPDATE_PATTERNS = [/(?:actually|correction|update)[,:]?\s+my ([a-zA-Z\s]+?) is now ([a-zA-Z0-9\s]+)/i];
 
-export function extractFactsWithReport(message, conversationId = null) {
+export function extractFactsWithReport(message, ownerId = null) {
   const t0 = Date.now();
-  log.info('Pipeline started', { messageLength: message.length, conversationId });
+  log.info('Pipeline started', { messageLength: message.length, ownerId });
   
   const report = {
     candidates: 0, accepted: 0, rejected: 0, duplicates: 0,
@@ -94,8 +94,8 @@ export function extractFactsWithReport(message, conversationId = null) {
 
   // 5. Resolve against stored facts
   let toStore = unique;
-  if (conversationId) {
-    const resolved = resolveCandidates(conversationId, unique);
+  if (ownerId) {
+    const resolved = resolveCandidates(ownerId, unique);
     toStore = [];
     for (const r of resolved) {
       switch (r.action) {

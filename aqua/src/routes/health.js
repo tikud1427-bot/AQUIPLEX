@@ -24,7 +24,7 @@ router.get('/', (req, res) => {
     metrics:   getMetrics(),
     memory: {
       shortTerm: getStoreStats(),
-      longTerm:  getMemoryStats(),
+      longTerm:  getMemoryStats(),   // unified store: owners/facts/contradictions
     },
     project: getProjectStats(),
   });

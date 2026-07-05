@@ -42,6 +42,7 @@ import {
   attachToConversation, getAttachments, removeAttachment, serializeAttachment,
 } from '../upload/attachmentStore.js';
 import { getOrCreateConversation }               from '../memory/conversationStore.js';
+import { resolveOwner, rememberFile, rememberWorkspace } from '../memory/engine.js';
 import { createWorkspace }                       from '../project/workspaceManager.js';
 import { runWorkspaceIngestion }                 from '../project/ingestionPipeline.js';
 import { detectLanguage as detectSourceLanguage } from '../project/fileIngester.js';
@@ -73,8 +74,12 @@ router.post('/', async (req, res) => {
   // before sending their first message (the common drag-drop-then-type flow).
   const { id: conversationId, isNew: isNewConversation } = getOrCreateConversation(
     requestedConversationId ?? null,
-    { userAgent: req.headers['user-agent']?.slice(0, 80), ip: req.ip, createdBy: 'upload' },
+    { userAgent: req.headers['user-agent']?.slice(0, 80), ip: req.ip, createdBy: 'upload',
+      userId: req.aquaUserId ?? null },
   );
+  // Uploaded files become durable OWNER memory (Req 10) — not just
+  // conversation attachments. Same owner model as chat.
+  const memoryOwner = resolveOwner({ userId: req.aquaUserId ?? null, conversationId });
 
   // ── Decode + classify every file up front ──
   const classified = [];
@@ -108,7 +113,7 @@ router.post('/', async (req, res) => {
 
   if (archives.length > 0 || isFolderDrop) {
     try {
-      workspacePayload = await handleRepositoryUpload({
+      workspacePayload = await handleRepositoryUpload({ memoryOwner,
         archives,
         sourceFiles: isFolderDrop ? sourceFiles : [],
         workspaceName: workspaceName
@@ -141,6 +146,7 @@ router.post('/', async (req, res) => {
           if (cls.corrupt) throw new Error('File extension and content disagree — the file appears corrupt.');
           const normalized = await processDocument(name, buffer);
           const attachment = attachToConversation(conversationId, { name, kind: 'document', normalized });
+          rememberFile(memoryOwner, { name, kind: 'document', summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId });
           results.push({ name, kind: 'document', status: 'ready', attachmentId: attachment.id, format: normalized.format, pages: normalized.pages, contentChars: normalized.content.length, truncated: normalized.truncated });
           break;
         }
@@ -149,6 +155,7 @@ router.post('/', async (req, res) => {
         case 'video': {
           const normalized = await processMedia(name, buffer, cls.mime, cls.kind);
           const attachment = attachToConversation(conversationId, { name, kind: cls.kind, normalized });
+          rememberFile(memoryOwner, { name, kind: cls.kind, summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId });
           results.push({ name, kind: cls.kind, status: 'ready', attachmentId: attachment.id, format: normalized.format, contentChars: normalized.content.length, analyzed: normalized.metadata.analyzed !== false });
           break;
         }
@@ -161,6 +168,7 @@ router.post('/', async (req, res) => {
             content, pages: null, sections: [], language: null, truncated,
           };
           const attachment = attachToConversation(conversationId, { name, kind: 'source', normalized });
+          rememberFile(memoryOwner, { name, kind: 'source', summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId });
           results.push({ name, kind: 'source', status: 'ready', attachmentId: attachment.id, format: normalized.format, contentChars: content.length, truncated });
           break;
         }
@@ -197,7 +205,7 @@ router.post('/', async (req, res) => {
 
 // ── Repository experience: archive/folder → workspace, zero manual steps ──────
 
-async function handleRepositoryUpload({ archives, sourceFiles, workspaceName, results }) {
+async function handleRepositoryUpload({ memoryOwner = null, archives, sourceFiles, workspaceName, results }) {
   // Merge every archive + loose source file into ONE raw file set (mixed
   // uploads: "here's my repo zip and also these two extra files").
   const rawFiles = [];
@@ -230,8 +238,10 @@ async function handleRepositoryUpload({ archives, sourceFiles, workspaceName, re
   }
 
   // Create workspace + run the EXACT same pipeline as POST /project/workspace/:id/files
-  const workspace = createWorkspace({ name: workspaceName, createdBy: 'unified-upload' });
+  const workspace = createWorkspace({ name: workspaceName, createdBy: 'unified-upload', ownerId: memoryOwner });
   const ingestion = await runWorkspaceIngestion(workspace.id, rawFiles);
+  // Workspace becomes durable owner memory: project node + summary (Req 9/10).
+  rememberWorkspace(memoryOwner, { ...workspace, summary: ingestion.summary, stats: { files: ingestion.filesIngested } });
 
   return {
     id:            workspace.id,

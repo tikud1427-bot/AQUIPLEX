@@ -32,13 +32,17 @@ import {
 } from '../project/editEngine.js';
 import { whoImports, whatImports } from '../project/dependencyGraph.js';
 
+import { resolveOwner, rememberWorkspace } from '../memory/engine.js';
+
 const router = express.Router();
 
 // ── Create workspace ──────────────────────────────────────────────────────────
 
 router.post('/workspace', (req, res) => {
   const { name, description } = req.body ?? {};
-  const workspace = createWorkspace({ name, description });
+  const ownerId = resolveOwner({ userId: req.aquaUserId ?? null, conversationId: req.body?.conversationId ?? null });
+  const workspace = createWorkspace({ name, description, ownerId });
+  rememberWorkspace(ownerId, workspace);
   res.json({
     success:   true,
     workspace: { id: workspace.id, createdAt: workspace.createdAt, indexStatus: workspace.indexStatus },

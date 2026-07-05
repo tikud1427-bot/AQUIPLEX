@@ -151,8 +151,8 @@ function scoreRelevance(fact, query, ctx) {
 }
 
 // ── Public retrieval API ──────────────────────────────────────────────────────
-export function retrieveRelevantFacts(conversationId, query, limit = 15) {
-  const allFacts = getFacts(conversationId);
+export function retrieveRelevantFacts(ownerId, query, limit = 15, { trace = null } = {}) {
+  const allFacts = getFacts(ownerId);
   if (!allFacts.length) return [];
 
   const isRecall = isMemoryQuery(query);
@@ -167,7 +167,7 @@ export function retrieveRelevantFacts(conversationId, query, limit = 15) {
     .map((f) => ({ fact: f, ...scoreRelevance(f, query, ctx) }))
     .sort((a, b) => b.score - a.score);
 
-  console.log(`[MEM_RETRIEVER] MEMORY_RANKED conv=${conversationId} query="${query}" candidates=${scored.length}`);
+  console.log(`[MEM_RETRIEVER] MEMORY_RANKED owner=${ownerId} query="${query}" candidates=${scored.length}`);
 
   let threshold = 0;
   if (!isRecall && (!categoryFilter || categoryFilter.size === 0) && semanticConcepts.size === 0) {
@@ -186,10 +186,20 @@ export function retrieveRelevantFacts(conversationId, query, limit = 15) {
     x.score >= threshold && (!hasDirectedIntent || x.intentScore > 0));
   
   if (filtered.length > 0) {
-    console.log(`[MEM_RETRIEVER] MEMORY_RETRIEVED conv=${conversationId} count=${filtered.length} topScore=${filtered[0].score}`);
+    console.log(`[MEM_RETRIEVER] MEMORY_RETRIEVED owner=${ownerId} count=${filtered.length} topScore=${filtered[0].score}`);
   }
 
-  return filtered.slice(0, limit).map((x) => x.fact);
+  const top = filtered.slice(0, limit);
+  if (trace) {
+    trace.ranking = top.map((x) => ({
+      key: x.fact.key, score: x.score, intentScore: x.intentScore,
+      confidence: x.fact.confidence, importance: x.fact.importance,
+      reason: x.intentScore > 0 ? 'intent_match' : (isRecall ? 'recall_query' : 'importance_recency'),
+    }));
+    trace.consideredFacts = scored.length;
+    trace.droppedByGate = scored.length - filtered.length;
+  }
+  return top.map((x) => x.fact);
 }
 
 // ── Prompt formatting & Grouping ──────────────────────────────────────────────

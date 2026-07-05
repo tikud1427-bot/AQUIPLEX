@@ -24,7 +24,14 @@ import projectRoute       from "./src/routes/project.js";
 import conversationsRoute from "./src/routes/conversations.js";
 import memoryRoute        from "./src/routes/memory.js";
 import uploadRoute        from "./src/routes/upload.js";
+import mindRoute          from "./src/mind/mindRoutes.js";
 import { runStartupValidation } from "./src/core/startupValidation.js";
+import { migrateLegacyMemory }  from "./src/memory/migrate.js";
+
+// ── One-time unification migration ──────────────────────────────────────────
+// Legacy conversation-scoped facts (.aqua-memory.json) → unified owner-scoped
+// Mind store (.aqua-mind.json). Idempotent: source archived after success.
+migrateLegacyMemory();
 
 // Validate model registry + provider keys once at mount. Never throws —
 // misconfigured providers are disabled with a warning, engine still mounts.
@@ -38,6 +45,7 @@ router.use("/project",         projectRoute);
 router.use("/conversations",   conversationsRoute);
 router.use("/memory",          memoryRoute);
 router.use("/upload",          uploadRoute);
+router.use("/mind",            mindRoute);   // persistent cognitive model (Mind layer)
 
 // JSON 404 for unknown engine routes (never fall through to platform HTML 404)
 router.use((req, res) => {

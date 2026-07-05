@@ -1,67 +1,116 @@
 /**
- * AQUA Memory Inspector Route
+ * AQUA Memory Inspector Route (UNIFIED)
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Owner-scoped: memories belong to the resolved owner (user session first,
+ * conversation fallback) — never permanently to a conversationId.
  *
- * GET  /memory/:conversationId             — all facts for a conversation
- * GET  /memory/:conversationId/:key        — single fact (with history)
- * DELETE /memory/:conversationId/:key      — delete a fact
- * DELETE /memory/:conversationId           — clear all facts for conversation
+ *   GET    /memory                          — all facts for the caller's owner
+ *   GET    /memory/inspector/:requestId     — full decision trace for one chat
+ *                                             turn (Req 14: explainable memory)
+ *   GET    /memory/fact/:key                — single fact + revision history
+ *   DELETE /memory/fact/:key                — delete a fact
+ *   DELETE /memory                          — clear the caller's facts
+ *
+ * Back-compat (old conversation-keyed API — resolves that conversation's
+ * OWNER first, then serves owner-scoped data):
+ *   GET    /memory/:conversationId
+ *   GET    /memory/:conversationId/:key
+ *   DELETE /memory/:conversationId[/:key]
  */
 import express from 'express';
 import {
-  getFacts,
-  getFact,
-  deleteFact,
-  clearFacts,
-  getFactHistory,
+  getFacts, getFact, deleteFact, clearFacts, getFactHistory,
 } from '../memory/longTermMemory.js';
-import { conversationExists } from '../memory/conversationStore.js';
+import { resolveOwner, getMemoryTrace } from '../memory/engine.js';
+import { conversationExists, getConversationMeta } from '../memory/conversationStore.js';
 
 const router = express.Router();
 
-// ── All facts for a conversation ──────────────────────────────────────────────
-
-router.get('/:conversationId', (req, res) => {
-  const { conversationId } = req.params;
-  const factsMap = getFacts(conversationId);  // Map<key, fact>
-  const facts    = factsMap ? [...factsMap.values()] : [];
-
-  // sort by importance desc, then ts desc
-  facts.sort((a, b) => (b.importance ?? 0) - (a.importance ?? 0) || (b.ts ?? 0) - (a.ts ?? 0));
-
-  res.json({
-    success:        true,
-    conversationId,
-    factCount:      facts.length,
-    facts,
+function ownerOf(req, conversationId = null) {
+  return resolveOwner({
+    userId: req.aquaUserId ?? null,
+    conversationId: conversationId ?? req.query.conversationId ?? null,
   });
+}
+
+/** Old-style routes carried a conversationId — resolve it to its true owner. */
+function ownerForLegacyConversation(req, conversationId) {
+  const meta = conversationExists(conversationId) ? getConversationMeta(conversationId) : null;
+  return resolveOwner({
+    userId: req.aquaUserId ?? meta?.userId ?? null,
+    conversationId,
+  });
+}
+
+function factsPayload(ownerId) {
+  const facts = getFacts(ownerId);
+  return { success: true, ownerId, factCount: facts.length, facts };
+}
+
+// ── Memory Inspector: explainable per-turn trace (Req 14) ────────────────────
+router.get('/inspector/:requestId', (req, res) => {
+  const trace = getMemoryTrace(req.params.requestId);
+  if (!trace) {
+    return res.status(404).json({ success: false, error: 'No trace for that requestId (ring keeps the last 100 turns)' });
+  }
+  res.json({ success: true, requestId: req.params.requestId, trace });
 });
 
-// ── Single fact ───────────────────────────────────────────────────────────────
+// ── Owner-scoped API ─────────────────────────────────────────────────────────
+router.get('/', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner (no session and no ?conversationId)' });
+  res.json(factsPayload(ownerId));
+});
+
+router.get('/fact/:key', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  const fact = getFact(ownerId, req.params.key);
+  if (!fact) return res.status(404).json({ success: false, error: `Fact '${req.params.key}' not found` });
+  res.json({ success: true, ownerId, key: req.params.key, fact, history: getFactHistory(ownerId, req.params.key) });
+});
+
+router.delete('/fact/:key', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  deleteFact(ownerId, req.params.key);
+  res.json({ success: true, ownerId, deleted: req.params.key });
+});
+
+router.delete('/', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  clearFacts(ownerId);
+  res.json({ success: true, ownerId, cleared: true });
+});
+
+// ── Back-compat: conversation-keyed paths → owner-scoped data ────────────────
+router.get('/:conversationId', (req, res) => {
+  const ownerId = ownerForLegacyConversation(req, req.params.conversationId);
+  res.json({ ...factsPayload(ownerId), conversationId: req.params.conversationId });
+});
 
 router.get('/:conversationId/:key', (req, res) => {
   const { conversationId, key } = req.params;
-  const fact = getFact(conversationId, key);
-  if (!fact) {
-    return res.status(404).json({ success: false, error: `Fact '${key}' not found` });
-  }
-  const history = getFactHistory(conversationId, key);
-  res.json({ success: true, conversationId, key, fact, history });
+  const ownerId = ownerForLegacyConversation(req, conversationId);
+  const fact = getFact(ownerId, key);
+  if (!fact) return res.status(404).json({ success: false, error: `Fact '${key}' not found` });
+  res.json({ success: true, ownerId, conversationId, key, fact, history: getFactHistory(ownerId, key) });
 });
-
-// ── Delete single fact ────────────────────────────────────────────────────────
 
 router.delete('/:conversationId/:key', (req, res) => {
   const { conversationId, key } = req.params;
-  deleteFact(conversationId, key);
-  res.json({ success: true, conversationId, deleted: key });
+  const ownerId = ownerForLegacyConversation(req, conversationId);
+  deleteFact(ownerId, key);
+  res.json({ success: true, ownerId, conversationId, deleted: key });
 });
-
-// ── Clear all facts for conversation ─────────────────────────────────────────
 
 router.delete('/:conversationId', (req, res) => {
   const { conversationId } = req.params;
-  clearFacts(conversationId);
-  res.json({ success: true, conversationId, cleared: true });
+  const ownerId = ownerForLegacyConversation(req, conversationId);
+  clearFacts(ownerId);
+  res.json({ success: true, ownerId, conversationId, cleared: true });
 });
 
 export default router;

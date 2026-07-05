@@ -17,6 +17,7 @@ export function createWorkspace(meta = {}) {
   const id = uuidv4();
   const workspace = {
     id,
+    ownerId:   meta.ownerId ?? null,   // unified owner model — memory/ownerResolver.js
     createdAt: Date.now(),
     meta,
     projectType:  null,

@@ -2,7 +2,11 @@
  * AQUA Project Memory
  *
  * Separate persistence for project workspaces.
- * Never shares storage with personal long-term memory (.aqua-memory.json).
+ * Workspace INDEX data (file trees, summaries, dependency graphs) — bulky,
+ * rebuildable. The OWNER-facing memory of a workspace (that it exists, its
+ * summary, the works_on edge) lives in the unified Mind store via
+ * memory/engine.js rememberWorkspace(). This file is a cache tier, not a
+ * second user-memory store.
  * Store file: .aqua-projects.json
  */
 import fs   from 'fs';

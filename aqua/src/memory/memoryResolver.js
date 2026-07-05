@@ -26,20 +26,20 @@ export const RESOLUTION_ACTIONS = Object.freeze({
 /**
  * Resolve a batch of candidates against existing stored facts.
  *
- * @param {string} conversationId
+ * @param {string} ownerId
  * @param {Candidate[]} candidates
  * @returns {ResolvedCandidate[]}
  */
-export function resolveCandidates(conversationId, candidates) {
+export function resolveCandidates(ownerId, candidates) {
   const resolved = [];
   for (const c of candidates) {
-    resolved.push(resolveOne(conversationId, c));
+    resolved.push(resolveOne(ownerId, c));
   }
   return resolved;
 }
 
-function resolveOne(conversationId, candidate) {
-  const existing = getFact(conversationId, candidate.key);
+function resolveOne(ownerId, candidate) {
+  const existing = getFact(ownerId, candidate.key);
   const schema = getSchema(candidate.key);
 
   // ── No existing fact → store new ────────────────────────────────────────

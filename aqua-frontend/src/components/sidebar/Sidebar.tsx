@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PanelLeftClose, PanelLeftOpen, Search, Settings, SquarePen, X } from 'lucide-react';
+import { BrainCircuit, PanelLeftClose, PanelLeftOpen, Search, Settings, SquarePen, X } from 'lucide-react';
 import { ConversationItem } from './ConversationItem';
 import { SidebarSkeleton } from './SidebarSkeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -67,6 +67,11 @@ export function Sidebar({ collapsed, isMobileOverlay, onNavigate }: Props) {
           </button>
         </Tooltip>
         <div className="flex-1" />
+        <Tooltip label="Aqua’s mind" side="right">
+          <button onClick={() => { navigate('/mind'); onNavigate?.(); }} className="rounded-lg p-2.5 text-foreground-secondary hover:bg-surface-secondary hover:text-foreground">
+            <BrainCircuit className="h-4.5 w-4.5" />
+          </button>
+        </Tooltip>
         <Tooltip label="Settings" side="right">
           <button onClick={() => setSettingsOpen(true)} className="rounded-lg p-2.5 text-foreground-secondary hover:bg-surface-secondary hover:text-foreground">
             <Settings className="h-4.5 w-4.5" />
@@ -152,6 +157,13 @@ export function Sidebar({ collapsed, isMobileOverlay, onNavigate }: Props) {
       </ScrollArea>
 
       <div className="border-t border-border p-2">
+        <button
+          onClick={() => { navigate('/mind'); onNavigate?.(); }}
+          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground"
+        >
+          <BrainCircuit className="h-4 w-4" />
+          Aqua’s mind
+        </button>
         <button
           onClick={() => setSettingsOpen(true)}
           className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground"

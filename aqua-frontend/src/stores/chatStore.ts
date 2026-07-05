@@ -3,6 +3,7 @@ import { sendChatMessage } from '@/api/chat';
 import { streamChatMessage, StreamUnsupportedError } from '@/api/chatStream';
 import { getConversation } from '@/api/conversations';
 import { normalizeError, isCancel } from '@/api/client';
+import { refreshMind } from './mindStore';
 import { useConversationStore } from './conversationStore';
 import type { ChatSuccessResponse, MessageDiagnostics, PatchProposal, UiMessage } from '@/types';
 
@@ -97,6 +98,10 @@ export const useChatStore = create<ChatState>((set, get) => {
     const wasNewConversation = !conversationId;
 
     const finishTurn = (res: ChatSuccessResponse, contentOverride?: string) => {
+      // The mind evolved during this turn — pull the fresh model so the
+      // dashboard (if open) updates the moment the answer lands. Silent +
+      // debounced inside the store; no polling anywhere.
+      refreshMind();
       if (!isLive()) {
         set({ generating: false, abortController: null });
         return;

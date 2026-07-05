@@ -70,9 +70,7 @@ import {
   getConversation,
   addMessage,
 } from '../memory/conversationStore.js';
-import { extractFacts, detectMemoryUpdate, detectForget, resolveCanonicalKey } from '../memory/memoryExtractor.js';
-import { storeFacts, storeFact, deleteFact }              from '../memory/longTermMemory.js';
-import { retrieveRelevantFacts, formatFactsForPrompt }    from '../memory/memoryRetriever.js';
+import { resolveOwner, memoryObserve, memoryRetrieve, memoryAfterTurn, getMemoryTrace } from '../memory/engine.js';
 import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
 import { formatAttachmentsForPrompt, getAttachments }       from '../upload/attachmentStore.js';
 import { proposeEdit, serializeProposal }                   from '../project/editEngine.js';
@@ -193,7 +191,12 @@ const REPO_INTENT_RE = /\b(repo(sitory)?|codebase|this project|the project|archi
  * `onStage(id, label)` fires as each REAL stage begins (no-op for /chat);
  * only stages that actually run are reported — never fake progress.
  */
-function prepareTurn({ userMessage, workspaceId, conversationId, ctx, requestId, onStage = () => {} }) {
+function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, ctx, requestId, onStage = () => {} }) {
+  // ── 1. Resolve the ONE memory owner (unified engine) ────────────────────────
+  // Platform user identity when present (cross-conversation, cross-device),
+  // else this conversation as a dev/standalone fallback (adopted into the
+  // user's memory on first login). Null disables memory entirely.
+  const memoryOwner = resolveOwner({ userId, conversationId });
   // ── 2. Classify (once — result passed to router, no double classification) ──
   onStage('classify', 'Understanding your request…');
   const { task: taskType, confidence, labels } = classifyTask(userMessage);
@@ -226,46 +229,39 @@ function prepareTurn({ userMessage, workspaceId, conversationId, ctx, requestId,
   });
   logIntelligenceEvent(ctx, intelligence);
 
-  // ── 3. Extract facts from user message ──────────────────────────────────────
+  // ── 3. Observe — the ONE observation pipeline (unified engine) ──────────────
+  // extract → forget/update → conflict-resolved fact storage → beliefs /
+  // goals / working memory / episodes / graph. One extraction pass, one
+  // owner, one store. Fail-safe no-op when memoryOwner is null.
   onStage('memory', 'Checking memory…');
-  const extractedFacts = extractFacts(userMessage);
-  if (extractedFacts.length) {
-    storeFacts(conversationId, extractedFacts);
-    logMemoryEvent(ctx, 'EXTRACTED', extractedFacts.map(f => `${f.key}=${f.value}`));
-  } else {
-    logMemoryEvent(ctx, 'EXTRACTED', []);
+  const observed = memoryObserve(memoryOwner, {
+    userMessage, taskType, workspaceId, conversationId, userId, requestId,
+  });
+  const extractedFacts = observed.extractedFacts;
+  logMemoryEvent(ctx, 'EXTRACTED', extractedFacts.map(f => `${f.key}=${f.value}`));
+  if (observed.trace.forget)     logMemoryEvent(ctx, 'DELETED', [observed.trace.forget.key]);
+  if (observed.trace.correction) logMemoryEvent(ctx, 'UPDATED', [`${observed.trace.correction.key}=${observed.trace.correction.value}`]);
+  if (observed.mind.signals || observed.mind.goalsTouched) {
+    logMemoryEvent(ctx, 'MIND_OBSERVED', [`signals=${observed.mind.signals}`, `goals=${observed.mind.goalsTouched}`]);
   }
 
-  // ── 4. Handle explicit memory update / forget instructions ──────────────────
-  const forgetResult = detectForget(userMessage);
-  if (forgetResult.isForget && forgetResult.hint) {
-    const hintKey = resolveCanonicalKey(forgetResult.hint.replace(/my\s+/i, '').trim());
-    deleteFact(conversationId, hintKey);
-    logMemoryEvent(ctx, 'DELETED', [hintKey]);
-  }
-
-  const updateResult = detectMemoryUpdate(userMessage);
-  if (updateResult.isUpdate) {
-    storeFact(conversationId, {
-      key:          updateResult.key,
-      value:        updateResult.value,
-      confidence:   0.95,
-      importance:   9,
-      sourceText:   userMessage,
-      ts:           Date.now(),
-      isCorrection: true,
-    });
-    logMemoryEvent(ctx, 'UPDATED', [`${updateResult.key}=${updateResult.value}`]);
-  }
-
-  // ── 5. Retrieve relevant long-term memories ──────────────────────────────────
-  const relevantFacts = retrieveRelevantFacts(conversationId, userMessage, 10);
-  const memoryBlock   = formatFactsForPrompt(relevantFacts);
+  // ── 4. Retrieve — the ONE retrieval pipeline (unified engine) ───────────────
+  // Ranked facts + cognitive state + file memory under a single token
+  // budget → one memoryBlock for the prompt. Smallest high-quality context.
+  const retrieved = memoryRetrieve(memoryOwner, {
+    query: userMessage, taskType, factLimit: 10, requestId,
+  });
+  const relevantFacts = retrieved.relevantFacts;
+  const memoryBlock   = retrieved.block;
   if (relevantFacts.length) {
     logMemoryEvent(ctx, 'RETRIEVED', relevantFacts.map(f => `${f.key}=${f.value}`));
     logMemoryEvent(ctx, 'INJECTED',  relevantFacts.map(f => f.key));
   } else {
     logMemoryEvent(ctx, 'NO_MEMORIES', []);
+  }
+  const cognitive = { block: '', used: retrieved.cognitiveUsed };
+  if (Object.values(retrieved.cognitiveUsed).some(n => n > 0)) {
+    logMemoryEvent(ctx, 'MIND_INJECTED', Object.entries(retrieved.cognitiveUsed).filter(([, n]) => n > 0).map(([k, n]) => `${k}=${n}`));
   }
 
   // ── 5b. Retrieve project context (Phase 5, gated by orchestrator in Phase 6) ──
@@ -319,6 +315,7 @@ function prepareTurn({ userMessage, workspaceId, conversationId, ctx, requestId,
     taskType, confidence, labels,
     orchestration, plan, reasoning, intelligence,
     extractedFacts, relevantFacts,
+    memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!memoryBlock, contextUsed: cognitive.used },
     projectContext, projectFiles,
     attachments: conversationAttachments.map(a => ({ id: a.id, name: a.name, kind: a.kind })),
     systemPrompt, promptModules,
@@ -370,10 +367,14 @@ function buildResponsePayload({
     finishReason:   result.finishReason ?? 'stop',
 
     memory: {
+      owner:      prep.memoryOwner ?? null,
+      trace:      getMemoryTrace(requestId) ? `/memory/inspector/${requestId}` : null,
       extracted:  extractedFacts.length,
       injected:   relevantFacts.length,
       facts:      relevantFacts.map(f => ({ key: f.key, value: f.value })),
     },
+
+    mind: prep?.mind ?? { observedSignals: 0, goalsTouched: 0, contextInjected: false, contextUsed: {} },
 
     plan: {
       complexity:           plan.complexity,
@@ -461,7 +462,7 @@ router.post('/', async (req, res) => {
       }
     }
 
-    const prep = prepareTurn({ userMessage, workspaceId, conversationId, ctx, requestId });
+    const prep = prepareTurn({ userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId });
     const {
       taskType, confidence, orchestration, plan, reasoning, intelligence,
       extractedFacts, relevantFacts, projectContext, projectFiles,
@@ -492,6 +493,9 @@ router.post('/', async (req, res) => {
     // ── 9. Persist messages ──────────────────────────────────────────────────────
     addMessage(conversationId, 'user',      userMessage);
     addMessage(conversationId, 'assistant', finalAnswer);
+
+    // ── 9b. Mind post-turn — predictions rebuild + async reflection when due ────
+    memoryAfterTurn(prep.memoryOwner, { taskType, workspaceId });
 
     // ── 10. Respond ──────────────────────────────────────────────────────────────
     return res.json(buildResponsePayload({
@@ -602,7 +606,7 @@ router.post('/stream', async (req, res) => {
     // Pipeline stages stream to the client AS THEY START — every stage event
     // corresponds to real work beginning, never a scripted animation.
     const prep = prepareTurn({
-      userMessage, workspaceId, conversationId, ctx, requestId,
+      userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId,
       onStage: (id, label) => send('stage', { id, label }),
     });
     const {
@@ -658,6 +662,9 @@ router.post('/stream', async (req, res) => {
     // ── 9. Persist ───────────────────────────────────────────────────────────────
     addMessage(conversationId, 'user',      userMessage);
     addMessage(conversationId, 'assistant', finalAnswer);
+
+    // ── 9b. Mind post-turn — predictions rebuild + async reflection when due ────
+    memoryAfterTurn(prep.memoryOwner, { taskType, workspaceId });
 
     // ── 10. Done event — same diagnostics shape as POST /chat ───────────────────
     send('done', buildResponsePayload({
