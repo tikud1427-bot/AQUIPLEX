@@ -15,7 +15,7 @@
     "start": "node index.js",
     "dev": "node index.js",
     "postinstall": "cd aqua && npm install",
-    "build:aqua": "cd aqua-frontend && npm ci --include=dev && npm run build",
+    "build:aqua": "cd aqua-frontend && npm ci --include=dev && NODE_OPTIONS=--max-old-space-size=450 npm run build",
     "build": "npm run build:aqua",
     "test:aqua": "cd aqua && npm run test:edit && npm run test:upload"
   },
