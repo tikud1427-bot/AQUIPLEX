@@ -24,19 +24,23 @@ export function resolveCanonicalKey(rawKey) {
   const wordIndex = getWordIndex();
   const words = normalized.split('_').filter(w => w.length > 1);
   const scores = new Map();
-  for (const word of words) {
+  words.forEach((word, i) => {
     const hits = wordIndex.get(word);
-    if (hits) {
-      for (const k of hits) {
-        const schema = getSchema(k);
-        if (!schema) continue;
-        const inKey     = schema.key.split('_').includes(word);
-        const inAlias   = (schema.aliases || []).some(a => a.split('_').includes(word));
-        const score     = inKey ? 3 : inAlias ? 2 : 1;
-        scores.set(k, (scores.get(k) || 0) + score);
-      }
+    if (!hits) return;
+    // Head-noun dominance: in an English key phrase the LAST word is the head
+    // ("preferred language" → the *language*); modifiers come first. Weight
+    // later words higher so a modifier that happens to name another key
+    // (e.g. "preferred" → preferred_name) can't outrank the head noun.
+    const positional = 1 + i * 0.5;
+    for (const k of hits) {
+      const schema = getSchema(k);
+      if (!schema) continue;
+      const inKey     = schema.key.split('_').includes(word);
+      const inAlias   = (schema.aliases || []).some(a => a.split('_').includes(word));
+      const base      = inKey ? 3 : inAlias ? 2 : 1;
+      scores.set(k, (scores.get(k) || 0) + base * positional);
     }
-  }
+  });
   if (scores.size === 0) return normalized;
   let best = null, bestScore = 0;
   for (const [k, score] of scores) {
@@ -63,8 +67,10 @@ export function extractFactsWithReport(message, ownerId = null) {
     averageConfidence: 0, categories: new Set(), processingTimeMs: 0,
   };
 
-  // 1. Parse
+  // 1. Parse — Instrumentation (Req 3): input + normalized sentences
   const parsed = parseMessage(message);
+  console.log(`[EXTRACTOR] INPUT "${message.slice(0, 120)}"`);
+  console.log(`[EXTRACTOR] NORMALIZED sentences=${parsed.sentences.length} correction=${parsed.isCorrection}${parsed.correctionPhrase ? ` phrase="${parsed.correctionPhrase}"` : ''} → ${JSON.stringify(parsed.sentences.map(x => x.slice(0, 60)))}`);
   if (parsed.sentences.length === 0) {
     report.processingTimeMs = Date.now() - t0;
     return { facts: [], report: finalizeReport(report) };
@@ -78,10 +84,13 @@ export function extractFactsWithReport(message, ownerId = null) {
     return { facts: [], report: finalizeReport(report) };
   }
 
-  // 3. Normalize + validate
+  // 3. Normalize + validate — Instrumentation: every rejection carries a reason
   const { accepted, rejected } = normalizeCandidates(rawCandidates);
   report.accepted = accepted.length;
   report.rejected += rejected.length;
+  for (const r of rejected) {
+    console.log(`[EXTRACTOR] REJECTED key=${r.key} value=${JSON.stringify(r.value)} reason=${r.rejectionReason}`);
+  }
   if (accepted.length === 0) {
     report.processingTimeMs = Date.now() - t0;
     return { facts: [], report: finalizeReport(report) };
@@ -98,6 +107,7 @@ export function extractFactsWithReport(message, ownerId = null) {
     const resolved = resolveCandidates(ownerId, unique);
     toStore = [];
     for (const r of resolved) {
+      console.log(`[EXTRACTOR] PROMOTION key=${r.key} action=${r.action} reason=${r.reason}${r.previousValue !== undefined ? ` previous=${JSON.stringify(r.previousValue)}` : ''}`);
       switch (r.action) {
         case RESOLUTION_ACTIONS.STORE_NEW: report.stored++; toStore.push(r); break;
         case RESOLUTION_ACTIONS.OVERWRITE:
@@ -125,6 +135,7 @@ export function extractFactsWithReport(message, ownerId = null) {
   }
 
   report.processingTimeMs = Date.now() - t0;
+  console.log(`[EXTRACTOR] RESULT stored=${facts.length} rejected=${report.rejected} duplicates=${report.duplicates} avgConf=${report.averageConfidence.toFixed(2)} ms=${report.processingTimeMs}`);
   log.info('Pipeline finished', { finalCount: facts.length, timeMs: report.processingTimeMs });
   
   return { facts, report: finalizeReport(report) };

@@ -67,21 +67,21 @@ const BUDGET_TIERS = {
 const PROFILES = {
   simple_question: {
     id: 'simple_question', label: 'Simple Question',
-    description: 'Minimal pipeline — no planner, no project retrieval, no repository scan, no memory extraction, no critic.',
+    description: 'Minimal pipeline — no planner, no project retrieval, no repository scan, no critic. (Memory observation is mandatory and runs before orchestration for EVERY profile.)',
     requiredCapabilities: ['conversation_history', 'memory_retrieval'],
     budget: BUDGET_TIERS.minimal,
   },
   memory_request: {
     id: 'memory_request', label: 'Memory Request',
     description: 'User is recalling or updating stored facts — memory capabilities are the entire point of this request.',
-    requiredCapabilities: ['conversation_history', 'memory_retrieval', 'long_term_memory_extraction'],
+    requiredCapabilities: ['conversation_history', 'memory_retrieval'],
     budget: BUDGET_TIERS.minimal,
   },
   coding_request: {
     id: 'coding_request', label: 'Coding Request',
     description: 'Repository understanding, workspace retrieval, architecture planner, reasoning, critic, memory.',
     requiredCapabilities: [
-      'conversation_history', 'memory_retrieval', 'long_term_memory_extraction',
+      'conversation_history', 'memory_retrieval',
       'workspace_analysis', 'repository_understanding', 'project_retrieval', 'file_intelligence',
       'reasoning_engine', 'planning_engine', 'critic', 'code_generation', 'tool_calling',
     ],

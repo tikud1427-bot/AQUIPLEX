@@ -74,13 +74,35 @@ export function updateGraph(mind, { extractedFacts = [], hints = {}, goalsTouche
       const org = upsertNode(mind, 'organization', fact.value);
       if (org) { upsertEdge(mind, SELF, org.key, 'part_of', 'workplace fact'); wrote = true; }
     }
-    if ((fact.key === 'spouse' || fact.key === 'siblings') && fact.value) {
-      const p = upsertNode(mind, 'person', fact.value);
-      if (p) { upsertEdge(mind, SELF, p.key, 'works_with', fact.key); wrote = true; }
+    if ((fact.key === 'spouse' || fact.key === 'siblings' || fact.key === 'cofounder') && fact.value) {
+      const rel = fact.key === 'cofounder' ? 'works_with' : (fact.key === 'spouse' ? 'related_to' : 'related_to');
+      const vals = Array.isArray(fact.value) ? fact.value : [fact.value];
+      for (const v of vals) {
+        const name = typeof v === 'object' ? v.name : v;
+        if (!name) continue;
+        const p = upsertNode(mind, 'person', name);
+        if (p) { upsertEdge(mind, SELF, p.key, rel, fact.key); wrote = true; }
+      }
     }
     if (fact.key === 'children' && fact.value?.name) {
       const p = upsertNode(mind, 'person', fact.value.name);
       if (p) { upsertEdge(mind, SELF, p.key, 'related_to', 'family'); wrote = true; }
+    }
+    // v3 (Extraction Audit): projects & goals are now first-class facts — they
+    // must land in the graph as nodes the user works_on / targets (Req 4/9).
+    if ((fact.key === 'project') && fact.value) {
+      const vals = Array.isArray(fact.value) ? fact.value : [fact.value];
+      for (const v of vals) {
+        const pn = upsertNode(mind, 'project', v);
+        if (pn) { upsertEdge(mind, SELF, pn.key, 'works_on', 'project fact'); wrote = true; }
+      }
+    }
+    if (fact.key === 'goal' && fact.value) {
+      const vals = Array.isArray(fact.value) ? fact.value : [fact.value];
+      for (const v of vals) {
+        const gn = upsertNode(mind, 'goal', String(v).slice(0, 60));
+        if (gn) { upsertEdge(mind, SELF, gn.key, 'targets', 'goal fact'); wrote = true; }
+      }
     }
   }
 

@@ -170,7 +170,13 @@ export function storeResolved(ownerId, resolved, { trace = null } = {}) {
       return;
     }
     case RESOLUTION_ACTIONS.MERGE: {
-      const merged = resolved.mergedValue;
+      // The legacy-fact mapper (memoryExtractor.toLegacyFact) folds the merged
+      // collection into `value` and does NOT carry `mergedValue` through, so a
+      // cross-message merge arriving via the observe pipeline has mergedValue
+      // === undefined. Fall back to `value` so the merged array is actually
+      // persisted (previously this stored a valueless fact — the collection was
+      // silently lost on the SECOND mention).
+      const merged = resolved.mergedValue !== undefined ? resolved.mergedValue : resolved.value;
       const history = existing ? buildVersionHistory(existing, 'collection_merge') : [];
       const upgraded = upgradeFact({ ...resolved, value: merged, normalizedValue: merged }, ownerId);
       upgraded.history = history;

@@ -9,7 +9,13 @@ const log = {
 
 // ── Personal Statement Detector ───────────────────────────────────────────────
 function isPersonalStatement(sentence) {
-  return /\b(i|my|me|mine|we|our|us|myself|i'm|i've|i'll|i'd)\b/i.test(sentence);
+  // v3 (Extraction Audit): "This is John" is a self-introduction with no
+  // first-person pronoun — allow the greeting form through the gate.
+  // v4 (Cognitive Identity): "Also known as CP" / "aka CP" are self-referential
+  // alias declarations, also pronoun-free — let them through too.
+  return /\b(i|my|me|mine|we|our|us|myself|i'm|i've|i'll|i'd)\b/i.test(sentence)
+      || /^(?:hi|hey|hello|yo|greetings)?[,!.\s]*this is\b/i.test(sentence)
+      || /^\s*(?:also known as|a\.?k\.?a\.?\b)/i.test(sentence);
 }
 
 // ── Confidence Adjuster ───────────────────────────────────────────────────────
@@ -32,12 +38,28 @@ function adjustConfidence(candidate, sentence) {
 // captured the entire remainder of the sentence as custom_trait whenever the
 // schema-level name pattern didn't match first (see memorySchema.js 'intro').
 const ACTIVITY_STATEMENT = /^[a-z]+ing\b/i;
+// v3 (Extraction Audit): widening the fallback to "i'm X" made transient
+// states ("I'm sure/tired/busy…") storable as custom_trait. Moods are not
+// durable memories.
+const TRANSIENT_STATE = /^(sure|tired|busy|happy|sad|fine|okay|ok|good|great|glad|sorry|ready|done|back|free|late|early|lost|stuck|confused|curious|excited|afraid|scared|bored|hungry|thirsty|sick|well|here|there|home|away|online|offline|not|no|so|just|about|almost|kind|sort)\b/i;
+
+// v4 (Cognitive Identity): stable, collision-free key from free text. The old
+// fallback stored EVERY "I'm X" trait under the single key `custom_trait` with
+// an OVERWRITE policy, so two unrelated traits ("I'm a night owl", later "I'm
+// left-handed") clobbered each other — and worse, any identity phrase that
+// slipped past the schema landed here and was later destroyed by the next
+// custom fact. Deriving the key from the value gives each trait its own field.
+function customSlug(value) {
+  return 'custom_' + String(value).toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+}
 
 function extractCustomFacts(sentence, ctx) {
   const candidates = [];
   const patterns = [
     { regex: /my ([a-z\s]+?) is ([a-z0-9\s]+)/i, keyGen: (m) => `custom_${m[1].trim().replace(/\s+/g, '_')}`, valGen: (m) => m[2].trim() },
-    { regex: /i am (?:a |an )?([a-z\s]+?)(?:\s*[,.]|$)/i, keyGen: () => 'custom_trait', valGen: (m) => m[1].trim(), guard: (v) => !ACTIVITY_STATEMENT.test(v) },
+    // Per-value key (was the single collision-prone `custom_trait`).
+    { regex: /i(?:'m| am) (?:a |an )?([a-z\s]+?)(?:\s*[,.]|$)/i, keyGen: (m) => customSlug(m[1].trim()), valGen: (m) => m[1].trim(), guard: (v) => !ACTIVITY_STATEMENT.test(v) && !TRANSIENT_STATE.test(v) },
   ];
   
   for (const p of patterns) {
@@ -47,6 +69,7 @@ function extractCustomFacts(sentence, ctx) {
       const value = p.valGen(m);
       if (value && value.length > 0 && (!p.guard || p.guard(value))) {
         candidates.push({
+          extractor: 'custom_fallback',
           category: CATEGORIES.CUSTOM, key, value, normalizedValue: value,
           confidence: 0.7, rawText: sentence, sentence, reason: 'custom_fact',
           isCorrection: !!ctx.isCorrection, ts: ctx.ts || Date.now(),
@@ -153,6 +176,15 @@ export function extractAllCandidates(parsed) {
       correctionPhrase: parsed.correctionPhrase,
       ts: parsed.ts,
     });
+    // Instrumentation (Extraction Audit Req 3): every sentence prints what
+    // matched — pattern, extractor, fact, confidence — or an explicit miss.
+    if (cs.length) {
+      for (const c of cs) {
+        console.log(`[EXTRACTOR] MATCH sentence="${sentence.slice(0, 80)}" extractor=${c.extractor} pattern=${c.reason} → ${c.key}=${JSON.stringify(c.value)} conf=${c.confidence}`);
+      }
+    } else {
+      console.log(`[EXTRACTOR] NO_MATCH sentence="${sentence.slice(0, 80)}" personal=${isPersonalStatement(sentence)}`);
+    }
     all.push(...cs);
   }
   log.debug(`Extracted ${all.length} raw candidates from ${parsed.sentences.length} sentences`);
@@ -161,6 +193,7 @@ export function extractAllCandidates(parsed) {
 
 function makeCandidate(schema, value, sentence, { reason, confidence, ctx }) {
   return {
+    extractor: 'schema',
     category: schema.category, key: schema.key, value, normalizedValue: null,
     confidence, rawText: sentence, sentence, reason,
     isCorrection: !!ctx.isCorrection, correctionPhrase: ctx.correctionPhrase,

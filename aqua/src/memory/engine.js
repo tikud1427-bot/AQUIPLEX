@@ -26,6 +26,7 @@ import { resolveOwner, isUserOwner } from './ownerResolver.js';
 import { extractFactsWithReport, detectMemoryUpdate, detectForget, resolveCanonicalKey } from './memoryExtractor.js';
 import { storeFacts, storeFact, deleteFact } from './longTermMemory.js';
 import { retrieveRelevantFacts, formatFactsForPrompt } from './memoryRetriever.js';
+import { getIdentity, hasIdentity, formatIdentityBlock, isIdentityQuery, answerIdentityQuery } from './identity.js';
 import { mindObserve, mindContext, mindAfterTurn } from '../mind/index.js';
 import { getMind, peekMind, touchMind } from '../mind/mindStore.js';
 import { upsertNode, upsertEdge, SELF_KEY } from '../mind/relationshipGraph.js';
@@ -61,6 +62,7 @@ function makeTrace(base = {}) {
     forget: null, correction: null,
     mind: { signals: 0, goalsTouched: 0 },
     ranking: [], consideredFacts: 0, droppedByGate: 0, // retrieval
+    identity: null, identityQuery: false,               // canonical identity (bypass)
     retrieved: [], cognitiveUsed: {}, filesInjected: [],
     injectedTokens: 0, budgetTokens: TOTAL_BUDGET_TOKENS,
     duplicates: 0,
@@ -149,6 +151,30 @@ export function memoryRetrieve(ownerId, {
   trace.budgetTokens = budgetTokens;
   if (!ownerId) return { block: '', relevantFacts: [], cognitiveUsed: {}, trace };
 
+  // 0. IDENTITY FIRST — canonical structured state, NOT semantic recall.
+  //    Assembled directly from the isolated identity fact keys and injected at
+  //    the top of the memory block on EVERY turn (it is always relevant and
+  //    tiny). Because it never passes through retrieveRelevantFacts(), an
+  //    identity question ("what's my name?", "who am I?") can never be crowded
+  //    out by other high-importance facts, dropped by the relevance gate, or
+  //    lost under the token budget. On an explicit identity question the card
+  //    is scoped to what was asked; otherwise the compact full card rides along.
+  let identityBlock = '';
+  try {
+    const identity = getIdentity(ownerId);
+    if (hasIdentity(identity)) {
+      identityBlock = isIdentityQuery(query)
+        ? answerIdentityQuery(identity, query)
+        : formatIdentityBlock(identity);
+      trace.identity = Object.fromEntries(
+        Object.entries(identity).map(([k, v]) => [k, v.value]));
+      trace.identityQuery = isIdentityQuery(query);
+    }
+  } catch (err) {
+    console.warn('[MEMORY] identity retrieval failed (non-fatal):', err.message);
+    trace.notes.push(`identity_error:${err.message}`);
+  }
+
   let factBlock = '';
   let relevantFacts = [];
   try {
@@ -160,16 +186,17 @@ export function memoryRetrieve(ownerId, {
     trace.notes.push(`retrieve_facts_error:${err.message}`);
   }
 
-  // Cognitive block rides the remaining budget.
+  // Cognitive block rides whatever budget the identity card + facts leave.
+  const identityTokens = estimateTokens(identityBlock);
   const factTokens = estimateTokens(factBlock);
-  const cognitiveBudget = Math.max(MIN_COGNITIVE_BUDGET, budgetTokens - factTokens);
+  const cognitiveBudget = Math.max(MIN_COGNITIVE_BUDGET, budgetTokens - identityTokens - factTokens);
   const cognitive = mindContext(ownerId, { query, taskType, budgetTokens: cognitiveBudget });
   trace.cognitiveUsed = cognitive.used || {};
 
   // File memory — only when the query plausibly touches files.
   const fileBlock = retrieveFileMemory(ownerId, query, taskType, trace);
 
-  const block = [factBlock, cognitive.block, fileBlock].filter(Boolean).join('\n\n');
+  const block = [identityBlock, factBlock, cognitive.block, fileBlock].filter(Boolean).join('\n\n');
   trace.injectedTokens = estimateTokens(block);
   return { block, relevantFacts, cognitiveUsed: cognitive.used || {}, trace };
 }

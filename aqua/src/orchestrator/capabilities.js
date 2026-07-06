@@ -74,11 +74,10 @@ define('memory_retrieval', {
   reasonDisabled: () => 'Minimal pipeline — no recalled context needed for this request.',
 });
 
-define('long_term_memory_extraction', {
-  label: 'Long-Term Memory Extraction', group: 'memory', cost: 'low', latency: 'low',
-  reasonEnabled: () => 'Request may contain durable facts worth storing.',
-  reasonDisabled: () => 'Simple Question profile — extraction skipped to avoid wasted writes.',
-});
+// REMOVED: 'long_term_memory_extraction'. Memory observation is MANDATORY
+// architecture (runs in prepareTurn BEFORE orchestration for every message —
+// see memory/engine.js memoryObserve). It is not a routable capability and
+// must never appear in a profile or a Skipped list.
 
 define('conversation_history', {
   label: 'Conversation History', group: 'memory', cost: 'low', latency: 'low',

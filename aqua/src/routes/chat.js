@@ -202,7 +202,28 @@ function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, 
   const { task: taskType, confidence, labels } = classifyTask(userMessage);
   console.log(`[CLASSIFIER] task=${taskType} conf=${confidence.toFixed(2)} req=${requestId}`);
 
-  // ── 2a. Adaptive Tool Orchestrator (Phase 6) ────────────────────────────────
+  // ── 2a. OBSERVE — MANDATORY, BEFORE ORCHESTRATION ───────────────────────────
+  // The ONE observation pipeline (unified engine): normalize → identity /
+  // preference / goal / relationship / project / fact extraction →
+  // conflict-resolved storage → beliefs / goals / working memory / episodes /
+  // graph. Runs for EVERY user message. The orchestrator below routes
+  // EXPENSIVE stages (workspace analysis, repo scan, reasoning, critic);
+  // it has no say over observation — durable memory is never optional.
+  // (classifyTask above is deterministic, <1ms, zero-LLM — part of
+  // normalization; observers use its taskType for trait signals.)
+  onStage('memory', 'Checking memory…');
+  const observed = memoryObserve(memoryOwner, {
+    userMessage, taskType, workspaceId, conversationId, userId, requestId,
+  });
+  const extractedFacts = observed.extractedFacts;
+  logMemoryEvent(ctx, 'EXTRACTED', extractedFacts.map(f => `${f.key}=${f.value}`));
+  if (observed.trace.forget)     logMemoryEvent(ctx, 'DELETED', [observed.trace.forget.key]);
+  if (observed.trace.correction) logMemoryEvent(ctx, 'UPDATED', [`${observed.trace.correction.key}=${observed.trace.correction.value}`]);
+  if (observed.mind.signals || observed.mind.goalsTouched) {
+    logMemoryEvent(ctx, 'MIND_OBSERVED', [`signals=${observed.mind.signals}`, `goals=${observed.mind.goalsTouched}`]);
+  }
+
+  // ── 2b. Adaptive Tool Orchestrator (Phase 6) ────────────────────────────────
   // Pure/deterministic, no LLM calls, no I/O — see toolOrchestrator.js.
   // Conservative integration preserved from v4: never gates memory
   // extraction/retrieval (cheap local ops); only narrows project retrieval
@@ -229,23 +250,7 @@ function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, 
   });
   logIntelligenceEvent(ctx, intelligence);
 
-  // ── 3. Observe — the ONE observation pipeline (unified engine) ──────────────
-  // extract → forget/update → conflict-resolved fact storage → beliefs /
-  // goals / working memory / episodes / graph. One extraction pass, one
-  // owner, one store. Fail-safe no-op when memoryOwner is null.
-  onStage('memory', 'Checking memory…');
-  const observed = memoryObserve(memoryOwner, {
-    userMessage, taskType, workspaceId, conversationId, userId, requestId,
-  });
-  const extractedFacts = observed.extractedFacts;
-  logMemoryEvent(ctx, 'EXTRACTED', extractedFacts.map(f => `${f.key}=${f.value}`));
-  if (observed.trace.forget)     logMemoryEvent(ctx, 'DELETED', [observed.trace.forget.key]);
-  if (observed.trace.correction) logMemoryEvent(ctx, 'UPDATED', [`${observed.trace.correction.key}=${observed.trace.correction.value}`]);
-  if (observed.mind.signals || observed.mind.goalsTouched) {
-    logMemoryEvent(ctx, 'MIND_OBSERVED', [`signals=${observed.mind.signals}`, `goals=${observed.mind.goalsTouched}`]);
-  }
-
-  // ── 4. Retrieve — the ONE retrieval pipeline (unified engine) ───────────────
+  // ── 3. Retrieve — the ONE retrieval pipeline (unified engine) ───────────────
   // Ranked facts + cognitive state + file memory under a single token
   // budget → one memoryBlock for the prompt. Smallest high-quality context.
   const retrieved = memoryRetrieve(memoryOwner, {

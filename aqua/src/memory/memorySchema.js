@@ -74,6 +74,10 @@ const validateEditor = (v) => typeof v === 'string' && v.length > 1;
 const validateOS = (v) => typeof v === 'string' && v.length > 1;
 const validateAge = (v) => Number.isInteger(v) && v >= 0 && v <= 130;
 const validateYear = (v) => Number.isInteger(v) && v >= 1900 && v <= 2100;
+// A project value must be a NAME, not a bare generic noun left over after
+// article stripping ("I am building an AI" must not store project="AI").
+const GENERIC_PROJECT = new Set(['ai', 'app', 'apps', 'website', 'site', 'tool', 'bot', 'thing', 'things', 'something', 'stuff', 'project', 'product', 'startup', 'company', 'business', 'saas', 'platform', 'feature', 'code', 'it']);
+const validateProject = (v) => typeof v === 'string' && v.length >= 2 && v.length <= 50 && !GENERIC_PROJECT.has(v.toLowerCase().trim());
 const validateWords = (min, max) => (v) => {
   const words = (v || '').split(/\s+/).filter(Boolean);
   return words.length >= min && words.length <= max;
@@ -82,18 +86,46 @@ const validateWords = (min, max) => (v) => {
 // ── Schema entries ────────────────────────────────────────────────────────────
 export const MEMORY_SCHEMA = [
   // ═══════════════════════ IDENTITY ═════════════════════════════════════════
-  { category: CATEGORIES.IDENTITY, key: 'name', aliases: ['preferred_name', 'nickname'],
+  { category: CATEGORIES.IDENTITY, key: 'name', aliases: ['legal_name', 'full_name'],
     patterns: [
-      { regex: /my name is ([A-ZÀ-ÿ][A-Za-zÀ-ÿ'-]+(?: [A-ZÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,3})/i, group: 1, reason: 'explicit_name' },
-      { regex: /(?:call me|i(?:'m| am) called|i go by) ([A-ZÀ-ÿ][A-Za-zÀ-ÿ'-]+)/i, group: 1, reason: 'call_me' },
+      { regex: /my name is ([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+(?: [A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,3})/i, group: 1, reason: 'explicit_name' },
       // v2 FIX (Memory Confidence Engine): excludes gerunds/present-participles
       // ("building", "working", "coding", "running", ...) via the trailing
       // (?!\w*ing\b) lookahead. Previously "I am building an AI." matched
       // this pattern and stored name="Building" — identity extraction must
       // only succeed when the sentence is explicitly introducing an identity,
       // not describing a current activity.
-      { regex: /^(i(?:'m| am)) (?!(?:a|an|the|from|in|at|going|trying|planning|not|no|so|just|also|very|really|now|currently|actually|here|sure|fine|okay|well|still)\b)(?!\w*ing\b)([A-ZÀ-ÿ][A-Za-zÀ-ÿ'-]{2,})(?:[,.]|\s+(?:a|an|the|and|but|from|in|at)\b)/i, group: 2, reason: 'intro' },
+      // v3 FIX (Extraction Audit): the old anchor ^ rejected "Hi I'm Chhanda",
+      // the [A-ZÀ-ÿ] first-char class rejected "hi i'm chhanda", and the
+      // mandatory trailing [,.]/connector rejected bare "I'm Chhanda" at end
+      // of sentence — the single most common introduction produced ZERO
+      // candidates. Now: no anchor, any-case first letter (normalizeName
+      // capitalizes), end-of-sentence allowed, and a wider stop-word list so
+      // "I'm sure/tired/back/ready…" never becomes a name. Gerund guard kept.
+      // v4 FIX (Cognitive Identity): the capture was a SINGLE token, so
+      // "I'm Chhanda Prabal Das" matched only "Chhanda", then the boundary
+      // failed on " Prabal" and the WHOLE phrase fell through to the custom_
+      // fallback (stored as an opaque trait, later overwritten by an unrelated
+      // custom fact — the identity-corruption bug). Now the capture takes 1–4
+      // name tokens; each SUBSEQUENT token is guarded against connectors/
+      // prepositions so "I'm Chhanda from Assam" still stops at "Chhanda" and
+      // never absorbs "from Assam".
+      { regex: /\bi(?:'m| am) (?!(?:a|an|the|from|in|at|on|going|trying|planning|hoping|aiming|not|no|so|just|also|very|really|now|currently|actually|here|there|sure|fine|okay|ok|well|still|good|great|glad|happy|sad|sorry|tired|busy|free|back|ready|done|new|old|late|early|lost|stuck|confused|curious|interested|afraid|excited|serious|right|wrong|kidding|joking|all|too|quite|pretty|almost|about|only|way|kind|sort)\b)(?!\w*ing\b)([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{2,}(?:\s(?!(?:and|but|from|in|at|by|with|for|to|of|on|as|is|who|the|a|an)\b)[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,3})(?:\s*[,.!?]|$|\s+(?:and|but|from|in|at|by|who|is|the|of)\b)/i, group: 1, reason: 'intro' },
+      { regex: /^(?:hi|hey|hello|yo|greetings)?[,!.\s]*this is ([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{2,}(?:\s(?!(?:and|from|at|the|a|an|of|who|is)\b)[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,3})(?:\s*[,.!?]|$|\s+(?:and|from|at|who|is)\b)/i, group: 1, reason: 'this_is', confidence: 0.85 },
     ], normalizer: normalizeName, validator: validateName, multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 10, baseConfidence: 0.98, retrievalHints: ['name', 'called', 'who am i'] },
+  // v4 (Cognitive Identity): preferred_name is a DISTINCT field from the legal
+  // `name` — "Call me Chhanda" must set the preferred name WITHOUT erasing the
+  // legal name (field-level isolation: two keys, two lifecycles). Previously
+  // "call me X" wrote the `name` key and clobbered the full legal name.
+  { category: CATEGORIES.IDENTITY, key: 'preferred_name', aliases: ['nickname', 'goes_by'],
+    patterns: [
+      { regex: /(?:just )?call me ([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+(?: [A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,2})/i, group: 1, reason: 'call_me', confidence: 0.95,
+        transform: (m) => { const v = m[1].trim(); return /^(back|later|maybe|now|when|if|about|anytime|tomorrow|tonight|please|asap|soon)\b/i.test(v) ? null : v; } },
+      { regex: /i (?:go by|am called|prefer to be called|usually go by) ([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+(?: [A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,2})/i, group: 1, reason: 'go_by', confidence: 0.95 },
+    ], normalizer: normalizeName, validator: validateName, multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 9, baseConfidence: 0.95, retrievalHints: ['call me', 'nickname', 'go by', 'preferred name'] },
+  { category: CATEGORIES.IDENTITY, key: 'aliases', patterns: [
+      { regex: /(?:also known as|a\.?k\.?a\.?|you can also call me|some(?:times)? call me) ([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+(?: [A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,2})/i, group: 1, reason: 'alias', confidence: 0.85 },
+    ], normalizer: (v) => Array.isArray(v) ? v.map(normalizeName) : [normalizeName(v)], validator: (v) => (Array.isArray(v) ? v : [v]).every(validateName), multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 5, baseConfidence: 0.85, retrievalHints: ['alias', 'also known as', 'aka'] },
   { category: CATEGORIES.IDENTITY, key: 'age', patterns: [
       { regex: /i(?:'m| am) (\d{1,3}) years? old/i, group: 1, reason: 'age_explicit' },
       { regex: /i turned (\d{1,3})(?: last| recently)?/i, group: 1, reason: 'turned_age' },
@@ -121,10 +153,24 @@ export const MEMORY_SCHEMA = [
 
   // ═══════════════════════ WORK ═════════════════════════════════════════════
   { category: CATEGORIES.WORK, key: 'profession', aliases: ['job_title', 'role'], patterns: [
+      // v4 (Cognitive Identity): "I'm the founder of Aquiplex" / "I'm the CEO
+      // at Acme" carries BOTH a role and a company but matched NO schema key
+      // (profession needs "a/an", workplace needs "work at") → it fell through
+      // to the custom_ fallback as one opaque blob. This multiKey pattern
+      // splits it into role → profession and company → workplace, each stored
+      // in its own isolated field.
+      { regex: /i(?:'m| am) the ([A-Za-z][A-Za-z\s-]{1,30}?) (?:of|at|for) ([A-Za-z0-9][A-Za-z0-9&.'\s-]{1,40}?)(?:\s*[,.!?]|$)/i,
+        multiKey: true, reason: 'role_of_org', confidence: 0.92,
+        transform: (m) => ({ profession: m[1].trim(), workplace: m[2].trim() }) },
       { regex: /i work as (?:a |an )?([A-Za-z\s-]+?)(?:\s+at|\s+for|\s*[,.]|$)/i, group: 1, reason: 'work_as' },
+      // v3 (Extraction Audit): "I'm a student", "I am a founder", "I'm an
+      // engineer at X". Guard rejects intensity idioms ("I'm a bit tired").
+      { regex: /i(?:'m| am) (?:a|an) ([A-Za-z][A-Za-z\s-]{2,30}?)(?:\s+(?:at|for|in|and|who|based|working)\b|\s*[,.!?]|$)/i, group: 1, reason: 'i_am_a', confidence: 0.85,
+        transform: (m) => { const v = m[1].trim(); return /^(bit|little|fan|big|huge|great|good|real|total|complete|proud|happy|new)\b/i.test(v) ? null : v; } },
     ], normalizer: normalizeTrim, validator: validateWords(1, 6), multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 8, baseConfidence: 0.9, retrievalHints: ['job', 'work', 'role'] },
   { category: CATEGORIES.WORK, key: 'workplace', aliases: ['company', 'employer', 'organization'], patterns: [
-      { regex: /i work (?:as [A-Za-z\s'-]+? )?at ([A-Z][A-Za-z0-9\s&'-]+?)(?:\s*[,.]|$)/i, group: 1, reason: 'work_at' },
+      { regex: /i work (?:as [A-Za-z\s'-]+? )?(?:at|for) ([A-Za-z][A-Za-z0-9\s&.'-]+?)(?:\s*[,.!?]|$)/i, group: 1, reason: 'work_at' },
+      { regex: /i(?:'m| am) (?:a|an) [A-Za-z\s-]+? at ([A-Za-z][A-Za-z0-9\s&.'-]+?)(?:\s*[,.!?]|$)/i, group: 1, reason: 'role_at_org', confidence: 0.85 },
       { regex: /i(?:'m| am) (?:employed at|working at|based at) ([A-Z][A-Za-z0-9\s&'-]+?)(?:\s*[,.]|$)/i, group: 1, reason: 'employed_at' },
     ], normalizer: normalizeTrim, validator: validateWords(1, 8), multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 7, baseConfidence: 0.88, retrievalHints: ['workplace', 'company', 'employer'] },
   { category: CATEGORIES.IDENTITY, key: 'relationship_status', aliases: ['marital_status'], patterns: [
@@ -158,7 +204,7 @@ export const MEMORY_SCHEMA = [
 
   // ═══════════════════════ FAMILY ═══════════════════════════════════════════
   { category: CATEGORIES.FAMILY, key: 'spouse', aliases: ['partner', 'wife', 'husband'], patterns: [
-      { regex: /my (?:wife|husband|spouse|partner) (?:is |'s )?([A-ZÀ-ÿ][A-Za-zÀ-ÿ'-]{1,30})/i, group: 1, reason: 'spouse_name' },
+      { regex: /my (?:wife|husband|spouse|partner) (?:is |'s )?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{1,30})/i, group: 1, reason: 'spouse_name' },
     ], normalizer: normalizeName, validator: validateName, multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 8, baseConfidence: 0.95, retrievalHints: ['wife', 'husband', 'spouse', 'partner'] },
   { category: CATEGORIES.FAMILY, key: 'children', aliases: ['kids', 'child'], patterns: [
       { regex: /(?:my|a) (?:son|daughter|child|kid) (?:named )?([A-ZÀ-ÿ][A-Za-zÀ-ÿ'-]{1,25})/i, group: 1, reason: 'child_name',
@@ -167,7 +213,7 @@ export const MEMORY_SCHEMA = [
         transform: (m) => ({ name: m[1].trim(), relation: m[0].match(/son/i) ? 'son' : 'daughter' }) },
     ], normalizer: (v) => typeof v === 'object' ? v : { name: String(v) }, validator: (v) => v && typeof v.name === 'string' && v.name.length > 0, multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 8, baseConfidence: 0.9, retrievalHints: ['child', 'son', 'daughter', 'kids'] },
   { category: CATEGORIES.FAMILY, key: 'siblings', aliases: ['brother', 'sister'], patterns: [
-      { regex: /my (?:brother|sister|sibling) (?:is |'s )?([A-ZÀ-ÿ][A-Za-zÀ-ÿ'-]{1,30})/i, group: 1, reason: 'sibling_name' },
+      { regex: /my (?:brother|sister|sibling) (?:is |'s )?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{1,30})/i, group: 1, reason: 'sibling_name' },
     ], normalizer: normalizeName, validator: validateName, multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 6, baseConfidence: 0.9, retrievalHints: ['sibling', 'brother', 'sister'] },
 
   // ═══════════════════════ ENTERTAINMENT ════════════════════════════════════
@@ -233,8 +279,47 @@ export const MEMORY_SCHEMA = [
       { regex: /i (?:spend weekends|enjoy|love to|like to|am into) (.+?)(?: in my free time|\s+in my spare time|\s*[,.]|$)/i, group: 1, reason: 'enjoy',
         transform: (m) => m[1].split(/[, &]|\sand\s/).map((s) => s.trim()).filter(Boolean) },
     ], normalizer: (v) => Array.isArray(v) ? v.map((s) => s.toLowerCase()) : [v.toLowerCase()], validator: (v) => (Array.isArray(v) ? v : [v]).every((s) => s.length >= 2 && s.length <= 40), multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 5, baseConfidence: 0.85, retrievalHints: ['hobby', 'enjoy', 'weekends'] },
+  // ═══════════════════ PROJECTS / RELATIONSHIPS / GENERIC PREFS (v3) ═════════
+  // Extraction Audit: "I'm building Aquiplex", "my cofounder is X",
+  // "I prefer concise answers", "I always use TypeScript" previously
+  // produced ZERO candidates — no schema keys existed for any of them.
+  { category: CATEGORIES.PROJECTS, key: 'project', aliases: ['projects', 'startup', 'product'], patterns: [
+      { regex: /i(?:'m| am) (?:building|working on|developing|creating|making|shipping) ([A-Za-zÀ-ÿ0-9][\w .'-]{1,40}?)(?:\s*[,.!?]|$|\s+(?:with|using|for|in|and|that|which|to)\b)/i, group: 1, reason: 'building', confidence: 0.9,
+        transform: (m) => m[1].replace(/^(?:a|an|the|my|our|this|that|some)\s+/i, '').trim() || null },
+      { regex: /my (?:startup|project|company|product|app|platform|saas) is (?:called |named )?([A-Za-zÀ-ÿ0-9][\w .'-]{1,40}?)(?:\s*[,.!?]|$|\s+(?:and|which|that)\b)/i, group: 1, reason: 'my_project', confidence: 0.92 },
+      { regex: /i (?:founded|co-?founded|started|launched|run) ([A-Za-zÀ-ÿ0-9][\w .'-]{1,40}?)(?:\s*[,.!?]|$|\s+(?:with|in|and|last|back)\b)/i, group: 1, reason: 'founded', confidence: 0.92 },
+    ], normalizer: normalizeTrim, validator: validateProject, multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 8, baseConfidence: 0.9, retrievalHints: ['project', 'startup', 'building', 'working on', 'company'] },
+  { category: CATEGORIES.WORK, key: 'cofounder', aliases: ['co_founder', 'business_partner'], patterns: [
+      { regex: /my (?:co-?founder|business partner) (?:is |'s )?([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{1,30})/i, group: 1, reason: 'cofounder_name' },
+    ], normalizer: normalizeName, validator: validateName, multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 7, baseConfidence: 0.92, retrievalHints: ['cofounder', 'co-founder', 'partner'] },
+  // v4 (Cognitive Identity): "I founded Aquiplex" is captured by `project`
+  // (it IS a project) AND here as an EMPLOYMENT identity — role=Founder,
+  // company=Aquiplex — so the identity card knows the user's company, not just
+  // that Aquiplex is a project. multiKey → two isolated fields; no clobber.
+  { category: CATEGORIES.WORK, key: 'founder_role', patterns: [
+      { regex: /i (co-?)?founded ([A-Za-z0-9][A-Za-z0-9&.'\s-]{1,40}?)(?:\s*[,.!?]|$|\s+(?:with|in|and|last|back|to|as)\b)/i,
+        multiKey: true, reason: 'founded_company', confidence: 0.9,
+        transform: (m) => ({ profession: m[1] ? 'Co-founder' : 'Founder', workplace: m[2].trim() }) },
+    ], normalizer: normalizeTrim, validator: () => true, multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 8, baseConfidence: 0.9, retrievalHints: ['founded', 'founder'] },
+  { category: CATEGORIES.PREFERENCES, key: 'preference', aliases: ['prefers'], patterns: [
+      { regex: /i prefer ([\w][\w\s,'&.-]{2,60}?)(?:\s+(?:over|to|rather|instead)\b|\s*[,.!?]|$)/i, group: 1, reason: 'prefer', confidence: 0.88 },
+      { regex: /i always use ([\w][\w\s.'#+-]{1,40}?)(?:\s*[,.!?]|$|\s+(?:for|when|because)\b)/i, group: 1, reason: 'always_use', confidence: 0.9 },
+    ], normalizer: normalizeTrim, validator: validateShort(2, 70), multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 7, baseConfidence: 0.88, retrievalHints: ['prefer', 'preference', 'always use'] },
+  { category: CATEGORIES.PREFERENCES, key: 'likes', patterns: [
+      { regex: /i (?:really |absolutely )?(?:like|love|enjoy) ([\w][\w\s.'&-]{2,40}?)(?:\s*[,.!?]|$|\s+(?:and|but|because|when|so)\b)/i, group: 1, reason: 'likes', confidence: 0.75,
+        transform: (m) => { const v = m[1].trim(); return /^(your|that|this|it|the idea|when|how|what|to)\b/i.test(v) ? null : v; } },
+    ], normalizer: normalizeLower, validator: validateShort(3, 50), multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 4, baseConfidence: 0.75, retrievalHints: ['like', 'love', 'enjoy'] },
+
   { category: CATEGORIES.GOALS, key: 'goal', aliases: ['goals', 'ambitions'], patterns: [
       { regex: /my (?:goal|ambition|dream) is (?:to )?(.+?)(?:\s*[,.]|$)/i, group: 1, reason: 'goal_is' },
+      // v3 (Extraction Audit): the ONLY goal pattern was "my goal is" — every
+      // natural phrasing produced zero candidates. Verb-anchored so "I want
+      // to know the time" stays out while durable ambitions land.
+      { regex: /i want to (be(?:come)?|build|create|make|start|launch|learn|master|reach|achieve|get|grow|raise|earn|win|write|ship|found) (.+?)(?:\s*[,.!?]|$)/i, group: 0, reason: 'want_to', confidence: 0.85,
+        transform: (m) => `${m[1]} ${m[2]}`.trim() },
+      { regex: /i(?:'m| am) (?:trying|planning|aiming|hoping|determined) to (.+?)(?:\s*[,.!?]|$)/i, group: 1, reason: 'trying_to', confidence: 0.82 },
+      { regex: /help me (?:to )?(become|build|create|make|start|launch|learn|master|reach|achieve|get|grow|raise|earn|win|write|ship|plan) (.+?)(?:\s*[,.!?]|$)/i, group: 0, reason: 'help_me_goal', confidence: 0.8,
+        transform: (m) => `${m[1]} ${m[2]}`.trim() },
     ], normalizer: normalizeTrim, validator: validateWords(2, 15), multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 6, baseConfidence: 0.85, retrievalHints: ['goal', 'ambition', 'dream'] },
 ];
 
@@ -263,6 +348,8 @@ export const SEMANTIC_CONCEPTS = Object.freeze({
   'family': ['spouse', 'children', 'parents', 'siblings'],
   'travel': ['visited_countries', 'dream_destinations'],
   'goals': ['goal', 'ambition'],
+  'projects': ['project', 'cofounder', 'workplace', 'profession'],
+  'preferences': ['preference', 'likes', 'favorite_language', 'favorite_framework', 'favorite_editor'],
   'enjoy': ['hobbies', 'favorite_movie', 'favorite_music', 'favorite_food', 'favorite_sport'],
   'entertainment': ['favorite_movie', 'favorite_book', 'favorite_music', 'favorite_sport'],
 });

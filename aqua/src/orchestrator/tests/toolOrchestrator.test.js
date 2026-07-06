@@ -18,7 +18,9 @@ function capability(decision, id) {
 test('simple conversation selects the Simple Question profile', () => {
   const d = orchestrate({ userMessage: 'Hi there, how are you?', taskType: 'conversation', confidence: 0.85, hasWorkspaceId: false });
   assert.equal(d.profile.id, 'simple_question');
-  assert.equal(capability(d, 'long_term_memory_extraction').enabled, false);
+  // Memory observation is mandatory architecture, not a capability — it must
+  // never appear in the orchestrator's vocabulary (so it can never be Skipped).
+  assert.equal(capability(d, 'long_term_memory_extraction'), undefined);
   assert.equal(capability(d, 'critic').enabled, false);
   assert.equal(capability(d, 'planning_engine').enabled, false);
 });

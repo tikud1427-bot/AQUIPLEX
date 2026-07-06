@@ -27,11 +27,17 @@ import uploadRoute        from "./src/routes/upload.js";
 import mindRoute          from "./src/mind/mindRoutes.js";
 import { runStartupValidation } from "./src/core/startupValidation.js";
 import { migrateLegacyMemory }  from "./src/memory/migrate.js";
+import { migrateIdentity }      from "./src/memory/identityMigration.js";
 
 // ── One-time unification migration ──────────────────────────────────────────
 // Legacy conversation-scoped facts (.aqua-memory.json) → unified owner-scoped
 // Mind store (.aqua-mind.json). Idempotent: source archived after success.
 migrateLegacyMemory();
+
+// ── One-time identity repair ─────────────────────────────────────────────────
+// Fold any legacy `custom_trait` blobs into canonical identity fields (or
+// de-collide them into per-value custom keys). Idempotent: minds are flagged.
+migrateIdentity();
 
 // Validate model registry + provider keys once at mount. Never throws —
 // misconfigured providers are disabled with a warning, engine still mounts.
