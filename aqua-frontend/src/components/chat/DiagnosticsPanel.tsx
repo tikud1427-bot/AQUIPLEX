@@ -9,7 +9,10 @@ const COST_VARIANT = { low: 'success', medium: 'warning', high: 'danger' } as co
 
 export function DiagnosticsPanel({ diagnostics }: { diagnostics: MessageDiagnostics }) {
   const [open, setOpen] = useState(false);
-  const { provider, taskType, confidence, latencyMs, orchestration, memory, fallbackChain } = diagnostics;
+  // `provider` is intentionally NOT destructured/rendered — backend routing
+  // is never surfaced in the UI. This panel is developer-only and shows the
+  // shape of the pipeline (task, timing, attempts) without naming providers.
+  const { taskType, confidence, latencyMs, orchestration, memory, fallbackChain } = diagnostics;
 
   return (
     <div className="mt-2">
@@ -18,7 +21,7 @@ export function DiagnosticsPanel({ diagnostics }: { diagnostics: MessageDiagnost
         className="flex items-center gap-1.5 rounded-md px-1.5 py-1 text-[11px] text-foreground-secondary/70 transition-colors hover:bg-surface-secondary hover:text-foreground-secondary"
       >
         <Cpu className="h-3 w-3" />
-        <span className="font-mono">{provider}</span>
+        <span className="font-medium">AQUA</span>
         <span className="text-foreground-secondary/40">·</span>
         <span>{taskType.replace(/_/g, ' ')}</span>
         <span className="text-foreground-secondary/40">·</span>
@@ -93,19 +96,19 @@ export function DiagnosticsPanel({ diagnostics }: { diagnostics: MessageDiagnost
                 </div>
               )}
 
-              {fallbackChain.length > 0 && (
+              {fallbackChain.length > 1 && (
                 <div>
-                  <p className="mb-1 font-medium text-foreground-secondary">Provider chain</p>
+                  <p className="mb-1 font-medium text-foreground-secondary">Routing</p>
                   <div className="space-y-0.5">
                     {fallbackChain.map((f, i) => (
-                      <div key={i} className="flex items-center gap-1.5 font-mono text-[11px]">
+                      <div key={i} className="flex items-center gap-1.5 text-[11px]">
                         <span
                           className={cn(
                             'h-1.5 w-1.5 rounded-full',
                             f.outcome === 'success' ? 'bg-success' : 'bg-danger',
                           )}
                         />
-                        <span className="text-foreground-secondary">{f.provider}</span>
+                        <span className="text-foreground-secondary">Attempt {i + 1}</span>
                         <span className="text-foreground-secondary/50">{f.outcome}</span>
                         {f.latencyMs != null && <span className="text-foreground-secondary/50">{f.latencyMs}ms</span>}
                       </div>

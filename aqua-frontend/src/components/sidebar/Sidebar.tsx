@@ -83,19 +83,19 @@ export function Sidebar({ collapsed, isMobileOverlay, onNavigate }: Props) {
 
   return (
     <div className={cn('flex h-full w-[280px] flex-col bg-surface', !isMobileOverlay && 'border-r border-border')}>
-      <div className="flex items-center gap-2 p-3">
+      <div className="flex items-center gap-2 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
           <span className="text-[10px] font-bold text-white">AQ</span>
         </div>
         <span className="text-sm font-semibold text-foreground">AQUA</span>
         <div className="flex-1" />
         {isMobileOverlay ? (
-          <button onClick={() => setMobileSidebarOpen(false)} className="rounded-lg p-1.5 text-foreground-secondary hover:bg-surface-secondary">
-            <X className="h-4 w-4" />
+          <button onClick={() => setMobileSidebarOpen(false)} className="tap flex h-9 w-9 items-center justify-center rounded-lg text-foreground-secondary hover:bg-surface-secondary hover:text-foreground" aria-label="Close menu">
+            <X className="h-4.5 w-4.5" />
           </button>
         ) : (
           <Tooltip label={`Collapse sidebar (${modKey}B)`}>
-            <button onClick={toggleSidebar} className="rounded-lg p-1.5 text-foreground-secondary hover:bg-surface-secondary hover:text-foreground">
+            <button onClick={toggleSidebar} className="tap flex h-8 w-8 items-center justify-center rounded-lg text-foreground-secondary hover:bg-surface-secondary hover:text-foreground" aria-label="Collapse sidebar">
               <PanelLeftClose className="h-4 w-4" />
             </button>
           </Tooltip>
@@ -105,7 +105,7 @@ export function Sidebar({ collapsed, isMobileOverlay, onNavigate }: Props) {
       <div className="px-3">
         <button
           onClick={handleNewChat}
-          className="mb-2 flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface-secondary"
+          className="tap mb-2 flex w-full items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-surface-secondary active:bg-surface-secondary"
         >
           <SquarePen className="h-3.5 w-3.5" /> New chat
         </button>
@@ -118,7 +118,7 @@ export function Sidebar({ collapsed, isMobileOverlay, onNavigate }: Props) {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search conversations…"
-            className="h-8 w-full rounded-lg border border-border bg-background pl-8 pr-2 text-xs text-foreground placeholder:text-foreground-secondary/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="h-9 w-full rounded-lg border border-border bg-background pl-8 pr-2 text-sm text-foreground placeholder:text-foreground-secondary/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           />
         </div>
       </div>
@@ -145,7 +145,7 @@ export function Sidebar({ collapsed, isMobileOverlay, onNavigate }: Props) {
             {unpinned.length > 0 && (
               <div className="space-y-0.5 pb-2">
                 {pinned.length > 0 && (
-                  <p className="px-2.5 py-1.5 text-[11px] font-medium uppercase tracking-wide text-foreground-secondary/60">All chats</p>
+                  <p className="px-2.5 py-1.5 text-[11px] font-medium uppercase tracking-wide text-foreground-secondary/60">Recent</p>
                 )}
                 {unpinned.map((c) => (
                   <ConversationItem key={c.id} conversation={c} onNavigate={onNavigate} />
@@ -156,17 +156,17 @@ export function Sidebar({ collapsed, isMobileOverlay, onNavigate }: Props) {
         )}
       </ScrollArea>
 
-      <div className="border-t border-border p-2">
+      <div className="border-t border-border p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         <button
           onClick={() => { navigate('/mind'); onNavigate?.(); }}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground"
+          className="tap flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground"
         >
           <BrainCircuit className="h-4 w-4" />
           Aqua’s mind
         </button>
         <button
           onClick={() => setSettingsOpen(true)}
-          className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground"
+          className="tap flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2.5 text-sm text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground"
         >
           <Settings className="h-4 w-4" />
           Settings

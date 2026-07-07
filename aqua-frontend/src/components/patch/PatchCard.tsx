@@ -265,11 +265,6 @@ export const PatchCard = memo(function PatchCard({ patch, messageId }: { patch: 
 
       {/* ── Footer: review workflow ── */}
       <div className="flex items-center gap-2 border-t border-border/60 bg-surface-secondary/40 px-3 py-2">
-        {patch.provider && (
-          <span className="text-[10px] text-foreground-secondary/60">
-            via {patch.provider}{patch.latencyMs ? ` · ${(patch.latencyMs / 1000).toFixed(1)}s` : ''}
-          </span>
-        )}
         <div className="ml-auto flex items-center gap-1.5">
           {proposed && (
             <>

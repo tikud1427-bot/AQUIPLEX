@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useChatStore } from '@/stores/chatStore';
 import { useUploadStore } from '@/stores/uploadStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import type { UiMessage } from '@/types';
 
 function formatTime(ts: number) {
@@ -52,6 +53,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: { 
   const retryLastMessage = useChatStore((s) => s.retryLastMessage);
   const continueGeneration = useChatStore((s) => s.continueGeneration);
   const generating = useChatStore((s) => s.generating);
+  const developerMode = useSettingsStore((s) => s.developerMode);
 
   const isUser = message.role === 'user';
 
@@ -116,15 +118,15 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: { 
           )}
 
           {!editing && (
-            <div className="flex items-center gap-2 pr-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="hover-reveal flex items-center gap-1.5 pr-0.5">
               <span className="text-[11px] text-foreground-secondary/60">{formatTime(message.ts)}</span>
               {!generating && (
                 <button
                   onClick={() => setEditing(true)}
-                  className="rounded p-1 text-foreground-secondary/60 hover:bg-surface-secondary hover:text-foreground"
+                  className="tap flex h-7 w-7 items-center justify-center rounded-md text-foreground-secondary/70 hover:bg-surface-secondary hover:text-foreground"
                   aria-label="Edit message"
                 >
-                  <Pencil className="h-3 w-3" />
+                  <Pencil className="h-3.5 w-3.5" />
                 </button>
               )}
             </div>
@@ -194,20 +196,22 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: { 
             )}
 
             {!isStreaming && (
-              <div className="mt-1 flex items-center gap-2">
-                <span className="text-[11px] text-foreground-secondary/50 opacity-0 transition-opacity group-hover:opacity-100">
-                  {formatTime(message.ts)}
-                </span>
+              <div className="mt-0.5 flex items-center gap-1">
                 <MessageActions
                   content={message.content}
                   contentRef={contentRef}
                   onRegenerate={isLast && !generating ? () => regenerate(message.id) : undefined}
-                  className="opacity-0 transition-opacity group-hover:opacity-100"
+                  className="hover-reveal"
                 />
+                <span className="hover-reveal ml-1 text-[11px] text-foreground-secondary/50">
+                  {formatTime(message.ts)}
+                </span>
               </div>
             )}
 
-            {message.diagnostics && !isStreaming && <DiagnosticsPanel diagnostics={message.diagnostics} />}
+            {developerMode && message.diagnostics && !isStreaming && (
+              <DiagnosticsPanel diagnostics={message.diagnostics} />
+            )}
           </>
         )}
       </div>

@@ -182,7 +182,7 @@ export function WorkspaceDashboard({ overview }: { overview: WorkspaceOverview }
                   className="group flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1.5 text-[12.5px] text-foreground-secondary transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground focus-visible:outline-2 focus-visible:outline-primary"
                 >
                   {q}
-                  <ArrowRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-70" />
+                  <ArrowRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-70 [@media(hover:none)]:opacity-70" />
                 </button>
               ))}
             </div>

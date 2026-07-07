@@ -8,6 +8,7 @@ import { AttachmentChip } from '@/components/upload/AttachmentChip';
 import { ProjectUploadDialog } from '@/components/upload/ProjectUploadDialog';
 import { useChatStore } from '@/stores/chatStore';
 import { useAttachmentStore } from '@/stores/attachmentStore';
+import { useIsMobile } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/utils';
 
 const MAX_CHARS = 8000;
@@ -28,6 +29,7 @@ export function Composer() {
   const [projectDialogOpen, setProjectDialogOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   const sendMessage = useChatStore((s) => s.sendMessage);
   const stopGenerating = useChatStore((s) => s.stopGenerating);
@@ -78,7 +80,10 @@ export function Composer() {
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // On touch, Enter should insert a newline — sending is the button's job,
+    // matching native mobile chat behaviour. Precise-pointer devices keep
+    // Enter-to-send with Shift+Enter for newlines.
+    if (!isMobile && e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -88,7 +93,7 @@ export function Composer() {
   const readyAttachments = attachments.filter((a) => a.stage === 'ready').length;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 pb-4 pt-2 sm:pb-6">
+    <div className="mx-auto w-full max-w-3xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 sm:pb-6">
       {(workspaceId || readyAttachments > 0) && (
         <div className="mb-1.5 flex items-center gap-1.5 px-1 text-[11px] text-foreground-secondary">
           <FolderPlus className="h-3 w-3" />
@@ -103,7 +108,8 @@ export function Composer() {
       <div
         {...getRootProps()}
         className={cn(
-          'relative rounded-2xl border bg-surface shadow-sm transition-colors',
+          'relative rounded-2xl border bg-surface shadow-sm transition-all',
+          'focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/15',
           isDragActive ? 'border-primary ring-2 ring-primary/20' : 'border-border',
         )}
       >
@@ -143,7 +149,7 @@ export function Composer() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={generating || uploading}
-                className="rounded-lg p-2 text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground disabled:opacity-40"
+                className="tap rounded-lg p-2 text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground disabled:opacity-40"
                 aria-label="Attach files"
               >
                 <Paperclip className="h-4 w-4" />
@@ -164,7 +170,7 @@ export function Composer() {
               <button
                 onClick={() => setProjectDialogOpen(true)}
                 disabled={generating}
-                className="rounded-lg p-2 text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground disabled:opacity-40"
+                className="tap rounded-lg p-2 text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground disabled:opacity-40"
                 aria-label="Upload project"
               >
                 <FolderPlus className="h-4 w-4" />
@@ -180,7 +186,7 @@ export function Composer() {
 
           {generating ? (
             <Tooltip label="Stop generating (Esc)">
-              <Button size="icon" variant="secondary" onClick={stopGenerating} className="h-8 w-8 rounded-full">
+              <Button size="icon" variant="secondary" onClick={stopGenerating} className="tap h-9 w-9 rounded-full">
                 <Square className="h-3.5 w-3.5 fill-current" />
               </Button>
             </Tooltip>
@@ -189,7 +195,7 @@ export function Composer() {
               size="icon"
               onClick={handleSend}
               disabled={!text.trim() || overLimit || uploading}
-              className="h-8 w-8 rounded-full"
+              className="tap h-9 w-9 rounded-full"
               aria-label="Send message"
             >
               <ArrowUp className="h-4 w-4" />

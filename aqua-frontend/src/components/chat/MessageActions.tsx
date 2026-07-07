@@ -28,10 +28,11 @@ export function MessageActions({ content, onRegenerate, contentRef, className }:
     if (!ok) toast('error', 'Pop-up blocked', 'Allow pop-ups to export as PDF.');
   }
 
-  const btn = 'rounded-md p-1.5 text-foreground-secondary/70 hover:bg-surface-secondary hover:text-foreground transition-colors';
+  const btn =
+    'tap flex h-8 w-8 items-center justify-center rounded-md text-foreground-secondary/70 hover:bg-surface-secondary hover:text-foreground transition-colors';
 
   return (
-    <div className={cn('flex items-center gap-0.5', className)}>
+    <div className={cn('-ml-1.5 flex items-center gap-0.5', className)}>
       <Tooltip label={copied ? 'Copied!' : 'Copy'}>
         <button onClick={() => copy(content)} className={btn} aria-label="Copy message">
           {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}

@@ -23,7 +23,8 @@ const FONT_OPTIONS: Array<{ value: FontSize; label: string }> = [
 ];
 
 export function GeneralTab() {
-  const { theme, setTheme, fontSize, setFontSize, compactMode, setCompactMode } = useSettingsStore();
+  const { theme, setTheme, fontSize, setFontSize, compactMode, setCompactMode, developerMode, setDeveloperMode } =
+    useSettingsStore();
   const conversationCount = useConversationStore((s) => s.items.length);
   const clearAll = useConversationStore((s) => s.clearAll);
   const newConversation = useChatStore((s) => s.newConversation);
@@ -89,6 +90,14 @@ export function GeneralTab() {
           <p className="text-xs text-foreground-secondary">Tighter spacing between messages</p>
         </div>
         <Switch checked={compactMode} onCheckedChange={setCompactMode} />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-foreground">Developer mode</p>
+          <p className="text-xs text-foreground-secondary">Show technical details beneath each response</p>
+        </div>
+        <Switch checked={developerMode} onCheckedChange={setDeveloperMode} />
       </div>
 
       <Separator />

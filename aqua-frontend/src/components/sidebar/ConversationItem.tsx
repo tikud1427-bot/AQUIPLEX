@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { Input } from '@/components/ui/input';
 import { useConversationStore } from '@/stores/conversationStore';
 import { useUiStore } from '@/stores/uiStore';
@@ -17,6 +18,7 @@ export function ConversationItem({ conversation, onNavigate }: { conversation: U
   const [renaming, setRenaming] = useState(false);
   const [draft, setDraft] = useState(conversation.title);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const togglePin = useConversationStore((s) => s.togglePin);
   const rename = useConversationStore((s) => s.rename);
   const removeConversation = useConversationStore((s) => s.removeConversation);
@@ -48,53 +50,76 @@ export function ConversationItem({ conversation, onNavigate }: { conversation: U
             if (e.key === 'Enter') commitRename();
             if (e.key === 'Escape') { setDraft(conversation.title); setRenaming(false); }
           }}
-          className="h-8 text-xs"
+          className="h-9 text-sm"
         />
       </div>
     );
   }
 
   return (
-    <NavLink
-      to={`/c/${conversation.id}`}
-      onClick={onNavigate}
-      className={({ isActive }) =>
-        cn(
-          'group/item flex items-center gap-2 rounded-lg px-2.5 py-2 text-sm transition-colors',
-          isActive ? 'bg-surface-secondary text-foreground' : 'text-foreground-secondary hover:bg-surface-secondary/60 hover:text-foreground',
-        )
-      }
-    >
-      <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-50" />
-      <span className="min-w-0 flex-1 truncate">{conversation.title}</span>
-      {conversation.pinned && <Pin className="h-3 w-3 shrink-0 fill-current text-primary/70" />}
-
-      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-        <DropdownMenuTrigger asChild>
-          <button
-            onClick={(e) => e.preventDefault()}
-            className={cn(
-              'shrink-0 rounded p-0.5 opacity-0 transition-opacity hover:bg-surface group-hover/item:opacity-100',
-              menuOpen && 'opacity-100 bg-surface',
+    <>
+      <NavLink
+        to={`/c/${conversation.id}`}
+        onClick={onNavigate}
+        className={({ isActive }) =>
+          cn(
+            'group/item relative flex items-center gap-2 rounded-lg py-2 pl-2.5 pr-1.5 text-sm transition-colors',
+            isActive
+              ? 'bg-surface-secondary font-medium text-foreground'
+              : 'text-foreground-secondary hover:bg-surface-secondary/60 hover:text-foreground',
+          )
+        }
+      >
+        {({ isActive }) => (
+          <>
+            {isActive && (
+              <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-primary" aria-hidden="true" />
             )}
-            aria-label="Conversation options"
-          >
-            <MoreHorizontal className="h-3.5 w-3.5" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" side="right">
-          <DropdownMenuItem onSelect={() => togglePin(conversation.id)}>
-            {conversation.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
-            {conversation.pinned ? 'Unpin' : 'Pin'}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => { setDraft(conversation.title); setRenaming(true); }}>
-            <Pencil className="h-3.5 w-3.5" /> Rename
-          </DropdownMenuItem>
-          <DropdownMenuItem destructive onSelect={handleDelete}>
-            <Trash2 className="h-3.5 w-3.5" /> Delete
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </NavLink>
+            <MessageSquare className="h-3.5 w-3.5 shrink-0 opacity-50" />
+            <span className="min-w-0 flex-1 truncate">{conversation.title}</span>
+            {conversation.pinned && (
+              <Pin className="h-3 w-3 shrink-0 fill-current text-primary/70" />
+            )}
+
+            <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  onClick={(e) => e.preventDefault()}
+                  className={cn(
+                    'tap hover-reveal -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-foreground-secondary transition-colors hover:bg-surface hover:text-foreground',
+                    menuOpen && 'bg-surface text-foreground',
+                  )}
+                  aria-label={`Options for ${conversation.title}`}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="bottom">
+                <DropdownMenuItem onSelect={() => togglePin(conversation.id)}>
+                  {conversation.pinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
+                  {conversation.pinned ? 'Unpin' : 'Pin'}
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => { setDraft(conversation.title); setRenaming(true); }}>
+                  <Pencil className="h-3.5 w-3.5" /> Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem destructive onSelect={() => setConfirmOpen(true)}>
+                  <Trash2 className="h-3.5 w-3.5" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        )}
+      </NavLink>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete conversation?"
+        description={`“${conversation.title}” will be permanently deleted. This can’t be undone.`}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }

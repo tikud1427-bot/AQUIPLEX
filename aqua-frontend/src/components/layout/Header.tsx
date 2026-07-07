@@ -16,11 +16,11 @@ export function Header() {
   const activeTitle = activeId ? items.find((c) => c.id === activeId)?.title : null;
 
   return (
-    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 md:h-14 md:px-4">
+    <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3 pt-[env(safe-area-inset-top)] md:h-14 md:px-4">
       {isMobile ? (
         <button
           onClick={() => setMobileSidebarOpen(true)}
-          className="rounded-lg p-2 text-foreground-secondary hover:bg-surface-secondary"
+          className="tap flex h-9 w-9 items-center justify-center rounded-lg text-foreground-secondary hover:bg-surface-secondary hover:text-foreground"
           aria-label="Open menu"
         >
           <Menu className="h-4.5 w-4.5" />
@@ -29,7 +29,7 @@ export function Header() {
         sidebarCollapsed && (
           <button
             onClick={toggleSidebar}
-            className="rounded-lg p-1.5 text-foreground-secondary hover:bg-surface-secondary hover:text-foreground"
+            className="tap flex h-8 w-8 items-center justify-center rounded-lg text-foreground-secondary hover:bg-surface-secondary hover:text-foreground"
             aria-label="Expand sidebar"
           >
             <PanelLeftOpen className="h-4 w-4" />

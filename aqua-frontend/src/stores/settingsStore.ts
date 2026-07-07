@@ -6,9 +6,13 @@ interface SettingsState {
   theme: ThemeMode;
   fontSize: FontSize;
   compactMode: boolean;
+  /** Off by default. Reveals per-response technical details (routing, timing,
+   *  capabilities) for debugging. Never exposed to end users unless enabled. */
+  developerMode: boolean;
   setTheme: (theme: ThemeMode) => void;
   setFontSize: (size: FontSize) => void;
   setCompactMode: (compact: boolean) => void;
+  setDeveloperMode: (on: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -17,9 +21,11 @@ export const useSettingsStore = create<SettingsState>()(
       theme: 'system',
       fontSize: 'md',
       compactMode: false,
+      developerMode: false,
       setTheme: (theme) => set({ theme }),
       setFontSize: (fontSize) => set({ fontSize }),
       setCompactMode: (compactMode) => set({ compactMode }),
+      setDeveloperMode: (developerMode) => set({ developerMode }),
     }),
     {
       // Keep in sync with the bootstrap script in index.html, which reads

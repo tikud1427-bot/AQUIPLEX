@@ -229,3 +229,53 @@
     }
   }
 }
+
+@layer utilities {
+  /* ── Touch-aware affordance reveal ────────────────────────────────────
+     Row-level controls (conversation menu, message actions, edit) fade in
+     on hover for precise pointers, but are ALWAYS visible on touch devices,
+     which have no hover state. Keyboard focus within the row reveals them
+     too. The parent must carry `group` or `group/item`.
+
+     This is the single mechanism that gives mobile full action parity with
+     desktop without duplicating any markup. */
+  .hover-reveal {
+    opacity: 1;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .hover-reveal {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    .group:hover .hover-reveal,
+    .group:focus-within .hover-reveal,
+    .group\/item:hover .hover-reveal,
+    .group\/item:focus-within .hover-reveal {
+      opacity: 1;
+    }
+    /* A reveal that is itself an open menu/popover trigger stays visible even
+       when the pointer leaves the row. Specificity beats the base rule, so
+       this holds regardless of stylesheet order. */
+    .hover-reveal[data-state='open'] {
+      opacity: 1;
+    }
+  }
+
+  /* ── Safe-area insets (notches / home indicators) ─────────────────────
+     Zero on desktop, so applying these is always safe. */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
+  .pb-safe-sm {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  /* Removes the 300ms tap delay and grey tap highlight on touch controls. */
+  .tap {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
