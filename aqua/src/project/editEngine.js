@@ -40,7 +40,7 @@
 import { generateText }          from '../providers/router.js';
 import { createContext }         from '../core/observability.js';
 import { getFocusRisks }         from '../intelligence/critic.js';
-import { getIndex, buildIndex, getIndexStats } from './projectIndex.js';
+import { getIndex, buildIndex, getIndexStats, syncSummaries } from './projectIndex.js';
 import { getWorkspace, updateWorkspace }       from './workspaceManager.js';
 import { buildDependencyGraph, whoImports }    from './dependencyGraph.js';
 import { enrichWithSummaries }   from './projectSummarizer.js';
@@ -687,6 +687,7 @@ export function applyProposal(workspaceId, proposalId) {
     const entry = liveIndex.byPath.get(f.path);
     if (entry) entry.summary = f.summary;
   }
+  syncSummaries(workspaceId, enriched);
   buildDependencyGraph(workspaceId, enriched);
 
   // 4. Refresh persisted workspace metadata (no raw content — unchanged policy)

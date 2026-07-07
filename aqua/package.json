@@ -8,7 +8,8 @@
     "dev": "node server.js",
     "test:edit": "node src/project/tests/editEngine.test.js && node src/project/tests/editRoutes.test.js",
     "test:upload": "node --test src/upload/tests/upload.test.js",
-    "test:mind": "node --test src/mind/tests/mind.test.js"
+    "test:mind": "node --test src/mind/tests/mind.test.js",
+    "test:identity": "node --test src/identity/tests/identityLayer.test.js"
   },
   "dependencies": {
     "@google/genai": "^2.9.0",

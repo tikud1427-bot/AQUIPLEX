@@ -1,0 +1,27 @@
+{
+  "roadmap": [
+    {
+      "phase": "Shipped",
+      "items": [
+        "Real token streaming end-to-end (SSE)",
+        "Patch-first repository editing with static verification",
+        "Universal upload pipeline (archives, documents, media)",
+        "Persistent cross-conversation memory and the Mind cognitive layer",
+        "Multi-provider routing with circuit breakers and automatic fallback",
+        "Identity & Self-Knowledge layer (AQUA always knows Aquiplex and AQUA)"
+      ]
+    },
+    {
+      "phase": "In progress",
+      "items": []
+    },
+    {
+      "phase": "Planned",
+      "items": []
+    }
+  ],
+  "_meta": {
+    "sourceOfTruth": true,
+    "note": "`Shipped` reflects the current engine. Fill in `In progress` and `Planned` with your real roadmap — these drive AQUA's answer to 'What is your roadmap?'."
+  }
+}

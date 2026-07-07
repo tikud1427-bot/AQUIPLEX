@@ -1,0 +1,20 @@
+{
+  "faq": [
+    {
+      "q": "Is my data private?",
+      "a": "Your conversations and memory are scoped to your account and used to personalize AQUA for you. Uploaded files are processed to answer your questions. Configure retention and privacy to your organization's policy."
+    },
+    {
+      "q": "Do you browse the internet?",
+      "a": "Not by default. AQUA answers from its context, your memory, your uploaded files, and the underlying models — it does not perform live web browsing unless a tool for it is enabled."
+    },
+    {
+      "q": "How do you edit code?",
+      "a": "AQUA uses patch-first editing: it proposes minimal, surgical diffs against your indexed workspace, runs static verification, and shows you the diff. Nothing is applied until you approve it."
+    }
+  ],
+  "_meta": {
+    "sourceOfTruth": true,
+    "note": "Curated answers for questions that aren't a single structured field. Structured questions (vision, mission, capabilities, models, founders, roadmap, values) are answered from the profile, not from here."
+  }
+}

@@ -1,15 +1,79 @@
 /**
  * AQUA Project Index
  *
- * Per-workspace in-memory index built from parsed files.
+ * Per-workspace index built from parsed files.
  * Supports retrieval by: filename/path, symbol, import, dependency, keyword.
+ * Fast O(1) lookups after an O(n) build phase.
  *
- * Fast O(1) lookups after O(n) build phase.
+ * ── Persistence (Phase 1 — Persistent Workspace Brain) ────────────────────────
+ * The derived index (symbol/import/keyword maps) is REBUILDABLE, so only the
+ * MINIMAL source needed to rebuild it is persisted: the ingested files
+ * themselves (path + content + lang + size). That raw content lives durably
+ * NOWHERE ELSE — projectMemory persists workspace *metadata* only (path/lang/
+ * size/summary, no content). Before this, a restart wiped the index and there
+ * was nothing to rebuild from: getIndex() returned null, so isEditIntent()
+ * silently disabled editing until the user re-uploaded.
+ *
+ * Now: buildIndex() derives the maps in memory AND persists the source
+ * snapshot (.aqua-index.json, debounced whole-file write — same tier as
+ * mindStore/projectMemory). getIndex() lazily rebuilds the derived maps from
+ * that snapshot on a miss (e.g. first access after a restart), so the
+ * workspace brain — and the edit path that depends on entry.content — survives
+ * restarts. All access is through getIndex/buildIndex, so a later move to
+ * Mongo/SQLite (Phase 2) touches ONLY this file.
+ *
+ * NOTE: the snapshot holds full file content; it can be large for big repos.
+ * That is inherent to surviving a restart with a working edit path, and is
+ * bounded per-workspace. Phase 2 moves this off whole-file JSON.
  */
+import fs   from 'fs';
+import path from 'path';
 import { parseFile } from './fileParser.js';
 
-// workspaceId → IndexState
+const INDEX_FILE = path.join(process.cwd(), '.aqua-index.json');
+
+// workspaceId → derived Index (in-memory, rebuildable)
 const indexes = new Map();
+// workspaceId → source ingested files (persisted, minimal rebuildable unit)
+//   [{ path, content, lang, size, truncated, summary }]
+const sources = new Map();
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+// Mirrors the proven mindStore/projectMemory pattern: in-memory Map + debounced
+// JSON file write, loaded once on boot.
+
+let loaded = false;
+function loadFromDisk() {
+  if (loaded) return;
+  loaded = true;
+  try {
+    if (!fs.existsSync(INDEX_FILE)) return;
+    const data = JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8'));
+    for (const [id, files] of Object.entries(data)) {
+      if (Array.isArray(files)) sources.set(id, files);
+    }
+    console.log(`[Index] Loaded source snapshots for ${sources.size} workspace(s) from disk`);
+  } catch (err) {
+    console.warn('[Index] Could not load index sources from disk:', err.message);
+  }
+}
+
+let saveTimer = null;
+function scheduleSave() {
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    try {
+      const data = {};
+      for (const [id, files] of sources.entries()) data[id] = files;
+      fs.writeFileSync(INDEX_FILE, JSON.stringify(data), 'utf8');
+    } catch (err) {
+      console.warn('[Index] Could not save index sources to disk:', err.message);
+    }
+  }, 500);
+}
+
+loadFromDisk();
 
 // ── Build ─────────────────────────────────────────────────────────────────────
 
@@ -18,9 +82,32 @@ const indexes = new Map();
  *
  * @param {string} workspaceId
  * @param {Array<{path, content, lang, size, truncated, summary?}>} ingestedFiles
+ * @param {{ persist?: boolean }} [opts]  persist=false when rebuilding from an
+ *        already-persisted source (identical bytes → no redundant write).
  * @returns {Index}
  */
-export function buildIndex(workspaceId, ingestedFiles) {
+export function buildIndex(workspaceId, ingestedFiles, { persist = true } = {}) {
+  const index = _deriveIndex(ingestedFiles);
+  indexes.set(workspaceId, index);
+
+  if (persist) {
+    sources.set(workspaceId, ingestedFiles.map(f => ({
+      path:      f.path,
+      content:   f.content,
+      lang:      f.lang,
+      size:      f.size,
+      truncated: f.truncated ?? false,
+      summary:   f.summary ?? null,
+    })));
+    scheduleSave();
+  }
+
+  console.log(`[Index] ${ingestedFiles.length} files indexed for workspace=${workspaceId}`);
+  return index;
+}
+
+/** Pure derivation — no side effects, no persistence. Shared by build + rebuild. */
+function _deriveIndex(ingestedFiles) {
   const index = {
     byPath:    new Map(),   // filePath → full parsed+enriched entry
     bySymbol:  new Map(),   // symbol   → [{ path, type }]
@@ -48,8 +135,6 @@ export function buildIndex(workspaceId, ingestedFiles) {
     _indexPathKeywords(index, file.path);
   }
 
-  indexes.set(workspaceId, index);
-  console.log(`[Index] ${ingestedFiles.length} files indexed for workspace=${workspaceId}`);
   return index;
 }
 
@@ -86,14 +171,56 @@ function _indexPathKeywords(index, filePath) {
   }
 }
 
+/**
+ * Persist enriched summaries back into the source snapshot so a rebuilt index
+ * (after restart) carries them too. Called by the ingestion / edit pipelines
+ * right after they patch summaries into the live index. Cheap: updates the
+ * snapshot in place + reschedules the debounced save. Never derives anything.
+ *
+ * @param {string} workspaceId
+ * @param {Array<{path, summary}>} enriched
+ */
+export function syncSummaries(workspaceId, enriched = []) {
+  const src = sources.get(workspaceId);
+  if (!src) return;
+  const summaryByPath = new Map(enriched.map(e => [e.path, e.summary]));
+  let changed = false;
+  for (const f of src) {
+    if (summaryByPath.has(f.path) && f.summary !== summaryByPath.get(f.path)) {
+      f.summary = summaryByPath.get(f.path);
+      changed = true;
+    }
+  }
+  if (changed) scheduleSave();
+}
+
 // ── Query ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Get the derived index for a workspace. If it is not resident in memory but a
+ * persisted source snapshot exists (e.g. the first access after a restart),
+ * the derived index is rebuilt lazily from that snapshot. This is the single
+ * hook that warms the whole system (chat edit-detection, edit engine, project
+ * retriever) after a restart — they all read through getIndex().
+ */
 export function getIndex(workspaceId) {
-  return indexes.get(workspaceId) ?? null;
+  const live = indexes.get(workspaceId);
+  if (live) return live;
+
+  const src = sources.get(workspaceId);
+  if (src) {
+    const rebuilt = buildIndex(workspaceId, src, { persist: false });
+    console.log(`[Index] Rebuilt index from persisted source workspace=${workspaceId} files=${src.length}`);
+    return rebuilt;
+  }
+
+  return null;
 }
 
 export function clearIndex(workspaceId) {
-  indexes.delete(workspaceId);
+  const had = indexes.delete(workspaceId);
+  if (sources.delete(workspaceId)) scheduleSave();
+  return had;
 }
 
 /**
@@ -104,7 +231,7 @@ export function clearIndex(workspaceId) {
  * @returns {{ files: object[], symbols: object[], imports: string[] }}
  */
 export function queryIndex(workspaceId, { symbol, keyword, importModule, filePath } = {}) {
-  const index = indexes.get(workspaceId);
+  const index = getIndex(workspaceId);
   if (!index) return { files: [], symbols: [], imports: [] };
 
   const pathSet  = new Set();
@@ -142,7 +269,7 @@ export function queryIndex(workspaceId, { symbol, keyword, importModule, filePat
 }
 
 export function getIndexStats(workspaceId) {
-  const index = indexes.get(workspaceId);
+  const index = getIndex(workspaceId);
   if (!index) return null;
   return {
     files:     index.byPath.size,

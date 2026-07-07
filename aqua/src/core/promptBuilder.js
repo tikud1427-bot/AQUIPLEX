@@ -11,6 +11,7 @@
 import fs   from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { buildIdentityInjection } from '../identity/index.js';
 
 const __dir     = path.dirname(fileURLToPath(import.meta.url));
 const promptDir = path.join(__dir, '..', 'prompts');
@@ -73,12 +74,24 @@ const MODULE_MAP = {
  * @param {string} [reasoningDirective] - Phase 4: from reasoningStrategy.js
  * @param {string} [projectContext] - Phase 5: from projectRetriever.js ('' if no workspace)
  * @param {string} [intelligenceBlock] - Internal Intelligence Engine: synthesized plan/reasoning/critic brief ('' if low-complexity / skipped)
+ * @param {{isSelf:boolean, topics:string[]}|null} [identityIntent] - from identityRouter.detectIdentityIntent(); when it flags a self/brand question the FULL identity section + confidence directive are injected. When null/absent, only the compact always-on identity block is injected.
  * @returns {{ prompt: string, modules: string[] }}
  */
-export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective = '', projectContext = '', intelligenceBlock = '') {
+export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective = '', projectContext = '', intelligenceBlock = '', identityIntent = null) {
   const modules     = MODULE_MAP[taskType] ?? [];
   const parts       = [M.system];
   const moduleNames = ['system'];
+
+  // Identity & Self-Knowledge Layer — injected on EVERY request (compact),
+  // expanded to the full profile + confidence directive when the Smart Router
+  // flags a question about AQUA/Aquiplex. This is what makes AQUA always know
+  // itself without retrieval; it sits right after the base system prompt and
+  // before memory so brand identity is the most foundational context present.
+  const identityBlock = buildIdentityInjection(identityIntent);
+  if (identityBlock && identityBlock.trim()) {
+    parts.push(identityBlock.trim());
+    moduleNames.push(identityIntent?.isSelf ? 'identity+' : 'identity');
+  }
 
   // Inject memory block right after identity — before task instructions
   if (memoryBlock && memoryBlock.trim()) {

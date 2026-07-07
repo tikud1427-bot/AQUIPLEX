@@ -75,6 +75,7 @@ import { retrieveProjectContext, formatProjectContext }    from '../project/proj
 import { formatAttachmentsForPrompt, getAttachments }       from '../upload/attachmentStore.js';
 import { proposeEdit, serializeProposal }                   from '../project/editEngine.js';
 import { getIndex }                                         from '../project/projectIndex.js';
+import { detectIdentityIntent, answerFromIdentity, isRefusal } from '../identity/index.js';
 
 const router = express.Router();
 
@@ -202,6 +203,19 @@ function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, 
   const { task: taskType, confidence, labels } = classifyTask(userMessage);
   console.log(`[CLASSIFIER] task=${taskType} conf=${confidence.toFixed(2)} req=${requestId}`);
 
+  // ── 1b. Smart Router — is this a question about AQUA/Aquiplex itself? ────────
+  // Runs BEFORE retrieval. When true, the Identity & Self-Knowledge Layer owns
+  // the answer: project/vector retrieval is skipped (irrelevant noise for a
+  // brand question) and the full identity profile + a confidence directive are
+  // injected into the system prompt. A post-generation guard (see the
+  // endpoints) substitutes the deterministic profile answer if the model ever
+  // hedges — so AQUA can never fail to answer a question about itself.
+  const identityIntent = detectIdentityIntent(userMessage);
+  if (identityIntent.isSelf) {
+    onStage('identity', 'Answering from self-knowledge…');
+    console.log(`[IDENTITY] self-question detected topics=[${identityIntent.topics}] score=${identityIntent.score} req=${requestId}`);
+  }
+
   // ── 2a. OBSERVE — MANDATORY, BEFORE ORCHESTRATION ───────────────────────────
   // The ONE observation pipeline (unified engine): normalize → identity /
   // preference / goal / relationship / project / fact extraction →
@@ -274,7 +288,11 @@ function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, 
   let projectFiles   = [];
   const wantsProjectRetrieval = orchestration.enabled.some(c => c.id === 'project_retrieval');
   const repoIntent = REPO_INTENT_RE.test(userMessage);
-  if (workspaceId && (wantsProjectRetrieval || repoIntent)) {
+  // Identity questions never need the codebase — skip retrieval even if the
+  // repo-intent regex fired on a shared word (e.g. "architecture", "module").
+  if (workspaceId && identityIntent.isSelf) {
+    console.log(`[PROJECT] Skipped — identity/self-question owns this turn workspace=${workspaceId}`);
+  } else if (workspaceId && (wantsProjectRetrieval || repoIntent)) {
     onStage('workspace', 'Reading workspace…');
     if (!wantsProjectRetrieval) console.log(`[PROJECT] Repo-intent override — profile=${orchestration.profile.label} skipped project_retrieval but query references the codebase workspace=${workspaceId}`);
     const rawContext = retrieveProjectContext(workspaceId, userMessage);
@@ -306,7 +324,7 @@ function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, 
   // Attachment context rides the projectContext slot — same injection point,
   // same budget handling in promptBuilder, no signature change.
   const combinedContext = [attachmentContext, projectContext].filter(Boolean).join('\n\n');
-  const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoning.directive, combinedContext, intelligence.synthesis.text);
+  const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoning.directive, combinedContext, intelligence.synthesis.text, identityIntent);
 
   // ── 7. Build context window (short-term message history) ─────────────────────
   const history    = getConversation(conversationId);
@@ -318,6 +336,7 @@ function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, 
 
   return {
     taskType, confidence, labels,
+    identityIntent,
     orchestration, plan, reasoning, intelligence,
     extractedFacts, relevantFacts,
     memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!memoryBlock, contextUsed: cognitive.used },
@@ -352,6 +371,7 @@ function buildResponsePayload({
   requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
   promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
   extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
+  identityGuarded = false,
 }) {
   return {
     success:        true,
@@ -426,6 +446,16 @@ function buildResponsePayload({
 
     // Day 5 — Universal Upload: attachments grounding this answer.
     ...(prep?.attachments?.length ? { attachments: prep.attachments } : {}),
+
+    // Identity & Self-Knowledge Layer: present only when this turn was a
+    // question about AQUA/Aquiplex itself.
+    ...(prep?.identityIntent?.isSelf ? {
+      identity: {
+        selfQuestion: true,
+        topics:       prep.identityIntent.topics,
+        guardEngaged: identityGuarded,   // true only if the model hedged and we substituted
+      },
+    } : {}),
   };
 }
 
@@ -495,6 +525,20 @@ router.post('/', async (req, res) => {
     }
     logVerificationEvent(ctx, verification);
 
+    // ── 8c. Identity refusal guard (spec: never "I don't know" about self) ──────
+    // The compact identity block + directive make a hedge on a self-question
+    // extremely unlikely, but this is the hard guarantee: if the model still
+    // refused, replace the answer with the deterministic profile answer.
+    let identityGuarded = false;
+    if (prep.identityIntent?.isSelf && isRefusal(finalAnswer)) {
+      const grounded = answerFromIdentity(userMessage);
+      if (grounded) {
+        console.warn(`[IDENTITY] guard engaged — model hedged on a self-question; substituting profile answer req=${requestId}`);
+        finalAnswer = grounded;
+        identityGuarded = true;
+      }
+    }
+
     // ── 9. Persist messages ──────────────────────────────────────────────────────
     addMessage(conversationId, 'user',      userMessage);
     addMessage(conversationId, 'assistant', finalAnswer);
@@ -504,6 +548,7 @@ router.post('/', async (req, res) => {
 
     // ── 10. Respond ──────────────────────────────────────────────────────────────
     return res.json(buildResponsePayload({
+      identityGuarded,
       requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
       promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
       extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
@@ -664,6 +709,22 @@ router.post('/stream', async (req, res) => {
     }
     logVerificationEvent(ctx, verification);
 
+    // ── 8c. Identity refusal guard (spec: never "I don't know" about self) ──────
+    // Runs regardless of whether verification was enabled. If the model hedged
+    // on a self-question, replace with the deterministic profile answer and
+    // emit `replace` so the UI swaps the draft (same mechanism verification
+    // uses). The always-injected identity block makes this path rare.
+    let identityGuarded = false;
+    if (prep.identityIntent?.isSelf && !clientAbort.signal.aborted && isRefusal(finalAnswer)) {
+      const grounded = answerFromIdentity(userMessage);
+      if (grounded) {
+        console.warn(`[IDENTITY] guard engaged (stream) — substituting profile answer req=${requestId}`);
+        finalAnswer = grounded;
+        identityGuarded = true;
+        send('replace', { text: finalAnswer });
+      }
+    }
+
     // ── 9. Persist ───────────────────────────────────────────────────────────────
     addMessage(conversationId, 'user',      userMessage);
     addMessage(conversationId, 'assistant', finalAnswer);
@@ -676,6 +737,7 @@ router.post('/stream', async (req, res) => {
       requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
       promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
       extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
+      identityGuarded,
     }));
   } catch (err) {
     if (err.message === 'CLIENT_ABORTED') {

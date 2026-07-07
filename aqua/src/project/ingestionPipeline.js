@@ -14,7 +14,7 @@
  */
 import { getWorkspace, updateWorkspace }                    from './workspaceManager.js';
 import { ingestFiles, buildStructure, detectProjectType }   from './fileIngester.js';
-import { buildIndex, getIndex, getIndexStats }              from './projectIndex.js';
+import { buildIndex, getIndex, getIndexStats, syncSummaries } from './projectIndex.js';
 import { buildDependencyGraph, serializeGraph, detectCycles } from './dependencyGraph.js';
 import { enrichWithSummaries, summarizeProject }            from './projectSummarizer.js';
 import { analyzeWorkspace }                                 from './workspaceAnalyzer.js';
@@ -70,6 +70,9 @@ export async function runWorkspaceIngestion(workspaceId, rawFiles, onStage = () 
       const entry = liveIndex.byPath.get(f.path);
       if (entry) entry.summary = f.summary;
     }
+    // Persist summaries into the durable source snapshot so a rebuilt index
+    // (after restart) carries them too — see projectIndex syncSummaries.
+    syncSummaries(workspaceId, enriched);
 
     // 6. Dependency graph from parsed imports
     buildDependencyGraph(workspaceId, enriched);

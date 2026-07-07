@@ -1,0 +1,25 @@
+{
+  "summary": "AQUA is model-agnostic. It routes across multiple providers with automatic, self-healing fallback, so a single model or provider outage never takes AQUA down.",
+  "providers": [
+    {
+      "name": "Groq",
+      "models": ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "llama-3.3-70b-versatile"],
+      "role": "Primary — very high throughput."
+    },
+    {
+      "name": "Google Gemini",
+      "models": ["gemini-2.5-flash", "gemini-3.5-flash"],
+      "role": "Large context window and multimodal (vision) support."
+    },
+    {
+      "name": "OpenRouter",
+      "models": ["rotating free catalog"],
+      "role": "Breadth and additional fallback capacity."
+    }
+  ],
+  "routing": "Every request is classified, then routed to the best-fit model. On rate-limit or failure, AQUA falls back model-by-model and then provider-by-provider, guarded by per-provider circuit breakers.",
+  "_meta": {
+    "sourceOfTruth": true,
+    "note": "Model list mirrors src/providers/modelRegistry.js. Keep it in sync when you change the registry."
+  }
+}
