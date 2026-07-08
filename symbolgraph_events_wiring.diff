@@ -1,0 +1,42 @@
+# Increment 6 — Symbol Graph: events + jobs + embedded SQL
+# symbolGraph.js is shipped as a full drop-in (inc-3 + inc-6, supersedes prior).
+# Below: the additive route wiring only. Apply at repo root: git apply symbolgraph_events_wiring.diff
+#
+--- a/aqua/src/routes/project.js
++++ b/aqua/src/routes/project.js
+@@ -32,7 +32,7 @@
+ } from '../project/editEngine.js';
+ import { whoImports, whatImports } from '../project/dependencyGraph.js';
+ import { serializeCallGraph, getCallGraphStats, whoCalls, whatCalls, impactOf, traceFrom, getDefinitions } from '../project/callGraph.js';
+-import { serializeSymbolGraph, getSymbolGraphStats, getRoutes, getModels, findRoutes, findModels } from '../project/symbolGraph.js';
++import { serializeSymbolGraph, getSymbolGraphStats, getRoutes, getModels, findRoutes, findModels, getEvents, getJobs, findEvents } from '../project/symbolGraph.js';
+ import { buildRepoDigest } from '../project/contextCompressor.js';
+ 
+ import { resolveOwner, rememberWorkspace } from '../memory/engine.js';
+@@ -211,6 +211,26 @@
+   res.json({ success: true, workspaceId: req.params.id, count: models.length, models });
+ });
+ 
++// GET /project/workspace/:id/events?op=emit&q=user.created
++//   Every emit/listen with event name + file:line; optional op / name filter.
++router.get('/workspace/:id/events', (req, res) => {
++  const workspace = getWorkspace(req.params.id);
++  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
++  const { op, q } = req.query;
++  let events = q ? findEvents(req.params.id, q) : getEvents(req.params.id, op ?? null);
++  if (q && op) events = events.filter(e => e.op === op);
++  res.json({ success: true, workspaceId: req.params.id, count: events.length, events });
++});
++
++// GET /project/workspace/:id/jobs?system=bull
++//   Every background job / worker with name + file:line; optional system filter.
++router.get('/workspace/:id/jobs', (req, res) => {
++  const workspace = getWorkspace(req.params.id);
++  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
++  const jobs = getJobs(req.params.id, req.query.system ?? null);
++  res.json({ success: true, workspaceId: req.params.id, count: jobs.length, jobs });
++});
++
+ // ── Context compression ───────────────────────────────────────────────────────
+ 
+ // GET /project/workspace/:id/digest?budget=4000&focus=auth
