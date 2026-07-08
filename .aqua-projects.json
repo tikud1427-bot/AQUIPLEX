@@ -11007,5 +11007,277 @@
       ],
       "warnings": []
     }
+  },
+  "9cfff153-30cd-4265-b944-042771817c8a": {
+    "id": "9cfff153-30cd-4265-b944-042771817c8a",
+    "ownerId": "compressor",
+    "createdAt": 1783481915133,
+    "meta": {
+      "ownerId": "compressor"
+    },
+    "projectType": "unknown",
+    "files": [
+      {
+        "path": "src/core/engine.js",
+        "lang": "javascript",
+        "size": 211,
+        "summary": "engine.js [javascript] | Functions: init, start, stop, tick, reset, load, save, status | Exports: init, start, stop, tick, reset, load",
+        "parsedAt": 1783481915205
+      },
+      {
+        "path": "src/a.js",
+        "lang": "javascript",
+        "size": 91,
+        "summary": "a.js [javascript] | Functions: aRun | Exports: aRun",
+        "parsedAt": 1783481915205
+      },
+      {
+        "path": "src/b.js",
+        "lang": "javascript",
+        "size": 91,
+        "summary": "b.js [javascript] | Functions: bRun | Exports: bRun",
+        "parsedAt": 1783481915205
+      },
+      {
+        "path": "src/c.js",
+        "lang": "javascript",
+        "size": 91,
+        "summary": "c.js [javascript] | Functions: cRun | Exports: cRun",
+        "parsedAt": 1783481915205
+      },
+      {
+        "path": "src/d.js",
+        "lang": "javascript",
+        "size": 91,
+        "summary": "d.js [javascript] | Functions: dRun | Exports: dRun",
+        "parsedAt": 1783481915205
+      },
+      {
+        "path": "src/utils/helper.js",
+        "lang": "javascript",
+        "size": 44,
+        "summary": "helper.js [javascript] | Functions: formatThing | Exports: formatThing | Role: utilities",
+        "parsedAt": 1783481915205
+      },
+      {
+        "path": "src/utils/tiny.js",
+        "lang": "javascript",
+        "size": 19,
+        "summary": "tiny.js [javascript] | Exports: K | Role: utilities",
+        "parsedAt": 1783481915205
+      },
+      {
+        "path": "test/engine.test.js",
+        "lang": "javascript",
+        "size": 70,
+        "summary": "engine.test.js [javascript] | Functions: t | Role: tests",
+        "parsedAt": 1783481915205
+      },
+      {
+        "path": "config.json",
+        "lang": "json",
+        "size": 18,
+        "summary": "config.json [json] | Role: configuration",
+        "parsedAt": 1783481915205
+      }
+    ],
+    "structure": {
+      "src": {
+        "core": {
+          "engine.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 211
+          }
+        },
+        "a.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 91
+        },
+        "b.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 91
+        },
+        "c.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 91
+        },
+        "d.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 91
+        },
+        "utils": {
+          "helper.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 44
+          },
+          "tiny.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 19
+          }
+        }
+      },
+      "test": {
+        "engine.test.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 70
+        }
+      },
+      "config.json": {
+        "_file": true,
+        "lang": "json",
+        "size": 18
+      }
+    },
+    "indexStatus": "indexed",
+    "summary": "Type: unknown | Files: 9 | Languages: javascript(8), json(1)\nTop-level dirs: src, test",
+    "stats": {
+      "files": 9,
+      "languages": {
+        "javascript": 8,
+        "json": 1
+      }
+    },
+    "indexedAt": 1783481915205,
+    "overview": {
+      "generatedAt": 1783481915178,
+      "partial": false,
+      "name": "Untitled project",
+      "purpose": "No description found in package.json or README.",
+      "summary": "Untitled project is a unknown project with 9 source files, primarily javascript, json.",
+      "projectType": "unknown",
+      "languages": {
+        "javascript": 8,
+        "json": 1
+      },
+      "frameworks": [],
+      "runtime": [],
+      "packageManagers": [],
+      "buildTools": [],
+      "frontendTech": [],
+      "backendTech": [],
+      "databaseTech": [],
+      "authMethods": [],
+      "majorDependencies": [],
+      "dependencyCount": 0,
+      "folderStructure": [
+        {
+          "dir": "src",
+          "files": 7,
+          "bytes": 638
+        },
+        {
+          "dir": "src/utils",
+          "files": 2,
+          "bytes": 63
+        },
+        {
+          "dir": "src/core",
+          "files": 1,
+          "bytes": 211
+        },
+        {
+          "dir": "test",
+          "files": 1,
+          "bytes": 70
+        }
+      ],
+      "largestFolders": [
+        {
+          "dir": "src",
+          "bytes": 638
+        },
+        {
+          "dir": "src/core",
+          "bytes": 211
+        },
+        {
+          "dir": "test",
+          "bytes": 70
+        },
+        {
+          "dir": "src/utils",
+          "bytes": 63
+        }
+      ],
+      "envVars": [],
+      "configFiles": [],
+      "entryPoints": [],
+      "coreModules": [
+        {
+          "file": "src/core/engine.js",
+          "importedBy": 5
+        }
+      ],
+      "importantServices": [
+        {
+          "file": "src/core/engine.js",
+          "summary": "engine.js [javascript]"
+        }
+      ],
+      "apiRoutes": [],
+      "externalIntegrations": [],
+      "stats": {
+        "fileCount": 9,
+        "totalBytes": 726,
+        "totalKB": 1,
+        "functions": 14,
+        "classes": 0,
+        "interfaces": 0,
+        "components": 0,
+        "dependencyEdges": 5,
+        "configFileCount": 0
+      },
+      "todoCount": 0,
+      "todos": [],
+      "potentialTechDebt": [],
+      "architecture": {
+        "frontend": "No dedicated frontend layer detected.",
+        "backend": "No dedicated backend layer detected.",
+        "apiLayer": "No HTTP endpoints detected in source.",
+        "dataLayer": "No data layer detected.",
+        "authFlow": "No authentication mechanism detected.",
+        "storage": "No dedicated storage layer detected.",
+        "backgroundJobs": "No background job system detected.",
+        "serviceRelationships": "Most depended-upon modules: engine.js (5).",
+        "dependencyFlow": "Entry point not identified."
+      },
+      "suggestedImprovements": [
+        "Add a Dockerfile for reproducible builds and deployment.",
+        "Add a README documenting setup, architecture, and entry points."
+      ],
+      "suggestedQuestions": [
+        "Explain the architecture of this project.",
+        "Walk me through the folder structure and what each part does.",
+        "Explain what src/core/engine.js does and what depends on it.",
+        "Where should I start if I want to add a new feature?"
+      ],
+      "warnings": []
+    }
+  },
+  "39b49089-37e3-4b42-b184-97eb993d2afc": {
+    "id": "39b49089-37e3-4b42-b184-97eb993d2afc",
+    "ownerId": "empty",
+    "createdAt": 1783481915311,
+    "meta": {
+      "ownerId": "empty"
+    },
+    "projectType": null,
+    "files": [],
+    "structure": {},
+    "indexStatus": "pending",
+    "summary": null,
+    "stats": {
+      "files": 0,
+      "languages": {}
+    },
+    "indexedAt": null
   }
 }

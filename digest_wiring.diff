@@ -1,0 +1,34 @@
+# Increment 5 — Context Compressor (token-bounded repo digest) wiring
+# NEW module: aqua/src/project/contextCompressor.js (+ tests) — shipped as standalone files.
+# One additive route wired below. Apply at repo root:  git apply digest_wiring.diff
+#
+--- a/aqua/src/routes/project.js
++++ b/aqua/src/routes/project.js
+@@ -33,6 +33,7 @@
+ import { whoImports, whatImports } from '../project/dependencyGraph.js';
+ import { serializeCallGraph, getCallGraphStats, whoCalls, whatCalls, impactOf, traceFrom, getDefinitions } from '../project/callGraph.js';
+ import { serializeSymbolGraph, getSymbolGraphStats, getRoutes, getModels, findRoutes, findModels } from '../project/symbolGraph.js';
++import { buildRepoDigest } from '../project/contextCompressor.js';
+ 
+ import { resolveOwner, rememberWorkspace } from '../memory/engine.js';
+ 
+@@ -210,6 +211,19 @@
+   res.json({ success: true, workspaceId: req.params.id, count: models.length, models });
+ });
+ 
++// ── Context compression ───────────────────────────────────────────────────────
++
++// GET /project/workspace/:id/digest?budget=4000&focus=auth
++//   Token-bounded, hierarchical whole-repo digest (skeleton/signature/rollup).
++router.get('/workspace/:id/digest', (req, res) => {
++  const workspace = getWorkspace(req.params.id);
++  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
++  const budget = Math.min(Math.max(parseInt(req.query.budget, 10) || 4000, 200), 32000);
++  const result = buildRepoDigest(req.params.id, { tokenBudget: budget, focus: req.query.focus ?? '' });
++  if (!result) return res.status(409).json({ success: false, error: 'Workspace not indexed yet' });
++  res.json({ success: true, workspaceId: req.params.id, ...result });
++});
++
+ // ── Index query ───────────────────────────────────────────────────────────────
+ 
+ router.post('/workspace/:id/query', (req, res) => {

@@ -1,0 +1,98 @@
+--- a/aqua/src/project/ingestionPipeline.js
++++ b/aqua/src/project/ingestionPipeline.js
+@@ -16,6 +16,7 @@
+ import { ingestFiles, buildStructure, detectProjectType }   from './fileIngester.js';
+ import { buildIndex, getIndex, getIndexStats, syncSummaries } from './projectIndex.js';
+ import { buildDependencyGraph, serializeGraph, detectCycles } from './dependencyGraph.js';
++import { buildCallGraph }                                    from './callGraph.js';
+ import { enrichWithSummaries, summarizeProject }            from './projectSummarizer.js';
+ import { analyzeWorkspace }                                 from './workspaceAnalyzer.js';
+ 
+@@ -78,6 +79,10 @@
+     buildDependencyGraph(workspaceId, enriched);
+     console.log(`[GRAPH] Dependencies updated workspace=${workspaceId}`);
+ 
++    // 6a. Call graph (function→function) — same parsed+enriched input, next to
++    //     the dependency graph. Enables who-calls / impact / trace queries.
++    buildCallGraph(workspaceId, enriched);
++
+     // 6b. Project-level summary
+     const summary = summarizeProject({ projectType }, enriched);
+     console.log(`[SUMMARY] File summarized workspace=${workspaceId}`);
+--- a/aqua/src/project/editEngine.js
++++ b/aqua/src/project/editEngine.js
+@@ -43,6 +43,7 @@
+ import { getIndex, buildIndex, getIndexStats, syncSummaries } from './projectIndex.js';
+ import { getWorkspace, updateWorkspace }       from './workspaceManager.js';
+ import { buildDependencyGraph, whoImports }    from './dependencyGraph.js';
++import { buildCallGraph }                      from './callGraph.js';
+ import { enrichWithSummaries }   from './projectSummarizer.js';
+ import { diffFile }              from './diffEngine.js';
+ import { v4 as uuidv4 }          from 'uuid';
+@@ -689,6 +690,7 @@
+   }
+   syncSummaries(workspaceId, enriched);
+   buildDependencyGraph(workspaceId, enriched);
++  buildCallGraph(workspaceId, enriched);
+ 
+   // 4. Refresh persisted workspace metadata (no raw content — unchanged policy)
+   const fileMetadata = enriched.map(f => ({
+@@ -738,6 +740,7 @@
+   buildIndex(workspaceId, nextFiles);
+   const enriched = enrichWithSummaries([...getIndex(workspaceId).byPath.values()]);
+   buildDependencyGraph(workspaceId, enriched);
++  buildCallGraph(workspaceId, enriched);
+ 
+   p.status = 'reverted';
+   console.log(`[EDIT] proposal=${proposalId} REVERTED workspace=${workspaceId}`);
+--- a/aqua/src/routes/project.js
++++ b/aqua/src/routes/project.js
+@@ -31,6 +31,7 @@
+   serializeProposal,
+ } from '../project/editEngine.js';
+ import { whoImports, whatImports } from '../project/dependencyGraph.js';
++import { serializeCallGraph, getCallGraphStats, whoCalls, whatCalls, impactOf, traceFrom, getDefinitions } from '../project/callGraph.js';
+ 
+ import { resolveOwner, rememberWorkspace } from '../memory/engine.js';
+ 
+@@ -142,6 +143,40 @@
+   res.json({ success: true, workspaceId: req.params.id, graph, cycles });
+ });
+ 
++// ── Call graph (function → function) ──────────────────────────────────────────
++
++// GET /project/workspace/:id/call-graph  → serialized caller map + stats
++router.get('/workspace/:id/call-graph', (req, res) => {
++  const workspace = getWorkspace(req.params.id);
++  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
++  const graph = serializeCallGraph(req.params.id);
++  res.json({ success: true, workspaceId: req.params.id, built: !!graph, graph, stats: getCallGraphStats(req.params.id) });
++});
++
++// GET /project/workspace/:id/callers?symbol=NAME&depth=8
++//   directCallers — "who calls this?"
++//   impact        — "what breaks if I modify this?" (transitive callers)
++//   trace         — "trace this request" (forward call chain)
++router.get('/workspace/:id/callers', (req, res) => {
++  const workspace = getWorkspace(req.params.id);
++  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
++
++  const symbol = req.query.symbol;
++  if (!symbol) return res.status(400).json({ success: false, error: 'Query param ?symbol= required' });
++
++  const depth = Math.min(Math.max(parseInt(req.query.depth, 10) || 8, 1), 20);
++  res.json({
++    success:       true,
++    workspaceId:   req.params.id,
++    symbol,
++    defined:       getDefinitions(req.params.id, symbol),
++    directCallers: whoCalls(req.params.id, symbol),
++    callees:       whatCalls(req.params.id, symbol),
++    impact:        impactOf(req.params.id, symbol, { maxDepth: depth }),
++    trace:         traceFrom(req.params.id, symbol, { maxDepth: depth }),
++  });
++});
++
+ // ── Index query ───────────────────────────────────────────────────────────────
+ 
+ router.post('/workspace/:id/query', (req, res) => {

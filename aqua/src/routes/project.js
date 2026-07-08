@@ -31,6 +31,7 @@ import {
   serializeProposal,
 } from '../project/editEngine.js';
 import { whoImports, whatImports } from '../project/dependencyGraph.js';
+import { serializeCallGraph, getCallGraphStats, whoCalls, whatCalls, impactOf, traceFrom, getDefinitions } from '../project/callGraph.js';
 
 import { resolveOwner, rememberWorkspace } from '../memory/engine.js';
 
@@ -140,6 +141,40 @@ router.get('/workspace/:id/graph', (req, res) => {
   const graph  = serializeGraph(req.params.id);
   const cycles = detectCycles(req.params.id);
   res.json({ success: true, workspaceId: req.params.id, graph, cycles });
+});
+
+// ── Call graph (function → function) ──────────────────────────────────────────
+
+// GET /project/workspace/:id/call-graph  → serialized caller map + stats
+router.get('/workspace/:id/call-graph', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  const graph = serializeCallGraph(req.params.id);
+  res.json({ success: true, workspaceId: req.params.id, built: !!graph, graph, stats: getCallGraphStats(req.params.id) });
+});
+
+// GET /project/workspace/:id/callers?symbol=NAME&depth=8
+//   directCallers — "who calls this?"
+//   impact        — "what breaks if I modify this?" (transitive callers)
+//   trace         — "trace this request" (forward call chain)
+router.get('/workspace/:id/callers', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ success: false, error: 'Query param ?symbol= required' });
+
+  const depth = Math.min(Math.max(parseInt(req.query.depth, 10) || 8, 1), 20);
+  res.json({
+    success:       true,
+    workspaceId:   req.params.id,
+    symbol,
+    defined:       getDefinitions(req.params.id, symbol),
+    directCallers: whoCalls(req.params.id, symbol),
+    callees:       whatCalls(req.params.id, symbol),
+    impact:        impactOf(req.params.id, symbol, { maxDepth: depth }),
+    trace:         traceFrom(req.params.id, symbol, { maxDepth: depth }),
+  });
 });
 
 // ── Index query ───────────────────────────────────────────────────────────────

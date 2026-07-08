@@ -1,0 +1,81 @@
+# Increment 3 — Symbol Graph (routes + data-models) wiring
+# NEW module: aqua/src/project/symbolGraph.js (+ tests) — shipped as standalone files.
+# Below: the two additive wiring edits only (call-graph lines are unchanged context).
+# Apply at repo root:  git apply symbolgraph_wiring.diff
+#
+--- a/aqua/src/project/ingestionPipeline.js
++++ b/aqua/src/project/ingestionPipeline.js
+@@ -17,6 +17,7 @@
+ import { buildIndex, getIndex, getIndexStats, syncSummaries } from './projectIndex.js';
+ import { buildDependencyGraph, serializeGraph, detectCycles } from './dependencyGraph.js';
+ import { buildCallGraph }                                    from './callGraph.js';
++import { buildSymbolGraph }                                  from './symbolGraph.js';
+ import { enrichWithSummaries, summarizeProject }            from './projectSummarizer.js';
+ import { analyzeWorkspace }                                 from './workspaceAnalyzer.js';
+ 
+@@ -83,6 +84,9 @@
+     //     the dependency graph. Enables who-calls / impact / trace queries.
+     buildCallGraph(workspaceId, enriched);
+ 
++    // 6a′. Symbol graph (routes + data-models) — precise, queryable endpoint /
++    //      model inventory with file:line + resolved handler. Same input.
++    buildSymbolGraph(workspaceId, enriched);
+ 
+     // 6b. Project-level summary
+     const summary = summarizeProject({ projectType }, enriched);
+@@ -131,4 +135,4 @@
+     }
+     throw err;
+   }
+-}
++}
+\ No newline at end of file
+--- a/aqua/src/routes/project.js
++++ b/aqua/src/routes/project.js
+@@ -32,6 +32,7 @@
+ } from '../project/editEngine.js';
+ import { whoImports, whatImports } from '../project/dependencyGraph.js';
+ import { serializeCallGraph, getCallGraphStats, whoCalls, whatCalls, impactOf, traceFrom, getDefinitions } from '../project/callGraph.js';
++import { serializeSymbolGraph, getSymbolGraphStats, getRoutes, getModels, findRoutes, findModels } from '../project/symbolGraph.js';
+ 
+ import { resolveOwner, rememberWorkspace } from '../memory/engine.js';
+ 
+@@ -177,6 +178,38 @@
+   });
+ });
+ 
++// ── Symbol graph (routes + data-models) ───────────────────────────────────────
++
++// GET /project/workspace/:id/symbol-graph  → full route + model inventory + stats
++router.get('/workspace/:id/symbol-graph', (req, res) => {
++  const workspace = getWorkspace(req.params.id);
++  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
++  const graph = serializeSymbolGraph(req.params.id);
++  res.json({ success: true, workspaceId: req.params.id, built: !!graph, graph, stats: getSymbolGraphStats(req.params.id) });
++});
++
++// GET /project/workspace/:id/routes?method=GET&q=/users
++//   Every endpoint with file:line + handler; optional method / path-substring filter.
++router.get('/workspace/:id/routes', (req, res) => {
++  const workspace = getWorkspace(req.params.id);
++  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
++  const { method, q } = req.query;
++  let routes = q ? findRoutes(req.params.id, q) : getRoutes(req.params.id, method ?? null);
++  if (q && method) routes = routes.filter(r => r.method === String(method).toUpperCase());
++  res.json({ success: true, workspaceId: req.params.id, count: routes.length, routes });
++});
++
++// GET /project/workspace/:id/models?orm=mongoose&q=user
++//   Every data-model with file:line; optional ORM / name-substring filter.
++router.get('/workspace/:id/models', (req, res) => {
++  const workspace = getWorkspace(req.params.id);
++  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
++  const { orm, q } = req.query;
++  let models = q ? findModels(req.params.id, q) : getModels(req.params.id, orm ?? null);
++  if (q && orm) models = models.filter(m => m.orm === orm);
++  res.json({ success: true, workspaceId: req.params.id, count: models.length, models });
++});
++
+ // ── Index query ───────────────────────────────────────────────────────────────
+ 
+ router.post('/workspace/:id/query', (req, res) => {

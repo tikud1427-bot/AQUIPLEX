@@ -1,0 +1,173 @@
+# Increment 2 — Call Graph → Chat wiring
+# Two additive changes. Apply at repo root:  git apply callgraph_chat_wiring.diff
+# Plus new test: aqua/src/project/tests/projectRetriever.callgraph.test.js (shipped separately)
+#
+--- pristine/aqua/src/project/projectRetriever.js	2026-07-04 11:02:01.000000000 +0000
++++ work/aqua/src/project/projectRetriever.js	2026-07-08 01:39:12.582733779 +0000
+@@ -8,6 +8,9 @@
+ import { getIndex }     from './projectIndex.js';
+ import { getWorkspace } from './workspaceManager.js';
+ import { formatOverviewForPrompt } from './workspaceAnalyzer.js';
++import {
++  getCallGraph, getDefinitions, whoCalls, whatCalls, impactOf, traceFrom,
++} from './callGraph.js';
+ 
+ const MAX_FILES          = 5;
+ const MAX_CONTENT_CHARS  = 2_000;   // per file content snippet
+@@ -81,9 +84,84 @@
+     relevantSymbols: _findSymbols(query, index),
+     totalFiles:      index.byPath.size,
+     overview:        workspace.overview ?? null,   // cached workspace intelligence
++    callGraph:       _buildCallGraphAnswer(workspaceId, query),  // precise who-calls/impact/trace, or null
+   };
+ }
+ 
++// ── Call-graph intent (function-level: who-calls / impact / trace) ─────────────
++//
++// The keyword index answers "where is X" (file-level). These three flagship
++// questions need the function→function call graph instead:
++//   "who calls X?"              → direct callers               (whoCalls)
++//   "what breaks if I change X?"→ transitive callers           (impactOf)
++//   "trace X" / call chain      → forward callee chain          (traceFrom)
++// Detected here so the prompt carries exact, source-derived caller/callee
++// facts rather than leaving the model to infer relationships from snippets.
++// Returns null unless the query has call-graph intent AND names a symbol the
++// graph actually knows — so ordinary retrieval is never disturbed.
++
++const CG_MAX_CALLERS = 15;
++const CG_MAX_NODES   = 25;   // cap rendered impact / trace fan-out
++
++const CG_IMPACT_RE  = /\bimpact of\b|\bblast radius\b|\bbreaks?\b|\bwould break\b|\b(what|which|anything)\b[^?]*\b(break|affect|depend)\w*|\b(change|changing|modify|modifying|edit|editing|touch|touching|remove|removing|delete|deleting|rename|renaming)\b[^?]*\b(break|affect|safe|risk)\w*/i;
++const CG_TRACE_RE   = /\btrace\b|\bcall chain\b|\bcall graph\b|\bdownstream\b|\b(flow|path)\b[^?]*\b(through|of|from)\b|\bwhat does\b[^?]*\bcall\b|\bwhat (it|this|that) calls\b|\breaches?\b/i;
++const CG_CALLERS_RE = /\bwho calls\b|\bwho uses\b|\bwho invokes\b|\bcallers?\b|\bcall(s|ers) of\b|\bwhat calls\b|\bused by\b|\breferenced by\b|\binvocations?\b/i;
++
++/**
++ * Pick the query token the call graph actually knows (defined, called, or a
++ * caller). Longest match wins so "hashPassword" beats "hash"; sub-3-char noise
++ * and non-identifiers are ignored.
++ */
++function _resolveSymbol(g, query) {
++  const known = n => g.defs.has(n) || g.callers.has(n) || g.callees.has(n);
++  const cands = query.match(/[A-Za-z_$][\w$]*/g) ?? [];
++  const ranked = [...new Set(cands)]
++    .filter(t => t.length >= 3 && known(t))
++    .sort((a, b) => b.length - a.length);
++  return ranked[0] ?? null;
++}
++
++function _buildCallGraphAnswer(workspaceId, query) {
++  const g = getCallGraph(workspaceId);
++  if (!g) return null;
++
++  const wantImpact  = CG_IMPACT_RE.test(query);
++  const wantTrace   = CG_TRACE_RE.test(query);
++  const wantCallers = CG_CALLERS_RE.test(query);
++  if (!wantImpact && !wantTrace && !wantCallers) return null;
++
++  const symbol = _resolveSymbol(g, query);
++  if (!symbol) return null;
++
++  const answer = { symbol, kinds: [], definedAt: getDefinitions(workspaceId, symbol).slice(0, 5) };
++
++  if (wantCallers || wantImpact) {
++    answer.directCallers = whoCalls(workspaceId, symbol).slice(0, CG_MAX_CALLERS);
++    answer.kinds.push('callers');
++  }
++  if (wantImpact) {
++    const imp = impactOf(workspaceId, symbol);
++    answer.impact = {
++      direct:     imp.direct.slice(0, CG_MAX_NODES),
++      transitive: imp.transitive.slice(0, CG_MAX_NODES),
++      truncated:  imp.truncated || imp.transitive.length > CG_MAX_NODES,
++    };
++    answer.kinds.push('impact');
++  }
++  if (wantTrace) {
++    const tr = traceFrom(workspaceId, symbol);
++    answer.callees = whatCalls(workspaceId, symbol).slice(0, CG_MAX_NODES);
++    answer.trace = {
++      transitive: tr.transitive.slice(0, CG_MAX_NODES),
++      truncated:  tr.truncated || tr.transitive.length > CG_MAX_NODES,
++    };
++    answer.kinds.push('trace');
++  }
++
++  console.log(`[CALLGRAPH] Answered workspace=${workspaceId} symbol=${symbol} kinds=${answer.kinds.join('+')}`);
++  return answer.kinds.length ? answer : null;
++}
++
+ // ── Scoring ───────────────────────────────────────────────────────────────────
+ 
+ function _score(filePath, meta, query, index) {
+@@ -168,13 +246,18 @@
+  * @returns {string}
+  */
+ export function formatProjectContext(context) {
+-  if (!context || !context.files?.length) return '';
++  if (!context || (!context.files?.length && !context.callGraph)) return '';
+ 
+   const lines = [
+     '--- PROJECT CONTEXT ---',
+     `Project type: ${context.projectType} | Total indexed files: ${context.totalFiles}`,
+   ];
+ 
++  // Precise call-graph answer (who-calls / impact / trace) goes high — these
++  // are exact source facts and should anchor the reply over inferred snippets.
++  const callGraphBlock = _formatCallGraph(context.callGraph);
++  if (callGraphBlock) lines.push('', callGraphBlock);
++
+   // Condensed workspace intelligence (generated once at index time) —
+   // gives the model whole-repo awareness even when only a few files are
+   // retrieved: frameworks, DB, auth, entry points, endpoint inventory.
+@@ -195,9 +278,9 @@
+     }
+   }
+ 
+-  lines.push('', 'Relevant files (ranked by query relevance):');
++  if (context.files?.length) lines.push('', 'Relevant files (ranked by query relevance):');
+ 
+-  for (const file of context.files) {
++  for (const file of context.files ?? []) {
+     lines.push('', `### ${file.path} (${file.lang})`);
+     if (file.summary)     lines.push(file.summary);
+     if (file.functions.length)   lines.push(`Functions: ${file.functions.join(', ')}`);
+@@ -221,3 +304,39 @@
+ 
+   return lines.join('\n');
+ }
++
++// Render the precise call-graph answer. Exact, source-derived — presented as
++// authoritative so the model reports these relationships rather than guessing.
++function _formatCallGraph(cg) {
++  if (!cg?.kinds?.length) return '';
++  const L = ['--- CALL GRAPH (exact, extracted from source) ---', `Symbol: ${cg.symbol}`];
++
++  if (cg.definedAt?.length) {
++    L.push(`Defined at: ${cg.definedAt.map(d => `${d.file}:${d.line}`).join(', ')}`);
++  }
++
++  if (cg.kinds.includes('callers')) {
++    if (cg.directCallers?.length) {
++      L.push('', `Direct callers of ${cg.symbol} (who calls it):`);
++      for (const c of cg.directCallers) L.push(`  ${c.caller}() — ${c.file}:${c.line}`);
++    } else {
++      L.push('', `No direct callers of ${cg.symbol} found — it is an entry point, a leaf, or invoked dynamically (name-based graph cannot see reflective/dynamic calls).`);
++    }
++  }
++
++  if (cg.impact) {
++    const t = cg.impact.transitive;
++    L.push('', `Impact if ${cg.symbol} changes — ${t.length} function(s) transitively depend on it${cg.impact.truncated ? ' (truncated)' : ''}:`);
++    L.push(`  Directly affected: ${cg.impact.direct.length ? cg.impact.direct.join(', ') : '(none)'}`);
++    if (t.length) L.push(`  Transitively affected: ${t.join(', ')}`);
++  }
++
++  if (cg.trace) {
++    L.push('', `Call chain from ${cg.symbol} (what it triggers downstream)${cg.trace.truncated ? ' (truncated)' : ''}:`);
++    L.push(`  Immediate callees: ${cg.callees?.length ? cg.callees.join(', ') : '(none)'}`);
++    if (cg.trace.transitive.length) L.push(`  Reaches: ${cg.trace.transitive.join(', ')}`);
++  }
++
++  L.push('These caller/callee facts are exact — prefer them over inferring relationships from code snippets.');
++  return L.join('\n');
++}

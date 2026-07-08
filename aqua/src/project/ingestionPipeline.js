@@ -16,6 +16,7 @@ import { getWorkspace, updateWorkspace }                    from './workspaceMan
 import { ingestFiles, buildStructure, detectProjectType }   from './fileIngester.js';
 import { buildIndex, getIndex, getIndexStats, syncSummaries } from './projectIndex.js';
 import { buildDependencyGraph, serializeGraph, detectCycles } from './dependencyGraph.js';
+import { buildCallGraph }                                    from './callGraph.js';
 import { enrichWithSummaries, summarizeProject }            from './projectSummarizer.js';
 import { analyzeWorkspace }                                 from './workspaceAnalyzer.js';
 
@@ -77,6 +78,10 @@ export async function runWorkspaceIngestion(workspaceId, rawFiles, onStage = () 
     // 6. Dependency graph from parsed imports
     buildDependencyGraph(workspaceId, enriched);
     console.log(`[GRAPH] Dependencies updated workspace=${workspaceId}`);
+
+    // 6a. Call graph (function→function) — same parsed+enriched input, next to
+    //     the dependency graph. Enables who-calls / impact / trace queries.
+    buildCallGraph(workspaceId, enriched);
 
     // 6b. Project-level summary
     const summary = summarizeProject({ projectType }, enriched);

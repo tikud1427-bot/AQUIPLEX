@@ -43,6 +43,7 @@ import { getFocusRisks }         from '../intelligence/critic.js';
 import { getIndex, buildIndex, getIndexStats, syncSummaries } from './projectIndex.js';
 import { getWorkspace, updateWorkspace }       from './workspaceManager.js';
 import { buildDependencyGraph, whoImports }    from './dependencyGraph.js';
+import { buildCallGraph }                      from './callGraph.js';
 import { enrichWithSummaries }   from './projectSummarizer.js';
 import { diffFile }              from './diffEngine.js';
 import { v4 as uuidv4 }          from 'uuid';
@@ -689,6 +690,7 @@ export function applyProposal(workspaceId, proposalId) {
   }
   syncSummaries(workspaceId, enriched);
   buildDependencyGraph(workspaceId, enriched);
+  buildCallGraph(workspaceId, enriched);
 
   // 4. Refresh persisted workspace metadata (no raw content — unchanged policy)
   const fileMetadata = enriched.map(f => ({
@@ -738,6 +740,7 @@ export function revertProposal(workspaceId, proposalId) {
   buildIndex(workspaceId, nextFiles);
   const enriched = enrichWithSummaries([...getIndex(workspaceId).byPath.values()]);
   buildDependencyGraph(workspaceId, enriched);
+  buildCallGraph(workspaceId, enriched);
 
   p.status = 'reverted';
   console.log(`[EDIT] proposal=${proposalId} REVERTED workspace=${workspaceId}`);
