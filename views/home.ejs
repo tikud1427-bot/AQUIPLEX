@@ -38,12 +38,12 @@
       <a href="/aqua" class="px-quick">
         <div class="px-quick-icon"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M2 3h12v8H6l-3 3v-3H2V3z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
         <h3>New chat</h3>
-        <p>Start a conversation with full memory of your work.</p>
+        <p>Ask, plan, or debug — Aqua carries full context of your work.</p>
       </a>
       <a href="/aqua" class="px-quick">
         <div class="px-quick-icon"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M10 2v3h3" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
         <h3>Upload knowledge</h3>
-        <p>Bring archives, PDFs, and docs — Aqua reasons over them.</p>
+        <p>Bring a codebase, archive, or docs — Aqua indexes it and reasons over the structure.</p>
       </a>
       <a href="/bundles" class="px-quick">
         <div class="px-quick-icon"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M2 6h12M6 6v8" stroke="currentColor" stroke-width="1.2"/></svg></div>
@@ -59,7 +59,7 @@
 
         <!-- recent conversations -->
         <section class="px-card px-card-pad px-dash-sec">
-          <div class="px-dash-sec-head" style="margin-bottom:8px;">
+          <div class="px-dash-sec-head">
             <h2>Recent conversations</h2>
             <a href="/aqua">Open Aqua →</a>
           </div>
@@ -72,7 +72,7 @@
 
         <!-- projects -->
         <section class="px-card px-card-pad px-dash-sec">
-          <div class="px-dash-sec-head" style="margin-bottom:8px;">
+          <div class="px-dash-sec-head">
             <h2>Projects</h2>
             <a href="/bundles">All projects →</a>
           </div>
@@ -95,7 +95,7 @@
 
         <!-- knowledge & uploads -->
         <section class="px-card px-card-pad px-dash-sec">
-          <div class="px-dash-sec-head" style="margin-bottom:8px;">
+          <div class="px-dash-sec-head">
             <h2>Knowledge &amp; workspaces</h2>
             <a href="/aqua">Manage in Aqua →</a>
           </div>
@@ -110,25 +110,25 @@
       <!-- right: usage overview -->
       <aside>
         <section class="px-card px-card-pad px-dash-sec">
-          <div class="px-dash-sec-head" style="margin-bottom:14px;">
+          <div class="px-dash-sec-head px-mb-lg">
             <h2>Usage</h2>
             <a href="/wallet">Wallet →</a>
           </div>
 
-          <div class="px-stat" style="border:0; padding:0 0 16px;">
+          <div class="px-stat px-stat--plain">
             <div class="px-stat-label">Credits available</div>
             <div class="px-stat-value" id="uCredits"><span class="px-skel"></span></div>
             <div class="px-stat-sub" id="uCreditsSub"></div>
             <div class="px-bar-track"><div class="px-bar-fill" id="uFreeBar" style="width:0%"></div></div>
           </div>
 
-          <div class="px-stat" style="border:0; border-top:1px solid var(--px-line); border-radius:0; padding:16px 0 0;">
+          <div class="px-stat px-stat--divided">
             <div class="px-stat-label">Free credits reset</div>
-            <div class="px-stat-value" style="font-size:16px;" id="uReset"><span class="px-skel"></span></div>
+            <div class="px-stat-value px-stat-value--sm" id="uReset"><span class="px-skel"></span></div>
             <div class="px-stat-sub">Free credits refresh daily at midnight.</div>
           </div>
 
-          <a href="/pricing" class="px-btn px-btn-secondary px-btn-block" style="margin-top:20px;">Buy credits</a>
+          <a href="/pricing" class="px-btn px-btn-secondary px-btn-block px-mt-lg">Buy credits</a>
         </section>
       </aside>
 
@@ -154,9 +154,18 @@
     if (d < 86400e3) return Math.floor(d / 3600e3) + 'h ago';
     return Math.floor(d / 86400e3) + 'd ago';
   }
+  // Guards every dashboard preview fetch with a hard timeout so a slow/hanging
+  // API can never leave a skeleton stuck on screen — it falls through to the
+  // same .catch() error state as a normal network failure.
+  function fetchWithTimeout(url, opts, ms) {
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, ms || 8000);
+    var merged = Object.assign({}, opts, { signal: ctrl.signal });
+    return fetch(url, merged).finally(function () { clearTimeout(timer); });
+  }
 
   // Recent conversations (Aqua engine, per-user)
-  fetch('/api/aqua/conversations?limit=6', { credentials: 'include' })
+  fetchWithTimeout('/api/aqua/conversations?limit=6', { credentials: 'include' }, 8000)
     .then(function (r) { return r.json(); })
     .then(function (d) {
       var el = document.getElementById('convList');
@@ -181,7 +190,7 @@
     });
 
   // Workspaces / knowledge (Aqua project intelligence)
-  fetch('/api/aqua/project/workspaces', { credentials: 'include' })
+  fetchWithTimeout('/api/aqua/project/workspaces', { credentials: 'include' }, 8000)
     .then(function (r) { return r.json(); })
     .then(function (d) {
       var el = document.getElementById('wsList');
@@ -206,7 +215,7 @@
     });
 
   // Usage overview (wallet)
-  fetch('/api/billing/status', { credentials: 'include' })
+  fetchWithTimeout('/api/billing/status', { credentials: 'include' }, 8000)
     .then(function (r) { return r.json(); })
     .then(function (d) {
       var b = (d && d.billing) || {};
