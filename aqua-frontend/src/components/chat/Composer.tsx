@@ -8,7 +8,9 @@ import { AttachmentChip } from '@/components/upload/AttachmentChip';
 import { ProjectUploadDialog } from '@/components/upload/ProjectUploadDialog';
 import { useChatStore } from '@/stores/chatStore';
 import { useAttachmentStore } from '@/stores/attachmentStore';
+import { useUiStore } from '@/stores/uiStore';
 import { useIsMobile } from '@/hooks/useMediaQuery';
+import { isMac, modKey } from '@/hooks/useKeyboardShortcuts';
 import { cn } from '@/lib/utils';
 
 const MAX_CHARS = 8000;
@@ -26,7 +28,10 @@ const MAX_CHARS = 8000;
  */
 export function Composer() {
   const [text, setText] = useState('');
-  const [projectDialogOpen, setProjectDialogOpen] = useState(false);
+  // Lifted to uiStore (not local) so the ⌘⇧U shortcut in AppShell can open
+  // this same dialog instead of duplicating dialog-open state per-trigger.
+  const projectDialogOpen = useUiStore((s) => s.projectUploadOpen);
+  const setProjectDialogOpen = useUiStore((s) => s.setProjectUploadOpen);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -207,6 +212,21 @@ export function Composer() {
       <p className="mt-2 text-center text-[11px] text-foreground-secondary/50">
         AQUA can make mistakes. Verify important information.
       </p>
+
+      <div className="mt-1.5 hidden items-center justify-center gap-3 text-[11px] text-foreground-secondary/50 sm:flex">
+        <span className="flex items-center gap-1">
+          <kbd className="rounded border border-border/70 bg-surface-secondary px-1 py-0.5 font-mono text-[10px]">
+            {isMac ? '⌘K' : 'Ctrl+K'}
+          </kbd>
+          Search
+        </span>
+        <span className="flex items-center gap-1">
+          <kbd className="rounded border border-border/70 bg-surface-secondary px-1 py-0.5 font-mono text-[10px]">
+            {isMac ? `${modKey}⇧U` : 'Ctrl+Shift+U'}
+          </kbd>
+          Upload repository
+        </span>
+      </div>
 
       <ProjectUploadDialog open={projectDialogOpen} onOpenChange={setProjectDialogOpen} />
     </div>

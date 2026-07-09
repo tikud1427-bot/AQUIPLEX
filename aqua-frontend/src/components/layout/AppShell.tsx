@@ -16,6 +16,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const sidebarCollapsed = useUiStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
+  const setProjectUploadOpen = useUiStore((s) => s.setProjectUploadOpen);
   const newConversation = useChatStore((s) => s.newConversation);
   const stopGenerating = useChatStore((s) => s.stopGenerating);
 
@@ -28,6 +29,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       document.getElementById(searchInputId)?.focus();
     }, []),
     onToggleSidebar: toggleSidebar,
+    onUploadProject: useCallback(() => setProjectUploadOpen(true), [setProjectUploadOpen]),
     onOpenSettings: useCallback(() => setSettingsOpen(true), [setSettingsOpen]),
     onStopGenerating: stopGenerating,
   };

@@ -5,6 +5,7 @@ import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer';
 import { ThinkingIndicator } from './ThinkingIndicator';
 import { MessageActions } from './MessageActions';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
+import { ResponseConfidence } from './ResponseConfidence';
 import { PatchCard } from '@/components/patch/PatchCard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -193,6 +194,10 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: { 
                   {wasInterrupted ? 'Response was interrupted' : 'Response hit the length limit'}
                 </span>
               </div>
+            )}
+
+            {!isStreaming && (
+              <ResponseConfidence workspace={message.workspace} verification={message.diagnostics?.verification} />
             )}
 
             {!isStreaming && (

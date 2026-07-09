@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-const isMac = typeof navigator !== 'undefined' && /Mac|iPhone/.test(navigator.platform);
+export const isMac = typeof navigator !== 'undefined' && /Mac|iPhone/.test(navigator.platform);
 export const modKey = isMac ? '⌘' : 'Ctrl';
 
 export interface ShortcutDef {
@@ -13,6 +13,7 @@ export const SHORTCUTS: ShortcutDef[] = [
   { id: 'new-chat', keys: [modKey, 'Shift', 'O'], label: 'New chat' },
   { id: 'focus-search', keys: [modKey, 'K'], label: 'Search conversations' },
   { id: 'toggle-sidebar', keys: [modKey, 'B'], label: 'Toggle sidebar' },
+  { id: 'upload-project', keys: [modKey, 'Shift', 'U'], label: 'Upload repository' },
   { id: 'open-settings', keys: [modKey, ','], label: 'Open settings' },
   { id: 'stop-generating', keys: ['Esc'], label: 'Stop generating' },
 ];
@@ -21,6 +22,7 @@ interface Handlers {
   onNewChat: () => void;
   onFocusSearch: () => void;
   onToggleSidebar: () => void;
+  onUploadProject: () => void;
   onOpenSettings: () => void;
   onStopGenerating: () => void;
 }
@@ -41,6 +43,9 @@ export function useKeyboardShortcuts(handlers: Handlers) {
       } else if (mod && e.key.toLowerCase() === 'b') {
         e.preventDefault();
         handlers.onToggleSidebar();
+      } else if (mod && e.shiftKey && e.key.toLowerCase() === 'u') {
+        e.preventDefault();
+        handlers.onUploadProject();
       } else if (mod && e.key === ',') {
         e.preventDefault();
         handlers.onOpenSettings();

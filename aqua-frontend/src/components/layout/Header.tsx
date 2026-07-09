@@ -36,7 +36,16 @@ export function Header() {
           </button>
         )
       )}
-      <span className="truncate text-sm font-medium text-foreground">{activeTitle ?? 'AQUA'}</span>
+      {activeTitle ? (
+        <span className="truncate text-sm font-medium text-foreground">{activeTitle}</span>
+      ) : (
+        <div className="flex min-w-0 items-baseline gap-1.5 leading-none">
+          <span className="text-sm font-semibold tracking-tight text-foreground">AQUA</span>
+          <span className="truncate text-[11px] font-medium text-foreground-secondary/70">
+            AI Engineering Workspace
+          </span>
+        </div>
+      )}
     </header>
   );
 }

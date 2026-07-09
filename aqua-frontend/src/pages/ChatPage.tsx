@@ -4,6 +4,7 @@ import { MessageList } from '@/components/chat/MessageList';
 import { EmptyState } from '@/components/chat/EmptyState';
 import { Composer } from '@/components/chat/Composer';
 import { WorkspaceDashboard } from '@/components/workspace/WorkspaceDashboard';
+import { ProjectContextBar } from '@/components/workspace/ProjectContextBar';
 import { useChatStore } from '@/stores/chatStore';
 import { useUploadStore } from '@/stores/uploadStore';
 
@@ -49,8 +50,13 @@ export function ChatPage() {
   const showDashboard = useUploadStore((s) => s.showDashboard);
   const dashboardVisible = showDashboard && !!overview && messages.length === 0;
 
+  // The full dashboard already IS the project-context view — only show the
+  // compact strip when it's not on screen, so context is never shown twice.
+  const showContextBar = !!overview && !dashboardVisible;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {showContextBar && <ProjectContextBar />}
       {dashboardVisible ? (
         <WorkspaceDashboard overview={overview} />
       ) : showEmptyState ? (

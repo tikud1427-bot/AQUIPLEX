@@ -30,9 +30,70 @@ interface ConversationState {
   ensureLocalEntry: (id: string, createdAt: number) => void;
 }
 
+/**
+ * Conversational openers stripped before title-casing — "how do i fix the
+ * auth middleware" reads better as a title than "How Do I Fix The Auth
+ * Middleware". Order matters: applied repeatedly so chained fillers
+ * ("hey, can you help me...") fully clear before casing.
+ */
+const FILLER_PATTERNS: RegExp[] = [
+  /^(hi|hey|hello|yo|so|ok|okay|well)[,!.\s]+/i,
+  /^(can|could|would|will) you\s+/i,
+  /^(please|pls)\s+/i,
+  /^i('d| would| need| want)\s+(like to |help |to |with )?/i,
+  /^help me\s+/i,
+  /^(how (do|can|would) i|how to)\s+/i,
+  /^(what is|what's|explain|tell me about)\s+/i,
+];
+
+const TITLE_STOPWORDS = new Set([
+  'a', 'an', 'the', 'my', 'our', 'your', 'in', 'on', 'for', 'of', 'to',
+  'with', 'and', 'is', 'are', 'it', 'this', 'that',
+]);
+
+function stripFiller(text: string): string {
+  let out = text;
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const re of FILLER_PATTERNS) {
+      const next = out.replace(re, '');
+      if (next !== out) {
+        out = next;
+        changed = true;
+      }
+    }
+  }
+  return out.trim();
+}
+
+/** Title Case, but leaves identifiers/acronyms alone (ALLCAPS, camelCase, dotted paths). */
+function toTitleCase(text: string): string {
+  return text
+    .split(' ')
+    .map((w, i) => {
+      if (!w) return w;
+      const lower = w.toLowerCase();
+      if (i > 0 && TITLE_STOPWORDS.has(lower)) return lower;
+      if (/[A-Z]{2,}/.test(w) || /[._/-]/.test(w)) return w;
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(' ');
+}
+
 function deriveTitle(text: string): string {
-  const cleaned = text.trim().replace(/\s+/g, ' ');
-  return cleaned.length > 48 ? `${cleaned.slice(0, 48)}…` : cleaned || 'New conversation';
+  const raw = text.trim().replace(/\s+/g, ' ');
+  if (!raw) return 'New conversation';
+
+  const stripped = stripFiller(raw).replace(/^[,\-–—:]+\s*/, '');
+  const base = (stripped || raw).replace(/[?!.]+$/, '');
+  const cased = toTitleCase(base) || 'New conversation';
+
+  const LIMIT = 42;
+  if (cased.length <= LIMIT) return cased;
+  const cut = cased.slice(0, LIMIT);
+  const lastSpace = cut.lastIndexOf(' ');
+  return `${(lastSpace > 20 ? cut.slice(0, lastSpace) : cut).trim()}…`;
 }
 
 export const useConversationStore = create<ConversationState>()(

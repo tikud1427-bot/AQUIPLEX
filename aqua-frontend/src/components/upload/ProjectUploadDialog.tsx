@@ -1,9 +1,11 @@
 import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { motion } from 'framer-motion';
 import { CheckCircle2, FolderArchive, Loader2, UploadCloud, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { useUploadStore } from '@/stores/uploadStore';
 import { shouldIgnoreClientSide, readAsBase64, readAsText } from '@/utils/projectFiles';
 import { cn } from '@/lib/utils';
@@ -17,7 +19,7 @@ export function ProjectUploadDialog({ open, onOpenChange }: Props) {
   const [projectName, setProjectName] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [localError, setLocalError] = useState<string | null>(null);
-  const { status, progress, fileCount, error, uploadProject, uploadProjectZip, reset } = useUploadStore();
+  const { status, progress, fileCount, error, overview, uploadProject, uploadProjectZip, reset } = useUploadStore();
 
   const onDrop = useCallback((accepted: File[]) => {
     setLocalError(null);
@@ -115,6 +117,7 @@ export function ProjectUploadDialog({ open, onOpenChange }: Props) {
 
   const busy = status === 'creating' || status === 'uploading';
   const done = status === 'ready';
+  const stackPills = [...(overview?.frameworks ?? []), ...(overview?.runtime ?? []).slice(0, 2)].slice(0, 5);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -172,10 +175,20 @@ export function ProjectUploadDialog({ open, onOpenChange }: Props) {
             )}
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10">
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25 }}
+            className="flex flex-col items-center gap-3 py-4 text-center"
+          >
+            <motion.div
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10"
+            >
               <CheckCircle2 className="h-6 w-6 text-success" />
-            </div>
+            </motion.div>
             <div>
               <p className="text-sm font-medium text-foreground">{projectName} indexed</p>
               <p className="text-xs text-foreground-secondary">
@@ -183,7 +196,14 @@ export function ProjectUploadDialog({ open, onOpenChange }: Props) {
                 dialog, with suggested questions to get you started.
               </p>
             </div>
-          </div>
+            {stackPills.length > 0 && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {stackPills.map((t) => (
+                  <Badge key={t} variant="primary">{t}</Badge>
+                ))}
+              </div>
+            )}
+          </motion.div>
         )}
 
         <DialogFooter>

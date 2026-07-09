@@ -6,11 +6,13 @@ interface UiState {
   sidebarCollapsed: boolean;
   mobileSidebarOpen: boolean;
   settingsOpen: boolean;
+  projectUploadOpen: boolean;
   toasts: ToastItem[];
 
   toggleSidebar: () => void;
   setMobileSidebarOpen: (open: boolean) => void;
   setSettingsOpen: (open: boolean) => void;
+  setProjectUploadOpen: (open: boolean) => void;
 
   toast: (variant: ToastVariant, title: string, description?: string) => string;
   dismissToast: (id: string) => void;
@@ -22,11 +24,13 @@ export const useUiStore = create<UiState>()(
       sidebarCollapsed: false,
       mobileSidebarOpen: false,
       settingsOpen: false,
+      projectUploadOpen: false,
       toasts: [],
 
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
       setSettingsOpen: (open) => set({ settingsOpen: open }),
+      setProjectUploadOpen: (open) => set({ projectUploadOpen: open }),
 
       toast: (variant, title, description) => {
         const id = crypto.randomUUID();
