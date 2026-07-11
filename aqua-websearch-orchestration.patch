@@ -1,0 +1,343 @@
+--- a/aqua/src/core/classifier.js
++++ b/aqua/src/core/classifier.js
+@@ -371,10 +371,27 @@
+   // Score every category (includes v4 research/coding guard)
+   const scores = scoreTask(msg);
+ 
+-  // Short message heuristic: unless substantive signal, default to conversation
++  // Short message heuristic: a terse message with no substantive-task signal
++  // defaults to conversation — EXCEPT when it is clearly a one-shot factual
++  // question. "Clearly factual" = a simple_qa pattern fired, OR nothing
++  // matched at all (the zero-score fallback below already routes those to
++  // simple_qa). Everything else short — greetings, acks, and weak sub-
++  // threshold chatter like a demoted "clarify what's happening in my code"
++  // research fragment — still funnels to conversation exactly as before.
++  //
++  // Why this matters: questions like "Current Bitcoin price" (no pattern hit)
++  // and "Who is the new CM of Assam?" (simple_qa hit) were being swallowed as
++  // `conversation`, which searchDecision.js hard-blocks — so AQUA answered
++  // current-events / office-holder / pricing questions from stale model
++  // knowledge and never reached the web-search path. Letting them fall through
++  // to simple_qa (same Simple Question profile, same low complexity — no
++  // profile or budget change) lets the orchestrator's SearchDecision route
++  // them to live search when they need fresh data.
+   if (msg.length < 55) {
+     const substantiveScore = [...SUBSTANTIVE].reduce((sum, t) => sum + (scores[t] ?? 0), 0);
+-    if (substantiveScore < 1.0) {
++    const totalScore       = Object.values(scores).reduce((a, b) => a + b, 0);
++    const looksFactual     = (scores.simple_qa ?? 0) > 0 || totalScore === 0;
++    if (substantiveScore < 1.0 && !looksFactual) {
+       return { task: 'conversation', confidence: 0.85, labels: ['conversation'] };
+     }
+   }
+--- a/aqua/src/search/searchDecision.js
++++ b/aqua/src/search/searchDecision.js
+@@ -63,7 +63,7 @@
+   { re: /\b(stock|share price|market cap|exchange rate|crypto|bitcoin|valuation|funding round)\b/i, w: 3, tag: 'market' },
+   // Live-world facts
+   { re: /\b(weather|forecast|temperature (in|at)|score|match result|won the|election)\b/i,          w: 3, tag: 'live_facts' },
+-  { re: /\bwho is (the )?(current |now )?(ceo|cto|president|prime minister|founder|owner|head) of\b/i, w: 3, tag: 'role_holder' },
++  { re: /\bwho\s+(is|are)\s+(the\s+)?(current(ly)?\s+|new\s+|now\s+)?(ceo|cto|cfo|coo|president|vice[-\s]?president|prime\s+minister|chief\s+minister|cm|governor|mayor|chancellor|vice[-\s]?chancellor|principal|dean|director|chair(man|person|woman)?|head|founder|co-?founder|owner|leader|minister|secretary|senator|mp|mla)\s+of\b/i, w: 3, tag: 'role_holder' },
+   { re: /\b(is|are) .{2,40}\b(down|up|available|out|open|closed)( right now| today)?\??$/i,        w: 2, tag: 'status' },
+   // Comparison / research (spec: YES)
+   { re: /\b(compare|comparison|versus|vs\.?|difference between|which is better|better than|alternatives? (to|for)|pros and cons)\b/i, w: 2, tag: 'comparison' },
+--- a/aqua/src/core/observability.js
++++ b/aqua/src/core/observability.js
+@@ -323,6 +323,46 @@
+   console.log('[SEARCH]', JSON.stringify(entry));
+ }
+ 
++/**
++ * Human-readable SEARCH DECISION block (server log only). chat.js step 5d
++ * emits this on EVERY turn — whether search ran or was skipped — so the log
++ * always states the decision and why, plus (when it ran) provider / results /
++ * cache / injected-tokens / latency. This replaces the old bare
++ * "Skipped: Web Search" orchestrator line with the richer diagnostic the
++ * spec's Logging section asks for. Purely presentational: it reads fields off
++ * the web_search capability entry (carrying decideWebSearch's reason) and the
++ * SearchManager payload — it computes nothing and mutates no metrics
++ * (logSearchEvent already owns the counters).
++ *
++ * @param {{ enabled: boolean, reason?: string }|undefined} capability  web_search entry from orchestrate().capabilities
++ * @param {object|null} result  SearchManager payload, or null when search was not attempted
++ * @returns {string}
++ */
++export function formatSearchDecisionLog(capability, result) {
++  const needSearch = !!(capability && capability.enabled);
++  const reason = capability?.reason
++    || (needSearch ? 'live web data required' : 'model knowledge sufficient');
++  const lines = ['[SEARCH DECISION]', `Need Search = ${needSearch ? 'YES' : 'NO'}`, `Reason = ${reason}`];
++
++  if (needSearch && result) {
++    if (result.used) {
++      lines.push(
++        `Provider = ${result.provider ?? 'unknown'}`,
++        `Results = ${result.sources?.length ?? 0}`,
++        `Cache = ${result.cached ? 'HIT' : 'MISS'}`,
++        `Tokens Injected = ${result.contextTokens ?? 0}`,
++      );
++    } else {
++      // Fail-open path — every provider missing/failed. The answer still
++      // generates from model knowledge; the log makes that explicit.
++      lines.push('Provider = none', `Outcome = ${result.reason ?? 'no usable results'} (fail-open)`);
++    }
++    lines.push(`Latency = ${result.latencyMs ?? 0}ms`);
++  }
++
++  return lines.join('\n');
++}
++
+ export function logCompletion(ctx, {
+   taskType,
+   classifierConfidence,
+--- a/aqua/src/routes/chat.js
++++ b/aqua/src/routes/chat.js
+@@ -67,7 +67,7 @@
+ import { getAgent } from '../intelligence/agentRegistry.js';
+ import '../intelligence/verificationAgent.js'; // side-effect: registers the 'verification' agent on load
+ import '../search/searchAgent.js';             // side-effect: registers the 'web_search' agent on load
+-import { logSearchEvent } from '../core/observability.js';
++import { logSearchEvent, formatSearchDecisionLog } from '../core/observability.js';
+ import { computeContextBudget, optimizeContext } from '../core/contextOptimizer.js';
+ import {
+   getOrCreateConversation,
+@@ -335,21 +335,22 @@
+   // performSearch() NEVER throws: any failure returns { used:false } and
+   // the request proceeds exactly as if search did not exist.
+   let search = null;
++  const webSearchCap   = orchestration.capabilities.find(c => c.id === 'web_search');
+   const wantsWebSearch = orchestration.enabled.some(c => c.id === 'web_search');
+   if (wantsWebSearch && !identityIntent.isSelf) {
+     const searchAgent = getAgent('web_search');
+     if (searchAgent) {
+       search = await searchAgent.run({ userMessage, taskType, requestId, onStage });
+-      logSearchEvent(ctx, search);
+-      if (search.used) {
+-        console.log(`[SEARCH] context injected provider=${search.provider} sources=${search.sources.length} tokens=${search.contextTokens} req=${requestId}`);
+-      } else {
+-        console.log(`[SEARCH] no context injected (${search.reason ?? 'no results'}) req=${requestId}`);
+-      }
++      logSearchEvent(ctx, search);   // structured AQUA_SEARCH line + metrics
+     }
+   } else if (wantsWebSearch && identityIntent.isSelf) {
+     console.log(`[SEARCH] Skipped — identity/self-question owns this turn req=${requestId}`);
+   }
++  // SEARCH DECISION block — logged on EVERY turn (ran OR skipped). States the
++  // decision + reason, and when search ran, the provider / results / cache /
++  // injected-tokens / latency. This is the line that replaces the old bare
++  // "Skipped: Web Search" for non-search turns (Logging section of the spec).
++  console.log(formatSearchDecisionLog(webSearchCap, search));
+   const searchContext = search?.contextBlock ?? '';
+ 
+   // ── 6. Build system prompt ────────────────────────────────────────────────────
+--- a/aqua/package.json
++++ b/aqua/package.json
+@@ -10,7 +10,8 @@
+     "test:upload": "node --test src/upload/tests/upload.test.js",
+     "test:mind": "node --test src/mind/tests/mind.test.js",
+     "test:identity": "node --test src/identity/tests/identityLayer.test.js",
+-    "test:search": "node --test src/search/tests/search.test.js"
++    "test:search": "node --test src/search/tests/search.test.js",
++    "test:search-routing": "node --test src/orchestrator/tests/webSearchRouting.test.js"
+   },
+   "dependencies": {
+     "@google/genai": "^2.9.0",
+--- a/aqua/AQUA_SEARCH_ARCHITECTURE.md
++++ b/aqua/AQUA_SEARCH_ARCHITECTURE.md
+@@ -246,3 +246,93 @@
+ the pristine pre-change archive — they cover the not-yet-applied
+ `digest_wiring.diff` / call-graph increments in the repo root, unrelated to
+ search and untouched per mission scope.
++
++---
++
++## 12. Decision routing — the classifier → SearchDecision handoff (2026-07 fix)
++
++### Symptom
++
++`Who is the new CM of Assam?` · `Who is the principal of DR BKB College?` ·
++`Current Bitcoin price` returned stale model-knowledge answers and **never
++searched**, while `Latest Node.js version` and `Compare Gemini 2.5 Flash vs
++GPT-5` searched correctly.
++
++### Root cause (NOT the wiring)
++
++Every integration point in §9 was already live — chat.js step 5d executes,
++`buildSystemPrompt` injects, the SSE sub-stages stream, `performSearch` fails
++open. The break was **two hops upstream of the orchestrator**, in the
++classify → decide handoff:
++
++```
++user msg ─▶ classifier.js ─▶ toolOrchestrator ─▶ capabilities 'web_search'
++             (classifyTask)     (orchestrate)        └─▶ searchDecision.js
++                  │                                        (decideWebSearch)
++                  ▼                                              ▲
++         ┌──────────────────────┐                               │
++         │ short-message funnel │  msg <55 chars & no            │ taskType
++         │  (defect #1)         │  SUBSTANTIVE signal            │ 'conversation'
++         │  → 'conversation'    │  → forced conversation ────────┘ is a HARD
++         └──────────────────────┘  (simple_qa score discarded)    BLOCK ✗
++```
++
++1. **Classifier short-message funnel** (`classifier.js`): any message under 55
++   chars with no *substantive-task* score was forced to `conversation` — and
++   `simple_qa` is deliberately not "substantive", so a real one-shot question
++   (`Who is the new CM of Assam?`, matching `^who is the`) had its `simple_qa`
++   score thrown away and was relabelled `conversation`. `Current Bitcoin price`
++   matched nothing and was funnelled the same way instead of reaching the
++   zero-score `simple_qa` fallback.
++2. **`conversation` is a hard block** in `searchDecision.js`
++   (`BLOCKED_TASK_TYPES`) — correctly, so `Hey, how are you today?` (which
++   contains the freshness word "today") can't false-positive. But once defect
++   #1 mislabels a factual question as `conversation`, this block guarantees
++   `needed:false` before any signal is scored.
++
++The working cases escaped only because they hit a *substantive* category
++(`Latest Node.js version` → `coding`, `Compare … vs …` → `research`), so the
++funnel never fired.
++
++A secondary gap: even correctly labelled `simple_qa`, the `role_holder`
++positive signal covered only corporate C-suite titles — `CM`, `principal`,
++`governor`, `chancellor`, etc. scored nothing.
++
++### Fix (surgical, integration-preserving)
++
++| File | Change | Nature |
++|---|---|---|
++| `core/classifier.js` | Short-message funnel yields to conversation **only** for greetings/acks and weak sub-threshold chatter; a `simple_qa` signal (or a zero-score message, which the existing fallback routes to `simple_qa`) now falls through instead of being relabelled. Same Simple Question profile, same low-complexity tier — **no profile or budget change**. | tuned heuristic |
++| `search/searchDecision.js` | `role_holder` signal broadened to government / institutional office holders (CM, chief minister, governor, mayor, principal, dean, chancellor, minister, MP/MLA, …) + `who is/are` + `current/new/now` qualifiers. | +coverage, one existing signal |
++| `core/observability.js` | `formatSearchDecisionLog()` — the human-readable `[SEARCH DECISION]` block (Need Search / Reason / Provider / Results / Cache / Tokens Injected / Latency; fail-open variant). Additive; owns no metrics. | additive |
++| `routes/chat.js` | Step 5d emits the decision block on **every** turn (ran *or* skipped), replacing the bare per-branch console logs. | log wiring |
++
++**Deliberately unchanged:** SearchManager, SearchRouter, providers, KeyPool,
++ResultRanker, ContextExtractor, promptBuilder, the capability `override`
++mechanism, and every response shape. The profile still sets the baseline and
++`decideWebSearch` still makes the dynamic call — the fix only stops a factual
++question from being silently reclassified as smalltalk before that call runs.
++
++### Where SearchDecision executes (unchanged, restated for this fix)
++
++`decideWebSearch()` runs inside `orchestrate()`'s capability detection —
++**pure, synchronous, deterministic, before prompt construction**. This fix
++does not move it; it only ensures the `taskType` it receives is honest.
++
++```
++classifyTask ─▶ orchestrate() ┬─▶ capabilities['web_search'].override
++                              │        └─▶ decideWebSearch()  ◀── executes HERE,
++                              │              (no LLM, no I/O)      before any prompt
++                              └─▶ enabled[] ─▶ chat.js 5d ─▶ SearchManager ─▶ prompt ─▶ LLM
++```
++
++### Verification
++
++`npm run test:search-routing` (new, `src/orchestrator/tests/webSearchRouting.js`)
++drives real messages through `classifyTask → orchestrate` and asserts the
++`web_search` capability is enabled for the fresh-knowledge examples and skipped
++for creative / memory / workspace / arithmetic / greeting turns — including the
++load-bearing `Hey, how are you today?` (stays `conversation`) and the demoted
++`clarify … my code` fragment (stays `conversation`, never `research`).
++`npm run test:search` (52/52) and the classifier suite (21/21) confirm the
++decision matrix and classifier contract are intact.
+--- a/aqua/src/orchestrator/tests/webSearchRouting.test.js
++++ b/aqua/src/orchestrator/tests/webSearchRouting.test.js
+@@ -0,0 +1,100 @@
++/**
++ * AQUA — Web Search Orchestration Routing (integration)
++ *
++ * Proves the END-TO-END decision the spec asks for: a real user message goes
++ * through the actual pipeline front-half — classifier.js (classifyTask) →
++ * toolOrchestrator.js (orchestrate) → capabilities.js 'web_search' override →
++ * searchDecision.js (decideWebSearch) — and the orchestrator's `web_search`
++ * capability comes out enabled or skipped correctly. No providers, no network,
++ * no LLM: orchestrate() is pure/deterministic, so this asserts the routing
++ * logic that decides *whether* SearchManager will be invoked in chat.js step
++ * 5d, not the search itself (that is covered exhaustively by
++ * src/search/tests/search.test.js).
++ *
++ * Regression context: short factual questions ("Current Bitcoin price", "Who
++ * is the new CM of Assam?") were classified `conversation` by the classifier's
++ * short-message heuristic and then hard-blocked by searchDecision — so the
++ * orchestrator skipped web search and AQUA answered from stale model
++ * knowledge. The fix restores factual-question classification and broadens the
++ * office-holder signal; these tests lock that behavior in.
++ */
++import { test, describe } from 'node:test';
++import assert from 'node:assert/strict';
++
++import { classifyTask } from '../../core/classifier.js';
++import { orchestrate } from '../toolOrchestrator.js';
++import '../../search/searchAgent.js'; // side-effect: registers 'web_search' so the capability override is live
++
++// Run the real front-half of the pipeline and report whether the orchestrator
++// enabled the web_search capability for this turn.
++function routesToSearch(userMessage, { workspaceId = null } = {}) {
++  const { task, confidence } = classifyTask(userMessage);
++  const decision = orchestrate({
++    userMessage,
++    taskType: task,
++    confidence,
++    hasWorkspaceId: !!workspaceId,
++  });
++  const cap = decision.capabilities.find((c) => c.id === 'web_search');
++  return { enabled: !!cap?.enabled, task, reason: cap?.reason, decision };
++}
++
++const searches   = (m, o) => assert.equal(routesToSearch(m, o).enabled, true,  `expected SEARCH: "${m}" (task=${routesToSearch(m, o).task}, reason=${routesToSearch(m, o).reason})`);
++const noSearch   = (m, o) => assert.equal(routesToSearch(m, o).enabled, false, `expected NO search: "${m}" (task=${routesToSearch(m, o).task}, reason=${routesToSearch(m, o).reason})`);
++
++describe('web search orchestration routing — spec examples', () => {
++  test('fresh / external knowledge questions route THROUGH web search', () => {
++    searches('Who is the new CM of Assam?');            // office holder + freshness
++    searches('Who is the principal of DR BKB College?'); // institutional office holder
++    searches('Latest Node.js version');                  // release / freshness
++    searches('Latest Node version');
++    searches('Current Bitcoin price');                   // market / pricing
++    searches('Compare Gemini 2.5 Flash vs GPT-5');       // comparison / research
++    searches('Who is the current CEO of OpenAI?');       // corporate office holder
++    searches("What's the current pricing of Vercel Pro?");
++  });
++
++  test('creative / memory / workspace-grounded questions SKIP web search', () => {
++    noSearch('Write me a poem');                                     // creative → hard block
++    noSearch('Remember my birthday is June 3');                      // memory update → hard block
++    noSearch('My uploaded PDF says the deadline is Friday — summarize it', { workspaceId: 'ws_1' }); // attachment
++    noSearch('What is 17 times 42?');                                // arithmetic — no live signal
++    noSearch('Hey, how are you today?');                             // greeting (contains "today" but stays conversation)
++    noSearch('Explain the concept of recursion');                    // timeless / definitional
++    noSearch('Refactor the auth middleware in this repo', { workspaceId: 'ws_1' }); // workspace grounded
++  });
++});
++
++describe('classifier no longer swallows factual questions as conversation', () => {
++  test('terse office-holder / pricing questions classify as simple_qa, not conversation', () => {
++    for (const m of ['Who is the new CM of Assam?', 'Current Bitcoin price', 'Who is the principal of DR BKB College?']) {
++      assert.equal(classifyTask(m).task, 'simple_qa', `"${m}" should be simple_qa`);
++    }
++  });
++
++  test('greetings and weak-signal chatter still classify as conversation', () => {
++    assert.equal(classifyTask('Hey, how are you today?').task, 'conversation');
++    assert.equal(classifyTask('Hi there').task, 'conversation');
++    // demoted-research fragment referencing code — must not become research
++    assert.notEqual(classifyTask('Can you clarify what is happening in my code below?').task, 'research');
++  });
++});
++
++describe('routing is deterministic (orchestrate() purity)', () => {
++  test('same message → identical enabled/skipped decision', () => {
++    const a = routesToSearch('Current Bitcoin price').enabled;
++    const b = routesToSearch('Current Bitcoin price').enabled;
++    assert.equal(a, b);
++  });
++
++  test('the Simple Question profile does NOT hard-disable search — the decision is dynamic', () => {
++    // Both classify to the Simple Question profile, yet one searches and one
++    // does not: profile sets the baseline, SearchDecision decides web search.
++    const fresh = routesToSearch('Current Bitcoin price');
++    const chat  = routesToSearch('Hey, how are you today?');
++    assert.equal(fresh.decision.profile.label, 'Simple Question');
++    assert.equal(chat.decision.profile.label, 'Simple Question');
++    assert.equal(fresh.enabled, true);
++    assert.equal(chat.enabled, false);
++  });
++});

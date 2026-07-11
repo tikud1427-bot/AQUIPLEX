@@ -371,10 +371,34 @@ export function classifyTask(userMessage, history = []) {
   // Score every category (includes v4 research/coding guard)
   const scores = scoreTask(msg);
 
+<<<<<<< HEAD
   // Short message heuristic: unless substantive signal, default to conversation
   if (msg.length < 55) {
     const substantiveScore = [...SUBSTANTIVE].reduce((sum, t) => sum + (scores[t] ?? 0), 0);
     if (substantiveScore < 1.0) {
+=======
+  // Short message heuristic: a terse message with no substantive-task signal
+  // defaults to conversation — EXCEPT when it is clearly a one-shot factual
+  // question. "Clearly factual" = a simple_qa pattern fired, OR nothing
+  // matched at all (the zero-score fallback below already routes those to
+  // simple_qa). Everything else short — greetings, acks, and weak sub-
+  // threshold chatter like a demoted "clarify what's happening in my code"
+  // research fragment — still funnels to conversation exactly as before.
+  //
+  // Why this matters: questions like "Current Bitcoin price" (no pattern hit)
+  // and "Who is the new CM of Assam?" (simple_qa hit) were being swallowed as
+  // `conversation`, which searchDecision.js hard-blocks — so AQUA answered
+  // current-events / office-holder / pricing questions from stale model
+  // knowledge and never reached the web-search path. Letting them fall through
+  // to simple_qa (same Simple Question profile, same low complexity — no
+  // profile or budget change) lets the orchestrator's SearchDecision route
+  // them to live search when they need fresh data.
+  if (msg.length < 55) {
+    const substantiveScore = [...SUBSTANTIVE].reduce((sum, t) => sum + (scores[t] ?? 0), 0);
+    const totalScore       = Object.values(scores).reduce((a, b) => a + b, 0);
+    const looksFactual     = (scores.simple_qa ?? 0) > 0 || totalScore === 0;
+    if (substantiveScore < 1.0 && !looksFactual) {
+>>>>>>> 7306efb7 (update)
       return { task: 'conversation', confidence: 0.85, labels: ['conversation'] };
     }
   }
@@ -452,4 +476,8 @@ export function getEffectiveComplexity(taskType, confidence = 1.0) {
     else if (complexity === 'medium') complexity = 'high';
   }
   return complexity;
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 7306efb7 (update)

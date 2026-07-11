@@ -55,6 +55,10 @@ export function orchestrate({ userMessage, taskType, confidence, hasWorkspaceId 
   const ctx = {
     taskType, complexity, confidence, hasWorkspaceId,
     requiredSet, profileLabel: profile.label, verification, multiLabel,
+<<<<<<< HEAD
+=======
+    userMessage, // Web Search: decideWebSearch() (pure/deterministic) reads it — see capabilities.js
+>>>>>>> 7306efb7 (update)
   };
 
   const capabilities = getAllCapabilities().map((cap) => {

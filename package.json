@@ -1,7 +1,11 @@
 {
   "name": "aquiplex-platform",
   "version": "2.0.0",
+<<<<<<< HEAD
   "description": "AQUIPLEX — AI platform. AQUA is the AI.",
+=======
+  "description": "AQUIPLEX \u2014 AI platform. AQUA is the AI.",
+>>>>>>> 7306efb7 (update)
   "type": "commonjs",
   "main": "index.js",
   "license": "MIT",
@@ -15,7 +19,11 @@
     "postinstall": "cd aqua && npm install",
     "build:aqua": "cd aqua-frontend && npm ci --include=dev && NODE_OPTIONS=--max-old-space-size=450 npm run build",
     "build": "npm run build:aqua",
+<<<<<<< HEAD
     "test:aqua": "cd aqua && npm run test:edit && npm run test:upload && npm run test:identity"
+=======
+    "test:aqua": "cd aqua && npm run test:edit && npm run test:upload && npm run test:identity && npm run test:search"
+>>>>>>> 7306efb7 (update)
   },
   "dependencies": {
     "axios": "^1.13.6",

@@ -19,6 +19,10 @@ import { validateRegistryOnStartup, getRegistrySnapshot } from '../providers/mod
 import { hasConfiguredKeys as geminiHasKeys }     from '../providers/gemini.js';
 import { hasConfiguredKeys as groqHasKeys }       from '../providers/groq.js';
 import { hasConfiguredKeys as openrouterHasKeys } from '../providers/openrouter.js';
+<<<<<<< HEAD
+=======
+import { getSearchHealth }                        from '../search/searchManager.js';
+>>>>>>> 7306efb7 (update)
 
 export function runStartupValidation() {
   console.log('[STARTUP] Validating model registry and provider configuration...');
@@ -47,7 +51,32 @@ export function runStartupValidation() {
     console.warn('[STARTUP] ⚠⚠ NO providers have any configured keys — every request will fail until at least one is set.');
   }
 
+<<<<<<< HEAD
   console.log(`[STARTUP] Ready. Registry: ${registryResult.validCount} valid / ${registryResult.disabledCount} disabled models.`);
 
   return { registry: registryResult, keyChecks, snapshot: getRegistrySnapshot() };
+=======
+  // ── Web Search keys (same warn-only contract) ───────────────────────────────
+  // Zero search keys is a VALID configuration: the web_search capability
+  // reports disabled and every request behaves exactly as pre-search AQUA.
+  // We warn so ops can see why search is dormant, never fail boot over it.
+  let searchHealth = null;
+  try {
+    searchHealth = getSearchHealth();
+    const configuredSearch = Object.entries(searchHealth.providers)
+      .filter(([, p]) => p.configured)
+      .map(([name, p]) => `${name}(${p.totalKeys} key${p.totalKeys === 1 ? '' : 's'})`);
+    if (!configuredSearch.length) {
+      console.warn('[STARTUP] ⚠ No web search keys configured (SERPER_API_KEY_* / TAVILY_API_KEY_*) — web_search capability disabled; chat works unchanged.');
+    } else {
+      console.log(`[STARTUP] Web search ready: ${configuredSearch.join(', ')} | priority=${searchHealth.config.providerPriority.join(' → ')} | cache=${searchHealth.config.cache.enabled ? `${searchHealth.config.cache.ttlMs / 1000}s TTL` : 'off'}`);
+    }
+  } catch (err) {
+    console.warn(`[STARTUP] ⚠ Search configuration check raised an error (continuing anyway): ${err.message}`);
+  }
+
+  console.log(`[STARTUP] Ready. Registry: ${registryResult.validCount} valid / ${registryResult.disabledCount} disabled models.`);
+
+  return { registry: registryResult, keyChecks, search: searchHealth, snapshot: getRegistrySnapshot() };
+>>>>>>> 7306efb7 (update)
 }

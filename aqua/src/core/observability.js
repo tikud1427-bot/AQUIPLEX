@@ -34,6 +34,11 @@ const metrics = {
   verificationRuns:    0, // count of requests where the verification agent actually executed
   verificationRevised: 0, // of those, count where the draft was replaced
   verificationFailed:  0, // count where the verifier call itself errored (failed open)
+<<<<<<< HEAD
+=======
+  searchEvents: { performed: 0, cached: 0, failed: 0, noResults: 0 }, // Web Search: outcome counts
+  searchByProvider: {},   // Web Search: provider → successful searches served
+>>>>>>> 7306efb7 (update)
 };
 
 // ── Recent log ring buffer (last 200 structured AQUA_REQUEST entries) ─────────
@@ -275,6 +280,95 @@ export function logVerificationEvent(ctx, result) {
  * @param {object} ctx   - from createContext()
  * @param {object} data  - completion fields
  */
+<<<<<<< HEAD
+=======
+// ── Search event logging (Web Search) ────────────────────────────────────────
+
+/**
+ * Log one Web Search execution — at most one per request, emitted by
+ * chat.js's step 5d right after the search agent returns. `result` is the
+ * SearchManager payload (see src/search/searchManager.js); this logs the
+ * DIAGNOSTIC surface only — the full contextBlock never hits the log line
+ * (it already lands in the prompt; duplicating ~1200 tokens per request
+ * into stdout would drown everything else).
+ *
+ * @param {object} ctx
+ * @param {{ used: boolean, cached: boolean, provider: string|null, query: string,
+ *           sources: object[], contextTokens: number, latencyMs: number,
+ *           attempts: object[], reason?: string }} result
+ */
+export function logSearchEvent(ctx, result) {
+  if (!result) return;
+
+  if (result.used && result.cached)      metrics.searchEvents.cached    += 1;
+  else if (result.used)                  metrics.searchEvents.performed += 1;
+  else if (result.attempts?.some(a => a.outcome === 'failed')) metrics.searchEvents.failed += 1;
+  else                                   metrics.searchEvents.noResults += 1;
+
+  if (result.used && result.provider) {
+    metrics.searchByProvider[result.provider] = (metrics.searchByProvider[result.provider] || 0) + 1;
+  }
+
+  const entry = {
+    type:           'AQUA_SEARCH',
+    ts:             new Date().toISOString(),
+    requestId:      ctx.requestId,
+    conversationId: ctx.conversationId,
+    used:           result.used,
+    cached:         result.cached,
+    provider:       result.provider,
+    query:          (result.query ?? '').slice(0, 160),
+    sources:        result.sources?.length ?? 0,
+    contextTokens:  result.contextTokens ?? 0,
+    latencyMs:      result.latencyMs ?? null,
+    attempts:       (result.attempts ?? []).map(a => `${a.provider}#${a.keySlot ?? '-'}:${a.outcome}${a.reason ? `(${a.reason})` : ''}`),
+    ...(result.reason ? { reason: result.reason } : {}),
+  };
+
+  console.log('[SEARCH]', JSON.stringify(entry));
+}
+
+/**
+ * Human-readable SEARCH DECISION block (server log only). chat.js step 5d
+ * emits this on EVERY turn — whether search ran or was skipped — so the log
+ * always states the decision and why, plus (when it ran) provider / results /
+ * cache / injected-tokens / latency. This replaces the old bare
+ * "Skipped: Web Search" orchestrator line with the richer diagnostic the
+ * spec's Logging section asks for. Purely presentational: it reads fields off
+ * the web_search capability entry (carrying decideWebSearch's reason) and the
+ * SearchManager payload — it computes nothing and mutates no metrics
+ * (logSearchEvent already owns the counters).
+ *
+ * @param {{ enabled: boolean, reason?: string }|undefined} capability  web_search entry from orchestrate().capabilities
+ * @param {object|null} result  SearchManager payload, or null when search was not attempted
+ * @returns {string}
+ */
+export function formatSearchDecisionLog(capability, result) {
+  const needSearch = !!(capability && capability.enabled);
+  const reason = capability?.reason
+    || (needSearch ? 'live web data required' : 'model knowledge sufficient');
+  const lines = ['[SEARCH DECISION]', `Need Search = ${needSearch ? 'YES' : 'NO'}`, `Reason = ${reason}`];
+
+  if (needSearch && result) {
+    if (result.used) {
+      lines.push(
+        `Provider = ${result.provider ?? 'unknown'}`,
+        `Results = ${result.sources?.length ?? 0}`,
+        `Cache = ${result.cached ? 'HIT' : 'MISS'}`,
+        `Tokens Injected = ${result.contextTokens ?? 0}`,
+      );
+    } else {
+      // Fail-open path — every provider missing/failed. The answer still
+      // generates from model knowledge; the log makes that explicit.
+      lines.push('Provider = none', `Outcome = ${result.reason ?? 'no usable results'} (fail-open)`);
+    }
+    lines.push(`Latency = ${result.latencyMs ?? 0}ms`);
+  }
+
+  return lines.join('\n');
+}
+
+>>>>>>> 7306efb7 (update)
 export function logCompletion(ctx, {
   taskType,
   classifierConfidence,

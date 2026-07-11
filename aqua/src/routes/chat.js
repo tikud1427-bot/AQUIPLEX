@@ -18,6 +18,11 @@ SSE protocol (/chat/stream):
   event: stage      { id, label }            — genuine pipeline stage starting
   event: provider   { provider, score, attempt }
   event: provider_failed { provider, reason }— pre-first-token fallback only
+<<<<<<< HEAD
+=======
+  event: workspace  { workspaceId, contextInjected, filesReferenced }
+  event: search     { used, cached, provider, query, sources } — Web Search grounding for this turn
+>>>>>>> 7306efb7 (update)
   event: token      { t }                    — raw text delta
   event: replace    { text }                 — verification revised the answer
   event: patch      { ...proposal }          — Day 4: patch-first edit proposal (diff hunks, stats, verification)
@@ -64,6 +69,11 @@ import { runIntelligencePipeline } from '../intelligence/internalIntelligenceEng
 import { orchestrate, formatOrchestratorLog } from '../orchestrator/toolOrchestrator.js';
 import { getAgent } from '../intelligence/agentRegistry.js';
 import '../intelligence/verificationAgent.js'; // side-effect: registers the 'verification' agent on load
+<<<<<<< HEAD
+=======
+import '../search/searchAgent.js';             // side-effect: registers the 'web_search' agent on load
+import { logSearchEvent, formatSearchDecisionLog } from '../core/observability.js';
+>>>>>>> 7306efb7 (update)
 import { computeContextBudget, optimizeContext } from '../core/contextOptimizer.js';
 import {
   getOrCreateConversation,
@@ -191,8 +201,17 @@ const REPO_INTENT_RE = /\b(repo(sitory)?|codebase|this project|the project|archi
  * Shared pre-generation pipeline — identical for /chat and /chat/stream.
  * `onStage(id, label)` fires as each REAL stage begins (no-op for /chat);
  * only stages that actually run are reported — never fake progress.
+<<<<<<< HEAD
  */
 function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, ctx, requestId, onStage = () => {} }) {
+=======
+ *
+ * ASYNC since the Web Search integration: the search step (5d) awaits
+ * provider calls. Both call sites (`await prepareTurn(...)`) are inside
+ * async handlers in this file — no external caller exists.
+ */
+async function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, ctx, requestId, onStage = () => {} }) {
+>>>>>>> 7306efb7 (update)
   // ── 1. Resolve the ONE memory owner (unified engine) ────────────────────────
   // Platform user identity when present (cross-conversation, cross-device),
   // else this conversation as a dev/standalone fallback (adopted into the
@@ -319,12 +338,45 @@ function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, 
     console.log(`[UPLOAD] Attachment context injected conversation=${conversationId} attachments=${conversationAttachments.length}`);
   }
 
+<<<<<<< HEAD
+=======
+  // ── 5d. Web Search (gated by the orchestrator's web_search capability) ──────
+  // The orchestrator already made the pure/deterministic decision
+  // (capabilities.js → decideWebSearch); this step only EXECUTES it.
+  // Identity/self-questions never search — the Identity Layer owns those
+  // turns outright (same rule project retrieval follows above).
+  // performSearch() NEVER throws: any failure returns { used:false } and
+  // the request proceeds exactly as if search did not exist.
+  let search = null;
+  const webSearchCap   = orchestration.capabilities.find(c => c.id === 'web_search');
+  const wantsWebSearch = orchestration.enabled.some(c => c.id === 'web_search');
+  if (wantsWebSearch && !identityIntent.isSelf) {
+    const searchAgent = getAgent('web_search');
+    if (searchAgent) {
+      search = await searchAgent.run({ userMessage, taskType, requestId, onStage });
+      logSearchEvent(ctx, search);   // structured AQUA_SEARCH line + metrics
+    }
+  } else if (wantsWebSearch && identityIntent.isSelf) {
+    console.log(`[SEARCH] Skipped — identity/self-question owns this turn req=${requestId}`);
+  }
+  // SEARCH DECISION block — logged on EVERY turn (ran OR skipped). States the
+  // decision + reason, and when search ran, the provider / results / cache /
+  // injected-tokens / latency. This is the line that replaces the old bare
+  // "Skipped: Web Search" for non-search turns (Logging section of the spec).
+  console.log(formatSearchDecisionLog(webSearchCap, search));
+  const searchContext = search?.contextBlock ?? '';
+
+>>>>>>> 7306efb7 (update)
   // ── 6. Build system prompt ────────────────────────────────────────────────────
   onStage('prompt', 'Preparing response…');
   // Attachment context rides the projectContext slot — same injection point,
   // same budget handling in promptBuilder, no signature change.
   const combinedContext = [attachmentContext, projectContext].filter(Boolean).join('\n\n');
+<<<<<<< HEAD
   const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoning.directive, combinedContext, intelligence.synthesis.text, identityIntent);
+=======
+  const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoning.directive, combinedContext, intelligence.synthesis.text, identityIntent, searchContext);
+>>>>>>> 7306efb7 (update)
 
   // ── 7. Build context window (short-term message history) ─────────────────────
   const history    = getConversation(conversationId);
@@ -341,6 +393,10 @@ function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, 
     extractedFacts, relevantFacts,
     memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!memoryBlock, contextUsed: cognitive.used },
     projectContext, projectFiles,
+<<<<<<< HEAD
+=======
+    search,
+>>>>>>> 7306efb7 (update)
     attachments: conversationAttachments.map(a => ({ id: a.id, name: a.name, kind: a.kind })),
     systemPrompt, promptModules,
     messages, contextStats, promptTokens,
@@ -447,6 +503,25 @@ function buildResponsePayload({
     // Day 5 — Universal Upload: attachments grounding this answer.
     ...(prep?.attachments?.length ? { attachments: prep.attachments } : {}),
 
+<<<<<<< HEAD
+=======
+    // Web Search: present only when the orchestrator enabled the capability
+    // for this turn (used=false still reported — a skipped/failed search is
+    // diagnostic signal, not an error).
+    ...(prep?.search ? {
+      search: {
+        used:      prep.search.used,
+        cached:    prep.search.cached,
+        provider:  prep.search.provider,
+        query:     prep.search.query,
+        sources:   prep.search.sources,
+        tokens:    prep.search.contextTokens,
+        latencyMs: prep.search.latencyMs,
+        ...(prep.search.reason ? { reason: prep.search.reason } : {}),
+      },
+    } : {}),
+
+>>>>>>> 7306efb7 (update)
     // Identity & Self-Knowledge Layer: present only when this turn was a
     // question about AQUA/Aquiplex itself.
     ...(prep?.identityIntent?.isSelf ? {
@@ -497,7 +572,11 @@ router.post('/', async (req, res) => {
       }
     }
 
+<<<<<<< HEAD
     const prep = prepareTurn({ userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId });
+=======
+    const prep = await prepareTurn({ userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId });
+>>>>>>> 7306efb7 (update)
     const {
       taskType, confidence, orchestration, plan, reasoning, intelligence,
       extractedFacts, relevantFacts, projectContext, projectFiles,
@@ -655,7 +734,11 @@ router.post('/stream', async (req, res) => {
 
     // Pipeline stages stream to the client AS THEY START — every stage event
     // corresponds to real work beginning, never a scripted animation.
+<<<<<<< HEAD
     const prep = prepareTurn({
+=======
+    const prep = await prepareTurn({
+>>>>>>> 7306efb7 (update)
       userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId,
       onStage: (id, label) => send('stage', { id, label }),
     });
@@ -665,6 +748,24 @@ router.post('/stream', async (req, res) => {
       systemPrompt, promptModules, messages, contextStats,
     } = prep;
 
+<<<<<<< HEAD
+=======
+    // Web Search grounding — structured event so the UI can render source
+    // chips ("answering from: [1] nodejs.org …") while tokens arrive. The
+    // current pre-built frontend ignores unknown SSE events by design
+    // (chatStream.ts default: forward-compatible), so this ships safely
+    // ahead of any dist rebuild.
+    if (prep.search) {
+      send('search', {
+        used:     prep.search.used,
+        cached:   prep.search.cached,
+        provider: prep.search.provider,
+        query:    prep.search.query,
+        sources:  prep.search.sources,
+      });
+    }
+
+>>>>>>> 7306efb7 (update)
     // Surface workspace grounding before generation so the UI can show
     // "answering from workspace X, files …" while tokens arrive.
     if (workspaceId) {
@@ -765,4 +866,8 @@ router.post('/stream', async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
 export default router;
+=======
+export default router;
+>>>>>>> 7306efb7 (update)

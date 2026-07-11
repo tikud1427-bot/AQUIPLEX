@@ -122,6 +122,10 @@ export const useChatStore = create<ChatState>((set, get) => {
                 finishReason: res.finishReason,
                 diagnostics: toDiagnostics(res),
                 patch: res.patch ?? m.patch,
+<<<<<<< HEAD
+=======
+                sources: res.search?.sources?.length ? res.search.sources : m.sources,
+>>>>>>> 7306efb7 (update)
                 workspace: res.project
                   ? {
                       workspaceId: res.project.workspaceId,
@@ -213,6 +217,15 @@ export const useChatStore = create<ChatState>((set, get) => {
           onWorkspace: (e) => {
             if (isLive()) patchMsg({ workspace: e });
           },
+<<<<<<< HEAD
+=======
+          onSearch: (e) => {
+            // Grounding arrives before tokens — surface source cards early so
+            // they're visible as the answer streams (finishTurn later
+            // reconciles with the authoritative `done` payload).
+            if (isLive() && e.used && e.sources?.length) patchMsg({ sources: e.sources });
+          },
+>>>>>>> 7306efb7 (update)
           onProviderFailed: () => {
             // Pre-token fallback is invisible by design — the thinking state
             // simply continues; diagnostics carry the chain afterwards.

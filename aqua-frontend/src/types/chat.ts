@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import type { ChatSuccessResponse, FallbackAttempt } from './api';
+=======
+import type { ChatSuccessResponse, FallbackAttempt, SearchSource } from './api';
+>>>>>>> 7306efb7 (update)
 import type { PatchProposal } from './patch';
 
 /**
@@ -43,6 +47,13 @@ export interface UiMessage {
   workspace?: { workspaceId: string; contextInjected: boolean; filesReferenced: string[] };
   /** Day 4 — patch-first edit proposal attached to this assistant turn. */
   patch?: PatchProposal;
+<<<<<<< HEAD
+=======
+  /** Web-search sources grounding this assistant turn (structured, from the
+   *  SSE `search` event / `done` payload). Renders as source cards below the
+   *  answer; internal `[n]` markers are stripped from the text itself. */
+  sources?: SearchSource[];
+>>>>>>> 7306efb7 (update)
   /** Only present on completed assistant messages. */
   diagnostics?: MessageDiagnostics;
   /** Text-file attachments inlined into the outgoing message (user turns only). */

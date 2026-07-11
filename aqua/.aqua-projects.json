@@ -1,0 +1,1288 @@
+{
+  "1144859e-ddae-461e-a99d-881133ba89f7": {
+    "id": "1144859e-ddae-461e-a99d-881133ba89f7",
+    "ownerId": "compressor",
+    "createdAt": 1783758717303,
+    "meta": {
+      "ownerId": "compressor"
+    },
+    "projectType": "unknown",
+    "files": [
+      {
+        "path": "src/core/engine.js",
+        "lang": "javascript",
+        "size": 211,
+        "summary": "engine.js [javascript] | Functions: init, start, stop, tick, reset, load, save, status | Exports: init, start, stop, tick, reset, load",
+        "parsedAt": 1783758717337
+      },
+      {
+        "path": "src/a.js",
+        "lang": "javascript",
+        "size": 91,
+        "summary": "a.js [javascript] | Functions: aRun | Exports: aRun",
+        "parsedAt": 1783758717337
+      },
+      {
+        "path": "src/b.js",
+        "lang": "javascript",
+        "size": 91,
+        "summary": "b.js [javascript] | Functions: bRun | Exports: bRun",
+        "parsedAt": 1783758717337
+      },
+      {
+        "path": "src/c.js",
+        "lang": "javascript",
+        "size": 91,
+        "summary": "c.js [javascript] | Functions: cRun | Exports: cRun",
+        "parsedAt": 1783758717337
+      },
+      {
+        "path": "src/d.js",
+        "lang": "javascript",
+        "size": 91,
+        "summary": "d.js [javascript] | Functions: dRun | Exports: dRun",
+        "parsedAt": 1783758717337
+      },
+      {
+        "path": "src/utils/helper.js",
+        "lang": "javascript",
+        "size": 44,
+        "summary": "helper.js [javascript] | Functions: formatThing | Exports: formatThing | Role: utilities",
+        "parsedAt": 1783758717337
+      },
+      {
+        "path": "src/utils/tiny.js",
+        "lang": "javascript",
+        "size": 19,
+        "summary": "tiny.js [javascript] | Exports: K | Role: utilities",
+        "parsedAt": 1783758717337
+      },
+      {
+        "path": "test/engine.test.js",
+        "lang": "javascript",
+        "size": 70,
+        "summary": "engine.test.js [javascript] | Functions: t | Role: tests",
+        "parsedAt": 1783758717337
+      },
+      {
+        "path": "config.json",
+        "lang": "json",
+        "size": 18,
+        "summary": "config.json [json] | Role: configuration",
+        "parsedAt": 1783758717337
+      }
+    ],
+    "structure": {
+      "src": {
+        "core": {
+          "engine.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 211
+          }
+        },
+        "a.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 91
+        },
+        "b.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 91
+        },
+        "c.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 91
+        },
+        "d.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 91
+        },
+        "utils": {
+          "helper.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 44
+          },
+          "tiny.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 19
+          }
+        }
+      },
+      "test": {
+        "engine.test.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 70
+        }
+      },
+      "config.json": {
+        "_file": true,
+        "lang": "json",
+        "size": 18
+      }
+    },
+    "indexStatus": "indexed",
+    "summary": "Type: unknown | Files: 9 | Languages: javascript(8), json(1)\nTop-level dirs: src, test",
+    "stats": {
+      "files": 9,
+      "languages": {
+        "javascript": 8,
+        "json": 1
+      }
+    },
+    "indexedAt": 1783758717338,
+    "overview": {
+      "generatedAt": 1783758717332,
+      "partial": false,
+      "name": "Untitled project",
+      "purpose": "No description found in package.json or README.",
+      "summary": "Untitled project is a unknown project with 9 source files, primarily javascript, json.",
+      "projectType": "unknown",
+      "languages": {
+        "javascript": 8,
+        "json": 1
+      },
+      "frameworks": [],
+      "runtime": [],
+      "packageManagers": [],
+      "buildTools": [],
+      "frontendTech": [],
+      "backendTech": [],
+      "databaseTech": [],
+      "authMethods": [],
+      "majorDependencies": [],
+      "dependencyCount": 0,
+      "folderStructure": [
+        {
+          "dir": "src",
+          "files": 7,
+          "bytes": 638
+        },
+        {
+          "dir": "src/utils",
+          "files": 2,
+          "bytes": 63
+        },
+        {
+          "dir": "src/core",
+          "files": 1,
+          "bytes": 211
+        },
+        {
+          "dir": "test",
+          "files": 1,
+          "bytes": 70
+        }
+      ],
+      "largestFolders": [
+        {
+          "dir": "src",
+          "bytes": 638
+        },
+        {
+          "dir": "src/core",
+          "bytes": 211
+        },
+        {
+          "dir": "test",
+          "bytes": 70
+        },
+        {
+          "dir": "src/utils",
+          "bytes": 63
+        }
+      ],
+      "envVars": [],
+      "configFiles": [],
+      "entryPoints": [],
+      "coreModules": [
+        {
+          "file": "src/core/engine.js",
+          "importedBy": 5
+        }
+      ],
+      "importantServices": [
+        {
+          "file": "src/core/engine.js",
+          "summary": "engine.js [javascript]"
+        }
+      ],
+      "apiRoutes": [],
+      "externalIntegrations": [],
+      "stats": {
+        "fileCount": 9,
+        "totalBytes": 726,
+        "totalKB": 1,
+        "functions": 14,
+        "classes": 0,
+        "interfaces": 0,
+        "components": 0,
+        "dependencyEdges": 5,
+        "configFileCount": 0
+      },
+      "todoCount": 0,
+      "todos": [],
+      "potentialTechDebt": [],
+      "architecture": {
+        "frontend": "No dedicated frontend layer detected.",
+        "backend": "No dedicated backend layer detected.",
+        "apiLayer": "No HTTP endpoints detected in source.",
+        "dataLayer": "No data layer detected.",
+        "authFlow": "No authentication mechanism detected.",
+        "storage": "No dedicated storage layer detected.",
+        "backgroundJobs": "No background job system detected.",
+        "serviceRelationships": "Most depended-upon modules: engine.js (5).",
+        "dependencyFlow": "Entry point not identified."
+      },
+      "suggestedImprovements": [
+        "Add a Dockerfile for reproducible builds and deployment.",
+        "Add a README documenting setup, architecture, and entry points."
+      ],
+      "suggestedQuestions": [
+        "Explain the architecture of this project.",
+        "Walk me through the folder structure and what each part does.",
+        "Explain what src/core/engine.js does and what depends on it.",
+        "Where should I start if I want to add a new feature?"
+      ],
+      "warnings": []
+    }
+  },
+  "1f6ef619-4032-4cf7-be1f-5dd8ea43dd93": {
+    "id": "1f6ef619-4032-4cf7-be1f-5dd8ea43dd93",
+    "ownerId": "empty",
+    "createdAt": 1783758717356,
+    "meta": {
+      "ownerId": "empty"
+    },
+    "projectType": null,
+    "files": [],
+    "structure": {},
+    "indexStatus": "pending",
+    "summary": null,
+    "stats": {
+      "files": 0,
+      "languages": {}
+    },
+    "indexedAt": null
+  },
+  "b2e1ed78-d9e3-445f-b434-b131d76ccc99": {
+    "id": "b2e1ed78-d9e3-445f-b434-b131d76ccc99",
+    "ownerId": null,
+    "createdAt": 1783758721684,
+    "meta": {
+      "name": "test"
+    },
+    "projectType": "nodejs",
+    "files": [],
+    "structure": {},
+    "indexStatus": "pending",
+    "summary": "test project",
+    "stats": {
+      "files": 0,
+      "languages": {}
+    },
+    "indexedAt": null
+  },
+  "fb65b5fd-e32e-4a40-9411-d598d063c427": {
+    "id": "fb65b5fd-e32e-4a40-9411-d598d063c427",
+    "ownerId": null,
+    "createdAt": 1783758721689,
+    "meta": {
+      "name": "my-project"
+    },
+    "projectType": null,
+    "files": [],
+    "structure": {},
+    "indexStatus": "pending",
+    "summary": null,
+    "stats": {
+      "files": 0,
+      "languages": {}
+    },
+    "indexedAt": null
+  },
+  "0c298c91-b5e0-4c59-bed2-aeac3f279a9e": {
+    "id": "0c298c91-b5e0-4c59-bed2-aeac3f279a9e",
+    "ownerId": null,
+    "createdAt": 1783758721692,
+    "meta": {},
+    "projectType": "python",
+    "files": [],
+    "structure": {},
+    "indexStatus": "indexed",
+    "summary": null,
+    "stats": {
+      "files": 0,
+      "languages": {}
+    },
+    "indexedAt": null
+  },
+  "ce59611a-755b-4d57-97c6-16315ebc2b05": {
+    "id": "ce59611a-755b-4d57-97c6-16315ebc2b05",
+    "ownerId": "callgraph-test",
+    "createdAt": 1783758722831,
+    "meta": {
+      "ownerId": "callgraph-test"
+    },
+    "projectType": "unknown",
+    "files": [
+      {
+        "path": "src/auth.js",
+        "lang": "javascript",
+        "size": 264,
+        "summary": "auth.js [javascript] | Functions: hashPassword, login, verify | Exports: hashPassword, login | Role: authentication",
+        "parsedAt": 1783758722844
+      },
+      {
+        "path": "src/routes.js",
+        "lang": "javascript",
+        "size": 103,
+        "summary": "routes.js [javascript] | Functions: handler | Exports: handler | Role: routing/controller",
+        "parsedAt": 1783758722844
+      }
+    ],
+    "structure": {
+      "src": {
+        "auth.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 264
+        },
+        "routes.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 103
+        }
+      }
+    },
+    "indexStatus": "indexed",
+    "summary": "Type: unknown | Files: 2 | Languages: javascript(2)\nTop-level dirs: src",
+    "stats": {
+      "files": 2,
+      "languages": {
+        "javascript": 2
+      }
+    },
+    "indexedAt": 1783758722844,
+    "overview": {
+      "generatedAt": 1783758722840,
+      "partial": false,
+      "name": "Untitled project",
+      "purpose": "No description found in package.json or README.",
+      "summary": "Untitled project is a unknown project with 2 source files, primarily javascript.",
+      "projectType": "unknown",
+      "languages": {
+        "javascript": 2
+      },
+      "frameworks": [],
+      "runtime": [],
+      "packageManagers": [],
+      "buildTools": [],
+      "frontendTech": [],
+      "backendTech": [],
+      "databaseTech": [],
+      "authMethods": [
+        "Custom auth (1 auth-related files)"
+      ],
+      "majorDependencies": [],
+      "dependencyCount": 0,
+      "folderStructure": [
+        {
+          "dir": "src",
+          "files": 2,
+          "bytes": 367
+        }
+      ],
+      "largestFolders": [
+        {
+          "dir": "src",
+          "bytes": 367
+        }
+      ],
+      "envVars": [],
+      "configFiles": [],
+      "entryPoints": [],
+      "coreModules": [
+        {
+          "file": "src/auth.js",
+          "importedBy": 1
+        }
+      ],
+      "importantServices": [],
+      "apiRoutes": [],
+      "externalIntegrations": [],
+      "stats": {
+        "fileCount": 2,
+        "totalBytes": 367,
+        "totalKB": 0,
+        "functions": 4,
+        "classes": 0,
+        "interfaces": 0,
+        "components": 0,
+        "dependencyEdges": 1,
+        "configFileCount": 0
+      },
+      "todoCount": 0,
+      "todos": [],
+      "potentialTechDebt": [
+        "No test files detected — the project has no automated test coverage."
+      ],
+      "architecture": {
+        "frontend": "No dedicated frontend layer detected.",
+        "backend": "No dedicated backend layer detected.",
+        "apiLayer": "No HTTP endpoints detected in source.",
+        "dataLayer": "No data layer detected.",
+        "authFlow": "Custom auth (1 auth-related files).",
+        "storage": "No dedicated storage layer detected.",
+        "backgroundJobs": "No background job system detected.",
+        "serviceRelationships": "Most depended-upon modules: auth.js (1).",
+        "dependencyFlow": "Entry point not identified."
+      },
+      "suggestedImprovements": [
+        "Add a test suite — start with the core modules and API routes identified above.",
+        "Add a Dockerfile for reproducible builds and deployment.",
+        "Add a README documenting setup, architecture, and entry points."
+      ],
+      "suggestedQuestions": [
+        "Explain the architecture of this project.",
+        "Walk me through the folder structure and what each part does.",
+        "How does authentication work in this codebase?",
+        "Explain what src/auth.js does and what depends on it.",
+        "Where should I start if I want to add a new feature?"
+      ],
+      "warnings": []
+    }
+  },
+  "9a82f015-3584-4a32-96cd-ffb2c4bd3109": {
+    "id": "9a82f015-3584-4a32-96cd-ffb2c4bd3109",
+    "ownerId": "digest-big",
+    "createdAt": 1783758723976,
+    "meta": {
+      "ownerId": "digest-big"
+    },
+    "projectType": "unknown",
+    "files": [
+      {
+        "path": "src/core/engine.js",
+        "lang": "javascript",
+        "size": 75,
+        "summary": "engine.js [javascript] | Functions: init, start, stop | Exports: init, start, stop",
+        "parsedAt": 1783758723993
+      },
+      {
+        "path": "src/a.js",
+        "lang": "javascript",
+        "size": 74,
+        "summary": "a.js [javascript] | Functions: aRun | Exports: aRun",
+        "parsedAt": 1783758723993
+      },
+      {
+        "path": "src/b.js",
+        "lang": "javascript",
+        "size": 24,
+        "summary": "b.js [javascript] | Functions: bRun | Exports: bRun",
+        "parsedAt": 1783758723993
+      },
+      {
+        "path": "src/c.js",
+        "lang": "javascript",
+        "size": 24,
+        "summary": "c.js [javascript] | Functions: cRun | Exports: cRun",
+        "parsedAt": 1783758723993
+      },
+      {
+        "path": "src/d.js",
+        "lang": "javascript",
+        "size": 24,
+        "summary": "d.js [javascript] | Functions: dRun | Exports: dRun",
+        "parsedAt": 1783758723993
+      },
+      {
+        "path": "src/utils/helper.js",
+        "lang": "javascript",
+        "size": 35,
+        "summary": "helper.js [javascript] | Functions: fmt | Exports: fmt | Role: utilities",
+        "parsedAt": 1783758723993
+      },
+      {
+        "path": "src/utils/tiny.js",
+        "lang": "javascript",
+        "size": 19,
+        "summary": "tiny.js [javascript] | Exports: K | Role: utilities",
+        "parsedAt": 1783758723993
+      },
+      {
+        "path": "src/routes/api.js",
+        "lang": "javascript",
+        "size": 42,
+        "summary": "api.js [javascript] | Role: routing/controller",
+        "parsedAt": 1783758723993
+      },
+      {
+        "path": "src/models/user.js",
+        "lang": "javascript",
+        "size": 42,
+        "summary": "user.js [javascript] | Role: data model",
+        "parsedAt": 1783758723993
+      }
+    ],
+    "structure": {
+      "src": {
+        "core": {
+          "engine.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 75
+          }
+        },
+        "a.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 74
+        },
+        "b.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 24
+        },
+        "c.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 24
+        },
+        "d.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 24
+        },
+        "utils": {
+          "helper.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 35
+          },
+          "tiny.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 19
+          }
+        },
+        "routes": {
+          "api.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 42
+          }
+        },
+        "models": {
+          "user.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 42
+          }
+        }
+      }
+    },
+    "indexStatus": "indexed",
+    "summary": "Type: unknown | Files: 9 | Languages: javascript(9)\nTop-level dirs: src",
+    "stats": {
+      "files": 9,
+      "languages": {
+        "javascript": 9
+      }
+    },
+    "indexedAt": 1783758723993,
+    "overview": {
+      "generatedAt": 1783758723988,
+      "partial": false,
+      "name": "Untitled project",
+      "purpose": "No description found in package.json or README.",
+      "summary": "Untitled project is a unknown project with 9 source files, primarily javascript.",
+      "projectType": "unknown",
+      "languages": {
+        "javascript": 9
+      },
+      "frameworks": [],
+      "runtime": [],
+      "packageManagers": [],
+      "buildTools": [],
+      "frontendTech": [],
+      "backendTech": [],
+      "databaseTech": [],
+      "authMethods": [],
+      "majorDependencies": [],
+      "dependencyCount": 0,
+      "folderStructure": [
+        {
+          "dir": "src",
+          "files": 9,
+          "bytes": 359
+        },
+        {
+          "dir": "src/utils",
+          "files": 2,
+          "bytes": 54
+        },
+        {
+          "dir": "src/core",
+          "files": 1,
+          "bytes": 75
+        },
+        {
+          "dir": "src/routes",
+          "files": 1,
+          "bytes": 42
+        },
+        {
+          "dir": "src/models",
+          "files": 1,
+          "bytes": 42
+        }
+      ],
+      "largestFolders": [
+        {
+          "dir": "src",
+          "bytes": 359
+        },
+        {
+          "dir": "src/core",
+          "bytes": 75
+        },
+        {
+          "dir": "src/utils",
+          "bytes": 54
+        },
+        {
+          "dir": "src/routes",
+          "bytes": 42
+        },
+        {
+          "dir": "src/models",
+          "bytes": 42
+        }
+      ],
+      "envVars": [],
+      "configFiles": [],
+      "entryPoints": [],
+      "coreModules": [
+        {
+          "file": "src/core/engine.js",
+          "importedBy": 1
+        }
+      ],
+      "importantServices": [
+        {
+          "file": "src/core/engine.js",
+          "summary": "engine.js [javascript]"
+        }
+      ],
+      "apiRoutes": [
+        {
+          "method": "GET",
+          "path": "/ping",
+          "file": "src/routes/api.js"
+        }
+      ],
+      "externalIntegrations": [],
+      "stats": {
+        "fileCount": 9,
+        "totalBytes": 359,
+        "totalKB": 0,
+        "functions": 8,
+        "classes": 0,
+        "interfaces": 0,
+        "components": 0,
+        "dependencyEdges": 1,
+        "configFileCount": 0
+      },
+      "todoCount": 0,
+      "todos": [],
+      "potentialTechDebt": [
+        "No test files detected — the project has no automated test coverage."
+      ],
+      "architecture": {
+        "frontend": "No dedicated frontend layer detected.",
+        "backend": "Server-side code present; framework not identified from dependencies.",
+        "apiLayer": "1 HTTP endpoints detected.",
+        "dataLayer": "Custom data/persistence modules present (file- or memory-backed); no database driver dependency found.",
+        "authFlow": "No authentication mechanism detected.",
+        "storage": "No dedicated storage layer detected.",
+        "backgroundJobs": "No background job system detected.",
+        "serviceRelationships": "Most depended-upon modules: engine.js (1).",
+        "dependencyFlow": "Entry point not identified."
+      },
+      "suggestedImprovements": [
+        "Add a test suite — start with the core modules and API routes identified above.",
+        "Add a Dockerfile for reproducible builds and deployment.",
+        "Externalize configuration into environment variables instead of hardcoded values.",
+        "Add a README documenting setup, architecture, and entry points."
+      ],
+      "suggestedQuestions": [
+        "Explain the architecture of this project.",
+        "Walk me through the folder structure and what each part does.",
+        "Show me every API endpoint and what it does.",
+        "Explain what src/core/engine.js does and what depends on it.",
+        "Where should I start if I want to add a new feature?"
+      ],
+      "warnings": []
+    }
+  },
+  "090bf9aa-d8be-49e6-a1c2-59eb225a893d": {
+    "id": "090bf9aa-d8be-49e6-a1c2-59eb225a893d",
+    "ownerId": "digest-small",
+    "createdAt": 1783758723993,
+    "meta": {
+      "ownerId": "digest-small"
+    },
+    "projectType": "unknown",
+    "files": [
+      {
+        "path": "src/only.js",
+        "lang": "javascript",
+        "size": 21,
+        "summary": "only.js [javascript] | Functions: f | Exports: f",
+        "parsedAt": 1783758723999
+      },
+      {
+        "path": "src/two.js",
+        "lang": "javascript",
+        "size": 21,
+        "summary": "two.js [javascript] | Functions: g | Exports: g",
+        "parsedAt": 1783758723999
+      }
+    ],
+    "structure": {
+      "src": {
+        "only.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 21
+        },
+        "two.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 21
+        }
+      }
+    },
+    "indexStatus": "indexed",
+    "summary": "Type: unknown | Files: 2 | Languages: javascript(2)\nTop-level dirs: src",
+    "stats": {
+      "files": 2,
+      "languages": {
+        "javascript": 2
+      }
+    },
+    "indexedAt": 1783758723999,
+    "overview": {
+      "generatedAt": 1783758723998,
+      "partial": false,
+      "name": "Untitled project",
+      "purpose": "No description found in package.json or README.",
+      "summary": "Untitled project is a unknown project with 2 source files, primarily javascript.",
+      "projectType": "unknown",
+      "languages": {
+        "javascript": 2
+      },
+      "frameworks": [],
+      "runtime": [],
+      "packageManagers": [],
+      "buildTools": [],
+      "frontendTech": [],
+      "backendTech": [],
+      "databaseTech": [],
+      "authMethods": [],
+      "majorDependencies": [],
+      "dependencyCount": 0,
+      "folderStructure": [
+        {
+          "dir": "src",
+          "files": 2,
+          "bytes": 42
+        }
+      ],
+      "largestFolders": [
+        {
+          "dir": "src",
+          "bytes": 42
+        }
+      ],
+      "envVars": [],
+      "configFiles": [],
+      "entryPoints": [],
+      "coreModules": [
+        {
+          "file": "src/only.js",
+          "importedBy": 0,
+          "exports": 1
+        },
+        {
+          "file": "src/two.js",
+          "importedBy": 0,
+          "exports": 1
+        }
+      ],
+      "importantServices": [],
+      "apiRoutes": [],
+      "externalIntegrations": [],
+      "stats": {
+        "fileCount": 2,
+        "totalBytes": 42,
+        "totalKB": 0,
+        "functions": 2,
+        "classes": 0,
+        "interfaces": 0,
+        "components": 0,
+        "dependencyEdges": 0,
+        "configFileCount": 0
+      },
+      "todoCount": 0,
+      "todos": [],
+      "potentialTechDebt": [
+        "No test files detected — the project has no automated test coverage."
+      ],
+      "architecture": {
+        "frontend": "No dedicated frontend layer detected.",
+        "backend": "No dedicated backend layer detected.",
+        "apiLayer": "No HTTP endpoints detected in source.",
+        "dataLayer": "No data layer detected.",
+        "authFlow": "No authentication mechanism detected.",
+        "storage": "No dedicated storage layer detected.",
+        "backgroundJobs": "No background job system detected.",
+        "serviceRelationships": "Most depended-upon modules: only.js (1), two.js (1).",
+        "dependencyFlow": "Entry point not identified."
+      },
+      "suggestedImprovements": [
+        "Add a test suite — start with the core modules and API routes identified above.",
+        "Add a Dockerfile for reproducible builds and deployment.",
+        "Add a README documenting setup, architecture, and entry points."
+      ],
+      "suggestedQuestions": [
+        "Explain the architecture of this project.",
+        "Walk me through the folder structure and what each part does.",
+        "Explain what src/only.js does and what depends on it.",
+        "Where should I start if I want to add a new feature?"
+      ],
+      "warnings": []
+    }
+  },
+  "1efaa9e9-048f-4cca-b8ee-cc62de586823": {
+    "id": "1efaa9e9-048f-4cca-b8ee-cc62de586823",
+    "ownerId": "digest-big",
+    "createdAt": 1783758732104,
+    "meta": {
+      "ownerId": "digest-big"
+    },
+    "projectType": "unknown",
+    "files": [
+      {
+        "path": "src/core/engine.js",
+        "lang": "javascript",
+        "size": 75,
+        "summary": "engine.js [javascript] | Functions: init, start, stop | Exports: init, start, stop",
+        "parsedAt": 1783758732122
+      },
+      {
+        "path": "src/a.js",
+        "lang": "javascript",
+        "size": 74,
+        "summary": "a.js [javascript] | Functions: aRun | Exports: aRun",
+        "parsedAt": 1783758732122
+      },
+      {
+        "path": "src/b.js",
+        "lang": "javascript",
+        "size": 24,
+        "summary": "b.js [javascript] | Functions: bRun | Exports: bRun",
+        "parsedAt": 1783758732122
+      },
+      {
+        "path": "src/c.js",
+        "lang": "javascript",
+        "size": 24,
+        "summary": "c.js [javascript] | Functions: cRun | Exports: cRun",
+        "parsedAt": 1783758732122
+      },
+      {
+        "path": "src/d.js",
+        "lang": "javascript",
+        "size": 24,
+        "summary": "d.js [javascript] | Functions: dRun | Exports: dRun",
+        "parsedAt": 1783758732122
+      },
+      {
+        "path": "src/utils/helper.js",
+        "lang": "javascript",
+        "size": 35,
+        "summary": "helper.js [javascript] | Functions: fmt | Exports: fmt | Role: utilities",
+        "parsedAt": 1783758732122
+      },
+      {
+        "path": "src/utils/tiny.js",
+        "lang": "javascript",
+        "size": 19,
+        "summary": "tiny.js [javascript] | Exports: K | Role: utilities",
+        "parsedAt": 1783758732122
+      },
+      {
+        "path": "src/routes/api.js",
+        "lang": "javascript",
+        "size": 42,
+        "summary": "api.js [javascript] | Role: routing/controller",
+        "parsedAt": 1783758732122
+      },
+      {
+        "path": "src/models/user.js",
+        "lang": "javascript",
+        "size": 42,
+        "summary": "user.js [javascript] | Role: data model",
+        "parsedAt": 1783758732122
+      }
+    ],
+    "structure": {
+      "src": {
+        "core": {
+          "engine.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 75
+          }
+        },
+        "a.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 74
+        },
+        "b.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 24
+        },
+        "c.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 24
+        },
+        "d.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 24
+        },
+        "utils": {
+          "helper.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 35
+          },
+          "tiny.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 19
+          }
+        },
+        "routes": {
+          "api.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 42
+          }
+        },
+        "models": {
+          "user.js": {
+            "_file": true,
+            "lang": "javascript",
+            "size": 42
+          }
+        }
+      }
+    },
+    "indexStatus": "indexed",
+    "summary": "Type: unknown | Files: 9 | Languages: javascript(9)\nTop-level dirs: src",
+    "stats": {
+      "files": 9,
+      "languages": {
+        "javascript": 9
+      }
+    },
+    "indexedAt": 1783758732122,
+    "overview": {
+      "generatedAt": 1783758732117,
+      "partial": false,
+      "name": "Untitled project",
+      "purpose": "No description found in package.json or README.",
+      "summary": "Untitled project is a unknown project with 9 source files, primarily javascript.",
+      "projectType": "unknown",
+      "languages": {
+        "javascript": 9
+      },
+      "frameworks": [],
+      "runtime": [],
+      "packageManagers": [],
+      "buildTools": [],
+      "frontendTech": [],
+      "backendTech": [],
+      "databaseTech": [],
+      "authMethods": [],
+      "majorDependencies": [],
+      "dependencyCount": 0,
+      "folderStructure": [
+        {
+          "dir": "src",
+          "files": 9,
+          "bytes": 359
+        },
+        {
+          "dir": "src/utils",
+          "files": 2,
+          "bytes": 54
+        },
+        {
+          "dir": "src/core",
+          "files": 1,
+          "bytes": 75
+        },
+        {
+          "dir": "src/routes",
+          "files": 1,
+          "bytes": 42
+        },
+        {
+          "dir": "src/models",
+          "files": 1,
+          "bytes": 42
+        }
+      ],
+      "largestFolders": [
+        {
+          "dir": "src",
+          "bytes": 359
+        },
+        {
+          "dir": "src/core",
+          "bytes": 75
+        },
+        {
+          "dir": "src/utils",
+          "bytes": 54
+        },
+        {
+          "dir": "src/routes",
+          "bytes": 42
+        },
+        {
+          "dir": "src/models",
+          "bytes": 42
+        }
+      ],
+      "envVars": [],
+      "configFiles": [],
+      "entryPoints": [],
+      "coreModules": [
+        {
+          "file": "src/core/engine.js",
+          "importedBy": 1
+        }
+      ],
+      "importantServices": [
+        {
+          "file": "src/core/engine.js",
+          "summary": "engine.js [javascript]"
+        }
+      ],
+      "apiRoutes": [
+        {
+          "method": "GET",
+          "path": "/ping",
+          "file": "src/routes/api.js"
+        }
+      ],
+      "externalIntegrations": [],
+      "stats": {
+        "fileCount": 9,
+        "totalBytes": 359,
+        "totalKB": 0,
+        "functions": 8,
+        "classes": 0,
+        "interfaces": 0,
+        "components": 0,
+        "dependencyEdges": 1,
+        "configFileCount": 0
+      },
+      "todoCount": 0,
+      "todos": [],
+      "potentialTechDebt": [
+        "No test files detected — the project has no automated test coverage."
+      ],
+      "architecture": {
+        "frontend": "No dedicated frontend layer detected.",
+        "backend": "Server-side code present; framework not identified from dependencies.",
+        "apiLayer": "1 HTTP endpoints detected.",
+        "dataLayer": "Custom data/persistence modules present (file- or memory-backed); no database driver dependency found.",
+        "authFlow": "No authentication mechanism detected.",
+        "storage": "No dedicated storage layer detected.",
+        "backgroundJobs": "No background job system detected.",
+        "serviceRelationships": "Most depended-upon modules: engine.js (1).",
+        "dependencyFlow": "Entry point not identified."
+      },
+      "suggestedImprovements": [
+        "Add a test suite — start with the core modules and API routes identified above.",
+        "Add a Dockerfile for reproducible builds and deployment.",
+        "Externalize configuration into environment variables instead of hardcoded values.",
+        "Add a README documenting setup, architecture, and entry points."
+      ],
+      "suggestedQuestions": [
+        "Explain the architecture of this project.",
+        "Walk me through the folder structure and what each part does.",
+        "Show me every API endpoint and what it does.",
+        "Explain what src/core/engine.js does and what depends on it.",
+        "Where should I start if I want to add a new feature?"
+      ],
+      "warnings": []
+    }
+  },
+  "d45502b9-9e09-446e-b4d2-42d76b7ff89d": {
+    "id": "d45502b9-9e09-446e-b4d2-42d76b7ff89d",
+    "ownerId": "digest-small",
+    "createdAt": 1783758732122,
+    "meta": {
+      "ownerId": "digest-small"
+    },
+    "projectType": "unknown",
+    "files": [
+      {
+        "path": "src/only.js",
+        "lang": "javascript",
+        "size": 21,
+        "summary": "only.js [javascript] | Functions: f | Exports: f",
+        "parsedAt": 1783758732127
+      },
+      {
+        "path": "src/two.js",
+        "lang": "javascript",
+        "size": 21,
+        "summary": "two.js [javascript] | Functions: g | Exports: g",
+        "parsedAt": 1783758732127
+      }
+    ],
+    "structure": {
+      "src": {
+        "only.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 21
+        },
+        "two.js": {
+          "_file": true,
+          "lang": "javascript",
+          "size": 21
+        }
+      }
+    },
+    "indexStatus": "indexed",
+    "summary": "Type: unknown | Files: 2 | Languages: javascript(2)\nTop-level dirs: src",
+    "stats": {
+      "files": 2,
+      "languages": {
+        "javascript": 2
+      }
+    },
+    "indexedAt": 1783758732127,
+    "overview": {
+      "generatedAt": 1783758732126,
+      "partial": false,
+      "name": "Untitled project",
+      "purpose": "No description found in package.json or README.",
+      "summary": "Untitled project is a unknown project with 2 source files, primarily javascript.",
+      "projectType": "unknown",
+      "languages": {
+        "javascript": 2
+      },
+      "frameworks": [],
+      "runtime": [],
+      "packageManagers": [],
+      "buildTools": [],
+      "frontendTech": [],
+      "backendTech": [],
+      "databaseTech": [],
+      "authMethods": [],
+      "majorDependencies": [],
+      "dependencyCount": 0,
+      "folderStructure": [
+        {
+          "dir": "src",
+          "files": 2,
+          "bytes": 42
+        }
+      ],
+      "largestFolders": [
+        {
+          "dir": "src",
+          "bytes": 42
+        }
+      ],
+      "envVars": [],
+      "configFiles": [],
+      "entryPoints": [],
+      "coreModules": [
+        {
+          "file": "src/only.js",
+          "importedBy": 0,
+          "exports": 1
+        },
+        {
+          "file": "src/two.js",
+          "importedBy": 0,
+          "exports": 1
+        }
+      ],
+      "importantServices": [],
+      "apiRoutes": [],
+      "externalIntegrations": [],
+      "stats": {
+        "fileCount": 2,
+        "totalBytes": 42,
+        "totalKB": 0,
+        "functions": 2,
+        "classes": 0,
+        "interfaces": 0,
+        "components": 0,
+        "dependencyEdges": 0,
+        "configFileCount": 0
+      },
+      "todoCount": 0,
+      "todos": [],
+      "potentialTechDebt": [
+        "No test files detected — the project has no automated test coverage."
+      ],
+      "architecture": {
+        "frontend": "No dedicated frontend layer detected.",
+        "backend": "No dedicated backend layer detected.",
+        "apiLayer": "No HTTP endpoints detected in source.",
+        "dataLayer": "No data layer detected.",
+        "authFlow": "No authentication mechanism detected.",
+        "storage": "No dedicated storage layer detected.",
+        "backgroundJobs": "No background job system detected.",
+        "serviceRelationships": "Most depended-upon modules: only.js (1), two.js (1).",
+        "dependencyFlow": "Entry point not identified."
+      },
+      "suggestedImprovements": [
+        "Add a test suite — start with the core modules and API routes identified above.",
+        "Add a Dockerfile for reproducible builds and deployment.",
+        "Add a README documenting setup, architecture, and entry points."
+      ],
+      "suggestedQuestions": [
+        "Explain the architecture of this project.",
+        "Walk me through the folder structure and what each part does.",
+        "Explain what src/only.js does and what depends on it.",
+        "Where should I start if I want to add a new feature?"
+      ],
+      "warnings": []
+    }
+  }
+}

@@ -25,6 +25,11 @@
  * slots.
  */
 import { registerCapability } from './capabilityRegistry.js';
+<<<<<<< HEAD
+=======
+import { getAgent }            from '../intelligence/agentRegistry.js';
+import { decideWebSearch }     from '../search/searchDecision.js';
+>>>>>>> 7306efb7 (update)
 
 // Project/workspace-grounded capabilities only matter if a workspace is
 // actually attached to the request — no point reporting them "enabled"
@@ -121,11 +126,46 @@ define('deep_research', {
 
 define('web_search', {
   label: 'Web Search', group: 'research', cost: 'medium', latency: 'medium',
+<<<<<<< HEAD
   override: () => ({
     enabled: false,
     confidence: 0.05,
     reason: 'No web search agent registered yet (see src/intelligence/agentRegistry.js) — reported for planning purposes only.',
   }),
+=======
+  // Real detection (was a permanently-disabled placeholder before the Web
+  // Search subsystem shipped). Enabled when BOTH hold:
+  //   1. the 'web_search' agent is registered (src/search/searchAgent.js —
+  //      chat.js imports it for its side effect, mirroring
+  //      verificationAgent.js), AND
+  //   2. decideWebSearch() — pure, synchronous, deterministic (src/search/
+  //      searchDecision.js) — says this message needs live web data.
+  //      orchestrate()'s no-LLM/no-I/O invariant is preserved: the decision
+  //      is regex/weight scoring plus a Map lookup, nothing more.
+  // The profile's own wish (research_request lists web_search) feeds the
+  // decision as a bias, not a mandate — "explain technical debt" is
+  // research but needs no live data.
+  override: (ctx) => {
+    if (!getAgent('web_search')) {
+      return {
+        enabled: false,
+        confidence: 0.05,
+        reason: 'No web search agent registered (see src/search/searchAgent.js) — reported for planning purposes only.',
+      };
+    }
+    const decision = decideWebSearch({
+      userMessage:        ctx.userMessage ?? '',
+      taskType:           ctx.taskType,
+      hasWorkspaceId:     ctx.hasWorkspaceId,
+      profileWantsSearch: ctx.requiredSet.has('web_search'),
+    });
+    return {
+      enabled: decision.needed,
+      confidence: decision.confidence,
+      reason: decision.reason,
+    };
+  },
+>>>>>>> 7306efb7 (update)
   reasonEnabled: () => '', reasonDisabled: () => '',
 });
 

@@ -1,0 +1,383 @@
+--- a/aqua-frontend/src/types/api.ts
++++ b/aqua-frontend/src/types/api.ts
+@@ -28,6 +28,26 @@
+ export type Provider = 'gemini' | 'groq' | 'openrouter';
+ export type CostTier = 'low' | 'medium' | 'high';
+ 
++/** One web-search source the answer was grounded in (backend contextExtractor). */
++export interface SearchSource {
++  /** 1-based rank the model cites as [n]. */
++  n: number;
++  title: string;
++  url: string;
++}
++
++/** Web Search grounding for a turn — present only when search ran. */
++export interface SearchGrounding {
++  used: boolean;
++  cached: boolean;
++  provider: string | null;
++  query: string;
++  sources: SearchSource[];
++  tokens?: number;
++  latencyMs?: number | null;
++  reason?: string;
++}
++
+ export interface FallbackAttempt {
+   provider: Provider | string;
+   outcome: 'success' | 'failed' | 'invalid';
+@@ -110,6 +130,9 @@
+     filesReferenced?: string[];
+   };
+ 
++  /** Web Search grounding — present only when the orchestrator ran a search. */
++  search?: SearchGrounding;
++
+   /** Day 4 — present when the turn produced a patch-first edit proposal. */
+   mode?: 'edit';
+   patch?: import('./patch').PatchProposal;
+@@ -147,6 +170,15 @@
+   filesReferenced: string[];
+ }
+ 
++/** Web Search grounding pushed mid-stream, before tokens (SSE `search` event). */
++export interface StreamSearchEvent {
++  used: boolean;
++  cached: boolean;
++  provider: string | null;
++  query: string;
++  sources: SearchSource[];
++}
++
+ export interface StreamErrorEvent {
+   error: string;
+   recoverable: boolean;
+--- a/aqua-frontend/src/types/chat.ts
++++ b/aqua-frontend/src/types/chat.ts
+@@ -1,4 +1,4 @@
+-import type { ChatSuccessResponse, FallbackAttempt } from './api';
++import type { ChatSuccessResponse, FallbackAttempt, SearchSource } from './api';
+ import type { PatchProposal } from './patch';
+ 
+ /**
+@@ -43,6 +43,10 @@
+   workspace?: { workspaceId: string; contextInjected: boolean; filesReferenced: string[] };
+   /** Day 4 — patch-first edit proposal attached to this assistant turn. */
+   patch?: PatchProposal;
++  /** Web-search sources grounding this assistant turn (structured, from the
++   *  SSE `search` event / `done` payload). Renders as source cards below the
++   *  answer; internal `[n]` markers are stripped from the text itself. */
++  sources?: SearchSource[];
+   /** Only present on completed assistant messages. */
+   diagnostics?: MessageDiagnostics;
+   /** Text-file attachments inlined into the outgoing message (user turns only). */
+--- a/aqua-frontend/src/api/chatStream.ts
++++ b/aqua-frontend/src/api/chatStream.ts
+@@ -7,6 +7,7 @@
+   StreamProviderEvent,
+   StreamProviderFailedEvent,
+   StreamWorkspaceEvent,
++  StreamSearchEvent,
+   StreamErrorEvent,
+   PatchProposal,
+ } from '@/types';
+@@ -31,6 +32,8 @@
+   onProvider?: (e: StreamProviderEvent) => void;
+   onProviderFailed?: (e: StreamProviderFailedEvent) => void;
+   onWorkspace?: (e: StreamWorkspaceEvent) => void;
++  /** Web-search grounding for this turn, pushed before tokens arrive. */
++  onSearch?: (e: StreamSearchEvent) => void;
+   onToken?: (t: string) => void;
+   /** Verification revised the streamed draft — replace displayed text wholesale. */
+   onReplace?: (text: string) => void;
+@@ -103,6 +106,7 @@
+       case 'provider':        handlers.onProvider?.(data as StreamProviderEvent); break;
+       case 'provider_failed': handlers.onProviderFailed?.(data as StreamProviderFailedEvent); break;
+       case 'workspace':       handlers.onWorkspace?.(data as StreamWorkspaceEvent); break;
++      case 'search':          handlers.onSearch?.(data as StreamSearchEvent); break;
+       case 'token':           handlers.onToken?.((data as { t: string }).t); break;
+       case 'replace':         handlers.onReplace?.((data as { text: string }).text); break;
+       case 'patch':           handlers.onPatch?.(data as PatchProposal); break;
+--- a/aqua-frontend/src/stores/chatStore.ts
++++ b/aqua-frontend/src/stores/chatStore.ts
+@@ -122,6 +122,7 @@
+                 finishReason: res.finishReason,
+                 diagnostics: toDiagnostics(res),
+                 patch: res.patch ?? m.patch,
++                sources: res.search?.sources?.length ? res.search.sources : m.sources,
+                 workspace: res.project
+                   ? {
+                       workspaceId: res.project.workspaceId,
+@@ -213,6 +214,12 @@
+           onWorkspace: (e) => {
+             if (isLive()) patchMsg({ workspace: e });
+           },
++          onSearch: (e) => {
++            // Grounding arrives before tokens — surface source cards early so
++            // they're visible as the answer streams (finishTurn later
++            // reconciles with the authoritative `done` payload).
++            if (isLive() && e.used && e.sources?.length) patchMsg({ sources: e.sources });
++          },
+           onProviderFailed: () => {
+             // Pre-token fallback is invisible by design — the thinking state
+             // simply continues; diagnostics carry the chain afterwards.
+--- a/aqua-frontend/src/components/markdown/MarkdownRenderer.tsx
++++ b/aqua-frontend/src/components/markdown/MarkdownRenderer.tsx
+@@ -2,6 +2,7 @@
+ import ReactMarkdown, { type Components } from 'react-markdown';
+ import remarkGfm from 'remark-gfm';
+ import { CodeBlock } from './CodeBlock';
++import { stripCitationMarkers } from '@/lib/citations';
+ 
+ interface CodeChildProps {
+   className?: string;
+@@ -153,12 +154,21 @@
+ export const MarkdownRenderer = memo(function MarkdownRenderer({
+   content,
+   streaming = false,
++  stripCitations = false,
+ }: {
+   content: string;
+   /** Appends the blinking cursor after the last rendered block. */
+   streaming?: boolean;
++  /** Remove internal web-search citation markers (`[n]`, `[n†…]`) from prose.
++   *  Code spans and markdown links are left intact. Enable for assistant turns
++   *  that may carry search grounding. */
++  stripCitations?: boolean;
+ }) {
+-  const blocks = useMemo(() => splitMarkdownBlocks(content), [content]);
++  const prepared = useMemo(
++    () => (stripCitations ? stripCitationMarkers(content, { streaming }) : content),
++    [content, stripCitations, streaming],
++  );
++  const blocks = useMemo(() => splitMarkdownBlocks(prepared), [prepared]);
+ 
+   return (
+     <div className="text-[15px] text-foreground [overflow-wrap:anywhere]">
+--- a/aqua-frontend/src/components/chat/MessageBubble.tsx
++++ b/aqua-frontend/src/components/chat/MessageBubble.tsx
+@@ -3,6 +3,7 @@
+ import { AlertCircle, ArrowRightCircle, CircleSlash, FolderGit2, Paperclip, Pencil, RotateCcw, X, Check } from 'lucide-react';
+ import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer';
+ import { ThinkingIndicator } from './ThinkingIndicator';
++import { SourceCards } from './SourceCards';
+ import { MessageActions } from './MessageActions';
+ import { DiagnosticsPanel } from './DiagnosticsPanel';
+ import { ResponseConfidence } from './ResponseConfidence';
+@@ -174,9 +175,11 @@
+         ) : (
+           <>
+             <div ref={contentRef}>
+-              <MarkdownRenderer content={message.content} streaming={isStreaming} />
++              <MarkdownRenderer content={message.content} streaming={isStreaming} stripCitations />
+             </div>
+ 
++            <SourceCards sources={message.sources} />
++
+             {message.patch && !isStreaming && <PatchCard patch={message.patch} messageId={message.id} />}
+ 
+             {message.stoppedByUser && (
+--- a/aqua-frontend/src/lib/citations.ts
++++ b/aqua-frontend/src/lib/citations.ts
+@@ -0,0 +1,111 @@
++/**
++ * Citation utilities — pure, dependency-free.
++ *
++ * The backend's web-search context tells the model to "Cite sources as [n]";
++ * models often emit a richer internal token — `[1†L1-L3]` (dagger + line
++ * range), grouped `[1, 2]`, or plain `[3]`. These are INTERNAL reference
++ * markers and must never reach the reader. This module:
++ *
++ *   1. stripCitationMarkers() — removes those markers from prose while leaving
++ *      code (fenced + inline) and markdown link syntax `[text](url)` intact.
++ *   2. hostnameOf / faviconUrl — derive display data from a source URL. Nothing
++ *      is hardcoded per-source; the favicon endpoint is a single swappable
++ *      constant parameterised by hostname.
++ *   3. dedupeSources — collapse citations that point at the same page
++ *      (protocol / www / trailing-slash / hash-insensitive), first wins.
++ *
++ * Source of truth for the source list is the backend's structured
++ * `search.sources` ({ n, title, url }) — see SearchSource in types/api.ts.
++ * Text is only ever parsed to REMOVE markers, never to reconstruct sources.
++ */
++
++import type { SearchSource } from '@/types';
++
++// Complete marker: [n] · [n†…] · [n, m, …] — but NOT `[n](url)` (markdown link,
++// guarded by the negative lookahead) and NOT `[x]` / `[ ]` (task lists — the
++// `\d+` requirement excludes them).
++const CITATION_MARKER =
++  /\[\s*\d+(?:†[^\]]*)?(?:\s*,\s*\d+(?:†[^\]]*)?)*\s*\](?!\()/g;
++
++// A marker still being typed at the very end of a streaming buffer
++// (`…as of [1†L1-L` before the closing `]` arrives). Anchored to end + requires
++// `[` followed by a digit, so it can't eat a legitimate trailing bracket; the
++// leading \s* also removes the now-orphaned space before it.
++const TRAILING_PARTIAL = /\s*\[\s*\d+(?:†[^\]]*)?$/;
++
++// Fenced ```…``` and inline `…` code — captured so String.split keeps them as
++// verbatim segments we never touch.
++const CODE_SEGMENT = /(```[\s\S]*?```|`[^`\n]*`)/g;
++
++/**
++ * Remove internal citation markers from `text`, preserving code spans and
++ * markdown links. Pass { streaming:true } to also drop a half-typed trailing
++ * marker so it doesn't flicker while tokens arrive.
++ */
++export function stripCitationMarkers(text: string, opts?: { streaming?: boolean }): string {
++  if (!text) return text;
++
++  const segments = text.split(CODE_SEGMENT);
++  const out = segments.map((seg, i) => {
++    if (i % 2 === 1) return seg; // odd indices are captured code — leave exactly as-is
++    let s = seg.replace(CITATION_MARKER, '');
++    if (opts?.streaming) s = s.replace(TRAILING_PARTIAL, '');
++    // Tidy whitespace the removed markers leave behind: " word ." → " word.",
++    // and collapse the double space left by a mid-sentence "word [1] more".
++    // (Note: `]` is intentionally NOT in the tidy set — it would eat the space
++    // inside a GFM task-list `[ ]`, which the citation regex already skips.)
++    s = s.replace(/[ \t]+([.,;:!?)])/g, '$1').replace(/[ \t]{2,}/g, ' ');
++    return s;
++  });
++  return out.join('');
++}
++
++/** True when `text` contains at least one internal citation marker. */
++export function hasCitationMarkers(text: string): boolean {
++  CITATION_MARKER.lastIndex = 0;
++  return CITATION_MARKER.test(text);
++}
++
++/** Hostname without a leading www., falling back gracefully on unparseable URLs. */
++export function hostnameOf(url: string): string {
++  try {
++    return new URL(url).hostname.replace(/^www\./, '');
++  } catch {
++    return url.replace(/^[a-z]+:\/\//i, '').split('/')[0] || url;
++  }
++}
++
++// Single swappable favicon endpoint — parameterised by hostname, not per-source.
++const FAVICON_ENDPOINT = (host: string, size: number) =>
++  `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=${size}`;
++
++/** Favicon image URL for a source, derived from its hostname. */
++export function faviconUrl(url: string, size = 64): string {
++  return FAVICON_ENDPOINT(hostnameOf(url), size);
++}
++
++/** Normalise a URL for equality: drop protocol, www., trailing slash, hash. */
++function canonicalUrl(url: string): string {
++  try {
++    const u = new URL(url);
++    const path = u.pathname.replace(/\/+$/, '');
++    return `${u.hostname.replace(/^www\./, '')}${path}${u.search}`.toLowerCase();
++  } catch {
++    return url.trim().replace(/^[a-z]+:\/\//i, '').replace(/\/+$/, '').toLowerCase();
++  }
++}
++
++/** Deduplicate sources pointing at the same page; first occurrence wins. */
++export function dedupeSources(sources: SearchSource[] | undefined): SearchSource[] {
++  if (!sources?.length) return [];
++  const seen = new Set<string>();
++  const out: SearchSource[] = [];
++  for (const s of sources) {
++    if (!s?.url) continue;
++    const key = canonicalUrl(s.url);
++    if (seen.has(key)) continue;
++    seen.add(key);
++    out.push(s);
++  }
++  return out;
++}
+--- a/aqua-frontend/src/components/chat/SourceCards.tsx
++++ b/aqua-frontend/src/components/chat/SourceCards.tsx
+@@ -0,0 +1,86 @@
++import { memo, useState } from 'react';
++import { Globe } from 'lucide-react';
++import type { SearchSource } from '@/types';
++import { dedupeSources, faviconUrl, hostnameOf } from '@/lib/citations';
++
++/**
++ * Source citation cards, rendered beneath an assistant answer — the reader-
++ * facing counterpart to the internal `[n]` markers stripped from the text
++ * (see lib/citations.ts + MarkdownRenderer's stripCitations).
++ *
++ * Fed the backend's structured `search.sources`; deduplicates same-page
++ * citations and renders nothing when there are no sources. Each card is a
++ * single clickable link showing favicon · title · hostname, styled to sit with
++ * the app's other grounding chips (WorkspaceContextChip / AttachmentChip).
++ */
++
++function SourceFavicon({ url }: { url: string }) {
++  const [failed, setFailed] = useState(false);
++  const host = hostnameOf(url);
++  if (failed) {
++    return (
++      <span
++        className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[3px] bg-primary/15 text-[9px] font-semibold uppercase text-primary"
++        aria-hidden="true"
++      >
++        {host.charAt(0) || '?'}
++      </span>
++    );
++  }
++  return (
++    <img
++      src={faviconUrl(url)}
++      alt=""
++      width={16}
++      height={16}
++      loading="lazy"
++      onError={() => setFailed(true)}
++      className="h-4 w-4 shrink-0 rounded-[3px] object-contain"
++    />
++  );
++}
++
++function SourceCard({ source, index }: { source: SearchSource; index: number }) {
++  const host = hostnameOf(source.url);
++  const title = source.title?.trim() || host;
++  return (
++    <a
++      href={source.url}
++      target="_blank"
++      rel="noopener noreferrer"
++      title={`${title} — ${source.url}`}
++      className="tap group flex w-[190px] shrink-0 flex-col gap-1.5 rounded-xl border border-border/70 bg-surface-secondary/60 px-3 py-2.5 transition-colors hover:border-border hover:bg-surface-secondary"
++    >
++      <div className="flex items-center gap-1.5 text-[11px] text-foreground-secondary">
++        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-surface text-[9px] font-semibold text-foreground-secondary/80">
++          {index}
++        </span>
++        <SourceFavicon url={source.url} />
++        <span className="truncate">{host}</span>
++      </div>
++      <span className="line-clamp-2 text-[12.5px] font-medium leading-snug text-foreground group-hover:text-primary">
++        {title}
++      </span>
++    </a>
++  );
++}
++
++export const SourceCards = memo(function SourceCards({ sources }: { sources?: SearchSource[] }) {
++  const unique = dedupeSources(sources);
++  if (unique.length === 0) return null;
++
++  return (
++    <section className="mt-3" aria-label="Sources">
++      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-foreground-secondary/70">
++        <Globe className="h-3 w-3" />
++        Sources
++        <span className="text-foreground-secondary/50">· {unique.length}</span>
++      </div>
++      <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:overflow-visible">
++        {unique.map((source, i) => (
++          <SourceCard key={`${source.url}-${i}`} source={source} index={i + 1} />
++        ))}
++      </div>
++    </section>
++  );
++});
