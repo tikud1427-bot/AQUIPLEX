@@ -63,9 +63,13 @@ import { createContext, logMemoryEvent, logPlanEvent, logIntelligenceEvent, logO
 import { createExecutionPlan }    from '../core/executionPlanner.js';
 import { getReasoningStrategy }   from '../core/reasoningStrategy.js';
 import { runIntelligencePipeline } from '../intelligence/internalIntelligenceEngine.js';
+import { assessConfidence, isGroundingExpected } from '../intelligence/confidenceEngine.js';
+import { LOW_CONFIDENCE_THRESHOLD } from '../orchestrator/verificationStrategy.js';
+import { recordOutcome, getTaskStats } from '../intelligence/learningLedger.js';
 import { orchestrate, formatOrchestratorLog } from '../orchestrator/toolOrchestrator.js';
 import { getAgent } from '../intelligence/agentRegistry.js';
 import '../intelligence/verificationAgent.js'; // side-effect: registers the 'verification' agent on load
+import '../intelligence/debateAgent.js';       // side-effect: registers the 'debate' agent on load (Phase 6)
 import '../search/searchAgent.js';             // side-effect: registers the 'web_search' agent on load
 import { logSearchEvent, formatSearchDecisionLog } from '../core/observability.js';
 import { computeContextBudget, optimizeContext } from '../core/contextOptimizer.js';
@@ -255,6 +259,7 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
     taskType,
     confidence,
     hasWorkspaceId: !!workspaceId,
+    history: getTaskStats(taskType), // Phase 11: null until the ledger's sample gate is met
   });
   logOrchestratorEvent(ctx, orchestration, formatOrchestratorLog(orchestration));
 
@@ -382,19 +387,28 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   };
 }
 
-/** Verification pass — shared by both endpoints. Fails open by construction. */
-async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId }) {
+/** Verification pass — shared by both endpoints. Fails open by construction.
+ * Phase 12 actuator + Phase 6 seat: high complexity or shaky classification
+ * earns a deep review — the multi-voice debate panel when registered
+ * (falling back to the single critic), with a second pass so a revision
+ * gets re-reviewed. Everything else keeps the original single-critic,
+ * single-pass check. */
+async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId, plan, confidence }) {
   let verification = { ran: false, passed: null, revised: false };
   if (orchestration.verification.enabled) {
-    const verificationAgent = getAgent('verification');
-    if (verificationAgent) {
-      verification = await verificationAgent.run({
+    const deepReview = plan?.complexity === 'high'
+      || (typeof confidence === 'number' && confidence < LOW_CONFIDENCE_THRESHOLD);
+    const agent = (deepReview && getAgent('debate')) || getAgent('verification');
+    if (agent) {
+      verification = await agent.run({
         userMessage,
         draftAnswer,
         taskType,
         requestId,
         conversationId,
         responseBudget: orchestration.budget,
+        maxPasses: deepReview ? 2 : 1,
+        tags: orchestration.multiLabel?.tags ?? [], // debate seats security/compliance reviewers from these; verification ignores it
       });
     }
   }
@@ -457,7 +471,27 @@ function buildResponsePayload({
       ran:        verification.ran,
       passed:     verification.passed,
       revised:    verification.revised,
+      passes:     verification.passes ?? (verification.ran ? 1 : 0),
+      converged:  verification.converged ?? verification.passed ?? null,
+      agent:      verification.agent ?? (verification.ran ? 'verification' : null),
+      panel:      verification.panel ?? null,          // debate only: seated persona ids
+      disagreements: verification.disagreements ?? [], // debate only: preserved minority findings
     },
+
+    // Phase 12 — per-RESPONSE confidence, deterministic aggregation of this
+    // turn's own signals (see intelligence/confidenceEngine.js). Distinct
+    // from top-level `confidence`, which is the CLASSIFIER's confidence and
+    // keeps its exact meaning and position for existing clients.
+    responseConfidence: assessConfidence({
+      classifierConfidence: confidence,
+      factsInjected:        relevantFacts.length,
+      projectFilesUsed:     projectFiles.length,
+      groundingExpected:    isGroundingExpected(taskType),
+      attemptCount:         result.fallbackChain?.length ?? 1,
+      truncated:            result.truncated ?? false,
+      finishReason:         result.finishReason ?? 'stop',
+      verification,
+    }),
 
     orchestration: {
       profile:            orchestration.profile.id,
@@ -569,7 +603,7 @@ router.post('/', async (req, res) => {
     // ── 8b. Verification (Phase 6 decision → real pass) ─────────────────────────
     let finalAnswer = result.text;
     const verification = await runVerification({
-      orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId,
+      orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId, plan, confidence,
     });
     if (verification.revised && verification.finalAnswer) {
       finalAnswer = verification.finalAnswer;
@@ -598,12 +632,24 @@ router.post('/', async (req, res) => {
     memoryAfterTurn(prep.memoryOwner, { taskType, workspaceId });
 
     // ── 10. Respond ──────────────────────────────────────────────────────────────
-    return res.json(buildResponsePayload({
+    const payload = buildResponsePayload({
       identityGuarded,
       requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
       promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
       extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
-    }));
+    });
+
+    // ── 10b. Learning ledger (Phase 11) — fail-open inside recordOutcome ────────
+    recordOutcome({
+      taskType,
+      provider: result.provider,
+      responseConfidence: payload.responseConfidence,
+      verification,
+      verificationWarranted: orchestration.verification.enabled,
+      latencyMs: result.latency,
+    });
+
+    return res.json(payload);
   } catch (err) {
     console.error('[CHAT] Request failed:', err.message);
     ctx.attempts ??= [];
@@ -766,7 +812,7 @@ router.post('/stream', async (req, res) => {
     if (orchestration.verification.enabled && !clientAbort.signal.aborted) {
       send('stage', { id: 'verify', label: 'Verifying answer…' });
       verification = await runVerification({
-        orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId,
+        orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId, plan, confidence,
       });
       if (verification.revised && verification.finalAnswer) {
         finalAnswer = verification.finalAnswer;
@@ -799,12 +845,24 @@ router.post('/stream', async (req, res) => {
     memoryAfterTurn(prep.memoryOwner, { taskType, workspaceId });
 
     // ── 10. Done event — same diagnostics shape as POST /chat ───────────────────
-    send('done', buildResponsePayload({
+    const payload = buildResponsePayload({
       requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
       promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
       extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
       identityGuarded,
-    }));
+    });
+
+    // ── 10b. Learning ledger (Phase 11) — fail-open inside recordOutcome ────────
+    recordOutcome({
+      taskType,
+      provider: result.provider,
+      responseConfidence: payload.responseConfidence,
+      verification,
+      verificationWarranted: orchestration.verification.enabled,
+      latencyMs: result.latency,
+    });
+
+    send('done', payload);
   } catch (err) {
     if (err.message === 'CLIENT_ABORTED') {
       // The user stopped generation. Persist exactly what they saw so

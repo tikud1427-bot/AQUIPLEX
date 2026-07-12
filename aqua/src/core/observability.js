@@ -34,6 +34,7 @@ const metrics = {
   verificationRuns:    0, // count of requests where the verification agent actually executed
   verificationRevised: 0, // of those, count where the draft was replaced
   verificationFailed:  0, // count where the verifier call itself errored (failed open)
+  debateRuns:          0, // Phase 6 debate: count of deep reviews run by the panel instead of the single critic
   searchEvents: { performed: 0, cached: 0, failed: 0, noResults: 0 }, // Web Search: outcome counts
   searchByProvider: {},   // Web Search: provider → successful searches served
 };
@@ -254,14 +255,21 @@ export function logVerificationEvent(ctx, result) {
 
   metrics.verificationRuns++;
   if (result.revised) metrics.verificationRevised++;
+  if (result.agent === 'debate') metrics.debateRuns++;
 
   const entry = {
     type:           'AQUA_VERIFICATION',
     ts:             new Date().toISOString(),
     requestId:      ctx.requestId,
     conversationId: ctx.conversationId,
+    agent:          result.agent ?? 'verification',
+    panel:          result.panel ?? null,
     passed:         result.passed,
     revised:        result.revised,
+    inconclusive:   result.inconclusive ?? false,
+    passes:         result.passes ?? 1,
+    converged:      result.converged ?? result.passed ?? null,
+    disagreements:  result.disagreements?.length ?? 0,
     provider:       result.provider ?? null,
     latencyMs:      result.latencyMs ?? null,
   };

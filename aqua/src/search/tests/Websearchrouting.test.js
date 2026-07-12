@@ -22,7 +22,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { classifyTask } from '../../core/classifier.js';
-import { orchestrate } from '../toolOrchestrator.js';
+import { orchestrate } from '../../orchestrator/toolOrchestrator.js';
 import '../../search/searchAgent.js'; // side-effect: registers 'web_search' so the capability override is live
 
 // Run the real front-half of the pipeline and report whether the orchestrator

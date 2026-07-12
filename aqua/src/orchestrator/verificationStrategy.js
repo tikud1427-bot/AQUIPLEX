@@ -18,13 +18,29 @@
  * LLM calls until a future phase registers a real verification agent.
  */
 
+import { LEARNED_REVISION_RATE, LEARNED_LOW_CONFIDENCE } from '../intelligence/learningLedger.js';
+
 const LARGE_CODE_GENERATION_CHARS = 1200; // heuristic: long coding asks tend to mean multi-file/non-trivial output
 
 /**
- * @param {{ taskType: string, complexity: string, tags: string[], userMessage: string }} input
+ * Phase 12 ("Low confidence should automatically trigger deeper reasoning"):
+ * below this classifier confidence, the classification itself is shaky —
+ * task routing, provider ranking, and the intelligence pipeline were all
+ * keyed off an uncertain read of the request, so the answer earns a
+ * verification pass it wouldn't otherwise get. Exported so chat.js uses the
+ * SAME cut point when deciding to grant the verification loop a second pass.
+ */
+export const LOW_CONFIDENCE_THRESHOLD = 0.5;
+
+/**
+ * @param {{
+ *   taskType: string, complexity: string, tags: string[], userMessage: string,
+ *   confidence?: number,
+ *   history?: { sampleSize:number, revisionRate:number, avgConfidence:number|null } | null
+ * }} input
  * @returns {{ enabled: boolean, reasons: string[], reason: string }}
  */
-export function shouldVerify({ taskType, complexity, tags = [], userMessage = '' }) {
+export function shouldVerify({ taskType, complexity, tags = [], userMessage = '', confidence, history = null }) {
   const reasons = [];
 
   if (complexity === 'high') reasons.push('complexity is high');
@@ -34,6 +50,21 @@ export function shouldVerify({ taskType, complexity, tags = [], userMessage = ''
   if (tags.includes('medical')) reasons.push('medical reasoning');
   if (taskType === 'coding' && userMessage.length > LARGE_CODE_GENERATION_CHARS) {
     reasons.push('large code generation');
+  }
+  // Optional param: existing callers that don't pass confidence keep the
+  // exact decision surface they had before this line existed.
+  if (typeof confidence === 'number' && confidence < LOW_CONFIDENCE_THRESHOLD) {
+    reasons.push('low classification confidence');
+  }
+  // Phase 11 (learning ledger): `history` comes from getTaskStats(), which is
+  // null until the sample gate is met — so a cold ledger changes nothing.
+  // Thresholds live in learningLedger.js next to the aggregation they read.
+  if (history) {
+    if (history.revisionRate >= LEARNED_REVISION_RATE) {
+      reasons.push(`learned: task type historically revision-prone (${Math.round(history.revisionRate * 100)}% over ${history.sampleSize} turns)`);
+    } else if (typeof history.avgConfidence === 'number' && history.avgConfidence < LEARNED_LOW_CONFIDENCE) {
+      reasons.push(`learned: task type historically low-confidence (${history.avgConfidence.toFixed(2)} over ${history.sampleSize} turns)`);
+    }
   }
 
   // "Risk is high" — not its own independent signal but a label for the

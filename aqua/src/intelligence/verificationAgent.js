@@ -25,6 +25,11 @@
  * ever reports agentAvailable, it never invokes run().
  *
  * Design choices:
+ *   - Bounded convergence loop (Phase 4 recursive self-review): a revision
+ *     is fed back for re-critique until a pass returns clean or maxPasses
+ *     hits. Default maxPasses=1 preserves the original single-pass
+ *     behavior exactly; chat.js grants 2 for high-complexity or
+ *     low-classifier-confidence turns (see confidenceEngine.js notes).
  *   - Reuses generateText() end-to-end (provider ranking, health
  *     tracking, full fallback chain, timeout budgeting) instead of
  *     calling a provider directly — no duplicate retry/fallback logic.
@@ -78,6 +83,13 @@ function buildCritiquePrompt(focusRisks) {
  * @param {string} input.taskType       - classifier.js taskType (single source of truth)
  * @param {string} [input.requestId]
  * @param {string} [input.conversationId]
+ * @param {number} [input.maxPasses]    - Phase 4 recursive self-review: upper bound on
+ *                                        critique passes. Default 1 = the original
+ *                                        single-pass behavior, byte-identical. When >1,
+ *                                        a revision is fed back for re-critique until a
+ *                                        pass returns clean (converged) or the cap hits.
+ *                                        chat.js grants 2 for high-complexity /
+ *                                        low-classifier-confidence turns.
  * @param {object} [input.responseBudget] - Phase 6 execution profile budget, reused as-is
  *                                          so the critique call inherits the same response
  *                                          size ceiling rather than inventing a new one
@@ -85,8 +97,10 @@ function buildCritiquePrompt(focusRisks) {
  *                                        generateText() from providers/router.js
  * @returns {Promise<{
  *   ran: boolean,
- *   passed: boolean|null,
- *   revised: boolean,
+ *   passed: boolean|null,     // final draft's last critique came back clean
+ *   revised: boolean,         // any revision was applied across the loop
+ *   converged: boolean,       // === passed; explicit for observability
+ *   passes: number,           // critique calls completed
  *   finalAnswer: string,
  *   focusRisks: string[],
  *   provider?: string,
@@ -102,61 +116,95 @@ export async function runVerification({
   requestId,
   conversationId,
   responseBudget,
+  maxPasses = 1,
   generate = generateText,
 }) {
   const focusRisks = getFocusRisks(taskType);
   const critiquePrompt = buildCritiquePrompt(focusRisks);
-  const critiqueMessages = [{
-    role: 'user',
-    content: `Original user question:\n${userMessage}\n\nDraft answer to review:\n${draftAnswer}`,
-  }];
 
-  // Separate context so this call's provider attempts/fallback chain don't
-  // mix into the main generation's ctx.attempts array — chat.js's response
-  // fallbackChain should describe how the ANSWER was produced, not the
-  // verification pass on top of it.
+  // One context across all passes so attemptCount reflects the loop's total
+  // provider usage; chat.js's main fallbackChain stays untouched (see below).
   const verifyCtx = createContext({
     conversationId,
     requestId: requestId ? `${requestId}-verify` : undefined,
   });
 
+  const cap = Math.max(1, maxPasses);
   const start = Date.now();
-  try {
-    const result = await generate(
-      userMessage,        // classification fallback only — preTaskType below skips it
-      critiquePrompt,
-      critiqueMessages,
-      verifyCtx,
-      taskType,            // real taskType: keeps provider ranking domain-appropriate
-      undefined,           // no Phase 4 execution plan bias for the critique call itself
-      responseBudget,
-    );
 
+  let current   = draftAnswer;
+  let passes    = 0;
+  let revised   = false;
+  let passed    = false;
+  let provider;
+
+  // ── Convergence loop ──────────────────────────────────────────────────────
+  // Invariant: `current` is always the best answer we are willing to ship.
+  // Each iteration either (a) confirms it clean → converged, stop, or
+  // (b) replaces it with a revision → re-critique if budget remains, or
+  // (c) errors → fail open with `current` as-is. A broken verifier can
+  // therefore never lose an accepted revision, let alone the original draft.
+  while (passes < cap) {
+    const critiqueMessages = [{
+      role: 'user',
+      content: `Original user question:\n${userMessage}\n\nDraft answer to review:\n${current}`,
+    }];
+
+    let result;
+    try {
+      result = await generate(
+        userMessage,        // classification fallback only — preTaskType below skips it
+        critiquePrompt,
+        critiqueMessages,
+        verifyCtx,
+        taskType,            // real taskType: keeps provider ranking domain-appropriate
+        undefined,           // no Phase 4 execution plan bias for the critique call itself
+        responseBudget,
+      );
+    } catch (err) {
+      console.warn(`[VERIFICATION] Verifier pass ${passes + 1}/${cap} failed, passing ${revised ? 'latest revision' : 'draft'} through unchanged: ${err.message}`);
+      return {
+        ran: passes > 0,     // ≥1 completed pass means verification DID run
+        passed: passes > 0 ? false : null,
+        revised,
+        converged: false,
+        passes,
+        agent: 'verification',
+        finalAnswer: current,
+        focusRisks,
+        provider,
+        latencyMs: Date.now() - start,
+        error: err.message,
+        attemptCount: verifyCtx.attempts.length,
+      };
+    }
+
+    passes  += 1;
+    provider = result.provider ?? provider;
     const text = (result.text ?? '').trim();
-    const passed = text.startsWith('VERIFICATION_PASSED');
 
-    return {
-      ran: true,
-      passed,
-      revised: !passed,
-      finalAnswer: passed ? draftAnswer : text,
-      focusRisks,
-      provider: result.provider,
-      latencyMs: Date.now() - start,
-      attemptCount: verifyCtx.attempts.length,
-    };
-  } catch (err) {
-    console.warn(`[VERIFICATION] Verifier call failed, passing draft through unchanged: ${err.message}`);
-    return {
-      ran: false,
-      passed: null,
-      revised: false,
-      finalAnswer: draftAnswer,
-      focusRisks,
-      error: err.message,
-      attemptCount: verifyCtx.attempts.length,
-    };
+    if (text.startsWith('VERIFICATION_PASSED')) {
+      passed = true;
+      break;                 // converged — current draft confirmed clean
+    }
+
+    revised = true;
+    current = text;          // revision becomes the draft under review
   }
+
+  return {
+    ran: true,
+    passed,
+    revised,
+    converged: passed,
+    passes,
+    agent: 'verification',
+    finalAnswer: current,
+    focusRisks,
+    provider,
+    latencyMs: Date.now() - start,
+    attemptCount: verifyCtx.attempts.length,
+  };
 }
 
 registerAgent('verification', {

@@ -37,10 +37,14 @@ import { getAgent } from '../intelligence/agentRegistry.js';
  *   taskType: string,        // classifier.js's classifyTask(...).task — single source of truth
  *   confidence: number,      // classifyTask(...).confidence
  *   hasWorkspaceId: boolean,
+ *   history?: object|null,   // Phase 11: getTaskStats(taskType) from learningLedger.js.
+ *                            // Passed IN by chat.js (never read here) so orchestrate()
+ *                            // stays a pure function of its inputs — same arguments,
+ *                            // same decision, exactly as documented above.
  * }} input
  * @returns {object} orchestration decision (see shape below)
  */
-export function orchestrate({ userMessage, taskType, confidence, hasWorkspaceId }) {
+export function orchestrate({ userMessage, taskType, confidence, hasWorkspaceId, history = null }) {
   // Derived via the same function executionPlanner.js's createExecutionPlan()
   // uses a moment later in the pipeline — see getEffectiveComplexity's
   // docstring. Lets this run genuinely *before* the Execution Planner stage
@@ -49,7 +53,7 @@ export function orchestrate({ userMessage, taskType, confidence, hasWorkspaceId 
 
   const multiLabel = classifyMultiLabel(userMessage);
   const profile     = selectProfile(taskType);
-  const verification = shouldVerify({ taskType, complexity, tags: multiLabel.tags, userMessage });
+  const verification = shouldVerify({ taskType, complexity, tags: multiLabel.tags, userMessage, confidence, history });
 
   const requiredSet = new Set(profile.requiredCapabilities);
   const ctx = {

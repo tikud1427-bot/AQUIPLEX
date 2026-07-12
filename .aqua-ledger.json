@@ -1,0 +1,1 @@
+{"version":1,"byTask":{"project_query":{"turns":1,"confidenceEwma":0.77,"verification":{"warranted":1,"ran":1,"revised":1,"failedOpen":0,"inconclusive":0},"byProvider":{"gemini":{"turns":1,"confidenceEwma":0.77,"latencyEwma":47593,"revised":1,"failedOpen":0}}}},"updatedAt":"2026-07-12T05:43:11.190Z"}

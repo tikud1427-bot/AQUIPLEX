@@ -43,6 +43,7 @@ import { getTimeout }          from '../core/timeoutManager.js';
 import { generateGemini, streamGemini }         from './gemini.js';
 import { generateGroq, streamGroq }             from './groq.js';
 import { generateOpenRouter, streamOpenRouter } from './openrouter.js';
+import { getProviderPrior } from '../intelligence/learningLedger.js';
 
 // ── Provider quality matrix ───────────────────────────────────────────────────
 // 0–100: capability of this provider for this task type.
@@ -78,11 +79,20 @@ const QUALITY = {
 
 // ── Scoring ───────────────────────────────────────────────────────────────────
 
-function scoreProvider(provider, taskType) {
+/**
+ * Exported for tests (learned-prior delta is asserted directly against this).
+ * Score = static quality × 0.55 + runtime health × 0.45 + learned prior.
+ * The prior (Phase 11, learningLedger.js) is 0 until MIN_SAMPLE turns exist
+ * for this (provider, taskType) and clamped to ±6 — it nudges ranking toward
+ * providers whose answers for this task type historically verify clean with
+ * high response confidence; it can never outvote health or a large static
+ * quality gap on its own.
+ */
+export function scoreProvider(provider, taskType) {
   if (!isProviderHealthy(provider)) return 0;
   const quality = QUALITY[provider]?.[taskType] ?? 70;
   const health  = getHealthScore(provider);
-  return (quality * 0.55) + (health * 0.45);
+  return (quality * 0.55) + (health * 0.45) + getProviderPrior(provider, taskType);
 }
 
 function rankProviders(taskType, complexity) {
