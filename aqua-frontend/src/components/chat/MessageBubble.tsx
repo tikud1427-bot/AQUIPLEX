@@ -3,10 +3,7 @@ import { motion } from 'framer-motion';
 import { AlertCircle, ArrowRightCircle, CircleSlash, FolderGit2, Paperclip, Pencil, RotateCcw, X, Check } from 'lucide-react';
 import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer';
 import { ThinkingIndicator } from './ThinkingIndicator';
-<<<<<<< HEAD
-=======
 import { SourceCards } from './SourceCards';
->>>>>>> 7306efb7 (update)
 import { MessageActions } from './MessageActions';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { ResponseConfidence } from './ResponseConfidence';
@@ -178,17 +175,11 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: { 
         ) : (
           <>
             <div ref={contentRef}>
-<<<<<<< HEAD
-              <MarkdownRenderer content={message.content} streaming={isStreaming} />
-            </div>
-
-=======
               <MarkdownRenderer content={message.content} streaming={isStreaming} stripCitations />
             </div>
 
             <SourceCards sources={message.sources} />
 
->>>>>>> 7306efb7 (update)
             {message.patch && !isStreaming && <PatchCard patch={message.patch} messageId={message.id} />}
 
             {message.stoppedByUser && (

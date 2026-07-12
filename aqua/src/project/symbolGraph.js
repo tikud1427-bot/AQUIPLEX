@@ -30,9 +30,13 @@
  *     reported as the handler; an inline arrow/function is reported as 'inline'.
  *   • Model detection covers Mongoose (model()/new Schema), Sequelize
  *     (define()/extends Model), TypeORM (@Entity class), Prisma (.prisma model),
- *     and SQL `CREATE TABLE`. SQL embedded inside JS template strings is masked
- *     out and therefore not detected — only .sql / .prisma files and real-code
- *     SQL are seen.
+ *     and SQL `CREATE TABLE` — including SQL embedded in code (template strings
+ *     / query builders), scanned on raw content.
+ *   • Event detection covers EventEmitter / socket.io / DOM-style pub-sub
+ *     (`.emit`/`.on`/`.once`/`.addListener`/`.off` with a string event name).
+ *   • Job/worker detection covers BullMQ/Bull/Bee/Kue queues + workers,
+ *     `.process`/`Queue.add` handlers, Agenda, node-cron / CronJob, and Python
+ *     Celery task decorators. Custom schedulers are not matched.
  */
 import { maskCode, extractBraceFunctions } from './callGraph.js';
 
@@ -55,6 +59,22 @@ const TYPEORM_ENTITY_RE   = /@Entity\s*\([^)]*\)\s*(?:export\s+)?(?:default\s+)?
 const PRISMA_MODEL_RE     = /\bmodel\s+([A-Za-z_$][\w$]*)\s*\{/g;
 const SQL_TABLE_RE        = /\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?[`"']?([A-Za-z_$][\w$.]*)[`"']?/gi;
 
+// ── Event patterns (EventEmitter / socket.io / DOM-style pub-sub) ──────────────
+const EVENT_RE = /\.\s*(emit|on|once|addListener|off|removeListener)\s*\(\s*['"`]([^'"`]+)['"`]/g;
+
+// ── Background job / worker patterns ──────────────────────────────────────────
+// JS: names/queues are string literals; the `new Queue` / `.process` token is
+// real code (mask-validated). Receiver-name guards keep `.add`/`.process` from
+// matching Set.add etc.
+const JOB_QUEUE_RE    = /\bnew\s+(Queue|Worker|Bull|BullMQ|Bee|Kue)\s*\(\s*['"]([^'"]+)['"]/g;   // m[2]=name
+const JOB_PROCESS_RE  = /\b[\w$]*\s*\.\s*process\s*\(\s*['"]([^'"]+)['"]/g;                       // queue.process('job')
+const JOB_QUEUEADD_RE = /\b\w*[Qq]ueue\w*\s*\.\s*add\s*\(\s*['"]([^'"]+)['"]/g;                   // xQueue.add('job')
+const JOB_AGENDA_RE   = /\bagenda\s*\.\s*(?:define|every|schedule|now)\s*\([^)]*?['"]([^'"]+)['"]/g;
+const JOB_CRON_RE     = /\b(?:cron\s*\.\s*schedule|schedule\s*\.\s*scheduleJob)\s*\(\s*['"]([^'"]+)['"]/g;
+const JOB_CRONJOB_RE  = /\bnew\s+CronJob\s*\(\s*['"]([^'"]+)['"]/g;
+// Python Celery: a task decorator immediately above a def.
+const JOB_CELERY_RE   = /@(?:shared_task|periodic_task|celery\.task|app\.task|task)\b[^\n]*\n\s*def\s+([A-Za-z_]\w*)/g;
+
 const JS_KEYWORDS = new Set([
   'req', 'res', 'next', 'err', 'error', 'async', 'await', 'function', 'return',
   'this', 'req', 'request', 'response', 'ctx', 'context',
@@ -67,11 +87,13 @@ const JS_KEYWORDS = new Set([
  *
  * @param {string} workspaceId
  * @param {Array<{path:string, content:string, lang:string}>} files enriched entries
- * @returns {{routes, models, builtAt, fileCount}}
+ * @returns {{routes, models, events, jobs, builtAt, fileCount}}
  */
 export function buildSymbolGraph(workspaceId, files = []) {
   const routes = [];
   const models = [];
+  const events = [];
+  const jobs   = [];
 
   for (const file of files) {
     const { path: filePath, content, lang } = file;
@@ -127,16 +149,43 @@ export function buildSymbolGraph(workspaceId, files = []) {
     if (/\.sql$/.test(filePath) || lang === 'sql') {
       _collect(models, content, SQL_TABLE_RE, filePath, 'sql', () => true);
     }
+    // Embedded SQL DDL inside code (template strings / query builders). Runs on
+    // raw content (the string is masked out for other passes) — comments rarely
+    // contain CREATE TABLE, so false positives are negligible.
+    if (isCode) {
+      _collect(models, content, SQL_TABLE_RE, filePath, 'sql', () => true);
+    }
+
+    // ── Events ──────────────────────────────────────────────────────────────
+    if (isCode) _collectEvents(events, content, filePath, realAt);
+
+    // ── Background jobs / workers ─────────────────────────────────────────────
+    if (isCode) {
+      _collectJobs(jobs, content, filePath, realAt, [
+        { re: JOB_QUEUE_RE,    system: 'queue', group: 2 },
+        { re: JOB_PROCESS_RE,  system: 'bull',  group: 1 },
+        { re: JOB_QUEUEADD_RE, system: 'bull',  group: 1 },
+        { re: JOB_AGENDA_RE,   system: 'agenda', group: 1 },
+        { re: JOB_CRON_RE,     system: 'cron',  group: 1 },
+        { re: JOB_CRONJOB_RE,  system: 'cron',  group: 1 },
+      ]);
+    } else if (lang === 'python') {
+      for (const m of content.matchAll(JOB_CELERY_RE)) {
+        jobs.push({ kind: 'job', system: 'celery', name: m[1], file: filePath, line: _lineAt(content, m.index) });
+      }
+    }
   }
 
   const state = {
     routes:    _dedupeRoutes(routes),
     models:    _dedupeModels(models),
+    events:    _dedupeEvents(events),
+    jobs:      _dedupeJobs(jobs),
     builtAt:   Date.now(),
     fileCount: files.length,
   };
   graphs.set(workspaceId, state);
-  console.log(`[SYMBOLGRAPH] Built workspace=${workspaceId} routes=${state.routes.length} models=${state.models.length} files=${files.length}`);
+  console.log(`[SYMBOLGRAPH] Built workspace=${workspaceId} routes=${state.routes.length} models=${state.models.length} events=${state.events.length} jobs=${state.jobs.length} files=${files.length}`);
   return state;
 }
 
@@ -189,6 +238,28 @@ function _collect(out, content, re, filePath, orm, realAt) {
   }
 }
 
+function _collectEvents(out, content, filePath, realAt) {
+  for (const m of content.matchAll(EVENT_RE)) {
+    if (!realAt(m.index)) continue;
+    const raw = m[1].toLowerCase();
+    const op  = raw === 'emit' ? 'emit'
+              : (raw.startsWith('off') || raw.startsWith('remove')) ? 'off'
+              : 'listen';
+    out.push({ kind: 'event', op, name: m[2], file: filePath, line: _lineAt(content, m.index) });
+  }
+}
+
+function _collectJobs(out, content, filePath, realAt, patterns) {
+  for (const { re, system, group } of patterns) {
+    for (const m of content.matchAll(re)) {
+      if (!realAt(m.index)) continue;
+      const name = m[group];
+      if (!name) continue;
+      out.push({ kind: 'job', system, name, file: filePath, line: _lineAt(content, m.index) });
+    }
+  }
+}
+
 function _lineAt(content, idx) {
   let line = 1;
   for (let i = 0; i < idx && i < content.length; i++) if (content[i] === '\n') line++;
@@ -209,6 +280,26 @@ function _dedupeModels(models) {
   const seen = new Set();
   return models.filter(m => {
     const k = `${m.name} ${m.orm} ${m.file}:${m.line}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function _dedupeEvents(events) {
+  const seen = new Set();
+  return events.filter(e => {
+    const k = `${e.op} ${e.name} ${e.file}:${e.line}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+function _dedupeJobs(jobs) {
+  const seen = new Set();
+  return jobs.filter(j => {
+    const k = `${j.system} ${j.name} ${j.file}:${j.line}`;
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
@@ -239,6 +330,28 @@ export function getModels(workspaceId, orm = null) {
   return orm ? g.models.filter(m => m.orm === orm) : g.models;
 }
 
+/** Every event, optionally filtered by op ('emit' | 'listen' | 'off'). */
+export function getEvents(workspaceId, op = null) {
+  const g = graphs.get(workspaceId);
+  if (!g) return [];
+  return op ? g.events.filter(e => e.op === op) : g.events;
+}
+
+/** Every background job / worker, optionally filtered by system. */
+export function getJobs(workspaceId, system = null) {
+  const g = graphs.get(workspaceId);
+  if (!g) return [];
+  return system ? g.jobs.filter(j => j.system === system) : g.jobs;
+}
+
+/** Events whose name contains `query`, case-insensitive. */
+export function findEvents(workspaceId, query) {
+  const g = graphs.get(workspaceId);
+  if (!g || !query) return [];
+  const q = String(query).toLowerCase();
+  return g.events.filter(e => e.name.toLowerCase().includes(q));
+}
+
 /** Routes whose path (or "METHOD path") contains `query`, case-insensitive. */
 export function findRoutes(workspaceId, query) {
   const g = graphs.get(workspaceId);
@@ -261,7 +374,7 @@ export function findModels(workspaceId, query) {
 export function serializeSymbolGraph(workspaceId) {
   const g = graphs.get(workspaceId);
   if (!g) return null;
-  return { builtAt: g.builtAt, fileCount: g.fileCount, routes: g.routes, models: g.models };
+  return { builtAt: g.builtAt, fileCount: g.fileCount, routes: g.routes, models: g.models, events: g.events, jobs: g.jobs };
 }
 
 export function getSymbolGraphStats(workspaceId) {
@@ -271,5 +384,12 @@ export function getSymbolGraphStats(workspaceId) {
   for (const r of g.routes) byMethod[r.method] = (byMethod[r.method] ?? 0) + 1;
   const byOrm = {};
   for (const m of g.models) byOrm[m.orm] = (byOrm[m.orm] ?? 0) + 1;
-  return { routes: g.routes.length, models: g.models.length, byMethod, byOrm, builtAt: g.builtAt, fileCount: g.fileCount };
+  const byOp = {};
+  for (const e of g.events) byOp[e.op] = (byOp[e.op] ?? 0) + 1;
+  const byJobSystem = {};
+  for (const j of g.jobs) byJobSystem[j.system] = (byJobSystem[j.system] ?? 0) + 1;
+  return {
+    routes: g.routes.length, models: g.models.length, events: g.events.length, jobs: g.jobs.length,
+    byMethod, byOrm, byOp, byJobSystem, builtAt: g.builtAt, fileCount: g.fileCount,
+  };
 }

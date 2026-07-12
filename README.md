@@ -28,15 +28,10 @@ aquiplex-platform/
 
 - `GET /aqua` → requireLogin → React SPA (`aqua-frontend/dist`, base `/aqua/`)
 - `POST /api/aqua/chat`, `/chat/stream` → requireLogin → usageGuard
-<<<<<<< HEAD
-  (`chat_message`) → AQUA engine (classify → plan → intelligence → memory →
-  prompt → provider router w/ fallback → verify → persist)
-=======
   (`chat_message`) → AQUA engine (classify → orchestrate → plan →
   intelligence → memory → project retrieve → **web search** (multi-provider,
   cached, orchestrator-gated) → prompt → provider router w/ fallback →
   verify → persist)
->>>>>>> 7306efb7 (update)
 - `POST /api/aqua/upload` → usageGuard (`chat_with_file`) → universal upload
   (ZIP / TAR / TAR.GZ / documents / media) → workspace intelligence dashboard
 - Conversations + memory scoped per platform user via `req.aquaUserId`
@@ -57,12 +52,6 @@ Env (.env): `MONGO_URI`, `SESSION_SECRET`, `RAZORPAY_KEY_ID`,
 `GOOGLE_CLIENT_SECRET`, plus AQUA provider keys: `GROQ_API_KEY`,
 `GEMINI_API_KEY`, `OPENROUTER_API_KEY`.
 
-<<<<<<< HEAD
-## Tests
-
-```bash
-npm run test:aqua                          # edit engine + upload pipeline
-=======
 Web search keys (multi-key, any subset): `SERPER_API_KEY_1..N`,
 `TAVILY_API_KEY_1..N` (bare `SERPER_API_KEY`/`TAVILY_API_KEY` also honored).
 Zero keys = search dormant, chat unchanged. Optional tuning:
@@ -74,7 +63,6 @@ Zero keys = search dormant, chat unchanged. Optional tuning:
 
 ```bash
 npm run test:aqua                          # edit + upload + identity + search
->>>>>>> 7306efb7 (update)
 cd aqua && node --test src/**/tests/*.test.js
 ```
 

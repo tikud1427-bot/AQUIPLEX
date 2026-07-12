@@ -371,12 +371,6 @@ export function classifyTask(userMessage, history = []) {
   // Score every category (includes v4 research/coding guard)
   const scores = scoreTask(msg);
 
-<<<<<<< HEAD
-  // Short message heuristic: unless substantive signal, default to conversation
-  if (msg.length < 55) {
-    const substantiveScore = [...SUBSTANTIVE].reduce((sum, t) => sum + (scores[t] ?? 0), 0);
-    if (substantiveScore < 1.0) {
-=======
   // Short message heuristic: a terse message with no substantive-task signal
   // defaults to conversation — EXCEPT when it is clearly a one-shot factual
   // question. "Clearly factual" = a simple_qa pattern fired, OR nothing
@@ -398,7 +392,6 @@ export function classifyTask(userMessage, history = []) {
     const totalScore       = Object.values(scores).reduce((a, b) => a + b, 0);
     const looksFactual     = (scores.simple_qa ?? 0) > 0 || totalScore === 0;
     if (substantiveScore < 1.0 && !looksFactual) {
->>>>>>> 7306efb7 (update)
       return { task: 'conversation', confidence: 0.85, labels: ['conversation'] };
     }
   }
@@ -476,8 +469,4 @@ export function getEffectiveComplexity(taskType, confidence = 1.0) {
     else if (complexity === 'medium') complexity = 'high';
   }
   return complexity;
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 7306efb7 (update)

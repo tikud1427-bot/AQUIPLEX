@@ -28,8 +28,6 @@ export type TaskType =
 export type Provider = 'gemini' | 'groq' | 'openrouter';
 export type CostTier = 'low' | 'medium' | 'high';
 
-<<<<<<< HEAD
-=======
 /** One web-search source the answer was grounded in (backend contextExtractor). */
 export interface SearchSource {
   /** 1-based rank the model cites as [n]. */
@@ -50,7 +48,6 @@ export interface SearchGrounding {
   reason?: string;
 }
 
->>>>>>> 7306efb7 (update)
 export interface FallbackAttempt {
   provider: Provider | string;
   outcome: 'success' | 'failed' | 'invalid';
@@ -133,12 +130,9 @@ export interface ChatSuccessResponse {
     filesReferenced?: string[];
   };
 
-<<<<<<< HEAD
-=======
   /** Web Search grounding — present only when the orchestrator ran a search. */
   search?: SearchGrounding;
 
->>>>>>> 7306efb7 (update)
   /** Day 4 — present when the turn produced a patch-first edit proposal. */
   mode?: 'edit';
   patch?: import('./patch').PatchProposal;
@@ -176,8 +170,6 @@ export interface StreamWorkspaceEvent {
   filesReferenced: string[];
 }
 
-<<<<<<< HEAD
-=======
 /** Web Search grounding pushed mid-stream, before tokens (SSE `search` event). */
 export interface StreamSearchEvent {
   used: boolean;
@@ -187,7 +179,6 @@ export interface StreamSearchEvent {
   sources: SearchSource[];
 }
 
->>>>>>> 7306efb7 (update)
 export interface StreamErrorEvent {
   error: string;
   recoverable: boolean;

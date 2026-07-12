@@ -14,6 +14,7 @@ import {
 import {
   getSymbolGraph, getRoutes, getModels, findRoutes, findModels,
 } from './symbolGraph.js';
+import { buildRepoDigest } from './contextCompressor.js';
 
 const MAX_FILES          = 5;
 const MAX_CONTENT_CHARS  = 2_000;   // per file content snippet
@@ -89,6 +90,7 @@ export function retrieveProjectContext(workspaceId, query, limit = MAX_FILES) {
     overview:        workspace.overview ?? null,   // cached workspace intelligence
     callGraph:       _buildCallGraphAnswer(workspaceId, query),  // precise who-calls/impact/trace, or null
     symbols:         _buildSymbolGraphAnswer(workspaceId, query), // precise routes/models inventory, or null
+    repoDigest:      _buildRepoDigestAnswer(workspaceId, query, index), // whole-repo digest for overview queries, or null
   };
 }
 
@@ -233,6 +235,29 @@ function _modelNameCandidate(g, query) {
   return null;
 }
 
+// ── Whole-repo digest intent ──────────────────────────────────────────────────
+//
+// For "explain the whole codebase" / "give me an overview" / "how is this
+// project structured" questions, the flat top-k file set is not enough — the
+// model needs whole-repo awareness. Attach a token-bounded hierarchical digest
+// (contextCompressor) so it sees every file's skeleton within a budget. Only
+// fires for overview intent AND a repo big enough to be worth compressing
+// (small repos are already fully covered by the top-k files).
+
+const DIGEST_MIN_FILES = 8;
+const DIGEST_BUDGET    = 1500;   // modest — a map, not a dump
+
+const DIGEST_RE = /\b(whole|entire|overall|complete)\b[^.?!]*\b(repo|repository|codebase|code ?base|project|app|application|system|thing)\b|\b(overview|structure|architecture|tour|walk[- ]?through|high[- ]?level|big[- ]?picture|lay ?of the land)\b[^.?!]*\b(repo|repository|codebase|code ?base|project|app|application|system|everything|code|it)\b|\bexplain (the |this )?(repo|repository|codebase|code ?base|project|app|whole thing|everything|it all)\b|\bwhat does (this|the) (repo|repository|codebase|project|app|code)\b[^.?!]*\b(do|contain|look like)\b|\bproject structure\b|\bhow (is|does) (the |this )?(project|repo|repository|codebase|code|app) (structured|organi[sz]ed|laid out|work|fit together)\b|\b(summari[sz]e|describe) (the |this )?(whole |entire |overall )?(repo|repository|codebase|code ?base|project)\b/i;
+
+function _buildRepoDigestAnswer(workspaceId, query, index) {
+  if (!index || index.byPath.size < DIGEST_MIN_FILES) return null;
+  if (!DIGEST_RE.test(query)) return null;
+  const result = buildRepoDigest(workspaceId, { tokenBudget: DIGEST_BUDGET });
+  if (!result) return null;
+  console.log(`[DIGEST] Attached to chat context workspace=${workspaceId} est=${result.stats.estTokens} detailed=${result.stats.detailed}`);
+  return result.digest;
+}
+
 // ── Scoring ───────────────────────────────────────────────────────────────────
 
 function _score(filePath, meta, query, index) {
@@ -317,7 +342,7 @@ function _findSymbols(query, index) {
  * @returns {string}
  */
 export function formatProjectContext(context) {
-  if (!context || (!context.files?.length && !context.callGraph && !context.symbols)) return '';
+  if (!context || (!context.files?.length && !context.callGraph && !context.symbols && !context.repoDigest)) return '';
 
   const lines = [
     '--- PROJECT CONTEXT ---',
@@ -331,6 +356,8 @@ export function formatProjectContext(context) {
 
   const symbolsBlock = _formatSymbolAnswer(context.symbols);
   if (symbolsBlock) lines.push('', symbolsBlock);
+
+  if (context.repoDigest) lines.push('', context.repoDigest);
 
   // Condensed workspace intelligence (generated once at index time) —
   // gives the model whole-repo awareness even when only a few files are

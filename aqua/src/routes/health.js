@@ -6,10 +6,7 @@ import { getStoreStats }              from '../memory/conversationStore.js';
 import { getMemoryStats }             from '../memory/longTermMemory.js';
 import { getProjectStats }            from '../project/workspaceManager.js';
 import { listProfiles }               from '../orchestrator/executionProfiles.js';
-<<<<<<< HEAD
-=======
 import { getSearchHealth }            from '../search/searchManager.js';
->>>>>>> 7306efb7 (update)
 import '../orchestrator/capabilities.js'; // side-effect: registers every capability definition
 import { getAllCapabilities }         from '../orchestrator/capabilityRegistry.js';
 
@@ -31,12 +28,9 @@ router.get('/', (req, res) => {
       longTerm:  getMemoryStats(),   // unified store: owners/facts/contradictions
     },
     project: getProjectStats(),
-<<<<<<< HEAD
-=======
     // Web Search: provider key pools (per-slot usage/cooldown — never key
     // material), circuit breakers, cache hit/miss, and effective config.
     search:  getSearchHealth(),
->>>>>>> 7306efb7 (update)
   });
 });
 

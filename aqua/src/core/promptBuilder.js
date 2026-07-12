@@ -75,16 +75,10 @@ const MODULE_MAP = {
  * @param {string} [projectContext] - Phase 5: from projectRetriever.js ('' if no workspace)
  * @param {string} [intelligenceBlock] - Internal Intelligence Engine: synthesized plan/reasoning/critic brief ('' if low-complexity / skipped)
  * @param {{isSelf:boolean, topics:string[]}|null} [identityIntent] - from identityRouter.detectIdentityIntent(); when it flags a self/brand question the FULL identity section + confidence directive are injected. When null/absent, only the compact always-on identity block is injected.
-<<<<<<< HEAD
- * @returns {{ prompt: string, modules: string[] }}
- */
-export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective = '', projectContext = '', intelligenceBlock = '', identityIntent = null) {
-=======
  * @param {string} [searchContext] - Web Search: compressed live-web block from search/contextExtractor.js ('' if search skipped/failed). Injected AFTER project context — repository truth stays foundational; web results supplement it.
  * @returns {{ prompt: string, modules: string[] }}
  */
 export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective = '', projectContext = '', intelligenceBlock = '', identityIntent = null, searchContext = '') {
->>>>>>> 7306efb7 (update)
   const modules     = MODULE_MAP[taskType] ?? [];
   const parts       = [M.system];
   const moduleNames = ['system'];
@@ -125,8 +119,6 @@ export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective
     moduleNames.push('project_context');
   }
 
-<<<<<<< HEAD
-=======
   // Web Search: live-web results block — after project context so repository
   // truth remains foundational and web results are clearly supplementary,
   // before task modules so task instructions can reference "the sources".
@@ -135,7 +127,6 @@ export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective
     moduleNames.push('web_search');
   }
 
->>>>>>> 7306efb7 (update)
   for (const mod of modules) {
     const content = M[mod];
     if (content) {

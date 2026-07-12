@@ -9,12 +9,8 @@
     "test:edit": "node src/project/tests/editEngine.test.js && node src/project/tests/editRoutes.test.js",
     "test:upload": "node --test src/upload/tests/upload.test.js",
     "test:mind": "node --test src/mind/tests/mind.test.js",
-<<<<<<< HEAD
-    "test:identity": "node --test src/identity/tests/identityLayer.test.js"
-=======
     "test:identity": "node --test src/identity/tests/identityLayer.test.js",
     "test:search": "node --test src/search/tests/search.test.js"
->>>>>>> 7306efb7 (update)
   },
   "dependencies": {
     "@google/genai": "^2.9.0",

@@ -25,11 +25,8 @@
  * slots.
  */
 import { registerCapability } from './capabilityRegistry.js';
-<<<<<<< HEAD
-=======
 import { getAgent }            from '../intelligence/agentRegistry.js';
 import { decideWebSearch }     from '../search/searchDecision.js';
->>>>>>> 7306efb7 (update)
 
 // Project/workspace-grounded capabilities only matter if a workspace is
 // actually attached to the request — no point reporting them "enabled"
@@ -126,13 +123,6 @@ define('deep_research', {
 
 define('web_search', {
   label: 'Web Search', group: 'research', cost: 'medium', latency: 'medium',
-<<<<<<< HEAD
-  override: () => ({
-    enabled: false,
-    confidence: 0.05,
-    reason: 'No web search agent registered yet (see src/intelligence/agentRegistry.js) — reported for planning purposes only.',
-  }),
-=======
   // Real detection (was a permanently-disabled placeholder before the Web
   // Search subsystem shipped). Enabled when BOTH hold:
   //   1. the 'web_search' agent is registered (src/search/searchAgent.js —
@@ -165,7 +155,6 @@ define('web_search', {
       reason: decision.reason,
     };
   },
->>>>>>> 7306efb7 (update)
   reasonEnabled: () => '', reasonDisabled: () => '',
 });
 

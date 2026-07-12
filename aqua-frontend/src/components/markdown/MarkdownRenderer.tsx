@@ -2,10 +2,7 @@ import { memo, useMemo, type ReactElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './CodeBlock';
-<<<<<<< HEAD
-=======
 import { stripCitationMarkers } from '@/lib/citations';
->>>>>>> 7306efb7 (update)
 
 interface CodeChildProps {
   className?: string;
@@ -157,18 +154,11 @@ const MarkdownBlock = memo(function MarkdownBlock({ content }: { content: string
 export const MarkdownRenderer = memo(function MarkdownRenderer({
   content,
   streaming = false,
-<<<<<<< HEAD
-=======
   stripCitations = false,
->>>>>>> 7306efb7 (update)
 }: {
   content: string;
   /** Appends the blinking cursor after the last rendered block. */
   streaming?: boolean;
-<<<<<<< HEAD
-}) {
-  const blocks = useMemo(() => splitMarkdownBlocks(content), [content]);
-=======
   /** Remove internal web-search citation markers (`[n]`, `[n†…]`) from prose.
    *  Code spans and markdown links are left intact. Enable for assistant turns
    *  that may carry search grounding. */
@@ -179,7 +169,6 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
     [content, stripCitations, streaming],
   );
   const blocks = useMemo(() => splitMarkdownBlocks(prepared), [prepared]);
->>>>>>> 7306efb7 (update)
 
   return (
     <div className="text-[15px] text-foreground [overflow-wrap:anywhere]">

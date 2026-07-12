@@ -7,10 +7,7 @@ import type {
   StreamProviderEvent,
   StreamProviderFailedEvent,
   StreamWorkspaceEvent,
-<<<<<<< HEAD
-=======
   StreamSearchEvent,
->>>>>>> 7306efb7 (update)
   StreamErrorEvent,
   PatchProposal,
 } from '@/types';
@@ -35,11 +32,8 @@ export interface StreamHandlers {
   onProvider?: (e: StreamProviderEvent) => void;
   onProviderFailed?: (e: StreamProviderFailedEvent) => void;
   onWorkspace?: (e: StreamWorkspaceEvent) => void;
-<<<<<<< HEAD
-=======
   /** Web-search grounding for this turn, pushed before tokens arrive. */
   onSearch?: (e: StreamSearchEvent) => void;
->>>>>>> 7306efb7 (update)
   onToken?: (t: string) => void;
   /** Verification revised the streamed draft — replace displayed text wholesale. */
   onReplace?: (text: string) => void;
@@ -112,10 +106,7 @@ export async function streamChatMessage(
       case 'provider':        handlers.onProvider?.(data as StreamProviderEvent); break;
       case 'provider_failed': handlers.onProviderFailed?.(data as StreamProviderFailedEvent); break;
       case 'workspace':       handlers.onWorkspace?.(data as StreamWorkspaceEvent); break;
-<<<<<<< HEAD
-=======
       case 'search':          handlers.onSearch?.(data as StreamSearchEvent); break;
->>>>>>> 7306efb7 (update)
       case 'token':           handlers.onToken?.((data as { t: string }).t); break;
       case 'replace':         handlers.onReplace?.((data as { text: string }).text); break;
       case 'patch':           handlers.onPatch?.(data as PatchProposal); break;

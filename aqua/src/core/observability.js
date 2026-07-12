@@ -34,11 +34,8 @@ const metrics = {
   verificationRuns:    0, // count of requests where the verification agent actually executed
   verificationRevised: 0, // of those, count where the draft was replaced
   verificationFailed:  0, // count where the verifier call itself errored (failed open)
-<<<<<<< HEAD
-=======
   searchEvents: { performed: 0, cached: 0, failed: 0, noResults: 0 }, // Web Search: outcome counts
   searchByProvider: {},   // Web Search: provider → successful searches served
->>>>>>> 7306efb7 (update)
 };
 
 // ── Recent log ring buffer (last 200 structured AQUA_REQUEST entries) ─────────
@@ -280,8 +277,7 @@ export function logVerificationEvent(ctx, result) {
  * @param {object} ctx   - from createContext()
  * @param {object} data  - completion fields
  */
-<<<<<<< HEAD
-=======
+
 // ── Search event logging (Web Search) ────────────────────────────────────────
 
 /**
@@ -368,7 +364,6 @@ export function formatSearchDecisionLog(capability, result) {
   return lines.join('\n');
 }
 
->>>>>>> 7306efb7 (update)
 export function logCompletion(ctx, {
   taskType,
   classifierConfidence,

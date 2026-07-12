@@ -19,10 +19,7 @@ import { validateRegistryOnStartup, getRegistrySnapshot } from '../providers/mod
 import { hasConfiguredKeys as geminiHasKeys }     from '../providers/gemini.js';
 import { hasConfiguredKeys as groqHasKeys }       from '../providers/groq.js';
 import { hasConfiguredKeys as openrouterHasKeys } from '../providers/openrouter.js';
-<<<<<<< HEAD
-=======
 import { getSearchHealth }                        from '../search/searchManager.js';
->>>>>>> 7306efb7 (update)
 
 export function runStartupValidation() {
   console.log('[STARTUP] Validating model registry and provider configuration...');
@@ -51,11 +48,6 @@ export function runStartupValidation() {
     console.warn('[STARTUP] ⚠⚠ NO providers have any configured keys — every request will fail until at least one is set.');
   }
 
-<<<<<<< HEAD
-  console.log(`[STARTUP] Ready. Registry: ${registryResult.validCount} valid / ${registryResult.disabledCount} disabled models.`);
-
-  return { registry: registryResult, keyChecks, snapshot: getRegistrySnapshot() };
-=======
   // ── Web Search keys (same warn-only contract) ───────────────────────────────
   // Zero search keys is a VALID configuration: the web_search capability
   // reports disabled and every request behaves exactly as pre-search AQUA.
@@ -78,5 +70,4 @@ export function runStartupValidation() {
   console.log(`[STARTUP] Ready. Registry: ${registryResult.validCount} valid / ${registryResult.disabledCount} disabled models.`);
 
   return { registry: registryResult, keyChecks, search: searchHealth, snapshot: getRegistrySnapshot() };
->>>>>>> 7306efb7 (update)
 }
