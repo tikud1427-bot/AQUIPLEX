@@ -42,6 +42,27 @@ function ownerForLegacyConversation(req, conversationId) {
   });
 }
 
+// ── Ownership guard for legacy conversation-keyed routes (Phase 1 — security) ──
+// resolveOwner() has a SIDE EFFECT: given a userId + a conversationId whose
+// pre-login `conv:` mind exists, it merges that mind into the caller's user
+// mind and tombstones it (adoption). Without this guard an authenticated user
+// could pass a *victim's* conversationId and siphon + destroy the victim's
+// orphan mind — and in dev mode read any conversation's facts. When authed,
+// the caller must own the named conversation; a non-existent id resolves to
+// the caller's own owner (no cross-user reach) and is allowed. 404 on mismatch
+// (no existence oracle). Dev/standalone (no session) is unchanged.
+function assertLegacyConvAccess(req, res, conversationId) {
+  const scopeUser = req.aquaUserId ?? null;
+  if (!scopeUser) return true;                                  // dev/standalone — unchanged
+  if (!conversationExists(conversationId)) return true;         // resolves to caller's own owner
+  const owner = getConversationMeta(conversationId)?.userId ?? null;
+  if (owner !== scopeUser) {
+    res.status(404).json({ success: false, error: 'Conversation not found' });
+    return false;
+  }
+  return true;
+}
+
 function factsPayload(ownerId) {
   const facts = getFacts(ownerId);
   return { success: true, ownerId, factCount: facts.length, facts };
@@ -87,12 +108,14 @@ router.delete('/', (req, res) => {
 
 // ── Back-compat: conversation-keyed paths → owner-scoped data ────────────────
 router.get('/:conversationId', (req, res) => {
+  if (!assertLegacyConvAccess(req, res, req.params.conversationId)) return;
   const ownerId = ownerForLegacyConversation(req, req.params.conversationId);
   res.json({ ...factsPayload(ownerId), conversationId: req.params.conversationId });
 });
 
 router.get('/:conversationId/:key', (req, res) => {
   const { conversationId, key } = req.params;
+  if (!assertLegacyConvAccess(req, res, conversationId)) return;
   const ownerId = ownerForLegacyConversation(req, conversationId);
   const fact = getFact(ownerId, key);
   if (!fact) return res.status(404).json({ success: false, error: `Fact '${key}' not found` });
@@ -101,6 +124,7 @@ router.get('/:conversationId/:key', (req, res) => {
 
 router.delete('/:conversationId/:key', (req, res) => {
   const { conversationId, key } = req.params;
+  if (!assertLegacyConvAccess(req, res, conversationId)) return;
   const ownerId = ownerForLegacyConversation(req, conversationId);
   deleteFact(ownerId, key);
   res.json({ success: true, ownerId, conversationId, deleted: key });
@@ -108,6 +132,7 @@ router.delete('/:conversationId/:key', (req, res) => {
 
 router.delete('/:conversationId', (req, res) => {
   const { conversationId } = req.params;
+  if (!assertLegacyConvAccess(req, res, conversationId)) return;
   const ownerId = ownerForLegacyConversation(req, conversationId);
   clearFacts(ownerId);
   res.json({ success: true, ownerId, conversationId, cleared: true });

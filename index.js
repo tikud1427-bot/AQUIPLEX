@@ -118,8 +118,15 @@ app.use(
   session({
     secret:            (() => {
       const s = process.env.SESSION_SECRET;
-      if (!s && process.env.NODE_ENV === 'production') {
-        console.error('[FATAL] SESSION_SECRET env var is not set in production. Sessions are insecure. Set SESSION_SECRET.');
+      if (!s) {
+        // SECURITY (Phase 1): a predictable fallback secret lets anyone forge
+        // session cookies. Refuse to boot insecure in production; keep the
+        // dev-only fallback for local work.
+        if (process.env.NODE_ENV === 'production') {
+          console.error('[FATAL] SESSION_SECRET is not set in production. Refusing to start with a predictable session secret — set SESSION_SECRET and redeploy.');
+          process.exit(1);
+        }
+        console.warn('[WARN] SESSION_SECRET not set — using an insecure dev-only fallback. Never run this in production.');
       }
       return s || 'aqua-secret-fallback-dev-only';
     })(),

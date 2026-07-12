@@ -16,6 +16,27 @@ import {
 
 const router = express.Router();
 
+// ── Ownership guard (Phase 1 — security) ─────────────────────────────────────
+// GET/DELETE /:id previously checked only that the conversation EXISTED — any
+// authenticated user could read or delete any conversation by guessing its
+// UUID (IDOR). This mirrors the list endpoint's rule exactly: when the platform
+// supplies a session identity, the caller must own the row. Dev/standalone mode
+// (no session → scopeUser null) is unchanged. Returns 404 (not 403) so a
+// mismatch is indistinguishable from a missing id — no existence oracle.
+function assertOwnership(req, res, id) {
+  if (!conversationExists(id)) {
+    res.status(404).json({ success: false, error: 'Conversation not found' });
+    return false;
+  }
+  const scopeUser = req.aquaUserId ?? null;
+  const owner = getConversationMeta(id)?.userId ?? null;
+  if (scopeUser && owner !== scopeUser) {
+    res.status(404).json({ success: false, error: 'Conversation not found' });
+    return false;
+  }
+  return true;
+}
+
 // ── List all conversations ────────────────────────────────────────────────────
 
 router.get('/', (req, res) => {
@@ -54,9 +75,7 @@ router.get('/', (req, res) => {
 
 router.get('/:id', (req, res) => {
   const { id } = req.params;
-  if (!conversationExists(id)) {
-    return res.status(404).json({ success: false, error: 'Conversation not found' });
-  }
+  if (!assertOwnership(req, res, id)) return;
   const messages = getConversation(id);
   const meta     = getConversationMeta(id);
   res.json({
@@ -72,9 +91,7 @@ router.get('/:id', (req, res) => {
 
 router.delete('/:id', (req, res) => {
   const { id } = req.params;
-  if (!conversationExists(id)) {
-    return res.status(404).json({ success: false, error: 'Conversation not found' });
-  }
+  if (!assertOwnership(req, res, id)) return;
   clearConversation(id);
   res.json({ success: true, cleared: id });
 });

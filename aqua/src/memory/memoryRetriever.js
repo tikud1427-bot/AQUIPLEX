@@ -86,6 +86,20 @@ function detectKeyIntent(query) {
 // hints). retrieveRelevantFacts() uses it to drop facts that matched nothing
 // about a directed query — previously a high-importance food fact leaked into
 // "what programming stack do I use?" purely on base importance + recency.
+//
+// Phase 2 — semantic blend: ctx.semanticScores (optional Map<factKey, cosine>,
+// precomputed by the async caller via semanticMemory) contributes a bounded
+// boost that ALSO counts as intentScore. This is what lets a fact survive the
+// directed-intent gate on a synonym/paraphrase query that shares no keywords
+// with the fact ("what do I do outdoors?" → hobby: bouldering). Cosine below
+// SEM_FLOOR contributes nothing (unrelated text still sits ~0.3–0.5 with modern
+// embeddings, so a floor is required); above it, the boost scales to rival a
+// key-index hit without steamrolling an exact category match. When
+// semanticScores is null/absent (embeddings disabled or failed) this block is
+// inert and scoring is byte-identical to pre-Phase-2.
+const SEM_FLOOR  = 0.55;   // cosine below this = no semantic signal
+const SEM_WEIGHT = 700;    // (cosine - floor) * weight → boost
+
 function scoreRelevance(fact, query, ctx) {
   let score = 0;
   let intentScore = 0;
@@ -146,12 +160,22 @@ function scoreRelevance(fact, query, ctx) {
   if (ageMs < 60_000) score += 40;
   else if (ageMs < 600_000) score += 20;
   else if (ageMs < 3_600_000) score += 10;
-  
+
+  // 9. Semantic similarity (Phase 2) — inert when ctx.semanticScores is null.
+  if (ctx.semanticScores) {
+    const sim = ctx.semanticScores.get(fact.key);
+    if (typeof sim === 'number' && sim > SEM_FLOOR) {
+      const boost = (sim - SEM_FLOOR) * SEM_WEIGHT;
+      score += boost;
+      intentScore += boost;   // survives the directed-intent gate on paraphrase queries
+    }
+  }
+
   return { score, intentScore };
 }
 
 // ── Public retrieval API ──────────────────────────────────────────────────────
-export function retrieveRelevantFacts(ownerId, query, limit = 15, { trace = null } = {}) {
+export function retrieveRelevantFacts(ownerId, query, limit = 15, { trace = null, semanticScores = null } = {}) {
   const allFacts = getFacts(ownerId);
   if (!allFacts.length) return [];
 
@@ -160,7 +184,7 @@ export function retrieveRelevantFacts(ownerId, query, limit = 15, { trace = null
   const semanticConcepts = detectSemanticConcepts(query);
   const keyScores = detectKeyIntent(query);
   
-  const ctx = { isRecall, categoryFilter, semanticConcepts, keyScores };
+  const ctx = { isRecall, categoryFilter, semanticConcepts, keyScores, semanticScores };
 
   const scored = allFacts
     .filter((f) => (f.confidence || 0) >= 0.5)

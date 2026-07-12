@@ -24,15 +24,21 @@
  */
 import { resolveOwner, isUserOwner } from './ownerResolver.js';
 import { extractFactsWithReport, detectMemoryUpdate, detectForget, resolveCanonicalKey } from './memoryExtractor.js';
-import { storeFacts, storeFact, deleteFact } from './longTermMemory.js';
+import { storeFacts, storeFact, deleteFact, getFacts } from './longTermMemory.js';
 import { retrieveRelevantFacts, formatFactsForPrompt } from './memoryRetriever.js';
 import { getIdentity, hasIdentity, formatIdentityBlock, isIdentityQuery, answerIdentityQuery } from './identity.js';
 import { mindObserve, mindContext, mindAfterTurn } from '../mind/index.js';
 import { getMind, peekMind, touchMind } from '../mind/mindStore.js';
 import { upsertNode, upsertEdge, SELF_KEY } from '../mind/relationshipGraph.js';
 import { estimateTokens } from '../core/tokenManager.js';
+import { indexOwnerFacts, semanticFactScores } from '../embeddings/semanticMemory.js';
 
 export { resolveOwner, isUserOwner };
+// Phase 2 — semantic retrieval. Re-exported through the ONE memory facade so
+// the chat pipeline never reaches into src/embeddings/* directly (same rule
+// every other memory stage follows). semanticFactScores() is awaited at
+// prepareTurn's query seam; indexOwnerFacts() is fire-and-forget after observe.
+export { indexOwnerFacts, semanticFactScores };
 
 const TOTAL_BUDGET_TOKENS = 800;   // one budget for the whole memory block
 const MIN_COGNITIVE_BUDGET = 150;
@@ -134,6 +140,17 @@ export function memoryObserve(ownerId, {
   const mindDiag = mindObserve(ownerId, { userMessage, taskType, extractedFacts, workspaceId, conversationId });
   trace.mind = mindDiag;
 
+  // 6. Phase 2 — refresh this owner's fact vectors for semantic retrieval.
+  //    Fire-and-forget (NOT awaited): never adds latency to the response path,
+  //    fails open internally. Only runs when this turn actually changed facts
+  //    (a new/updated fact, a forget, or a correction) — a no-op chat turn
+  //    embeds nothing. A brand-new fact whose vector isn't ready yet simply
+  //    falls back to keyword this turn and is covered on the next.
+  const factsChanged = extractedFacts.length > 0 || trace.forget || trace.correction;
+  if (factsChanged) {
+    indexOwnerFacts(ownerId, getFacts(ownerId)).catch(() => {});
+  }
+
   return { extractedFacts, mind: mindDiag, trace };
 }
 
@@ -146,6 +163,7 @@ export function memoryObserve(ownerId, {
 export function memoryRetrieve(ownerId, {
   query = '', taskType = 'conversation',
   budgetTokens = TOTAL_BUDGET_TOKENS, factLimit = 10, requestId = null,
+  semanticScores = null,
 } = {}) {
   const trace = (requestId && traces.get(requestId)) || makeTrace({ ownerId });
   trace.budgetTokens = budgetTokens;
@@ -178,7 +196,7 @@ export function memoryRetrieve(ownerId, {
   let factBlock = '';
   let relevantFacts = [];
   try {
-    relevantFacts = retrieveRelevantFacts(ownerId, query, factLimit, { trace });
+    relevantFacts = retrieveRelevantFacts(ownerId, query, factLimit, { trace, semanticScores });
     factBlock = formatFactsForPrompt(relevantFacts);
     trace.retrieved = relevantFacts.map(f => ({ key: f.key, value: f.value }));
   } catch (err) {

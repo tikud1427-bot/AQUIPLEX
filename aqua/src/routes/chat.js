@@ -78,7 +78,7 @@ import {
   getConversation,
   addMessage,
 } from '../memory/conversationStore.js';
-import { resolveOwner, memoryObserve, memoryRetrieve, memoryAfterTurn, getMemoryTrace } from '../memory/engine.js';
+import { resolveOwner, memoryObserve, memoryRetrieve, memoryAfterTurn, getMemoryTrace, semanticFactScores } from '../memory/engine.js';
 import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
 import { formatAttachmentsForPrompt, getAttachments }       from '../upload/attachmentStore.js';
 import { proposeEdit, serializeProposal }                   from '../project/editEngine.js';
@@ -210,6 +210,12 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   // else this conversation as a dev/standalone fallback (adopted into the
   // user's memory on first login). Null disables memory entirely.
   const memoryOwner = resolveOwner({ userId, conversationId });
+  // ── Phase 2 — semantic retrieval: start the query embedding NOW so its
+  // network round-trip overlaps the synchronous prep below (classify,
+  // orchestrate, observe). Awaited only at the retrieval seam. Fail-open:
+  // semanticFactScores never rejects — it resolves to null when embeddings
+  // are unavailable, and the retriever then behaves exactly as pre-Phase-2.
+  const semanticScoresP = semanticFactScores(memoryOwner, userMessage);
   // ── 2. Classify (once — result passed to router, no double classification) ──
   onStage('classify', 'Understanding your request…');
   const { task: taskType, confidence, labels } = classifyTask(userMessage);
@@ -282,6 +288,7 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   // budget → one memoryBlock for the prompt. Smallest high-quality context.
   const retrieved = memoryRetrieve(memoryOwner, {
     query: userMessage, taskType, factLimit: 10, requestId,
+    semanticScores: await semanticScoresP,   // Phase 2: resolved query embedding (null if unavailable)
   });
   const relevantFacts = retrieved.relevantFacts;
   const memoryBlock   = retrieved.block;

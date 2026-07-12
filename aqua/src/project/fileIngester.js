@@ -7,6 +7,7 @@
  */
 import path from 'path';
 import { isDocumentExt, parseDocument } from './documentParser.js';
+import { isSecretFile, redactSecrets } from './secretGuard.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -87,10 +88,18 @@ export function shouldIgnore(filePath) {
   const parts = normalised.split('/');
   const basename = parts[parts.length - 1];
 
+  // SECURITY (Phase 1): never ingest credential-bearing files (.env, private
+  // keys, credential stores). These were previously reachable — the hidden-dir
+  // check below only inspects DIRECTORIES, and a root `.env` has no extension
+  // so IGNORE_EXTS missed it — leaking real secrets into .aqua-index.json and
+  // into third-party LLM prompts. Template files (.env.example etc.) are kept.
+  if (isSecretFile(normalised)) return true;
+
   if (IGNORE_FILES.has(basename)) return true;
   if (basename.endsWith('.lock')) return true;
 
-  // Ignore hidden directories (except .env files)
+  // Ignore hidden directories (.github kept for CI config). Note: hidden FILES
+  // are handled per-case above (secrets rejected; .env.example allowed through).
   for (const part of parts.slice(0, -1)) {
     if (IGNORE_DIRS.has(part)) return true;
     if (part.startsWith('.') && part !== '.github') return true;
@@ -176,6 +185,14 @@ export async function ingestFiles(rawFiles) {
     let content = file.content;
     let truncated = false;
 
+    // SECURITY (Phase 1): mask high-confidence secrets embedded in an
+    // otherwise-legitimate file before it is stored or sent to any provider.
+    const red = redactSecrets(content);
+    if (red.redactions > 0) {
+      content = red.content;
+      console.warn(`[Index] Redacted ${red.redactions} secret(s) from ${file.path} [${red.tags.join(', ')}]`);
+    }
+
     if (content.length > MAX_FILE_SIZE) {
       content = content.slice(0, MAX_FILE_SIZE) + '\n// ... [truncated]';
       truncated = true;
@@ -223,6 +240,14 @@ async function ingestDocumentFile(file, ext) {
 
   let content = extracted.text;
   let truncated = false;
+
+  // SECURITY (Phase 1): documents can contain pasted credentials too.
+  const red = redactSecrets(content);
+  if (red.redactions > 0) {
+    content = red.content;
+    console.warn(`[Index] Redacted ${red.redactions} secret(s) from ${file.path} [${red.tags.join(', ')}]`);
+  }
+
   if (content.length > MAX_FILE_SIZE) {
     content = content.slice(0, MAX_FILE_SIZE) + '\n... [truncated]';
     truncated = true;
