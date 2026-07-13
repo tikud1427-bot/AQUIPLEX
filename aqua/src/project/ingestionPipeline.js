@@ -19,6 +19,7 @@ import { buildDependencyGraph, serializeGraph, detectCycles } from './dependency
 import { buildCallGraph }                                    from './callGraph.js';
 import { enrichWithSummaries, summarizeProject }            from './projectSummarizer.js';
 import { analyzeWorkspace }                                 from './workspaceAnalyzer.js';
+import { indexWorkspaceFiles }                              from './semanticProject.js';
 
 /**
  * Run the complete ingestion pipeline for a workspace.
@@ -115,6 +116,12 @@ export async function runWorkspaceIngestion(workspaceId, rawFiles, onStage = () 
       indexStatus: 'indexed', indexedAt: Date.now(),
       stats: { files: enriched.length, languages },
     });
+
+    // 9. Phase 2c — embed file signatures for semantic retrieval. Fire-and-forget
+    //    (NOT awaited): upload latency is untouched, it fails open internally, and
+    //    it runs AFTER summaries are patched so each signature carries its summary.
+    //    Only changed files re-embed on a re-upload (content-hash skip).
+    indexWorkspaceFiles(workspaceId, getIndex(workspaceId)).catch(() => {});
 
     return {
       projectType,

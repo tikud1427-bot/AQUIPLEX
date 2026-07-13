@@ -34,16 +34,21 @@ const BROAD_QUERY_RE = /\b(repo(sitory)?|codebase|project|architecture|structure
  * @param {string} workspaceId
  * @param {string} query
  * @param {number} [limit]
+ * @param {object} [opts]
+ * @param {Map<string,number>|null} [opts.semanticScores] - Phase 2c: filePath →
+ *   cosine, precomputed by the async caller via semanticProject. Blended into
+ *   the file score so a paraphrase query with no keyword overlap still surfaces
+ *   the right file. null/absent → pure keyword, identical to pre-Phase-2c.
  * @returns {{ files, projectSummary, projectType, relevantSymbols, totalFiles } | null}
  */
-export function retrieveProjectContext(workspaceId, query, limit = MAX_FILES) {
+export function retrieveProjectContext(workspaceId, query, limit = MAX_FILES, { semanticScores = null } = {}) {
   const index     = getIndex(workspaceId);
   const workspace = getWorkspace(workspaceId);
   if (!index || !workspace) return null;
 
   const scored = [];
   for (const [filePath, meta] of index.byPath.entries()) {
-    const score = _score(filePath, meta, query, index);
+    const score = _score(filePath, meta, query, index, semanticScores);
     if (score > 0) scored.push({ filePath, meta, score });
   }
   scored.sort((a, b) => b.score - a.score);
@@ -260,7 +265,15 @@ function _buildRepoDigestAnswer(workspaceId, query, index) {
 
 // ── Scoring ───────────────────────────────────────────────────────────────────
 
-function _score(filePath, meta, query, index) {
+// Phase 2c semantic blend. Keyword signals here are small (path hit 30, fn 25,
+// topic bonus up to ~40) — unlike memory's 60–500 — so the semantic weight is
+// scaled DOWN to match: a strong match (cosine ~0.8 → +62) rivals a path hit
+// without steamrolling a file that has several genuine keyword hits. Cosine
+// below the floor contributes nothing (unrelated code still sits ~0.3–0.5).
+const PROJECT_SEM_FLOOR  = 0.55;
+const PROJECT_SEM_WEIGHT = 250;
+
+function _score(filePath, meta, query, index, semanticScores = null) {
   let score  = 0;
   const qLow = query.toLowerCase();
   const tokens = (qLow.match(/\b[a-z][a-z0-9_]{2,}\b/g) ?? []);
@@ -300,6 +313,16 @@ function _score(filePath, meta, query, index) {
 
   // 5. Topic heuristics
   score += _topicBonus(qLow, filePath);
+
+  // 6. Semantic similarity (Phase 2c) — inert when semanticScores is null.
+  //    A file matched ONLY by semantics (no keyword) still clears score > 0 and
+  //    is surfaced — exactly the paraphrase/synonym case keyword retrieval misses.
+  if (semanticScores) {
+    const sim = semanticScores.get(filePath);
+    if (typeof sim === 'number' && sim > PROJECT_SEM_FLOOR) {
+      score += (sim - PROJECT_SEM_FLOOR) * PROJECT_SEM_WEIGHT;
+    }
+  }
 
   return score;
 }

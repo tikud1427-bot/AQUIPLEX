@@ -81,6 +81,7 @@ import {
 } from '../memory/conversationStore.js';
 import { resolveOwner, memoryObserve, memoryRetrieve, memoryAfterTurn, getMemoryTrace, semanticFactScores } from '../memory/engine.js';
 import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
+import { semanticFileScores }                              from '../project/semanticProject.js';
 import { formatAttachmentsForPrompt, getAttachments }       from '../upload/attachmentStore.js';
 import { proposeEdit, serializeProposal }                   from '../project/editEngine.js';
 import { getIndex }                                         from '../project/projectIndex.js';
@@ -318,7 +319,11 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   } else if (workspaceId && (wantsProjectRetrieval || repoIntent)) {
     onStage('workspace', 'Reading workspace…');
     if (!wantsProjectRetrieval) console.log(`[PROJECT] Repo-intent override — profile=${orchestration.profile.label} skipped project_retrieval but query references the codebase workspace=${workspaceId}`);
-    const rawContext = retrieveProjectContext(workspaceId, userMessage);
+    // Phase 2c — semantic file scores. The query vector is content-hash cached,
+    // so embedding userMessage here is a cache HIT from the memory retrieval
+    // earlier this same turn — no extra embedding cost. null → keyword only.
+    const projSemScores = await semanticFileScores(workspaceId, userMessage);
+    const rawContext = retrieveProjectContext(workspaceId, userMessage, undefined, { semanticScores: projSemScores });
     if (rawContext) {
       projectContext = formatProjectContext(rawContext);
       projectFiles   = rawContext.files.map(f => f.path ?? f.name ?? String(f)).filter(Boolean);
