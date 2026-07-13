@@ -29,6 +29,7 @@
 import fs   from 'fs';
 import path from 'path';
 import { parseFile } from './fileParser.js';
+import { createDebouncedWriter } from '../core/atomicStore.js';
 
 const INDEX_FILE = path.join(process.cwd(), '.aqua-index.json');
 
@@ -58,19 +59,17 @@ function loadFromDisk() {
   }
 }
 
-let saveTimer = null;
+// Phase 3b — atomic + async persistence via the shared primitive. This is the
+// largest store (~MBs of source content), so moving the whole-file rewrite off
+// the synchronous path is the biggest event-loop win; temp+rename also removes
+// the "corrupt index on crash mid-write" failure mode.
+const _writer = createDebouncedWriter(INDEX_FILE);
 function scheduleSave() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      const data = {};
-      for (const [id, files] of sources.entries()) data[id] = files;
-      fs.writeFileSync(INDEX_FILE, JSON.stringify(data), 'utf8');
-    } catch (err) {
-      console.warn('[Index] Could not save index sources to disk:', err.message);
-    }
-  }, 500);
+  _writer.schedule(() => {
+    const data = {};
+    for (const [id, files] of sources.entries()) data[id] = files;
+    return JSON.stringify(data);
+  });
 }
 
 loadFromDisk();

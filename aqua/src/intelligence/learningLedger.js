@@ -32,6 +32,7 @@
  */
 import fs   from 'fs';
 import path from 'path';
+import { createDebouncedWriter } from '../core/atomicStore.js';
 
 const STORE_FILE = path.join(process.cwd(), '.aqua-ledger.json');
 
@@ -70,17 +71,12 @@ function loadFromDisk() {
   }
 }
 
-let saveTimer = null;
+// Phase 3b — atomic + async persistence via the shared primitive; the persist
+// flag guard (disabled in tests) is preserved.
+const _writer = createDebouncedWriter(STORE_FILE);
 function scheduleSave() {
-  if (!persist || saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      fs.writeFileSync(STORE_FILE, JSON.stringify(ledger), 'utf8');
-    } catch (err) {
-      console.warn('[LEDGER] Could not save to disk:', err.message);
-    }
-  }, 500);
+  if (!persist) return;
+  _writer.schedule(() => JSON.stringify(ledger));
 }
 loadFromDisk();
 
@@ -192,7 +188,7 @@ export function getLedgerSnapshot() {
 
 /** Test hooks — keep the suite from touching the real on-disk ledger. */
 export function _resetForTests({ persistence = false } = {}) {
-  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  _writer.cancel();
   ledger  = emptyLedger();
   persist = persistence;
 }

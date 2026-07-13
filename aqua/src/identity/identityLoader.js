@@ -29,6 +29,7 @@ import fs   from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
+import { atomicWriteFileSync } from '../core/atomicStore.js';
 
 const __dir        = path.dirname(fileURLToPath(import.meta.url));
 const dataDir      = path.join(__dir, 'data');
@@ -181,7 +182,7 @@ export function updateIdentityProfile(patch, { persist = false } = {}) {
     // Accumulate against any existing override file so successive updates stack.
     const nextOverride = deepMerge(readJson('overrides.json') ?? {}, patch);
     try {
-      fs.writeFileSync(overridePath, JSON.stringify(nextOverride, null, 2));
+      atomicWriteFileSync(overridePath, JSON.stringify(nextOverride, null, 2));
       console.log('[IDENTITY] Persisted override → data/overrides.json');
     } catch (err) {
       console.error(`[IDENTITY] Failed to persist override: ${err.message}`);

@@ -28,6 +28,7 @@
  */
 import fs   from 'fs';
 import path from 'path';
+import { createDebouncedWriter } from '../core/atomicStore.js';
 
 const STORE_FILE  = path.join(process.cwd(), '.aqua-vectors.json');
 const NS_ITEM_CAP = 500;   // per-namespace item cap (oldest-touched evicted)
@@ -56,19 +57,16 @@ function loadFromDisk() {
   }
 }
 
-let saveTimer = null;
+// Phase 3b — atomic + async persistence via the shared primitive; persist flag
+// (disabled in tests) preserved.
+const _writer = createDebouncedWriter(STORE_FILE);
 function scheduleSave() {
-  if (!persist || saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      const data = {};
-      for (const [ns, m] of store.entries()) data[ns] = Object.fromEntries(m.entries());
-      fs.writeFileSync(STORE_FILE, JSON.stringify(data), 'utf8');
-    } catch (err) {
-      console.warn('[VECTORS] Could not save to disk:', err.message);
-    }
-  }, 500);
+  if (!persist) return;
+  _writer.schedule(() => {
+    const data = {};
+    for (const [ns, m] of store.entries()) data[ns] = Object.fromEntries(m.entries());
+    return JSON.stringify(data);
+  });
 }
 loadFromDisk();
 
@@ -154,5 +152,5 @@ export function topK(namespace, queryVec, k = 10, minScore = -Infinity) {
 export function __resetForTests({ disablePersist = true } = {}) {
   store.clear();
   persist = !disablePersist;
-  if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+  _writer.cancel();
 }

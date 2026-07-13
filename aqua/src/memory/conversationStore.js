@@ -36,6 +36,7 @@
 import fs   from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import { createDebouncedWriter } from '../core/atomicStore.js';
 
 const HISTORY_FILE          = path.join(process.cwd(), '.aqua-history.json');
 const MAX_HISTORY_PER_CONV  = 200;  // rolling window cap
@@ -64,21 +65,16 @@ function loadFromDisk() {
   }
 }
 
-let saveTimer = null;
+// Phase 3b — atomic + async persistence via the shared primitive.
+const _writer = createDebouncedWriter(HISTORY_FILE);
 function scheduleSave() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      const data = {};
-      for (const [id, conv] of store.entries()) {
-        data[id] = conv;
-      }
-      fs.writeFileSync(HISTORY_FILE, JSON.stringify(data), 'utf8');
-    } catch (err) {
-      console.warn('[STORE] Could not save history to disk:', err.message);
+  _writer.schedule(() => {
+    const data = {};
+    for (const [id, conv] of store.entries()) {
+      data[id] = conv;
     }
-  }, 500);
+    return JSON.stringify(data);
+  });
 }
 
 loadFromDisk();

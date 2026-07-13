@@ -11,6 +11,7 @@
  */
 import fs   from 'fs';
 import path from 'path';
+import { createDebouncedWriter } from '../core/atomicStore.js';
 
 const PROJECTS_FILE = path.join(process.cwd(), '.aqua-projects.json');
 
@@ -34,19 +35,14 @@ function loadFromDisk() {
   }
 }
 
-let saveTimer = null;
+// Phase 3b — atomic + async persistence via the shared primitive.
+const _writer = createDebouncedWriter(PROJECTS_FILE);
 function scheduleSave() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      const data = {};
-      for (const [id, ws] of store.entries()) data[id] = ws;
-      fs.writeFileSync(PROJECTS_FILE, JSON.stringify(data, null, 2), 'utf8');
-    } catch (err) {
-      console.warn('[PROJECT] Could not save projects to disk:', err.message);
-    }
-  }, 500);
+  _writer.schedule(() => {
+    const data = {};
+    for (const [id, ws] of store.entries()) data[id] = ws;
+    return JSON.stringify(data, null, 2);
+  });
 }
 
 loadFromDisk();

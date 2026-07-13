@@ -20,6 +20,7 @@
 import fs   from 'fs';
 import path from 'path';
 import { createEmptyMind } from './mindSchema.js';
+import { createDebouncedWriter } from '../core/atomicStore.js';
 
 const STORE_FILE = path.join(process.cwd(), '.aqua-mind.json');
 
@@ -40,19 +41,15 @@ function loadFromDisk() {
   }
 }
 
-let saveTimer = null;
+// Phase 3b — atomic + async persistence via the shared primitive. Crash-safe
+// (temp+rename) and non-blocking; serialize snapshots at flush time.
+const _writer = createDebouncedWriter(STORE_FILE);
 function scheduleSave() {
-  if (saveTimer) return;
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    try {
-      const data = {};
-      for (const [ownerId, mind] of store.entries()) data[ownerId] = mind;
-      fs.writeFileSync(STORE_FILE, JSON.stringify(data), 'utf8');
-    } catch (err) {
-      console.warn('[MIND] Could not save to disk:', err.message);
-    }
-  }, 500);
+  _writer.schedule(() => {
+    const data = {};
+    for (const [ownerId, mind] of store.entries()) data[ownerId] = mind;
+    return JSON.stringify(data);
+  });
 }
 loadFromDisk();
 
