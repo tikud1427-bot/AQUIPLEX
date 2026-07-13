@@ -30,6 +30,8 @@ import {
   proposeEdit, getProposal, listProposals, applyProposal, rejectProposal, revertProposal,
   serializeProposal,
 } from '../project/editEngine.js';
+import { proposeEditWithRepair } from '../project/autonomousEdit.js';
+import { createCheckpoint, restoreCheckpoint, listCheckpoints, deleteCheckpoint } from '../project/checkpointEngine.js';
 import { whoImports, whatImports } from '../project/dependencyGraph.js';
 import { serializeCallGraph, getCallGraphStats, whoCalls, whatCalls, impactOf, traceFrom, getDefinitions } from '../project/callGraph.js';
 
@@ -301,11 +303,30 @@ router.post('/workspace/:id/patch', (req, res) => {
 // diff → static verify → related-file recommendations. NOTHING is applied.
 
 router.post('/workspace/:id/edit', async (req, res) => {
-  const { instruction } = req.body ?? {};
+  const { instruction, repair, maxAttempts } = req.body ?? {};
   if (!instruction || typeof instruction !== 'string' || !instruction.trim()) {
     return res.status(400).json({ success: false, error: 'Body must include a non-empty "instruction" string' });
   }
   try {
+    // Phase 4a — opt-in autonomous repair. Default (no `repair`) is the exact
+    // single-shot behavior as before. With repair:true, static-verification
+    // failures are fed back to the model and corrected within a bounded loop.
+    if (repair) {
+      const outcome = await proposeEditWithRepair({
+        workspaceId: req.params.id,
+        instruction: instruction.trim(),
+        maxAttempts: Number.isInteger(maxAttempts) ? maxAttempts : undefined,
+      });
+      if (!outcome.proposal) {
+        return res.status(422).json({ success: false, error: 'No usable patch could be produced.', attempts: outcome.attempts });
+      }
+      return res.json({
+        success: true, workspaceId: req.params.id,
+        proposal: serializeProposal(outcome.proposal),
+        repair: { converged: outcome.converged, repaired: outcome.repaired, attemptCount: outcome.attemptCount, attempts: outcome.attempts },
+      });
+    }
+
     const proposal = await proposeEdit({ workspaceId: req.params.id, instruction: instruction.trim() });
     res.json({ success: true, workspaceId: req.params.id, proposal: serializeProposal(proposal) });
   } catch (err) {
@@ -332,6 +353,13 @@ router.get('/workspace/:id/edit/:proposalId', (req, res) => {
 // ── Apply (safe, atomic, conflict-checked) ────────────────────────────────────
 
 router.post('/workspace/:id/edit/:proposalId/apply', (req, res) => {
+  // Phase 4a — opt-in: snapshot the workspace before applying so a bad apply is
+  // rollback-able at the workspace level (beyond single-proposal revert).
+  let checkpoint = null;
+  if (req.body?.checkpoint) {
+    const cp = createCheckpoint(req.params.id, { label: `pre-apply ${req.params.proposalId}` });
+    if (cp.ok) checkpoint = cp.checkpoint;
+  }
   const result = applyProposal(req.params.id, req.params.proposalId);
   if (!result.ok) {
     return res.status(result.conflicts ? 409 : 400).json({
@@ -339,7 +367,31 @@ router.post('/workspace/:id/edit/:proposalId/apply', (req, res) => {
       ...(result.conflicts ? { conflicts: result.conflicts, suggestion: result.suggestion } : {}),
     });
   }
-  res.json({ success: true, workspaceId: req.params.id, proposal: result.proposal, indexStats: result.indexStats });
+  res.json({ success: true, workspaceId: req.params.id, proposal: result.proposal, indexStats: result.indexStats, ...(checkpoint ? { checkpoint } : {}) });
+});
+
+// ── Checkpoints (workspace-level recovery, Phase 4a) ──────────────────────────
+
+router.post('/workspace/:id/checkpoint', (req, res) => {
+  const result = createCheckpoint(req.params.id, { label: req.body?.label });
+  if (!result.ok) return res.status(result.error === 'Workspace not found' ? 404 : 400).json({ success: false, error: result.error });
+  res.json({ success: true, workspaceId: req.params.id, checkpoint: result.checkpoint });
+});
+
+router.get('/workspace/:id/checkpoints', (req, res) => {
+  res.json({ success: true, workspaceId: req.params.id, checkpoints: listCheckpoints(req.params.id) });
+});
+
+router.post('/workspace/:id/checkpoint/:checkpointId/restore', (req, res) => {
+  const result = restoreCheckpoint(req.params.id, req.params.checkpointId);
+  if (!result.ok) return res.status(result.error === 'Checkpoint not found' ? 404 : 400).json({ success: false, error: result.error });
+  res.json({ success: true, workspaceId: req.params.id, restored: result.restored, indexStats: result.indexStats });
+});
+
+router.delete('/workspace/:id/checkpoint/:checkpointId', (req, res) => {
+  const result = deleteCheckpoint(req.params.id, req.params.checkpointId);
+  if (!result.ok) return res.status(404).json({ success: false, error: result.error });
+  res.json({ success: true, workspaceId: req.params.id, deleted: result.deleted });
 });
 
 // ── Reject ────────────────────────────────────────────────────────────────────
