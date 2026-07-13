@@ -129,7 +129,11 @@ describe('shouldIgnore', () => {
   test('lock file',    () => assert.ok(shouldIgnore('package-lock.json')));
   test('png file',     () => assert.ok(shouldIgnore('logo.png')));
   test('src/app.js',   () => assert.ok(!shouldIgnore('src/app.js')));
-  test('.env file',    () => assert.ok(!shouldIgnore('.env')));
+  // SECURITY (Phase 1): .env now MUST be ignored — it was previously ingested
+  // and its secrets leaked into the index + into third-party LLM prompts.
+  // Template files carry no real values and stay ingestable.
+  test('.env file (secret — ignored)',  () => assert.ok(shouldIgnore('.env')));
+  test('.env.example (template — kept)', () => assert.ok(!shouldIgnore('.env.example')));
   test('readme',       () => assert.ok(!shouldIgnore('README.md')));
 });
 

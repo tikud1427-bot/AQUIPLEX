@@ -70,6 +70,7 @@ import { orchestrate, formatOrchestratorLog } from '../orchestrator/toolOrchestr
 import { getAgent } from '../intelligence/agentRegistry.js';
 import '../intelligence/verificationAgent.js'; // side-effect: registers the 'verification' agent on load
 import '../intelligence/debateAgent.js';       // side-effect: registers the 'debate' agent on load (Phase 6)
+import '../intelligence/reasoningAgent.js';    // side-effect: registers the 'reasoning' agent on load (Phase 3)
 import '../search/searchAgent.js';             // side-effect: registers the 'web_search' agent on load
 import { logSearchEvent, formatSearchDecisionLog } from '../core/observability.js';
 import { computeContextBudget, optimizeContext } from '../core/contextOptimizer.js';
@@ -275,11 +276,13 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   logPlanEvent(ctx, { ...plan, mode: reasoning.mode });
 
   // ── 2c. Internal Intelligence Engine ─────────────────────────────────────────
-  const intelligence = runIntelligencePipeline({
+  const intelligence = await runIntelligencePipeline({
     taskType,
     complexity: plan.complexity,
     confidence,
     userMessage,
+    requestId,
+    conversationId,
   });
   logIntelligenceEvent(ctx, intelligence);
 
@@ -470,6 +473,9 @@ function buildResponsePayload({
       pipeline:       intelligence.plan.pipeline.map(s => s.name),
       strategy:       intelligence.reasoning.strategy ?? null,
       criticFocus:    intelligence.critic.focusRisks ?? [],
+      reasoningPass:  intelligence.reasoningPass?.ran
+        ? { ran: true, provider: intelligence.reasoningPass.provider, latencyMs: intelligence.reasoningPass.latencyMs }
+        : { ran: false },
     },
 
     verification: {

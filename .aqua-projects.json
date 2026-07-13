@@ -5088,5 +5088,57 @@
       ],
       "warnings": []
     }
+  },
+  "51791f95-d455-4607-ba38-513da695619d": {
+    "id": "51791f95-d455-4607-ba38-513da695619d",
+    "ownerId": null,
+    "createdAt": 1783920985636,
+    "meta": {
+      "name": "test"
+    },
+    "projectType": "nodejs",
+    "files": [],
+    "structure": {},
+    "indexStatus": "pending",
+    "summary": "test project",
+    "stats": {
+      "files": 0,
+      "languages": {}
+    },
+    "indexedAt": null
+  },
+  "f19d7195-7a75-4884-8a12-041ab616a212": {
+    "id": "f19d7195-7a75-4884-8a12-041ab616a212",
+    "ownerId": null,
+    "createdAt": 1783920985648,
+    "meta": {
+      "name": "my-project"
+    },
+    "projectType": null,
+    "files": [],
+    "structure": {},
+    "indexStatus": "pending",
+    "summary": null,
+    "stats": {
+      "files": 0,
+      "languages": {}
+    },
+    "indexedAt": null
+  },
+  "6de3e568-f569-47ef-8a64-015ea7df9bcd": {
+    "id": "6de3e568-f569-47ef-8a64-015ea7df9bcd",
+    "ownerId": null,
+    "createdAt": 1783920985649,
+    "meta": {},
+    "projectType": "python",
+    "files": [],
+    "structure": {},
+    "indexStatus": "indexed",
+    "summary": null,
+    "stats": {
+      "files": 0,
+      "languages": {}
+    },
+    "indexedAt": null
   }
 }

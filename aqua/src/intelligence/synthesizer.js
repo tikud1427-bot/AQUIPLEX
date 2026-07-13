@@ -21,21 +21,41 @@
  */
 
 /**
- * @param {{ plan: object, reasoning: object, critic: object, taskType: string }} input
+ * @param {{ plan: object, reasoning: object, critic: object, taskType: string, analysis?: string }} input
+ *   analysis (Phase 3): the REAL reasoning pass output from reasoningAgent.js,
+ *   present only on turns the pipeline deemed worth a model call. When present
+ *   it REPLACES the generic "work through these stages" template line with the
+ *   actual worked-through analysis of this specific request — the answering
+ *   step then reasons WITH a real deliberation in front of it. When absent the
+ *   brief is byte-identical to pre-Phase-3 (deterministic template).
  * @returns {{ active: boolean, text: string, raw: object }}
  */
-export function synthesize({ plan, reasoning, critic, taskType }) {
+export function synthesize({ plan, reasoning, critic, taskType, analysis = '' }) {
   if (!plan?.active || !reasoning?.active) {
     return { active: false, text: '', raw: { plan, reasoning, critic, taskType } };
   }
 
   const stageNames = plan.pipeline.map(s => s.name).join(' → ');
+  const hasAnalysis = typeof analysis === 'string' && analysis.trim().length > 0;
+
   const lines = [
     '[Internal Reasoning Brief]',
     `Task: ${taskType}. ${reasoning.directive}`,
-    `Work through these stages internally before answering: ${stageNames}.`,
-    `Keep in mind: ${reasoning.checklist.join('; ')}.`,
   ];
+
+  if (hasAnalysis) {
+    // Real reasoning pass ran — inject the actual analysis instead of a
+    // generic "think through these stages" instruction.
+    lines.push(
+      'A preliminary analysis of this request was completed. Use it, verify it, and go beyond it — do not just restate it:',
+      analysis.trim(),
+    );
+  } else {
+    lines.push(
+      `Work through these stages internally before answering: ${stageNames}.`,
+      `Keep in mind: ${reasoning.checklist.join('; ')}.`,
+    );
+  }
 
   if (critic?.active) {
     lines.push(critic.directive);
@@ -44,6 +64,6 @@ export function synthesize({ plan, reasoning, critic, taskType }) {
   return {
     active: true,
     text:   lines.join('\n'),
-    raw:    { plan, reasoning, critic, taskType },
+    raw:    { plan, reasoning, critic, taskType, reasoningPassRan: hasAnalysis },
   };
 }

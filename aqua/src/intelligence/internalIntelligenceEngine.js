@@ -31,16 +31,49 @@ import { createPlan }      from './planner.js';
 import { runReasoning }    from './reasoningEngine.js';
 import { reviewReasoning } from './critic.js';
 import { synthesize }      from './synthesizer.js';
+import { getAgent }        from './agentRegistry.js';
+import { LOW_CONFIDENCE_THRESHOLD } from '../orchestrator/verificationStrategy.js';
 
 /**
- * @param {{ taskType: string, complexity: string, confidence?: number, userMessage: string }} input
- * @returns {{ plan: object, reasoning: object, critic: object, synthesis: object }}
+ * Whether this turn earns a REAL model reasoning pass (Phase 3) vs the
+ * deterministic brief. Same gate the verification loop uses for a deep review:
+ * high complexity, or a shaky classification. Deliberately conservative — the
+ * pass is a pre-generation model call, so medium/low traffic never pays for it.
  */
-export function runIntelligencePipeline({ taskType, complexity, confidence = 1.0, userMessage = '' }) {
+function warrantsReasoningPass(complexity, confidence) {
+  if (complexity === 'high') return true;
+  if (typeof confidence === 'number' && confidence < LOW_CONFIDENCE_THRESHOLD) return true;
+  return false;
+}
+
+/**
+ * @param {{ taskType: string, complexity: string, confidence?: number, userMessage: string, requestId?: string, conversationId?: string }} input
+ * @returns {Promise<{ plan: object, reasoning: object, critic: object, synthesis: object, reasoningPass: object }>}
+ *
+ * ASYNC as of Phase 3: when a turn warrants it (see warrantsReasoningPass) and
+ * the 'reasoning' agent is registered, a real model reasoning pass runs and its
+ * analysis is folded into the synthesized brief. Otherwise this is the exact
+ * deterministic pipeline as before — no model call, no added latency. Fails
+ * open: a failed/absent pass falls back to the deterministic brief.
+ */
+export async function runIntelligencePipeline({ taskType, complexity, confidence = 1.0, userMessage = '', requestId, conversationId }) {
   const plan      = createPlan({ taskType, complexity, confidence });
   const reasoning = runReasoning(plan, userMessage);
   const critic    = reviewReasoning(plan, reasoning);
-  const synthesis = synthesize({ plan, reasoning, critic, taskType });
 
-  return { plan, reasoning, critic, synthesis };
+  // Phase 3 — real reasoning pass, gated + fail-open.
+  let reasoningPass = { ran: false };
+  const reasoningAgent = getAgent('reasoning');
+  if (plan.active && reasoningAgent && warrantsReasoningPass(complexity, confidence)) {
+    reasoningPass = await reasoningAgent.run({
+      userMessage, plan, reasoning, taskType, requestId, conversationId,
+    });
+  }
+
+  const synthesis = synthesize({
+    plan, reasoning, critic, taskType,
+    analysis: reasoningPass.ran ? reasoningPass.analysis : '',
+  });
+
+  return { plan, reasoning, critic, synthesis, reasoningPass };
 }
