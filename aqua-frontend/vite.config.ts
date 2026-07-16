@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // P0 (cache) — one id per build, stamped into BOTH the bundle (__BUILD_ID__)
 // and dist/index.html (<meta name="aqua-build">). The server exposes the html
@@ -24,7 +25,52 @@ function buildStamp() {
 // https://vite.dev/config/
 export default defineConfig({
   base: '/aqua/',
-  plugins: [react(), tailwindcss(), buildStamp()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    buildStamp(),
+    VitePWA({
+      // App is mounted at /aqua/ (see `base` above) — plugin derives
+      // start_url/scope/sw scope from it automatically.
+      registerType: 'autoUpdate',
+      injectRegister: 'auto',
+      includeAssets: [
+        'favicon.ico',
+        'favicon.svg',
+        'favicon-96x96.png',
+        'apple-touch-icon.png',
+      ],
+      manifest: {
+        id: '/aqua/',
+        name: 'AQUA — AI Assistant for AQUIPLEX',
+        short_name: 'AQUA',
+        description: 'AQUA — the AI assistant for AQUIPLEX.',
+        start_url: '/aqua/',
+        scope: '/aqua/',
+        display: 'standalone',
+        orientation: 'portrait-primary',
+        theme_color: '#0F172A',
+        background_color: '#0F172A',
+        icons: [
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        // Precache built static assets only — no runtime caching of
+        // API/auth/chat endpoints.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+        navigateFallback: '/aqua/index.html',
+        navigateFallbackDenylist: [/^\/(?!aqua\/)/],
+        cleanupOutdatedCaches: true,
+      },
+      devOptions: {
+        enabled: false,
+      },
+    }),
+  ],
   define: {
     __BUILD_ID__: JSON.stringify(BUILD_ID),
   },
