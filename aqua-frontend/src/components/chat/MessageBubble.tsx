@@ -8,6 +8,7 @@ import { MessageActions } from './MessageActions';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { ResponseConfidence } from './ResponseConfidence';
 import { PatchCard } from '@/components/patch/PatchCard';
+import { ArtifactCard } from '@/components/artifact/ArtifactCard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -181,6 +182,15 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: { 
             <SourceCards sources={message.sources} />
 
             {message.patch && !isStreaming && <PatchCard patch={message.patch} messageId={message.id} />}
+
+            {(message.artifact || message.artifactPlan || message.artifactProgress) && (
+              <ArtifactCard
+                artifact={message.artifact}
+                plan={message.artifactPlan}
+                progress={message.artifactProgress}
+                streaming={isStreaming || message.status === 'sending'}
+              />
+            )}
 
             {message.stoppedByUser && (
               <div className="mt-1.5 flex items-center gap-1.5 text-[12px] text-foreground-secondary/70">

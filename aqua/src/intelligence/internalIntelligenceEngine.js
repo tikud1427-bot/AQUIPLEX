@@ -56,7 +56,7 @@ function warrantsReasoningPass(complexity, confidence) {
  * deterministic pipeline as before — no model call, no added latency. Fails
  * open: a failed/absent pass falls back to the deterministic brief.
  */
-export async function runIntelligencePipeline({ taskType, complexity, confidence = 1.0, userMessage = '', requestId, conversationId }) {
+export async function runIntelligencePipeline({ taskType, complexity, confidence = 1.0, userMessage = '', requestId, conversationId, skipReasoningPass = false }) {
   const plan      = createPlan({ taskType, complexity, confidence });
   const reasoning = runReasoning(plan, userMessage);
   const critic    = reviewReasoning(plan, reasoning);
@@ -64,7 +64,14 @@ export async function runIntelligencePipeline({ taskType, complexity, confidence
   // Phase 3 — real reasoning pass, gated + fail-open.
   let reasoningPass = { ran: false };
   const reasoningAgent = getAgent('reasoning');
-  if (plan.active && reasoningAgent && warrantsReasoningPass(complexity, confidence)) {
+  if (skipReasoningPass) {
+    // The caller already knows this turn's generation step will be replaced
+    // wholesale (e.g. the Artifact Engine builds a file instead of prose), so
+    // the pass's analysis would be produced and then discarded. Skipping saves
+    // a full model call and its latency. The deterministic stages above still
+    // run — they are pure and free.
+    reasoningPass = { ran: false, skipped: true, reason: 'generation replaced by a specialist engine' };
+  } else if (plan.active && reasoningAgent && warrantsReasoningPass(complexity, confidence)) {
     reasoningPass = await reasoningAgent.run({
       userMessage, plan, reasoning, taskType, requestId, conversationId,
     });

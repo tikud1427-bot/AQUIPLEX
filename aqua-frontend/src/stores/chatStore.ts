@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { sendChatMessage } from '@/api/chat';
 import { streamChatMessage, StreamUnsupportedError } from '@/api/chatStream';
 import { getConversation } from '@/api/conversations';
+import { listArtifacts, getArtifact } from '@/api/artifacts';
+import { useArtifactsStore } from './artifactsStore';
 import { normalizeError, isCancel } from '@/api/client';
 import { refreshMind } from './mindStore';
 import { useConversationStore } from './conversationStore';
@@ -122,6 +124,9 @@ export const useChatStore = create<ChatState>((set, get) => {
                 finishReason: res.finishReason,
                 diagnostics: toDiagnostics(res),
                 patch: res.patch ?? m.patch,
+                artifact: res.artifact ?? m.artifact,
+                artifactPlan: undefined,
+                artifactProgress: undefined,
                 sources: res.search?.sources?.length ? res.search.sources : m.sources,
                 workspace: res.project
                   ? {
@@ -238,6 +243,21 @@ export const useChatStore = create<ChatState>((set, get) => {
             // Patch proposal arrives before the explanation text — attach it
             // immediately so the diff preview renders alongside the answer.
             if (isLive()) patchMsg({ patch: proposal });
+          },
+          onArtifactPlan: (plan) => {
+            // Plan lands before content builds — the card shows the outline
+            // ("3 files · md") while per-file generation runs.
+            if (isLive()) patchMsg({ artifactPlan: plan });
+          },
+          onArtifactProgress: (progress) => {
+            if (isLive()) patchMsg({ artifactProgress: progress });
+          },
+          onArtifact: (manifest) => {
+            // Stored manifest arrives just before the summary text — attach
+            // so the Download card renders the moment the answer lands.
+            if (isLive()) patchMsg({ artifact: manifest });
+            // Live insert into the panel if it's open (no-op otherwise).
+            useArtifactsStore.getState().upsertFromManifest(manifest);
           },
           onDone: (payload) => {
             doneReceived = true;
@@ -382,6 +402,48 @@ export const useChatStore = create<ChatState>((set, get) => {
           status: 'complete',
         }));
         set({ messages, loadingHistory: false });
+
+        // ── Artifact rehydration (P1) ────────────────────────────────────────
+        // Persisted messages carry no artifact linkage (ServerMessage is
+        // role/content/ts only), but manifests carry conversationId +
+        // createdAt, and the backend appends the assistant summary message
+        // immediately after the store write. Attach each artifact to the
+        // assistant message whose ts is CLOSEST AFTER createdAt within 60s —
+        // a documented heuristic; the P4 Artifacts panel is the durable,
+        // linkage-free home. Fire-and-forget: history renders instantly,
+        // cards pop in when the fetches land. Guarded against the user
+        // switching conversations mid-flight.
+        void (async () => {
+          try {
+            const { artifacts } = await listArtifacts({ conversationId: id });
+            if (!artifacts.length || get().conversationId !== id) return;
+            const manifests = await Promise.all(
+              artifacts.map((a) => getArtifact(a.id).then((r) => r.artifact).catch(() => null)),
+            );
+            if (get().conversationId !== id) return;
+            set((s) => {
+              const next = [...s.messages];
+              for (const manifest of manifests) {
+                if (!manifest) continue;
+                let best = -1;
+                let bestDelta = Infinity;
+                for (let i = 0; i < next.length; i++) {
+                  const m = next[i];
+                  if (m.role !== 'assistant' || m.artifact) continue;
+                  const delta = m.ts - manifest.createdAt;
+                  if (delta >= -2_000 && delta < 60_000 && Math.abs(delta) < bestDelta) {
+                    best = i;
+                    bestDelta = Math.abs(delta);
+                  }
+                }
+                if (best !== -1) next[best] = { ...next[best], artifact: manifest };
+              }
+              return { messages: next };
+            });
+          } catch {
+            /* rehydration is best-effort — history already rendered */
+          }
+        })();
       } catch (err) {
         set({ error: normalizeError(err).message, loadingHistory: false });
       }

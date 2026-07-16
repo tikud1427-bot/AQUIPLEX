@@ -319,6 +319,12 @@ aquaEngine.use((req, res, next) => {
   if (req.method === "POST" && req.path.startsWith("/upload")) {
     return usageGuard("chat_with_file")(req, res, next);
   }
+  // Artifact Engine P5 — edit/regenerate re-run generation on an existing
+  // artifact; metered at the chat_with_file tier (chat-triggered artifact
+  // CREATION already rides the chat_message guard above).
+  if (req.method === "POST" && /^\/artifacts\/[^/]+\/(edit|regenerate)$/.test(req.path)) {
+    return usageGuard("chat_with_file")(req, res, next);
+  }
   next();
 });
 

@@ -47,6 +47,12 @@ export interface UiMessage {
    *  SSE `search` event / `done` payload). Renders as source cards below the
    *  answer; internal `[n]` markers are stripped from the text itself. */
   sources?: SearchSource[];
+  /** Artifact Engine P1 — the generated artifact attached to this turn. */
+  artifact?: import('./artifact').ArtifactManifest;
+  /** Transient while streaming: plan outline (SSE `artifact_plan`). */
+  artifactPlan?: import('./artifact').StreamArtifactPlanEvent;
+  /** Transient while streaming: per-file build progress (SSE `artifact_progress`). */
+  artifactProgress?: import('./artifact').StreamArtifactProgressEvent;
   /** Only present on completed assistant messages. */
   diagnostics?: MessageDiagnostics;
   /** Text-file attachments inlined into the outgoing message (user turns only). */

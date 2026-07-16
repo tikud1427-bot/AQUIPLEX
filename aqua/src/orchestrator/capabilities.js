@@ -27,6 +27,7 @@
 import { registerCapability } from './capabilityRegistry.js';
 import { getAgent }            from '../intelligence/agentRegistry.js';
 import { decideWebSearch }     from '../search/searchDecision.js';
+import { detectArtifactIntent } from '../artifacts/artifactIntent.js';
 
 // Project/workspace-grounded capabilities only matter if a workspace is
 // actually attached to the request — no point reporting them "enabled"
@@ -223,6 +224,39 @@ define('streaming', {
     confidence: 0.05,
     reason: 'chat.js responds via a single JSON payload today, not SSE — reported for planning purposes only.',
   }),
+  reasonEnabled: () => '', reasonDisabled: () => '',
+});
+
+// ── Generation ────────────────────────────────────────────────────────────────
+
+define('artifact_generation', {
+  label: 'Artifact Generation', group: 'generation', cost: 'high', latency: 'high',
+  // Honest two-part detection, exactly the web_search pattern:
+  //   1. the 'artifact' agent is registered (src/artifacts/engine.js —
+  //      chat.js imports it for its side effect), AND
+  //   2. detectArtifactIntent() — pure, deterministic, zero-LLM
+  //      (src/artifacts/artifactIntent.js) — says the message asks for a
+  //      real downloadable file. orchestrate()'s no-LLM/no-I/O invariant
+  //      holds: the detector is regex scoring, nothing more.
+  // Reported for observability — chat.js branches on the SAME detector
+  // directly, so what the orchestrator logs is what actually happened.
+  override: (ctx) => {
+    if (!getAgent('artifact')) {
+      return {
+        enabled: false,
+        confidence: 0.05,
+        reason: 'No artifact agent registered (see src/artifacts/engine.js) — reported for planning purposes only.',
+      };
+    }
+    const intent = detectArtifactIntent(ctx.userMessage ?? '');
+    return {
+      enabled: intent.wants === true,
+      confidence: intent.wants ? intent.confidence : 0.1,
+      reason: intent.wants
+        ? `Artifact requested (${intent.format ?? 'format via planner'}): ${intent.reason}`
+        : `No artifact intent: ${intent.reason}`,
+    };
+  },
   reasonEnabled: () => '', reasonDisabled: () => '',
 });
 

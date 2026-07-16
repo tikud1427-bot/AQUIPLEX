@@ -12,6 +12,7 @@
  *   /conversations     — conversation history (per-user scoped)
  *   /memory            — long-term memory management
  *   /upload            — universal upload (files, archives, media)
+ *   /artifacts         — Universal Artifact Engine (generated files: list/download/manage)
  *
  * User identity: the platform sets req.aquaUserId (from the session) before
  * this router runs. Routes read it to scope conversations and memory.
@@ -24,6 +25,7 @@ import projectRoute       from "./src/routes/project.js";
 import conversationsRoute from "./src/routes/conversations.js";
 import memoryRoute        from "./src/routes/memory.js";
 import uploadRoute        from "./src/routes/upload.js";
+import artifactsRoute     from "./src/routes/artifacts.js";
 import mindRoute          from "./src/mind/mindRoutes.js";
 import { runStartupValidation } from "./src/core/startupValidation.js";
 import { migrateLegacyMemory }  from "./src/memory/migrate.js";
@@ -51,6 +53,7 @@ router.use("/project",         projectRoute);
 router.use("/conversations",   conversationsRoute);
 router.use("/memory",          memoryRoute);
 router.use("/upload",          uploadRoute);
+router.use("/artifacts",       artifactsRoute); // Universal Artifact Engine (P1)
 router.use("/mind",            mindRoute);   // persistent cognitive model (Mind layer)
 
 // JSON 404 for unknown engine routes (never fall through to platform HTML 404)

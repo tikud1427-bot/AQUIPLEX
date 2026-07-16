@@ -10,6 +10,9 @@ import type {
   StreamSearchEvent,
   StreamErrorEvent,
   PatchProposal,
+  ArtifactManifest,
+  StreamArtifactPlanEvent,
+  StreamArtifactProgressEvent,
 } from '@/types';
 
 /**
@@ -39,6 +42,12 @@ export interface StreamHandlers {
   onReplace?: (text: string) => void;
   /** Day 4 — the turn produced a patch-first edit proposal (arrives before the explanation text). */
   onPatch?: (proposal: PatchProposal) => void;
+  /** Artifact Engine P1 — validated plan outline, before any content builds. */
+  onArtifactPlan?: (plan: StreamArtifactPlanEvent) => void;
+  /** Artifact Engine P1 — one build step finished (per-file progress). */
+  onArtifactProgress?: (progress: StreamArtifactProgressEvent) => void;
+  /** Artifact Engine P1 — the stored artifact's public manifest (arrives before the summary text). */
+  onArtifact?: (manifest: ArtifactManifest) => void;
   onDone?: (payload: ChatSuccessResponse) => void;
   onError?: (e: StreamErrorEvent) => void;
 }
@@ -110,6 +119,9 @@ export async function streamChatMessage(
       case 'token':           handlers.onToken?.((data as { t: string }).t); break;
       case 'replace':         handlers.onReplace?.((data as { text: string }).text); break;
       case 'patch':           handlers.onPatch?.(data as PatchProposal); break;
+      case 'artifact_plan':     handlers.onArtifactPlan?.(data as StreamArtifactPlanEvent); break;
+      case 'artifact_progress': handlers.onArtifactProgress?.(data as StreamArtifactProgressEvent); break;
+      case 'artifact':          handlers.onArtifact?.(data as ArtifactManifest); break;
       case 'done':            handlers.onDone?.(data as ChatSuccessResponse); break;
       case 'error':           handlers.onError?.(data as StreamErrorEvent); break;
       default: break; // unknown event — forward-compatible, ignore

@@ -5,6 +5,7 @@ import { Header } from './Header';
 import { MobileSidebarDrawer } from './MobileSidebarDrawer';
 import { ToastViewport } from '@/components/feedback/ToastViewport';
 import { SettingsDialog } from '@/components/settings/SettingsDialog';
+import { ArtifactsPanel } from '@/components/artifact/ArtifactsPanel';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useUiStore } from '@/stores/uiStore';
 import { useChatStore } from '@/stores/chatStore';
@@ -51,6 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <SettingsDialog />
+      <ArtifactsPanel />
       <ToastViewport />
     </TooltipProvider>
   );

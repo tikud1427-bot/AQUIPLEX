@@ -134,8 +134,10 @@ export interface ChatSuccessResponse {
   search?: SearchGrounding;
 
   /** Day 4 — present when the turn produced a patch-first edit proposal. */
-  mode?: 'edit';
+  mode?: 'edit' | 'artifact';
   patch?: import('./patch').PatchProposal;
+  /** Artifact Engine P1 — present when the turn generated a downloadable artifact. */
+  artifact?: import('./artifact').ArtifactManifest;
 }
 
 // ── Streaming (POST /chat/stream — Server-Sent Events) ─────────────────────

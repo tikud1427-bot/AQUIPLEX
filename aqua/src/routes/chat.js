@@ -86,6 +86,11 @@ import { formatAttachmentsForPrompt, getAttachments }       from '../upload/atta
 import { proposeEdit, serializeProposal }                   from '../project/editEngine.js';
 import { getIndex }                                         from '../project/projectIndex.js';
 import { detectIdentityIntent, answerFromIdentity, isRefusal } from '../identity/index.js';
+import { detectArtifactIntent, detectArtifactEditIntent, MIN_ARTIFACT_CONFIDENCE } from '../artifacts/artifactIntent.js';
+import { editArtifact } from '../artifacts/editEngine.js';
+import { publicManifest, composeArtifactEditSummary } from '../artifacts/engine.js';
+import { listArtifacts as listStoredArtifacts } from '../artifacts/artifactStore.js';
+import '../artifacts/engine.js';               // side-effect: registers the 'artifact' agent on load (Artifact Engine P1)
 
 const router = express.Router();
 
@@ -190,6 +195,151 @@ function buildEditResponsePayload({ requestId, conversationId, isNew, proposal, 
   };
 }
 
+// ── Universal Artifact Engine (P1) ───────────────────────────────────────────
+// Rollback switch: ARTIFACTS_ENABLED=false turns the branch off — every
+// request takes today's exact path. Default ON.
+const ARTIFACTS_ENABLED = process.env.ARTIFACTS_ENABLED !== 'false';
+
+/**
+ * done/response payload for an artifact turn — mirrors
+ * buildEditResponsePayload field-for-field so every existing client renders
+ * it without changes; the ONLY additions are mode:'artifact' and the
+ * `artifact` manifest. recordOutcome is deliberately skipped (the learning
+ * ledger models the conversational pipeline; artifact turns bypass it) —
+ * the same call the edit branch already skips.
+ */
+function buildArtifactResponsePayload({ requestId, conversationId, isNew, prep, result, workspaceId }) {
+  const { manifest, summaryText, providers, latencyMs } = result;
+  return {
+    success: true,
+    requestId,
+    conversationId,
+    isNewConversation: isNew,
+    mode: 'artifact',
+
+    provider:      providers[providers.length - 1] ?? 'unknown',
+    providerScore: 0,
+    taskType:      prep.taskType,
+    taskLabels:    [prep.taskType, 'artifact'],
+    confidence:    prep.confidence,
+    promptModules: ['artifact-engine'],
+    latencyMs,
+    fallbackChain: [],
+    answer: summaryText,
+    truncated:     false,
+    finishReason:  'stop',
+
+    memory:  { extracted: prep.extractedFacts?.length ?? 0, injected: prep.relevantFacts?.length ?? 0, facts: [] },
+    plan:    { complexity: 'complex', multiStep: true, reasoningMode: 'artifact',
+               contextTokensBefore: prep.contextStats?.tokensBefore ?? 0,
+               contextTokensAfter:  prep.contextStats?.tokensAfter  ?? 0 },
+    intelligence: { active: false, pipeline: [], strategy: 'artifact-generation', criticFocus: [] },
+    verification: { warranted: false, reason: 'artifact static validation', ran: true, passed: true, revised: false },
+    orchestration: {
+      profile: 'artifact', profileLabel: 'Artifact generation',
+      capabilitiesEnabled: ['artifact_plan', 'artifact_build', 'artifact_validate', 'artifact_package', 'artifact_store'],
+      capabilitiesSkipped: [], estimatedCost: 'high', estimatedLatency: 'high',
+      verificationEnabled: false, multiLabel: [prep.taskType], tags: ['artifact'],
+    },
+
+    ...(workspaceId ? {
+      project: { workspaceId, contextInjected: !!prep.projectContext, filesReferenced: prep.projectFiles ?? [] },
+    } : {}),
+
+    artifact: manifest,
+  };
+}
+
+/**
+ * Shared artifact-turn runner for /chat and /chat/stream. Runs AFTER
+ * prepareTurn (the engine grounds the plan/builder in the turn's memory,
+ * attachments, and search results) and REPLACES only the generation step.
+ * Returns { result, payload } on success; THROWS on any failure so the
+ * caller applies the edit-branch fallback contract (log + normal pipeline —
+ * a broken artifact turn becomes a chat answer, never a failed request).
+ */
+async function runArtifactTurn({
+  userMessage, prep, intent, conversationId, workspaceId, requestId, isNew,
+  clientSignal, onEvent,
+}) {
+  const agent = getAgent('artifact');
+  if (!agent) return null; // engine module failed to load — silent fallback
+  const result = await agent.run({
+    userMessage, prep, intent,
+    ownerId: prep.memoryOwner ?? null,
+    conversationId, workspaceId: workspaceId ?? null, requestId,
+    clientSignal, onEvent,
+  });
+  addMessage(conversationId, 'user',      userMessage);
+  addMessage(conversationId, 'assistant', result.summaryText);
+  const payload = buildArtifactResponsePayload({ requestId, conversationId, isNew, prep, result, workspaceId });
+  return { result, payload };
+}
+
+/**
+ * P5 — edit-turn runner. Fires only when the message reads as a
+ * modification AND the conversation actually has an artifact to modify
+ * (newest wins; owner-scoped exactly like the routes). Returns null when
+ * there is no target — the caller falls through to the CREATE branch and
+ * then the normal pipeline. Throws on pipeline failure (edit-branch
+ * fallback contract).
+ */
+async function runArtifactEditTurn({
+  userMessage, prep, conversationId, workspaceId, requestId, isNew,
+  onEvent,
+}) {
+  const editIntent = detectArtifactEditIntent(userMessage);
+  if (!editIntent.wants) return null;
+
+  const candidates = listStoredArtifacts({
+    ownerId: prep.memoryOwner ?? null,
+    conversationId,
+  });
+  if (!candidates.length) return null; // nothing to edit — not our turn
+  const target = candidates[0];        // newest first
+  console.log(`[ARTIFACT] edit turn → id=${target.id} "${target.title}" (${editIntent.reason})`);
+
+  const r = await editArtifact({
+    artifactId: target.id,
+    instruction: userMessage,
+    requestId, conversationId,
+    onEvent,
+  });
+
+  const pub = publicManifest(r.manifest);
+  const summaryText = composeArtifactEditSummary(pub, r.changed);
+  addMessage(conversationId, 'user',      userMessage);
+  addMessage(conversationId, 'assistant', summaryText);
+  const payload = buildArtifactResponsePayload({
+    requestId, conversationId, isNew, prep, workspaceId,
+    result: { manifest: pub, summaryText, providers: r.providers, latencyMs: r.latencyMs },
+  });
+  return { result: { manifest: pub, summaryText }, payload };
+}
+
+/**
+ * P6.1 — is this turn going to be handled by the Artifact Engine?
+ *
+ * Pure and free (regex only), so it can run BEFORE prepareTurn and let the
+ * expensive pre-generation reasoning pass be skipped for a turn whose
+ * generation step gets replaced anyway.
+ *
+ * NOTE ON PRIORITY: the artifact branch has never consulted classifyTask() —
+ * a message classified 'planning' still takes the artifact path. That
+ * classification only ranks providers (planning-strong models plan better).
+ * What the classification DID cost was a discarded reasoning pass; this hint
+ * removes that cost without coupling the two systems.
+ */
+function detectArtifactWork(userMessage) {
+  if (!ARTIFACTS_ENABLED) return { create: null, edit: false };
+  const create = detectArtifactIntent(userMessage);
+  const edit   = detectArtifactEditIntent(userMessage);
+  return {
+    create: create.wants && create.confidence >= MIN_ARTIFACT_CONFIDENCE ? create : null,
+    edit:   edit.wants === true,
+  };
+}
+
 // Repo-intent override (additive): whole-repo questions ("explain this
 // repository", "where is authentication") often classify as conversation/
 // simple_qa, whose profiles skip project_retrieval — leaving the model
@@ -206,7 +356,7 @@ const REPO_INTENT_RE = /\b(repo(sitory)?|codebase|this project|the project|archi
  * provider calls. Both call sites (`await prepareTurn(...)`) are inside
  * async handlers in this file — no external caller exists.
  */
-async function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, ctx, requestId, onStage = () => {} }) {
+async function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, ctx, requestId, onStage = () => {}, skipReasoningPass = false }) {
   // ── 1. Resolve the ONE memory owner (unified engine) ────────────────────────
   // Platform user identity when present (cross-conversation, cross-device),
   // else this conversation as a dev/standalone fallback (adopted into the
@@ -284,6 +434,11 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
     userMessage,
     requestId,
     conversationId,
+    // Artifact turns replace generation entirely — the reasoning pass's
+    // analysis would be built and thrown away. classifyTask() still labels
+    // these 'planning' (correct: it drives provider ranking), so the SKIP is
+    // driven by the pure artifact detector, not by the classifier.
+    skipReasoningPass,
   });
   logIntelligenceEvent(ctx, intelligence);
 
@@ -600,12 +755,38 @@ router.post('/', async (req, res) => {
       }
     }
 
-    const prep = await prepareTurn({ userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId });
+    const artifactWork = detectArtifactWork(userMessage);
+    const prep = await prepareTurn({
+      userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId,
+      skipReasoningPass: !!(artifactWork.create || artifactWork.edit),
+    });
     const {
       taskType, confidence, orchestration, plan, reasoning, intelligence,
       extractedFacts, relevantFacts, projectContext, projectFiles,
       systemPrompt, promptModules, messages, contextStats,
     } = prep;
+
+    // ── Universal Artifact Engine branch (P1 create / P5 edit) ─────────────────
+    // After prepareTurn (grounding), before generation (which it replaces).
+    // Edit is checked FIRST — "change slide 5" must never mint a new deck.
+    // Any failure falls back to the normal pipeline — edit-branch contract.
+    if (ARTIFACTS_ENABLED) {
+      try {
+        const editTurn = await runArtifactEditTurn({ userMessage, prep, conversationId, workspaceId, requestId, isNew, onEvent: () => {} });
+        if (editTurn) return res.json(editTurn.payload);
+      } catch (err) {
+        console.warn(`[ARTIFACT] edit failed, falling back to chat pipeline (${err.code ?? err.name ?? 'ERROR'}): ${err.message}`);
+      }
+      const artifactIntent = artifactWork.create;
+      if (artifactIntent) {
+        try {
+          const art = await runArtifactTurn({ userMessage, prep, intent: artifactIntent, conversationId, workspaceId, requestId, isNew });
+          if (art) return res.json(art.payload);
+        } catch (err) {
+          console.warn(`[ARTIFACT] falling back to chat pipeline (${err.code ?? err.name ?? 'ERROR'}): ${err.message}`);
+        }
+      }
+    }
 
     // ── 8. Generate — router handles ranking + fallback + circuit breaker ──────
     const result = await generateText(
@@ -770,9 +951,11 @@ router.post('/stream', async (req, res) => {
 
     // Pipeline stages stream to the client AS THEY START — every stage event
     // corresponds to real work beginning, never a scripted animation.
+    const artifactWork = detectArtifactWork(userMessage);
     const prep = await prepareTurn({
       userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId,
       onStage: (id, label) => send('stage', { id, label }),
+      skipReasoningPass: !!(artifactWork.create || artifactWork.edit),
     });
     const {
       taskType, confidence, orchestration, plan, reasoning, intelligence,
@@ -803,6 +986,63 @@ router.post('/stream', async (req, res) => {
         contextInjected: !!projectContext,
         filesReferenced: projectFiles,
       });
+    }
+
+    // ── Universal Artifact Engine branch (P1 create / P5 edit, streamed) ───────
+    // Engine events map onto SSE: real pipeline stages ride the existing
+    // `stage` channel; `artifact_plan` / `artifact_progress` / `artifact` are
+    // new event types — the deployed frontend parser ignores unknown events
+    // by design (chatStream.ts default case), so this ships backend-first.
+    if (ARTIFACTS_ENABLED) {
+      // P5 — edit first: "change slide 5" must never mint a new deck.
+      let artifactHandled = false;
+      const mapEvent = (ev) => {
+        if (ev.type === 'stage')         send('stage', { id: ev.id, label: ev.label });
+        else if (ev.type === 'plan')     send('artifact_plan', ev.plan);
+        else if (ev.type === 'progress') send('artifact_progress', ev.progress);
+        else if (ev.type === 'artifact') send('artifact', ev.manifest);
+      };
+      try {
+        const editTurn = await runArtifactEditTurn({
+          userMessage, prep, conversationId, workspaceId, requestId, isNew,
+          onEvent: mapEvent,
+        });
+        if (editTurn) {
+          send('artifact', editTurn.result.manifest);
+          send('token', { t: editTurn.result.summaryText });
+          send('done', editTurn.payload);
+          artifactHandled = true;
+        }
+      } catch (err) {
+        if (clientAbort.signal.aborted) throw err;
+        console.warn(`[ARTIFACT] edit failed, falling back to chat pipeline (${err.code ?? err.name ?? 'ERROR'}): ${err.message}`);
+      }
+      if (!artifactHandled) {
+      const artifactIntent = artifactWork.create;
+      if (artifactIntent) {
+        try {
+          const art = await runArtifactTurn({
+            userMessage, prep, intent: artifactIntent, conversationId, workspaceId, requestId, isNew,
+            clientSignal: clientAbort.signal,
+            onEvent: mapEvent,
+          });
+          if (art) {
+            send('token', { t: art.result.summaryText });
+            send('done', art.payload);
+            artifactHandled = true;
+          }
+        } catch (err) {
+          if (clientAbort.signal.aborted) throw err;
+          console.warn(`[ARTIFACT] falling back to chat pipeline (${err.code ?? err.name ?? 'ERROR'}): ${err.message}`);
+        }
+      }
+      }
+      if (artifactHandled) {
+        clearInterval(heartbeat);
+        closed = true;
+        if (!res.writableEnded) res.end();
+        return;
+      }
     }
 
     // ── 8. Generate (streamed) ───────────────────────────────────────────────────
