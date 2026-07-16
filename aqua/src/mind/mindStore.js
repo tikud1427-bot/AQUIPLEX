@@ -17,12 +17,15 @@
  * rest of AQUA persistence currently uses. All access goes through this
  * module's API, so swapping to SQLite/Postgres later touches ONE file.
  */
-import fs   from 'fs';
-import path from 'path';
 import { createEmptyMind } from './mindSchema.js';
-import { createDebouncedWriter } from '../core/atomicStore.js';
+import { createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore } from '../core/atomicStore.js';
+import { migrateLegacyFile } from '../core/dataDir.js';
 
-const STORE_FILE = path.join(process.cwd(), '.aqua-mind.json');
+// P0 — memory is critical user data: it now lives in the canonical DATA
+// DIRECTORY (survives every redeploy), with a one-time loss-proof migration
+// of any legacy cwd file on boot. See core/dataDir.js.
+const STORE_FILE   = migrateLegacyFile('.aqua-mind.json');
+const STORE_SCHEMA = 1; // envelope version (mind objects carry their own `version` field)
 
 // ownerId → Mind
 const store = new Map();
@@ -31,24 +34,25 @@ let loaded = false;
 function loadFromDisk() {
   if (loaded) return;
   loaded = true;
-  try {
-    if (!fs.existsSync(STORE_FILE)) return;
-    const data = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
-    for (const [ownerId, mind] of Object.entries(data)) store.set(ownerId, upgradeMind(mind));
-    console.log(`[MIND] Loaded ${store.size} cognitive models from disk`);
-  } catch (err) {
-    console.warn('[MIND] Could not load from disk:', err.message);
-  }
+  // Corrupt-safe: a bad parse preserves the file aside and recovers from
+  // .bak instead of silently wiping every cognitive model (old behavior).
+  const parsed = loadJsonFile(STORE_FILE, { label: 'mind' });
+  if (parsed == null) return;
+  const { data } = unwrapStore(parsed, { expected: STORE_SCHEMA, file: STORE_FILE, label: 'mind' });
+  if (!data || typeof data !== 'object') return;
+  for (const [ownerId, mind] of Object.entries(data)) store.set(ownerId, upgradeMind(mind));
+  console.log(`[MIND] Loaded ${store.size} cognitive models from ${STORE_FILE}`);
 }
 
 // Phase 3b — atomic + async persistence via the shared primitive. Crash-safe
-// (temp+rename) and non-blocking; serialize snapshots at flush time.
+// (temp+rename) and non-blocking; serialize snapshots at flush time. The
+// writer also takes a `.bak` boot backup before this process's first flush.
 const _writer = createDebouncedWriter(STORE_FILE);
 function scheduleSave() {
   _writer.schedule(() => {
     const data = {};
     for (const [ownerId, mind] of store.entries()) data[ownerId] = mind;
-    return JSON.stringify(data);
+    return JSON.stringify(wrapStore(STORE_SCHEMA, data));
   });
 }
 loadFromDisk();

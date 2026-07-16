@@ -28,9 +28,10 @@ export function normalizeError(err: unknown): ApiError {
     const e = err as AxiosError<{ error?: string; requestId?: string; conversationId?: string }>;
 
     if (e.response) {
-      const body = e.response.data;
+      const body = e.response.data as { error?: string; message?: string; requestId?: string; conversationId?: string };
       return {
-        message: body?.error ?? `Request failed (${e.response.status})`,
+        // Guards send { error: CODE, message: "human sentence" } — show the sentence.
+        message: body?.message ?? body?.error ?? `Request failed (${e.response.status})`,
         status: e.response.status,
         requestId: body?.requestId,
         conversationId: body?.conversationId,

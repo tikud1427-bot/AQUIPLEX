@@ -1,14 +1,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { deleteConversation as apiDeleteConversation, listConversations } from '@/api/conversations';
+import { deleteConversation as apiDeleteConversation, listConversations, patchConversation } from '@/api/conversations';
 import { normalizeError } from '@/api/client';
 import type { UiConversation } from '@/types';
 
 interface ConversationOverlayEntry {
   pinned: boolean;
   renamedTitle?: string;
-  /** First user message, truncated — cached at send-time since GET /conversations never returns content. */
+  /** First user message, truncated — instant title while the server's derived title syncs. */
   derivedTitle?: string;
+  /** P0 — set once this entry's legacy local-only title/pin was pushed to the server. */
+  syncedToServer?: boolean;
 }
 
 interface ConversationState {
@@ -25,6 +27,7 @@ interface ConversationState {
   clearAll: () => Promise<{ succeeded: number; failed: number }>;
   togglePin: (id: string) => void;
   rename: (id: string, title: string) => void;
+  migrateOverlayToServer: (rows: Array<{ id: string; serverTitle: string | null }>) => Promise<void>;
   cacheTitle: (id: string, firstMessage: string) => void;
   setSearchQuery: (q: string) => void;
   ensureLocalEntry: (id: string, createdAt: number) => void;
@@ -114,16 +117,53 @@ export const useConversationStore = create<ConversationState>()(
             const ov = overlay[c.id];
             return {
               id: c.id,
-              title: ov?.renamedTitle ?? ov?.derivedTitle ?? `Conversation · ${c.id.slice(0, 8)}`,
+              // P0 — the SERVER owns titles/pins now (survives cache clears,
+              // second devices, deploys). Overlay only bridges the gap for
+              // rows created before the server learned to store them.
+              title:
+                c.title ??
+                ov?.renamedTitle ??
+                ov?.derivedTitle ??
+                `Conversation · ${c.id.slice(0, 8)}`,
               messageCount: c.messageCount,
               createdAt: c.meta?.createdAt ?? Date.now(),
-              pinned: ov?.pinned ?? false,
+              updatedAt: c.updatedAt ?? c.meta?.createdAt ?? 0,
+              pinned: c.title != null ? c.pinned : (ov?.pinned ?? false),
+              archived: c.archived ?? false,
               renamedTitle: ov?.renamedTitle,
             };
           });
           set({ items, loading: false });
+          void get().migrateOverlayToServer(res.conversations.map((c) => ({ id: c.id, serverTitle: c.title })));
         } catch (err) {
           set({ error: normalizeError(err).message, loading: false });
+        }
+      },
+
+      /**
+       * P0 one-time migration — push legacy localStorage-only titles/pins up
+       * to the server so every device sees them. Runs after each list fetch,
+       * skips entries already marked synced, fails silently (retries on the
+       * next fetch). Never overwrites a title the server already has.
+       */
+      migrateOverlayToServer: async (serverRows) => {
+        const { overlay } = get();
+        for (const { id, serverTitle } of serverRows) {
+          const ov = overlay[id];
+          if (!ov || ov.syncedToServer) continue;
+          const patch: { title?: string; pinned?: boolean } = {};
+          if (!serverTitle && (ov.renamedTitle || ov.derivedTitle)) {
+            patch.title = ov.renamedTitle ?? ov.derivedTitle;
+          }
+          if (ov.pinned) patch.pinned = true;
+          try {
+            if (Object.keys(patch).length > 0) await patchConversation(id, patch);
+            set((s) => ({
+              overlay: { ...s.overlay, [id]: { ...s.overlay[id], syncedToServer: true } },
+            }));
+          } catch {
+            /* offline / old backend — retry on the next fetch */
+          }
         }
       },
 
@@ -158,21 +198,39 @@ export const useConversationStore = create<ConversationState>()(
         return { succeeded, failed };
       },
 
-      togglePin: (id) =>
+      togglePin: (id) => {
+        const current = get().items.find((c) => c.id === id)?.pinned ?? false;
+        const next = !current;
         set((s) => {
           const entry = s.overlay[id] ?? { pinned: false };
-          const overlay = { ...s.overlay, [id]: { ...entry, pinned: !entry.pinned } };
-          const items = s.items.map((c) => (c.id === id ? { ...c, pinned: !entry.pinned } : c));
+          const overlay = { ...s.overlay, [id]: { ...entry, pinned: next } };
+          const items = s.items.map((c) => (c.id === id ? { ...c, pinned: next } : c));
           return { overlay, items };
-        }),
+        });
+        // Server-owned (P0) — fire-and-forget with rollback on failure.
+        patchConversation(id, { pinned: next }).catch(() => {
+          set((s) => ({
+            items: s.items.map((c) => (c.id === id ? { ...c, pinned: current } : c)),
+            overlay: { ...s.overlay, [id]: { ...(s.overlay[id] ?? { pinned: false }), pinned: current } },
+          }));
+        });
+      },
 
-      rename: (id, title) =>
+      rename: (id, title) => {
+        const prevTitle = get().items.find((c) => c.id === id)?.title;
         set((s) => {
           const entry = s.overlay[id] ?? { pinned: false };
           const overlay = { ...s.overlay, [id]: { ...entry, renamedTitle: title } };
           const items = s.items.map((c) => (c.id === id ? { ...c, title, renamedTitle: title } : c));
           return { overlay, items };
-        }),
+        });
+        // Server-owned (P0) — fire-and-forget with rollback on failure.
+        patchConversation(id, { title }).catch(() => {
+          if (prevTitle !== undefined) {
+            set((s) => ({ items: s.items.map((c) => (c.id === id ? { ...c, title: prevTitle } : c)) }));
+          }
+        });
+      },
 
       cacheTitle: (id, firstMessage) =>
         set((s) => {
@@ -184,7 +242,7 @@ export const useConversationStore = create<ConversationState>()(
           const items = exists
             ? s.items.map((c) => (c.id === id ? { ...c, title: derivedTitle } : c))
             : [
-                { id, title: derivedTitle, messageCount: 1, createdAt: Date.now(), pinned: false },
+                { id, title: derivedTitle, messageCount: 1, createdAt: Date.now(), updatedAt: Date.now(), pinned: false, archived: false },
                 ...s.items,
               ];
           return { overlay, items };
@@ -195,7 +253,7 @@ export const useConversationStore = create<ConversationState>()(
           if (s.items.some((c) => c.id === id)) return s;
           return {
             items: [
-              { id, title: 'New conversation', messageCount: 0, createdAt, pinned: false },
+              { id, title: 'New conversation', messageCount: 0, createdAt, updatedAt: createdAt, pinned: false, archived: false },
               ...s.items,
             ],
           };

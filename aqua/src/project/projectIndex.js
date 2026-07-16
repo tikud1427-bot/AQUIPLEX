@@ -26,12 +26,12 @@
  * That is inherent to surviving a restart with a working edit path, and is
  * bounded per-workspace. Phase 2 moves this off whole-file JSON.
  */
-import fs   from 'fs';
-import path from 'path';
 import { parseFile } from './fileParser.js';
-import { createDebouncedWriter } from '../core/atomicStore.js';
+import { createDebouncedWriter, loadJsonFile } from '../core/atomicStore.js';
+import { migrateLegacyFile } from '../core/dataDir.js';
 
-const INDEX_FILE = path.join(process.cwd(), '.aqua-index.json');
+// P0 — canonical data dir (survives redeploys) + one-time legacy migration.
+const INDEX_FILE = migrateLegacyFile('.aqua-index.json');
 
 // workspaceId → derived Index (in-memory, rebuildable)
 const indexes = new Map();
@@ -47,16 +47,13 @@ let loaded = false;
 function loadFromDisk() {
   if (loaded) return;
   loaded = true;
-  try {
-    if (!fs.existsSync(INDEX_FILE)) return;
-    const data = JSON.parse(fs.readFileSync(INDEX_FILE, 'utf8'));
-    for (const [id, files] of Object.entries(data)) {
-      if (Array.isArray(files)) sources.set(id, files);
-    }
-    console.log(`[Index] Loaded source snapshots for ${sources.size} workspace(s) from disk`);
-  } catch (err) {
-    console.warn('[Index] Could not load index sources from disk:', err.message);
+  // Corrupt-safe: bad parse preserves the file aside + tries .bak, never wipes.
+  const data = loadJsonFile(INDEX_FILE, { label: 'index' });
+  if (!data || typeof data !== 'object') return;
+  for (const [id, files] of Object.entries(data)) {
+    if (Array.isArray(files)) sources.set(id, files);
   }
+  console.log(`[Index] Loaded source snapshots for ${sources.size} workspace(s) from ${INDEX_FILE}`);
 }
 
 // Phase 3b — atomic + async persistence via the shared primitive. This is the

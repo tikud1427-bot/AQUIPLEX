@@ -35,8 +35,12 @@ import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import { atomicWriteFile, createDebouncedWriter } from '../core/atomicStore.js';
 import { sanitizeRelativePath, resolveInsideRoot, QUOTAS } from './security.js';
+import { migrateLegacyDir } from '../core/dataDir.js';
 
-const ROOT       = path.resolve(process.env.AQUA_ARTIFACTS_DIR ?? path.join(process.cwd(), '.aqua-artifacts'));
+// P0 — artifacts live in the canonical DATA DIRECTORY (survive redeploys).
+// AQUA_ARTIFACTS_DIR still wins when set (unchanged contract); otherwise a
+// one-time copy migrates any legacy cwd `.aqua-artifacts/` tree on boot.
+const ROOT       = path.resolve(process.env.AQUA_ARTIFACTS_DIR ?? migrateLegacyDir('.aqua-artifacts'));
 const INDEX_FILE = path.join(ROOT, '.index.json');
 
 /** artifactId → lite entry (no spec, no file buffers) */

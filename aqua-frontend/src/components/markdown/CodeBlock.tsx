@@ -187,6 +187,8 @@ export const CodeBlock = memo(function CodeBlock({ language, code }: CodeBlockPr
             background: 'transparent',
             fontSize: '13px',
             lineHeight: 1.6,
+            overflowX: wrap ? 'hidden' : 'auto', // pan long lines on phones instead of overflowing the bubble
+            WebkitOverflowScrolling: 'touch',
           }}
           codeTagProps={{ style: { fontFamily: 'var(--font-mono)' } }}
           lineNumberStyle={{ opacity: 0.35, minWidth: '2em' }}

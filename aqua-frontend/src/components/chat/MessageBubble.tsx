@@ -166,7 +166,21 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: { 
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <div className="flex-1">
               <p>{message.error ?? 'Something went wrong.'}</p>
-              {message.error !== 'Stopped' && (
+              {message.errorCode === 'INSUFFICIENT_CREDITS' ? (
+                // P1 (freemium) — a dead end becomes a doorway: nothing was
+                // lost, and the fix is one tap away.
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => { window.location.href = message.errorUpgradeUrl ?? '/wallet'; }}
+                  >
+                    Buy credits
+                  </Button>
+                  <span className="text-xs text-foreground-secondary">
+                    Your conversations, files, and memory stay saved.
+                  </span>
+                </div>
+              ) : message.error !== 'Stopped' && (
                 <Button size="sm" variant="outline" className="mt-2 border-danger/30 text-danger hover:bg-danger/10" onClick={() => retryLastMessage()}>
                   <RotateCcw className="h-3 w-3" /> Retry
                 </Button>

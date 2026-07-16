@@ -92,7 +92,34 @@ app.post(
 // ── Body parsers & static ─────────────────────────────────────────────────────
 app.use(express.json({ limit: "50mb" })); // AQUA project uploads (base64 archives) need a large body limit
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
+
+// P0 (cache) — the service worker file MUST always be revalidated, otherwise
+// browsers keep running whatever worker they installed months ago and the
+// kill-switch in public/service-worker.js can never reach them. Registered
+// BEFORE express.static so this header always wins.
+app.get("/service-worker.js", (req, res) => {
+  res.set("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.set("Service-Worker-Allowed", "/");
+  res.sendFile(path.join(__dirname, "public", "service-worker.js"));
+});
+
+// P0 (cache) — platform assets are NOT content-hashed, so they may never be
+// served blind from browser cache across deploys. `no-cache` still allows
+// conditional requests: unchanged files answer 304 via ETag (cheap), changed
+// files arrive fresh. This is what makes deploys seamless on the EJS pages.
+app.use(express.static(path.join(__dirname, "public"), {
+  etag: true,
+  lastModified: true,
+  setHeaders(res, filePath) {
+    if (/\.(png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(filePath)) {
+      // Images/fonts change rarely and renames are natural — short TTL is safe.
+      res.set("Cache-Control", "public, max-age=3600, must-revalidate");
+    } else {
+      // HTML/CSS/JS: always revalidate (ETag makes unchanged = one 304).
+      res.set("Cache-Control", "no-cache, must-revalidate");
+    }
+  },
+}));
 
 // ── Session ───────────────────────────────────────────────────────────────────
 // Use connect-mongo if installed, otherwise fall back to in-memory store.
@@ -353,7 +380,44 @@ import("./aqua/router.js")
 
 // AQUA app shell (built SPA)
 const AQUA_APP_DIR = path.join(__dirname, "aqua-frontend", "dist");
-app.use("/aqua", requireLogin, express.static(AQUA_APP_DIR, { index: false, redirect: false }));
+
+// P0 (cache) — build identity. The Vite build stamps a build id into
+// dist/index.html (<meta name="aqua-build">); the SPA polls this endpoint and
+// hard-reloads itself the moment a deploy changes it. Re-read lazily with a
+// short memo so a hot dist swap (no server restart) is still detected.
+let _buildMemo = { id: null, readAt: 0 };
+function currentAquaBuildId() {
+  const now = Date.now();
+  if (_buildMemo.id && now - _buildMemo.readAt < 5000) return _buildMemo.id;
+  try {
+    const html = fs.readFileSync(path.join(AQUA_APP_DIR, "index.html"), "utf8");
+    const m = html.match(/name="aqua-build"\s+content="([^"]+)"/);
+    _buildMemo = { id: m ? m[1] : "unstamped", readAt: now };
+  } catch {
+    _buildMemo = { id: "unbuilt", readAt: now };
+  }
+  return _buildMemo.id;
+}
+app.get("/aqua/build.json", (req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.json({ buildId: currentAquaBuildId() });
+});
+
+// P0 (cache) — the two-tier policy that makes deploys seamless:
+//   • /aqua/assets/*  (content-hashed by Vite) → cache FOREVER, immutable.
+//   • everything else (index.html, manifest)   → always revalidate.
+// Old HTML can therefore never pin new chunks, and new HTML always loads.
+app.use("/aqua", requireLogin, express.static(AQUA_APP_DIR, {
+  index: false,
+  redirect: false,
+  setHeaders(res, filePath) {
+    if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+      res.set("Cache-Control", "public, max-age=31536000, immutable");
+    } else {
+      res.set("Cache-Control", "no-cache, must-revalidate");
+    }
+  },
+}));
 app.get(/^\/aqua(\/.*)?$/, requireLogin, (req, res) => {
   const indexHtml = path.join(AQUA_APP_DIR, "index.html");
   if (!fs.existsSync(indexHtml)) {
@@ -361,6 +425,8 @@ app.get(/^\/aqua(\/.*)?$/, requireLogin, (req, res) => {
       .status(503)
       .send("AQUA app not built yet. Run: cd aqua-frontend && npm install && npm run build");
   }
+  // Never let a browser or proxy serve yesterday's shell after a deploy.
+  res.set("Cache-Control", "no-cache, must-revalidate");
   res.sendFile(indexHtml);
 });
 

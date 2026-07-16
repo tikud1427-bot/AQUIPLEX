@@ -3,10 +3,31 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 
+// P0 (cache) — one id per build, stamped into BOTH the bundle (__BUILD_ID__)
+// and dist/index.html (<meta name="aqua-build">). The server exposes the html
+// stamp at /aqua/build.json; the running app compares it against its own
+// baked-in id and hard-reloads on mismatch. See src/hooks/useVersionGuard.ts.
+const BUILD_ID = new Date().toISOString().replace(/[:.]/g, '-');
+
+function buildStamp() {
+  return {
+    name: 'aqua-build-stamp',
+    transformIndexHtml(html: string) {
+      return html.replace(
+        '</title>',
+        `</title>\n    <meta name="aqua-build" content="${BUILD_ID}" />`,
+      );
+    },
+  };
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   base: '/aqua/',
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), buildStamp()],
+  define: {
+    __BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

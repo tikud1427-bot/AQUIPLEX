@@ -78,6 +78,8 @@ import {
   getOrCreateConversation,
   getConversation,
   addMessage,
+  updateConversationMeta,
+  deriveTitle,
 } from '../memory/conversationStore.js';
 import { resolveOwner, memoryObserve, memoryRetrieve, memoryAfterTurn, getMemoryTrace, semanticFactScores } from '../memory/engine.js';
 import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
@@ -740,6 +742,10 @@ router.post('/', async (req, res) => {
     }
     const userMessage = message.trim();
 
+    // P0 — the server owns conversation titles now. Derive once, on the very
+    // first message; renames later arrive via PATCH /conversations/:id.
+    if (isNew) updateConversationMeta(conversationId, { title: deriveTitle(userMessage) });
+
     // ── Day 4: patch-first editing branch ────────────────────────────────────
     if (isEditIntent(userMessage, workspaceId)) {
       try {
@@ -851,6 +857,9 @@ router.post('/', async (req, res) => {
     return res.json(payload);
   } catch (err) {
     console.error('[CHAT] Request failed:', err.message);
+    // P1 (freemium trust) — usageGuard deducted credits on entry; a failed
+    // generation must give them back. refund() is idempotent-safe upstream.
+    req.creditContext?.refund?.().catch?.(() => {});
     ctx.attempts ??= [];
     return res.status(500).json({
       success:        false,
@@ -883,6 +892,9 @@ router.post('/stream', async (req, res) => {
     });
   }
   const userMessage = message.trim();
+
+  // P0 — server-owned title, derived on first message (see POST /chat note).
+  if (isNew) updateConversationMeta(conversationId, { title: deriveTitle(userMessage) });
 
   // ── SSE handshake ────────────────────────────────────────────────────────────
   res.writeHead(200, {
@@ -1128,9 +1140,12 @@ router.post('/stream', async (req, res) => {
       const partial = err.partialText ?? '';
       addMessage(conversationId, 'user', userMessage);
       if (partial.trim()) addMessage(conversationId, 'assistant', partial);
+      else req.creditContext?.refund?.().catch?.(() => {}); // stopped before any output — don't charge
       console.log(`[CHAT] stream aborted by client req=${requestId} persistedChars=${partial.length}`);
     } else {
       console.error('[CHAT] Stream request failed:', err.message);
+      // P1 (freemium trust) — deduct-on-entry + failed turn = refund.
+      req.creditContext?.refund?.().catch?.(() => {});
       ctx.attempts ??= [];
       send('error', {
         error:         err?.message ?? 'Internal server error',

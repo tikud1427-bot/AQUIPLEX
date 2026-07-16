@@ -31,9 +31,36 @@ import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import { atomicWriteFileSync } from '../core/atomicStore.js';
 
-const __dir        = path.dirname(fileURLToPath(import.meta.url));
-const dataDir      = path.join(__dir, 'data');
-const overridePath = path.join(dataDir, 'overrides.json');
+import { migrateLegacyFile } from '../core/dataDir.js';
+
+const __dir   = path.dirname(fileURLToPath(import.meta.url));
+const dataDir = path.join(__dir, 'data');
+// P0 — persisted overrides are USER data (runtime edits to the identity
+// profile) and must survive redeploys. They now live in the canonical data
+// dir, with a one-time migration of any legacy copy shipped alongside code.
+const overridePath = migrateLegacyFile('.aqua-identity-overrides.json', { legacyDir: dataDir });
+// Historical name inside src/identity/data — migrate that too if present.
+migrateLegacyOverrides();
+function migrateLegacyOverrides() {
+  const legacy = path.join(dataDir, 'overrides.json');
+  try {
+    if (fs.existsSync(legacy) && !fs.existsSync(overridePath)) {
+      fs.copyFileSync(legacy, overridePath);
+      fs.renameSync(legacy, `${legacy}.migrated-to-datadir`);
+      console.log('[IDENTITY] Migrated overrides.json → data dir');
+    }
+  } catch (err) {
+    console.warn(`[IDENTITY] Override migration failed (${err.message}) — legacy file left in place.`);
+  }
+}
+function readOverrides() {
+  try {
+    return JSON.parse(fs.readFileSync(overridePath, 'utf8'));
+  } catch (err) {
+    if (err.code !== 'ENOENT') console.warn(`[IDENTITY] Override file invalid — skipping (${err.message})`);
+    return null;
+  }
+}
 
 export const IDENTITY_VERSION = '1.0.0';
 
@@ -117,7 +144,7 @@ function build() {
   }
 
   // Overrides deep-merged last so they win: disk override, then in-memory.
-  const diskOverride = readJson('overrides.json', { silent: true });
+  const diskOverride = readOverrides();
   let withOverride = diskOverride ? deepMerge(merged, diskOverride) : merged;
   if (_memoryOverride) withOverride = deepMerge(withOverride, _memoryOverride);
 
@@ -180,10 +207,10 @@ export function updateIdentityProfile(patch, { persist = false } = {}) {
 
   if (persist) {
     // Accumulate against any existing override file so successive updates stack.
-    const nextOverride = deepMerge(readJson('overrides.json') ?? {}, patch);
+    const nextOverride = deepMerge(readOverrides() ?? {}, patch);
     try {
       atomicWriteFileSync(overridePath, JSON.stringify(nextOverride, null, 2));
-      console.log('[IDENTITY] Persisted override → data/overrides.json');
+      console.log(`[IDENTITY] Persisted override → ${overridePath}`);
     } catch (err) {
       console.error(`[IDENTITY] Failed to persist override: ${err.message}`);
     }

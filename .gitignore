@@ -29,3 +29,5 @@ Thumbs.db
 # Local runtime data (optional, if these are machine-specific)
 .aqua-history.json.aqua-index.json
 .aqua-index.json
+.aqua-index.json.migrated-to-datadir
+.aqua-index*

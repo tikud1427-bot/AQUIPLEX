@@ -23,6 +23,7 @@ import os from 'os';
 import path from 'path';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-unified-'));
+process.env.AQUA_DATA_DIR = tmp; // stores persist to the data dir now (P0)
 const repoRoot = process.cwd();
 process.chdir(tmp);
 
@@ -175,6 +176,7 @@ test('T7/T11 — one persistent store; facts survive process restart', async () 
   // "Restart": fresh process reads the same file and answers T1.
   const { execFileSync } = await import('node:child_process');
   const script = `
+    process.env.AQUA_DATA_DIR = ${JSON.stringify(tmp)};
     process.chdir(${JSON.stringify(tmp)});
     const ltm = await import(${JSON.stringify(path.join(repoRoot, 'src/memory/longTermMemory.js'))});
     const f = ltm.getFact('user:u-cross', 'name');

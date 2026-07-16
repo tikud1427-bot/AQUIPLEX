@@ -1,9 +1,49 @@
-import { Menu, Package, PanelLeftOpen } from 'lucide-react';
+import { useEffect } from 'react';
+import { Menu, Package, PanelLeftOpen, Wallet } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { useUiStore } from '@/stores/uiStore';
 import { useConversationStore } from '@/stores/conversationStore';
+import { useWalletStore } from '@/stores/walletStore';
 import { useIsMobile } from '@/hooks/useMediaQuery';
 import { useArtifactsStore } from '@/stores/artifactsStore';
+
+/**
+ * P1 (freemium) — remaining-quota visibility. Users should never discover
+ * their balance by hitting a wall mid-thought. Hides itself when billing is
+ * unreachable (dev / logged out / older backend) and for unlimited accounts.
+ * Amber under 3 messages' worth so the warning lands BEFORE the dead end.
+ */
+function CreditsChip() {
+  const wallet = useWalletStore((s) => s.wallet);
+  const refresh = useWalletStore((s) => s.refresh);
+
+  useEffect(() => {
+    void refresh();
+    const onFocus = () => { if (document.visibilityState === 'visible') void refresh(); };
+    window.addEventListener('visibilitychange', onFocus);
+    return () => window.removeEventListener('visibilitychange', onFocus);
+  }, [refresh]);
+
+  if (!wallet || wallet.unlimited) return null;
+  const low = wallet.total < 15; // chat costs 5 — amber with ~2 messages left
+
+  return (
+    <a
+      href="/wallet"
+      className={
+        'tap flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-colors ' +
+        (low
+          ? 'border-warning/40 bg-warning/10 text-warning hover:bg-warning/15'
+          : 'border-border text-foreground-secondary hover:bg-surface-secondary hover:text-foreground')
+      }
+      title={low ? 'Running low — top up to keep going' : 'Credits remaining'}
+      aria-label={`${wallet.total} credits remaining`}
+    >
+      <Wallet className="h-3.5 w-3.5" />
+      <span className="tabular-nums">{wallet.total}</span>
+    </a>
+  );
+}
 
 export function Header() {
   const isMobile = useIsMobile();
@@ -48,14 +88,17 @@ export function Header() {
           </span>
         </div>
       )}
-      <button
-        onClick={() => openArtifacts(true)}
-        className="tap ml-auto flex h-8 w-8 items-center justify-center rounded-lg text-foreground-secondary hover:bg-surface-secondary hover:text-foreground"
-        aria-label="Open artifacts"
-        title="Artifacts"
-      >
-        <Package className="h-4 w-4" />
-      </button>
+      <div className="ml-auto flex items-center gap-1.5">
+        <CreditsChip />
+        <button
+          onClick={() => openArtifacts(true)}
+          className="tap flex h-8 w-8 items-center justify-center rounded-lg text-foreground-secondary hover:bg-surface-secondary hover:text-foreground"
+          aria-label="Open artifacts"
+          title="Artifacts"
+        >
+          <Package className="h-4 w-4" />
+        </button>
+      </div>
     </header>
   );
 }

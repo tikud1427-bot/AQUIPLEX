@@ -143,6 +143,14 @@ export function Composer() {
             autoResize();
           }}
           onKeyDown={handleKeyDown}
+          onFocus={() => {
+            // P1 (mobile) — iOS Safari overlays the keyboard without resizing
+            // the layout viewport (interactive-widget only helps Chromium).
+            // Nudge the composer back into view once the keyboard settles.
+            window.setTimeout(() => {
+              textareaRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }, 300);
+          }}
           placeholder={readyAttachments > 0 ? 'Ask about your files…' : 'Message AQUA…'}
           rows={1}
           className="max-h-60 min-h-[52px] px-4 py-3.5 pr-14 text-[15px]"

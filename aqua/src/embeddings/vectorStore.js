@@ -26,11 +26,11 @@
  * (project chunks) should move to pgvector rather than grow this JSON file —
  * noted here so the boundary is explicit.
  */
-import fs   from 'fs';
-import path from 'path';
-import { createDebouncedWriter } from '../core/atomicStore.js';
+import { createDebouncedWriter, loadJsonFile } from '../core/atomicStore.js';
+import { migrateLegacyFile } from '../core/dataDir.js';
 
-const STORE_FILE  = path.join(process.cwd(), '.aqua-vectors.json');
+// P0 — canonical data dir (survives redeploys) + one-time legacy migration.
+const STORE_FILE  = migrateLegacyFile('.aqua-vectors.json');
 const NS_ITEM_CAP = 500;   // per-namespace item cap (oldest-touched evicted)
 
 // namespace → Map<id, { vec:number[], hash:string, ts:number, dim:number }>
@@ -41,20 +41,17 @@ let persist = true;   // disabled in tests to avoid touching disk
 function loadFromDisk() {
   if (loaded) return;
   loaded = true;
-  try {
-    if (!fs.existsSync(STORE_FILE)) return;
-    const data = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
-    for (const [ns, items] of Object.entries(data)) {
-      const m = new Map();
-      for (const [id, rec] of Object.entries(items)) {
-        if (Array.isArray(rec?.vec)) m.set(id, rec);
-      }
-      store.set(ns, m);
+  // Corrupt-safe: bad parse preserves the file aside + tries .bak, never wipes.
+  const data = loadJsonFile(STORE_FILE, { label: 'vectors' });
+  if (!data || typeof data !== 'object') return;
+  for (const [ns, items] of Object.entries(data)) {
+    const m = new Map();
+    for (const [id, rec] of Object.entries(items)) {
+      if (Array.isArray(rec?.vec)) m.set(id, rec);
     }
-    console.log(`[VECTORS] Loaded ${store.size} namespace(s) from disk`);
-  } catch (err) {
-    console.warn('[VECTORS] Could not load from disk:', err.message);
+    store.set(ns, m);
   }
+  console.log(`[VECTORS] Loaded ${store.size} namespace(s) from ${STORE_FILE}`);
 }
 
 // Phase 3b — atomic + async persistence via the shared primitive; persist flag

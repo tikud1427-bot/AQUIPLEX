@@ -32,6 +32,10 @@ export interface UiMessage {
   ts: number;
   status: MessageStatus;
   error?: string;
+  /** P1 (freemium) — machine code behind an error turn, e.g. INSUFFICIENT_CREDITS. */
+  errorCode?: string;
+  /** Where the error's call-to-action should link (guard-provided, e.g. /wallet). */
+  errorUpgradeUrl?: string;
   /** Live pipeline stage while status==='sending' (from real SSE stage events). */
   stage?: { id: string; label: string };
   /** Answer hit the output budget or the stream was interrupted — "Continue" offered. */
@@ -69,11 +73,14 @@ export interface TextAttachment {
 
 export interface UiConversation {
   id: string;
-  /** Derived client-side from the first user message — the server has no title field. */
+  /** Server-owned (P0). Falls back to a locally cached derivation while a
+      just-created conversation's first list refresh is in flight. */
   title: string;
   messageCount: number;
   createdAt: number;
-  /** Local-only — the backend has no rename/pin endpoints. Persisted in localStorage. */
+  updatedAt: number;
+  /** Server-owned via PATCH /conversations/:id (P0). */
   pinned: boolean;
+  archived: boolean;
   renamedTitle?: string;
 }

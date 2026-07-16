@@ -278,4 +278,15 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
   }
+
+  /* ── Touch-target upgrade (P1 accessibility) ──────────────────────────
+     Small icon buttons (h-8 w-8 = 32px) grow toward the 44px guideline on
+     coarse pointers only — desktop keeps its density, thumbs get a real
+     target. Pair with `.tap` on row menus and message actions. */
+  @media (pointer: coarse) {
+    .touch-lg {
+      height: 2.75rem;
+      width: 2.75rem;
+    }
+  }
 }

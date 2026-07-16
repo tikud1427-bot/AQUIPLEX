@@ -187,6 +187,15 @@ export interface StreamErrorEvent {
   requestId?: string;
   conversationId?: string;
   fallbackChain?: Array<{ provider: string; outcome: string }>;
+  /** P1 (freemium) — set when a pre-stream guard rejected the request. */
+  status?: number;
+  /** Machine code from the guard, e.g. INSUFFICIENT_CREDITS. */
+  code?: string;
+  /** Human sentence from the guard — preferred over `error` for display. */
+  message?: string;
+  upgradeUrl?: string;
+  totalCredits?: number;
+  costRequired?: number;
 }
 
 export interface ChatErrorResponse {
@@ -209,6 +218,10 @@ export interface ServerMessage {
 
 export interface ConversationMeta {
   createdAt?: number;
+  updatedAt?: number;
+  title?: string;
+  pinned?: boolean;
+  archived?: boolean;
   userAgent?: string;
   ip?: string;
   [key: string]: unknown;
@@ -216,7 +229,18 @@ export interface ConversationMeta {
 
 export interface ConversationSummary {
   id: string;
+  /** Server-owned display fields (P0 — synced across devices/deploys). */
+  title: string | null;
+  pinned: boolean;
+  archived: boolean;
+  updatedAt: number;
   messageCount: number;
+  meta: ConversationMeta;
+}
+
+export interface PatchConversationResponse {
+  success: true;
+  id: string;
   meta: ConversationMeta;
 }
 

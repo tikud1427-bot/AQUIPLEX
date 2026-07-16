@@ -79,16 +79,29 @@ export async function streamChatMessage(
   }
   const contentType = res.headers.get('content-type') ?? '';
   if (!res.ok || !contentType.includes('text/event-stream')) {
-    // 4xx validation errors and 5xx bodies are JSON — surface as stream error.
-    let message = `Request failed (${res.status})`;
+    // 4xx guard/validation errors and 5xx bodies are JSON — surface the FULL
+    // structured body so the UI can react to codes (INSUFFICIENT_CREDITS →
+    // friendly upsell instead of a raw error string).
+    let body: {
+      error?: string; message?: string; upgradeUrl?: string;
+      totalCredits?: number; costRequired?: number;
+    } = {};
     try {
-      const body = (await res.json()) as { error?: string };
-      if (body?.error) message = body.error;
+      body = (await res.json()) as typeof body;
     } catch {
-      /* non-JSON body — keep the status message */
+      /* non-JSON body — fall through to the status message */
     }
     if (!res.ok) {
-      handlers.onError?.({ error: message, recoverable: res.status >= 500 });
+      handlers.onError?.({
+        error: body.message ?? body.error ?? `Request failed (${res.status})`,
+        recoverable: res.status >= 500,
+        status: res.status,
+        code: body.error,
+        message: body.message,
+        upgradeUrl: body.upgradeUrl,
+        totalCredits: body.totalCredits,
+        costRequired: body.costRequired,
+      });
       return;
     }
     throw new StreamUnsupportedError(`unexpected content-type "${contentType}"`);

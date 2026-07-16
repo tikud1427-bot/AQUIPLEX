@@ -17,9 +17,13 @@ async function test(name, fn) {
   catch (e) { failed++; console.error(`  \u2717 ${name}\n    ${e.message}`); }
 }
 
-// Isolate persistence in a temp cwd — stores resolve their files from cwd().
+// Isolate persistence in a temp DATA DIR — stores resolve their files from
+// the canonical data directory now (core/dataDir.js), pinned here via env
+// BEFORE any store module is imported. cwd is also moved so the legacy-file
+// migration path sees an empty deploy tree.
 const realCwd = process.cwd();
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-persist-'));
+process.env.AQUA_DATA_DIR = dir;
 process.chdir(dir);
 
 // Cache-bust dynamic imports so a "reload" gets a fresh module instance whose

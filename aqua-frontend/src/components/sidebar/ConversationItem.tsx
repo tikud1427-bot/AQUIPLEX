@@ -86,7 +86,7 @@ export function ConversationItem({ conversation, onNavigate }: { conversation: U
                 <button
                   onClick={(e) => e.preventDefault()}
                   className={cn(
-                    'tap hover-reveal -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-foreground-secondary transition-colors hover:bg-surface hover:text-foreground',
+                    'tap touch-lg hover-reveal -my-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-foreground-secondary transition-colors hover:bg-surface hover:text-foreground',
                     menuOpen && 'bg-surface text-foreground',
                   )}
                   aria-label={`Options for ${conversation.title}`}

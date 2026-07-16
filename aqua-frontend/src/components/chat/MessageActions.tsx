@@ -29,7 +29,7 @@ export function MessageActions({ content, onRegenerate, contentRef, className }:
   }
 
   const btn =
-    'tap flex h-8 w-8 items-center justify-center rounded-md text-foreground-secondary/70 hover:bg-surface-secondary hover:text-foreground transition-colors';
+    'tap touch-lg flex h-8 w-8 items-center justify-center rounded-md text-foreground-secondary/70 hover:bg-surface-secondary hover:text-foreground transition-colors';
 
   return (
     <div className={cn('-ml-1.5 flex items-center gap-0.5', className)}>

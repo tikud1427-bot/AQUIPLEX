@@ -43,3 +43,8 @@
     </div>
   </div>
 </footer>
+
+<!-- P0 (cache) — retire any legacy service worker from the page side too.
+     The kill-switch worker at /service-worker.js handles browsers that run
+     an update check; this covers the rest. Idempotent — see public/js/sw-cleanup.js. -->
+<script src="/js/sw-cleanup.js" defer></script>

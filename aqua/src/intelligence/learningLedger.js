@@ -30,11 +30,11 @@
  * .aqua-ledger.json, fail-open on load and save. All access goes through
  * this module's API, so swapping storage later touches ONE file.
  */
-import fs   from 'fs';
-import path from 'path';
-import { createDebouncedWriter } from '../core/atomicStore.js';
+import { createDebouncedWriter, loadJsonFile } from '../core/atomicStore.js';
+import { migrateLegacyFile } from '../core/dataDir.js';
 
-const STORE_FILE = path.join(process.cwd(), '.aqua-ledger.json');
+// P0 — canonical data dir (survives redeploys) + one-time legacy migration.
+const STORE_FILE = migrateLegacyFile('.aqua-ledger.json');
 
 /** Sample gate: below this many recorded turns for a key, feedback is neutral. */
 export const MIN_SAMPLE = 10;
@@ -61,14 +61,10 @@ function emptyLedger() {
 function loadFromDisk() {
   if (loaded) return;
   loaded = true;
-  try {
-    if (!fs.existsSync(STORE_FILE)) return;
-    const data = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
-    if (data?.version === 1 && data.byTask) ledger = data;
-    console.log(`[LEDGER] Loaded outcome aggregates for ${Object.keys(ledger.byTask).length} task type(s) from disk`);
-  } catch (err) {
-    console.warn('[LEDGER] Could not load from disk:', err.message);
-  }
+  // Corrupt-safe: bad parse preserves the file aside + tries .bak, never wipes.
+  const data = loadJsonFile(STORE_FILE, { label: 'ledger' });
+  if (data?.version === 1 && data.byTask) ledger = data;
+  if (data) console.log(`[LEDGER] Loaded outcome aggregates for ${Object.keys(ledger.byTask).length} task type(s) from ${STORE_FILE}`);
 }
 
 // Phase 3b — atomic + async persistence via the shared primitive; the persist

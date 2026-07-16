@@ -6,6 +6,8 @@ import { listArtifacts, getArtifact } from '@/api/artifacts';
 import { useArtifactsStore } from './artifactsStore';
 import { normalizeError, isCancel } from '@/api/client';
 import { refreshMind } from './mindStore';
+import { refreshWallet } from './walletStore';
+import { useUiStore } from './uiStore';
 import { useConversationStore } from './conversationStore';
 import type { ChatSuccessResponse, MessageDiagnostics, PatchProposal, UiMessage } from '@/types';
 
@@ -104,6 +106,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       // dashboard (if open) updates the moment the answer lands. Silent +
       // debounced inside the store; no polling anywhere.
       refreshMind();
+      refreshWallet(); // P1 — keep the remaining-credits chip honest after each spend
       if (!isLive()) {
         set({ generating: false, abortController: null });
         return;
@@ -205,6 +208,8 @@ export const useChatStore = create<ChatState>((set, get) => {
     try {
       let doneReceived = false;
       let serverError: string | null = null;
+      let serverErrorCode: string | undefined;
+      let serverErrorUpgradeUrl: string | undefined;
 
       await streamChatMessage(
         { message: outgoingText, conversationId: conversationId ?? undefined, workspaceId: workspaceId ?? undefined },
@@ -264,7 +269,9 @@ export const useChatStore = create<ChatState>((set, get) => {
             finishTurn(payload);
           },
           onError: (e) => {
-            serverError = e.error;
+            serverError = e.message ?? e.error;
+            serverErrorCode = e.code;
+            serverErrorUpgradeUrl = e.upgradeUrl;
           },
         },
         controller.signal,
@@ -286,6 +293,24 @@ export const useChatStore = create<ChatState>((set, get) => {
                 : m,
             ),
           }));
+          return;
+        }
+        // P1 (freemium) — out of credits is a normal state, not a failure.
+        // Friendly copy + a real path forward; balance chip refreshes so the
+        // number the user sees matches why they were stopped.
+        if (serverErrorCode === 'INSUFFICIENT_CREDITS') {
+          refreshWallet();
+          useUiStore.getState().toast('info', 'Out of credits', 'Your conversations, files, and memory are all safe.');
+          failTurn(serverError ?? "You're out of credits.");
+          if (isLive()) {
+            set((s) => ({
+              messages: s.messages.map((m) =>
+                m.id === assistantMsg.id
+                  ? { ...m, errorCode: 'INSUFFICIENT_CREDITS', errorUpgradeUrl: serverErrorUpgradeUrl ?? '/wallet' }
+                  : m,
+              ),
+            }));
+          }
           return;
         }
         failTurn(serverError);

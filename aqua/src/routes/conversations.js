@@ -1,9 +1,10 @@
 /**
  * AQUA Conversations Route
  *
- * GET  /conversations         — list all conversations (id, messageCount, meta)
- * GET  /conversations/:id     — full message history for one conversation
- * DELETE /conversations/:id   — clear a conversation
+ * GET    /conversations       — list all conversations (id, title, messageCount, meta)
+ * GET    /conversations/:id   — full message history for one conversation
+ * PATCH  /conversations/:id   — update title / pinned / archived (server-owned now)
+ * DELETE /conversations/:id   — clear a conversation (trash-backed)
  */
 import express from 'express';
 import {
@@ -12,6 +13,7 @@ import {
   getConversationMeta,
   clearConversation,
   conversationExists,
+  updateConversationMeta,
 } from '../memory/conversationStore.js';
 
 const router = express.Router();
@@ -55,13 +57,19 @@ router.get('/', (req, res) => {
     if (scopeUser && owner !== scopeUser) continue;
     entries.push({
       id,
+      // Server-owned display fields (P0 — titles used to live only in one
+      // browser's localStorage; every other device saw bare UUID stubs).
+      title:        conv.meta?.title ?? null,
+      pinned:       !!conv.meta?.pinned,
+      archived:     !!conv.meta?.archived,
+      updatedAt:    conv.meta?.updatedAt ?? conv.meta?.createdAt ?? 0,
       messageCount: conv.messages?.length ?? 0,
       meta:         conv.meta ?? {},
     });
   }
 
-  // newest first (by createdAt in meta, fallback to insertion order)
-  entries.sort((a, b) => (b.meta.createdAt ?? 0) - (a.meta.createdAt ?? 0));
+  // Most recent activity first (falls back to creation time for old rows).
+  entries.sort((a, b) => b.updatedAt - a.updatedAt);
 
   res.json({
     success: true,
@@ -85,6 +93,25 @@ router.get('/:id', (req, res) => {
     messageCount: messages.length,
     messages,
   });
+});
+
+// ── Update conversation metadata (title / pin / archive) ─────────────────────
+// P0 — the server owns these now. The frontend's localStorage overlay becomes
+// a one-time seed + offline cache instead of the single copy of every title.
+
+router.patch('/:id', (req, res) => {
+  const { id } = req.params;
+  if (!assertOwnership(req, res, id)) return;
+  const { title, pinned, archived } = req.body ?? {};
+  const patch = {};
+  if (title    !== undefined) patch.title    = title;
+  if (pinned   !== undefined) patch.pinned   = pinned;
+  if (archived !== undefined) patch.archived = archived;
+  if (Object.keys(patch).length === 0) {
+    return res.status(400).json({ success: false, error: 'Nothing to update — provide title, pinned, or archived.' });
+  }
+  const meta = updateConversationMeta(id, patch);
+  res.json({ success: true, id, meta });
 });
 
 // ── Clear a conversation ──────────────────────────────────────────────────────

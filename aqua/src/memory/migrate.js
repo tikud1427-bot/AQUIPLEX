@@ -19,7 +19,16 @@ import { storeFact } from './longTermMemory.js';
 import { getConversationMeta } from './conversationStore.js';
 import { ownerForUser, ownerForConversation } from './ownerResolver.js';
 
-const LEGACY_FILE = path.join(process.cwd(), '.aqua-memory.json');
+import { dataPath } from '../core/dataDir.js';
+
+// P0 — the unconverted legacy fact file may live in the deploy tree (pre
+// data-dir builds) or already inside the data dir (migrated by dataDir on a
+// boot where conversion hadn't run yet). Check both; first hit wins.
+const LEGACY_CANDIDATES = [
+  dataPath('.aqua-memory.json'),
+  path.join(process.cwd(), '.aqua-memory.json'),
+];
+const LEGACY_FILE = LEGACY_CANDIDATES.find(p => fs.existsSync(p)) ?? LEGACY_CANDIDATES[0];
 
 export function migrateLegacyMemory() {
   if (!fs.existsSync(LEGACY_FILE)) return { migrated: false };

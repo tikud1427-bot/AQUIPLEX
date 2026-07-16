@@ -18,6 +18,20 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('AQUA render error:', error, info.componentStack);
+    // P0 (cache) — a failed dynamic import mid-render is the stale-deploy
+    // signature (old shell asking for deleted chunks). One automatic reload
+    // fetches the fresh build; the sessionStorage mark prevents loops.
+    if (/Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i.test(error.message)) {
+      try {
+        const mark = 'aqua-boundary-reloaded';
+        if (!sessionStorage.getItem(mark)) {
+          sessionStorage.setItem(mark, '1');
+          window.location.reload();
+        }
+      } catch {
+        window.location.reload();
+      }
+    }
   }
 
   handleReset = () => {
