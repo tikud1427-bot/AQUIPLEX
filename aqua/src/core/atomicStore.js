@@ -35,6 +35,7 @@
  */
 import fs   from 'fs';
 import path from 'path';
+import { mirrorWrite, drainMirror } from './mongoMirror.js';
 
 // ── P0 durability additions ──────────────────────────────────────────────────
 // loadJsonFile()  — corrupt-safe load: NEVER lets a bad parse wipe a store.
@@ -77,7 +78,11 @@ function hookShutdownOnce() {
   for (const sig of ['SIGTERM', 'SIGINT']) {
     process.once(sig, () => {
       flushAllWriters(sig);
-      process.exit(sig === 'SIGINT' ? 130 : 143); // conventional codes; re-raising would loop
+      // P0 (Render) — a deploy IS a SIGTERM. The sync file flush above queued
+      // Mongo upserts (mirrorWrite); give them ≤5s to land so the session's
+      // last messages survive the container swap. Never blocks longer.
+      const code = sig === 'SIGINT' ? 130 : 143; // conventional codes; re-raising would loop
+      drainMirror(5_000).finally(() => process.exit(code));
     });
   }
 }
@@ -244,6 +249,7 @@ export function createDebouncedWriter(file, { debounceMs = 500, onError } = {}) 
         }
         try {
           await atomicWriteFile(file, data);
+          mirrorWrite(file, data);  // P0 (Render) — durable copy → MongoDB, fire-and-forget
         } catch (err) {
           warn(err);              // keep draining; a later schedule may retry
         }
@@ -266,7 +272,9 @@ export function createDebouncedWriter(file, { debounceMs = 500, onError } = {}) 
       if (dirty && serializeFn) {
         dirty = false;
         try {
-          atomicWriteFileSync(file, serializeFn());
+          const data = serializeFn();
+          atomicWriteFileSync(file, data);
+          mirrorWrite(file, data);  // P0 (Render) — the SIGTERM drain below awaits this
         } catch (err) {
           warn(err);
         }

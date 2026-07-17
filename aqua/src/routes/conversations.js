@@ -15,6 +15,7 @@ import {
   conversationExists,
   updateConversationMeta,
 } from '../memory/conversationStore.js';
+import { clearAttachments } from '../upload/attachmentStore.js';
 
 const router = express.Router();
 
@@ -120,6 +121,7 @@ router.delete('/:id', (req, res) => {
   const { id } = req.params;
   if (!assertOwnership(req, res, id)) return;
   clearConversation(id);
+  clearAttachments(id); // P0 — attachments persist now; don't orphan their blobs
   res.json({ success: true, cleared: id });
 });
 

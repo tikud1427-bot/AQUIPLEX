@@ -12,10 +12,26 @@
  * existing project-context path), which retrieval already handles better
  * than a flat content blob ever could.
  *
- * In-memory by design, matching conversationStore.js's persistence model
- * exactly — attachments live as long as the conversation store does.
+ * P0 (Render) — this store used to be a bare in-memory Map ("in-memory by
+ * design, matching conversationStore.js" — which was wrong: conversationStore
+ * persists to disk). Every restart, deploy, or idle spin-down silently wiped
+ * every attachment, which is exactly the "uploaded files often cannot be
+ * referenced during chat" bug: the file uploads fine, the instance recycles,
+ * and the next question finds an empty store. It now persists through the
+ * SAME primitives as every other store (atomicStore + dataDir), which also
+ * gives it the MongoDB mirror for free — attachments survive deploys.
  */
 import { v4 as uuidv4 } from 'uuid';
+import {
+  createDebouncedWriter,
+  loadJsonFile,
+  wrapStore,
+  unwrapStore,
+} from '../core/atomicStore.js';
+import { dataPath } from '../core/dataDir.js';
+
+const STORE_FILE = dataPath('.aqua-attachments.json');
+const SCHEMA     = 1;
 
 const MAX_ATTACHMENTS_PER_CONVERSATION = 20;
 const MAX_INJECTED_CHARS_TOTAL         = 120_000; // context-window protection
@@ -23,6 +39,33 @@ const MAX_INJECTED_CHARS_PER_DOC       = 60_000;
 
 /** conversationId → [{ id, name, kind, format, title, content, metadata, sections, pages, language, truncated, uploadedAt }] */
 const store = new Map();
+
+// ── Persistence (same pattern as conversationStore) ──────────────────────────
+
+function loadFromDisk() {
+  const parsed = loadJsonFile(STORE_FILE, { label: 'attachments' });
+  if (parsed == null) return;
+  const { data } = unwrapStore(parsed, { expected: SCHEMA, file: STORE_FILE, label: 'attachments' });
+  if (!data || typeof data !== 'object') return;
+  let total = 0;
+  for (const [conversationId, list] of Object.entries(data)) {
+    if (!Array.isArray(list)) continue;
+    store.set(conversationId, list);
+    total += list.length;
+  }
+  if (store.size) console.log(`[UPLOAD] Loaded ${total} attachment(s) across ${store.size} conversation(s) from ${STORE_FILE}`);
+}
+
+const _writer = createDebouncedWriter(STORE_FILE);
+function scheduleSave() {
+  _writer.schedule(() => {
+    const data = {};
+    for (const [id, list] of store.entries()) data[id] = list;
+    return JSON.stringify(wrapStore(SCHEMA, data));
+  });
+}
+
+loadFromDisk();
 
 // ── Write ─────────────────────────────────────────────────────────────────────
 
@@ -53,6 +96,7 @@ export function attachToConversation(conversationId, { name, kind, normalized })
 
   list.push(attachment);
   store.set(conversationId, list);
+  scheduleSave();
   console.log(`[UPLOAD] Attached ${kind} "${name}" conversation=${conversationId} chars=${normalized.content.length}`);
   return attachment;
 }
@@ -69,11 +113,14 @@ export function removeAttachment(conversationId, attachmentId) {
   const idx = list.findIndex(a => a.id === attachmentId);
   if (idx === -1) return false;
   list.splice(idx, 1);
+  scheduleSave();
   return true;
 }
 
 export function clearAttachments(conversationId) {
-  return store.delete(conversationId);
+  const had = store.delete(conversationId);
+  if (had) scheduleSave();
+  return had;
 }
 
 /** Metadata-only view — safe for API listing (no full content). */

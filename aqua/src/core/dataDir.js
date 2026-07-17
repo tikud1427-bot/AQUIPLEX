@@ -67,6 +67,16 @@ function resolveDataDir() {
 
 export const DATA_DIR = resolveDataDir();
 
+// ── P0 (Render) — hydrate DATA_DIR from MongoDB BEFORE any store loads ────────
+// Render rebuilds the container filesystem (including $HOME) on every deploy,
+// so the local files this module protects still vanish there. mongoMirror
+// keeps a durable copy of every store file in Mongo; this top-level await
+// restores them into DATA_DIR first. ESM semantics guarantee every importer
+// (conversationStore, mindStore, vectorStore, …) waits for this line before
+// running its own loadFromDisk(). No MONGO_URI → instant no-op.
+import { hydrateFromMongo } from './mongoMirror.js';
+await hydrateFromMongo(DATA_DIR);
+
 /** Absolute path for a store file inside the canonical data directory. */
 export function dataPath(filename) {
   return path.join(DATA_DIR, filename);

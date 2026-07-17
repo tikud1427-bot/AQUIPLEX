@@ -22,9 +22,62 @@
 import path from 'path';
 import AdmZip from 'adm-zip';
 import { parseDocument, isDocumentExt as isCoreDocumentExt } from '../project/documentParser.js';
+import { analyzeMediaWithGemini } from '../providers/gemini.js';
 
 const MAX_CONTENT_CHARS = 200_000; // richer than code files (100 KB) — documents ARE the content
 export const PIPELINE_DOCUMENT_EXTS = new Set(['.pdf', '.docx', '.pptx', '.xlsx', '.csv', '.odt', '.epub']);
+
+// ── Scanned-PDF OCR fallback (P0 — "PDFs are sometimes unreadable") ──────────
+// pdf-parse extracts the TEXT LAYER only. A scanned/image-only PDF has none,
+// but the extractor still emits page separator lines ("-- 1 of 3 --"), so the
+// old `!text.trim()` guard PASSED and the attachment silently carried nothing
+// but markers — the model then "couldn't read" the PDF. Detection: strip the
+// markers; if what remains is below a small floor, the PDF is treated as
+// scanned and routed through the SAME Gemini vision call images already use
+// (Gemini accepts application/pdf inline), which OCRs every page. No Gemini
+// key / oversize → a clear, user-readable error instead of silent garbage.
+const PAGE_MARKER_RE     = /^--\s*\d+\s*of\s*\d+\s*--$/gm;
+const MIN_REAL_TEXT      = 40;            // chars of non-marker text to count as "has a text layer"
+const MAX_OCR_PDF_BYTES  = 12_000_000;    // same inline-payload ceiling as images
+
+const PDF_OCR_PROMPT = `This PDF is a scanned document with no text layer. Read it page by page. Respond in exactly this structure:
+
+TITLE: best-guess document title.
+
+TEXT (OCR): every piece of readable text, verbatim, page by page, preserving structure. Prefix each page with "-- Page N --".
+
+TABLES: any tabular data, reconstructed row by row. Write "none" if there are no tables.
+
+NOTES: stamps, signatures, handwriting, logos, or unreadable regions worth flagging. Write "none" if not applicable.`;
+
+function textWithoutPageMarkers(text) {
+  return String(text ?? '').replace(PAGE_MARKER_RE, '').trim();
+}
+
+async function ocrScannedPdf(filename, buffer, pages, ocrFn) {
+  if (buffer.length > MAX_OCR_PDF_BYTES) {
+    throw new Error(`"${filename}" appears to be a scanned PDF (no selectable text) and is ${(buffer.length / 1e6).toFixed(1)} MB — over the ${MAX_OCR_PDF_BYTES / 1e6} MB OCR limit. Export it with a text layer or split it and retry.`);
+  }
+  let analysis;
+  try {
+    analysis = await ocrFn(
+      [
+        { inlineData: { mimeType: 'application/pdf', data: buffer.toString('base64') } },
+        { text: PDF_OCR_PROMPT },
+      ],
+      {
+        systemPrompt: 'You are a precise OCR engine. Transcribe text verbatim. Follow the requested structure exactly.',
+        maxTokens: 8192,
+      },
+    );
+  } catch (err) {
+    throw new Error(`"${filename}" is a scanned PDF (no selectable text) and OCR failed: ${err.message}`);
+  }
+  const text = analysis?.text?.trim();
+  if (!text) throw new Error(`"${filename}" is a scanned PDF and OCR returned no text.`);
+  console.log(`[UPLOAD] Scanned PDF OCR ok file=${filename} pages=${pages ?? '?'} chars=${text.length} model=${analysis.model ?? '?'}`);
+  return { text, meta: { pages, ocr: true, model: analysis.model ?? null } };
+}
 
 export function isPipelineDocumentExt(ext) {
   return PIPELINE_DOCUMENT_EXTS.has(ext);
@@ -170,10 +223,13 @@ function detectLanguage(text) {
  *
  * @param {string} filename
  * @param {Buffer} buffer
+ * @param {object} [opts]
+ * @param {Function} [opts.ocr]  OCR fn (parts, cfg) → { text, model } — test seam;
+ *                               defaults to the same Gemini call images use.
  * @returns {Promise<{ title, format, metadata, content, pages, sections, language, truncated }>}
- * @throws on unsupported ext / corrupt file / oversize (caller shows the message)
+ * @throws on unsupported ext / corrupt file / oversize / scanned-PDF-without-OCR (caller shows the message)
  */
-export async function processDocument(filename, buffer) {
+export async function processDocument(filename, buffer, { ocr = analyzeMediaWithGemini } = {}) {
   const ext = path.extname(filename).toLowerCase();
   if (!PIPELINE_DOCUMENT_EXTS.has(ext)) {
     throw new Error(`Unsupported document format: ${ext || '(no extension)'}`);
@@ -184,9 +240,19 @@ export async function processDocument(filename, buffer) {
   if (isCoreDocumentExt(ext)) {
     // PDF / DOCX / PPTX / XLSX — reuse the existing extractor verbatim
     const extracted = await parseDocument(ext, buffer);
-    if (!extracted?.text) throw new Error('No extractable text found in document');
-    text = extracted.text;
-    meta = extracted.meta ?? {};
+    text = extracted?.text ?? '';
+    meta = extracted?.meta ?? {};
+
+    // P0 — scanned/image-only PDF: the extractor emits page markers even
+    // when there is NO text layer, so `text` is non-empty garbage. Detect
+    // by stripping the markers; below the floor → OCR the pages instead of
+    // silently attaching markers the model can't answer from.
+    if (ext === '.pdf' && textWithoutPageMarkers(text).length < MIN_REAL_TEXT) {
+      console.log(`[UPLOAD] "${filename}" has no usable text layer (${textWithoutPageMarkers(text).length} real chars) — routing to OCR`);
+      ({ text, meta } = await ocrScannedPdf(filename, buffer, meta.pages ?? null, ocr));
+    } else if (!text) {
+      throw new Error('No extractable text found in document');
+    }
   } else if (ext === '.csv') {
     ({ text, meta } = parseCsv(buffer));
   } else if (ext === '.odt') {
