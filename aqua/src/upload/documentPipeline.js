@@ -20,6 +20,7 @@
  * containers of XML/XHTML. No new dependencies.
  */
 import path from 'path';
+import crypto from 'crypto';
 import AdmZip from 'adm-zip';
 import { parseDocument, isDocumentExt as isCoreDocumentExt } from '../project/documentParser.js';
 import { analyzeMediaWithGemini } from '../providers/gemini.js';
@@ -50,6 +51,16 @@ TABLES: any tabular data, reconstructed row by row. Write "none" if there are no
 
 NOTES: stamps, signatures, handwriting, logos, or unreadable regions worth flagging. Write "none" if not applicable.`;
 
+// OCR result cache (content-addressed, same pattern as mediaPipeline) —
+// re-uploading the identical scanned PDF never pays for a second model call.
+const OCR_CACHE_MAX = 30;
+const ocrCache = new Map(); // sha256 → { text, meta }
+function ocrCacheKey(buffer) { return crypto.createHash('sha256').update(buffer).digest('hex'); }
+function ocrCacheSet(key, val) {
+  if (ocrCache.size >= OCR_CACHE_MAX) ocrCache.delete(ocrCache.keys().next().value); // FIFO evict
+  ocrCache.set(key, val);
+}
+
 function textWithoutPageMarkers(text) {
   return String(text ?? '').replace(PAGE_MARKER_RE, '').trim();
 }
@@ -57,6 +68,12 @@ function textWithoutPageMarkers(text) {
 async function ocrScannedPdf(filename, buffer, pages, ocrFn) {
   if (buffer.length > MAX_OCR_PDF_BYTES) {
     throw new Error(`"${filename}" appears to be a scanned PDF (no selectable text) and is ${(buffer.length / 1e6).toFixed(1)} MB — over the ${MAX_OCR_PDF_BYTES / 1e6} MB OCR limit. Export it with a text layer or split it and retry.`);
+  }
+  const key = ocrCacheKey(buffer);
+  const cached = ocrCache.get(key);
+  if (cached) {
+    console.log(`[UPLOAD] Scanned PDF OCR cache hit file=${filename}`);
+    return cached;
   }
   let analysis;
   try {
@@ -76,7 +93,9 @@ async function ocrScannedPdf(filename, buffer, pages, ocrFn) {
   const text = analysis?.text?.trim();
   if (!text) throw new Error(`"${filename}" is a scanned PDF and OCR returned no text.`);
   console.log(`[UPLOAD] Scanned PDF OCR ok file=${filename} pages=${pages ?? '?'} chars=${text.length} model=${analysis.model ?? '?'}`);
-  return { text, meta: { pages, ocr: true, model: analysis.model ?? null } };
+  const out = { text, meta: { pages, ocr: true, model: analysis.model ?? null } };
+  ocrCacheSet(key, out);
+  return out;
 }
 
 export function isPipelineDocumentExt(ext) {

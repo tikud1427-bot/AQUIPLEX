@@ -1,21 +1,17 @@
 /**
- * Mongo Mirror — deploy-survival lifecycle test (P0)
+ * Mongo Mirror — deploy-survival + hardening tests (P0)
  *
- * Simulates a Render deploy end-to-end WITHOUT a mongod binary, using the
- * module's test seam to inject a file-backed fake collection (the file plays
- * the role of the durable Mongo cluster; the DATA_DIR plays the role of the
- * ephemeral container disk):
+ * A file-backed fake collection stands in for the Mongo cluster (mongod
+ * binaries can't run in CI); DATA_DIR plays the ephemeral Render disk.
+ * The REAL code paths are exercised end to end: store mutation → debounced
+ * flush → SIGTERM shutdown hook → mirrorWrite/drain → disk wipe → dataDir's
+ * top-level hydration → store reload.
  *
- *   BOOT 1 (old container): fresh DATA_DIR₁ → create a conversation with
- *     messages, attach an uploaded document, store a long-term memory fact →
- *     process receives SIGTERM (exactly what Render sends on deploy) → the
- *     REAL shutdown path runs: sync file flush → mirrorWrite → drainMirror.
- *
- *   DEPLOY: DATA_DIR₁ is deleted entirely (Render rebuilds the filesystem).
- *
- *   BOOT 2 (new container): fresh empty DATA_DIR₂, same fake collection →
- *     importing the stores triggers dataDir's top-level hydration → assert
- *     the conversation, its messages, the attachment, and the fact are back.
+ *   1. lifecycle    — conversation + attachment + memory survive a deploy
+ *   2. newer-wins   — a warm instance's local files are never clobbered
+ *   3. chunking     — a store far over the chunk size round-trips intact
+ *   4. heartbeat    — a second live writer raises the multi-writer alarm
+ *                     (with deploy-overlap grace)
  *
  * Run: node --test src/core/tests/mongoMirror.test.js
  */
@@ -33,17 +29,32 @@ const CONV_ID = 'deploy-survival-conv';
 const OWNER   = 'user:deploy-survival';
 
 // ── Shared child preamble: file-backed fake Mongo collection ─────────────────
-// One JSON file = the "cluster". _id → { _id, json, updatedAt }.
+// One JSON file = the "cluster". Supports the exact driver surface the mirror
+// uses: find({}).toArray(), findOne, updateOne($set, upsert), deleteMany.
 const FAKE_COLLECTION_SRC = `
 import fs from 'node:fs';
 const DB = process.env.FAKE_DB;
 function readAll() { try { return JSON.parse(fs.readFileSync(DB, 'utf8')); } catch { return {}; } }
+function writeAll(a) { fs.writeFileSync(DB, JSON.stringify(a)); }
+function matches(doc, q = {}) {
+  for (const [k, v] of Object.entries(q)) {
+    if (v && typeof v === 'object' && '$lt' in v) { if (!(doc[k] < v.$lt)) return false; }
+    else if (doc[k] !== v) return false;
+  }
+  return true;
+}
 export const fakeCollection = {
-  find() { return { async toArray() { return Object.values(readAll()); } }; },
+  find(q = {}) { return { async toArray() { return Object.values(readAll()).filter(d => matches(d, q)); } }; },
+  async findOne(q = {}) { return Object.values(readAll()).find(d => matches(d, q)) ?? null; },
   async updateOne(filter, update) {
     const all = readAll();
     all[filter._id] = { _id: filter._id, ...(all[filter._id] ?? {}), ...update.$set };
-    fs.writeFileSync(DB, JSON.stringify(all));
+    writeAll(all);
+  },
+  async deleteMany(q = {}) {
+    const all = readAll();
+    for (const [id, d] of Object.entries(all)) if (matches(d, q)) delete all[id];
+    writeAll(all);
   },
 };
 `;
@@ -81,9 +92,9 @@ test('conversation + attachment + memory survive a simulated Render deploy', () 
   const boot1 = runChild('boot1', `
 const { getOrCreateConversation, addMessage, getConversation } =
   await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/conversationStore.js'))});
-const { attachToConversation, getAttachments } =
+const { attachToConversation } =
   await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/upload/attachmentStore.js'))});
-const { storeFact, getFact } =
+const { storeFact } =
   await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/longTermMemory.js'))});
 
 getOrCreateConversation(${JSON.stringify(CONV_ID)}, { userId: 'u-test', title: 'Deploy survival' });
@@ -174,4 +185,80 @@ process.exit(ok ? 0 : 1);
 
   assert.equal(res.status, 0);
   assert.match(res.stdout, /KEPT_LOCAL/, 'newer-wins: hydration must not clobber a warm instance');
+});
+
+test('a store far over the chunk size round-trips through the mirror intact', () => {
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'mirror-chunk-'));
+  const FAKE_DB = path.join(scratch, 'mongo.json');
+  const DATA_1  = path.join(scratch, 'container-1');
+  const DATA_2  = path.join(scratch, 'container-2');
+  const CHUNK   = '65536'; // 64 KB chunks → a ~400 KB store must split into many parts
+
+  const boot1 = runChild('chunk-boot1', `
+const { getOrCreateConversation, addMessage } =
+  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/conversationStore.js'))});
+const big = 'AQUA-'.repeat(80_000) + 'END-OF-BIG-PAYLOAD'; // ~400 KB, unique tail proves byte-exactness
+getOrCreateConversation('big-conv', { userId: 'u-test' });
+addMessage('big-conv', 'user', big);
+console.log('CHUNK_WROTE ' + big.length);
+process.kill(process.pid, 'SIGTERM');
+setTimeout(() => process.exit(1), 10_000);
+`, { AQUA_DATA_DIR: DATA_1, FAKE_DB, AQUA_MIRROR_CHUNK_BYTES: CHUNK, __EXPECT_STATUS: 143 });
+
+  assert.equal(boot1.status, 143);
+  const db = JSON.parse(fs.readFileSync(FAKE_DB, 'utf8'));
+  const manifest = db['.aqua-history.json'];
+  assert.equal(manifest.chunked, true, 'oversize store must take the chunked path');
+  assert.ok(manifest.parts > 5, `expected many parts, got ${manifest.parts}`);
+  const partDocs = Object.values(db).filter(d => d.part && d.of === '.aqua-history.json' && d.gen === manifest.gen);
+  assert.equal(partDocs.length, manifest.parts, 'every part of the manifest generation is present');
+
+  fs.rmSync(DATA_1, { recursive: true, force: true }); // the deploy
+
+  const boot2 = runChild('chunk-boot2', `
+const { getConversation } =
+  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/conversationStore.js'))});
+const msgs = getConversation('big-conv');
+const ok = msgs.length === 1 && msgs[0].content.length === ${400_000 + 18} && msgs[0].content.endsWith('END-OF-BIG-PAYLOAD');
+console.log(ok ? 'CHUNK_RESTORED' : 'CHUNK_BROKEN len=' + (msgs[0]?.content?.length ?? 'none'));
+process.exit(ok ? 0 : 1);
+`, { AQUA_DATA_DIR: DATA_2, FAKE_DB, AQUA_MIRROR_CHUNK_BYTES: CHUNK, __EXPECT_STATUS: 0 });
+
+  assert.equal(boot2.status, 0);
+  assert.match(boot2.stdout, /CHUNK_RESTORED/, 'chunked store reassembled byte-exact after the deploy');
+});
+
+test('heartbeat: a second live writer raises the multi-writer alarm — with deploy-overlap grace', async () => {
+  const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'mirror-beat-'));
+  const FAKE_DB = path.join(scratch, 'mongo.json');
+  fs.writeFileSync(FAKE_DB, '{}');
+  process.env.FAKE_DB = FAKE_DB;
+
+  const { fakeCollection } = await import(
+    'data:text/javascript;base64,' + Buffer.from(FAKE_COLLECTION_SRC).toString('base64'));
+  const { __setCollectionForTests, __heartbeatOnceForTests, getMirrorStatus, __resetForTests } =
+    await import('../mongoMirror.js');
+
+  __resetForTests();
+  __setCollectionForTests(fakeCollection);
+
+  const foreignBeat = () => fakeCollection.updateOne(
+    { _id: '.aqua-mirror-writer' },
+    { $set: { instanceId: 'other-host:999:beef', ts: Date.now() + 1 } });
+
+  await __heartbeatOnceForTests();                       // claim the lock
+  assert.equal(getMirrorStatus().multiWriterConflict, false);
+
+  // Deploy overlap: ONE foreign beat, then silence → no alarm, grace resets.
+  await foreignBeat();
+  await __heartbeatOnceForTests();
+  await __heartbeatOnceForTests();
+  assert.equal(getMirrorStatus().multiWriterConflict, false, 'a single overlap beat must not alarm');
+
+  // Persistent second writer: keeps beating between our beats → alarm at 3 strikes.
+  for (let i = 0; i < 3; i++) { await foreignBeat(); await __heartbeatOnceForTests(); }
+  const status = getMirrorStatus();
+  assert.equal(status.multiWriterConflict, true, 'ping-ponging writers must raise the alarm');
+  assert.equal(status.conflictWith, 'other-host:999:beef');
+  __resetForTests();
 });

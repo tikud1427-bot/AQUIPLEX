@@ -47,8 +47,10 @@ test("scanned PDF routes to OCR and returns the transcription, not page markers"
 });
 
 test("scanned PDF with OCR unavailable fails LOUDLY with a user-readable reason", async () => {
+  // unique bytes → cache miss → the failure path actually runs
+  const SCAN_PDF_B = Buffer.concat([SCAN_PDF, Buffer.from(" B")]);
   await assert.rejects(
-    processDocument("scan.pdf", SCAN_PDF, {
+    processDocument("scan.pdf", SCAN_PDF_B, {
       ocr: async () => { throw new Error("No Gemini keys configured — media analysis unavailable"); },
     }),
     /scanned PDF.*OCR failed.*No Gemini keys/s,
@@ -64,4 +66,19 @@ test("scanned PDF over the OCR size cap is rejected with guidance, before any mo
     /OCR limit/,
   );
   assert.equal(ocrCalls, 0);
+});
+
+test("identical scanned PDF re-upload is served from the OCR cache — zero model calls", async () => {
+  const SCAN_PDF_C = Buffer.concat([SCAN_PDF, Buffer.from(" C")]);
+  let ocrCalls = 0;
+  const first = await processDocument("scan.pdf", SCAN_PDF_C, {
+    ocr: async () => { ocrCalls++; return { text: OCR_TEXT, model: "fake-vision" }; },
+  });
+  assert.equal(ocrCalls, 1);
+  // Second upload of the SAME bytes: OCR fn would throw — must never be reached.
+  const second = await processDocument("scan-again.pdf", SCAN_PDF_C, {
+    ocr: async () => { throw new Error("model must not be called on a cache hit"); },
+  });
+  assert.equal(second.content, first.content, "cache returns the identical transcription");
+  assert.equal(second.metadata.ocr, true);
 });
