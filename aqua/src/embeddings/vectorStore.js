@@ -81,13 +81,25 @@ function enforceCap(m) {
 }
 
 // ── Write ─────────────────────────────────────────────────────────────────────
-/** Insert/replace a vector for (namespace, id). No-op on a null/empty vector. */
-export function upsert(namespace, id, vec, hash = '') {
+/**
+ * Insert/replace a vector for (namespace, id). No-op on a null/empty vector.
+ * `meta` (Phase D — additive, optional) rides the record for callers that
+ * need the source text back at scoring time (file chunks). Old records
+ * without meta remain fully valid.
+ */
+export function upsert(namespace, id, vec, hash = '', meta = null) {
   if (!namespace || !id || !Array.isArray(vec) || !vec.length) return;
   const m = ns(namespace);
-  m.set(id, { vec, hash, ts: Date.now(), dim: vec.length });
+  const rec = { vec, hash, ts: Date.now(), dim: vec.length };
+  if (meta != null) rec.meta = meta;
+  m.set(id, rec);
   enforceCap(m);
   scheduleSave();
+}
+
+/** Meta stored with a vector (Phase D), or null. */
+export function getMeta(namespace, id) {
+  return store.get(namespace)?.get(id)?.meta ?? null;
 }
 
 /** True when (namespace, id) already holds a vector for this exact content hash. */

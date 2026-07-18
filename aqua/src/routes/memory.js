@@ -21,7 +21,11 @@ import express from 'express';
 import {
   getFacts, getFact, deleteFact, clearFacts, getFactHistory,
 } from '../memory/longTermMemory.js';
-import { resolveOwner, getMemoryTrace } from '../memory/engine.js';
+import { resolveOwner, getMemoryTrace, semanticFileChunks } from '../memory/engine.js';
+import { retrieveRelevantFacts } from '../memory/memoryRetriever.js';
+import { recallEpisodes } from '../mind/episodeRecall.js';
+import { recallGraphPaths } from '../mind/graphRecall.js';
+import { peekMind } from '../mind/mindStore.js';
 import { conversationExists, getConversationMeta } from '../memory/conversationStore.js';
 
 const router = express.Router();
@@ -78,6 +82,54 @@ router.get('/inspector/:requestId', (req, res) => {
 });
 
 // ── Owner-scoped API ─────────────────────────────────────────────────────────
+
+/**
+ * Memory 5.0 Phase G — UNIFIED RECALL. One query, every memory layer:
+ * ranked facts + matching episodes + graph paths + uploaded-file chunks.
+ * Powering surface for the frontend Mind View search and for agents.
+ * Owner-scoped like every route here; each lane fails open to [].
+ *
+ *   GET /memory/recall?q=<query>[&limit=8]
+ */
+router.get('/recall', async (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner (no session and no ?conversationId)' });
+  const q = String(req.query.q || '').slice(0, 500);
+  const limit = Math.min(20, Math.max(1, parseInt(req.query.limit, 10) || 8));
+
+  let facts = [];
+  try {
+    facts = retrieveRelevantFacts(ownerId, q, limit).map(f => ({
+      key: f.key, value: f.value, category: f.category,
+      confidence: f.confidence, importance: f.importance,
+      pinned: !!f.pinned, lastMentionedAt: f.lastMentionedAt,
+    }));
+  } catch { /* lane fails open */ }
+
+  const mind = peekMind(ownerId);
+  let episodes = [];
+  let graphPaths = [];
+  try {
+    episodes = (mind ? recallEpisodes(mind, q, { limit: 3 }) : []).map(({ episode: e, score }) => ({
+      id: e.id, title: e.title, status: e.status, outcome: e.outcome,
+      lessons: e.lessons || [], startedAt: e.startedAt, endedAt: e.endedAt, score,
+    }));
+  } catch { /* lane fails open */ }
+  try {
+    graphPaths = mind ? recallGraphPaths(mind, q) : [];
+  } catch { /* lane fails open */ }
+
+  let files = [];
+  try {
+    files = (await semanticFileChunks(ownerId, q, { k: 3 })).map(c => ({
+      name: c.name, fileKey: c.fileKey, idx: c.idx, score: c.score,
+      excerpt: String(c.text).replace(/\s+/g, ' ').slice(0, 240),
+    }));
+  } catch { /* lane fails open */ }
+
+  res.json({ success: true, ownerId, query: q, facts, episodes, graphPaths, files });
+});
+
 router.get('/', (req, res) => {
   const ownerId = ownerOf(req);
   if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner (no session and no ?conversationId)' });

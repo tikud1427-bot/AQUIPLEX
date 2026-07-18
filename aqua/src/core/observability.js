@@ -43,6 +43,34 @@ const metrics = {
 const LOG_RING_SIZE = 200;
 const recentLogs    = [];
 
+// ── Memory 5.0 Phase F — memory retrieval quality/latency counters ────────────
+// Fed by memory/engine.js memoryRetrieve on every turn. Bounded ring of
+// latencies; lane counters show which Memory 5.0 lanes actually fire in
+// production (facts / graph / episodes / fileChunks / files / identity).
+const MEM_LAT_RING = 500;
+const memRetrieval = {
+  count: 0,
+  nonEmpty: 0,          // retrievals that produced a non-empty memory block
+  latencies: [],        // ms, ring-capped
+  lanes: { identity: 0, facts: 0, cognitive: 0, graph: 0, episodes: 0, fileChunks: 0, files: 0 },
+};
+
+/**
+ * Record one memoryRetrieve execution.
+ * @param {{ latencyMs: number, nonEmpty: boolean, lanes?: string[] }} r
+ */
+export function recordMemoryRetrieval({ latencyMs = 0, nonEmpty = false, lanes = [] } = {}) {
+  memRetrieval.count += 1;
+  if (nonEmpty) memRetrieval.nonEmpty += 1;
+  memRetrieval.latencies.push(latencyMs);
+  if (memRetrieval.latencies.length > MEM_LAT_RING) {
+    memRetrieval.latencies.splice(0, memRetrieval.latencies.length - MEM_LAT_RING);
+  }
+  for (const lane of lanes) {
+    if (lane in memRetrieval.lanes) memRetrieval.lanes[lane] += 1;
+  }
+}
+
 function ensureProvider(p) {
   if (!metrics.byProvider[p])
     metrics.byProvider[p] = { requests: 0, successes: 0, failures: 0, totalLatencyMs: 0 };
@@ -457,7 +485,21 @@ export function getMetrics() {
   const lats = metrics.latencyWindow;
   const sorted = lats.slice().sort((a, b) => a - b);
 
+  // Memory 5.0 Phase F — retrieval quality/latency snapshot
+  const memLats = memRetrieval.latencies.slice().sort((a, b) => a - b);
+  const pct = (arr, p) => (arr.length ? arr[Math.min(arr.length - 1, Math.floor(arr.length * p))] : 0);
+  const memoryRetrieval = {
+    count: memRetrieval.count,
+    nonEmpty: memRetrieval.nonEmpty,
+    nonEmptyRate: memRetrieval.count ? +(memRetrieval.nonEmpty / memRetrieval.count * 100).toFixed(1) : null,
+    avgLatencyMs: memLats.length ? +(memLats.reduce((a, b) => a + b, 0) / memLats.length).toFixed(2) : 0,
+    p50LatencyMs: +pct(memLats, 0.50).toFixed(2),
+    p95LatencyMs: +pct(memLats, 0.95).toFixed(2),
+    lanes: { ...memRetrieval.lanes },
+  };
+
   return {
+    memoryRetrieval,
     totalRequests:  metrics.totalRequests,
     totalSuccesses: metrics.totalSuccesses,
     totalFailures:  metrics.totalFailures,
@@ -493,6 +535,5 @@ export function getMetrics() {
  * Return recent AQUA_REQUEST log entries (newest last).
  * @param {number} [limit=50]
  */
-export function getRecentLogs(limit = 50) {
-  return recentLogs.slice(-Math.min(limit, LOG_RING_SIZE));
+export function getRecentLogs(limit = 50) {  return recentLogs.slice(-Math.min(limit, LOG_RING_SIZE));
 }

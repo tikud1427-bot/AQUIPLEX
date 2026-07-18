@@ -15,13 +15,15 @@
  * messages. Failures are logged and swallowed: reflection can never break
  * chat.
  */
-import { DIMENSION_DYNAMICS, STATUS, GOAL_STATUS, CAPS, createTimelineEvent } from './mindSchema.js';
+import { DIMENSION_DYNAMICS, DIMENSIONS, STATUS, GOAL_STATUS, CAPS, createTimelineEvent } from './mindSchema.js';
 import { decay, isEstablished, isArchiveCandidate } from './confidence.js';
 import { touchMind } from './mindStore.js';
 import { pushTimeline } from './timeline.js';
 import { decayWorkingMemory } from './workingMemory.js';
 import { closeStaleEpisodes } from './episodeTracker.js';
 import { pruneGraph } from './relationshipGraph.js';
+import { applyFactLifecycle, mergeDuplicateFacts } from '../memory/importanceEngine.js';
+import { observeSignal } from './beliefEngine.js';
 
 export const REFLECT_EVERY_TURNS = 8;
 const GOAL_STALE_MS = 21 * 24 * 3600 * 1000; // unmentioned 3 weeks → stale
@@ -97,6 +99,41 @@ export function reflect(mind) {
   report.graphPruned    = pruneGraph(mind);
   decayWorkingMemory(mind);
 
+  // ── Phase A — fact lifecycle (importance recompute + cold-storage archive) ─
+  // Same consolidation pass human memory does: strengthen what's used,
+  // archive what's stale. Fail-open — lifecycle can never break reflection.
+  try {
+    const life = applyFactLifecycle(mind, { now });
+    report.factsRecomputed  = life.recomputed;
+    report.factsArchived    = life.archived;
+    report.factHistoryCapped = life.historyCapped;
+  } catch (err) {
+    console.warn('[MIND] fact lifecycle failed (non-fatal):', err.message);
+    report.factsRecomputed = 0; report.factsArchived = [];
+  }
+
+  // ── Phase E — consolidation: duplicate-fact merge + insight generation ─────
+  try {
+    const dupes = mergeDuplicateFacts(mind, { now });
+    report.factsMerged = dupes.merged;
+    if (dupes.merged.length) {
+      pushTimeline(mind, createTimelineEvent({
+        kind: 'facts_merged', subject: dupes.merged.map(m => `${m.loser}→${m.winner}`).join(', '),
+        importance: 4,
+      }));
+    }
+  } catch (err) {
+    console.warn('[MIND] duplicate merge failed (non-fatal):', err.message);
+    report.factsMerged = [];
+  }
+
+  try {
+    report.insights = deriveInsights(mind);
+  } catch (err) {
+    console.warn('[MIND] insight derivation failed (non-fatal):', err.message);
+    report.insights = [];
+  }
+
   // ── Record reflection (internal only — never surfaces in user messages) ────
   mind.reflections.push(report);
   if (mind.reflections.length > CAPS.REFLECTIONS) {
@@ -111,7 +148,7 @@ export function reflect(mind) {
   }));
   touchMind(mind);
 
-  console.log(`[MIND] REFLECTION owner=${mind.ownerId} turn=${mind.turnCount} promoted=${report.promoted.length} archived=${report.archived.length} weakened=${report.weakened.length} goalsStaled=${report.goalsStaled.length}`);
+  console.log(`[MIND] REFLECTION owner=${mind.ownerId} turn=${mind.turnCount} promoted=${report.promoted.length} archived=${report.archived.length} weakened=${report.weakened.length} goalsStaled=${report.goalsStaled.length} factsArchived=${(report.factsArchived || []).length}`);
   return report;
 }
 
@@ -123,4 +160,52 @@ export function scheduleReflection(mind) {
     catch (err) { console.warn('[MIND] Reflection failed (non-fatal):', err.message); }
   });
   return true;
+}
+
+// ── Phase E — insight generation ──────────────────────────────────────────────
+// Cross-signal patterns the per-turn observers can't see individually become
+// BEHAVIOR beliefs (through the ONE belief writer, so confidence math,
+// evidence windows, contradiction handling and Mind View all apply for free).
+// Deliberately few and high-precision:
+//   • recurring blocker  — the same blocker text keeps returning (count ≥ 3)
+//   • persistent goal    — a goal mentioned again and again (mentions ≥ 5)
+const INSIGHT_BLOCKER_MIN = 3;
+const INSIGHT_GOAL_MENTIONS = 5;
+
+function slug(text) {
+  return String(text).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+}
+
+export function deriveInsights(mind) {
+  const insights = [];
+
+  for (const b of mind.working?.blockers || []) {
+    if ((b.count || 1) >= INSIGHT_BLOCKER_MIN) {
+      observeSignal(mind, {
+        dimension: DIMENSIONS.BEHAVIOR,
+        key: `recurring_blocker:${slug(b.text)}`,
+        value: b.text,
+        strength: 0.7,
+        note: `reflection insight: blocker seen ${b.count}×`,
+        source: 'reflection',
+      });
+      insights.push(`recurring blocker: ${b.text}`);
+    }
+  }
+
+  for (const g of Object.values(mind.goals || {})) {
+    if (g.status === GOAL_STATUS.ACTIVE && (g.mentions || 0) >= INSIGHT_GOAL_MENTIONS) {
+      observeSignal(mind, {
+        dimension: DIMENSIONS.BEHAVIOR,
+        key: `persistent_goal:${slug(g.title)}`,
+        value: g.title,
+        strength: 0.65,
+        note: `reflection insight: goal mentioned ${g.mentions}×`,
+        source: 'reflection',
+      });
+      insights.push(`persistent goal: ${g.title}`);
+    }
+  }
+
+  return insights;
 }

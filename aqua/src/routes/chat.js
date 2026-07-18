@@ -81,7 +81,7 @@ import {
   updateConversationMeta,
   deriveTitle,
 } from '../memory/conversationStore.js';
-import { resolveOwner, memoryObserve, memoryRetrieve, memoryAfterTurn, getMemoryTrace, semanticFactScores } from '../memory/engine.js';
+import { resolveOwner, memoryObserve, memoryRetrieve, memoryAfterTurn, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
 import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
 import { semanticFileScores }                              from '../project/semanticProject.js';
 import { formatAttachmentsForPrompt, getAttachments }       from '../upload/attachmentStore.js';
@@ -370,6 +370,9 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   // semanticFactScores never rejects — it resolves to null when embeddings
   // are unavailable, and the retriever then behaves exactly as pre-Phase-2.
   const semanticScoresP = semanticFactScores(memoryOwner, userMessage);
+  // Phase D — file content recall: same seam, same contract. Resolves to []
+  // when embeddings are unavailable or no uploaded content matches.
+  const fileChunksP = semanticFileChunks(memoryOwner, userMessage);
   // ── 2. Classify (once — result passed to router, no double classification) ──
   onStage('classify', 'Understanding your request…');
   const { task: taskType, confidence, labels } = classifyTask(userMessage);
@@ -450,6 +453,7 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   const retrieved = memoryRetrieve(memoryOwner, {
     query: userMessage, taskType, factLimit: 10, requestId,
     semanticScores: await semanticScoresP,   // Phase 2: resolved query embedding (null if unavailable)
+    fileChunks: await fileChunksP,           // Phase D: uploaded-content chunks ([] if unavailable)
   });
   const relevantFacts = retrieved.relevantFacts;
   const memoryBlock   = retrieved.block;

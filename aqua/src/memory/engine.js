@@ -30,8 +30,13 @@ import { getIdentity, hasIdentity, formatIdentityBlock, isIdentityQuery, answerI
 import { mindObserve, mindContext, mindAfterTurn } from '../mind/index.js';
 import { getMind, peekMind, touchMind } from '../mind/mindStore.js';
 import { upsertNode, upsertEdge, SELF_KEY } from '../mind/relationshipGraph.js';
+import { recallGraphPaths, formatGraphRecall } from '../mind/graphRecall.js';
+import { recallEpisodes, formatEpisodeRecall, isPastRecallQuery, latestEpisode } from '../mind/episodeRecall.js';
+import { detectContinuation } from './continuation.js';
+import { recordMemoryRetrieval } from '../core/observability.js';
 import { estimateTokens } from '../core/tokenManager.js';
 import { indexOwnerFacts, semanticFactScores } from '../embeddings/semanticMemory.js';
+import { indexFileChunks, fileChunkScores, removeFileChunks } from '../embeddings/fileMemory.js';
 
 export { resolveOwner, isUserOwner };
 // Phase 2 — semantic retrieval. Re-exported through the ONE memory facade so
@@ -39,6 +44,10 @@ export { resolveOwner, isUserOwner };
 // every other memory stage follows). semanticFactScores() is awaited at
 // prepareTurn's query seam; indexOwnerFacts() is fire-and-forget after observe.
 export { indexOwnerFacts, semanticFactScores };
+// Phase D — file content recall. Same seam pattern: chat starts
+// semanticFileChunks() early (async, fail-open → []) and hands the resolved
+// chunks to memoryRetrieve, which stays synchronous.
+export { fileChunkScores as semanticFileChunks };
 
 const TOTAL_BUDGET_TOKENS = 800;   // one budget for the whole memory block
 const MIN_COGNITIVE_BUDGET = 150;
@@ -163,11 +172,18 @@ export function memoryObserve(ownerId, {
 export function memoryRetrieve(ownerId, {
   query = '', taskType = 'conversation',
   budgetTokens = TOTAL_BUDGET_TOKENS, factLimit = 10, requestId = null,
-  semanticScores = null,
+  semanticScores = null, fileChunks = null,
 } = {}) {
   const trace = (requestId && traces.get(requestId)) || makeTrace({ ownerId });
   trace.budgetTokens = budgetTokens;
   if (!ownerId) return { block: '', relevantFacts: [], cognitiveUsed: {}, trace };
+
+  // Phase F — timing + continuation fast-path. "Let's continue" carries no
+  // retrievable tokens, but it's the clearest possible request for context:
+  // the latest episode and the active workspace surface without being asked.
+  const t0 = performance.now();
+  const continuing = detectContinuation(query);
+  if (continuing) trace.continuation = true;
 
   // 0. IDENTITY FIRST — canonical structured state, NOT semantic recall.
   //    Assembled directly from the isolated identity fact keys and injected at
@@ -211,11 +227,108 @@ export function memoryRetrieve(ownerId, {
   const cognitive = mindContext(ownerId, { query, taskType, budgetTokens: cognitiveBudget });
   trace.cognitiveUsed = cognitive.used || {};
 
-  // File memory — only when the query plausibly touches files.
-  const fileBlock = retrieveFileMemory(ownerId, query, taskType, trace);
+  // ── Memory 5.0 lanes (Phases B + C) — each budget-gated, each fail-open ─────
+  // Remaining budget after the classic three blocks; a lane that doesn't fit
+  // is dropped WHOLE (never truncated mid-line).
+  let spentTokens = identityTokens + factTokens + estimateTokens(cognitive.block);
+  const laneFits = (block) => block && (spentTokens + estimateTokens(block)) <= budgetTokens;
 
-  const block = [identityBlock, factBlock, cognitive.block, fileBlock].filter(Boolean).join('\n\n');
+  // Phase B — multi-hop graph recall: connected knowledge the query names.
+  let graphBlock = '';
+  try {
+    const mindView = peekMind(ownerId);
+    if (mindView) {
+      const paths = recallGraphPaths(mindView, query);
+      if (paths.length) {
+        const candidate = formatGraphRecall(paths);
+        if (laneFits(candidate)) {
+          graphBlock = candidate;
+          spentTokens += estimateTokens(candidate);
+          trace.graphPaths = paths.map(p => p.line);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[MEMORY] graph recall failed (non-fatal):', err.message);
+    trace.notes.push(`graph_recall_error:${err.message}`);
+  }
+
+  // Phase C — episodic recall: past arcs matching the query (or generic
+  // past-tense recall). Answers "what did we do about X" from experience.
+  let episodeBlock = '';
+  try {
+    const mindView = peekMind(ownerId);
+    if (mindView) {
+      let eps = recallEpisodes(mindView, query);
+      // Continuation fast-path: no token match, but the user asked to resume —
+      // the latest (active-first) arc IS the answer to "where were we".
+      if (!eps.length && continuing) {
+        const latest = latestEpisode(mindView);
+        if (latest) eps = [{ episode: latest, score: 5 }];
+      }
+      if (eps.length) {
+        const candidate = formatEpisodeRecall(eps);
+        if (laneFits(candidate)) {
+          episodeBlock = candidate;
+          spentTokens += estimateTokens(candidate);
+          trace.episodesRecalled = eps.map(e => e.episode.title);
+          trace.pastRecallQuery = isPastRecallQuery(query);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[MEMORY] episode recall failed (non-fatal):', err.message);
+    trace.notes.push(`episode_recall_error:${err.message}`);
+  }
+
+  // Phase D — file CONTENT recall: top semantic chunks of uploaded files,
+  // precomputed by the async caller (chat's seam) exactly like semanticScores.
+  // null/[] → lane absent, behavior identical to pre-Phase-D.
+  let fileChunkBlock = '';
+  try {
+    if (Array.isArray(fileChunks) && fileChunks.length) {
+      const top = fileChunks.slice(0, 2);
+      const lines = top.map(c => `- [${c.name}] "${String(c.text).replace(/\s+/g, ' ').slice(0, 220)}${String(c.text).length > 220 ? '…' : ''}"`);
+      const candidate = [
+        '--- FILE RECALL (from uploaded content) ---',
+        ...lines,
+        '--- END FILE RECALL ---',
+      ].join('\n');
+      if (laneFits(candidate)) {
+        fileChunkBlock = candidate;
+        spentTokens += estimateTokens(candidate);
+        trace.fileChunksInjected = top.map(c => ({ name: c.name, idx: c.idx, score: c.score }));
+      }
+    }
+  } catch (err) {
+    console.warn('[MEMORY] file recall failed (non-fatal):', err.message);
+    trace.notes.push(`file_recall_error:${err.message}`);
+  }
+
+  // File memory — only when the query plausibly touches files (continuation
+  // counts: resuming work implies the active workspace/files matter).
+  const fileBlock = retrieveFileMemory(ownerId, query, taskType, trace, { force: continuing });
+
+  const block = [identityBlock, factBlock, cognitive.block, graphBlock, episodeBlock, fileChunkBlock, fileBlock].filter(Boolean).join('\n\n');
   trace.injectedTokens = estimateTokens(block);
+
+  // Phase F — retrieval quality/latency metrics (fail-open, never throws).
+  try {
+    const lanes = [];
+    if (identityBlock) lanes.push('identity');
+    if (factBlock) lanes.push('facts');
+    if (cognitive.block) lanes.push('cognitive');
+    if (graphBlock) lanes.push('graph');
+    if (episodeBlock) lanes.push('episodes');
+    if (fileChunkBlock) lanes.push('fileChunks');
+    if (fileBlock) lanes.push('files');
+    recordMemoryRetrieval({
+      latencyMs: +(performance.now() - t0).toFixed(2),
+      nonEmpty: block.length > 0,
+      lanes,
+    });
+  } catch { /* non-fatal */ }
+
   return { block, relevantFacts, cognitiveUsed: cognitive.used || {}, trace };
 }
 
@@ -234,7 +347,7 @@ function fileKey(name) {
  * it contains (compact summary — NOT the full content), and where it came
  * from. Also lands in the relationship graph as an artifact the user uses.
  */
-export function rememberFile(ownerId, { name, kind = 'document', summary = '', chars = 0, conversationId = null, workspaceId = null } = {}) {
+export function rememberFile(ownerId, { name, kind = 'document', summary = '', chars = 0, conversationId = null, workspaceId = null, content = '' } = {}) {
   if (!ownerId || !name) return null;
   try {
     const mind = getMind(ownerId);
@@ -257,7 +370,15 @@ export function rememberFile(ownerId, { name, kind = 'document', summary = '', c
     const node = upsertNode(mind, 'artifact', name);
     if (node) upsertEdge(mind, SELF_KEY, node.key, 'uses', kind);
     touchMind(mind);
-    console.log(`[MEMORY] FILE_REMEMBERED owner=${ownerId} name="${name}" kind=${kind}`);
+
+    // Phase D — the CONTENT becomes durable, semantically searchable owner
+    // knowledge. Fire-and-forget: never adds latency to the upload response;
+    // fails open internally; no-op when embeddings are unavailable.
+    if (content) {
+      indexFileChunks(ownerId, key, name, content).catch(() => {});
+    }
+
+    console.log(`[MEMORY] FILE_REMEMBERED owner=${ownerId} name="${name}" kind=${kind}${content ? ` contentChars=${String(content).length}` : ''}`);
     return entry;
   } catch (err) {
     console.warn('[MEMORY] rememberFile failed (non-fatal):', err.message);
@@ -295,16 +416,19 @@ function enforceFileCap(mind) {
   while (sorted.length > FILE_MEMORY_CAP) {
     const [k] = sorted.shift();
     delete mind.files[k];
+    // Phase D — evicting the file entry also drops its content chunks; a
+    // file the owner no longer "remembers" must not keep matching queries.
+    removeFileChunks(mind.ownerId, k);
   }
 }
 
 const FILE_INTENT_RE = /\b(file|files|upload(ed)?|document|pdf|spreadsheet|attachment|workspace|repo|that (doc|report|sheet))\b/i;
 
-function retrieveFileMemory(ownerId, query, taskType, trace) {
+function retrieveFileMemory(ownerId, query, taskType, trace, { force = false } = {}) {
   const mind = peekMind(ownerId);
   if (!mind || !Object.keys(mind.files || {}).length) return '';
   const q = (query || '').toLowerCase();
-  const intent = FILE_INTENT_RE.test(q) || taskType === 'project_query';
+  const intent = force || FILE_INTENT_RE.test(q) || taskType === 'project_query';
 
   const tokens = q.match(/[a-z0-9_.-]{3,}/g) || [];
   const scored = [];

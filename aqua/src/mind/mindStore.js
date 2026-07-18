@@ -20,6 +20,7 @@
 import { createEmptyMind } from './mindSchema.js';
 import { createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore } from '../core/atomicStore.js';
 import { migrateLegacyFile } from '../core/dataDir.js';
+import { clearNamespace } from '../embeddings/vectorStore.js';
 
 // P0 — memory is critical user data: it now lives in the canonical DATA
 // DIRECTORY (survives every redeploy), with a one-time loss-proof migration
@@ -165,6 +166,14 @@ export function touchMind(mind) {
 export function deleteMind(ownerId) {
   const existed = store.delete(ownerId);
   if (existed) scheduleSave();
+  // Phase D — GDPR cascade: deleting a mind also purges every vector the
+  // owner accumulated (fact vectors live in ns `<ownerId>`, uploaded-file
+  // content chunks in ns `files:<ownerId>`). Runs even if the mind object
+  // was already gone — vectors must never outlive a deletion request.
+  try {
+    clearNamespace(ownerId);
+    clearNamespace(`files:${ownerId}`);
+  } catch { /* non-fatal */ }
   return existed;
 }
 

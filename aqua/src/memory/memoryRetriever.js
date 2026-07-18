@@ -4,7 +4,7 @@ AQUA Memory Retriever v4
 Semantic retrieval engine with multi-dimensional scoring, context budgeting, 
 and grouped prompt injection.
 */
-import { getFacts } from './longTermMemory.js';
+import { getFacts, touchRetrieved } from './longTermMemory.js';
 import { getSchema, getSchemaByCategory, getWordIndex, CATEGORIES, SEMANTIC_CONCEPTS, CATEGORY_ALIASES } from './memorySchema.js';
 
 // ── Recall trigger detection ──────────────────────────────────────────────────
@@ -214,6 +214,10 @@ export function retrieveRelevantFacts(ownerId, query, limit = 15, { trace = null
   }
 
   const top = filtered.slice(0, limit);
+  // Phase A — usage feedback: these facts are about to be injected into the
+  // prompt; record it so computeImportance can reward facts retrieval keeps
+  // needing. Fail-open: a touch failure must never break retrieval.
+  try { touchRetrieved(ownerId, top.map((x) => x.fact.key)); } catch { /* non-fatal */ }
   if (trace) {
     trace.ranking = top.map((x) => ({
       key: x.fact.key, score: x.score, intentScore: x.intentScore,

@@ -146,7 +146,7 @@ router.post('/', async (req, res) => {
           if (cls.corrupt) throw new Error('File extension and content disagree — the file appears corrupt.');
           const normalized = await processDocument(name, buffer);
           const attachment = attachToConversation(conversationId, { name, kind: 'document', normalized });
-          rememberFile(memoryOwner, { name, kind: 'document', summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId });
+          rememberFile(memoryOwner, { name, kind: 'document', summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId, content: normalized.content });
           results.push({ name, kind: 'document', status: 'ready', attachmentId: attachment.id, format: normalized.format, pages: normalized.pages, contentChars: normalized.content.length, truncated: normalized.truncated });
           break;
         }
@@ -155,7 +155,7 @@ router.post('/', async (req, res) => {
         case 'video': {
           const normalized = await processMedia(name, buffer, cls.mime, cls.kind);
           const attachment = attachToConversation(conversationId, { name, kind: cls.kind, normalized });
-          rememberFile(memoryOwner, { name, kind: cls.kind, summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId });
+          rememberFile(memoryOwner, { name, kind: cls.kind, summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId, content: normalized.content });
           results.push({ name, kind: cls.kind, status: 'ready', attachmentId: attachment.id, format: normalized.format, contentChars: normalized.content.length, analyzed: normalized.metadata.analyzed !== false });
           break;
         }
@@ -168,7 +168,7 @@ router.post('/', async (req, res) => {
             content, pages: null, sections: [], language: null, truncated,
           };
           const attachment = attachToConversation(conversationId, { name, kind: 'source', normalized });
-          rememberFile(memoryOwner, { name, kind: 'source', summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId });
+          rememberFile(memoryOwner, { name, kind: 'source', summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId, content: normalized.content });
           results.push({ name, kind: 'source', status: 'ready', attachmentId: attachment.id, format: normalized.format, contentChars: content.length, truncated });
           break;
         }

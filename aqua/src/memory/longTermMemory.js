@@ -19,6 +19,7 @@
 import { getMind, peekMind, touchMind } from '../mind/mindStore.js';
 import { resolveMemoryConflict } from './memoryConflictResolver.js';
 import { RESOLUTION_ACTIONS } from './memoryResolver.js';
+import { CAPS } from '../mind/mindSchema.js';
 
 const MIN_CONF = 0.5;
 // Confidence penalty per prior supporting observation when a contradiction
@@ -37,7 +38,7 @@ function factsOf(ownerId, { create = true } = {}) {
 
 function buildVersionHistory(existing, reason) {
   const prevHistory = Array.isArray(existing.history) ? existing.history : [];
-  return [
+  const history = [
     ...prevHistory,
     {
       value: existing.value,
@@ -50,6 +51,12 @@ function buildVersionHistory(existing, reason) {
       revision: existing.revision || 1,
     },
   ];
+  // Phase A bug fix: CAPS.HISTORY_PER_ITEM existed but was never enforced on
+  // the fact layer — history grew unbounded. Keep the newest N revisions.
+  if (history.length > CAPS.HISTORY_PER_ITEM) {
+    history.splice(0, history.length - CAPS.HISTORY_PER_ITEM);
+  }
+  return history;
 }
 
 function makeFactId(ownerId, key) {
@@ -79,16 +86,26 @@ function upgradeFact(fact, ownerId) {
     status: fact.status || 'active',
     supportCount: fact.supportCount ?? 1,       // observations agreeing with value
     contradictions: fact.contradictions ?? 0,   // times a different value arrived
+    // Phase A — lifecycle fields (importanceEngine)
+    baseImportance: fact.baseImportance ?? fact.importance ?? 5,
+    retrievalCount: fact.retrievalCount ?? 0,   // times retrieval injected it
+    lastRetrievedAt: fact.lastRetrievedAt ?? null,
+    pinned: fact.pinned ?? false,               // exempt from archive, floor-8 importance
   };
 }
 
-/** Reinforce: identical evidence seen again. */
+/** Reinforce: identical evidence seen again. Re-mention also REACTIVATES a
+ *  cold (archived) fact — Phase A "reactivation on demand". */
 function reinforce(existing, now) {
   existing.updatedAt = now;
   existing.lastMentionedAt = now;
   existing.ts = now;
   existing.confidence = Math.min(1.0, (existing.confidence || 0.5) + 0.05);
   existing.supportCount = (existing.supportCount || 1) + 1;
+  if (existing.status === 'archived') {
+    existing.status = 'active';
+    delete existing.archivedAt;
+  }
 }
 
 /**
@@ -135,6 +152,9 @@ export function storeFact(ownerId, fact, { trace = null } = {}) {
   const { isCorrection, action: _drop2, ...persistableFact } = fact;
   const upgraded = upgradeFact(persistableFact, ownerId);
   upgraded.history = history;
+  // Phase A: an explicit correction is the user saying "remember this" —
+  // pin it (archive-exempt, importance floor). Pins survive later overwrites.
+  upgraded.pinned = upgraded.pinned || !!existing?.pinned || !!isCorrection;
 
   if (existing) {
     upgraded.revision = (existing.revision || 1) + 1;
@@ -197,6 +217,8 @@ export function storeResolved(ownerId, resolved, { trace = null } = {}) {
       upgraded.revision = (existing?.revision || 0) + 1;
       upgraded.createdAt = existing?.createdAt || now;
       upgraded.lastMentionedAt = now;
+      upgraded.pinned = upgraded.pinned || !!existing?.pinned ||
+        resolved.action === RESOLUTION_ACTIONS.CORRECTION;
       if (existing) {
         upgraded.contradictions = (existing.contradictions || 0) + 1;
         upgraded.supportCount = 1;
@@ -219,10 +241,39 @@ export function storeResolved(ownerId, resolved, { trace = null } = {}) {
   }
 }
 
-export function getFacts(ownerId) {
+/**
+ * Facts for an owner, importance-sorted. Archived (cold) facts are excluded
+ * by default — they left the active working set at reflection and only a
+ * re-mention (reinforce/overwrite) brings them back. Pass includeArchived
+ * for inspector/export views.
+ */
+export function getFacts(ownerId, { includeArchived = false } = {}) {
   const mind = factsOf(ownerId, { create: false });
   if (!mind || !Object.keys(mind.facts).length) return [];
-  return Object.values(mind.facts).sort((a, b) => (b.importance || 0) - (a.importance || 0));
+  let facts = Object.values(mind.facts);
+  if (!includeArchived) facts = facts.filter(f => f.status !== 'archived');
+  return facts.sort((a, b) => (b.importance || 0) - (a.importance || 0));
+}
+
+/**
+ * Phase A — retrieval usage feedback. The retriever reports which facts it
+ * actually injected; usage feeds computeImportance (a fact the system keeps
+ * needing is important, whatever extraction guessed). One touchMind per call.
+ */
+export function touchRetrieved(ownerId, keys = []) {
+  if (!keys.length) return;
+  const mind = factsOf(ownerId, { create: false });
+  if (!mind) return;
+  const now = Date.now();
+  let touched = false;
+  for (const key of keys) {
+    const fact = mind.facts[key];
+    if (!fact) continue;
+    fact.retrievalCount = (fact.retrievalCount || 0) + 1;
+    fact.lastRetrievedAt = now;
+    touched = true;
+  }
+  if (touched) touchMind(mind);
 }
 
 export function getFact(ownerId, key) {
