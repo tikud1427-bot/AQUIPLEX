@@ -1,9 +1,14 @@
 /**
- * AQUA Unified Upload — Day 5
+ * AQUA Unified Upload — File Intelligence V1
  *
- * THE single upload endpoint. Users (and the frontend) never choose between
- * "chat upload" and "project upload" — everything comes here, gets
- * classified, and is routed to the right pipeline automatically.
+ * THE single upload endpoint — now a THIN SHELL over the File Engine
+ * (src/files/fileEngine.js). The route owns exactly three concerns:
+ * HTTP validation, authorization (Phase 0 IDOR guards), and response
+ * shaping. Everything between "decoded buffers" and "results" — detection,
+ * parser selection, parsing, UKO construction, enrichment, caching, memory,
+ * search indexing, attachment — is the engine's universal lifecycle. This
+ * route contains ZERO file-type knowledge; adding a format is
+ * registerParser(), never a route change.
  *
  *   POST /upload
  *     Body: {
@@ -11,41 +16,23 @@
  *       files: [{ name: string, content: string }]   // content ALWAYS base64
  *     }
  *
- *   Routing (per file / per batch):
- *     ZIP / TAR / TAR.GZ          → extract → workspace ingestion → workspace card
- *     multi-file source batch     → workspace ingestion (folder drop)
- *     PDF/DOCX/PPTX/XLSX/CSV/ODT/EPUB → document pipeline → conversation attachment
- *     PNG/JPEG/WEBP/GIF/SVG/HEIC  → vision + OCR → conversation attachment
- *     MP3/WAV/M4A                 → transcription + analysis → attachment
- *     MP4/MOV/AVI                 → transcription + analysis → attachment
- *     single source file          → read → conversation attachment
- *     anything else               → explicit per-file error (never silent)
- *
- *   Response: {
+ *   Response (byte-compatible with pre-V1, additive fields marked +):
  *     success, conversationId, isNewConversation,
- *     results: [{ name, kind, status: 'ready'|'failed', ... }],
- *     workspace?: { id, projectType, filesIngested, summary, overview },
- *     attachments: [ ...metadata of everything now attached to the conversation ]
- *   }
+ *     results: [{ name, kind, status, ..., +ukoId, +cacheHit }],
+ *     workspace?: { id, projectType, filesIngested, summary, overview, +ukoId },
+ *     attachments: [ ...metadata of everything attached to the conversation ]
  *
- *   GET    /upload/formats                          — supported format matrix
+ *   GET    /upload/formats                          — format matrix (+parser matrix)
  *   GET    /upload/attachments/:conversationId      — list attachments
  *   DELETE /upload/attachments/:conversationId/:id  — detach
  */
 import express from 'express';
-import path from 'path';
-import { classifyUpload, SUPPORTED_FORMATS }    from '../upload/uploadClassifier.js';
-import { extractArchive }                        from '../upload/archiveExtractor.js';
-import { processDocument }                       from '../upload/documentPipeline.js';
-import { processMedia }                          from '../upload/mediaPipeline.js';
-import {
-  attachToConversation, getAttachments, removeAttachment, serializeAttachment,
-} from '../upload/attachmentStore.js';
+import { SUPPORTED_FORMATS }                     from '../upload/uploadClassifier.js';
+import { getAttachments, removeAttachment, serializeAttachment } from '../upload/attachmentStore.js';
 import { getOrCreateConversation, conversationExists, canAccessConversation } from '../memory/conversationStore.js';
-import { resolveOwner, rememberFile, rememberWorkspace } from '../memory/engine.js';
-import { createWorkspace }                       from '../project/workspaceManager.js';
-import { runWorkspaceIngestion }                 from '../project/ingestionPipeline.js';
-import { detectLanguage as detectSourceLanguage } from '../project/fileIngester.js';
+import { resolveOwner }                          from '../memory/engine.js';
+import { ingestFiles }                           from '../files/fileEngine.js';
+import { listParsers }                           from '../files/parserRegistry.js';
 
 const router = express.Router();
 
@@ -112,114 +99,34 @@ router.post('/', async (req, res) => {
   // conversation attachments. Same owner model as chat.
   const memoryOwner = resolveOwner({ userId: req.aquaUserId ?? null, conversationId });
 
-  // ── Decode + classify every file up front ──
-  const classified = [];
-  const results    = [];
-
+  // ── Decode (route-owned: base64 error semantics are part of the HTTP contract) ──
+  const decoded = [];
+  const results = [];
   for (const f of files) {
     if (!f?.name || !f?.content) {
       results.push({ name: f?.name ?? '(unnamed)', kind: 'unknown', status: 'failed', error: 'File entry missing name or content' });
       continue;
     }
-    let buffer;
     try {
-      buffer = Buffer.from(f.content, 'base64');
+      const buffer = Buffer.from(f.content, 'base64');
       if (!buffer.length) throw new Error('empty');
+      decoded.push({ name: f.name, buffer });
     } catch {
       results.push({ name: f.name, kind: 'unknown', status: 'failed', error: 'Content is not valid base64' });
-      continue;
-    }
-    const cls = classifyUpload(f.name, buffer);
-    classified.push({ name: f.name, buffer, cls });
-  }
-
-  // ── Batch decision: repository experience ──
-  // An archive anywhere in the batch, OR a multi-file batch that is
-  // majority source files (a folder drop), becomes a workspace.
-  const archives    = classified.filter(c => c.cls.kind === 'repository');
-  const sourceFiles = classified.filter(c => c.cls.kind === 'source');
-  const isFolderDrop = classified.length > 3 && sourceFiles.length / classified.length >= 0.6;
-
-  let workspacePayload = null;
-
-  if (archives.length > 0 || isFolderDrop) {
-    try {
-      workspacePayload = await handleRepositoryUpload({ memoryOwner,
-        archives,
-        sourceFiles: isFolderDrop ? sourceFiles : [],
-        workspaceName: workspaceName
-          ?? (archives[0]?.name.replace(/\.(zip|tar\.gz|tgz|tar|gz)$/i, '') || 'Uploaded project'),
-        results,
-      });
-    } catch (err) {
-      // Whole-repository failure is reported per archive — never silent.
-      for (const a of archives) {
-        if (!results.some(r => r.name === a.name)) {
-          results.push({ name: a.name, kind: 'repository', status: 'failed', error: err.message });
-        }
-      }
     }
   }
 
-  // Files consumed by the workspace path don't get double-processed.
-  const consumed = new Set([
-    ...archives.map(a => a.name),
-    ...(isFolderDrop ? sourceFiles.map(s => s.name) : []),
-  ]);
-  const individual = classified.filter(c => !consumed.has(c.name));
-
-  // ── Per-file routing for everything else ──
-  for (const item of individual) {
-    const { name, buffer, cls } = item;
-    try {
-      switch (cls.kind) {
-        case 'document': {
-          if (cls.corrupt) throw new Error('File extension and content disagree — the file appears corrupt.');
-          const normalized = await processDocument(name, buffer);
-          const attachment = attachToConversation(conversationId, { name, kind: 'document', normalized });
-          rememberFile(memoryOwner, { name, kind: 'document', summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId, content: normalized.content });
-          results.push({ name, kind: 'document', status: 'ready', attachmentId: attachment.id, format: normalized.format, pages: normalized.pages, contentChars: normalized.content.length, truncated: normalized.truncated });
-          break;
-        }
-        case 'image':
-        case 'audio':
-        case 'video': {
-          const normalized = await processMedia(name, buffer, cls.mime, cls.kind);
-          const attachment = attachToConversation(conversationId, { name, kind: cls.kind, normalized });
-          rememberFile(memoryOwner, { name, kind: cls.kind, summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId, content: normalized.content });
-          results.push({ name, kind: cls.kind, status: 'ready', attachmentId: attachment.id, format: normalized.format, contentChars: normalized.content.length, analyzed: normalized.metadata.analyzed !== false });
-          break;
-        }
-        case 'source': {
-          let content = buffer.toString('utf8');
-          let truncated = false;
-          if (content.length > MAX_SOURCE_CHARS) { content = content.slice(0, MAX_SOURCE_CHARS) + '\n... [truncated]'; truncated = true; }
-          const normalized = {
-            title: name, format: detectSourceLanguage(name), metadata: {},
-            content, pages: null, sections: [], language: null, truncated,
-          };
-          const attachment = attachToConversation(conversationId, { name, kind: 'source', normalized });
-          rememberFile(memoryOwner, { name, kind: 'source', summary: (normalized.title && normalized.title !== name ? normalized.title + ' — ' : '') + normalized.content.slice(0, 240), chars: normalized.content.length, conversationId, content: normalized.content });
-          results.push({ name, kind: 'source', status: 'ready', attachmentId: attachment.id, format: normalized.format, contentChars: content.length, truncated });
-          break;
-        }
-        case 'repository': {
-          // Only reachable if handleRepositoryUpload threw before reaching this archive
-          break;
-        }
-        default: {
-          const ext = path.extname(name) || '(no extension)';
-          results.push({
-            name, kind: 'unknown', status: 'failed',
-            error: `Unsupported format ${ext}. Supported: repositories (zip/tar/tar.gz), documents (pdf/docx/pptx/xlsx/csv/odt/epub), images, audio, video, and source/text files.`,
-          });
-        }
-      }
-    } catch (err) {
-      console.error(`[UPLOAD] Processing failed file=${name}:`, err.message);
-      results.push({ name, kind: cls.kind, status: 'failed', error: err.message });
-    }
-  }
+  // ── Universal lifecycle (engine-owned) ──
+  const engineOut = await ingestFiles({
+    files: decoded,
+    ownerId: memoryOwner,
+    conversationId,
+    workspaceName: workspaceName
+      ?? (decoded.find(d => /\.(zip|tar\.gz|tgz|tar|gz)$/i.test(d.name))?.name.replace(/\.(zip|tar\.gz|tgz|tar|gz)$/i, '') || 'Uploaded project'),
+    traceId: req.headers['x-request-id'] ?? null,
+  });
+  results.push(...engineOut.results);
+  const workspacePayload = engineOut.workspace;
 
   const anyReady = results.some(r => r.status === 'ready') || !!workspacePayload;
 
@@ -234,61 +141,10 @@ router.post('/', async (req, res) => {
   });
 });
 
-// ── Repository experience: archive/folder → workspace, zero manual steps ──────
-
-async function handleRepositoryUpload({ memoryOwner = null, archives, sourceFiles, workspaceName, results }) {
-  // Merge every archive + loose source file into ONE raw file set (mixed
-  // uploads: "here's my repo zip and also these two extra files").
-  const rawFiles = [];
-
-  for (const a of archives) {
-    if (a.cls.corrupt) {
-      results.push({ name: a.name, kind: 'repository', status: 'failed', error: 'Archive appears corrupt — its bytes do not match its extension.' });
-      continue;
-    }
-    try {
-      const extracted = await extractArchive(a.buffer, a.cls.archiveFormat);
-      if (!extracted.length) {
-        results.push({ name: a.name, kind: 'repository', status: 'failed', error: 'Archive extracted to zero usable files (only ignored/binary content).' });
-        continue;
-      }
-      rawFiles.push(...extracted);
-      results.push({ name: a.name, kind: 'repository', status: 'ready', entriesExtracted: extracted.length });
-    } catch (err) {
-      results.push({ name: a.name, kind: 'repository', status: 'failed', error: err.message });
-    }
-  }
-
-  for (const s of sourceFiles) {
-    rawFiles.push({ path: s.name, content: s.buffer.toString('utf8') });
-    results.push({ name: s.name, kind: 'source', status: 'ready', routedTo: 'workspace' });
-  }
-
-  if (!rawFiles.length) {
-    throw new Error('No archive in the upload could be extracted.');
-  }
-
-  // Create workspace + run the EXACT same pipeline as POST /project/workspace/:id/files
-  const workspace = createWorkspace({ name: workspaceName, createdBy: 'unified-upload', ownerId: memoryOwner });
-  const ingestion = await runWorkspaceIngestion(workspace.id, rawFiles);
-  // Workspace becomes durable owner memory: project node + summary (Req 9/10).
-  rememberWorkspace(memoryOwner, { ...workspace, summary: ingestion.summary, stats: { files: ingestion.filesIngested } });
-
-  return {
-    id:            workspace.id,
-    name:          workspaceName,
-    projectType:   ingestion.projectType,
-    filesIngested: ingestion.filesIngested,
-    indexStats:    ingestion.indexStats,
-    summary:       ingestion.summary,
-    overview:      ingestion.overview,
-  };
-}
-
 // ── GET /upload/formats ───────────────────────────────────────────────────────
 
 router.get('/formats', (_req, res) => {
-  res.json({ success: true, formats: SUPPORTED_FORMATS });
+  res.json({ success: true, formats: SUPPORTED_FORMATS, parsers: listParsers() });
 });
 
 // ── Attachment management ─────────────────────────────────────────────────────
