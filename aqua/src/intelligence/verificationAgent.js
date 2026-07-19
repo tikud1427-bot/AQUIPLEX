@@ -52,18 +52,34 @@ import { generateText }    from '../providers/router.js';
 import { createContext }   from '../core/observability.js';
 import { getFocusRisks }   from './critic.js';
 import { registerAgent }   from './agentRegistry.js';
+import { hasGroundedEvidence, isCapabilityRefusal } from './evidenceContext.js';
 
 const PASS_SENTINEL =
   'VERIFICATION_PASSED — the draft was checked against the listed risks and no material issues were found; returning it unchanged.';
 
 /**
+ * Phase 0 (audit F1) — THE GROUNDING CONTRACT: the reviewer sees the same
+ * evidence the drafter had. Without this clause a text-only critique model,
+ * reviewing a grounded video/PDF/image answer under a "Hallucination risk"
+ * rubric with no sight of the analyses, rationally concludes the draft is
+ * fabricated and rewrites it into "I cannot watch videos" — the exact
+ * overwrite bug this phase fixes.
+ *
  * @param {string[]} focusRisks
+ * @param {boolean}  grounded - evidence block accompanies the critique input
  * @returns {string} system prompt for the critique call
  */
-function buildCritiquePrompt(focusRisks) {
+function buildCritiquePrompt(focusRisks, grounded = false) {
   return [
     "You are AQUA's internal verification pass. You are shown a user's question and a draft answer someone already wrote for them.",
     '',
+    ...(grounded ? [
+      'The draft was written WITH the evidence context included below (file analyses, project context, search results, memory). Treat that evidence as ground truth available to the drafter:',
+      '- Claims supported by the evidence context are grounded, NOT hallucinations.',
+      '- File and media analyses in the evidence were already performed by the platform; the draft legitimately describes their contents.',
+      '- NEVER replace the draft with a statement that files, videos, images, audio, or documents cannot be accessed, watched, viewed, read, or analyzed — the analyses are right there in the evidence.',
+      '',
+    ] : []),
     `Check the draft ONLY against these specific risks: ${focusRisks.join(', ')}.`,
     '',
     `If none of these specific risks are actually present, respond with EXACTLY this line and nothing else:\n"${PASS_SENTINEL}"`,
@@ -117,10 +133,15 @@ export async function runVerification({
   conversationId,
   responseBudget,
   maxPasses = 1,
+  evidenceContext = '',           // Phase 0 (F1): grounding contract — see buildCritiquePrompt
   generate = generateText,
 }) {
   const focusRisks = getFocusRisks(taskType);
-  const critiquePrompt = buildCritiquePrompt(focusRisks);
+  const grounded   = hasGroundedEvidence(evidenceContext);
+  const critiquePrompt = buildCritiquePrompt(focusRisks, grounded);
+  const evidenceBlock  = grounded
+    ? `Evidence context available to the drafter (ground truth):\n${evidenceContext}\n\n`
+    : '';
 
   // One context across all passes so attemptCount reflects the loop's total
   // provider usage; chat.js's main fallbackChain stays untouched (see below).
@@ -144,10 +165,12 @@ export async function runVerification({
   // (b) replaces it with a revision → re-critique if budget remains, or
   // (c) errors → fail open with `current` as-is. A broken verifier can
   // therefore never lose an accepted revision, let alone the original draft.
+  let suppressedRefusals = 0;   // Phase 0 (F2 interplay): guarded revisions never count as `revised`
+
   while (passes < cap) {
     const critiqueMessages = [{
       role: 'user',
-      content: `Original user question:\n${userMessage}\n\nDraft answer to review:\n${current}`,
+      content: `${evidenceBlock}Original user question:\n${userMessage}\n\nDraft answer to review:\n${current}`,
     }];
 
     let result;
@@ -172,6 +195,8 @@ export async function runVerification({
         agent: 'verification',
         finalAnswer: current,
         focusRisks,
+        grounded,
+        suppressedRefusals,
         provider,
         latencyMs: Date.now() - start,
         error: err.message,
@@ -188,6 +213,20 @@ export async function runVerification({
       break;                 // converged — current draft confirmed clean
     }
 
+    // ── Phase 0 (audit F1/F5) — capability-deletion guard ─────────────────────
+    // A verifier may correct facts; it may NEVER delete capability. On a
+    // grounded turn (file/media analyses were in the drafter's prompt), a
+    // revision claiming those files can't be accessed is by definition wrong
+    // — discard it, keep the grounded draft, and stop the loop (a reviser
+    // that just failed this badly has forfeited further passes this turn).
+    // `revised` stays false for a first-pass guard hit, so the learning
+    // ledger never books the malfunction as a legitimate revision (F2).
+    if (grounded && isCapabilityRefusal(text)) {
+      suppressedRefusals += 1;
+      console.warn(`[VERIFICATION] capability-refusal revision SUPPRESSED on grounded turn (pass ${passes}/${cap}) — keeping ${revised ? 'latest revision' : 'draft'}`);
+      break;
+    }
+
     revised = true;
     current = text;          // revision becomes the draft under review
   }
@@ -201,6 +240,8 @@ export async function runVerification({
     agent: 'verification',
     finalAnswer: current,
     focusRisks,
+    grounded,
+    suppressedRefusals,
     provider,
     latencyMs: Date.now() - start,
     attemptCount: verifyCtx.attempts.length,

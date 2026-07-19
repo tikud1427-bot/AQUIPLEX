@@ -276,3 +276,104 @@ test('debate result feeds confidenceEngine verification factor without changes',
   const clean = assessConfidence({ classifierConfidence: 0.9, factsInjected: 2, verification: r });
   assert.equal(clean.band, 'high'); // consensus pass reads as a clean verified answer
 });
+
+// ═══ Phase 0 (audit F3) — grounding contract + capability-deletion guard ═══════
+// Deep-review turns seat THIS agent, so the blind-panel case was the worst
+// instance of the overwrite bug. The panel now reviews with the drafter's
+// evidence, and an escalated "fix" that deletes capability is discarded.
+
+const VIDEO_EVIDENCE = [
+  '── UPLOADED FILE ANALYSES ──',
+  '── Video (transcription + analysis below): demo.mp4 ──',
+  'SUMMARY: A person in a red jacket enters the conference room and places a backpack on the table.',
+].join('\n');
+
+const GROUNDED_DRAFT =
+  'In the video, a person in a red jacket enters the conference room and places a backpack on the table.';
+
+test('GROUNDING CONTRACT: evidence reaches the panel prompt, the panel input, and the revision input', async () => {
+  const generate = fakeGenerateSeq([
+    panelJSON([issue('skeptic', 'high', 'timestamp missing'), pass('analyst'), pass('architect')]),
+    'In the video, a person in a red jacket enters at 0:05 and places a backpack on the table at 0:12.',
+    panelJSON([pass('skeptic'), pass('analyst'), pass('architect')]),
+  ]);
+
+  const result = await runDebate({
+    userMessage: 'What happens in this video?',
+    draftAnswer: GROUNDED_DRAFT,
+    taskType:    'analysis',
+    evidenceContext: VIDEO_EVIDENCE,
+    maxPasses: 2,
+    generate,
+  });
+
+  // Panel call: grounded instructions + evidence in the review input.
+  assert.match(generate.calls[0].systemPrompt, /ground truth/i);
+  assert.match(generate.calls[0].systemPrompt, /cannot be accessed or analyzed/i);
+  assert.match(generate.calls[0].messages[0].content, /red jacket enters the conference room/);
+  // Revision call: same evidence rides along.
+  assert.match(generate.calls[1].messages[0].content, /Evidence context available to the drafter/);
+  assert.equal(result.revised, true);
+  assert.equal(result.passed, true, 'revision re-paneled clean');
+});
+
+test('ungrounded debate is byte-compatible: no grounding clause, no evidence block', async () => {
+  const generate = fakeGenerateSeq([
+    panelJSON([pass('skeptic'), pass('analyst'), pass('architect')]),
+  ]);
+
+  await runDebate({
+    userMessage: 'Plan a migration',
+    draftAnswer: 'Draft.',
+    taskType:    'planning',
+    generate,                       // no evidenceContext
+  });
+
+  assert.doesNotMatch(generate.calls[0].systemPrompt, /ground truth/i);
+  assert.doesNotMatch(generate.calls[0].messages[0].content, /Evidence context available/);
+});
+
+test('REGRESSION (the overwrite bug, panel edition): capability-refusal revision is SUPPRESSED — grounded draft ships, objection preserved as disagreement', async () => {
+  const escalating = [issue('skeptic', 'high', 'claims about video content cannot be verified'), pass('analyst'), pass('architect')];
+  const generate = fakeGenerateSeq([
+    panelJSON(escalating),
+    "As an AI, I cannot watch videos or access video files, so I'm unable to describe this video.",
+    // NOTE: no third response scripted — the guard must stop the loop.
+  ]);
+
+  const result = await runDebate({
+    userMessage: 'What happens in this video?',
+    draftAnswer: GROUNDED_DRAFT,
+    taskType:    'analysis',
+    evidenceContext: VIDEO_EVIDENCE,
+    maxPasses: 2,
+    generate,
+  });
+
+  assert.equal(result.finalAnswer, GROUNDED_DRAFT, 'grounded draft survives verbatim');
+  assert.equal(result.revised, false, 'suppressed malfunction is not a revision (ledger stays clean)');
+  assert.equal(result.converged, false);
+  assert.equal(result.disagreements.length, 1, "panel's objection stays on the record");
+  assert.match(result.disagreements[0].issue, /cannot be verified/);
+  assert.equal(generate.calls.length, 2, 'loop stops after the guard hit');
+});
+
+test('guard is grounded-only for debate too: ungrounded refusal-shaped revision is adopted', async () => {
+  const refusal = "I don't have access to the uploaded files, so I cannot answer this.";
+  const generate = fakeGenerateSeq([
+    panelJSON([issue('skeptic', 'high', 'fabricated attachment claim'), pass('analyst'), pass('architect')]),
+    refusal,
+    panelJSON([pass('skeptic'), pass('analyst'), pass('architect')]),
+  ]);
+
+  const result = await runDebate({
+    userMessage: 'What does the attachment say?',
+    draftAnswer: 'The attachment says X.',
+    taskType:    'analysis',
+    maxPasses: 2,
+    generate,                       // no evidence → guard must NOT fire
+  });
+
+  assert.equal(result.revised, true);
+  assert.equal(result.finalAnswer, refusal);
+});

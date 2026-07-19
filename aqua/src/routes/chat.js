@@ -64,6 +64,7 @@ import { createExecutionPlan }    from '../core/executionPlanner.js';
 import { getReasoningStrategy }   from '../core/reasoningStrategy.js';
 import { runIntelligencePipeline } from '../intelligence/internalIntelligenceEngine.js';
 import { assessConfidence, isGroundingExpected } from '../intelligence/confidenceEngine.js';
+import { composeEvidenceContext } from '../intelligence/evidenceContext.js';
 import { LOW_CONFIDENCE_THRESHOLD } from '../orchestrator/verificationStrategy.js';
 import { recordOutcome, getTaskStats } from '../intelligence/learningLedger.js';
 import { orchestrate, formatOrchestratorLog } from '../orchestrator/toolOrchestrator.js';
@@ -80,6 +81,8 @@ import {
   addMessage,
   updateConversationMeta,
   deriveTitle,
+  conversationExists,
+  canAccessConversation,
 } from '../memory/conversationStore.js';
 import { resolveOwner, memoryObserve, memoryRetrieve, memoryAfterTurn, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
 import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
@@ -534,6 +537,16 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   console.log(formatSearchDecisionLog(webSearchCap, search));
   const searchContext = search?.contextBlock ?? '';
 
+  // ── 5e. Evidence context (Phase 0, audit F1) ────────────────────────────────
+  // THE GROUNDING CONTRACT: everything that grounded THIS turn's draft,
+  // assembled once, carried in prep, and handed to any post-generation
+  // reviewer (verification / debate). A reviewer that sees less evidence
+  // than the drafter will "correct" grounded multimodal answers into
+  // "I cannot watch videos" — the root cause of the overwrite bug.
+  const evidenceContext = composeEvidenceContext({
+    attachmentContext, projectContext, memoryBlock, searchContext,
+  });
+
   // ── 6. Build system prompt ────────────────────────────────────────────────────
   onStage('prompt', 'Preparing response…');
   // Attachment context rides the projectContext slot — same injection point,
@@ -557,6 +570,7 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
     memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!memoryBlock, contextUsed: cognitive.used },
     projectContext, projectFiles,
     search,
+    evidenceContext,
     attachments: conversationAttachments.map(a => ({ id: a.id, name: a.name, kind: a.kind })),
     systemPrompt, promptModules,
     messages, contextStats, promptTokens,
@@ -569,7 +583,7 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
  * (falling back to the single critic), with a second pass so a revision
  * gets re-reviewed. Everything else keeps the original single-critic,
  * single-pass check. */
-async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId, plan, confidence }) {
+async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId, plan, confidence, evidenceContext = '' }) {
   let verification = { ran: false, passed: null, revised: false };
   if (orchestration.verification.enabled) {
     const deepReview = plan?.complexity === 'high'
@@ -585,6 +599,7 @@ async function runVerification({ orchestration, userMessage, draftAnswer, taskTy
         responseBudget: orchestration.budget,
         maxPasses: deepReview ? 2 : 1,
         tags: orchestration.multiLabel?.tags ?? [], // debate seats security/compliance reviewers from these; verification ignores it
+        evidenceContext, // Phase 0 (F1/F3): reviewers see the drafter's evidence — grounding contract
       });
     }
   }
@@ -655,6 +670,8 @@ function buildResponsePayload({
       agent:      verification.agent ?? (verification.ran ? 'verification' : null),
       panel:      verification.panel ?? null,          // debate only: seated persona ids
       disagreements: verification.disagreements ?? [], // debate only: preserved minority findings
+      grounded:           verification.grounded ?? false,           // Phase 0: reviewer saw the drafter's evidence
+      suppressedRefusals: verification.suppressedRefusals ?? 0,     // Phase 0: capability-deleting revisions discarded
     },
 
     // Phase 12 — per-RESPONSE confidence, deterministic aggregation of this
@@ -726,7 +743,19 @@ function buildResponsePayload({
 // ── POST /chat — original request/response endpoint (contract unchanged) ─────
 router.post('/', async (req, res) => {
   const requestId = uuidv4();
-  const { id: conversationId, isNew } = getOrCreateConversation(req.body?.conversationId ?? null, {
+  // Phase 0 (audit F4) — the chat endpoints are the largest attachment/
+  // history consumers, and previously reused ANY existing conversationId:
+  // a caller with someone else's id could read their history, attachments,
+  // and memory into a response AND append messages. Same contract as every
+  // other guarded route: sessions touch only their own conversations,
+  // sessionless/dev unchanged, mismatch = 404 (no existence oracle). A
+  // NON-existent requested id keeps the create-with-that-id contract.
+  const requestedId = req.body?.conversationId ?? null;
+  if (requestedId && conversationExists(requestedId)
+      && !canAccessConversation(req.aquaUserId ?? null, requestedId)) {
+    return res.status(404).json({ success: false, requestId, error: 'Conversation not found' });
+  }
+  const { id: conversationId, isNew } = getOrCreateConversation(requestedId, {
     userAgent: req.headers['user-agent']?.slice(0, 80),
     ip:        req.ip,
     userId:    req.aquaUserId ?? null, // platform session identity (AQUIPLEX)
@@ -813,6 +842,7 @@ router.post('/', async (req, res) => {
     let finalAnswer = result.text;
     const verification = await runVerification({
       orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId, plan, confidence,
+      evidenceContext: prep.evidenceContext,
     });
     if (verification.revised && verification.finalAnswer) {
       finalAnswer = verification.finalAnswer;
@@ -878,7 +908,14 @@ router.post('/', async (req, res) => {
 // ── POST /chat/stream — Server-Sent Events (Day 3 — Real Streaming) ──────────
 router.post('/stream', async (req, res) => {
   const requestId = uuidv4();
-  const { id: conversationId, isNew } = getOrCreateConversation(req.body?.conversationId ?? null, {
+  // Phase 0 (audit F4) — identical guard to POST /chat; runs BEFORE any SSE
+  // headers so an unauthorized reuse gets a plain 404 JSON, not a stream.
+  const requestedId = req.body?.conversationId ?? null;
+  if (requestedId && conversationExists(requestedId)
+      && !canAccessConversation(req.aquaUserId ?? null, requestedId)) {
+    return res.status(404).json({ success: false, requestId, error: 'Conversation not found' });
+  }
+  const { id: conversationId, isNew } = getOrCreateConversation(requestedId, {
     userAgent: req.headers['user-agent']?.slice(0, 80),
     ip:        req.ip,
     userId:    req.aquaUserId ?? null, // platform session identity (AQUIPLEX)
@@ -1087,6 +1124,7 @@ router.post('/stream', async (req, res) => {
       send('stage', { id: 'verify', label: 'Verifying answer…' });
       verification = await runVerification({
         orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId, plan, confidence,
+        evidenceContext: prep.evidenceContext,
       });
       if (verification.revised && verification.finalAnswer) {
         finalAnswer = verification.finalAnswer;

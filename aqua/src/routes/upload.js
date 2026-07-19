@@ -41,13 +41,33 @@ import { processMedia }                          from '../upload/mediaPipeline.j
 import {
   attachToConversation, getAttachments, removeAttachment, serializeAttachment,
 } from '../upload/attachmentStore.js';
-import { getOrCreateConversation }               from '../memory/conversationStore.js';
+import { getOrCreateConversation, conversationExists, canAccessConversation } from '../memory/conversationStore.js';
 import { resolveOwner, rememberFile, rememberWorkspace } from '../memory/engine.js';
 import { createWorkspace }                       from '../project/workspaceManager.js';
 import { runWorkspaceIngestion }                 from '../project/ingestionPipeline.js';
 import { detectLanguage as detectSourceLanguage } from '../project/fileIngester.js';
 
 const router = express.Router();
+
+// ── Phase 0 (audit F4) — object-level authorization ──────────────────────────
+// Attachments bind to conversations, so every attachment operation inherits
+// the conversation's ownership rules. This route previously performed ZERO
+// checks: any caller who knew a conversationId could list another user's
+// attachment metadata (filenames, titles, sizes), DELETE their attachments,
+// and — worst — POST files INTO their conversation, which the chat pipeline
+// then injects into the victim's system prompt (stored prompt injection).
+// Same contract as conversations.js assertOwnership: platform sessions are
+// scoped to their own conversations; sessionless/dev traffic (scopeUser
+// null) is unchanged; mismatch returns 404, not 403, so a guess is
+// indistinguishable from a miss — no existence oracle.
+function assertConversationAccess(req, res, conversationId) {
+  if (!conversationExists(conversationId)
+      || !canAccessConversation(req.aquaUserId ?? null, conversationId)) {
+    res.status(404).json({ success: false, error: 'Conversation not found' });
+    return false;
+  }
+  return true;
+}
 
 const MAX_FILES_PER_UPLOAD = 30;
 const MAX_SOURCE_CHARS     = 100_000; // mirrors fileIngester MAX_FILE_SIZE
@@ -68,6 +88,17 @@ router.post('/', async (req, res) => {
       success: false,
       error:   `Too many files in one upload (${files.length} > ${MAX_FILES_PER_UPLOAD}). Zip the folder instead — archives ingest as a full workspace.`,
     });
+  }
+
+  // Phase 0 (audit F4) — write-side IDOR guard. An EXISTING conversation may
+  // only receive attachments from its owner; attaching into someone else's
+  // conversation is a stored prompt injection (the content lands in their
+  // system prompt next turn). A non-existent requested id keeps today's
+  // create-with-that-id contract — the caller becomes the creator.
+  if (requestedConversationId
+      && conversationExists(requestedConversationId)
+      && !canAccessConversation(req.aquaUserId ?? null, requestedConversationId)) {
+    return res.status(404).json({ success: false, error: 'Conversation not found' });
   }
 
   // Attachments bind to a conversation — create one now if the user uploaded
@@ -263,6 +294,8 @@ router.get('/formats', (_req, res) => {
 // ── Attachment management ─────────────────────────────────────────────────────
 
 router.get('/attachments/:conversationId', (req, res) => {
+  // Phase 0 (audit F4): object-level authorization — see assertConversationAccess.
+  if (!assertConversationAccess(req, res, req.params.conversationId)) return;
   res.json({
     success: true,
     conversationId: req.params.conversationId,
@@ -271,6 +304,8 @@ router.get('/attachments/:conversationId', (req, res) => {
 });
 
 router.delete('/attachments/:conversationId/:attachmentId', (req, res) => {
+  // Phase 0 (audit F4): object-level authorization — see assertConversationAccess.
+  if (!assertConversationAccess(req, res, req.params.conversationId)) return;
   const removed = removeAttachment(req.params.conversationId, req.params.attachmentId);
   if (!removed) return res.status(404).json({ success: false, error: 'Attachment not found' });
   res.json({ success: true, removed: req.params.attachmentId });

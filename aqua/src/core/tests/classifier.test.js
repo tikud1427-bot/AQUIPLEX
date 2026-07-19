@@ -157,3 +157,35 @@ test('"Explain this code" still classifies as project_query (v4 fix unaffected b
   assert.equal(task, 'project_query');
 });
 
+// ═══ Phase 0 (audit F14) — file_analysis gains real patterns ═══════════════════
+// The category had weight/tier entries but ZERO patterns — it could never
+// score, so media questions fell to generic categories at low confidence,
+// and low confidence triggers verification (the overwrite-bug reviewer
+// path). These tests pin BOTH halves: media questions classify strongly,
+// and the anchored patterns never leak into other domains.
+
+test('media questions classify as file_analysis with high confidence (verification not triggered by weak classification)', () => {
+  const strong = [
+    'what happens in this video?',
+    'who enters the room first in the video?',
+    'transcribe this audio',
+    'what does this screenshot show?',
+    'summarize the meeting recording',
+    'analyze demo.mp4',
+    'listen to the voice note and summarize it',
+    'look at this photo and tell me where it was taken',
+  ];
+  for (const msg of strong) {
+    const { task, confidence } = classifyTask(msg);
+    assert.equal(task, 'file_analysis', `"${msg}" → ${task}`);
+    assert.ok(confidence >= 0.5, `"${msg}" confidence ${confidence} must not trip the low-confidence verification gate`);
+  }
+});
+
+test('anchored media patterns do not leak: docker/code/architecture phrasing keeps its category', () => {
+  assert.notEqual(classifyTask('push the docker image to the registry').task, 'file_analysis');
+  assert.notEqual(classifyTask('build the image and tag it v2').task,        'file_analysis');
+  assert.notEqual(classifyTask('write a for loop in python').task,           'file_analysis');
+  assert.notEqual(classifyTask('design an auth architecture').task,          'file_analysis');
+  assert.notEqual(classifyTask('my frame of reference for this decision').task, 'file_analysis');
+});

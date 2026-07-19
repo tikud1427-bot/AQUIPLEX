@@ -215,6 +215,36 @@ const PATTERNS = {
     /[\d]+\s*[+\-*/^%]\s*[\d]+/,
   ],
 
+  // Uploaded file / media questions (Phase 0, audit F14)
+  // This category carried weight 2.0 + SUBSTANTIVE + a complexity tier but
+  // had ZERO patterns — it could never score. Media questions ("what happens
+  // in this video?") fell through to generic categories at low confidence,
+  // and low confidence is a verification trigger — feeding the exact
+  // reviewer path behind the overwrite bug. Patterns are ANCHORED
+  // (demonstrative/possessive, media verb, or upload phrasing) so bare
+  // nouns in other domains — "docker image", "the video cannot be
+  // compressed", "frame of reference" — never match.
+  file_analysis: [
+    // "this/my/the attached video|image|photo|screenshot|audio|clip|recording…"
+    /\b(this|that|my|our|attached|uploaded)\s+(video|image|photo(graph)?|picture|screenshot|screen\s+shot|audio(\s+file)?|recording|voice\s+(note|memo|message)|clip|footage|movie|gif|scan)\b/i,
+    // "the video/photo/screenshot/recording/clip/footage" — nouns that are
+    // unambiguous media even with a bare article (deliberately NOT "the
+    // image"/"the file": docker images, config files)
+    /\bthe\s+(video|photo(graph)?|screenshot|recording|clip|footage|voice\s+(note|memo|message))\b/i,
+    // media-perception verbs aimed at an upload
+    /\b(watch|look\s+at|listen\s+to|view|play)\s+(this|that|the|my)\s+(video|image|photo|picture|screenshot|audio|recording|clip|footage|file)\b/i,
+    // "what happens/is shown/is said in|on this video…"
+    /\bwhat('s| is| was| happens?( in| on)?| do(es)? .{0,20}(say|show))\s*(in|on)?\s*(this|that|the|my)\s+(video|image|photo|picture|screenshot|audio|recording|clip|footage)\b/i,
+    // transcription / media summarization intents
+    /\b(transcri(be|pt(ion)?)|summari[sz]e)\s+(this|that|the|my)?\s*(video|audio|recording|meeting|call|voice)\b/i,
+    /\b(meeting|call|zoom|interview)\s+recording\b/i,
+    /\b(camera|cctv|security|dash\s?cam)\s+(footage|feed|recording|video)\b/i,
+    // "I('ve) uploaded/attached a video|photo|file…"
+    /\b(i('ve| have)?\s+)?(just\s+)?(uploaded|attached|sent|shared)\s+(a|an|the|this|some)\s+(video|image|photo|picture|screenshot|audio|recording|voice|clip|file|pdf|document)\b/i,
+    // media file extensions named directly
+    /\b\w+\.(mp4|mov|avi|mkv|webm|mp3|wav|m4a|ogg|flac|jpe?g|png|gif|webp|heic)\b/i,
+  ],
+
   // Existing data / situation analysis
   analysis: [
     /\b(analyz(e|is)|assess(ment)?|evaluat(e|ion))\b/i,

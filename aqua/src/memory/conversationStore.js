@@ -158,6 +158,19 @@ export function conversationExists(id) {
 }
 
 /**
+ * Phase 0 (audit F4) — object-level authorization, store edition.
+ * Platform sessions (scopeUserId set) may only touch conversations they
+ * own; sessionless/dev traffic (scopeUserId null) is unscoped, exactly
+ * matching the contract conversations.js assertOwnership established.
+ * Pure store lookup — routes decide the HTTP shape (404, no oracle).
+ */
+export function canAccessConversation(scopeUserId, id) {
+  if (!scopeUserId) return true;
+  const owner = store.get(id)?.meta?.userId ?? null;
+  return owner === scopeUserId;
+}
+
+/**
  * Get message history for a conversation.
  * Returns empty array (not null) for unknown IDs.
  * Does NOT auto-create — use createConversation() explicitly.

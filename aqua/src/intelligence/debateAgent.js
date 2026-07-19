@@ -40,17 +40,29 @@ import { generateText }  from '../providers/router.js';
 import { createContext } from '../core/observability.js';
 import { registerAgent } from './agentRegistry.js';
 import { selectPanel, normalizeFinding, synthesizeDebate } from './debatePanel.js';
+import { hasGroundedEvidence, isCapabilityRefusal } from './evidenceContext.js';
 
 /**
+ * Phase 0 (audit F3) — grounding contract, panel edition. Deep-review turns
+ * (high complexity / low confidence) seat THIS agent instead of the single
+ * verifier, so a blind panel was the WORST-case instance of the overwrite
+ * bug: three personas re-litigating a grounded multimodal answer with zero
+ * sight of the evidence. Every voice now reviews with the drafter's context.
+ *
  * @param {Array<{id, name, charter}>} panel
+ * @param {boolean} grounded - evidence block accompanies the review input
  * @returns {string} system prompt for the single panel-review call
  */
-function buildPanelPrompt(panel) {
+function buildPanelPrompt(panel, grounded = false) {
   const roster = panel.map(p => `- ${p.id} (${p.name}): ${p.charter}`).join('\n');
   const ids = panel.map(p => p.id).join(', ');
   return [
     "You are AQUA's internal review panel. Three independent reviewers each examine a draft answer strictly from their own charter. Reviewers do not defer to each other — genuine disagreement must be reported, not smoothed over.",
     '',
+    ...(grounded ? [
+      'The draft was written WITH the evidence context included in the review input (file analyses, project context, search results, memory). Every reviewer treats that evidence as ground truth available to the drafter: claims supported by it are grounded, NOT hallucinations, and file/media analyses there were already performed by the platform. No reviewer may report an issue asserting that files, videos, images, audio, or documents cannot be accessed or analyzed.',
+      '',
+    ] : []),
     'Reviewers and charters:',
     roster,
     '',
@@ -137,12 +149,17 @@ export async function runDebate({
   conversationId,
   responseBudget,
   maxPasses = 1,
+  evidenceContext = '',           // Phase 0 (F3): grounding contract — see buildPanelPrompt
   generate = generateText,
 }) {
   const panel      = selectPanel(taskType, tags);
   const panelIds   = panel.map(p => p.id);
   const allowedIds = new Set(panelIds);
-  const panelPrompt = buildPanelPrompt(panel);
+  const grounded   = hasGroundedEvidence(evidenceContext);
+  const panelPrompt = buildPanelPrompt(panel, grounded);
+  const evidenceBlock = grounded
+    ? `Evidence context available to the drafter (ground truth):\n${evidenceContext}\n\n`
+    : '';
 
   const debateCtx = createContext({
     conversationId,
@@ -192,7 +209,7 @@ export async function runDebate({
       const result = await generate(
         userMessage,
         panelPrompt,
-        [{ role: 'user', content: `Original user question:\n${userMessage}\n\nDraft answer to review:\n${current}` }],
+        [{ role: 'user', content: `${evidenceBlock}Original user question:\n${userMessage}\n\nDraft answer to review:\n${current}` }],
         debateCtx,
         taskType,
         undefined,
@@ -247,14 +264,30 @@ export async function runDebate({
       const result = await generate(
         userMessage,
         REVISION_PROMPT,
-        [{ role: 'user', content: `Original user question:\n${userMessage}\n\nDraft answer:\n${current}\n\nPanel issues to fix:\n${issueList}` }],
+        [{ role: 'user', content: `${evidenceBlock}Original user question:\n${userMessage}\n\nDraft answer:\n${current}\n\nPanel issues to fix:\n${issueList}` }],
         debateCtx,
         taskType,
         undefined,
         responseBudget,
       );
       provider = result.provider ?? provider;
-      current  = (result.text ?? '').trim();
+      const revision = (result.text ?? '').trim();
+
+      // ── Phase 0 (audit F1/F3) — capability-deletion guard ───────────────────
+      // Same invariant as verificationAgent.js: a reviser may correct facts,
+      // never delete capability. On a grounded turn a revision denying access
+      // to the analyzed files is wrong by construction — discard it, keep the
+      // grounded draft, record the panel's issues as unresolved disagreements
+      // (their objection stands on the record; the FIX was invalid), and stop.
+      // `revised` untouched → the ledger never books the malfunction (F2).
+      if (grounded && isCapabilityRefusal(revision)) {
+        console.warn(`[DEBATE] capability-refusal revision SUPPRESSED on grounded turn (pass ${passes}/${cap}) — keeping ${revised ? 'latest revision' : 'draft'}`);
+        disagreements = synth.issues;
+        converged = false;
+        break;
+      }
+
+      current  = revision;
       revised  = true;
       disagreements = []; // objections are being resolved by this revision…
     } catch (err) {

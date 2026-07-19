@@ -30,11 +30,49 @@
  * .aqua-ledger.json, fail-open on load and save. All access goes through
  * this module's API, so swapping storage later touches ONE file.
  */
+import fs from 'fs';
 import { createDebouncedWriter, loadJsonFile } from '../core/atomicStore.js';
 import { migrateLegacyFile } from '../core/dataDir.js';
 
 // P0 — canonical data dir (survives redeploys) + one-time legacy migration.
 const STORE_FILE = migrateLegacyFile('.aqua-ledger.json');
+
+/**
+ * Phase 0 (audit F2) — schema v2: v1 aggregates are QUARANTINED, not loaded.
+ *
+ * Why a full reset is the SAFEST migration (and selective repair is not):
+ * the context-blind verification bug (audit F1) booked every wrongful
+ * "I cannot watch videos" rewrite as a legitimate revision. That poisoned
+ * v1 three ways at once:
+ *   1. byTask.verification.revised inflated → revisionRate crosses
+ *      LEARNED_REVISION_RATE → shouldVerify() auto-enables verification for
+ *      the whole task type → MORE wrongful revisions (the death spiral).
+ *   2. byTask.verification.ran inflated by those spurious passes, skewing
+ *      every rate computed from it.
+ *   3. byProvider.revised inflated → getProviderPrior() penalizes providers
+ *      whose grounded answers were wrongly "corrected".
+ * The store keeps AGGREGATES only (counters + EWMAs, no per-turn records —
+ * by design, see header), so wrongful and legitimate revisions are
+ * indistinguishable after the fact. Any partial repair would keep unknown
+ * amounts of poison. Cold-start is already a first-class guaranteed-neutral
+ * state (MIN_SAMPLE gates every feedback path), so resetting costs at most
+ * MIN_SAMPLE turns of re-learning per key and restores a trustworthy
+ * baseline under the now-grounded reviewers.
+ *
+ * v1 data is preserved verbatim in a timestamped sidecar for post-mortem.
+ */
+const LEDGER_VERSION = 2;
+
+function quarantineV1(data) {
+  try {
+    const sidecar = `${STORE_FILE}.v1-quarantined-${Date.now()}.json`;
+    fs.writeFileSync(sidecar, JSON.stringify(data, null, 2));
+    console.warn(`[LEDGER] v1 aggregates QUARANTINED (poisoned by pre-Phase-0 verification bug, audit F2) → ${sidecar}; starting fresh at v${LEDGER_VERSION}`);
+  } catch (err) {
+    // Preservation is best-effort; the reset itself must never be blocked.
+    console.warn(`[LEDGER] v1 quarantine write failed (${err.message}) — resetting to v${LEDGER_VERSION} regardless; poisoned stats must not steer routing`);
+  }
+}
 
 /** Sample gate: below this many recorded turns for a key, feedback is neutral. */
 export const MIN_SAMPLE = 10;
@@ -55,7 +93,7 @@ let loaded  = false;
 let persist = true;
 
 function emptyLedger() {
-  return { version: 1, byTask: {}, updatedAt: null };
+  return { version: LEDGER_VERSION, byTask: {}, updatedAt: null };
 }
 
 function loadFromDisk() {
@@ -63,8 +101,18 @@ function loadFromDisk() {
   loaded = true;
   // Corrupt-safe: bad parse preserves the file aside + tries .bak, never wipes.
   const data = loadJsonFile(STORE_FILE, { label: 'ledger' });
-  if (data?.version === 1 && data.byTask) ledger = data;
-  if (data) console.log(`[LEDGER] Loaded outcome aggregates for ${Object.keys(ledger.byTask).length} task type(s) from ${STORE_FILE}`);
+  if (!data) return;
+  if (data.version === LEDGER_VERSION && data.byTask) {
+    ledger = data;
+    console.log(`[LEDGER] Loaded outcome aggregates for ${Object.keys(ledger.byTask).length} task type(s) from ${STORE_FILE}`);
+    return;
+  }
+  if (data.version === 1 && data.byTask) {
+    quarantineV1(data);
+    scheduleSave();   // persist the fresh v2 shell so the v1 file never reloads
+    return;           // ledger stays emptyLedger() — guaranteed-neutral cold start
+  }
+  console.warn(`[LEDGER] Unknown ledger version ${data.version} in ${STORE_FILE} — ignoring file, starting fresh at v${LEDGER_VERSION}`);
 }
 
 // Phase 3b — atomic + async persistence via the shared primitive; the persist
