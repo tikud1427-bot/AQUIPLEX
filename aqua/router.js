@@ -27,6 +27,7 @@ import memoryRoute        from "./src/routes/memory.js";
 import uploadRoute        from "./src/routes/upload.js";
 import artifactsRoute     from "./src/routes/artifacts.js";
 import mindRoute          from "./src/mind/mindRoutes.js";
+import intelligenceRoute  from "./src/routes/intelligence.js";
 import { runStartupValidation } from "./src/core/startupValidation.js";
 import { migrateLegacyMemory }  from "./src/memory/migrate.js";
 import { migrateIdentity }      from "./src/memory/identityMigration.js";
@@ -55,6 +56,7 @@ router.use("/memory",          memoryRoute);
 router.use("/upload",          uploadRoute);
 router.use("/artifacts",       artifactsRoute); // Universal Artifact Engine (P1)
 router.use("/mind",            mindRoute);   // persistent cognitive model (Mind layer)
+router.use("/intelligence",    intelligenceRoute); // Persistent Intelligence Core (Phase 4)
 
 // JSON 404 for unknown engine routes (never fall through to platform HTML 404)
 router.use((req, res) => {

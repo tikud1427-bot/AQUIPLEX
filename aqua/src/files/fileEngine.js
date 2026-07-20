@@ -129,6 +129,23 @@ export async function ingestFiles({ files, ownerId = null, conversationId = null
       const us = deps.ukoStore ?? await import('./ukoStore.js');
       const built = rebuildOwnerGraph({ evidenceStore: es, ukoStore: us }, ownerId);
       graph = { stats: built.stats, entities: built.entities.length, ambiguousPairs: built.ambiguous.length, contradictions: built.contradictions.length };
+
+      // ── Persistent Intelligence Core sync (Phase 4) ──
+      // The PIC registers lifecycle for every new object/fact, versions the
+      // entity merges this build performed, and schedules background
+      // consolidation. Fail-open like the graph itself — intelligence
+      // bookkeeping never sinks an ingest. Opt-out rides skipGraph (the PIC
+      // has nothing to sync when the graph didn't build).
+      try {
+        const pic = deps.pic ?? await import('../pic/core.js');
+        pic.onKnowledgeIngested({
+          ownerId, ukoIds, traceId,
+          entities: built.entities, contradictions: built.contradictions,
+          deps: { evidenceStore: es, ukoStore: us },
+        });
+      } catch (err) {
+        console.warn(`[FILES] PIC sync failed (non-fatal): ${err.message}`);
+      }
     } catch (err) {
       console.warn(`[FILES] reasoning graph build failed (non-fatal): ${err.message}`);
     }

@@ -176,6 +176,30 @@ export function listFacts(ownerId, { limit = 200 } = {}) {
   return [...bucket(ownerId).facts.values()].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
 }
 
+/**
+ * PIC (Phase 4) additive seam — patch an existing fact IN PLACE. Used by the
+ * consolidation engine to merge evidence onto a survivor, adjust confidence,
+ * and set lifecycle flags (archived / supersededBy / disputed / trusted /
+ * stale). The fact's STATEMENT is deliberately not special-cased here — the
+ * Phase-2 rule stands: we never silently rewrite a claim; consolidation only
+ * merges provenance and annotates. New evidence ids gain ref-graph edges so
+ * sharing stays consistent.
+ */
+export function updateFact(ownerId, factId, patch = {}) {
+  const b = bucket(ownerId);
+  const fact = b.facts.get(factId);
+  if (!fact) return null;
+  if (Array.isArray(patch.evidence)) {
+    patch = { ...patch, evidence: [...new Set(patch.evidence)] };
+  }
+  Object.assign(fact, patch);
+  if (Array.isArray(patch.evidence)) {
+    for (const evId of fact.evidence) b.evidenceRefs.get(evId)?.add(factId);
+  }
+  scheduleSave();
+  return fact;
+}
+
 // ── Cascade delete (keeps the graph consistent — no orphans on removal) ──────
 
 export function removeFile(ownerId, ukoId) {

@@ -37,6 +37,7 @@
 const SECTIONS = [
   ['attachmentContext', 'UPLOADED FILE ANALYSES'],
   ['projectContext',    'PROJECT / WORKSPACE CONTEXT'],
+  ['knowledgeContext',  'CONNECTED KNOWLEDGE (CROSS-FILE)'],   // PIC (Phase 4) — additive; absent ⇒ byte-identical
   ['searchContext',     'WEB SEARCH RESULTS'],
   ['memoryBlock',       'MEMORY CONTEXT'],
 ];

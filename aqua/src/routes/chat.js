@@ -65,6 +65,7 @@ import { getReasoningStrategy }   from '../core/reasoningStrategy.js';
 import { runIntelligencePipeline } from '../intelligence/internalIntelligenceEngine.js';
 import { assessConfidence, isGroundingExpected } from '../intelligence/confidenceEngine.js';
 import { composeEvidenceContext } from '../intelligence/evidenceContext.js';
+import { retrieveKnowledge as picRetrieveKnowledge, recordReasoningOutcome } from '../pic/core.js';   // Persistent Intelligence Core (Phase 4)
 import { LOW_CONFIDENCE_THRESHOLD } from '../orchestrator/verificationStrategy.js';
 import { recordOutcome, getTaskStats } from '../intelligence/learningLedger.js';
 import { orchestrate, formatOrchestratorLog } from '../orchestrator/toolOrchestrator.js';
@@ -511,6 +512,25 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
     console.log(`[UPLOAD] Attachment context injected conversation=${conversationId} attachments=${conversationAttachments.length}`);
   }
 
+  // ── 5c². Connected knowledge — Persistent Intelligence Core (Phase 4) ──────
+  // Knowledge-first retrieval over EVERYTHING ever ingested for this owner:
+  // grounded facts ∪ resolved entities ∪ graph-connected facts ∪ cross-file
+  // timeline, ranked with lifecycle flags (trusted/disputed/stale) and
+  // reasoning feedback. First consumer of the Phase-3 query layer. Fail-open
+  // by construction: an empty block leaves the prompt byte-identical to
+  // pre-PIC turns. Identity/self-questions never need it (same rule project
+  // retrieval and search follow above).
+  let knowledgeContext = '';
+  let knowledgeItems   = [];
+  if (memoryOwner && !identityIntent.isSelf) {
+    const knowledge = picRetrieveKnowledge(memoryOwner, userMessage, { limit: 8 });
+    knowledgeContext = knowledge.block;
+    knowledgeItems   = knowledge.items;
+    if (knowledgeContext) {
+      console.log(`[PIC] Knowledge injected owner=${memoryOwner} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}`);
+    }
+  }
+
   // ── 5d. Web Search (gated by the orchestrator's web_search capability) ──────
   // The orchestrator already made the pure/deterministic decision
   // (capabilities.js → decideWebSearch); this step only EXECUTES it.
@@ -544,14 +564,14 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   // than the drafter will "correct" grounded multimodal answers into
   // "I cannot watch videos" — the root cause of the overwrite bug.
   const evidenceContext = composeEvidenceContext({
-    attachmentContext, projectContext, memoryBlock, searchContext,
+    attachmentContext, projectContext, knowledgeContext, memoryBlock, searchContext,
   });
 
   // ── 6. Build system prompt ────────────────────────────────────────────────────
   onStage('prompt', 'Preparing response…');
   // Attachment context rides the projectContext slot — same injection point,
   // same budget handling in promptBuilder, no signature change.
-  const combinedContext = [attachmentContext, projectContext].filter(Boolean).join('\n\n');
+  const combinedContext = [attachmentContext, projectContext, knowledgeContext].filter(Boolean).join('\n\n');
   const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoning.directive, combinedContext, intelligence.synthesis.text, identityIntent, searchContext);
 
   // ── 7. Build context window (short-term message history) ─────────────────────
@@ -569,6 +589,7 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
     extractedFacts, relevantFacts,
     memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!memoryBlock, contextUsed: cognitive.used },
     projectContext, projectFiles,
+    knowledgeContext, knowledgeItems,
     search,
     evidenceContext,
     attachments: conversationAttachments.map(a => ({ id: a.id, name: a.name, kind: a.kind })),
@@ -583,7 +604,7 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
  * (falling back to the single critic), with a second pass so a revision
  * gets re-reviewed. Everything else keeps the original single-critic,
  * single-pass check. */
-async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId, plan, confidence, evidenceContext = '' }) {
+async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId, plan, confidence, evidenceContext = '', knowledgeItems = [], memoryOwner = null }) {
   let verification = { ran: false, passed: null, revised: false };
   if (orchestration.verification.enabled) {
     const deepReview = plan?.complexity === 'high'
@@ -602,6 +623,22 @@ async function runVerification({ orchestration, userMessage, draftAnswer, taskTy
         evidenceContext, // Phase 0 (F1/F3): reviewers see the drafter's evidence — grounding contract
       });
     }
+  }
+
+  // ── PIC reasoning feedback (Phase 4) — the verdict trains retrieval ────────
+  // The knowledge this turn injected was just judged: a clean pass ⇒ those
+  // facts held up under review ('verified'); a revision ⇒ 'corrected'; a
+  // failed, unrevised pass ⇒ 'unsupported'. recordReasoningOutcome is
+  // fail-open internally and a no-op when nothing was injected — turns
+  // without PIC knowledge are byte-identical to pre-Phase-4 behavior.
+  if (verification.ran && memoryOwner && knowledgeItems.length) {
+    recordReasoningOutcome(memoryOwner, {
+      requestId,
+      query: userMessage,
+      outcome: verification.revised ? 'corrected' : (verification.passed ? 'verified' : 'unsupported'),
+      usedFacts:    knowledgeItems.filter(i => i.kind === 'fact').map(i => i.id),
+      usedEntities: knowledgeItems.filter(i => i.kind === 'entity').map(i => i.entity),
+    });
   }
   return verification;
 }
@@ -843,6 +880,7 @@ router.post('/', async (req, res) => {
     const verification = await runVerification({
       orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId, plan, confidence,
       evidenceContext: prep.evidenceContext,
+      knowledgeItems: prep.knowledgeItems, memoryOwner: prep.memoryOwner,   // PIC feedback loop (Phase 4)
     });
     if (verification.revised && verification.finalAnswer) {
       finalAnswer = verification.finalAnswer;
@@ -1125,6 +1163,7 @@ router.post('/stream', async (req, res) => {
       verification = await runVerification({
         orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId, plan, confidence,
         evidenceContext: prep.evidenceContext,
+        knowledgeItems: prep.knowledgeItems, memoryOwner: prep.memoryOwner,   // PIC feedback loop (Phase 4)
       });
       if (verification.revised && verification.finalAnswer) {
         finalAnswer = verification.finalAnswer;
