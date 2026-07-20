@@ -22,6 +22,7 @@ import {
   retrieveKnowledge, getProjectIntelligence, getHealth, maintain,
   getLifecycle, getHistory, confidenceTrajectory, getLedger, getPICMetrics, picEnabled,
 } from '../pic/core.js';
+import { getCIEMetrics, cieEnabled, getCognitionSnapshot } from '../cognition/index.js';   // Cognitive Intelligence Engine
 
 const router = express.Router();
 
@@ -105,6 +106,30 @@ router.get('/ledger', (req, res) => {
   if (!ownerId) return;
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
   res.json({ success: true, ledger: getLedger(ownerId, { limit }) });
+});
+
+// ── Cognitive Intelligence Engine observability ──────────────────────────────
+// Global aggregates (like /metrics — no owner needed): the CIE learns
+// (taskType × cognitive style) planning patterns, not per-owner knowledge.
+
+/** Planning decisions, monitor findings, escalations, reflection outcomes,
+ *  confidence evolution, retrieval efficiency, plan-cache reuse. */
+router.get('/cognition', (req, res) => {
+  try {
+    res.json({ success: true, enabled: cieEnabled(), metrics: getCIEMetrics() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/** Learned strategy aggregates — which cognitive styles are winning per
+ *  task type (effectiveness EWMAs, outcomes, better-strategy hints). */
+router.get('/cognition/strategies', (req, res) => {
+  try {
+    res.json({ success: true, strategies: getCognitionSnapshot() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 export default router;

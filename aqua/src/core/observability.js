@@ -37,6 +37,8 @@ const metrics = {
   debateRuns:          0, // Phase 6 debate: count of deep reviews run by the panel instead of the single critic
   searchEvents: { performed: 0, cached: 0, failed: 0, noResults: 0 }, // Web Search: outcome counts
   searchByProvider: {},   // Web Search: provider → successful searches served
+  cognitionPlans:   0,    // CIE: count of turns that received an executive reasoning plan
+  cognitionStyles:  {},   // CIE: cognitive style id → count (planning decisions at a glance)
 };
 
 // ── Recent log ring buffer (last 200 structured AQUA_REQUEST entries) ─────────
@@ -303,6 +305,59 @@ export function logVerificationEvent(ctx, result) {
   };
 
   console.log('[VERIFICATION]', JSON.stringify(entry));
+}
+
+// ── Cognition event logging (Cognitive Intelligence Engine) ──────────────────
+
+/**
+ * Log one CIE executive reasoning plan — which cognitive style was selected
+ * (and why), how deep the turn will reason, what the plan expects from
+ * evidence/verification, and whether a clarification was recommended.
+ * Null-safe no-op when the CIE is off or the turn produced no plan, so the
+ * call site never needs a guard (same contract as the other loggers).
+ *
+ * Aggregate CIE metrics (reflection outcomes, escalations, retrieval
+ * broadening, confidence evolution) live in cognition/index.js
+ * getCIEMetrics() — this logger only counts planning decisions, mirroring
+ * how planComplexity counts executionPlanner tiers.
+ *
+ * @param {object} ctx
+ * @param {object|null} plan  cognitivePrepare(...).plan
+ */
+export function logCognitionEvent(ctx, plan) {
+  if (!plan) return;
+
+  metrics.cognitionPlans++;
+  metrics.cognitionStyles[plan.style.id] = (metrics.cognitionStyles[plan.style.id] || 0) + 1;
+
+  const block = [
+    '┌─ AQUA_COGNITION ─────────────────────────────────────────',
+    `│ style: ${plan.style.id} (${plan.style.source})  depth: ${plan.depth}  reused: ${plan.reused}`,
+    `│ evidence: ${plan.expectations.evidence}  verification: ${plan.expectations.verification}  uncertainty: ${plan.expectations.uncertainty}`,
+    `│ ambiguity: ${plan.question.ambiguity.score}${plan.question.ambiguity.signals.length ? ` [${plan.question.ambiguity.signals.join(',')}]` : ''}  clarify: ${plan.expectations.clarification.recommended}`,
+    `│ directive: ${plan.directive ? `${plan.directive.length} chars` : 'none'}`,
+    '└──────────────────────────────────────────────────────────',
+  ].join('\n');
+  console.log(block);
+
+  const entry = {
+    type:           'AQUA_COGNITION',
+    ts:             new Date().toISOString(),
+    requestId:      ctx.requestId,
+    conversationId: ctx.conversationId,
+    style:          plan.style.id,
+    styleSource:    plan.style.source,
+    depth:          plan.depth,
+    evidence:       plan.expectations.evidence,
+    verification:   plan.expectations.verification,
+    uncertainty:    plan.expectations.uncertainty,
+    ambiguity:      plan.question.ambiguity.score,
+    clarification:  plan.expectations.clarification.recommended,
+    reused:         plan.reused,
+    directiveChars: plan.directive.length,
+  };
+
+  console.log('[COGNITION_EVENT]', JSON.stringify(entry));
 }
 
 // ── Completion logging ────────────────────────────────────────────────────────

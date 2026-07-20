@@ -59,13 +59,14 @@ import { generateText, generateTextStream } from '../providers/router.js';
 import { buildSystemPrompt }      from '../core/promptBuilder.js';
 import { buildContextWindow, estimateTokens } from '../core/tokenManager.js';
 import { classifyTask }           from '../core/classifier.js';
-import { createContext, logMemoryEvent, logPlanEvent, logIntelligenceEvent, logOrchestratorEvent, logVerificationEvent } from '../core/observability.js';
+import { createContext, logMemoryEvent, logPlanEvent, logIntelligenceEvent, logOrchestratorEvent, logVerificationEvent, logCognitionEvent } from '../core/observability.js';
 import { createExecutionPlan }    from '../core/executionPlanner.js';
 import { getReasoningStrategy }   from '../core/reasoningStrategy.js';
 import { runIntelligencePipeline } from '../intelligence/internalIntelligenceEngine.js';
 import { assessConfidence, isGroundingExpected } from '../intelligence/confidenceEngine.js';
 import { composeEvidenceContext } from '../intelligence/evidenceContext.js';
-import { retrieveKnowledge as picRetrieveKnowledge, recordReasoningOutcome } from '../pic/core.js';   // Persistent Intelligence Core (Phase 4)
+import { recordReasoningOutcome } from '../pic/core.js';   // Persistent Intelligence Core (Phase 4)
+import { cognitivePrepare, cognitiveKnowledgeRetrieve, observeDraft, concludeTurn } from '../cognition/index.js';   // Cognitive Intelligence Engine (CIE)
 import { LOW_CONFIDENCE_THRESHOLD } from '../orchestrator/verificationStrategy.js';
 import { recordOutcome, getTaskStats } from '../intelligence/learningLedger.js';
 import { orchestrate, formatOrchestratorLog } from '../orchestrator/toolOrchestrator.js';
@@ -451,6 +452,23 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   });
   logIntelligenceEvent(ctx, intelligence);
 
+  // ── 2d. Cognitive Intelligence Engine — the executive reasoning plan ────────
+  // Meta-reasoning ABOVE classifier/planner/orchestrator/IIE (all unchanged):
+  // question model → adaptive cognitive style (13 styles) → executive plan
+  // (evidence posture, retrieval expectations, verification encouragement,
+  // uncertainty stance, clarification decision) + a bounded directive
+  // appended AFTER the Phase-4 reasoning directive at the prompt seam.
+  // Fail-open: AQUA_CIE=off (or any internal error) yields a null plan and
+  // an empty directive — the pipeline stays byte-identical to pre-CIE.
+  onStage('cognition', 'Planning how to think…');
+  const cognition = cognitivePrepare({
+    userMessage, taskType, confidence,
+    complexity: plan.complexity,
+    hasWorkspace: !!workspaceId,
+    hasOwner: !!memoryOwner,
+  });
+  logCognitionEvent(ctx, cognition.plan);
+
   // ── 3. Retrieve — the ONE retrieval pipeline (unified engine) ───────────────
   // Ranked facts + cognitive state + file memory under a single token
   // budget → one memoryBlock for the prompt. Smallest high-quality context.
@@ -522,12 +540,19 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   // retrieval and search follow above).
   let knowledgeContext = '';
   let knowledgeItems   = [];
+  let knowledgeStats   = {};
   if (memoryOwner && !identityIntent.isSelf) {
-    const knowledge = picRetrieveKnowledge(memoryOwner, userMessage, { limit: 8 });
+    // CIE seam ("should I retrieve more?"): PIC stays the sole retrieval
+    // owner — the wrapper makes the exact same call first (safe floor), then
+    // MAY add one bounded keyword-broadened retry when the cognitive plan
+    // requires evidence and the first pass came back empty. CIE off ⇒ pure
+    // passthrough, byte-identical to calling PIC directly.
+    const knowledge = cognitiveKnowledgeRetrieve(memoryOwner, userMessage, { limit: 8, plan: cognition.plan });
     knowledgeContext = knowledge.block;
     knowledgeItems   = knowledge.items;
+    knowledgeStats   = knowledge.stats ?? {};
     if (knowledgeContext) {
-      console.log(`[PIC] Knowledge injected owner=${memoryOwner} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}`);
+      console.log(`[PIC] Knowledge injected owner=${memoryOwner} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}${knowledge.stats.broadened ? ` broadened=+${knowledge.stats.broadenGained}` : ''}`);
     }
   }
 
@@ -572,7 +597,11 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   // Attachment context rides the projectContext slot — same injection point,
   // same budget handling in promptBuilder, no signature change.
   const combinedContext = [attachmentContext, projectContext, knowledgeContext].filter(Boolean).join('\n\n');
-  const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoning.directive, combinedContext, intelligence.synthesis.text, identityIntent, searchContext);
+  // CIE directive rides the SAME channel the Phase-4 reasoning directive
+  // already owns — appended after it, never replacing it. Empty when CIE is
+  // off or the style is 'fast', keeping casual traffic byte-identical.
+  const reasoningDirective = [reasoning.directive, cognition.directive].filter(Boolean).join('\n');
+  const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoningDirective, combinedContext, intelligence.synthesis.text, identityIntent, searchContext);
 
   // ── 7. Build context window (short-term message history) ─────────────────────
   const history    = getConversation(conversationId);
@@ -589,7 +618,8 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
     extractedFacts, relevantFacts,
     memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!memoryBlock, contextUsed: cognitive.used },
     projectContext, projectFiles,
-    knowledgeContext, knowledgeItems,
+    knowledgeContext, knowledgeItems, knowledgeStats,
+    cognition: { plan: cognition.plan, directiveApplied: !!cognition.directive },
     search,
     evidenceContext,
     attachments: conversationAttachments.map(a => ({ id: a.id, name: a.name, kind: a.kind })),
@@ -604,9 +634,17 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
  * (falling back to the single critic), with a second pass so a revision
  * gets re-reviewed. Everything else keeps the original single-critic,
  * single-pass check. */
-async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId, plan, confidence, evidenceContext = '', knowledgeItems = [], memoryOwner = null }) {
+async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId, plan, confidence, evidenceContext = '', knowledgeItems = [], memoryOwner = null, cognitiveEscalation = null }) {
   let verification = { ran: false, passed: null, revised: false };
-  if (orchestration.verification.enabled) {
+  // CIE escalation can only ADD review — the orchestrator's shouldVerify()
+  // decision is a floor. A turn the orchestrator skipped gets pulled into
+  // verification when the reasoning monitor flagged the draft (dead end,
+  // contradiction, unsupported specifics under an evidence-required plan).
+  const escalatedByCognition = !orchestration.verification.enabled && !!cognitiveEscalation?.escalate;
+  if (escalatedByCognition) {
+    console.log(`[CIE] Verification escalated by reasoning monitor: ${cognitiveEscalation.reason} req=${requestId}`);
+  }
+  if (orchestration.verification.enabled || escalatedByCognition) {
     const deepReview = plan?.complexity === 'high'
       || (typeof confidence === 'number' && confidence < LOW_CONFIDENCE_THRESHOLD);
     const agent = (deepReview && getAgent('debate')) || getAgent('verification');
@@ -624,6 +662,9 @@ async function runVerification({ orchestration, userMessage, draftAnswer, taskTy
       });
     }
   }
+  // True only when the monitor's escalation actually produced a review the
+  // orchestrator had skipped — payload diagnostics + reflection read this.
+  verification.escalatedByCognition = escalatedByCognition && verification.ran;
 
   // ── PIC reasoning feedback (Phase 4) — the verdict trains retrieval ────────
   // The knowledge this turn injected was just judged: a clean pass ⇒ those
@@ -649,7 +690,31 @@ function buildResponsePayload({
   promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
   extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
   identityGuarded = false,
+  draftObservation = null,   // CIE reasoning-monitor result (null on artifact/edit branches)
 }) {
+  // Phase 12 — per-RESPONSE confidence, deterministic aggregation of this
+  // turn's own signals (see intelligence/confidenceEngine.js). Distinct
+  // from top-level `confidence`, which is the CLASSIFIER's confidence and
+  // keeps its exact meaning and position for existing clients. Hoisted so
+  // the CIE conclusion below can fold it into the reasoning dimension.
+  const responseConfidence = assessConfidence({
+    classifierConfidence: confidence,
+    factsInjected:        relevantFacts.length,
+    projectFilesUsed:     projectFiles.length,
+    groundingExpected:    isGroundingExpected(taskType),
+    attemptCount:         result.fallbackChain?.length ?? 1,
+    truncated:            result.truncated ?? false,
+    finishReason:         result.finishReason ?? 'stop',
+    verification,
+  });
+
+  // CIE conclusion — 7-dimension structured confidence (retrieval / evidence /
+  // reasoning / entity / relationship / timeline / overall) + reflection +
+  // strategy learning. Null when the CIE is off or the turn had no cognitive
+  // plan (artifact & edit branches): the absent key keeps those payloads
+  // byte-identical to pre-CIE.
+  const cognitionBlock = concludeTurn({ prep, verification, responseConfidence, draftObservation });
+
   return {
     success:        true,
     requestId,
@@ -709,22 +774,16 @@ function buildResponsePayload({
       disagreements: verification.disagreements ?? [], // debate only: preserved minority findings
       grounded:           verification.grounded ?? false,           // Phase 0: reviewer saw the drafter's evidence
       suppressedRefusals: verification.suppressedRefusals ?? 0,     // Phase 0: capability-deleting revisions discarded
+      escalatedByCognition: verification.escalatedByCognition ?? false, // CIE: monitor pulled review into an orchestrator-skipped turn
     },
 
-    // Phase 12 — per-RESPONSE confidence, deterministic aggregation of this
-    // turn's own signals (see intelligence/confidenceEngine.js). Distinct
-    // from top-level `confidence`, which is the CLASSIFIER's confidence and
-    // keeps its exact meaning and position for existing clients.
-    responseConfidence: assessConfidence({
-      classifierConfidence: confidence,
-      factsInjected:        relevantFacts.length,
-      projectFilesUsed:     projectFiles.length,
-      groundingExpected:    isGroundingExpected(taskType),
-      attemptCount:         result.fallbackChain?.length ?? 1,
-      truncated:            result.truncated ?? false,
-      finishReason:         result.finishReason ?? 'stop',
-      verification,
-    }),
+    // Phase 12 — see the hoisted assessConfidence call above.
+    responseConfidence,
+
+    // Cognitive Intelligence Engine — executive-layer diagnostics for this
+    // turn: plan (style/depth/source), monitor findings, 7-dim structured
+    // confidence, reflection outcome. Present only when the CIE ran.
+    ...(cognitionBlock ? { cognition: cognitionBlock } : {}),
 
     orchestration: {
       profile:            orchestration.profile.id,
@@ -875,12 +934,19 @@ router.post('/', async (req, res) => {
       orchestration.budget,
     );
 
+    // ── 8a². CIE reasoning monitor — inspect the draft, maybe escalate review ──
+    // Deterministic structural checks (dead ends, circularity, unsupported
+    // specifics, contradiction-lite, token waste) at the SAME seam
+    // verification uses. Fail-open; empty result when CIE is off.
+    const draftObservation = observeDraft({ draft: result.text, prep });
+
     // ── 8b. Verification (Phase 6 decision → real pass) ─────────────────────────
     let finalAnswer = result.text;
     const verification = await runVerification({
       orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId, plan, confidence,
       evidenceContext: prep.evidenceContext,
       knowledgeItems: prep.knowledgeItems, memoryOwner: prep.memoryOwner,   // PIC feedback loop (Phase 4)
+      cognitiveEscalation: draftObservation.escalate,                       // CIE: monitor can only ADD review
     });
     if (verification.revised && verification.finalAnswer) {
       finalAnswer = verification.finalAnswer;
@@ -910,7 +976,7 @@ router.post('/', async (req, res) => {
 
     // ── 10. Respond ──────────────────────────────────────────────────────────────
     const payload = buildResponsePayload({
-      identityGuarded,
+      identityGuarded, draftObservation,
       requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
       promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
       extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
@@ -1155,15 +1221,23 @@ router.post('/stream', async (req, res) => {
       },
     });
 
+    // ── 8a². CIE reasoning monitor — stream-end draft inspection ───────────────
+    // The draft is only complete now (same seam verification already uses for
+    // streams). Its escalate decision can pull verification into a turn the
+    // orchestrator skipped — the `replace` event delivers any revision, so
+    // the UX contract is unchanged. Fail-open; empty result when CIE is off.
+    const draftObservation = observeDraft({ draft: result.text, prep });
+
     // ── 8b. Verification — runs AFTER the stream; revision replaces the draft ──
     let finalAnswer = result.text;
     let verification = { ran: false, passed: null, revised: false };
-    if (orchestration.verification.enabled && !clientAbort.signal.aborted) {
+    if ((orchestration.verification.enabled || draftObservation.escalate.escalate) && !clientAbort.signal.aborted) {
       send('stage', { id: 'verify', label: 'Verifying answer…' });
       verification = await runVerification({
         orchestration, userMessage, draftAnswer: result.text, taskType, requestId, conversationId, plan, confidence,
         evidenceContext: prep.evidenceContext,
         knowledgeItems: prep.knowledgeItems, memoryOwner: prep.memoryOwner,   // PIC feedback loop (Phase 4)
+        cognitiveEscalation: draftObservation.escalate,                       // CIE: monitor can only ADD review
       });
       if (verification.revised && verification.finalAnswer) {
         finalAnswer = verification.finalAnswer;
@@ -1200,7 +1274,7 @@ router.post('/stream', async (req, res) => {
       requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
       promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
       extractedFacts, relevantFacts, contextStats, workspaceId, projectContext, projectFiles,
-      identityGuarded,
+      identityGuarded, draftObservation,
     });
 
     // ── 10b. Learning ledger (Phase 11) — fail-open inside recordOutcome ────────
