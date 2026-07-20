@@ -82,8 +82,8 @@ export function EmptyState() {
         className="w-full max-w-3xl"
       >
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
-            <AquaLogo size={34} />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center">
+            <AquaLogo size={48} />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Your Engineering Intelligence Workspace

@@ -83,8 +83,8 @@ export function Header() {
         <span className="truncate text-sm font-medium text-foreground">{activeTitle}</span>
       ) : (
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary to-accent">
-            <AquaLogo size={16} />
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+            <AquaLogo size={24} />
           </div>
           <div className="flex min-w-0 items-baseline gap-1.5 leading-none">
             <span className="text-sm font-semibold tracking-tight text-foreground">AQUA</span>

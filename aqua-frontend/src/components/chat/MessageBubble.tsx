@@ -153,8 +153,8 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: { 
       transition={{ duration: 0.2 }}
       className="message-row group flex gap-3 px-4 py-3"
     >
-      <Avatar className="mt-0.5 h-7 w-7 shrink-0 bg-gradient-to-br from-primary to-accent">
-        <AquaLogo size={20} />
+      <Avatar className="mt-0.5 h-7 w-7 shrink-0">
+        <AquaLogo size={28} />
       </Avatar>
 
       <div className="min-w-0 flex-1">

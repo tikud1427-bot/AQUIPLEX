@@ -85,8 +85,8 @@ export function Sidebar({ collapsed, isMobileOverlay, onNavigate }: Props) {
   return (
     <div className={cn('flex h-full w-[280px] flex-col bg-surface', !isMobileOverlay && 'border-r border-border')}>
       <div className="flex items-center gap-2 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-          <AquaLogo size={20} />
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center">
+          <AquaLogo size={28} />
         </div>
         <span className="text-sm font-semibold text-foreground">AQUA</span>
         <div className="flex-1" />

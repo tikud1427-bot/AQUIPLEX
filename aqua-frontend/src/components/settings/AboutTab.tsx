@@ -48,8 +48,8 @@ export function AboutTab() {
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-          <AquaLogo size={28} />
+        <div className="flex h-10 w-10 items-center justify-center">
+          <AquaLogo size={40} />
         </div>
         <div>
           <p className="text-sm font-semibold text-foreground">AQUA</p>
