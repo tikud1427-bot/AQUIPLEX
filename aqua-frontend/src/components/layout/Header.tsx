@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Menu, Package, PanelLeftOpen, Wallet } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { AquaLogo } from '@/components/common/AquaLogo';
 import { useUiStore } from '@/stores/uiStore';
 import { useConversationStore } from '@/stores/conversationStore';
 import { useWalletStore } from '@/stores/walletStore';
@@ -81,11 +82,16 @@ export function Header() {
       {activeTitle ? (
         <span className="truncate text-sm font-medium text-foreground">{activeTitle}</span>
       ) : (
-        <div className="flex min-w-0 items-baseline gap-1.5 leading-none">
-          <span className="text-sm font-semibold tracking-tight text-foreground">AQUA</span>
-          <span className="truncate text-[11px] font-medium text-foreground-secondary/70">
-            AI Engineering Workspace
-          </span>
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-primary to-accent">
+            <AquaLogo size={16} />
+          </div>
+          <div className="flex min-w-0 items-baseline gap-1.5 leading-none">
+            <span className="text-sm font-semibold tracking-tight text-foreground">AQUA</span>
+            <span className="truncate text-[11px] font-medium text-foreground-secondary/70">
+              AI Engineering Workspace
+            </span>
+          </div>
         </div>
       )}
       <div className="ml-auto flex items-center gap-1.5">

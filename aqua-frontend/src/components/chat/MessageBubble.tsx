@@ -11,7 +11,8 @@ import { PatchCard } from '@/components/patch/PatchCard';
 import { ArtifactCard } from '@/components/artifact/ArtifactCard';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
+import { AquaLogo } from '@/components/common/AquaLogo';
 import { useChatStore } from '@/stores/chatStore';
 import { useUploadStore } from '@/stores/uploadStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -152,8 +153,8 @@ export const MessageBubble = memo(function MessageBubble({ message, isLast }: { 
       transition={{ duration: 0.2 }}
       className="message-row group flex gap-3 px-4 py-3"
     >
-      <Avatar className="mt-0.5 h-7 w-7 shrink-0">
-        <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-[10px] font-bold">AQ</AvatarFallback>
+      <Avatar className="mt-0.5 h-7 w-7 shrink-0 bg-gradient-to-br from-primary to-accent">
+        <AquaLogo size={20} />
       </Avatar>
 
       <div className="min-w-0 flex-1">

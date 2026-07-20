@@ -5,6 +5,7 @@ import { ConversationItem } from './ConversationItem';
 import { SidebarSkeleton } from './SidebarSkeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip } from '@/components/ui/tooltip';
+import { AquaLogo } from '@/components/common/AquaLogo';
 import { useConversationStore } from '@/stores/conversationStore';
 import { useChatStore } from '@/stores/chatStore';
 import { useUiStore } from '@/stores/uiStore';
@@ -85,7 +86,7 @@ export function Sidebar({ collapsed, isMobileOverlay, onNavigate }: Props) {
     <div className={cn('flex h-full w-[280px] flex-col bg-surface', !isMobileOverlay && 'border-r border-border')}>
       <div className="flex items-center gap-2 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent">
-          <span className="text-[10px] font-bold text-white">AQ</span>
+          <AquaLogo size={20} />
         </div>
         <span className="text-sm font-semibold text-foreground">AQUA</span>
         <div className="flex-1" />

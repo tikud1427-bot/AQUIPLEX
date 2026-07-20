@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
 import { useConversationStore } from '@/stores/conversationStore';
+import { AquaLogo } from '@/components/common/AquaLogo';
 
 /** Engineering-focused entry points — replaces the old generic "chat with an
  *  AI" suggestions. Prompts work whether or not a repo is loaded yet; if one
@@ -82,7 +83,7 @@ export function EmptyState() {
       >
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
-            <span className="text-lg font-bold text-white">AQ</span>
+            <AquaLogo size={34} />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Your Engineering Intelligence Workspace

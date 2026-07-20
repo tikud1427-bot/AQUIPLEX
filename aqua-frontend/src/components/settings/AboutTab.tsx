@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AquaLogo } from '@/components/common/AquaLogo';
 import { getHealth } from '@/api/health';
 import { normalizeError } from '@/api/client';
 import type { HealthResponse } from '@/types';
@@ -48,7 +49,7 @@ export function AboutTab() {
     <div className="space-y-5">
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-          <span className="text-sm font-bold text-white">AQ</span>
+          <AquaLogo size={28} />
         </div>
         <div>
           <p className="text-sm font-semibold text-foreground">AQUA</p>
