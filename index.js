@@ -407,7 +407,18 @@ app.get("/aqua/build.json", (req, res) => {
 //   • /aqua/assets/*  (content-hashed by Vite) → cache FOREVER, immutable.
 //   • everything else (index.html, manifest)   → always revalidate.
 // Old HTML can therefore never pin new chunks, and new HTML always loads.
-app.use("/aqua", requireLogin, express.static(AQUA_APP_DIR, {
+//
+// PWA (2026-07) — deliberately NOT behind requireLogin. PWABuilder (and any
+// browser evaluating installability) fetches manifest.webmanifest, sw.js,
+// icons, and index.html itself anonymously; a login-gated 302 here means
+// none of that is ever seen and the app can never be recognized as
+// installable. The actual product surface is unaffected: index.html/JS is
+// just the empty app shell, all real data comes from /api/aqua/* which
+// keeps requireLogin exactly as before. Unauthenticated visitors now get
+// redirected to /login by the client (see apiClient's 401 interceptor in
+// aqua-frontend/src/api/client.ts) on first API call instead of by the
+// server before the shell loads — same end result, one shell-paint later.
+app.use("/aqua", express.static(AQUA_APP_DIR, {
   index: false,
   redirect: false,
   setHeaders(res, filePath) {
@@ -418,7 +429,7 @@ app.use("/aqua", requireLogin, express.static(AQUA_APP_DIR, {
     }
   },
 }));
-app.get(/^\/aqua(\/.*)?$/, requireLogin, (req, res) => {
+app.get(/^\/aqua(\/.*)?$/, (req, res) => {
   const indexHtml = path.join(AQUA_APP_DIR, "index.html");
   if (!fs.existsSync(indexHtml)) {
     return res

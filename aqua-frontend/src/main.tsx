@@ -3,26 +3,16 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import './styles/globals.css';
 
-// P0 (cache) — retire any legacy service worker + its caches. A worker
-// registered by an old build intercepts every request cache-first and keeps
-// serving deleted chunks after deploys. Idempotent; clean browsers no-op.
-// Pairs with the kill-switch worker at /service-worker.js and the same
-// cleanup on the EJS pages (public/js/sw-cleanup.js).
-try {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker
-      .getRegistrations()
-      .then((regs) => regs.forEach((r) => r.unregister().catch(() => {})))
-      .catch(() => {});
-  }
-  if ('caches' in window) {
-    caches.keys()
-      .then((keys) => keys.forEach((k) => void caches.delete(k)))
-      .catch(() => {});
-  }
-} catch {
-  /* cleanup is best-effort */
-}
+// PWA (2026-07) — AQUA's service worker (vite-plugin-pwa, registerType:
+// 'autoUpdate') is now a deliberate install target, not the legacy
+// cache-first bug this file used to nuke on every load. Registration +
+// update-on-deploy is handled by the plugin's injected register script
+// (see vite.config.ts); nothing extra needed here. Precaching is scoped to
+// static build assets only (see workbox.globPatterns) — API/auth/chat
+// endpoints are never cached — so this can't reintroduce the old
+// stale-shell-after-deploy problem. The root platform's separate
+// EJS-side kill-switch (public/js/sw-cleanup.js, /service-worker.js) is
+// unrelated to this app and untouched.
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

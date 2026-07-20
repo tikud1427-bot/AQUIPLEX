@@ -11,7 +11,31 @@
     <link rel="shortcut icon" href="/aqua/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/aqua/apple-touch-icon.png" />
     <title>AQUA</title>
-    <meta name="aqua-build" content="2026-07-20T11-32-50-467Z" />
+    <meta name="aqua-build" content="2026-07-20T18-57-46-365Z" />
+
+    <!-- App identity — describes AQUA only, never the AQUIPLEX platform shell -->
+    <meta name="application-name" content="AQUA" />
+    <meta name="apple-mobile-web-app-title" content="AQUA" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <!-- Sits behind login (see requireLogin on /aqua) — kept out of search
+         results rather than indexing a page crawlers can't authenticate into. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://aquiplex.com/aqua" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AQUA" />
+    <meta property="og:title" content="AQUA — AI Assistant for AQUIPLEX" />
+    <meta property="og:description" content="AQUA is the AI assistant for AQUIPLEX — conversations, reasoning, coding, writing, document understanding, and image analysis." />
+    <meta property="og:url" content="https://aquiplex.com/aqua" />
+    <meta property="og:image" content="https://aquiplex.com/aqua/pwa-512x512.png" />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="AQUA — AI Assistant for AQUIPLEX" />
+    <meta name="twitter:description" content="AQUA is the AI assistant for AQUIPLEX — conversations, reasoning, coding, writing, document understanding, and image analysis." />
+    <meta name="twitter:image" content="https://aquiplex.com/aqua/pwa-512x512.png" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -47,7 +71,7 @@
         }
       })();
     </script>
-    <script type="module" crossorigin src="/aqua/assets/index-D_IfYZjB.js"></script>
+    <script type="module" crossorigin src="/aqua/assets/index-BIyjxXYo.js"></script>
     <link rel="modulepreload" crossorigin href="/aqua/assets/vendor-react-K1WmwaHr.js">
     <link rel="modulepreload" crossorigin href="/aqua/assets/vendor-radix-Bn8CEt2U.js">
     <link rel="modulepreload" crossorigin href="/aqua/assets/vendor-motion-QzfomKG3.js">

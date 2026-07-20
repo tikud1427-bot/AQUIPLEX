@@ -12,6 +12,23 @@ export const apiClient = axios.create({
   timeout: 360_000,
 });
 
+// PWA (2026-07) — /aqua's static shell is served without a login gate now
+// (see index.js) so PWABuilder/browsers can read the manifest and register
+// the service worker. requireLogin still guards every /api/aqua/* call
+// server-side; this just moves the "no session → /login" redirect from the
+// server (before the shell loaded) to here (on the first gated call the
+// shell makes). Same outcome for a signed-out visitor, one shell-paint later.
+apiClient.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (axios.isAxiosError(err) && err.response?.status === 401) {
+      window.location.href = '/login';
+      return new Promise(() => {}); // navigation is underway; let it happen
+    }
+    return Promise.reject(err);
+  },
+);
+
 /** True when the request was deliberately aborted (e.g. "Stop generating"). */
 export function isCancel(err: unknown): boolean {
   return axios.isCancel(err) || (axios.isAxiosError(err) && err.code === 'ERR_CANCELED');
