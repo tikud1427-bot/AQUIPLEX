@@ -21,6 +21,7 @@ import { resolveOwner } from '../memory/engine.js';
 import {
   retrieveKnowledge, getProjectIntelligence, getHealth, maintain,
   getLifecycle, getHistory, confidenceTrajectory, getLedger, getPICMetrics, picEnabled,
+  getForensics, getResearch, compareKnowledgeFiles, whatCaused,   // File Intelligence 2.0
 } from '../pic/core.js';
 import { getCIEMetrics, cieEnabled, getCognitionSnapshot } from '../cognition/index.js';   // Cognitive Intelligence Engine
 
@@ -106,6 +107,87 @@ router.get('/ledger', (req, res) => {
   if (!ownerId) return;
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
   res.json({ success: true, ledger: getLedger(ownerId, { limit }) });
+});
+
+// ── File Intelligence 2.0 (forensics + research + causal) ────────────────────
+// Read-only, owner-scoped, every item evidence-cited. All four go through
+// the PIC facade (fail-open, AQUA_PIC honored) — routes never touch stores.
+
+/** Forensic report for the owner's knowledge space; ?file=<ukoId> for one file's dossier. */
+router.get('/forensics', (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  const out = getForensics(ownerId, { ukoId: req.query.file ?? null });
+  if (out == null) return res.status(404).json({ success: false, error: req.query.file ? 'file not found' : 'forensics unavailable' });
+  res.json({ success: true, forensics: out });
+});
+
+/** Research intelligence — ?mode=consensus|hypotheses|gaps|overview (default consensus). */
+router.get('/research', (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  const out = getResearch(ownerId, { mode: String(req.query.mode ?? 'consensus') });
+  if (out == null) return res.status(503).json({ success: false, error: 'research unavailable' });
+  res.json({ success: true, mode: String(req.query.mode ?? 'consensus'), research: out });
+});
+
+/** Paper-vs-paper comparison — ?a=<ukoId>&b=<ukoId>. */
+router.get('/compare', (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  const { a, b } = req.query;
+  if (!a || !b) return res.status(400).json({ success: false, error: 'a and b (uko ids) are required' });
+  const out = compareKnowledgeFiles(ownerId, a, b);
+  if (out == null) return res.status(404).json({ success: false, error: 'one or both files not found' });
+  res.json({ success: true, comparison: out });
+});
+
+/** "Which event caused this?" — ?q=<effect text>. */
+router.get('/cause', (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  const q = String(req.query.q ?? '').trim();
+  if (!q) return res.status(400).json({ success: false, error: 'q is required' });
+  const out = whatCaused(ownerId, q);
+  if (out == null) return res.status(503).json({ success: false, error: 'causal query unavailable' });
+  res.json({ success: true, causal: out });
+});
+
+/** Orchestration 2.0 — run a request through the task-graph runtime directly.
+ *  Body: { message, conversationId? }. Grounding = memory engine + PIC
+ *  knowledge (the same lanes chat uses). Kill switch: AQUA_GRAPH=off. */
+router.post('/orchestrate', async (req, res) => {
+  if (String(process.env.AQUA_GRAPH ?? 'on').toLowerCase() === 'off') {
+    return res.status(503).json({ success: false, error: 'orchestration disabled (AQUA_GRAPH=off)' });
+  }
+  const ownerId = resolveOwner({ userId: req.aquaUserId ?? null, conversationId: req.body?.conversationId ?? null });
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No owner (no session and no conversationId)' });
+  const message = String(req.body?.message ?? '').trim();
+  if (!message) return res.status(400).json({ success: false, error: 'message is required' });
+  try {
+    const { classifyTask } = await import('../core/classifier.js');
+    const { createExecutionPlan } = await import('../core/executionPlanner.js');
+    const { memoryRetrieve } = await import('../memory/engine.js');
+    const { runTaskGraph, getGraphMetrics } = await import('../orchestrator/graphRuntime.js');
+
+    const { task: taskType, confidence } = classifyTask(message);
+    const plan = createExecutionPlan(taskType, confidence);
+    const memory = memoryRetrieve(ownerId, { query: message })?.block ?? '';
+    const evidence = retrieveKnowledge(ownerId, message)?.block ?? '';
+
+    const result = await runTaskGraph({
+      userMessage: message, taskType, plan,
+      context: { memory, evidence, search: '' },
+      ctx: { requestId: `orch-${Date.now()}` },
+    });
+    res.json({
+      success: true, answer: result.text, taskType,
+      orchestration: result.orchestration2, latencyMs: result.latency,
+      metrics: getGraphMetrics(),
+    });
+  } catch (err) {
+    res.status(502).json({ success: false, error: err.message });
+  }
 });
 
 // ── Cognitive Intelligence Engine observability ──────────────────────────────

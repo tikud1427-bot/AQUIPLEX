@@ -11,6 +11,15 @@
  *   DELETE /memory/fact/:key                — delete a fact
  *   DELETE /memory                          — clear the caller's facts
  *
+ * Memory 5.1 — editing (versioned, never silent) + reasoning:
+ *   POST   /memory/fact                     — correct/replace { key, value, mode }
+ *   POST   /memory/fact/:key/pin            — pin/unpin { pinned }
+ *   POST   /memory/fact/:key/archive        — archive/restore { restore, force }
+ *   POST   /memory/merge                    — N facts → survivor { keys, intoKey }
+ *   POST   /memory/fact/:key/split          — 1 fact → parts { parts:[…] }
+ *   GET    /memory/reason?q=&mode=          — contradictions/trends/gaps/decisions/changes
+ *   GET    /memory/timeline?days=&limit=    — "what changed" feed
+ *
  * Back-compat (old conversation-keyed API — resolves that conversation's
  * OWNER first, then serves owner-scoped data):
  *   GET    /memory/:conversationId
@@ -21,7 +30,12 @@ import express from 'express';
 import {
   getFacts, getFact, deleteFact, clearFacts, getFactHistory,
 } from '../memory/longTermMemory.js';
-import { resolveOwner, getMemoryTrace, semanticFileChunks } from '../memory/engine.js';
+import {
+  resolveOwner, getMemoryTrace, semanticFileChunks,
+  correctFact, replaceFact, mergeFacts, splitFact,
+  pinFact, archiveFact, restoreFact,
+  reasonOverMemory, whatChanged,
+} from '../memory/engine.js';
 import { retrieveRelevantFacts } from '../memory/memoryRetriever.js';
 import { recallEpisodes } from '../mind/episodeRecall.js';
 import { recallGraphPaths } from '../mind/graphRecall.js';
@@ -156,6 +170,81 @@ router.delete('/', (req, res) => {
   if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
   clearFacts(ownerId);
   res.json({ success: true, ownerId, cleared: true });
+});
+
+// ── Memory 5.1 — EDITING (spec: correction/replacement/merge/split, versioned,
+// never silent). All through the engine facade; every op returns the edited
+// fact(s) with a revision count so the caller sees the trail grew. ──────────
+
+/** POST /memory/fact  { key, value, mode?: 'correct'|'replace', reason? } */
+router.post('/fact', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  const { key, value, mode = 'correct', reason } = req.body || {};
+  const result = mode === 'replace'
+    ? replaceFact(ownerId, key, value, { reason })
+    : correctFact(ownerId, key, value, { reason });
+  res.status(result.ok ? 200 : 400).json({ success: result.ok, ownerId, ...result });
+});
+
+/** POST /memory/fact/:key/pin  { pinned?: boolean } (default true) */
+router.post('/fact/:key/pin', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  const pinned = req.body?.pinned !== false;
+  const result = pinFact(ownerId, req.params.key, pinned);
+  res.status(result.ok ? 200 : 404).json({ success: result.ok, ownerId, ...result });
+});
+
+/** POST /memory/fact/:key/archive  { restore?: boolean, force?: boolean, reason? } */
+router.post('/fact/:key/archive', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  const { restore = false, force = false, reason } = req.body || {};
+  const result = restore
+    ? restoreFact(ownerId, req.params.key, { reason })
+    : archiveFact(ownerId, req.params.key, { reason, force });
+  res.status(result.ok ? 200 : 400).json({ success: result.ok, ownerId, ...result });
+});
+
+/** POST /memory/merge  { keys: string[], intoKey?, reason? } */
+router.post('/merge', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  const { keys, intoKey, reason } = req.body || {};
+  const result = mergeFacts(ownerId, keys, { intoKey, reason });
+  res.status(result.ok ? 200 : 400).json({ success: result.ok, ownerId, ...result });
+});
+
+/** POST /memory/fact/:key/split  { parts: [{key, value, category?, importance?}], reason? } */
+router.post('/fact/:key/split', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  const { parts, reason } = req.body || {};
+  const result = splitFact(ownerId, req.params.key, parts, { reason });
+  res.status(result.ok ? 200 : 400).json({ success: result.ok, ownerId, ...result });
+});
+
+// ── Memory 5.1 — REASONING (spec: reason across memories; evidence-backed) ──
+
+/** GET /memory/reason?q=<question>[&mode=contradictions|trends|gaps|decisions|changes] */
+router.get('/reason', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  const q = String(req.query.q || '').slice(0, 500);
+  const mode = req.query.mode ? String(req.query.mode) : null;
+  const result = reasonOverMemory(ownerId, q, mode ? { mode } : {});
+  res.json({ success: true, ownerId, query: q, ...result });
+});
+
+/** GET /memory/timeline?days=<n>&limit=<n> — "what changed" feed */
+router.get('/timeline', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 7));
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+  const changes = whatChanged(ownerId, { sinceMs: days * 24 * 3600 * 1000, limit });
+  res.json({ success: true, ownerId, days, changes });
 });
 
 // ── Back-compat: conversation-keyed paths → owner-scoped data ────────────────

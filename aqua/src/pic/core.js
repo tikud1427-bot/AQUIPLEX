@@ -235,6 +235,68 @@ export function getProjectIntelligence(ownerId, deps = {}) {
   return projectIntelligence(d, ownerId);
 }
 
+// ── File Intelligence 2.0 (forensics + research + causal) ────────────────────
+// Same contract as every facade method: consumers call the PIC, deps are
+// injectable, AQUA_PIC=off silences everything, failures return a neutral
+// value — file intelligence can never sink a route.
+
+import { forensicReport, fileForensics } from '../files/forensicEngine.js';
+import * as researchEngine from '../reasoning/researchEngine.js';
+
+export function getForensics(ownerId, { ukoId = null, deps = {} } = {}) {
+  if (!picEnabled() || !ownerId) return null;
+  try {
+    const d = { ...DEFAULT_DEPS, ...deps };
+    return ukoId ? fileForensics(d, ownerId, ukoId) : forensicReport(d, ownerId);
+  } catch (err) {
+    metrics.failures += 1;
+    console.warn('[PIC] forensics failed (non-fatal):', err.message);
+    return null;
+  }
+}
+
+export function getResearch(ownerId, { mode = 'consensus', deps = {}, ...opts } = {}) {
+  if (!picEnabled() || !ownerId) return null;
+  try {
+    const d = { ...DEFAULT_DEPS, ...deps };
+    switch (mode) {
+      case 'hypotheses': return researchEngine.hypothesisCandidates(d, ownerId, opts);
+      case 'gaps':       return researchEngine.researchGaps(d, ownerId, opts);
+      case 'overview':   return researchEngine.literatureOverview(d, ownerId, opts);
+      case 'consensus':
+      default:           return researchEngine.consensusReport(d, ownerId, opts);
+    }
+  } catch (err) {
+    metrics.failures += 1;
+    console.warn('[PIC] research failed (non-fatal):', err.message);
+    return null;
+  }
+}
+
+export function compareKnowledgeFiles(ownerId, ukoIdA, ukoIdB, deps = {}) {
+  if (!picEnabled() || !ownerId || !ukoIdA || !ukoIdB) return null;
+  try {
+    const d = { ...DEFAULT_DEPS, ...deps };
+    return researchEngine.compareFiles(d, ownerId, ukoIdA, ukoIdB);
+  } catch (err) {
+    metrics.failures += 1;
+    console.warn('[PIC] compare failed (non-fatal):', err.message);
+    return null;
+  }
+}
+
+export function whatCaused(ownerId, effectQuery, deps = {}) {
+  if (!picEnabled() || !ownerId || !effectQuery) return null;
+  try {
+    const d = { ...DEFAULT_DEPS, ...deps };
+    return d.queryEngine.whatCausedThis(d.evidenceStore, ownerId, effectQuery);
+  } catch (err) {
+    metrics.failures += 1;
+    console.warn('[PIC] causal query failed (non-fatal):', err.message);
+    return null;
+  }
+}
+
 // ── Pass-through inspection surface (routes + tests) ─────────────────────────
 
 export { getLifecycle, lifecycleStats, getHistory, confidenceTrajectory, reasoningBoost, feedbackStats, getLedger };

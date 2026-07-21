@@ -136,6 +136,51 @@ export function whatHappenedBefore(evidenceStore, ownerId, anchorQuery) {
   return { anchor: ordered[anchorIdx], before: ordered.slice(0, anchorIdx) };
 }
 
+/**
+ * FI-2 — "Which event caused this?" Candidate causes for an effect event:
+ * events PRECEDING the effect in the merged cross-file timeline, scored by
+ * shared resolved entities, explicit causal cues in the effect's own text
+ * ("because/due to/caused by/after/following <cause tokens>"), and temporal
+ * proximity. Derived, never asserted: causation here is an evidence-backed
+ * candidate ranking, not a proof — every candidate keeps its citations.
+ */
+const CUE_STOP = new Set(['the', 'and', 'was', 'for', 'with', 'that', 'this', 'from', 'its', 'their']);
+
+export function whatCausedThis(evidenceStore, ownerId, effectQuery, { limit = 5 } = {}) {
+  // Rank over the RAW merged timeline (extractEvents → buildTimeline), which
+  // retains each event's entities — timelineAcross()'s presentation remap
+  // drops them. Citations are hydrated here per candidate.
+  const facts = evidenceStore.listFacts(ownerId, { limit: 100000 });
+  const { ordered } = buildTimeline(extractEvents(evidenceStore, ownerId, facts));
+  const q = String(effectQuery).toLowerCase();
+  const idx = ordered.findIndex(e => e.statement.toLowerCase().includes(q) || e.type.replace('_', ' ').includes(q));
+  if (idx < 0) return { effect: null, causes: [], note: 'effect event not found in the timeline' };
+  const effect = ordered[idx];
+  const effectEntities = new Set((effect.entities ?? []).map(x => String(x).toLowerCase()));
+  const cueM = effect.statement.match(/\b(?:because(?: of)?|due to|caused by|after|following|triggered by|as a result of)\b\s+(.{3,80})/i);
+  const cueTokens = cueM ? tokenize(cueM[1]).filter(t => !CUE_STOP.has(t)) : [];
+
+  const causes = [];
+  for (let i = 0; i < idx; i++) {
+    const c = ordered[i];
+    const shared = (c.entities ?? []).filter(x => effectEntities.has(String(x).toLowerCase()));
+    const hay = c.statement.toLowerCase();
+    const cueHits = cueTokens.filter(t => hay.includes(t)).length;
+    let score = shared.length * 0.3 + cueHits * 0.25;
+    if (score <= 0) continue;
+    score += Math.max(0, 0.15 - 0.02 * (idx - i - 1));                       // proximity nudge
+    if (c.certainty === 'exact' && effect.certainty === 'exact') score += 0.05; // both anchored
+    causes.push({
+      event: c.statement, type: c.type, timestamp: c.timestamp, order: c.order,
+      sharedEntities: shared, cueMatch: cueHits > 0,
+      score: Math.round(Math.min(0.95, score) * 100) / 100,
+      citations: citationsFor(evidenceStore, ownerId, c.evidence), sourceFiles: c.sourceFiles, kind: 'derived',
+    });
+  }
+  causes.sort((a, b) => b.score - a.score);
+  return { effect: { statement: effect.statement, type: effect.type, timestamp: effect.timestamp, citations: citationsFor(evidenceStore, ownerId, effect.evidence) }, causes: causes.slice(0, limit), kind: 'derived' };
+}
+
 /** Multi-hop connection between two nodes (entities/files), with the provenance-bearing path. */
 export function connectionsBetween(ownerId, fromId, toId, { maxHops = 4 } = {}) {
   const sub = G.traverse(ownerId, fromId, { maxHops, maxNodes: 200 });

@@ -622,6 +622,7 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
     cognition: { plan: cognition.plan, directiveApplied: !!cognition.directive },
     search,
     evidenceContext,
+    memoryBlock, searchContext,   // Orchestration 2.0: raw grounding blocks for the graph runtime
     attachments: conversationAttachments.map(a => ({ id: a.id, name: a.name, kind: a.kind })),
     systemPrompt, promptModules,
     messages, contextStats, promptTokens,
@@ -924,7 +925,33 @@ router.post('/', async (req, res) => {
     }
 
     // ── 8. Generate — router handles ranking + fallback + circuit breaker ──────
-    const result = await generateText(
+    // Orchestration 2.0 (additive, fail-open): agent tasks and explicitly
+    // multi-part high-complexity requests run through the task-graph runtime
+    // — decompose → route each subtask to a specialist (providers/router
+    // still owns model choice per call) → verify/score → recover → synthesize.
+    // The runtime returns a generateText-superset result, so EVERYTHING
+    // downstream (CIE monitor, verification, payload, learning ledger) is
+    // untouched. Any runtime error falls back to the legacy single call.
+    // Kill switch: AQUA_GRAPH=off. Streaming path is intentionally untouched.
+    let result = null;
+    const graphEligible = String(process.env.AQUA_GRAPH ?? 'on').toLowerCase() !== 'off'
+      && !prep.identityIntent?.isSelf
+      && (taskType === 'agent_task' || (plan.complexity === 'high' && /\n\s*\d+[.)]\s+/.test(userMessage)));
+    if (graphEligible) {
+      try {
+        const { runTaskGraph } = await import('../orchestrator/graphRuntime.js');
+        result = await runTaskGraph({
+          userMessage, taskType, plan,
+          context: { memory: prep.memoryBlock ?? '', evidence: prep.evidenceContext ?? '', search: prep.searchContext ?? '' },
+          budget: orchestration.budget, ctx,
+        });
+        console.log(`[GRAPH] chat turn served by task-graph runtime nodes=${result.orchestration2.nodes.length} conf=${result.orchestration2.confidence.overall} req=${requestId}`);
+      } catch (err) {
+        console.warn(`[GRAPH] falling back to single-call pipeline (${err.message}) req=${requestId}`);
+        result = null;
+      }
+    }
+    if (!result) result = await generateText(
       userMessage,
       systemPrompt,
       messages,

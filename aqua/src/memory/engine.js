@@ -48,6 +48,21 @@ export { indexOwnerFacts, semanticFactScores };
 // semanticFileChunks() early (async, fail-open → []) and hands the resolved
 // chunks to memoryRetrieve, which stays synchronous.
 export { fileChunkScores as semanticFileChunks };
+// Memory 5.1 — explicit editing + reasoning surfaces, re-exported so routes
+// keep importing ONLY this facade (the same rule every stage follows).
+// Editing: correction/replacement ride the conflict-resolved write path;
+// merge/split/pin/archive snapshot history first — never a silent overwrite.
+// Reasoning: deterministic, evidence-backed answers over facts/episodes/
+// goals/graph/timeline. Both fail open; neither can sink chat or a route.
+export {
+  correctFact, replaceFact, mergeFacts, splitFact,
+  pinFact, archiveFact, restoreFact,
+  getEditableFact, listAllFacts,
+} from './memoryEditor.js';
+export {
+  reasonOverMemory, findContradictions, detectTrends, findGaps,
+  compareDecisions, whatChanged,
+} from './memoryReasoner.js';
 
 const TOTAL_BUDGET_TOKENS = 800;   // one budget for the whole memory block
 const MIN_COGNITIVE_BUDGET = 150;

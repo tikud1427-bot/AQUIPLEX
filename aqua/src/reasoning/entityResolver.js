@@ -33,7 +33,9 @@ const HONORIFIC     = /\b(mr|mrs|ms|dr|prof|sir|madam|shri|smt)\b\.?/gi;
 const PUNCT         = /[.,''`"()]/g;
 
 /** Entity types that must never merge across the boundary. */
-const HARD_TYPE_BLOCK = new Set(['person', 'org', 'name', 'place', 'date', 'money', 'version', 'filename']);
+const HARD_TYPE_BLOCK = new Set(['person', 'org', 'name', 'place', 'date', 'money', 'version', 'filename',
+  // FI-2: identifier-class types — exact-match identity, never fuzzy-merged
+  'phone', 'ip', 'mac', 'hash', 'coordinate', 'code_symbol', 'chemical', 'medical_code', 'legal_cite']);
 
 const MERGE_THRESHOLD  = 0.82; // ≥ → same entity
 const REVIEW_THRESHOLD = 0.62; // [REVIEW, MERGE) → ambiguous, surfaced not merged

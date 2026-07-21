@@ -148,6 +148,15 @@ export function detectCrossFileContradictions(entities, facts, store, ownerId) {
 
 function conflictKind(a, b) {
   const numA = numbers(a), numB = numbers(b);
+  // FI-2: SIGNIFICANT figures compared separately — two statements sharing a
+  // date ("… on 2026-01-05") but disagreeing on the amount (4000000 vs
+  // 9000000) are a numeric conflict; the shared date components must not
+  // mask it. Significant = ≥4 digits and not year-shaped. Requires stronger
+  // textual overlap (≥4 shared words) than the fallback, to stay conservative.
+  const sigA = significant(numA), sigB = significant(numB);
+  if (sigA.length && sigB.length && !sigA.some(n => sigB.includes(n)) && !sigB.some(n => sigA.includes(n)) && overlap(a, b) >= 4) {
+    return 'numeric';
+  }
   if (numA.length && numB.length && !numA.some(n => numB.includes(n)) && overlap(a, b) >= 3) {
     // Distinguish date-shaped conflicts from plain numeric.
     if (/\b(19|20)\d{2}\b/.test(a) && /\b(19|20)\d{2}\b/.test(b)) return 'date';
@@ -160,6 +169,7 @@ function conflictKind(a, b) {
 
 const NEG = /\b(not|no|never|isn't|aren't|won't|cannot|can't|failed|rejected|denied)\b/i;
 function numbers(s) { return [...String(s).matchAll(/\d[\d,]*(?:\.\d+)?/g)].map(m => m[0].replace(/,/g, '')); }
+function significant(ns) { return ns.filter(n => n.length >= 4 && !/^(19|20)\d\d$/.test(n)); }
 function overlap(a, b) {
   const wa = new Set(String(a).toLowerCase().match(/[a-z]{3,}/g) ?? []);
   const wb = new Set(String(b).toLowerCase().match(/[a-z]{3,}/g) ?? []);

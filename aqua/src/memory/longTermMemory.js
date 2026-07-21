@@ -59,6 +59,17 @@ function buildVersionHistory(existing, reason) {
   return history;
 }
 
+/**
+ * Memory 5.1 — additive export for memoryEditor.js. Same revision shape,
+ * same HISTORY_PER_ITEM cap, one implementation. Editing operations that
+ * mutate a fact outside storeFact/storeResolved (merge, split, archive)
+ * snapshot the pre-edit state through THIS so "never silently overwrite"
+ * holds for every write path in the system.
+ */
+export function buildRevisionHistory(existing, reason) {
+  return buildVersionHistory(existing, reason);
+}
+
 function makeFactId(ownerId, key) {
   return `${ownerId}:${key}`;
 }

@@ -146,6 +146,15 @@ export function removeFileFromGraph(ownerId, ukoId) {
 function guessType(raw) {
   const s = String(raw);
   if (/@/.test(s)) return 'email';
+  // FI-2: identifier-class types (mirror extractors.ENTITY_PATTERNS additions)
+  if (/^(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/.test(s)) return 'mac';
+  if (/^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$/.test(s)) return 'ip';
+  if (/^[a-f0-9]{32}$|^[a-f0-9]{40}$|^[a-f0-9]{64}$/.test(s)) return 'hash';
+  if (/^-?\d{1,2}\.\d{4,},\s*-?\d{1,3}\.\d{4,}$/.test(s)) return 'coordinate';
+  if (/^(?:\+\d{1,3}[\s-]?)?(?:\(\d{2,4}\)[\s-]?)?\d{3,5}[\s-]\d{3,4}(?:[\s-]\d{3,4})?$|^\+\d{10,14}$/.test(s)) return 'phone';
+  if (/\sv\.?\s/.test(s) && /^[A-Z]/.test(s)) return 'legal_cite';
+  if (/^§/.test(s) || /^Section\s+\d+/.test(s)) return 'legal_cite';
+  if (/^CAS\s?/.test(s)) return 'chemical';
   if (/^https?:\/\//.test(s)) return 'url';
   if (/^(₹|\$|€|£)/.test(s) || /\b(USD|INR|EUR|GBP)\b/.test(s)) return 'money';
   if (/\.\w{1,5}$/.test(s) && /\.(js|ts|py|pdf|docx?|pptx?|xlsx?|csv|png|jpe?g|mp4|mp3|zip)$/i.test(s)) return 'filename';

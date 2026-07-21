@@ -47,8 +47,19 @@ const ENTITY_PATTERNS = [
   ['money',    /(?:₹|\$|€|£)\s?\d[\d,]*(?:\.\d+)?(?:\s?(?:lakh|crore|million|billion|k|m|bn))?|\b\d[\d,]*(?:\.\d+)?\s?(?:USD|INR|EUR|GBP)\b/g],
   ['date',     /\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}(?:,?\s+\d{4})?|\d{1,2}\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?(?:\s+\d{4})?)\b/g],
   ['time',     /\b\d{1,2}:\d{2}(?::\d{2})?\s?(?:AM|PM|am|pm)?\b/g],
-  ['version',  /\bv?\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9.]+)?\b(?=\s|$|[,.)\]])/g],
+  ['version',  /(?<![\d.])\bv?\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9.]+)?\b(?=\s|$|[,.)\]])(?!\.\d)/g],
   ['filename', /\b[\w\-.]+\.(?:js|ts|tsx|jsx|py|java|go|rs|json|yaml|yml|md|pdf|docx|pptx|xlsx|csv|png|jpe?g|mp4|mp3|wav|zip|html|css|sql|sh)\b/g],
+  // ── FI-2 additions (all additive; each type is HARD_TYPE_BLOCKed in the
+  //    entity resolver so none can cross-merge with names or each other) ──
+  ['phone',    /(?:\+\d{1,3}[\s-]?)?(?:\(\d{2,4}\)[\s-]?)?\d{3,5}[\s-]\d{3,5}(?:[\s-]\d{3,5})?\b|\b\+\d{10,14}\b/g],
+  ['ip',       /\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b/g],
+  ['mac',      /\b(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}\b/g],
+  ['hash',     /\b[a-f0-9]{64}\b|\b[a-f0-9]{40}\b|\b[a-f0-9]{32}\b/g],           // sha256 / sha1 / md5
+  ['coordinate', /\b-?\d{1,2}\.\d{4,},\s*-?\d{1,3}\.\d{4,}\b/g],
+  ['code_symbol', /`([A-Za-z_$][\w$]*(?:\(\)|\.[A-Za-z_$][\w$]*)+)`|\b([a-z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*(?:\(\))?)\b(?=.*\bfunction|\bmethod|\bclass|\bcall)/g],
+  ['chemical', /\bCAS\s?(?:No\.?\s?)?\d{2,7}-\d{2}-\d\b|\b(?=\w*\d)(?:[A-Z][a-z]?\d{0,3}){2,6}\b(?=.*\b(?:compound|formula|solution|reaction|mol|acid|oxide)\b)/g],
+  ['medical_code', /\b[A-TV-Z]\d{2}(?:\.\d{1,4})?\b(?=.*\b(?:ICD|diagnos|patient|clinical|disease)\b)/gi],
+  ['legal_cite', /\b[A-Z][A-Za-z.'-]+\s+v\.?\s+[A-Z][A-Za-z.'-]+\b|§+\s?\d+[\w().]*|\bSection\s+\d+[\w()]*\s+of\s+the\s+[A-Z][\w\s]+Act\b/g],
 ];
 
 // Proper-noun runs: 1-4 Capitalized words, not sentence-initial-only noise.
