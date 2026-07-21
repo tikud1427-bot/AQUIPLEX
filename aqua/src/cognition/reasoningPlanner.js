@@ -63,13 +63,21 @@ function composeDirective({ style, expectations }) {
   return out;
 }
 
-function signatureOf({ taskType, styleId, complexity, question }) {
+function signatureOf({ taskType, styleId, complexity, question, confidence = 1.0 }) {
   const ambBucket = Math.round((question?.ambiguity?.score ?? 0) * 5); // 0..5
+  // Confidence bucket (Phase 2 fix). expectations.uncertainty branches on
+  // confidence < 0.6; without confidence in the signature, a low-confidence
+  // turn could REUSE a plan built under high confidence and inherit a stale
+  // 'allow' uncertainty posture (surfaced by cognitionBench, category 9).
+  // Flooring at 0.2 granularity puts bucket edges exactly on 0.6 (and 0.4,
+  // the questionModel understanding penalty), so no threshold spans a bucket.
+  const conf = Number.isFinite(confidence) ? confidence : 1.0;
+  const confBucket = Math.min(4, Math.max(0, Math.floor(conf * 5))); // 0..4, edges at .2/.4/.6/.8
   const n = question?.needs ?? {};
   const needsKey = ['evidence', 'freshness', 'temporal', 'crossFile', 'memoryLikely']
     .map(k => (n[k] ? 1 : 0)).join('');
   const clar = question?.clarification?.recommended ? 1 : 0;
-  return `${taskType}|${styleId}|${complexity}|a${ambBucket}|n${needsKey}|c${clar}`;
+  return `${taskType}|${styleId}|${complexity}|a${ambBucket}|n${needsKey}|c${clar}|f${confBucket}`;
 }
 
 /**
@@ -83,7 +91,7 @@ function signatureOf({ taskType, styleId, complexity, question }) {
  */
 export function buildReasoningPlan({ question, selection, taskType, complexity, confidence = 1.0 }) {
   const { style, source, reason } = selection;
-  const signature = signatureOf({ taskType, styleId: style.id, complexity, question });
+  const signature = signatureOf({ taskType, styleId: style.id, complexity, question, confidence });
 
   // Plan reuse — identical cognitive situation, identical plan.
   const hit = planCache.get(signature);

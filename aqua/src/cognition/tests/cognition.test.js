@@ -248,6 +248,21 @@ describe('reasoning planner — the executive plan', () => {
     assert.ok(RP.planCacheStats().size >= 1);
   });
 
+  test('plan cache: confidence busts the signature — no stale uncertainty reuse', () => {
+    // Phase 2 regression (surfaced by cognitionBench, category 9): the
+    // uncertainty expectation branches on confidence < 0.6, so a plan built
+    // at 0.9 must never be handed to a 0.5 turn via the cache.
+    const msg = 'Write a pagination helper for the orders endpoint.';
+    const sure   = planFor(msg, { taskType: 'coding', confidence: 0.9 });
+    const unsure = planFor(msg, { taskType: 'coding', confidence: 0.5 });
+    assert.notEqual(sure.signature, unsure.signature);        // confidence bucket differs
+    assert.equal(unsure.reused, false);                       // 0.5 must not inherit the 0.9 plan
+    assert.equal(sure.expectations.uncertainty, 'allow');
+    assert.equal(unsure.expectations.uncertainty, 'express'); // pre-fix: stale 'allow' leaked here
+    const again = planFor(msg, { taskType: 'coding', confidence: 0.55 });
+    assert.equal(again.reused, true);                         // same 0.4–0.6 bucket still reuses
+  });
+
   test('uncertainty stance: quantify for legal/scientific, express under required evidence', () => {
     const legal = planFor('Is this clause enforceable under the contract law of Germany?', { taskType: 'analysis' });
     assert.equal(legal.style.id, 'legal');

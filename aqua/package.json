@@ -12,7 +12,9 @@
     "test:identity": "node --test src/identity/tests/identityLayer.test.js",
     "test:search": "node --test src/search/tests/search.test.js",
     "test:artifacts": "node --test \"src/artifacts/tests/*.test.js\" src/routes/tests/artifactRoutes.test.js",
-    "test:pic": "node --test src/pic/tests/pic.test.js"
+    "test:pic": "node --test src/pic/tests/pic.test.js",
+    "test:cognition": "node --test src/cognition/tests/cognition.test.js",
+    "bench:cognition": "node src/cognition/tests/cognitionBench.js"
   },
   "dependencies": {
     "@google/genai": "^2.9.0",
