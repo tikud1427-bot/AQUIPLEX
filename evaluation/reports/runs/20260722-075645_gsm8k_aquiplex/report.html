@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AQEval · gsm8k · 20260722-075645_gsm8k_aquiplex</title>
+<style>
+:root {
+  --bg:#0A1418; --panel:#10202A; --panel-2:#0D1A22; --ink:#E8F1F4; --muted:#7C97A6;
+  --hair:#1D3440; --accent:#2FD6C3;
+}
+* { box-sizing:border-box; margin:0; }
+body { background:var(--bg); color:var(--ink); font:15px/1.55 ui-monospace,"SF Mono","Cascadia Code",Consolas,Menlo,monospace;
+       padding:32px 20px 64px; }
+.wrap { max-width:920px; margin:0 auto; display:grid; gap:18px; }
+.masthead { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+  border-bottom:1px solid var(--hair); padding-bottom:14px; }
+.masthead .brand { font-family:Georgia,"Times New Roman",serif; font-variant:small-caps;
+  letter-spacing:.22em; font-size:20px; }
+.masthead .bench { color:var(--muted); }
+.badge { margin-left:auto; border:1px solid var(--accent); color:var(--accent);
+  padding:3px 12px; letter-spacing:.18em; font-size:12px; }
+.badge-note { color:var(--muted); font-size:12.5px; }
+.hero { display:grid; grid-template-columns:250px 1fr; gap:18px; }
+.panel { background:var(--panel); border:1px solid var(--hair); padding:20px; }
+.panel h2 { font-size:12px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--muted); margin-bottom:14px; font-weight:600; }
+.dial { width:100%; display:block; }
+.dial-num { fill:var(--ink); font:600 40px ui-monospace,Consolas,monospace; text-anchor:middle; }
+.dial-pct { font-size:20px; fill:var(--muted); }
+.dial-metric { fill:var(--accent); font-size:12px; letter-spacing:.14em; text-anchor:middle; text-transform:uppercase; }
+.dial-ci { fill:var(--muted); font-size:10.5px; text-anchor:middle; }
+.facts { display:grid; grid-template-columns:1fr 1fr; gap:0 18px; align-content:start; }
+.fact { border-bottom:1px dashed var(--hair); padding:9px 0; }
+.fact b { display:block; color:var(--muted); font-size:11px; letter-spacing:.14em;
+  text-transform:uppercase; font-weight:600; }
+.bar-row { display:grid; grid-template-columns:220px 1fr 130px; gap:12px; align-items:center;
+  padding:5px 0; }
+.bar-label { color:var(--ink); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bar-track { position:relative; height:10px; background:var(--panel-2); border:1px solid var(--hair); }
+.bar-fill { position:absolute; inset:0 auto 0 0; background:var(--accent); opacity:.85; }
+.bar-ci { position:absolute; top:-3px; height:16px; border-left:1px solid var(--ink);
+  border-right:1px solid var(--ink); opacity:.5; }
+.bar-val { text-align:right; font-size:13px; }
+.bar-n { color:var(--muted); font-size:11px; }
+table { width:100%; border-collapse:collapse; font-size:13.5px; }
+th { text-align:left; color:var(--muted); font-weight:600; padding:7px 14px 7px 0;
+  white-space:nowrap; vertical-align:top; border-bottom:1px solid var(--hair); width:200px; }
+td { padding:7px 0; border-bottom:1px solid var(--hair); word-break:break-word; }
+.note { color:#E8B04B; font-size:13px; margin-top:6px; }
+code { background:var(--panel-2); border:1px solid var(--hair); padding:10px 12px;
+  display:block; font-size:12.5px; overflow-x:auto; color:var(--muted); }
+footer { color:var(--muted); font-size:12px; text-align:center; }
+@media (max-width:720px) { .hero { grid-template-columns:1fr; }
+  .facts { grid-template-columns:1fr; }
+  .bar-row { grid-template-columns:1fr; gap:4px; } .bar-val { text-align:left; } }
+@media (prefers-reduced-motion:no-preference) {
+  .bar-fill { transition:width .5s ease; } }
+</style></head><body><div class="wrap">
+<header class="masthead">
+  <span class="brand">AQEval</span>
+  <span class="bench">gsm8k · AQUA (Aquiplex Cognitive AI Operating System)</span>
+  <span class="badge">OFFICIAL</span>
+</header>
+<div class="badge-note">official run — full split, default parameters</div>
+
+<div class="hero">
+  <section class="panel">
+<svg viewBox="0 0 220 200" class="dial" role="img" aria-label="exact_match_strict 0.3231">
+  <path d="M 46.36 173.64 A 90 90 0 1 1 173.64 173.64" fill="none" stroke="#142832" stroke-width="7"/>
+  <line x1="49.2" y1="170.8" x2="43.5" y2="176.5" stroke="#1D3440" stroke-width="2"/><line x1="28.2" y1="136.6" x2="20.6" y2="139.0" stroke="#1D3440" stroke-width="2"/><line x1="25.1" y1="96.5" x2="17.2" y2="95.3" stroke="#1D3440" stroke-width="2"/><line x1="40.4" y1="59.5" x2="34.0" y2="54.7" stroke="#1D3440" stroke-width="2"/><line x1="71.0" y1="33.4" x2="67.3" y2="26.2" stroke="#1D3440" stroke-width="2"/><line x1="110.0" y1="24.0" x2="110.0" y2="16.0" stroke="#1D3440" stroke-width="2"/><line x1="149.0" y1="33.4" x2="152.7" y2="26.2" stroke="#1D3440" stroke-width="2"/><line x1="179.6" y1="59.5" x2="186.0" y2="54.7" stroke="#1D3440" stroke-width="2"/><line x1="194.9" y1="96.5" x2="202.8" y2="95.3" stroke="#1D3440" stroke-width="2"/><line x1="191.8" y1="136.6" x2="199.4" y2="139.0" stroke="#1D3440" stroke-width="2"/><line x1="170.8" y1="170.8" x2="176.5" y2="176.5" stroke="#1D3440" stroke-width="2"/><path d="M 33.79 62.12 A 90 90 0 0 1 55.59 38.31" fill="none" stroke="#2FD6C3" stroke-opacity="0.25" stroke-width="14" stroke-linecap="butt"/><path d="M 46.36 173.64 A 90 90 0 0 1 43.37 49.49" fill="none" stroke="#2FD6C3" stroke-width="7" stroke-linecap="round"/>
+  <text x="110" y="104" class="dial-num">32.3<tspan class="dial-pct">%</tspan></text>
+  <text x="110" y="128" class="dial-metric">exact_match_strict</text>
+  <text x="110" y="146" class="dial-ci">95% CI 28.6–36.2</text>
+</svg></section>
+  <section class="panel facts">
+    <div class="fact"><b>exact_match_strict</b>32.31% ± 1.93</div>
+    <div class="fact"><b>Items scored</b>588</div>
+    <div class="fact"><b>Errors</b>731 (55.42%)</div>
+    <div class="fact"><b>Runtime</b>7717.1 s</div>
+    <div class="fact"><b>Benchmark version</b>openai/grade-school-math @ master (test split, n=1319)</div>
+    <div class="fact"><b>Adapter</b>aquiplex</div>
+  </section>
+</div>
+<section class="panel"><h2>exact_match_flexible</h2>
+<div class="bar-row">
+  <div class="bar-label" title="n=588">exact_match_flexible</div>
+  <div class="bar-track">
+    <div class="bar-fill" style="width:91.16%"></div>
+    <div class="bar-ci" style="left:88.78%;width:4.59%"></div>
+  </div>
+  <div class="bar-val">91.2%<span class="bar-n"> · n=588</span></div>
+</div></section>
+<section class="panel"><h2>Run record</h2><table><tr><th>Run ID</th><td>20260722-075645_gsm8k_aquiplex</td></tr><tr><th>Date (UTC)</th><td>2026-07-22T10:05:23Z</td></tr><tr><th>Benchmark</th><td>gsm8k — openai/grade-school-math @ master (test split, n=1319)</td></tr><tr><th>System under test</th><td>AQUA (Aquiplex Cognitive AI Operating System) (aquiplex adapter)</td></tr><tr><th>Runtime</th><td>7717.1 s</td></tr><tr><th>Seed</th><td>1234</td></tr><tr><th>Prompt template</th><td>gsm8k_cot_8shot gsm8k_cot_8shot/v1 · sha256 3d55795c084e26f6…</td></tr><tr><th>AQEval commit</th><td>134e27894155c10c67b5cef9b472b90d09f3283c</td></tr><tr><th>Platform commit</th><td>134e27894155c10c67b5cef9b472b90d09f3283c</td></tr><tr><th>Hardware</th><td>Linux-6.6.50-05083-g5a8e7e69b744-x86_64-with-glibc2.36 · 2 vCPU · 6.4 GB RAM</td></tr><tr><th>Python</th><td>3.11.2</td></tr><tr><th>Errors</th><td>731 (55.42%)</td></tr></table></section>
+<section class="panel"><h2>Datasets</h2><table><tr><th>test</th><td>datasets/cache/gsm8k/test.jsonl · sha256 3730d312f6e34405… · n=1319</td></tr></table></section>
+<section class="panel"><h2>Reproduce</h2><code>python3 evaluation/aqeval.py run --benchmark gsm8k --adapter configs/adapters/&lt;adapter&gt;.json --seed 1234</code></section>
+<footer>Generated by AQEval 1.0 · raw responses in records.jsonl · full manifest in manifest.json</footer>
+</div></body></html>

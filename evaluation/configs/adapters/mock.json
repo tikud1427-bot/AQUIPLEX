@@ -1,0 +1,5 @@
+{
+  "type": "mock",
+  "name": "mock-selftest",
+  "notes": "Framework plumbing test only. Runs are stamped MOCK and can never be marked official."
+}

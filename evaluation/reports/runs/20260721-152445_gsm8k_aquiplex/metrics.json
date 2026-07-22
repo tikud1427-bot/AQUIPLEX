@@ -1,0 +1,40 @@
+{
+  "run_id": "20260721-152445_gsm8k_aquiplex",
+  "date_utc": "2026-07-21T16:55:33Z",
+  "benchmark": {
+    "name": "gsm8k",
+    "version": "openai/grade-school-math @ master (test split, n=1319)"
+  },
+  "model": {
+    "adapter_type": "aquiplex",
+    "name": "AQUA (Aquiplex Cognitive AI Operating System)"
+  },
+  "official": true,
+  "runtime_s": 5447.5,
+  "scores": {
+    "primary_metric": "exact_match_strict",
+    "exact_match_strict": {
+      "n": 808,
+      "mean": 0.232673,
+      "stderr": 0.014865,
+      "ci95": [
+        0.20297,
+        0.261139
+      ]
+    },
+    "exact_match_flexible": {
+      "n": 808,
+      "mean": 0.902228,
+      "stderr": 0.010449,
+      "ci95": [
+        0.881188,
+        0.923267
+      ]
+    }
+  },
+  "errors": {
+    "count": 511,
+    "rate": 0.3874
+  },
+  "notes": []
+}

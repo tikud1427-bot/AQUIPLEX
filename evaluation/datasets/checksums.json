@@ -1,0 +1,6 @@
+{
+  "gsm8k/test.jsonl": "3730d312f6e3440559ace48831e51066acaca737f6eabec99bccb9e4b3c39d14",
+  "humaneval/HumanEval.jsonl.gz": "b796127e635a67f93fb35c04f4cb03cf06f38c8072ee7cee8833d7bee06979ef",
+  "mbpp/mbpp.jsonl": "ccf64ceae9c5403bf50a044cb6d505bfd2a2963ee58338ba268fd65beab92a9f",
+  "mmlu/data.tar": "bec563ba4bac1d6aaf04141cd7d1605d7a5ca833e38f994051e818489592989b"
+}

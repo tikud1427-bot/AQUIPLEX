@@ -1,0 +1,78 @@
+[1mdiff --git a/package.json b/package.json[m
+[1mindex b5f2da4b..2a4a205e 100644[m
+[1m--- a/package.json[m
+[1m+++ b/package.json[m
+[36m@@ -1,38 +1,41 @@[m
+ {[m
+[31m-  "name": "aquiplex-platform",[m
+[31m-  "version": "2.0.0",[m
+[31m-  "description": "AQUIPLEX — AI platform. AQUA is the AI.",[m
+[31m-  "type": "commonjs",[m
+[32m+[m[32m  "name": "aqua-ai",[m
+[32m+[m[32m  "version": "1.0.0",[m
+   "main": "index.js",[m
+[31m-  "license": "MIT",[m
+[31m-  "engines": {[m
+[31m-    "node": "20.x",[m
+[31m-    "npm": "10.x"[m
+[31m-  },[m
+[31m-  "scripts": {[m
+[31m-    "start": "node index.js",[m
+[31m-    "dev": "node index.js",[m
+[31m-    "postinstall": "cd aqua && npm install",[m
+[31m-    "build:aqua": "cd aqua-frontend && npm ci --include=dev && NODE_OPTIONS=--max-old-space-size=450 npm run build",[m
+[31m-    "build": "npm run build:aqua",[m
+[31m-    "test:aqua": "cd aqua && npm run test:edit && npm run test:upload && npm run test:identity && npm run test:search"[m
+[32m+[m[32m"scripts": {[m
+[32m+[m[32m  "start": "node index.js",[m
+[32m+[m[32m  "dev": "node index.js",[m
+[32m+[m[32m    "test:edit": "node src/project/tests/editEngine.test.js && node src/project/tests/editRoutes.test.js",[m
+[32m+[m[32m    "test:upload": "node --test src/upload/tests/upload.test.js",[m
+[32m+[m[32m    "test:mind": "node --test src/mind/tests/mind.test.js",[m
+[32m+[m[32m    "test:memory": "node --test \"src/memory/tests/*.test.js\"",[m
+[32m+[m[32m    "test:files": "node --test \"src/files/tests/*.test.js\" \"src/reasoning/tests/*.test.js\"",[m
+[32m+[m[32m    "test:orchestrator": "node --test src/orchestrator/tests/*.test.js src/providers/tests/*.test.js",[m
+[32m+[m[32m    "test:identity": "node --test src/identity/tests/identityLayer.test.js",[m
+[32m+[m[32m    "test:search": "node --test src/search/tests/search.test.js",[m
+[32m+[m[32m    "test:artifacts": "node --test \"src/artifacts/tests/*.test.js\" src/routes/tests/artifactRoutes.test.js",[m
+[32m+[m[32m    "test:pic": "node --test src/pic/tests/pic.test.js",[m
+[32m+[m[32m    "test:cognition": "node --test src/cognition/tests/cognition.test.js",[m
+[32m+[m[32m    "bench:cognition": "node src/cognition/tests/cognitionBench.js",[m
+[32m+[m[32m    "test:providers": "node --test src/providers/tests/*.test.js src/core/tests/backoff.test.js src/core/tests/health.test.js",[m
+[32m+[m[32m    "soak:providers": "node src/providers/tests/providerResilience.soak.js"[m
+   },[m
+   "dependencies": {[m
+[31m-    "axios": "^1.13.6",[m
+[31m-    "bcrypt": "^6.0.0",[m
+[31m-    "connect-mongo": "^5.1.0",[m
+[32m+[m[32m    "@google/genai": "^2.9.0",[m
+[32m+[m[32m    "@pdf-lib/fontkit": "^1.1.1",[m
+[32m+[m[32m    "adm-zip": "^0.5.17",[m
+[32m+[m[32m    "cors": "^2.8.6",[m
+[32m+[m[32m    "dejavu-fonts-ttf": "^2.37.3",[m
+[32m+[m[32m    "docx": "^9.7.1",[m
+     "dotenv": "^17.4.2",[m
+[31m-    "ejs": "^3.1.10",[m
+     "express": "^5.2.1",[m
+[31m-    "express-session": "^1.18.1",[m
+[31m-    "memorystore": "^1.6.7",[m
+[31m-    "mongoose": "^9.3.1",[m
+[31m-    "multer": "^2.1.1",[m
+[31m-    "passport": "^0.7.0",[m
+[31m-    "passport-google-oauth20": "^2.0.0",[m
+[31m-    "razorpay": "^2.9.6"[m
+[31m-  },[m
+[31m-  "devDependencies": {[m
+[31m-    "vite-plugin-pwa": "^1.3.0"[m
+[32m+[m[32m    "groq-sdk": "^1.3.0",[m
+[32m+[m[32m    "mammoth": "^1.12.0",[m
+[32m+[m[32m    "openai": "^6.44.0",[m
+[32m+[m[32m    "pdf-lib": "^1.17.1",[m
+[32m+[m[32m    "pdf-parse": "^2.4.5",[m
+[32m+[m[32m    "pptxgenjs": "^4.0.1",[m
+[32m+[m[32m    "uuid": "^14.0.1",[m
+[32m+[m[32m    "xlsx": "^0.18.5"[m
+   }[m
+[31m-}[m
+[32m+[m[32m}[m
+\ No newline at end of file[m

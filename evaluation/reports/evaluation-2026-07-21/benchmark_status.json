@@ -1,0 +1,114 @@
+{
+  "generated_utc": "2026-07-21",
+  "environment_reason": "Sandbox egress policy returns 403 host_not_allowed for every model-inference provider AQUA routes to (OpenRouter, Groq, Google Gemini, Together) - verified empirically (evidence/egress-probes.txt). Provider API keys exist in the frozen build's .env but were deliberately NOT loaded: no endpoint is reachable, so loading them would only transit secrets through a denying proxy. A real-adapter execution attempt against the live frozen engine confirmed the failure point (evidence/engine-error-sample.txt; run 20260721-130720_gsm8k_aquiplex_connectivity-attempt, stamped INVALID).",
+  "official_runs_executed": 0,
+  "scores_reported": 0,
+  "runs_marked_invalid": 1,
+  "benchmarks": [
+    {
+      "benchmark": "MMLU",
+      "category": "reasoning",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "dataset host also blocked (people.eecs.berkeley.edu)"
+    },
+    {
+      "benchmark": "MMLU-Pro",
+      "category": "reasoning",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "dataset on Hugging Face (blocked)"
+    },
+    {
+      "benchmark": "GPQA",
+      "category": "reasoning",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "dataset gated + HF blocked; anti-contamination zip password deliberately not automated"
+    },
+    {
+      "benchmark": "Humanity's Last Exam",
+      "category": "reasoning",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "dataset gated on HF (blocked); official scoring requires an external LLM judge (GPT-4o per HLE paper / o3-mini per Scale leaderboard) - no judge endpoint reachable"
+    },
+    {
+      "benchmark": "HumanEval",
+      "category": "coding",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "dataset ACQUIRED and verified; framework validated on official canonical solutions - only inference is blocked"
+    },
+    {
+      "benchmark": "MBPP",
+      "category": "coding",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "dataset ACQUIRED and verified - only inference is blocked"
+    },
+    {
+      "benchmark": "LiveCodeBench",
+      "category": "coding",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "current release_v6 identified; official harness + HF dataset required (blocked)"
+    },
+    {
+      "benchmark": "SWE-bench",
+      "category": "coding",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "official docker-based harness infrastructure unavailable in sandbox"
+    },
+    {
+      "benchmark": "GSM8K",
+      "category": "math",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "dataset ACQUIRED and verified - only inference is blocked"
+    },
+    {
+      "benchmark": "MATH-500",
+      "category": "math",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "dataset on Hugging Face (blocked)"
+    },
+    {
+      "benchmark": "AIME",
+      "category": "math",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "dataset on Hugging Face (blocked)"
+    },
+    {
+      "benchmark": "MMMU",
+      "category": "multimodal",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "multimodal image-input adapter not yet wired + HF blocked"
+    },
+    {
+      "benchmark": "DocVQA",
+      "category": "multimodal",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "registration-gated dataset + multimodal adapter not yet wired"
+    },
+    {
+      "benchmark": "ChartQA",
+      "category": "multimodal",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "multimodal adapter not yet wired"
+    },
+    {
+      "benchmark": "BEIR",
+      "category": "retrieval",
+      "status": "NOT EXECUTED",
+      "primary_reason": "No model inference possible in this environment (see environment_reason)",
+      "benchmark_specific": "AQUA exposes no embeddings/retrieval endpoint - precondition missing regardless of environment"
+    }
+  ]
+}

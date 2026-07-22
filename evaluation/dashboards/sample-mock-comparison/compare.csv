@@ -1,0 +1,3 @@
+benchmark,system,adapter,metric,score,stderr,ci95_lo,ci95_hi,n,official,run_id,date_utc
+humaneval,mock-selftest,mock,pass@1,0.0,0.0,0.0,0.0,4,False,20260721-112447_humaneval_mock_selftest,2026-07-21T11:24:47Z
+gsm8k,mock-selftest,mock,exact_match_strict,0.0,0.0,0.0,0.0,4,False,20260721-112455_gsm8k_mock_sample,2026-07-21T11:24:55Z

@@ -1,0 +1,16 @@
+benchmark,category,status,primary_reason,benchmark_specific
+MMLU,reasoning,NOT EXECUTED,No model inference possible in this environment (see environment_reason),dataset host also blocked (people.eecs.berkeley.edu)
+MMLU-Pro,reasoning,NOT EXECUTED,No model inference possible in this environment (see environment_reason),dataset on Hugging Face (blocked)
+GPQA,reasoning,NOT EXECUTED,No model inference possible in this environment (see environment_reason),dataset gated + HF blocked; anti-contamination zip password deliberately not automated
+Humanity's Last Exam,reasoning,NOT EXECUTED,No model inference possible in this environment (see environment_reason),dataset gated on HF (blocked); official scoring requires an external LLM judge (GPT-4o per HLE paper / o3-mini per Scale leaderboard) - no judge endpoint reachable
+HumanEval,coding,NOT EXECUTED,No model inference possible in this environment (see environment_reason),dataset ACQUIRED and verified; framework validated on official canonical solutions - only inference is blocked
+MBPP,coding,NOT EXECUTED,No model inference possible in this environment (see environment_reason),dataset ACQUIRED and verified - only inference is blocked
+LiveCodeBench,coding,NOT EXECUTED,No model inference possible in this environment (see environment_reason),current release_v6 identified; official harness + HF dataset required (blocked)
+SWE-bench,coding,NOT EXECUTED,No model inference possible in this environment (see environment_reason),official docker-based harness infrastructure unavailable in sandbox
+GSM8K,math,NOT EXECUTED,No model inference possible in this environment (see environment_reason),dataset ACQUIRED and verified - only inference is blocked
+MATH-500,math,NOT EXECUTED,No model inference possible in this environment (see environment_reason),dataset on Hugging Face (blocked)
+AIME,math,NOT EXECUTED,No model inference possible in this environment (see environment_reason),dataset on Hugging Face (blocked)
+MMMU,multimodal,NOT EXECUTED,No model inference possible in this environment (see environment_reason),multimodal image-input adapter not yet wired + HF blocked
+DocVQA,multimodal,NOT EXECUTED,No model inference possible in this environment (see environment_reason),registration-gated dataset + multimodal adapter not yet wired
+ChartQA,multimodal,NOT EXECUTED,No model inference possible in this environment (see environment_reason),multimodal adapter not yet wired
+BEIR,retrieval,NOT EXECUTED,No model inference possible in this environment (see environment_reason),AQUA exposes no embeddings/retrieval endpoint - precondition missing regardless of environment

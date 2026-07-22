@@ -19,6 +19,12 @@
 
 const START_MS     = Date.now();   // server boot timestamp
 
+// Per-request success/failure ticks are gated behind AQUA_PROVIDER_LOG=debug so
+// a 1000+-request benchmark isn't drowned in [HEALTH] lines. Circuit-breaker
+// state TRANSITIONS ([CB] → OPEN/CLOSED/HALF_OPEN) always log — they're the
+// routing decisions worth keeping.
+const LOG_DEBUG = String(process.env.AQUA_PROVIDER_LOG ?? '').toLowerCase() === 'debug';
+
 const WINDOW       = 20;          // rolling window for success/latency stats
 const COOLDOWN_MS  = 60_000;      // base cooldown: 1 min
 const COOLDOWN_MAX = 600_000;     // cap: 10 min
@@ -82,8 +88,12 @@ function push(arr, val) {
 
 // ── Circuit breaker transitions ───────────────────────────────────────────────
 
-function transitionToOpen(s, provider, reason) {
-  const ms = Math.min(COOLDOWN_MS * 2 ** s.cooldownCount, COOLDOWN_MAX);
+function transitionToOpen(s, provider, reason, minMs = 0) {
+  // Exponential provider-level backoff, but never SHORTER than a cooldown the
+  // provider explicitly asked for (429/503 Retry-After, threaded from
+  // markFailure's opts.cooldownMs). Still capped at COOLDOWN_MAX.
+  const backoff = COOLDOWN_MS * 2 ** s.cooldownCount;
+  const ms = Math.min(Math.max(backoff, minMs || 0), COOLDOWN_MAX);
   s.cooldownUntil = Date.now() + ms;
   s.cooldownCount++;
   s.circuitState  = CB_OPEN;
@@ -178,16 +188,34 @@ export function markSuccess(provider, latencyMs) {
   s.totalSuccesses++;
   s.lastSuccess = Date.now();
 
-  if (s.circuitState === CB_HALF_OPEN) {
+  // A definitive success closes the circuit from HALF_OPEN *or* OPEN. The OPEN
+  // case happens when the router's degraded mode force-attempted a provider
+  // whose circuit was open (all providers were unhealthy, so the health gate
+  // was bypassed) and it actually worked — proof the provider is healthy again.
+  // Without this, degraded-mode successes left the circuit stuck OPEN forever,
+  // so every subsequent request re-entered degraded mode and the breaker/health
+  // scoring were permanently defeated.
+  if (s.circuitState === CB_HALF_OPEN || s.circuitState === CB_OPEN) {
     transitionToClosed(s, provider);
   } else {
     s.consecutiveFailures = 0;
   }
 
-  console.log(`[HEALTH] ${provider} ✓ ${latencyMs ?? '?'}ms | score=${computeScore(s).toFixed(0)} | cb=${s.circuitState}`);
+  if (LOG_DEBUG) {
+    console.log(`[HEALTH] ${provider} ✓ ${latencyMs ?? '?'}ms | score=${computeScore(s).toFixed(0)} | cb=${s.circuitState}`);
+  }
 }
 
-export function markFailure(provider, reason = 'unknown') {
+/**
+ * @param {string} provider
+ * @param {string} [reason]
+ * @param {object} [opts]
+ * @param {number} [opts.cooldownMs] provider-supplied Retry-After (429/503) — the
+ *   circuit's OPEN cooldown is never shorter than this. Omitted → pure
+ *   exponential backoff, identical to the pre-v4 behavior the tests pin.
+ * @param {string} [opts.type] structured error type (providerErrors.js) for observability.
+ */
+export function markFailure(provider, reason = 'unknown', opts = {}) {
   const s = state[provider];
   if (!s) return;
 
@@ -195,19 +223,23 @@ export function markFailure(provider, reason = 'unknown') {
   s.consecutiveFailures++;
   s.totalRequests++;
   s.totalFailures++;
-  s.lastFailure = Date.now();
+  s.lastFailure       = Date.now();
+  s.lastFailureReason = reason;
+  if (opts.type) s.lastFailureType = opts.type;
+
+  const minMs = Number.isFinite(opts.cooldownMs) ? opts.cooldownMs : 0;
 
   switch (s.circuitState) {
     case CB_HALF_OPEN:
       // Probe failed → back to OPEN with longer backoff
       s.halfOpenProbe = false;
-      transitionToOpen(s, provider, `probe_failed:${reason}`);
+      transitionToOpen(s, provider, `probe_failed:${reason}`, minMs);
       break;
 
     case CB_CLOSED:
       if (s.consecutiveFailures >= FAIL_THRESH) {
-        transitionToOpen(s, provider, reason);
-      } else {
+        transitionToOpen(s, provider, reason, minMs);
+      } else if (LOG_DEBUG) {
         console.log(`[HEALTH] ${provider} ✗ ${s.consecutiveFailures}/${FAIL_THRESH} | reason=${reason}`);
       }
       break;

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AQEval · Executive Summary · 2026-07-21</title>
+<style>
+:root { --bg:#0A1418; --panel:#10202A; --panel-2:#0D1A22; --ink:#E8F1F4; --muted:#7C97A6; --hair:#1D3440; --warn:#E8B04B; --bad:#E86A5E; --aqua:#2FD6C3; }
+* { box-sizing:border-box; margin:0; }
+body { background:var(--bg); color:var(--ink); font:15px/1.55 ui-monospace,"SF Mono",Consolas,Menlo,monospace; padding:32px 20px 64px; }
+.wrap { max-width:940px; margin:0 auto; display:grid; gap:18px; }
+.masthead { display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; border-bottom:1px solid var(--hair); padding-bottom:14px; }
+.brand { font-family:Georgia,serif; font-variant:small-caps; letter-spacing:.22em; font-size:20px; }
+.badge { margin-left:auto; border:1px solid var(--bad); color:var(--bad); padding:3px 12px; letter-spacing:.16em; font-size:12px; }
+.panel { background:var(--panel); border:1px solid var(--hair); padding:20px; }
+.panel h2 { font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:12px; }
+.big { font-size:22px; font-weight:600; }
+p { color:var(--ink); margin:8px 0; font-size:14px; }
+p.muted { color:var(--muted); }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+td,th { padding:7px 10px 7px 0; border-bottom:1px solid var(--hair); text-align:left; vertical-align:top; }
+th { color:var(--muted); }
+.ne { color:var(--warn); white-space:nowrap; }
+ul { margin:6px 0 0 18px; font-size:14px; } li { margin:5px 0; }
+code { background:var(--panel-2); border:1px solid var(--hair); padding:2px 6px; font-size:12.5px; }
+footer { color:var(--muted); font-size:12px; text-align:center; }
+</style></head><body><div class="wrap">
+<header class="masthead"><span class="brand">AQEval</span>
+<span style="color:var(--muted)">Executive Summary · 2026-07-21 · frozen AQUIPLEX build</span>
+<span class="badge">NOT OFFICIAL · NO SCORES</span></header>
+<section class="panel"><div class="big">Benchmarks executed officially: 0 of 15. Scores reported: none.</div>
+<p>This environment cannot perform model inference: egress policy returns <code>403 host_not_allowed</code>
+for every provider AQUA routes to (OpenRouter, Groq, Google Gemini, Together) and for gated-dataset hosts —
+verified empirically, not assumed. Provider keys exist in the frozen build's configuration and were deliberately
+<em>not</em> loaded (no reachable endpoint). Nothing was fabricated or estimated; every benchmark is reported
+NOT EXECUTED with its exact reason.</p></section>
+<section class="panel"><h2>Verified this session — none of it is a model score</h2><ul>
+<li><b>Framework selftest: PASS.</b> Official pass@k estimator vs hand computation; official MATH equivalence; extractors;
+sandboxed executor validated on official HumanEval <b>canonical solutions</b> (all pass; wrong solution fails; infinite loop times out).</li>
+<li><b>Real runtime connected.</b> Frozen <code>aqua/router.js</code> booted sessionless on an isolated data dir; the real
+<code>aquiplex</code> adapter queried the live engine 4× — every request walked the provider fallback chain
+(gemini → openrouter → groq) and failed only at the provider stage. Run stamped <b style="color:var(--bad)">INVALID</b>, zero items scored, no score presented.</li>
+<li><b>Datasets pinned.</b> GSM8K n=1,319 · HumanEval n=164 · MBPP n=974 (test split 500) acquired from canonical sources, SHA-256 verified. All others: NOT ACQUIRED, reasons recorded.</li>
+<li><b>One integrity fix</b> (only code change): zero-scored runs now stamp INVALID in all four report formats.</li></ul></section>
+<section class="panel"><h2>All benchmarks — status</h2>
+<table><tr><th>category</th><th>benchmark</th><th>status</th><th>blockers beyond inference</th></tr><tr><td>reasoning</td><td>MMLU</td><td class='ne'>NOT EXECUTED</td><td>dataset host also blocked (people.eecs.berkeley.edu)</td></tr><tr><td>reasoning</td><td>MMLU-Pro</td><td class='ne'>NOT EXECUTED</td><td>dataset on Hugging Face (blocked)</td></tr><tr><td>reasoning</td><td>GPQA</td><td class='ne'>NOT EXECUTED</td><td>dataset gated + HF blocked; anti-contamination zip password deliberately not automated</td></tr><tr><td>reasoning</td><td>Humanity&#x27;s Last Exam</td><td class='ne'>NOT EXECUTED</td><td>dataset gated on HF (blocked); official scoring requires an external LLM judge (GPT-4o per HLE paper / o3-mini per Scale leaderboard) - no judge endpoint reachable</td></tr><tr><td>coding</td><td>HumanEval</td><td class='ne'>NOT EXECUTED</td><td>dataset ACQUIRED and verified; framework validated on official canonical solutions - only inference is blocked</td></tr><tr><td>coding</td><td>MBPP</td><td class='ne'>NOT EXECUTED</td><td>dataset ACQUIRED and verified - only inference is blocked</td></tr><tr><td>coding</td><td>LiveCodeBench</td><td class='ne'>NOT EXECUTED</td><td>current release_v6 identified; official harness + HF dataset required (blocked)</td></tr><tr><td>coding</td><td>SWE-bench</td><td class='ne'>NOT EXECUTED</td><td>official docker-based harness infrastructure unavailable in sandbox</td></tr><tr><td>math</td><td>GSM8K</td><td class='ne'>NOT EXECUTED</td><td>dataset ACQUIRED and verified - only inference is blocked</td></tr><tr><td>math</td><td>MATH-500</td><td class='ne'>NOT EXECUTED</td><td>dataset on Hugging Face (blocked)</td></tr><tr><td>math</td><td>AIME</td><td class='ne'>NOT EXECUTED</td><td>dataset on Hugging Face (blocked)</td></tr><tr><td>multimodal</td><td>MMMU</td><td class='ne'>NOT EXECUTED</td><td>multimodal image-input adapter not yet wired + HF blocked</td></tr><tr><td>multimodal</td><td>DocVQA</td><td class='ne'>NOT EXECUTED</td><td>registration-gated dataset + multimodal adapter not yet wired</td></tr><tr><td>multimodal</td><td>ChartQA</td><td class='ne'>NOT EXECUTED</td><td>multimodal adapter not yet wired</td></tr><tr><td>retrieval</td><td>BEIR</td><td class='ne'>NOT EXECUTED</td><td>AQUA exposes no embeddings/retrieval endpoint - precondition missing regardless of environment</td></tr></table></section>
+<section class="panel"><h2>Next step</h2>
+<p>Run on a machine with open egress and the build's provider keys — exact commands in <code>RUNBOOK.md</code>.
+Closed-book posture: no Serper/Tavily keys in the harness environment. Only runs badged OFFICIAL are citable.</p></section>
+<footer>Scientific honesty over impressive numbers — this report contains no model performance figures because none were legitimately produced.<br>
+Evidence: egress-probes.txt · harness-boot.log · engine-error-sample.txt · connectivity run (INVALID) · validation_report.md</footer>
+</div></body></html>

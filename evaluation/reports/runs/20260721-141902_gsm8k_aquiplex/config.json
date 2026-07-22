@@ -1,0 +1,15 @@
+{
+  "run_id": "20260721-141902_gsm8k_aquiplex",
+  "benchmark": "gsm8k",
+  "options": {
+    "split": "test",
+    "shots": 8,
+    "max_tokens": 1024
+  },
+  "limit": null,
+  "seed": 1234,
+  "concurrency": 4,
+  "official": true,
+  "tag": null,
+  "n_items": 1319
+}

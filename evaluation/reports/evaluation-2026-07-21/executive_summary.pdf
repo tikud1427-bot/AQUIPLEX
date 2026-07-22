@@ -1,0 +1,117 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+2 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+3 0 obj
+<< /Length 5344 >>
+stream
+BT /F2 16 Tf 0.00 g 56 786.0 Td (AQEVAL  ∑  EXECUTIVE SUMMARY) Tj ET
+BT /F1 11 Tf 0.00 g 56 762.0 Td (Evaluation session 2026-07-21  ?  frozen AQUIPLEX build \(AQUA engine\)) Tj ET
+BT /F2 10 Tf 0.25 g 56 744.0 Td (NOT OFFICIAL ? NO BENCHMARK WAS EXECUTED; NO SCORES EXIST IN THIS REPORT) Tj ET
+0.55 G 0.8 w 56 726.0 m 539 726.0 l S 0 G
+BT /F2 13 Tf 0.00 g 56 718.0 Td (Benchmarks executed officially: 0 of 15.  Scores reported: none.) Tj ET
+BT /F1 10 Tf 0.00 g 56 694.0 Td (Environment cannot perform model inference: egress policy returns 403) Tj ET
+BT /F1 10 Tf 0.00 g 56 680.0 Td (host_not_allowed for every provider AQUA routes to \(OpenRouter, Groq,) Tj ET
+BT /F1 10 Tf 0.00 g 56 666.0 Td (Gemini, Together\) and for gated-dataset hosts. Verified empirically) Tj ET
+BT /F1 10 Tf 0.00 g 56 652.0 Td (\(evidence/egress-probes.txt\). Provider keys exist in the frozen .env and) Tj ET
+BT /F1 10 Tf 0.00 g 56 638.0 Td (were deliberately not loaded \(no reachable endpoint\). Per the evaluation) Tj ET
+BT /F1 10 Tf 0.00 g 56 624.0 Td (rules, nothing was fabricated or estimated: every benchmark is reported) Tj ET
+BT /F1 10 Tf 0.00 g 56 610.0 Td (NOT EXECUTED with its exact reason.) Tj ET
+BT /F2 13 Tf 0.00 g 56 590.0 Td (VERIFIED THIS SESSION \(NOT MODEL SCORES\)) Tj ET
+0.55 G 0.8 w 56 571.0 m 539 571.0 l S 0 G
+BT /F2 9 Tf 0.35 g 56 563.0 Td (Framework selftest) Tj ET
+BT /F1 9.5 Tf 0 g 221 563.0 Td (PASS - official pass@k estimator, MATH equivalence, extractors; executor valid) Tj ET
+BT /F1 9.5 Tf 0 g 221 550.0 Td (ated on official HumanEval canonical solutions \(pass / wrong fails / loop time) Tj ET
+BT /F1 9.5 Tf 0 g 221 537.0 Td (s out\)) Tj ET
+BT /F2 9 Tf 0.35 g 56 521.0 Td (Real runtime) Tj ET
+BT /F1 9.5 Tf 0 g 221 521.0 Td (frozen router booted sessionless, isolated data dir; real aquiplex adapter que) Tj ET
+BT /F1 9.5 Tf 0 g 221 508.0 Td (ried live engine 4x; failed only at provider stage; run stamped INVALID, no sc) Tj ET
+BT /F1 9.5 Tf 0 g 221 495.0 Td (ore) Tj ET
+BT /F2 9 Tf 0.35 g 56 479.0 Td (Datasets) Tj ET
+BT /F1 9.5 Tf 0 g 221 479.0 Td (GSM8K n=1319, HumanEval n=164, MBPP n=974 acquired from canonical sources, SHA) Tj ET
+BT /F1 9.5 Tf 0 g 221 466.0 Td (-256 pinned; all others NOT ACQUIRED \(reasons recorded\)) Tj ET
+BT /F2 9 Tf 0.35 g 56 450.0 Td (Integrity fix) Tj ET
+BT /F1 9.5 Tf 0 g 221 450.0 Td (zero-scored runs now stamped INVALID in all report formats \(only code change\)) Tj ET
+BT /F2 13 Tf 0.00 g 56 428.0 Td (BENCHMARKS - ALL NOT EXECUTED) Tj ET
+0.55 G 0.8 w 56 409.0 m 539 409.0 l S 0 G
+BT /F2 9 Tf 0.35 g 56 401.0 Td (MMLU \(reasoning\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 401.0 Td (dataset host also blocked \(people.eecs.berkeley.edu\)) Tj ET
+BT /F2 9 Tf 0.35 g 56 385.0 Td (MMLU-Pro \(reasoning\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 385.0 Td (dataset on Hugging Face \(blocked\)) Tj ET
+BT /F2 9 Tf 0.35 g 56 369.0 Td (GPQA \(reasoning\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 369.0 Td (dataset gated + HF blocked; anti-contamination zip password deliberately not a) Tj ET
+BT /F1 9.5 Tf 0 g 221 356.0 Td (utomated) Tj ET
+BT /F2 9 Tf 0.35 g 56 340.0 Td (Humanity's Last Exam \(reasoning\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 340.0 Td (dataset gated on HF \(blocked\); official scoring requires an external LLM judge) Tj ET
+BT /F1 9.5 Tf 0 g 221 327.0 Td ( \(GPT-4o per HLE paper / o3-mini per Scale leaderboard\) - no judge endpoint re) Tj ET
+BT /F1 9.5 Tf 0 g 221 314.0 Td (achable) Tj ET
+BT /F2 9 Tf 0.35 g 56 298.0 Td (HumanEval \(coding\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 298.0 Td (dataset ACQUIRED and verified; framework validated on official canonical solut) Tj ET
+BT /F1 9.5 Tf 0 g 221 285.0 Td (ions - only inference is blocked) Tj ET
+BT /F2 9 Tf 0.35 g 56 269.0 Td (MBPP \(coding\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 269.0 Td (dataset ACQUIRED and verified - only inference is blocked) Tj ET
+BT /F2 9 Tf 0.35 g 56 253.0 Td (LiveCodeBench \(coding\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 253.0 Td (current release_v6 identified; official harness + HF dataset required \(blocked) Tj ET
+BT /F1 9.5 Tf 0 g 221 240.0 Td (\)) Tj ET
+BT /F2 9 Tf 0.35 g 56 224.0 Td (SWE-bench \(coding\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 224.0 Td (official docker-based harness infrastructure unavailable in sandbox) Tj ET
+BT /F2 9 Tf 0.35 g 56 208.0 Td (GSM8K \(math\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 208.0 Td (dataset ACQUIRED and verified - only inference is blocked) Tj ET
+BT /F2 9 Tf 0.35 g 56 192.0 Td (MATH-500 \(math\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 192.0 Td (dataset on Hugging Face \(blocked\)) Tj ET
+BT /F2 9 Tf 0.35 g 56 176.0 Td (AIME \(math\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 176.0 Td (dataset on Hugging Face \(blocked\)) Tj ET
+BT /F2 9 Tf 0.35 g 56 160.0 Td (MMMU \(multimodal\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 160.0 Td (multimodal image-input adapter not yet wired + HF blocked) Tj ET
+BT /F2 9 Tf 0.35 g 56 144.0 Td (DocVQA \(multimodal\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 144.0 Td (registration-gated dataset + multimodal adapter not yet wired) Tj ET
+BT /F2 9 Tf 0.35 g 56 128.0 Td (ChartQA \(multimodal\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 128.0 Td (multimodal adapter not yet wired) Tj ET
+BT /F2 9 Tf 0.35 g 56 112.0 Td (BEIR \(retrieval\)) Tj ET
+BT /F1 9.5 Tf 0 g 221 112.0 Td (AQUA exposes no embeddings/retrieval endpoint - precondition missing regardles) Tj ET
+BT /F1 9.5 Tf 0 g 221 99.0 Td (s of environment) Tj ET
+BT /F2 13 Tf 0.00 g 56 77.0 Td (NEXT STEP) Tj ET
+endstream
+endobj
+4 0 obj
+<< /Length 464 >>
+stream
+0.55 G 0.8 w 56 786.0 m 539 786.0 l S 0 G
+BT /F1 10 Tf 0.00 g 56 778.0 Td (Run on a machine with open egress + the build's provider keys.) Tj ET
+BT /F1 10 Tf 0.00 g 56 764.0 Td (Exact commands: RUNBOOK.md. Only runs badged OFFICIAL are citable.) Tj ET
+BT /F1 9 Tf 0.35 g 56 742.0 Td (Scientific honesty over impressive numbers: this report contains no) Tj ET
+BT /F1 9 Tf 0.35 g 56 730.0 Td (model performance figures because none were legitimately produced.) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 7 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 3 0 R >>
+endobj
+6 0 obj
+<< /Type /Page /Parent 7 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 1 0 R /F2 2 0 R >> >> /Contents 4 0 R >>
+endobj
+7 0 obj
+<< /Type /Pages /Kids [5 0 R 6 0 R] /Count 2 >>
+endobj
+8 0 obj
+<< /Type /Catalog /Pages 7 0 R >>
+endobj
+xref
+0 9
+0000000000 65535 f 
+0000000015 00000 n 
+0000000085 00000 n 
+0000000160 00000 n 
+0000005556 00000 n 
+0000006071 00000 n 
+0000006207 00000 n 
+0000006343 00000 n 
+0000006406 00000 n 
+trailer
+<< /Size 9 /Root 8 0 R >>
+startxref
+6455
+%%EOF

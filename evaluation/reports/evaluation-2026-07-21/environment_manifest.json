@@ -1,0 +1,17 @@
+{
+  "date_utc": "2026-07-21",
+  "aqeval_version": "1.0",
+  "platform_git": "n/a (tarball distribution - sentinel hashes recorded below)",
+  "sentinel_sha256": {
+    "aqua/router.js": "bf24c492fc89d3e6f0526c3acfaa02c1f13abb3c904b4a9cd2ec8d4d851587b1",
+    "index.js": "d8ffbb4f1746ea01be4eab79e52f875e27a782d873452f475f3e1ada9787332e"
+  },
+  "python": "3.12.3",
+  "node": "v22.22.2",
+  "os": "Linux-6.18.5-x86_64-with-glibc2.39",
+  "cpu_count": 1,
+  "mem_gb": 3.9,
+  "network_policy": "egress allow-list (github/raw.githubusercontent/pypi/npm/anthropic-api only); all model-provider and HF hosts 403 host_not_allowed",
+  "provider_keys": "present in frozen .env (Gemini x8, Groq x4, OpenRouter x4, Serper x4, Tavily x4 - names only; values never read or loaded)",
+  "aqua_engine": "booted via evaluation/runners/aqua-standalone.mjs - sessionless, isolated AQUA_DATA_DIR, Mongo mirror disabled, web-search keys absent (closed-book posture)"
+}

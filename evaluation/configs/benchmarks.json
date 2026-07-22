@@ -1,0 +1,10 @@
+{
+  "gsm8k":     { "split": "test", "shots": 8,  "max_tokens": 1024 },
+  "mmlu":      { "split": "test", "shots": 5,  "max_tokens": 32 },
+  "mmlu_pro":  { "split": "test", "shots": 5,  "max_tokens": 2048 },
+  "gpqa":      { "subset": "diamond", "shots": 0, "max_tokens": 2048 },
+  "math500":   { "split": "test", "shots": 0,  "max_tokens": 2048 },
+  "aime":      { "edition": "2025", "shots": 0, "max_tokens": 4096 },
+  "humaneval": { "n_samples": 1, "k": [1], "exec_timeout_s": 3.0, "prompt_mode": "chat" },
+  "mbpp":      { "n_samples": 1, "k": [1], "exec_timeout_s": 3.0, "shots": 3 }
+}

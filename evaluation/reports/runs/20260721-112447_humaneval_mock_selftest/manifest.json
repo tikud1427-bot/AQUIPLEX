@@ -1,0 +1,75 @@
+{
+  "aqeval_version": "1.0.0",
+  "timestamp_utc": "2026-07-21T11:24:47Z",
+  "benchmark": {
+    "name": "humaneval",
+    "version": "openai/human-eval HumanEval.jsonl.gz (n=164)",
+    "primary_metric": "pass@1"
+  },
+  "model": {
+    "type": "mock",
+    "name": "mock-selftest",
+    "notes": "Framework plumbing test only. Runs are stamped MOCK and can never be marked official."
+  },
+  "run_config": {
+    "run_id": "20260721-112447_humaneval_mock_selftest",
+    "benchmark": "humaneval",
+    "options": {
+      "n_samples": 1,
+      "k": [
+        1
+      ],
+      "exec_timeout_s": 3.0,
+      "prompt_mode": "chat"
+    },
+    "limit": 4,
+    "seed": 1234,
+    "concurrency": 4,
+    "official": false,
+    "tag": "selftest",
+    "n_items": 4
+  },
+  "prompt_template": {
+    "id": "humaneval",
+    "version": "chat/v1",
+    "sha256": "6a0f6c56f7ab5a73ff855f0b92e30a1947938ae5bd3e01ea6b8704b8bb524146"
+  },
+  "datasets": {
+    "problems": {
+      "path": "datasets/cache/humaneval/HumanEval.jsonl.gz",
+      "sha256": "b796127e635a67f93fb35c04f4cb03cf06f38c8072ee7cee8833d7bee06979ef",
+      "n_loaded": 4
+    }
+  },
+  "seed": 1234,
+  "git": {
+    "aqeval": {
+      "commit": null,
+      "note": "not a git repository"
+    },
+    "platform": {
+      "commit": null,
+      "note": "not a git repository"
+    }
+  },
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpu_count": 1,
+    "mem_gb": 3.9,
+    "aqua_flags": {},
+    "provider_keys_present": {
+      "GROQ_API_KEY": false,
+      "OPENROUTER_API_KEY": false,
+      "GEMINI_API_KEY": false,
+      "TOGETHER_API_KEY": false,
+      "HF_API_KEY": false,
+      "SERPER_API_KEY": false,
+      "TAVILY_API_KEY": false,
+      "OPENAI_API_KEY": false,
+      "ANTHROPIC_API_KEY": false
+    }
+  },
+  "command": "evaluation/aqeval.py selftest --limit 4"
+}

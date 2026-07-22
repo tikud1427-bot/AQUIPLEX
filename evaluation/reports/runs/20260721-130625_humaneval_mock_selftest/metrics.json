@@ -1,0 +1,33 @@
+{
+  "run_id": "20260721-130625_humaneval_mock_selftest",
+  "date_utc": "2026-07-21T13:06:25Z",
+  "benchmark": {
+    "name": "humaneval",
+    "version": "openai/human-eval HumanEval.jsonl.gz (n=164)"
+  },
+  "model": {
+    "adapter_type": "mock",
+    "name": "mock-selftest"
+  },
+  "official": false,
+  "runtime_s": 0.1,
+  "scores": {
+    "primary_metric": "pass@1",
+    "pass@1": {
+      "n": 5,
+      "mean": 0.0,
+      "stderr": 0.0,
+      "ci95": [
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "errors": {
+    "count": 0,
+    "rate": 0.0
+  },
+  "notes": [
+    "Non-official run (partial split, filtered subjects, or mock adapter). Not a reportable benchmark result."
+  ]
+}

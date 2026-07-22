@@ -1,0 +1,170 @@
+{
+  "generated_utc": "2026-07-21",
+  "records": [
+    {
+      "benchmark": "GSM8K",
+      "dataset": "openai/grade-school-math test.jsonl",
+      "version": "master (canonical)",
+      "source": "https://raw.githubusercontent.com/openai/grade-school-math/master/grade_school_math/data/test.jsonl",
+      "license": "MIT",
+      "split": "test",
+      "n_samples": 1319,
+      "sha256": "3730d312f6e3440559ace48831e51066acaca737f6eabec99bccb9e4b3c39d14",
+      "status": "ACQUIRED_VERIFIED"
+    },
+    {
+      "benchmark": "HumanEval",
+      "dataset": "openai/human-eval HumanEval.jsonl.gz",
+      "version": "master (canonical)",
+      "source": "https://raw.githubusercontent.com/openai/human-eval/master/data/HumanEval.jsonl.gz",
+      "license": "MIT",
+      "split": "full",
+      "n_samples": 164,
+      "sha256": "b796127e635a67f93fb35c04f4cb03cf06f38c8072ee7cee8833d7bee06979ef",
+      "status": "ACQUIRED_VERIFIED"
+    },
+    {
+      "benchmark": "MBPP",
+      "dataset": "google-research mbpp.jsonl",
+      "version": "master (canonical)",
+      "source": "https://raw.githubusercontent.com/google-research/google-research/master/mbpp/mbpp.jsonl",
+      "license": "CC-BY-4.0",
+      "split": "full 974 / paper test split task_ids 11-510 (n=500)",
+      "n_samples": 974,
+      "sha256": "ccf64ceae9c5403bf50a044cb6d505bfd2a2963ee58338ba268fd65beab92a9f",
+      "status": "ACQUIRED_VERIFIED"
+    },
+    {
+      "benchmark": "MMLU",
+      "dataset": "hendrycks data.tar",
+      "version": "official distribution",
+      "source": "https://people.eecs.berkeley.edu/~hendrycks/data.tar",
+      "license": "MIT",
+      "split": "test (14,042)",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED - host blocked by egress policy (HTTP 403 host_not_allowed)"
+    },
+    {
+      "benchmark": "MMLU-Pro",
+      "dataset": "TIGER-Lab/MMLU-Pro",
+      "version": "HF main",
+      "source": "https://huggingface.co/datasets/TIGER-Lab/MMLU-Pro",
+      "license": "MIT",
+      "split": "test (12,032)",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED - huggingface.co blocked by egress policy"
+    },
+    {
+      "benchmark": "GPQA",
+      "dataset": "Idavidrein/gpqa",
+      "version": "HF main (gated)",
+      "source": "https://huggingface.co/datasets/Idavidrein/gpqa",
+      "license": "CC-BY-4.0, access-controlled",
+      "split": "diamond (198) / main / extended",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED - gated (terms acceptance) + huggingface.co blocked; official GitHub zip is deliberately password-protected as anti-contamination, not automated"
+    },
+    {
+      "benchmark": "MATH-500",
+      "dataset": "HuggingFaceH4/MATH-500",
+      "version": "HF main",
+      "source": "https://huggingface.co/datasets/HuggingFaceH4/MATH-500",
+      "license": "MIT",
+      "split": "test (500)",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED - huggingface.co blocked by egress policy"
+    },
+    {
+      "benchmark": "AIME",
+      "dataset": "AIME 2024/2025 research mirrors",
+      "version": "HF (Maxwell-Jia/AIME_2024, yentinglin/aime_2025)",
+      "source": "https://huggingface.co/datasets/yentinglin/aime_2025",
+      "license": "problems (c) MAA; research evaluation use",
+      "split": "30 per edition",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED - huggingface.co blocked by egress policy"
+    },
+    {
+      "benchmark": "HLE",
+      "dataset": "cais/hle",
+      "version": "HF (gated)",
+      "source": "https://huggingface.co/datasets/cais/hle",
+      "license": "MIT, gated (terms acceptance)",
+      "split": "public test (2,500)",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED - gated + huggingface.co blocked; official protocol additionally requires an external LLM judge"
+    },
+    {
+      "benchmark": "LiveCodeBench",
+      "dataset": "livecodebench/code_generation_lite",
+      "version": "release_v6 (1,055 problems, May 2023-Apr 2025)",
+      "source": "https://github.com/LiveCodeBench/LiveCodeBench",
+      "license": "MIT (harness)",
+      "split": "release-tagged",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED - dataset served via Hugging Face (blocked); official harness required for scoring"
+    },
+    {
+      "benchmark": "SWE-bench",
+      "dataset": "princeton-nlp/SWE-bench",
+      "version": "HF + official docker harness",
+      "source": "https://github.com/SWE-bench/SWE-bench",
+      "license": "MIT (harness); per-repo licenses",
+      "split": "Verified (500) / full",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED - HF blocked + per-instance Docker infrastructure unavailable in sandbox"
+    },
+    {
+      "benchmark": "DocVQA",
+      "dataset": "RRC challenge portal",
+      "version": "official",
+      "source": "https://rrc.cvc.uab.es",
+      "license": "registration required",
+      "split": "val/test",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED - registration-gated; portal not reachable"
+    },
+    {
+      "benchmark": "ChartQA",
+      "dataset": "vis-nlp/ChartQA",
+      "version": "official repo",
+      "source": "https://github.com/vis-nlp/ChartQA",
+      "license": "research use; repo GPL-3.0 code",
+      "split": "test",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED here - acquisition possible via GitHub, but execution blocked (multimodal adapter + inference unavailable); deferred rather than partially acquired"
+    },
+    {
+      "benchmark": "MMMU",
+      "dataset": "MMMU/MMMU",
+      "version": "HF",
+      "source": "https://huggingface.co/datasets/MMMU/MMMU",
+      "license": "Apache-2.0",
+      "split": "validation/test",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_ACQUIRED - huggingface.co blocked; multimodal adapter dependency"
+    },
+    {
+      "benchmark": "BEIR",
+      "dataset": "beir-cellar corpora",
+      "version": "official",
+      "source": "https://github.com/beir-cellar/beir",
+      "license": "Apache-2.0 harness; per-corpus varies",
+      "split": "18 corpora",
+      "n_samples": null,
+      "sha256": "",
+      "status": "NOT_APPLICABLE yet - AQUA exposes no embeddings/retrieval endpoint (precondition, independent of environment)"
+    }
+  ]
+}

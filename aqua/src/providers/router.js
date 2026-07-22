@@ -44,6 +44,31 @@ import { generateGemini, streamGemini }         from './gemini.js';
 import { generateGroq, streamGroq }             from './groq.js';
 import { generateOpenRouter, streamOpenRouter } from './openrouter.js';
 import { getProviderPrior } from '../intelligence/learningLedger.js';
+import {
+  classifyProviderError, describeError, createProviderError, ProviderError,
+} from './providerErrors.js';
+import { computeBackoff, sleep as backoffSleep } from '../core/backoff.js';
+
+// ── Retry-round configuration (env-tunable; sane production defaults) ──────────
+// Governs ONLY the transient-failure retry path. The common case — a provider
+// succeeds on the first attempt — never touches any of this and adds zero
+// latency, so normal chat behavior is unchanged.
+function envInt(name, def) {
+  const v = parseInt(process.env[name] ?? '', 10);
+  return Number.isFinite(v) && v > 0 ? v : def;
+}
+const RETRY_DEFAULTS = {
+  maxRounds:     envInt('AQUA_PROVIDER_MAX_ROUNDS', 4),
+  retryBudgetMs: envInt('AQUA_PROVIDER_RETRY_BUDGET_MS', 90_000),
+  baseBackoffMs: envInt('AQUA_PROVIDER_BACKOFF_MS', 500),
+  capBackoffMs:  envInt('AQUA_PROVIDER_BACKOFF_CAP_MS', 8_000),
+};
+
+// Per-attempt mechanics (the `[PROVIDER] → x` line) are gated behind
+// AQUA_PROVIDER_LOG=debug so a benchmark run isn't flooded. Every routing
+// DECISION — the ranked set, why each provider failed, retry/backoff choices,
+// terminal exhaustion — still logs at info (task 9).
+const LOG_DEBUG = String(process.env.AQUA_PROVIDER_LOG ?? '').toLowerCase() === 'debug';
 
 // ── Provider quality matrix ───────────────────────────────────────────────────
 // 0–100: capability of this provider for this task type.
@@ -118,12 +143,10 @@ function timedAbort(ms) {
   return { signal: ctrl.signal, clear: () => clearTimeout(t) };
 }
 
-async function callProvider(provider, systemPrompt, messages, signal, maxTokens) {
-  const start = Date.now();
-  let result; // { text, truncated, finishReason } — see Issue 1
-  if      (provider === 'gemini')     result = await generateGemini(systemPrompt, messages, signal, maxTokens);
-  else if (provider === 'groq')       result = await generateGroq(systemPrompt, messages, signal, maxTokens);
-  else                                result = await generateOpenRouter(systemPrompt, messages, signal, maxTokens);
+async function callProvider(providerFns, provider, systemPrompt, messages, signal, maxTokens) {
+  const start  = Date.now();
+  const fn     = providerFns[provider] ?? providerFns.openrouter;
+  const result = await fn(systemPrompt, messages, signal, maxTokens); // { text, truncated, finishReason }
   return { ...result, latency: Date.now() - start };
 }
 
@@ -145,10 +168,23 @@ async function callProvider(provider, systemPrompt, messages, signal, maxTokens)
  *                                   sent to any provider, response length fully model-driven).
  * @returns {Promise<object>}
  */
-export async function generateText(userMessage, systemPrompt, messages, ctx = {}, preTaskType, executionPlan, responseBudget) {
-  const requestId = ctx.requestId ?? 'unknown';
-  const complexity = executionPlan?.complexity; // undefined → strategy.js / timeoutManager.js no-op defaults
-  const maxTokens = responseBudget?.maxResponseTokens; // undefined → providers omit the field entirely
+export async function generateText(userMessage, systemPrompt, messages, ctx = {}, preTaskType, executionPlan, responseBudget, deps = {}) {
+  const requestId  = ctx.requestId ?? 'unknown';
+  const complexity = executionPlan?.complexity;        // undefined → strategy/timeout no-op defaults
+  const maxTokens  = responseBudget?.maxResponseTokens; // undefined → providers omit the field entirely
+
+  // Dependency-injection seam (test/soak only). Production passes nothing → real
+  // provider adapters, real clock, real jittered sleep. Same deps convention
+  // already used by debateAgent.js / graphRuntime.js.
+  const providerFns = {
+    gemini:     deps.gemini     ?? generateGemini,
+    groq:       deps.groq       ?? generateGroq,
+    openrouter: deps.openrouter ?? generateOpenRouter,
+  };
+  const now   = deps.now   ?? Date.now;
+  const doNap = deps.sleep ?? backoffSleep;
+  const rng   = deps.rng   ?? Math.random;
+  const cfg   = { ...RETRY_DEFAULTS, ...(deps.config ?? {}) };
 
   // ── 1. Classify (skip if caller already did it) ──────────────────────────────
   let taskType, confidence, labels;
@@ -161,83 +197,144 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
     console.log(`[CLASSIFIER] task=${taskType} conf=${confidence.toFixed(2)} labels=[${labels}] req=${requestId}`);
   }
 
-  // ── 2. Rank ALL healthy providers ────────────────────────────────────────────
-  // FIX: was ranked.slice(0, 3) — only 3 attempts max.
-  // Now: tries EVERY healthy provider before giving up.
-  const ranked = rankProviders(taskType, complexity);
-  console.log(`[ROUTER] providers=[${ranked.map(r => `${r.provider}(${r.score.toFixed(0)})`).join(', ')}] task=${taskType} complexity=${complexity ?? 'n/a'} maxTokens=${maxTokens ?? 'n/a'} req=${requestId}`);
+  const promptLength   = systemPrompt.length + messages.reduce((s, m) => s + m.content.length, 0);
+  const fallbackChain  = [];
+  const providerErrors = [];
+  const deadline       = now() + cfg.retryBudgetMs;
+  let   finalError     = null;
+  let   anyRetryable   = false;
+  let   retryAfterHint = 0;
 
-  const promptLength = systemPrompt.length + messages.reduce((s, m) => s + m.content.length, 0);
-  const fallbackChain = [];
-  let   finalError;
+  // ── 2. Bounded retry-rounds over the ranked provider set ──────────────────────
+  // Round 1 is the classic single pass (byte-identical to the old behavior when a
+  // provider succeeds on the first try). Extra rounds happen ONLY when every
+  // provider in a pass failed AND ≥1 failure was transient (retryable): the herd
+  // is spread out with exponential backoff + full jitter, and health is re-ranked
+  // each round so a provider whose circuit-breaker cooldown expired (HALF_OPEN
+  // probe) or whose per-model cooldown self-healed re-enters the rotation. This is
+  // what makes a 429/503 burst across all providers ride out instead of instantly
+  // exhausting the chain and returning a 500.
+  for (let round = 1; round <= cfg.maxRounds; round++) {
+    const ranked = rankProviders(taskType, complexity);
+    console.log(`[ROUTER] round=${round}/${cfg.maxRounds} providers=[${ranked.map(r => `${r.provider}(${r.score.toFixed(0)})`).join(', ')}] task=${taskType} complexity=${complexity ?? 'n/a'} maxTokens=${maxTokens ?? 'n/a'} req=${requestId}`);
 
-  // ── 3. Try each provider in order ────────────────────────────────────────────
-  for (const { provider, score } of ranked) {
-    const timeoutMs         = getTimeout(taskType, provider, promptLength, complexity);
-    const { signal, clear } = timedAbort(timeoutMs);
+    let retryableThisRound = false;
 
-    console.log(`[PROVIDER] → ${provider} score=${score.toFixed(0)} timeout=${timeoutMs}ms task=${taskType}`);
+    for (const { provider, score } of ranked) {
+      if (ctx.clientSignal?.aborted) {
+        const a = new Error('CLIENT_ABORTED'); a.code = 'CLIENT_ABORTED'; throw a;
+      }
 
-    try {
-      const { text, truncated, finishReason, latency } = await callProvider(provider, systemPrompt, messages, signal, maxTokens);
-      clear();
+      const timeoutMs         = getTimeout(taskType, provider, promptLength, complexity);
+      const { signal, clear } = timedAbort(timeoutMs);
+      if (LOG_DEBUG) console.log(`[PROVIDER] → ${provider} round=${round} score=${score.toFixed(0)} timeout=${timeoutMs}ms task=${taskType}`);
 
-      // ── Issue 1/7/8/9: max-output-tokens is a SUCCESSFUL completion ─────────────
-      // The provider did its job and ran out of output budget — it did not fail.
-      // Never validate-reject it, never markFailure, never retry another
-      // provider: return the partial answer immediately, exactly as generated.
-      if (truncated) {
+      try {
+        const { text, truncated, finishReason, latency } =
+          await callProvider(providerFns, provider, systemPrompt, messages, signal, maxTokens);
+        clear();
+
+        // ── Issue 1/7/8/9: max-output-tokens is a SUCCESSFUL completion ────────────
+        // The provider did its job and ran out of output budget — it did not fail.
+        if (truncated) {
+          markSuccess(provider, latency);
+          fallbackChain.push({ provider, outcome: 'success', truncated: true, latencyMs: latency });
+          ctx.attempts?.push({ provider, outcome: 'success', truncated: true, latencyMs: latency, score });
+          console.log(`[ROUTER] ✓ ${provider} (truncated, finishReason=length) latency=${latency}ms round=${round} req=${requestId}`);
+          return {
+            provider, text, taskType, latency, score, confidence, labels, fallbackChain,
+            truncated: true, finishReason: 'length', rounds: round, attempts: fallbackChain.length,
+          };
+        }
+
+        // ── Validate (normal, non-truncated completions only) ────────────────────
+        const vr = validateResponse(text, userMessage, taskType);
+        if (!vr.valid) {
+          console.log(`[VALIDATOR] ${provider} → invalid (${vr.reason}) — trying next req=${requestId}`);
+          markFailure(provider, vr.reason, { type: 'invalid_response' });
+          fallbackChain.push({ provider, outcome: 'invalid', reason: vr.reason, latencyMs: latency });
+          ctx.attempts?.push({ provider, outcome: 'invalid', reason: vr.reason, latencyMs: latency, score });
+          retryableThisRound = true; anyRetryable = true; // another provider may answer cleanly
+          continue;
+        }
+
         markSuccess(provider, latency);
-        fallbackChain.push({ provider, outcome: 'success', truncated: true, latencyMs: latency });
-        ctx.attempts?.push({ provider, outcome: 'success', truncated: true, latencyMs: latency, score });
-
-        console.log(`[ROUTER] ✓ ${provider} (truncated, finishReason=length) latency=${latency}ms score=${score.toFixed(0)} req=${requestId}`);
-
+        fallbackChain.push({ provider, outcome: 'success', latencyMs: latency });
+        ctx.attempts?.push({ provider, outcome: 'success', latencyMs: latency, score });
+        console.log(`[ROUTER] ✓ ${provider} latency=${latency}ms score=${score.toFixed(0)} round=${round} req=${requestId}`);
         return {
           provider, text, taskType, latency, score, confidence, labels, fallbackChain,
-          truncated: true, finishReason: 'length',
+          truncated: false, finishReason: finishReason ?? 'stop', rounds: round, attempts: fallbackChain.length,
         };
+
+      } catch (err) {
+        clear();
+        // Client walked away during the call — not a provider failure.
+        if (ctx.clientSignal?.aborted || err.code === 'CLIENT_ABORTED') {
+          const a = new Error('CLIENT_ABORTED'); a.code = 'CLIENT_ABORTED'; throw a;
+        }
+
+        const cls  = classifyProviderError(err);
+        const perr = createProviderError({ provider, cause: err, classification: cls, attempt: fallbackChain.length + 1 });
+        finalError = perr;
+        providerErrors.push(perr.toJSON());
+
+        // Health accounting differentiated by structured type; a provider-supplied
+        // Retry-After widens the circuit-breaker cooldown (task 5: quota vs transient).
+        markFailure(provider, describeError(cls), { cooldownMs: cls.retryAfterMs ?? undefined, type: cls.type });
+
+        fallbackChain.push({ provider, outcome: 'failed', reason: cls.type, status: cls.status, retryable: cls.retryable, latencyMs: null });
+        ctx.attempts?.push({ provider, outcome: 'failed', reason: cls.type, status: cls.status, retryable: cls.retryable, score, error: perr.toJSON() });
+
+        console.log(`[ROUTER] ✗ ${provider} type=${cls.type}${cls.status ? ` status=${cls.status}` : ''} retryable=${cls.retryable} scope=${cls.scope} round=${round} — ${cls.retryable ? 'will retry' : 'terminal for this provider'} req=${requestId}`);
+
+        if (cls.retryable) {
+          retryableThisRound = true; anyRetryable = true;
+          if (cls.retryAfterMs) retryAfterHint = Math.max(retryAfterHint, cls.retryAfterMs);
+        }
       }
-
-      // ── Validate (normal, non-truncated completions only) ───────────────────────
-      const vr = validateResponse(text, userMessage, taskType);
-
-      if (!vr.valid) {
-        console.log(`[VALIDATOR] ${provider} → invalid (${vr.reason}) — trying next`);
-        markFailure(provider, vr.reason);
-        fallbackChain.push({ provider, outcome: 'invalid', reason: vr.reason, latencyMs: latency });
-        ctx.attempts?.push({ provider, outcome: 'invalid', reason: vr.reason, latencyMs: latency, score });
-        continue;
-      }
-
-      markSuccess(provider, latency);
-      fallbackChain.push({ provider, outcome: 'success', latencyMs: latency });
-      ctx.attempts?.push({ provider, outcome: 'success', latencyMs: latency, score });
-
-      console.log(`[ROUTER] ✓ ${provider} latency=${latency}ms score=${score.toFixed(0)} req=${requestId}`);
-
-      return {
-        provider, text, taskType, latency, score, confidence, labels, fallbackChain,
-        truncated: false, finishReason: finishReason ?? 'stop',
-      };
-
-    } catch (err) {
-      clear();
-      finalError = err;
-      const reason = err.message === 'TIMEOUT'
-        ? `timeout(${timeoutMs}ms)`
-        : (err.message ?? 'unknown');
-
-      console.log(`[ROUTER] ✗ ${provider} reason=${reason}`);
-      markFailure(provider, reason);
-      fallbackChain.push({ provider, outcome: 'failed', reason, latencyMs: null });
-      ctx.attempts?.push({ provider, outcome: 'failed', reason, score });
     }
+
+    // ── End of a full pass with no success ────────────────────────────────────
+    if (!retryableThisRound) {
+      console.log(`[ROUTER] round=${round} exhausted — no retryable providers remain, stopping req=${requestId}`);
+      break;
+    }
+    if (round >= cfg.maxRounds) {
+      console.log(`[ROUTER] max rounds (${cfg.maxRounds}) reached — stopping req=${requestId}`);
+      break;
+    }
+    const backoffMs = computeBackoff(round, {
+      baseMs: cfg.baseBackoffMs, capMs: cfg.capBackoffMs,
+      minMs:  Math.min(retryAfterHint, cfg.capBackoffMs), rng,
+    });
+    if (now() + backoffMs > deadline) {
+      console.log(`[ROUTER] retry budget (${cfg.retryBudgetMs}ms) would be exceeded by a ${backoffMs}ms backoff — stopping req=${requestId}`);
+      break;
+    }
+    console.log(`[ROUTER] round=${round} all failures retryable — backing off ${backoffMs}ms then retrying req=${requestId}`);
+    await doNap(backoffMs, ctx.clientSignal);
   }
 
-  // Every provider exhausted
-  const chain = fallbackChain.map(f => `${f.provider}:${f.outcome}`).join(' → ');
-  throw finalError ?? new Error(`All providers exhausted | task=${taskType} | chain=${chain}`);
+  // ── 3. Terminal: every round exhausted ────────────────────────────────────────
+  const chain = fallbackChain.map(f => `${f.provider}:${f.outcome}${f.reason ? `(${f.reason})` : ''}`).join(' → ');
+  const terminal = new ProviderError({
+    provider: finalError?.provider ?? 'router',
+    type:     finalError?.type ?? 'unknown',
+    status:   finalError?.status ?? null,
+    message:  `All providers exhausted | task=${taskType} | chain=${chain}`,
+    retryAfterMs: anyRetryable ? (retryAfterHint || 2000) : null,
+    cause:    finalError ?? undefined,
+  });
+  // If ANY attempt this request was transient, the exhaustion is retryable (a later
+  // attempt may hit a recovered provider) — this is what lets chat.js answer a
+  // 503 + Retry-After instead of a terminal 500.
+  terminal.retryable      = anyRetryable;
+  terminal.attempts       = fallbackChain;
+  terminal.providerErrors = providerErrors;
+  terminal.taskType       = taskType;
+  console.error(`[ROUTER] ✗✗ exhausted task=${taskType} retryable=${anyRetryable} attempts=${fallbackChain.length} chain=${chain} req=${requestId}`);
+  throw terminal;
 }
 
 // ── Streaming entry (Day 3 — Real Streaming) ─────────────────────────────────

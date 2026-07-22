@@ -1,0 +1,18 @@
+=== https://openrouter.ai/api/v1/models ===
+HTTP/2 403 
+x-deny-reason: host_not_allowed
+=== https://api.groq.com/openai/v1/models ===
+HTTP/2 403 
+x-deny-reason: host_not_allowed
+=== https://generativelanguage.googleapis.com/v1beta/models ===
+HTTP/2 403 
+x-deny-reason: host_not_allowed
+=== https://api.together.xyz/v1/models ===
+HTTP/2 403 
+x-deny-reason: host_not_allowed
+=== https://huggingface.co/api/datasets ===
+HTTP/2 403 
+x-deny-reason: host_not_allowed
+=== https://people.eecs.berkeley.edu/~hendrycks/data.tar ===
+HTTP/2 403 
+x-deny-reason: host_not_allowed

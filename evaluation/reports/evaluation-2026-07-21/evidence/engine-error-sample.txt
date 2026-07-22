@@ -1,0 +1,2 @@
+item: gsm8k/test/0
+HTTP 500 from http://127.0.0.1:8877/api/aqua/chat: {"success":false,"requestId":"908d6f71-d8b1-4aa4-bcb9-ad3a397181c3","conversationId":"e935d6cf-a3cc-43ea-b229-4baf7f1d849e","error":"No Groq keys configured","fallbackChain":[{"provider":"gemini","outcome":"failed"},{"provider":"openrouter","outcome":"failed"},{"provider":"groq","outcome":"failed"}]

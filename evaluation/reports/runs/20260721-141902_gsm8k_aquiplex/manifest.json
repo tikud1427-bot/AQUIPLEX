@@ -1,0 +1,79 @@
+{
+  "aqeval_version": "1.0.0",
+  "timestamp_utc": "2026-07-21T14:19:02Z",
+  "benchmark": {
+    "name": "gsm8k",
+    "version": "openai/grade-school-math @ master (test split, n=1319)",
+    "primary_metric": "exact_match_strict"
+  },
+  "model": {
+    "type": "aquiplex",
+    "name": "AQUA (Aquiplex Cognitive AI Operating System)",
+    "base_url": "http://127.0.0.1:8877/api/aqua",
+    "timeout_s": 180,
+    "max_retries": 3,
+    "retry_backoff_s": 2.0,
+    "headers": {},
+    "notes": "Points at the sessionless standalone harness (runners/aqua-standalone.mjs). To evaluate a deployed instance instead, set base_url to https://<host>/api/aqua and add a session cookie under headers.Cookie."
+  },
+  "run_config": {
+    "run_id": "20260721-141902_gsm8k_aquiplex",
+    "benchmark": "gsm8k",
+    "options": {
+      "split": "test",
+      "shots": 8,
+      "max_tokens": 1024
+    },
+    "limit": null,
+    "seed": 1234,
+    "concurrency": 4,
+    "official": true,
+    "tag": null,
+    "n_items": 1319
+  },
+  "prompt_template": {
+    "id": "gsm8k_cot_8shot",
+    "version": "gsm8k_cot_8shot/v1",
+    "sha256": "3d55795c084e26f6ebb6925833999a44f75c4280eb7ab4d66f9bb940244e4847"
+  },
+  "datasets": {
+    "test": {
+      "path": "datasets/cache/gsm8k/test.jsonl",
+      "sha256": "3730d312f6e3440559ace48831e51066acaca737f6eabec99bccb9e4b3c39d14",
+      "n_loaded": 1319
+    }
+  },
+  "seed": 1234,
+  "git": {
+    "aqeval": {
+      "commit": "134e27894155c10c67b5cef9b472b90d09f3283c",
+      "branch": "main",
+      "dirty": true
+    },
+    "platform": {
+      "commit": "134e27894155c10c67b5cef9b472b90d09f3283c",
+      "branch": "main",
+      "dirty": true
+    }
+  },
+  "environment": {
+    "python": "3.11.2",
+    "platform": "Linux-6.6.50-05083-g5a8e7e69b744-x86_64-with-glibc2.36",
+    "machine": "x86_64",
+    "cpu_count": 2,
+    "mem_gb": 6.4,
+    "aqua_flags": {},
+    "provider_keys_present": {
+      "GROQ_API_KEY": false,
+      "OPENROUTER_API_KEY": false,
+      "GEMINI_API_KEY": false,
+      "TOGETHER_API_KEY": false,
+      "HF_API_KEY": false,
+      "SERPER_API_KEY": false,
+      "TAVILY_API_KEY": false,
+      "OPENAI_API_KEY": false,
+      "ANTHROPIC_API_KEY": false
+    }
+  },
+  "command": "aqeval.py run --benchmark gsm8k --adapter configs/adapters/aquiplex.json"
+}

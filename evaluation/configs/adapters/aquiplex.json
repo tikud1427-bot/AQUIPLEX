@@ -1,0 +1,10 @@
+{
+  "type": "aquiplex",
+  "name": "AQUA (Aquiplex Cognitive AI Operating System)",
+  "base_url": "http://127.0.0.1:8877/api/aqua",
+  "timeout_s": 180,
+  "max_retries": 3,
+  "retry_backoff_s": 2.0,
+  "headers": {},
+  "notes": "Points at the sessionless standalone harness (runners/aqua-standalone.mjs). To evaluate a deployed instance instead, set base_url to https://<host>/api/aqua and add a session cookie under headers.Cookie."
+}

@@ -1,0 +1,72 @@
+{
+  "aqeval_version": "1.0.0",
+  "timestamp_utc": "2026-07-21T11:24:55Z",
+  "benchmark": {
+    "name": "gsm8k",
+    "version": "openai/grade-school-math @ master (test split, n=1319)",
+    "primary_metric": "exact_match_strict"
+  },
+  "model": {
+    "type": "mock",
+    "name": "mock-selftest",
+    "notes": "Framework plumbing test only. Runs are stamped MOCK and can never be marked official."
+  },
+  "run_config": {
+    "run_id": "20260721-112455_gsm8k_mock_sample",
+    "benchmark": "gsm8k",
+    "options": {
+      "split": "test",
+      "shots": 8,
+      "max_tokens": 1024
+    },
+    "limit": 4,
+    "seed": 1234,
+    "concurrency": 4,
+    "official": false,
+    "tag": "sample",
+    "n_items": 4
+  },
+  "prompt_template": {
+    "id": "gsm8k_cot_8shot",
+    "version": "gsm8k_cot_8shot/v1",
+    "sha256": "3d55795c084e26f6ebb6925833999a44f75c4280eb7ab4d66f9bb940244e4847"
+  },
+  "datasets": {
+    "test": {
+      "path": "datasets/cache/gsm8k/test.jsonl",
+      "sha256": "3730d312f6e3440559ace48831e51066acaca737f6eabec99bccb9e4b3c39d14",
+      "n_loaded": 4
+    }
+  },
+  "seed": 1234,
+  "git": {
+    "aqeval": {
+      "commit": null,
+      "note": "not a git repository"
+    },
+    "platform": {
+      "commit": null,
+      "note": "not a git repository"
+    }
+  },
+  "environment": {
+    "python": "3.12.3",
+    "platform": "Linux-6.18.5-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpu_count": 1,
+    "mem_gb": 3.9,
+    "aqua_flags": {},
+    "provider_keys_present": {
+      "GROQ_API_KEY": false,
+      "OPENROUTER_API_KEY": false,
+      "GEMINI_API_KEY": false,
+      "TOGETHER_API_KEY": false,
+      "HF_API_KEY": false,
+      "SERPER_API_KEY": false,
+      "TAVILY_API_KEY": false,
+      "OPENAI_API_KEY": false,
+      "ANTHROPIC_API_KEY": false
+    }
+  },
+  "command": "evaluation/aqeval.py run --benchmark gsm8k --adapter evaluation/configs/adapters/mock.json --limit 4 --tag sample --skip-healthcheck"
+}

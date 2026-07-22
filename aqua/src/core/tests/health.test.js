@@ -103,6 +103,27 @@ describe('health.js — circuit breaker contract (Issues 1, 7, 8, 9)', () => {
     assert.equal(getProviderState('openrouter').circuitState, 'open');
   });
 
+  test('a success while OPEN closes the circuit — degraded-mode recovery (regression: circuits were stuck open forever)', () => {
+    // The router's degraded mode force-attempts a provider whose circuit is OPEN
+    // (all providers unhealthy → health gate bypassed). If that forced attempt
+    // succeeds, the provider is demonstrably healthy and the circuit MUST close.
+    // Before this fix, markSuccess only closed from HALF_OPEN, so a degraded-mode
+    // success left the circuit OPEN and every subsequent request re-entered
+    // degraded mode — the breaker and health scoring were permanently defeated.
+    __resetForTests();
+    markFailure('groq', 'network');
+    markFailure('groq', 'network');
+    markFailure('groq', 'network');
+    assert.equal(getProviderState('groq').circuitState, 'open', 'precondition: circuit is open');
+
+    markSuccess('groq', 120); // the forced degraded-mode attempt worked
+
+    assert.equal(getProviderState('groq').circuitState, 'closed', 'a definitive success must close the circuit');
+    assert.equal(getProviderState('groq').consecutiveFailures, 0);
+    assert.equal(isProviderHealthy('groq'), true);
+    assert.ok(getHealthScore('groq') > 0);
+  });
+
   test('getHealthReport returns every provider with well-formed fields', () => {
     __resetForTests();
     const report = getHealthReport();

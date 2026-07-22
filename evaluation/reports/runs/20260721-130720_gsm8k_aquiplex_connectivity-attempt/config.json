@@ -1,0 +1,15 @@
+{
+  "run_id": "20260721-130720_gsm8k_aquiplex_connectivity-attempt",
+  "benchmark": "gsm8k",
+  "options": {
+    "split": "test",
+    "shots": 8,
+    "max_tokens": 1024
+  },
+  "limit": 4,
+  "seed": 1234,
+  "concurrency": 2,
+  "official": false,
+  "tag": "connectivity-attempt",
+  "n_items": 4
+}
