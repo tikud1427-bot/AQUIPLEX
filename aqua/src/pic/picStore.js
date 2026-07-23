@@ -119,6 +119,20 @@ export function getLedger(ownerId, { limit = 50 } = {}) {
   return picBucket(ownerId).ledger.slice(-limit);
 }
 
+/**
+ * Account deletion — drop an owner's whole PIC bucket (lifecycle, versions,
+ * signals, sessions, ledger). Returns the number of lifecycle subjects removed.
+ */
+export function purgeOwner(ownerId) {
+  const key = ownerId ?? 'anon';
+  const b = store.get(key);
+  if (!b) return 0;
+  const removed = b.lifecycle.size;
+  store.delete(key);
+  schedulePicSave();
+  return removed;
+}
+
 export function getPicStoreStats() {
   let subjects = 0, revisions = 0, sessions = 0;
   for (const b of store.values()) {

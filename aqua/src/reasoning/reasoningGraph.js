@@ -250,6 +250,20 @@ export function removeFile(ownerId, ukoId) {
   return true;
 }
 
+/**
+ * Account deletion — drop an owner's entire graph (nodes, edges, file links,
+ * adjacency). Returns { nodes, edges } counts removed.
+ */
+export function purgeOwner(ownerId) {
+  const key = ownerId ?? 'anon';
+  const g = store.get(key);
+  if (!g) return { nodes: 0, edges: 0 };
+  const removed = { nodes: g.nodes.size, edges: g.edges.size };
+  store.delete(key);
+  scheduleSave();
+  return removed;
+}
+
 export function graphStats(ownerId) {
   const g = graph(ownerId);
   const byType = {};

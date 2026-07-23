@@ -16,6 +16,7 @@
     "test:search": "node --test src/search/tests/search.test.js",
     "test:artifacts": "node --test \"src/artifacts/tests/*.test.js\" src/routes/tests/artifactRoutes.test.js",
     "test:pic": "node --test src/pic/tests/pic.test.js",
+    "test:account": "node --test src/account/tests/accountPurge.test.js",
     "test:cognition": "node --test src/cognition/tests/cognition.test.js",
     "bench:cognition": "node src/cognition/tests/cognitionBench.js",
     "test:providers": "node --test src/providers/tests/*.test.js src/core/tests/backoff.test.js src/core/tests/health.test.js",

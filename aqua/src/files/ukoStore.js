@@ -102,6 +102,26 @@ export function removeUKO(ownerId, ukoId) {
   return had;
 }
 
+/**
+ * Account deletion — drop every UKO for one owner, plus the content-hash
+ * cache entries derived from their files (the cache holds parsed content, so
+ * leaving it behind would leave the user's file content in the store).
+ * Returns the number of objects removed.
+ */
+export function purgeOwner(ownerId) {
+  const key = ownerKey(ownerId);
+  const m = byOwner.get(key);
+  if (!m) return 0;
+  const removed = m.size;
+  for (const uko of m.values()) {
+    const hash = uko?.sourceFile?.hash;
+    if (hash) byHash.delete(hash);
+  }
+  byOwner.delete(key);
+  scheduleSave();
+  return removed;
+}
+
 // ── Content-hash cache (parse + enrichment reuse) ────────────────────────────
 
 const CONTENT_FIELDS = [

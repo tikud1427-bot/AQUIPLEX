@@ -124,6 +124,19 @@ export function removeUKOFromIndex(ownerId, ukoId) {
   return true;
 }
 
+/**
+ * Account deletion — drop an owner's whole index (files + entity/keyword
+ * lanes). Returns the number of indexed files removed.
+ */
+export function purgeOwner(ownerId) {
+  const o = store.get(ownerId);
+  if (!o) return 0;
+  const removed = o.files.size;
+  store.delete(ownerId);
+  scheduleSave();
+  return removed;
+}
+
 // ── Query interfaces (search phases build on these) ──────────────────────────
 
 function hydrate(o, ids) {

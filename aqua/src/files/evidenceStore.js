@@ -222,6 +222,20 @@ export function removeFile(ownerId, ukoId) {
   return true;
 }
 
+/**
+ * Account deletion — drop an owner's entire evidence bucket (facts, evidence,
+ * checksums, file links). Returns { facts, evidence } counts removed.
+ */
+export function purgeOwner(ownerId) {
+  const key = ownerId ?? 'anon';
+  const b = store.get(key);
+  if (!b) return { facts: 0, evidence: 0 };
+  const removed = { facts: b.facts.size, evidence: b.evidence.size };
+  store.delete(key);
+  scheduleSave();
+  return removed;
+}
+
 function evictOldestFact(b) {
   const oldest = [...b.facts.values()].sort((a, c) => a.createdAt - c.createdAt)[0];
   if (!oldest) return;

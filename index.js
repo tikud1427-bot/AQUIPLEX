@@ -197,6 +197,35 @@ passport.use(
   )
 );
 
+// ── Google reauthentication strategy (account deletion) ──────────────────────
+// Deleting an account requires proving ownership right now. Password accounts
+// confirm with their password; Google accounts have no password to confirm
+// (they carry the "google-oauth" sentinel), so they complete a FRESH OAuth
+// round trip instead.
+//
+// This is a SEPARATE strategy instance on its own callback URL, used with
+// { session: false }, so it can never sign anyone in or overwrite the live
+// session's identity — its only effect is stamping session.accountDeleteReauth
+// (see /auth/google/reauth below). The sign-in strategy above is untouched.
+passport.use(
+  "google-reauth",
+  new GoogleStrategy(
+    {
+      clientID:     process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL:  process.env.GOOGLE_REAUTH_CALLBACK_URL || "/auth/google/reauth/callback",
+    },
+    async (accessToken, refreshToken, profile, done) => {
+      const email = profile.emails?.[0]?.value;
+      if (!email) return done(new Error("No email from Google"), null);
+      // Never looked up or created in the database — this proves possession of
+      // a Google account, nothing more. The route checks it matches the
+      // signed-in user.
+      return done(null, { email: email.toLowerCase().trim() });
+    }
+  )
+);
+
 passport.serializeUser((user, done) => done(null, user._id));
 passport.deserializeUser(async (id, done) => {
   try {
@@ -323,6 +352,11 @@ const billingRoutes = require("./routes/billing/billing.routes");
 // Billing REST routes (create-order, verify-payment, wallet, history)
 // Webhook is handled above before express.json()
 app.use("/api/billing", billingRoutes);
+
+// Account self-service (Google Play User Data policy): account details +
+// permanent deletion. Auth is enforced inside the router, matching billing.
+const accountRoutes = require("./routes/account/account.routes");
+app.use("/api/account", accountRoutes);
 
 // ═════════════════════════════════════════════════════════════════════════════
 // AQUA — THE ONLY AI (engine API + app shell)
@@ -1046,6 +1080,46 @@ app.get(
   },
 );
 
+// ── Google reauthentication (account deletion only) ──────────────────────────
+// Sends the user back through Google to prove ownership, then returns them to
+// the page they started from. `session: false` means passport never touches
+// the live login session — the ONLY side effect is the timestamped stamp read
+// by services/account/accountDeletion.service.js (valid for 10 minutes).
+
+/** Only same-origin app paths may be returned to — never an open redirect. */
+function safeReauthNext(next) {
+  const fallback = "/aqua";
+  if (typeof next !== "string" || !next.startsWith("/") || next.startsWith("//")) return fallback;
+  return next;
+}
+
+app.get("/auth/google/reauth", requireLogin, (req, res, next) => {
+  req.session.accountDeleteReauthNext = safeReauthNext(req.query.next);
+  return passport.authenticate("google-reauth", {
+    scope:   ["profile", "email"],
+    // Force the account chooser: a silent re-grant would prove nothing about
+    // who is holding the device right now.
+    prompt:  "select_account consent",
+    session: false,
+  })(req, res, next);
+});
+
+app.get(
+  "/auth/google/reauth/callback",
+  requireLogin,
+  passport.authenticate("google-reauth", { session: false, failureRedirect: "/aqua?deleteReauth=failed" }),
+  (req, res) => {
+    const target = safeReauthNext(req.session.accountDeleteReauthNext);
+    delete req.session.accountDeleteReauthNext;
+
+    req.session.accountDeleteReauth = { at: Date.now(), email: req.user?.email ?? null };
+    req.session.save(() => {
+      const sep = target.includes("?") ? "&" : "?";
+      res.redirect(`${target}${sep}deleteReauth=ok`);
+    });
+  },
+);
+
 app.post("/signup", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -1083,6 +1157,12 @@ app.get("/logout", (req, res) => {
 // ═════════════════════════════════════════════════════════════════════════════
 
 app.get("/founders",            (req, res) => res.render("founders"));
+
+// ── Account deletion information page ─────────────────────────────────────────
+// Deliberately PUBLIC (no requireLogin). Google Play requires a deletion route
+// that is reachable without signing in — including for users who have lost
+// access to their account and can only email support.
+app.get("/delete-account", (req, res) => res.render("delete-account"));
 
 // ── Pricing page ───────────────────────────────────────────────────────────────
 app.get("/pricing", async (req, res) => {

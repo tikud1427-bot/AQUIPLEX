@@ -105,6 +105,21 @@ export function getMemoryTrace(requestId) {
   return traces.get(requestId) ?? null;
 }
 
+/**
+ * Account deletion — drop every in-flight Inspector trace belonging to an
+ * owner. The ring is in-process and never persisted, but it holds extracted
+ * fact values, so a deletion request has to clear it too. Returns the number
+ * of traces removed.
+ */
+export function purgeTracesForOwner(ownerId) {
+  if (!ownerId) return 0;
+  let removed = 0;
+  for (const [requestId, t] of traces.entries()) {
+    if (t?.ownerId === ownerId) { traces.delete(requestId); removed++; }
+  }
+  return removed;
+}
+
 // ── ONE observation pipeline ─────────────────────────────────────────────────
 /**
  * Observe one user turn. Single entry: fact extraction, explicit

@@ -283,6 +283,51 @@ export function clearConversation(id) {
   scheduleSave();
 }
 
+// ── Account deletion (Google Play / GDPR) ───────────────────────────────────
+// clearConversation() deliberately keeps a rolling trash snapshot so a single
+// accidental delete stays recoverable. An account-deletion request is the one
+// case where that guarantee must NOT apply: nothing may survive it. These
+// helpers are the purge path — same store, no trash, no revival.
+
+/** All conversation ids owned by one platform user. */
+export function listConversationIdsForUser(userId) {
+  if (!userId) return [];
+  const uid = String(userId);
+  const ids = [];
+  for (const [id, conv] of store.entries()) {
+    if (conv?.meta?.userId != null && String(conv.meta.userId) === uid) ids.push(id);
+  }
+  return ids;
+}
+
+/** Delete a conversation permanently — no trash snapshot. */
+export function purgeConversation(id) {
+  const existed = store.delete(id);
+  if (existed) scheduleSave();
+  return existed;
+}
+
+/**
+ * Drop every trash snapshot belonging to a user. Conversations this user
+ * deleted earlier are still on disk in TRASH_FILE; account deletion has to
+ * take those too. Returns the number of snapshots removed.
+ */
+export function purgeTrashForUser(userId) {
+  if (!userId) return 0;
+  const uid = String(userId);
+  try {
+    const parsed = loadJsonFile(TRASH_FILE, { label: 'history-trash' });
+    if (!Array.isArray(parsed) || !parsed.length) return 0;
+    const kept = parsed.filter(entry => String(entry?.meta?.userId ?? '') !== uid);
+    const removed = parsed.length - kept.length;
+    if (removed > 0) atomicWriteFileSync(TRASH_FILE, JSON.stringify(kept));
+    return removed;
+  } catch (err) {
+    console.warn(`[STORE] trash purge failed for user=${uid}: ${err.message}`);
+    return 0;
+  }
+}
+
 /**
  * Return all conversations (for admin/debug use only).
  */
