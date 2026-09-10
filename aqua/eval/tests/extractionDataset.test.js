@@ -154,6 +154,52 @@ describe('extraction dataset — states its own limitations', () => {
   });
 });
 
+// ── `blocks` direction — the blocker is always the subject ──────────────────
+//
+// 🔴 negation-019 HAD THIS BACKWARDS.
+//
+// "The launch is not blocked by design." labelled {s: launch, p: blocks,
+// o: design} — literally "launch blocks design", the opposite of the
+// sentence. `task-003` ("Priya is blocked on the design tokens" → {s: design
+// tokens, p: blocks, o: Priya}) and `task-013` ("Dev is stuck on the worker
+// memory cap" → {s: worker memory cap, p: blocks, o: Dev}) both put the
+// BLOCKER as subject for the identical passive construction. Only
+// negation-019 disagreed with its own dataset's convention — not a model
+// defect, a mislabel, found by cross-checking the other two `blocks` cases
+// rather than by re-reading this one in isolation.
+//
+// This does not move `detection_negation` (that metric only asks whether
+// anything was emitted, not whether it is right), which is why it survived
+// three shadow runs unnoticed. It does move `subject_recall` /
+// `object_accuracy` / `overall_strict_accuracy`, which is why it is worth
+// pinning so it cannot drift back the next time someone "simplifies" this
+// case.
+describe('extraction dataset — `blocks` names the blocker as subject, not the blockee', () => {
+  const blocksClaims = () => DS.cases
+    .filter(c => c.claims.some(cl => cl.p === 'blocks'))
+    .map(c => ({ id: c.id, text: c.text, claim: c.claims.find(cl => cl.p === 'blocks') }));
+
+  test('every `blocks` case in the dataset exists (guards the cases below against deletion)', () => {
+    const ids = blocksClaims().map(r => r.id);
+    assert.deepEqual(ids.sort(), ['negation-019', 'task-003', 'task-013']);
+  });
+
+  test('negation-019 keeps "design" as the blocker (subject), "launch" as the blocked (object)', () => {
+    const c = blocksClaims().find(r => r.id === 'negation-019').claim;
+    assert.equal(c.s, 'design', 'subject must be the blocker — see task-003/task-013 for the convention');
+    assert.equal(c.o, 'launch');
+  });
+
+  test('task-003 and task-013 already had this right — pinned so the convention is visible in one place', () => {
+    const t3 = blocksClaims().find(r => r.id === 'task-003').claim;
+    const t13 = blocksClaims().find(r => r.id === 'task-013').claim;
+    assert.equal(t3.s, 'design tokens');
+    assert.equal(t3.o, 'Priya');
+    assert.equal(t13.s, 'worker memory cap');
+    assert.equal(t13.o, 'Dev');
+  });
+});
+
 // ── The validator bites ──────────────────────────────────────────────────────
 
 describe('extraction dataset — the validator refuses bad labels', () => {

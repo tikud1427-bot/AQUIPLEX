@@ -1135,9 +1135,9 @@
    "text": "The launch is not blocked by design.",
    "claims": [
     {
-     "s": "launch",
+     "s": "design",
      "p": "blocks",
-     "o": "design",
+     "o": "launch",
      "polarity": "negated",
      "modality": "fact"
     }
