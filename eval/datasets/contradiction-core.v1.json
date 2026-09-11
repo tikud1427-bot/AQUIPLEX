@@ -1,0 +1,437 @@
+{
+ "id": "contradiction-core",
+ "version": "v1",
+ "about": "Labelled statement PAIRS for the contradiction detector. Built after FINDING-1 measured 73,500 contradiction edges from 300 facts, nearly all of them false. Precision is the metric that matters here; the detector's recall was never in doubt.",
+ "limitations": [
+  "SYNTHETIC. Written to characterise a KNOWN failure, so the per-item-table category is deliberately over-represented relative to real traffic — it is the class that fires.",
+  "PAIRS, not corpora. The real detector also gates on cross-FILE provenance, which a pair cannot express. A fix that only tightened the file rule would score identically here and still help in production — this dataset measures the TEXTUAL predicate only.",
+  "One annotator, English only.",
+  "A 'genuine' label means the two statements cannot both be true. It does NOT mean the detector should always surface them — surfacing policy is a separate decision from detection."
+ ],
+ "cases": [
+  {
+   "id": "c001",
+   "a": "Acme revenue for Q3 2025 was 4200000.",
+   "b": "Acme revenue for Q3 2025 was 9100000.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "same subject and period, two amounts"
+  },
+  {
+   "id": "c002",
+   "a": "The Nummo contract was signed on 12 January 2026.",
+   "b": "The Nummo contract was signed on 3 March 2026.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "one signing date, two answers"
+  },
+  {
+   "id": "c003",
+   "a": "Priya is the head of design.",
+   "b": "Priya is not the head of design.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "direct negation of the same claim"
+  },
+  {
+   "id": "c004",
+   "a": "Our runway is fourteen months.",
+   "b": "Our runway is six months.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "same metric, two values"
+  },
+  {
+   "id": "c005",
+   "a": "The beta ships on 15 September.",
+   "b": "The beta ships on 30 November.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "one ship date, two answers"
+  },
+  {
+   "id": "c006",
+   "a": "Aquiplex has eleven people.",
+   "b": "Aquiplex has twenty-four people.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "same headcount, two values"
+  },
+  {
+   "id": "c007",
+   "a": "The mobile app launch is confirmed.",
+   "b": "The mobile app launch is cancelled.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "incompatible status for one thing"
+  },
+  {
+   "id": "c008",
+   "a": "Dev reports to Priya.",
+   "b": "Dev reports to Karan.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "one reporting line, two managers"
+  },
+  {
+   "id": "c009",
+   "a": "Total invoice amount is 88400.",
+   "b": "Total invoice amount is 12750.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "same total, two values"
+  },
+  {
+   "id": "c010",
+   "a": "We chose Postgres for the substrate.",
+   "b": "We chose Mongo for the substrate.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "one decision, two outcomes"
+  },
+  {
+   "id": "c011",
+   "a": "The security audit passed.",
+   "b": "The security audit failed.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "one audit, opposite outcomes"
+  },
+  {
+   "id": "c012",
+   "a": "Rahul joined in March 2025.",
+   "b": "Rahul joined in August 2025.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "one join date, two answers"
+  },
+  {
+   "id": "c013",
+   "a": "Our largest customer is Nummo.",
+   "b": "Our largest customer is Intercom.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "one superlative, two answers"
+  },
+  {
+   "id": "c014",
+   "a": "The parser rewrite is complete.",
+   "b": "The parser rewrite is not complete.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "direct negation"
+  },
+  {
+   "id": "c015",
+   "a": "Seed round raised 2400000.",
+   "b": "Seed round raised 7500000.",
+   "label": "contradiction",
+   "cat": "genuine",
+   "why": "one round, two amounts"
+  },
+  {
+   "id": "c016",
+   "a": "Item 0 for VendorCo recorded value 1000 on 2026-01-10.",
+   "b": "Item 1 for VendorCo recorded value 1001 on 2026-02-11.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c017",
+   "a": "Item 1 for VendorCo recorded value 1001 on 2026-02-11.",
+   "b": "Item 2 for VendorCo recorded value 1002 on 2026-03-12.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c018",
+   "a": "Item 2 for VendorCo recorded value 1002 on 2026-03-12.",
+   "b": "Item 3 for VendorCo recorded value 1003 on 2026-04-13.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c019",
+   "a": "Item 3 for VendorCo recorded value 1003 on 2026-04-13.",
+   "b": "Item 4 for VendorCo recorded value 1004 on 2026-05-14.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c020",
+   "a": "Item 4 for VendorCo recorded value 1004 on 2026-05-14.",
+   "b": "Item 5 for VendorCo recorded value 1005 on 2026-06-15.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c021",
+   "a": "Item 5 for VendorCo recorded value 1005 on 2026-06-15.",
+   "b": "Item 6 for VendorCo recorded value 1006 on 2026-01-16.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c022",
+   "a": "Item 6 for VendorCo recorded value 1006 on 2026-01-16.",
+   "b": "Item 7 for VendorCo recorded value 1007 on 2026-02-17.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c023",
+   "a": "Item 7 for VendorCo recorded value 1007 on 2026-02-17.",
+   "b": "Item 8 for VendorCo recorded value 1008 on 2026-03-18.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c024",
+   "a": "Item 8 for VendorCo recorded value 1008 on 2026-03-18.",
+   "b": "Item 9 for VendorCo recorded value 1009 on 2026-04-10.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c025",
+   "a": "Item 9 for VendorCo recorded value 1009 on 2026-04-10.",
+   "b": "Item 10 for VendorCo recorded value 1010 on 2026-05-11.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c026",
+   "a": "Item 10 for VendorCo recorded value 1010 on 2026-05-11.",
+   "b": "Item 11 for VendorCo recorded value 1011 on 2026-06-12.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c027",
+   "a": "Item 11 for VendorCo recorded value 1011 on 2026-06-12.",
+   "b": "Item 12 for VendorCo recorded value 1012 on 2026-01-13.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "different line items in one ledger — both true"
+  },
+  {
+   "id": "c028",
+   "a": "Invoice 1042 for Acme totals 3200.",
+   "b": "Invoice 1043 for Acme totals 4750.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "two different invoices"
+  },
+  {
+   "id": "c029",
+   "a": "Sprint 4 closed 18 tickets.",
+   "b": "Sprint 5 closed 22 tickets.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "two different sprints"
+  },
+  {
+   "id": "c030",
+   "a": "The Bangalore office has 12 desks.",
+   "b": "The Delhi office has 30 desks.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "two different offices"
+  },
+  {
+   "id": "c031",
+   "a": "Priya owns 3 open tickets.",
+   "b": "Dev owns 7 open tickets.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "two different people"
+  },
+  {
+   "id": "c032",
+   "a": "Q1 revenue was 1100000.",
+   "b": "Q2 revenue was 1450000.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "two different quarters"
+  },
+  {
+   "id": "c033",
+   "a": "Server web-01 uses 4200 MB.",
+   "b": "Server web-02 uses 8100 MB.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "two different servers"
+  },
+  {
+   "id": "c034",
+   "a": "Chapter 2 runs to 4300 words.",
+   "b": "Chapter 3 runs to 5200 words.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "two different chapters"
+  },
+  {
+   "id": "c035",
+   "a": "The 2024 audit cost 15000.",
+   "b": "The 2025 audit cost 21000.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "two different years, both true"
+  },
+  {
+   "id": "c036",
+   "a": "Plan Basic costs 4900 per year.",
+   "b": "Plan Pro costs 9900 per year.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "two different plans"
+  },
+  {
+   "id": "c037",
+   "a": "Batch 7 yielded 2400 units.",
+   "b": "Batch 8 yielded 3100 units.",
+   "label": "independent",
+   "cat": "per-item-table",
+   "why": "two different batches"
+  },
+  {
+   "id": "c038",
+   "a": "Priya is the head of design.",
+   "b": "Priya joined from a design agency.",
+   "label": "independent",
+   "cat": "unrelated",
+   "why": "different predicates, compatible"
+  },
+  {
+   "id": "c039",
+   "a": "We use Groq as the model provider.",
+   "b": "We use Postgres for storage.",
+   "label": "independent",
+   "cat": "unrelated",
+   "why": "unrelated subjects"
+  },
+  {
+   "id": "c040",
+   "a": "The beta ships on 15 September.",
+   "b": "The board meeting is on 30 September.",
+   "label": "independent",
+   "cat": "unrelated",
+   "why": "two different events"
+  },
+  {
+   "id": "c041",
+   "a": "Aquiplex has eleven people.",
+   "b": "Aquiplex is based in Guwahati.",
+   "label": "independent",
+   "cat": "unrelated",
+   "why": "different attributes"
+  },
+  {
+   "id": "c042",
+   "a": "Revenue grew 12 percent.",
+   "b": "Headcount grew 40 percent.",
+   "label": "independent",
+   "cat": "unrelated",
+   "why": "different metrics"
+  },
+  {
+   "id": "c043",
+   "a": "Dev is stuck on the worker memory cap.",
+   "b": "Dev reports to me.",
+   "label": "independent",
+   "cat": "unrelated",
+   "why": "compatible facts about one person"
+  },
+  {
+   "id": "c044",
+   "a": "The contract was signed in January.",
+   "b": "The contract runs for 24 months.",
+   "label": "independent",
+   "cat": "unrelated",
+   "why": "compatible"
+  },
+  {
+   "id": "c045",
+   "a": "Meera handles the Postgres migration.",
+   "b": "Neha owns the retrieval work.",
+   "label": "independent",
+   "cat": "unrelated",
+   "why": "different people, different work"
+  },
+  {
+   "id": "c046",
+   "a": "Our runway is fourteen months.",
+   "b": "Runway is 14 months.",
+   "label": "independent",
+   "cat": "restatement",
+   "why": "the same fact, reworded"
+  },
+  {
+   "id": "c047",
+   "a": "The beta ships on 15 September.",
+   "b": "Beta ship date: 15 September.",
+   "label": "independent",
+   "cat": "restatement",
+   "why": "the same fact, reworded"
+  },
+  {
+   "id": "c048",
+   "a": "Aquiplex has eleven people.",
+   "b": "There are 11 people at Aquiplex.",
+   "label": "independent",
+   "cat": "restatement",
+   "why": "the same fact, reworded"
+  },
+  {
+   "id": "c049",
+   "a": "Priya is the head of design.",
+   "b": "Head of design: Priya.",
+   "label": "independent",
+   "cat": "restatement",
+   "why": "the same fact, reworded"
+  },
+  {
+   "id": "c050",
+   "a": "Revenue for Q3 2025 was 4200000.",
+   "b": "Q3 2025 revenue: 4,200,000.",
+   "label": "independent",
+   "cat": "restatement",
+   "why": "the same fact, comma-formatted"
+  },
+  {
+   "id": "c051",
+   "a": "I worked at Intercom until 2024.",
+   "b": "I work at Nummo since 2025.",
+   "label": "independent",
+   "cat": "temporal-sequence",
+   "why": "sequential employment, both true"
+  },
+  {
+   "id": "c052",
+   "a": "The 2024 headcount was 6.",
+   "b": "The 2025 headcount is 11.",
+   "label": "independent",
+   "cat": "temporal-sequence",
+   "why": "growth over time, both true"
+  },
+  {
+   "id": "c053",
+   "a": "The beta date was 1 August.",
+   "b": "The beta date moved to 15 September.",
+   "label": "independent",
+   "cat": "temporal-sequence",
+   "why": "a change over time, stated as such"
+  }
+ ]
+}

@@ -80,7 +80,9 @@ async function loadEngine() {
  * floor baseline measures. Passing invented values would make the two lanes
  * incomparable in exactly the dimension being isolated.
  */
-export async function retrieveWithContextEngine(ownerId, query, { limit = 8 } = {}) {
+export async function retrieveWithContextEngine(ownerId, query, { limit = 8, semanticScores = null, retrievalV3 = false } = {}) {
+  if (retrievalV3) process.env.AQUA_RETRIEVAL_V3 = 'on';
+  else delete process.env.AQUA_RETRIEVAL_V3;
   const { pic, brain } = await loadEngine();
   if (!brain.contextV2Active()) {
     throw new Error('AQUA_CONTEXT_V2 is off — this adapter would silently measure the PIC floor a second time.');
@@ -88,7 +90,7 @@ export async function retrieveWithContextEngine(ownerId, query, { limit = 8 } = 
 
   const floorRetrieve = (oid, q, o) => pic.retrieveKnowledge(oid, q, { limit: o?.limit ?? limit });
   const out = brain.assembleContext(ownerId, query, floorRetrieve, {
-    limit, semanticScores: null, activeProjectId: null,
+    limit, semanticScores, activeProjectId: null,
   });
 
   return {

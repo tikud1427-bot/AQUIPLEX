@@ -1,0 +1,18 @@
+{
+  "founders": [
+    {
+      "name": "Ananya",
+      "role": "Co-founder",
+      "focus": "Full-stack engineering and product — the AQUA engine, the Aquiplex platform, and the memory / Mind systems."
+    },
+    {
+      "name": "Chhanda Prabal Das",
+      "role": "Co-founder",
+      "focus": ""
+    }
+  ],
+  "_meta": {
+    "sourceOfTruth": true,
+    "note": "Seeded from platform records — verify names, titles, and bios. Fill in `focus` for each founder as you like."
+  }
+}

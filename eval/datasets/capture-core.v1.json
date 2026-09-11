@@ -1,0 +1,456 @@
+{
+  "id": "capture-core",
+  "version": 1,
+  "about": "Does a real conversation become retrievable world-model state? Each case runs its turns through the production turn path (memoryObserve -> addMessage -> runPostTurn with default deps -> drainJobs) and then asks the production reader. CAPTURE and RETRIEVABILITY are scored and reported separately and are never combined; retrievability is measured only over cases that were captured, because a rate over uncaptured cases would silently re-average the two.",
+  "census": {
+    "cases": 23,
+    "by_cat": {
+      "concurrency": 3,
+      "decision": 2,
+      "entity": 1,
+      "goal": 2,
+      "multi_turn": 1,
+      "negation": 1,
+      "person": 3,
+      "preference": 2,
+      "self_disclosure": 4,
+      "situation": 2,
+      "supersession": 2
+    },
+    "total_turns": 34
+  },
+  "cases": [
+    {
+      "id": "self-employer",
+      "cat": "self_disclosure",
+      "turns": [
+        "I'm Maya. I run product at Nummo, a fintech in Bangalore."
+      ],
+      "expect_facts": [
+        [
+          "nummo"
+        ]
+      ],
+      "ask": "Where do I work?",
+      "want": [
+        "nummo"
+      ],
+      "why": "The single most important sentence in the product. If a first-person employment disclosure does not become world-model state, nothing downstream can personalise on it."
+    },
+    {
+      "id": "self-name",
+      "cat": "self_disclosure",
+      "turns": [
+        "My name is Arjun and I'm a backend engineer."
+      ],
+      "expect_facts": [
+        [
+          "arjun"
+        ]
+      ],
+      "ask": "What is my name?",
+      "want": [
+        "arjun"
+      ],
+      "why": "Identity is the cheapest possible capture case; a miss here is structural, not marginal."
+    },
+    {
+      "id": "self-city",
+      "cat": "self_disclosure",
+      "turns": [
+        "I moved to Pune last year and I work remotely."
+      ],
+      "expect_facts": [
+        [
+          "pune"
+        ]
+      ],
+      "ask": "Which city do I live in?",
+      "want": [
+        "pune"
+      ],
+      "why": "Location stated without a company name \u2014 checks capture does not depend on a recognisable org entity."
+    },
+    {
+      "id": "self-role",
+      "cat": "self_disclosure",
+      "turns": [
+        "I'm the CTO at Halcyon Labs."
+      ],
+      "expect_facts": [
+        [
+          "halcyon"
+        ]
+      ],
+      "ask": "What is my role?",
+      "want": [
+        "cto"
+      ],
+      "why": "Role and employer in one clause; the fact must carry both or the answer is half-right."
+    },
+    {
+      "id": "person-cofounder",
+      "cat": "person",
+      "turns": [
+        "My co-founder Dev runs engineering."
+      ],
+      "expect_facts": [
+        [
+          "dev"
+        ]
+      ],
+      "ask": "Who is my co-founder?",
+      "want": [
+        "dev"
+      ],
+      "why": "Known-good control. The re-audit measured this one working, so a regression here invalidates the whole run."
+    },
+    {
+      "id": "person-manager",
+      "cat": "person",
+      "turns": [
+        "I report to Priya, who heads the platform group."
+      ],
+      "expect_facts": [
+        [
+          "priya"
+        ]
+      ],
+      "ask": "Who do I report to?",
+      "want": [
+        "priya"
+      ],
+      "why": "Relationship stated with a subordinate clause \u2014 checks the extractor does not need a bare subject-verb-object."
+    },
+    {
+      "id": "person-team",
+      "cat": "person",
+      "turns": [
+        "Rahul and Sneha are the two designers on my team."
+      ],
+      "expect_facts": [
+        [
+          "rahul"
+        ],
+        [
+          "sneha"
+        ]
+      ],
+      "ask": "Who are the designers on my team?",
+      "want": [
+        "rahul"
+      ],
+      "why": "Two entities in one sentence. Capturing one and dropping the other is a partial failure worth counting as such."
+    },
+    {
+      "id": "situation-churn",
+      "cat": "situation",
+      "turns": [
+        "our biggest problem right now is churn in the first 30 days"
+      ],
+      "expect_facts": [
+        [
+          "churn"
+        ]
+      ],
+      "ask": "What is our biggest problem?",
+      "want": [
+        "churn"
+      ],
+      "why": "No proper noun anywhere. The entity-driven lane has nothing to anchor on, which is exactly the shape most real user speech takes."
+    },
+    {
+      "id": "situation-blocker",
+      "cat": "situation",
+      "turns": [
+        "the thing slowing us down is that onboarding takes eleven steps"
+      ],
+      "expect_facts": [
+        [
+          "onboarding"
+        ]
+      ],
+      "ask": "What is slowing us down?",
+      "want": [
+        "onboarding"
+      ],
+      "why": "Same shape with a spelled number; pairs with the situation case so a single miss is not read as noise."
+    },
+    {
+      "id": "goal-target",
+      "cat": "goal",
+      "turns": [
+        "I want to hit 10,000 active merchants by December."
+      ],
+      "expect_facts": [
+        [
+          "merchants"
+        ]
+      ],
+      "ask": "What is my target?",
+      "want": [
+        "10,000"
+      ],
+      "why": "A goal is an intention, not a fact. It must be captured without being asserted as already true."
+    },
+    {
+      "id": "goal-learning",
+      "cat": "goal",
+      "turns": [
+        "I'm trying to get better at system design this quarter."
+      ],
+      "expect_facts": [
+        [
+          "system design"
+        ]
+      ],
+      "ask": "What am I trying to learn?",
+      "want": [
+        "system design"
+      ],
+      "why": "A goal with no number and no entity \u2014 the weakest possible signal that still matters to personalisation."
+    },
+    {
+      "id": "pref-routine",
+      "cat": "preference",
+      "turns": [
+        "I usually do deep work in the mornings"
+      ],
+      "expect_facts": [
+        [
+          "morning"
+        ]
+      ],
+      "ask": "When do I do deep work?",
+      "want": [
+        "morning"
+      ],
+      "why": "Routines drive scheduling advice. `usually` is a frequency, not a hedge, and must not be discarded as uncertain."
+    },
+    {
+      "id": "pref-tooling",
+      "cat": "preference",
+      "turns": [
+        "I prefer Postgres over Mongo for anything transactional."
+      ],
+      "expect_facts": [
+        [
+          "postgres"
+        ]
+      ],
+      "ask": "Which database do I prefer?",
+      "want": [
+        "postgres"
+      ],
+      "why": "A comparative preference: capturing only 'Mongo' would invert the user's actual stance."
+    },
+    {
+      "id": "competitor",
+      "cat": "entity",
+      "turns": [
+        "Razorpay is our main competitor"
+      ],
+      "expect_facts": [
+        [
+          "razorpay"
+        ]
+      ],
+      "ask": "Who is our competitor?",
+      "want": [
+        "razorpay"
+      ],
+      "why": "Second known-good control, from a different category, so a regression can be localised."
+    },
+    {
+      "id": "supersede-employer",
+      "cat": "supersession",
+      "turns": [
+        "I work at Intercom.",
+        "I left Intercom in 2024 and joined Nummo."
+      ],
+      "expect_facts": [
+        [
+          "nummo"
+        ]
+      ],
+      "ask": "Where do I work now?",
+      "want": [
+        "nummo"
+      ],
+      "why": "The retrieval baseline scores superseded at 20%: the OLD employer wins. Capture is the prior question \u2014 if the second turn never lands, supersession is unfixable at any later stage."
+    },
+    {
+      "id": "supersede-priority",
+      "cat": "supersession",
+      "turns": [
+        "Growth is my top priority this quarter.",
+        "Growth is no longer the priority \u2014 retention is."
+      ],
+      "expect_facts": [
+        [
+          "retention"
+        ]
+      ],
+      "ask": "What is my top priority?",
+      "want": [
+        "retention"
+      ],
+      "why": "Change of stance with no entity change. Both statements are about the same slot, and the newer must be present to ever win."
+    },
+    {
+      "id": "decision-drop",
+      "cat": "decision",
+      "turns": [
+        "we decided to drop the referral programme last month"
+      ],
+      "expect_facts": [
+        [
+          "referral"
+        ]
+      ],
+      "ask": "What did we decide about referrals?",
+      "want": [
+        "referral"
+      ],
+      "why": "Decisions are what the brief's 'Why did I choose X?' slot reads. A decision that is not captured cannot be explained later."
+    },
+    {
+      "id": "decision-choice",
+      "cat": "decision",
+      "turns": [
+        "We went with Stripe instead of Adyen because of the India coverage."
+      ],
+      "expect_facts": [
+        [
+          "stripe"
+        ]
+      ],
+      "ask": "Which payment provider did we choose?",
+      "want": [
+        "stripe"
+      ],
+      "why": "Decision plus rejected alternative plus reason. Capturing the alternative as the choice would be worse than capturing nothing."
+    },
+    {
+      "id": "negation-tooling",
+      "cat": "negation",
+      "turns": [
+        "I don't want to use Kubernetes for this."
+      ],
+      "expect_facts": [
+        [
+          "kubernetes"
+        ]
+      ],
+      "ask": "Do I want to use Kubernetes?",
+      "want": [
+        "kubernetes"
+      ],
+      "why": "The retrieval baseline scores negation at 20%. Capture must preserve polarity; a stored 'wants Kubernetes' is worse than silence."
+    },
+    {
+      "id": "multi-session",
+      "cat": "multi_turn",
+      "turns": [
+        "I'm Neha, I run a small design studio in Kochi.",
+        "We mostly do brand identity work for D2C companies.",
+        "My biggest constraint is that I only have two designers."
+      ],
+      "expect_facts": [
+        [
+          "kochi"
+        ],
+        [
+          "designers"
+        ]
+      ],
+      "ask": "What is my biggest constraint?",
+      "want": [
+        "designer"
+      ],
+      "why": "Three related turns. Tests whether later turns still capture once a world model exists, rather than only cold-start turns landing."
+    },
+    {
+      "id": "concurrent-two",
+      "cat": "concurrency",
+      "batch": true,
+      "turns": [
+        "I'm Maya. I run product at Nummo, a fintech in Bangalore.",
+        "My co-founder Dev runs engineering."
+      ],
+      "expect_facts": [
+        [
+          "nummo"
+        ],
+        [
+          "dev"
+        ]
+      ],
+      "ask": "Where do I work?",
+      "want": [
+        "nummo"
+      ],
+      "why": "Two post-turn ingest jobs queued before either drains. `defer` gives each its own setImmediate, so both read-modify-write the evidence store concurrently and the earlier write is lost. Measured directly: drain-per-turn keeps 4 of 4 facts, batch-drain keeps 1 of 4. Labelled as its own category so the loss is visible instead of depressing every multi-turn number for an unstated reason."
+    },
+    {
+      "id": "concurrent-four",
+      "cat": "concurrency",
+      "batch": true,
+      "turns": [
+        "I'm Maya. I run product at Nummo, a fintech in Bangalore.",
+        "My co-founder Dev runs engineering.",
+        "Razorpay is our main competitor",
+        "I usually do deep work in the mornings"
+      ],
+      "expect_facts": [
+        [
+          "nummo"
+        ],
+        [
+          "dev"
+        ],
+        [
+          "razorpay"
+        ],
+        [
+          "morning"
+        ]
+      ],
+      "ask": "Who is our competitor?",
+      "want": [
+        "razorpay"
+      ],
+      "why": "The same defect at four turns. If exactly one fact survives regardless of depth, the failure is last-write-wins rather than a partial race, and the metric should show capture falling as the batch grows."
+    },
+    {
+      "id": "concurrent-control",
+      "cat": "concurrency",
+      "batch": false,
+      "turns": [
+        "I'm Maya. I run product at Nummo, a fintech in Bangalore.",
+        "My co-founder Dev runs engineering.",
+        "Razorpay is our main competitor",
+        "I usually do deep work in the mornings"
+      ],
+      "expect_facts": [
+        [
+          "nummo"
+        ],
+        [
+          "dev"
+        ],
+        [
+          "razorpay"
+        ],
+        [
+          "morning"
+        ]
+      ],
+      "ask": "Who is our competitor?",
+      "want": [
+        "razorpay"
+      ],
+      "why": "THE CONTROL, and the reason the two cases above can be attributed to cadence rather than to content. Identical turns, identical expectations, drained per turn. If this passes while concurrent-four fails, the turns are fine and the scheduling is the bug."
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-30T18:11:16.372Z",
+  "node": "v24.19.0",
+  "suiteFingerprint": "4e309d66891fbcf4",
+  "caseCount": 200,
+  "note": "Baseline of the CURRENT regex extraction lane, all understanding flags ON. The number E6 must beat. Regenerate with: npm run eval:gate -- extraction-core --update",
+  "coverage": {
+    "total": 200,
+    "executed": 200,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "overall_strict_accuracy": 0.18,
+    "detection_recall": 0.71875,
+    "subject_recall": 0.5568862275449101,
+    "predicate_accuracy": 0,
+    "fidelity_accuracy": 0.6467065868263473,
+    "silence_on_negatives": 0.9,
+    "false_positives": 4,
+    "detection_decision": 0.5333333333333333,
+    "detection_identity": 0.85,
+    "detection_modality": 0.72,
+    "detection_negation": 0.5,
+    "detection_people": 0.95,
+    "detection_task": 0.6666666666666666,
+    "detection_temporal": 0.64,
+    "positives": 160,
+    "negatives": 40,
+    "labelled_claims": 167
+  }
+}

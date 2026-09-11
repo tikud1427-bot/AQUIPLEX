@@ -3,11 +3,11 @@
  *
  * Changes from v2:
  * - Model ID no longer hardcoded — pulled from the central Model Registry
- *   (Issue 5). llama-3.3-70b-versatile (the old hardcoded default) was
- *   announced deprecated by Groq on 2026-06-17; registry now defaults to
- *   openai/gpt-oss-120b (Groq's own recommended replacement — also faster
- *   and cheaper), with openai/gpt-oss-20b and the old llama model kept as
- *   ordered fallbacks.
+ *   (Issue 5). llama-3.3-70b-versatile and llama-3.1-8b-instant (the old
+ *   hardcoded defaults) were decommissioned by Groq on 2026-08-16; registry
+ *   now defaults to openai/gpt-oss-120b (Groq's own recommended replacement
+ *   — also faster and cheaper), with openai/gpt-oss-20b as the sole ordered
+ *   fallback. No Llama model is registered for Groq anymore.
  * - Added a per-request fallback loop across those candidate models
  *   (Issue 4/12): a single dead/rate-limited model no longer fails the
  *   whole Groq call — only exhausting every candidate does.
@@ -25,8 +25,7 @@
 
 import Groq from 'groq-sdk';
 import {
-  getCandidateModels, markModelWorking, markModelUnavailable, markModelTempFailed,
-} from './modelRegistry.js';
+  getCandidateModels, markModelWorking, markModelUnavailable, markModelTempFailed, pinCandidates } from './modelRegistry.js';
 import { classifyProviderError, retryAfterMs } from './providerErrors.js';
 
 function getKeys() {
@@ -50,6 +49,27 @@ const clientCache  = new Map();
 function onCooldown(key) {
   const until = keyCooldowns.get(key);
   return until ? Date.now() < until : false;
+}
+
+/**
+ * Milliseconds until at least one key is usable again.
+ *
+ * 0 when a key is free now, null when none are configured. Exposed for the E6
+ * shadow harness: a rate limit is a WAIT, not a failure — the provider states
+ * exactly how long — and the harness was treating the two the same, losing a
+ * whole run to cooldowns it could have slept through.
+ */
+export function msUntilAnyKeyFree() {
+  const keys = getKeys();
+  if (!keys.length) return null;
+  let soonest = Infinity;
+  for (const k of keys) {
+    const until = keyCooldowns.get(k) ?? 0;
+    const wait = Math.max(0, until - Date.now());
+    if (wait === 0) return 0;
+    if (wait < soonest) soonest = wait;
+  }
+  return Number.isFinite(soonest) ? soonest : 0;
 }
 
 function applyCooldown(key, ms) {
@@ -83,10 +103,24 @@ function nextKey() {
  *   actually selected.
  * @returns {Promise<{ text: string, truncated: boolean, finishReason: string }>}
  */
-export async function generateGroq(systemPrompt, messages, signal, maxTokens) {
+/**
+ * @param {object} [opts] E6/PR-5b — additive, and inert when omitted.
+ *   `opts.model`       pin to exactly this model, or throw
+ *                      MODEL_PIN_UNAVAILABLE. Never silently substituted.
+ *   `opts.temperature` sent only when supplied, so an omitted value leaves
+ *                      the request bytes identical to before this change.
+ *   The return gains `model`, naming which model actually answered. Additive:
+ *   every existing caller destructures { text, truncated, finishReason }.
+ *   Without it a run cannot be attributed — disqualifying for a measurement,
+ *   and invisible in the old return shape.
+ *   STREAMING IS DELIBERATELY UNTOUCHED. Extraction never streams, and the
+ *   stream paths carry their own truncation and abort handling; widening the
+ *   change to reach them would grow the risk envelope for no caller.
+ */
+export async function generateGroq(systemPrompt, messages, signal, maxTokens, opts = {}) {
   if (signal?.aborted) throw new Error('TIMEOUT');
 
-  const candidates = getCandidateModels('groq');
+  const candidates = pinCandidates(getCandidateModels('groq'), opts.model ?? null, 'groq');
   if (!candidates.length) throw Object.assign(new Error('No Groq models currently available (cooling down or deprecated)'), { code: 'NO_CANDIDATE_MODELS' });
 
   let lastError;
@@ -115,6 +149,7 @@ export async function generateGroq(systemPrompt, messages, signal, maxTokens) {
       model:    modelId,
       messages: chatMessages,
       ...(capTokens ? { max_tokens: capTokens } : {}),
+      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
     });
     // Demo-stability fix: if the timeout wins the Promise.race below, `req`
     // keeps running detached. Should it later REJECT (network drop, 5xx),
@@ -175,7 +210,7 @@ export async function generateGroq(systemPrompt, messages, signal, maxTokens) {
       }
       console.log(`[GROQ] model=${modelId} hit maxTokens=${capTokens} cap — returning partial as successful completion`);
       markModelWorking('groq', modelId);
-      return { text, truncated: true, finishReason: 'length' };
+      return { text, truncated: true, finishReason: 'length', model: modelId };
     }
 
     if (!text) {
@@ -184,7 +219,7 @@ export async function generateGroq(systemPrompt, messages, signal, maxTokens) {
     }
 
     markModelWorking('groq', modelId);
-    return { text, truncated: false, finishReason: finishReason ?? 'stop' };
+    return { text, truncated: false, finishReason: finishReason ?? 'stop', model: modelId };
   }
 
   throw lastError ?? new Error('All Groq attempts exhausted');

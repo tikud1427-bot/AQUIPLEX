@@ -59,6 +59,10 @@ import { generateText, generateTextStream } from '../providers/router.js';
 import { buildSystemPrompt }      from '../core/promptBuilder.js';
 import { buildContextWindow, estimateTokens } from '../core/tokenManager.js';
 import { classifyTask }           from '../core/classifier.js';
+import { uusEnabled }             from '../understanding/flags.js';
+import { UNDERSTANDING_TASK, classifyForMode, isInterviewTurn } from '../understanding/interviewMode.js';
+import { directive as interviewSteer } from '../understanding/interview.js';
+import { beliefsForCoverage, goalsForCoverage } from '../understanding/mindView.js';
 import { createContext, logMemoryEvent, logPlanEvent, logIntelligenceEvent, logOrchestratorEvent, logVerificationEvent, logCognitionEvent } from '../core/observability.js';
 import { createExecutionPlan }    from '../core/executionPlanner.js';
 import { getReasoningStrategy }   from '../core/reasoningStrategy.js';
@@ -86,7 +90,10 @@ import {
   conversationExists,
   canAccessConversation,
 } from '../memory/conversationStore.js';
-import { resolveOwner, memoryObserve, memoryRetrieve, memoryAfterTurn, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
+import { resolveOwner, memoryObserve, memoryRetrieve, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
+import * as Brain from '../brain/index.js';
+import { runPostTurn } from './turnPostProcess.js';
+import { formatCitation } from '../files/evidence.js';
 import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
 import { semanticFileScores }                              from '../project/semanticProject.js';
 import { formatAttachmentsForPrompt, getAttachments }       from '../upload/attachmentStore.js';
@@ -363,7 +370,7 @@ const REPO_INTENT_RE = /\b(repo(sitory)?|codebase|this project|the project|archi
  * provider calls. Both call sites (`await prepareTurn(...)`) are inside
  * async handlers in this file — no external caller exists.
  */
-async function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, ctx, requestId, onStage = () => {}, skipReasoningPass = false }) {
+export async function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, ctx, requestId, onStage = () => {}, skipReasoningPass = false, mode = null }) {
   // ── 1. Resolve the ONE memory owner (unified engine) ────────────────────────
   // Platform user identity when present (cross-conversation, cross-device),
   // else this conversation as a dev/standalone fallback (adopted into the
@@ -380,7 +387,28 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
   const fileChunksP = semanticFileChunks(memoryOwner, userMessage);
   // ── 2. Classify (once — result passed to router, no double classification) ──
   onStage('classify', 'Understanding your request…');
-  const { task: taskType, confidence, labels } = classifyTask(userMessage);
+  // Mark the intro conversation so the first-run gate can tell an account that
+  // has done this from one that has not — DERIVED state, not a stored "has
+  // onboarded" flag. conversation.meta is an open bag, so this is zero schema
+  // change, and a marker that lives beside the conversation itself cannot end
+  // up disagreeing with whether the conversation actually happened.
+  if (isInterviewTurn(mode) && conversationId) {
+    try { updateConversationMeta(conversationId, { kind: 'understanding_intro' }); }
+    catch { /* fail open — a missing marker costs a re-offer, not a turn */ }
+  }
+
+  // The interview declares its own intent. classifyTask() scores ordinary
+  // first-person speech at 0.45 — below LOW_CONFIDENCE_THRESHOLD — which fires
+  // verification and debate on 4 of 8 typical answers: up to five extra LLM
+  // calls, 1.5-16.7s measured, and the drafted answer visibly REPLACED
+  // mid-stream. Against a promise of "about two minutes", in the conversation
+  // whose entire job is to earn trust.
+  //
+  // This is not a classifier fix. The classifier is still wrong about
+  // first-person statements everywhere else, and that is a separate change
+  // with a much wider blast radius. Here the caller already KNOWS the intent,
+  // so guessing it is the mistake.
+  const { task: taskType, confidence, labels } = classifyForMode(mode, userMessage, classifyTask);
   console.log(`[CLASSIFIER] task=${taskType} conf=${confidence.toFixed(2)} req=${requestId}`);
 
   // ── 1b. Smart Router — is this a question about AQUA/Aquiplex itself? ────────
@@ -547,12 +575,70 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
     // MAY add one bounded keyword-broadened retry when the cognitive plan
     // requires evidence and the first pass came back empty. CIE off ⇒ pure
     // passthrough, byte-identical to calling PIC directly.
-    const knowledge = cognitiveKnowledgeRetrieve(memoryOwner, userMessage, { limit: 8, plan: cognition.plan });
+    //
+    // B4 — Context Engine V2: the CIE+PIC call becomes the FLOOR for the
+    // ten-dimension scorer + budgeted, diversity-aware assembler. Superset
+    // return shape ({ items, block, stats }), so knowledgeContext/Items/Stats
+    // downstream are untouched. Fail-safe: any V2 failure returns the PIC
+    // floor unchanged. Off unless AQUA_CONTEXT_V2=on (then pure passthrough).
+    // The semantic scores are pre-awaited here — the async boundary the CIE
+    // path already owns — and handed in, keeping the engine itself pure.
+    const floorRetrieve = (oid, q, o) => cognitiveKnowledgeRetrieve(oid, q, { ...o, plan: cognition.plan });
+    const knowledge = Brain.contextV2Active()
+      ? Brain.assembleContext(memoryOwner, userMessage, floorRetrieve, {
+          limit: 8, plan: cognition.plan, formatCitation,
+          // 🔴 NULL ON PURPOSE — THE MAP HANDED HERE COULD NEVER MATCH.
+          //
+          // `semanticScoresP` is `semanticFactScores`, which embeds LONG-TERM
+          // MEMORY facts: `factText()` builds "key: value" strings and keys the
+          // vectors by the LTM mind fact key — `workplace`, `cofounder`,
+          // `custom_biggest_constraint`.
+          //
+          // The Context Engine ranks EVIDENCE-STORE facts and looks the score up
+          // with `ctx.semanticScores.get(candidate.semanticId)`, where
+          // `semanticId` is an evidence-store fact id. Two stores, two
+          // namespaces, no overlap by construction — every lookup missed.
+          //
+          // Blueprint §10: "A semantic embedding is useless if embedding key ≠
+          // retrieval identity." This is that defect, and it survived because a
+          // miss falls through to token Jaccard, so `semantic_similarity` — the
+          // second-heaviest dimension at 0.20 — has been reporting lexical
+          // overlap under an embedding's name since it was added.
+          //
+          // Passing null is BEHAVIOURALLY IDENTICAL: a map whose every lookup
+          // misses and no map at all both reach the same fallback line. What
+          // changes is that the code now says what is true. Claim-keyed vectors
+          // arrive in E7/PR-3; until then this dimension is lexical and admits it.
+          //
+          // The OTHER consumer is correct and untouched: line ~505 passes the
+          // same map to `memoryRetrieve`, which ranks LTM facts by LTM key.
+          semanticScores: null,
+          activeProjectId: workspaceId ?? null,
+        })
+      : floorRetrieve(memoryOwner, userMessage, { limit: 8 });
     knowledgeContext = knowledge.block;
     knowledgeItems   = knowledge.items;
     knowledgeStats   = knowledge.stats ?? {};
     if (knowledgeContext) {
-      console.log(`[PIC] Knowledge injected owner=${memoryOwner} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}${knowledge.stats.broadened ? ` broadened=+${knowledge.stats.broadenGained}` : ''}`);
+      const ce = knowledge.stats?.contextEngine;
+      console.log(`[PIC] Knowledge injected owner=${memoryOwner} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}${knowledge.stats.broadened ? ` broadened=+${knowledge.stats.broadenGained}` : ''}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
+    } else {
+      // OBSERVABILITY ONLY — no behaviour change, and the line above is
+      // untouched so anything grepping it keeps working.
+      //
+      // The candidates/selected counters already existed, but only on the
+      // success path. The measurement that matters most is the OPPOSITE case:
+      // the post-PR-1 re-audit found the Context Engine selecting 100% of its
+      // pool at every session length (3/3, 9/9, 18/18, nothing ever dropped)
+      // and 4 of 7 flagship questions returning an EMPTY block. An empty block
+      // logged nothing at all, so from production traffic those turns were
+      // indistinguishable from turns that never asked.
+      //
+      // A zero is a measurement. This makes "the engine had nothing to offer"
+      // countable, which is the only way to tell whether the fixture's pool
+      // density resembles a real owner's.
+      const ce = knowledge.stats?.contextEngine;
+      console.log(`[PIC] Knowledge empty owner=${memoryOwner} floor=${knowledge.stats?.facts ?? 0}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
     }
   }
 
@@ -594,13 +680,38 @@ async function prepareTurn({ userMessage, workspaceId, conversationId, userId = 
 
   // ── 6. Build system prompt ────────────────────────────────────────────────────
   onStage('prompt', 'Preparing response…');
+  // UUS — steer the interviewer toward what is still unknown. Deterministic
+  // ranking over the same coverage math the understanding card uses, so the
+  // conversation and the summary can never disagree about what is known. Rides
+  // the existing directive channel; empty for every non-interview turn, so
+  // ordinary traffic is byte-identical. Fail-open: a steering hint is never
+  // worth failing a turn over.
+  let interviewDirective = '';
+  if (isInterviewTurn(mode)) {
+    try {
+      interviewDirective = interviewSteer({
+        beliefsByDimension: beliefsForCoverage(memoryOwner),
+        goals: goalsForCoverage(memoryOwner),
+      });
+    } catch { interviewDirective = ''; }
+  }
   // Attachment context rides the projectContext slot — same injection point,
   // same budget handling in promptBuilder, no signature change.
   const combinedContext = [attachmentContext, projectContext, knowledgeContext].filter(Boolean).join('\n\n');
   // CIE directive rides the SAME channel the Phase-4 reasoning directive
   // already owns — appended after it, never replacing it. Empty when CIE is
   // off or the style is 'fast', keeping casual traffic byte-identical.
-  const reasoningDirective = [reasoning.directive, cognition.directive].filter(Boolean).join('\n');
+  // The revision voice rides the SAME directive channel, appended last so it
+  // never displaces reasoning or the interviewer. Empty on almost every turn:
+  // the flag is off by default, the turn must be a conversational one, and a
+  // revision is raised at most once ever. Fail-open — AQUA noticing something
+  // is never worth failing a turn over. See brain/reflectionV2/revisionVoice.js.
+  let revisionDirective = '';
+  try {
+    revisionDirective = Brain.revisionDirectiveFor(memoryOwner, { taskType, mode });
+  } catch { revisionDirective = ''; }
+
+  const reasoningDirective = [reasoning.directive, cognition.directive, interviewDirective, revisionDirective].filter(Boolean).join('\n');
   const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoningDirective, combinedContext, intelligence.synthesis.text, identityIntent, searchContext);
 
   // ── 7. Build context window (short-term message history) ─────────────────────
@@ -775,6 +886,7 @@ function buildResponsePayload({
       disagreements: verification.disagreements ?? [], // debate only: preserved minority findings
       grounded:           verification.grounded ?? false,           // Phase 0: reviewer saw the drafter's evidence
       suppressedRefusals: verification.suppressedRefusals ?? 0,     // Phase 0: capability-deleting revisions discarded
+      suppressedMalformed: verification.suppressedMalformed ?? 0,   // forensic pass (Bug 1): empty/whitespace revisions discarded
       escalatedByCognition: verification.escalatedByCognition ?? false, // CIE: monitor pulled review into an orchestrator-skipped turn
     },
 
@@ -861,7 +973,7 @@ router.post('/', async (req, res) => {
   const ctx = createContext({ conversationId, requestId });
 
   try {
-    const { message, workspaceId } = req.body ?? {};
+    const { message, workspaceId, mode = null } = req.body ?? {};
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({
         success: false,
@@ -893,6 +1005,7 @@ router.post('/', async (req, res) => {
 
     const artifactWork = detectArtifactWork(userMessage);
     const prep = await prepareTurn({
+      mode,
       userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId,
       skipReasoningPass: !!(artifactWork.create || artifactWork.edit),
     });
@@ -998,8 +1111,18 @@ router.post('/', async (req, res) => {
     addMessage(conversationId, 'user',      userMessage);
     addMessage(conversationId, 'assistant', finalAnswer);
 
-    // ── 9b. Mind post-turn — predictions rebuild + async reflection when due ────
-    memoryAfterTurn(prep.memoryOwner, { taskType, workspaceId });
+    // ── 9b-9d. Post-turn understanding — Mind post-turn, world-model ingest,
+    //          Digital Twin, cadence-gated Reflection V2. Extracted to ONE
+    //          shared unit so both endpoints cannot drift (audit W6); the
+    //          behaviour is unchanged from when this block was inline.
+    runPostTurn({
+      ownerId: prep.memoryOwner,
+      conversationId,
+      userMessage,
+      assistantMessage: finalAnswer,
+      taskType,
+      workspaceId,
+    });
 
     // ── 10. Respond ──────────────────────────────────────────────────────────────
     const payload = buildResponsePayload({
@@ -1071,7 +1194,7 @@ router.post('/stream', async (req, res) => {
   console.log(`[CHAT] ${isNew ? 'CONVERSATION_CREATED' : 'CONVERSATION_REUSED'} id=${conversationId} req=${requestId} (stream)`);
   const ctx = createContext({ conversationId, requestId });
 
-  const { message, workspaceId } = req.body ?? {};
+  const { message, workspaceId, mode = null } = req.body ?? {};
   if (!message || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({
       success: false,
@@ -1154,6 +1277,7 @@ router.post('/stream', async (req, res) => {
     // corresponds to real work beginning, never a scripted animation.
     const artifactWork = detectArtifactWork(userMessage);
     const prep = await prepareTurn({
+      mode,
       userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId,
       onStage: (id, label) => send('stage', { id, label }),
       skipReasoningPass: !!(artifactWork.create || artifactWork.edit),
@@ -1310,8 +1434,18 @@ router.post('/stream', async (req, res) => {
     addMessage(conversationId, 'user',      userMessage);
     addMessage(conversationId, 'assistant', finalAnswer);
 
-    // ── 9b. Mind post-turn — predictions rebuild + async reflection when due ────
-    memoryAfterTurn(prep.memoryOwner, { taskType, workspaceId });
+    // ── 9b-9d. Post-turn understanding — Mind post-turn, world-model ingest,
+    //          Digital Twin, cadence-gated Reflection V2. Extracted to ONE
+    //          shared unit so both endpoints cannot drift (audit W6); the
+    //          behaviour is unchanged from when this block was inline.
+    runPostTurn({
+      ownerId: prep.memoryOwner,
+      conversationId,
+      userMessage,
+      assistantMessage: finalAnswer,
+      taskType,
+      workspaceId,
+    });
 
     // ── 10. Done event — same diagnostics shape as POST /chat ───────────────────
     const payload = buildResponsePayload({

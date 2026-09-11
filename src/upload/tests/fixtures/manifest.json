@@ -1,0 +1,66 @@
+{
+  "specVersion": 1,
+  "builder": "scripts/build-parser-fixtures.mjs",
+  "files": {
+    "encrypted.zip": {
+      "bytes": 125,
+      "sha256": "4e2193c2d83801e55f0fa61aa646881a4236cbd95226c668fe471cf8152eb8a2",
+      "zlibDependent": false,
+      "note": "General-purpose flag bit 0 set. Pins the password-protected rejection branch."
+    },
+    "highratio.zip": {
+      "bytes": 1158,
+      "sha256": "ea485ece66ef83ba6af719299ea667dd2c108b9dc7c1832bc0b138b34413e8f7",
+      "zlibDependent": true,
+      "note": "1 MiB of one repeated byte, DEFLATE compressed (~1000:1). Documents that no RATIO ceiling exists today — E1/PR-3 changes this."
+    },
+    "project.tar": {
+      "bytes": 13824,
+      "sha256": "8c356581afb5f94f3c871acded3b462ed4fc4e14c2277c17276c91f8dea9d673",
+      "zlibDependent": false,
+      "note": "Same logical tree as project.zip, TAR/ustar encoded."
+    },
+    "project.tar.gz": {
+      "bytes": 1148,
+      "sha256": "55342ef905c6164e63d7b723899bbb7bfccef38751a955bff8da688674c7bb02",
+      "zlibDependent": true,
+      "note": "Gzipped project.tar — exercises the gunzip ratio guard and the tar-inside-gzip fallback."
+    },
+    "project.zip": {
+      "bytes": 6619,
+      "sha256": "777ba2402d0ee099a4104e637a439c18ed410da4177ce337f17d878089900db6",
+      "zlibDependent": false,
+      "note": "Source tree + node_modules + .git + nested .pptx + a ../ traversal entry."
+    },
+    "sample.docx": {
+      "bytes": 1468,
+      "sha256": "d4932948236d47df32acd8d69195e3d3e469dc5645cd30f0318f83312db66dcd",
+      "zlibDependent": false,
+      "note": "Three paragraphs including unicode and an entity."
+    },
+    "sample.epub": {
+      "bytes": 1824,
+      "sha256": "64b2851d45943c676034043660142edc2c6dabd181c100190321f5178df2696a",
+      "zlibDependent": false,
+      "note": "container.xml → OPF; two spine chapters plus a non-XHTML spine item that must be skipped."
+    },
+    "sample.odt": {
+      "bytes": 1040,
+      "sha256": "27a640c76f8e761302c55bcc44fdef4ed37aa34a3eb8c12f50ed2243210ad040",
+      "zlibDependent": false,
+      "note": "content.xml + meta.xml with dc:title; entity, unicode and a line-break."
+    },
+    "sample.pptx": {
+      "bytes": 5681,
+      "sha256": "5bad004e6181e4d0978101864260a7cc19ca05e5059f95e266356a948549b08d",
+      "zlibDependent": false,
+      "note": "10 numbered slides (10-vs-2 ordering), entity-encoded runs, one text-free slide, one notes slide that must be ignored."
+    },
+    "sample.xlsx": {
+      "bytes": 4958,
+      "sha256": "ac12b0242c65e4825f0194319ad87c355c7af0d08e53969941e31aaa327692af",
+      "zlibDependent": false,
+      "note": "Three sheets. Comma-in-value, leading-zero string, decimal, unicode, XML entity, gap column, skipped row, empty sheet."
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-30T05:46:38.914Z",
+  "node": "v22.22.2",
+  "suiteFingerprint": "332d8228664cd588",
+  "caseCount": 200,
+  "note": "FIRST measurement of the path production actually reads. routes/chat.js:587 sends the turn through Brain.assembleContext with PIC as the FLOOR, and AQUA_CONTEXT_V2=on ships in the environment template \u2014 so retrieval-core.v1 has been grading an intermediate stage the Context Engine overrides before anything reaches the model.\n\nTHE CONTEXT ENGINE IS CURRENTLY WORSE THAN THE FLOOR IT WRAPS. Same world, same 200 queries, same shared scorer (retrievalScoring.mjs); the only variable is which function is asked:\n  recall_at_8        0.7560 -> 0.6786   (-0.077)\n  mrr                0.6865 -> 0.6448\n  ndcg_at_8          0.6710 -> 0.6151\n  top1_kind          0.5714 -> 0.5298\n  recall_direct      1.0000 -> 0.9636   (it loses answers on the EASIEST category)\n  recall_superseded  0.6000 -> 0.3000   (halved)\n  recall_temporal    0.6800 -> 0.5600\n  recall_negation    0.8000 -> 0.7000\nIt buys 3 fewer noise lines (16 -> 13) at that price. unknown_honesty is unchanged.\n\nCAUSE, TRACED: the assembler rescores the floor's pool on ten dimensions, and the floor's own relevance score \u2014 the factAffinity number that knows what the question ASKED \u2014 is not one of them and is not passed in. gatherCandidates drops it, along with entityIds and timestamp. So the layer that decides what reaches the model ranks on ten importance signals and zero relevance signals. That is the same defect the PIC gate was built to close one layer down ('an expression in which the QUESTION does not appear'), reproduced above it.\n\n13 of 168 answerable queries lose their answer entirely to this.\n\n\u2550\u2550\u2550 THE QUESTION IS NOW CLOSED, AND THE ANSWER IS NO \u2550\u2550\u2550\n\nFour configurations were built and measured across sessions:\n  as-shipped                              recall 0.6786   noise 13\n  relevance carried as an 11th dimension  recall 0.7321   noise 14\n  the same, normalised per query          recall 0.7560   noise 18\n  floor exempt from BOTH minScore gates   recall 0.7560   noise 17\n  \u2500\u2500 the floor itself \u2500\u2500                  recall 0.7560   noise 16\n\nThe best available Context Engine reaches EXACTLY the floor's recall and one\nnoise line worse. It is therefore strictly worse than switching it off: same\nrecall, more noise, and a layer of code on the turn path.\n\nTHE OBVIOUS REMAINING FIX WAS MEASURED BEFORE BEING BUILT, AND THE SIGNAL IS\nNOT THERE. Having the CE abstain when nothing in the pool is relevant enough\nrequires the two populations to separate on the floor's score. They do not \u2014\ntop relevance per query over the same 200:\n  answerable      p10 0.000   p25 0.333   median 0.575\n  noisy silence   min 0.250   median 0.500   max 0.600\nThe noisy population sits INSIDE the answerable one:\n  T=0.30  removes 1 of 16 noise lines,  silences 32 of 168 answerable queries\n  T=0.35  removes 3 of 16,              silences 43 of 168\n  T=0.45  removes 8 of 16,              silences 55 of 168\n\nAND THE NOISE WAS NEVER THE CE'S TO FIX. Traced per query: the floor emits 16\nlines across 9 silence queries and NEVER abstains on any of them; the CE\ninherits 12 and adds 1 from its own reach lane. It is inherited, not generated.\n\nWHAT THIS MEANS FOR THE DECISION. The CE's value cannot come from re-ranking\nwhat the floor hands it \u2014 the floor's score is the only relevance signal it\nhas, and that score does not separate 'I found the answer' from 'I found\nsomething person-shaped'. Value has to come from something the floor does NOT\nhave: embeddings, typed claims, project or file context. Until one of those\nlands, AQUA_CONTEXT_V2=off measures better than any version of it that exists.\nPinned in eval/tests/contextBaseline.test.js.\n\nRegenerate with: npm run eval:gate -- context-core --update",
+  "coverage": {
+    "total": 200,
+    "executed": 200,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "recall_at_8": 0.6785714285714286,
+    "mrr": 0.6448412698412698,
+    "ndcg_at_8": 0.6150653094997621,
+    "top1_correct": 0.625,
+    "top1_kind": 0.5297619047619048,
+    "unknown_honesty": 0.71875,
+    "noise_lines": 13,
+    "noisy_queries": 9,
+    "recall_category": 0.375,
+    "recall_direct": 0.9636363636363636,
+    "recall_multi": 0.7142857142857143,
+    "recall_negation": 0.7,
+    "recall_selfword": 0.625,
+    "recall_superseded": 0.3,
+    "recall_temporal": 0.56,
+    "answerable_queries": 168,
+    "silence_queries": 32
+  }
+}

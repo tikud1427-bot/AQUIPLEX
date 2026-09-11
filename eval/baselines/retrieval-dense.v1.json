@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-31T09:47:04.739Z",
+  "node": "v22.22.2",
+  "suiteFingerprint": "029680cf4a7b29e4",
+  "caseCount": 200,
+  "note": "Retrieval WITH the dense lane (E7). Same 200 queries, same world, same shared scorer as\nretrieval-core; the only variable is that semanticScores comes from the committed\nembedding fixture, keyed by evidence-store fact id.\n\nTHE PARETO POINT, AND IT WAS SWEPT RATHER THAN CHOSEN:\n               recall@8  category  superseded  noise  honesty\n  lexical        0.7560    0.4688      0.6000     16   0.7188\n  margin 0.11    0.8393    0.6562      0.8000     34   0.6562\n  margin 0.15    0.7976    0.5938      0.7000     16   0.7188   <- shipped\n  margin 0.20    0.7738    0.5312      0.7000     16   0.7188\n  margin 0.25    0.7560    0.4688      0.7000     16   0.7188\n\nAt 0.15 noise_lines and unknown_honesty are UNCHANGED from the lexical floor while\nrecall@8 gains 4.2 points and recall_category 12.5 \u2014 the metric that has been worst on\nevery lane since it was first measured. Nothing was bought with noise.\n\n0.11 gains more and pays 18 noise lines and 6 points of honesty for it. That is a real\ntrade and deliberately NOT made inside a constant; it is recorded here so it can be taken\non purpose if the product wants it.\n\nWHY DENSE MUST NOT DECIDE ALONE. Absolute cosine cannot separate answerable from\nunanswerable: top-cosine runs 0.570-0.939 for answerable queries and 0.461-0.767 for the\n32 silence-expecting ones. Admitting on it cost noise_lines 16 -> 138 and unknown_honesty\n0.7188 -> 0.1875. The MARGIN does separate \u2014 top cosine minus corpus median, answerable\np10 0.092 against silence p90 0.105 \u2014 because 'I have nothing for this' looks like every\nfact being equally unrelated. Dense proposes; factAffinity disposes.\n\nNO RUN-TO-RUN VARIANCE. The vectors are committed static data replayed identically every\nrun, unlike the E6 shadow harness where two runs of the same pinned model differed by 16\npoints.\n\nTHIS IS NOT WHAT SHIPS. Production supplies no semanticScores, so retrieval-core.v1\nremains the description of the live path. Wiring is E7/PR-4.\n\nRegenerate with: npm run eval:gate -- retrieval-dense --update",
+  "coverage": {
+    "total": 200,
+    "executed": 200,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "recall_at_8": 0.7976190476190477,
+    "mrr": 0.7049178004535145,
+    "ndcg_at_8": 0.7070052480591044,
+    "top1_correct": 0.6547619047619048,
+    "top1_kind": 0.5654761904761905,
+    "unknown_honesty": 0.71875,
+    "noise_lines": 16,
+    "noisy_queries": 9,
+    "recall_category": 0.59375,
+    "recall_direct": 1,
+    "recall_multi": 0.75,
+    "recall_negation": 0.8,
+    "recall_selfword": 0.75,
+    "recall_superseded": 0.7,
+    "recall_temporal": 0.72,
+    "answerable_queries": 168,
+    "silence_queries": 32
+  }
+}

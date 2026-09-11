@@ -35,6 +35,7 @@ import * as annotations from './worldModel/annotationStore.js';
 import * as P from './worldModel/projection.js';
 import { ingestConversationTurn, ingestMetrics, ingestEnabled, factIngestEnabled } from './knowledgeExtraction/conversationIngest.js';
 import { assembleTurnContext, contextEngineMetrics, contextV2Enabled } from './contextEngine/index.js';
+import { indexCanonicalClaims, canonicalClaimScores } from './contextEngine/canonicalSemantic.js';
 import { reflectWorldModel, reflectionV2Metrics, reflectV2Enabled, forgetOwner as forgetReflectionOwner } from './reflectionV2/index.js';
 import { loadSurfacedAt, markSurfaced } from './reflectionV2/reflectionStore.js';
 import { buildRevisionDirective, isSuitableTurn } from './reflectionV2/revisionVoice.js';
@@ -361,19 +362,37 @@ export function revisionDirectiveFor(ownerId, { taskType = null, mode = null } =
  * AQUA_CONTEXT_V2=on, in which case this is a pure passthrough of the floor.
  */
 export function assembleContext(ownerId, query, floorRetrieve, opts = {}) {
-  const { deps = REAL_DEPS, semanticScores = null, activeProjectId = null, priorEntityIds = null, limit = 8, charBudget = 1600, plan = null } = opts;
+  const { deps = REAL_DEPS, semanticScores = null, semanticClaimScores = null, activeProjectId = null, priorEntityIds = null, limit = 8, charBudget = 1600, plan = null } = opts;
   const engineDeps = {
     picRetrieve: floorRetrieve,
     graph: deps.graph,
     evidenceStore: deps.evidenceStore,
     peekMind: deps.peekMind,
     formatCitation: opts.formatCitation ?? null,
-    semanticScores,
+    semanticScores: semanticClaimScores ?? semanticScores,
     activeProjectId,
   };
   return guard('assembleContext',
     { items: [], block: '', stats: {} },
     () => assembleTurnContext(engineDeps, ownerId, query, { limit, charBudget, priorEntityIds: priorEntityIds ?? undefined, plan }));
+}
+
+/**
+ * Prepare the E7 canonical claim semantic lane. Existing evidence-store facts
+ * are backfilled on demand; new facts are indexed at write time. The returned
+ * Map is keyed by evidence-store fact.id, which is Context Engine's
+ * candidate.semanticId.
+ */
+export async function canonicalSemanticScores(ownerId, query) {
+  if (!ownerId || !query) return null;
+  try {
+    const facts = evidenceStore.listFacts(ownerId, { limit: 5000 });
+    await indexCanonicalClaims(ownerId, facts);
+    return canonicalClaimScores(ownerId, query);
+  } catch (err) {
+    console.warn(`[BRAIN] canonical semantic lane failed (non-fatal): ${err?.message ?? err}`);
+    return null;
+  }
 }
 
 export function contextV2Active() { return contextV2Enabled(); }

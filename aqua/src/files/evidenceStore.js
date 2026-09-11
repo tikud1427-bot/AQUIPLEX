@@ -28,6 +28,8 @@ import {
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
 import { evidenceChecksum } from './evidence.js';
+import { indexCanonicalClaim, indexCanonicalClaims, canonicalClaimNamespace } from '../brain/contextEngine/canonicalSemantic.js';
+import { clearNamespace } from '../embeddings/vectorStore.js';
 
 const STORE_FILE = dataPath('.aqua-evidence.json');
 const SCHEMA     = 1;
@@ -126,6 +128,7 @@ export function saveFact(ownerId, fact, { sourceFileId = null } = {}) {
     if (refs) refs.add(fact.id);   // only real evidence gets an edge
   }
   scheduleSave();
+  void indexCanonicalClaim(ownerId, fact).catch(() => {});
   return fact;
 }
 
@@ -197,6 +200,9 @@ export function updateFact(ownerId, factId, patch = {}) {
     for (const evId of fact.evidence) b.evidenceRefs.get(evId)?.add(factId);
   }
   scheduleSave();
+  if (Object.prototype.hasOwnProperty.call(patch, 'statement')) {
+    void indexCanonicalClaim(ownerId, fact).catch(() => {});
+  }
   return fact;
 }
 
@@ -219,6 +225,7 @@ export function removeFile(ownerId, ukoId) {
   }
   b.byFile.delete(ukoId);
   scheduleSave();
+  void indexCanonicalClaims(ownerId, [...b.facts.values()]).catch(() => {});
   return true;
 }
 
@@ -232,6 +239,7 @@ export function purgeOwner(ownerId) {
   if (!b) return { facts: 0, evidence: 0 };
   const removed = { facts: b.facts.size, evidence: b.evidence.size };
   store.delete(key);
+  clearNamespace(canonicalClaimNamespace(key));
   scheduleSave();
   return removed;
 }

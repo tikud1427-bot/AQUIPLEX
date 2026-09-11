@@ -1,0 +1,2751 @@
+{
+ "id": "retrieval-core",
+ "version": "v1",
+ "about": "One fixed world state (60 facts about one owner) plus 200 queries with graded relevance judgments. Measures whether AQUA can FIND what it stored, including the adversarial cases this codebase has actually shipped failures on.",
+ "limitations": [
+  "SYNTHETIC. The corpus and queries were authored together, so a query is more likely to have a findable answer than in real use. A system tuned against this can look better than it is.",
+  "One annotator. Relevance judgments carry no measured inter-annotator agreement, and relevance is the most subjective part of any IR benchmark.",
+  "60 facts is a SMALL corpus. Lexical precision degrades with corpus size, so scores here are an upper bound on what the same engine would do at 5,000 facts. RETRIEVE-SCALE (Blueprint Part 11) is the missing companion.",
+  "Two relevance grades only (relevant=2, acceptable=1). Finer grades would be invented precision with a single annotator.",
+  "English only, single-turn. No conversational follow-up, so pronoun resolution across turns is unmeasurable here.",
+  "Why-questions are not represented. Causal retrieval has nothing to score against yet: the engine's chain builder deliberately names its output `progression` rather than causation, because it cannot detect cause. When that changes, this dataset needs a `reason` category."
+ ],
+ "corpus": [
+  {
+   "id": "f001",
+   "statement": "I run product at Nummo.",
+   "entities": [
+    "Nummo",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f002",
+   "statement": "I moved to the Bangalore office last month.",
+   "entities": [
+    "Bangalore",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f003",
+   "statement": "I used to work at Intercom.",
+   "entities": [
+    "Intercom",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation",
+   "supersededBy": "f001"
+  },
+  {
+   "id": "f004",
+   "statement": "I co-founded Aquiplex in 2023.",
+   "entities": [
+    "Aquiplex",
+    "You"
+   ],
+   "confidence": 0.9,
+   "sourceType": "document"
+  },
+  {
+   "id": "f005",
+   "statement": "Our biggest problem is churn in the first 30 days.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f006",
+   "statement": "Priya is our head of design.",
+   "entities": [
+    "Priya",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f007",
+   "statement": "Dev reports to me.",
+   "entities": [
+    "Dev",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f008",
+   "statement": "Chhanda is my co-founder.",
+   "entities": [
+    "Chhanda",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f009",
+   "statement": "Rahul joined the billing team in March.",
+   "entities": [
+    "Rahul"
+   ],
+   "confidence": 0.7,
+   "sourceType": "document"
+  },
+  {
+   "id": "f010",
+   "statement": "Sam owns the mobile app.",
+   "entities": [
+    "Sam"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f011",
+   "statement": "I usually do deep work in the mornings.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f012",
+   "statement": "I commute by metro.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f013",
+   "statement": "I prefer TypeScript over JavaScript.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f014",
+   "statement": "I dislike long meetings.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f015",
+   "statement": "We are building AQUA, a cognitive AI operating system.",
+   "entities": [
+    "AQUA",
+    "You"
+   ],
+   "confidence": 0.9,
+   "sourceType": "document"
+  },
+  {
+   "id": "f016",
+   "statement": "The billing service depends on the search service.",
+   "entities": [
+    "billing service",
+    "search service"
+   ],
+   "confidence": 0.9,
+   "sourceType": "document"
+  },
+  {
+   "id": "f017",
+   "statement": "We ship the beta on 15 September.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.7,
+   "sourceType": "document"
+  },
+  {
+   "id": "f018",
+   "statement": "The migration to Postgres starts next Monday.",
+   "entities": [
+    "Postgres"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f019",
+   "statement": "Our stack is Node and React.",
+   "entities": [
+    "Node",
+    "React"
+   ],
+   "confidence": 0.9,
+   "sourceType": "document"
+  },
+  {
+   "id": "f020",
+   "statement": "I lead the platform team.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f021",
+   "statement": "Nummo signed up as a customer in Q2.",
+   "entities": [
+    "Nummo"
+   ],
+   "confidence": 0.7,
+   "sourceType": "document"
+  },
+  {
+   "id": "f022",
+   "statement": "Priya is blocked on the design tokens.",
+   "entities": [
+    "Priya"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f023",
+   "statement": "The parser rewrite is on hold.",
+   "entities": [
+    "parser"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f024",
+   "statement": "Karan manages the support team.",
+   "entities": [
+    "Karan"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f025",
+   "statement": "We decided to ship pricing tiers on Friday.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f026",
+   "statement": "We rejected the Bangalore relocation for the whole team.",
+   "entities": [
+    "Bangalore",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f027",
+   "statement": "I sleep about six hours a night.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f028",
+   "statement": "Meera is on the infrastructure team.",
+   "entities": [
+    "Meera"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f029",
+   "statement": "The contract with Nummo was signed on 12 January 2026.",
+   "entities": [
+    "Nummo"
+   ],
+   "confidence": 0.9,
+   "sourceType": "document"
+  },
+  {
+   "id": "f030",
+   "statement": "I write most of the frontend myself.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f031",
+   "statement": "Aquiplex is based in Guwahati.",
+   "entities": [
+    "Aquiplex"
+   ],
+   "confidence": 0.9,
+   "sourceType": "document"
+  },
+  {
+   "id": "f032",
+   "statement": "I hired two engineers in July.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f033",
+   "statement": "Our runway is fourteen months.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.7,
+   "sourceType": "document"
+  },
+  {
+   "id": "f034",
+   "statement": "The eval harness ships before the storage migration.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f035",
+   "statement": "I switched from Python to Go last year.",
+   "entities": [
+    "Python",
+    "Go",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f036",
+   "statement": "Dev is stuck on the worker memory cap.",
+   "entities": [
+    "Dev"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f037",
+   "statement": "We use Groq as the primary model provider.",
+   "entities": [
+    "Groq"
+   ],
+   "confidence": 0.9,
+   "sourceType": "document"
+  },
+  {
+   "id": "f038",
+   "statement": "Sam finished the billing refactor.",
+   "entities": [
+    "Sam"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f039",
+   "statement": "I keep my notes in Obsidian.",
+   "entities": [
+    "Obsidian",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f040",
+   "statement": "The design review happens every Thursday.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f041",
+   "statement": "Rahul owns the deploy checklist.",
+   "entities": [
+    "Rahul"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f042",
+   "statement": "We raised a seed round in 2024.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.9,
+   "sourceType": "document"
+  },
+  {
+   "id": "f043",
+   "statement": "Priya joined from a design agency.",
+   "entities": [
+    "Priya"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f044",
+   "statement": "I travel to Delhi most quarters.",
+   "entities": [
+    "Delhi",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f045",
+   "statement": "The mobile app launch slipped to November.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f046",
+   "statement": "Karan is based in Pune.",
+   "entities": [
+    "Karan",
+    "Pune"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f047",
+   "statement": "We measure success by weekly active teams.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.7,
+   "sourceType": "document"
+  },
+  {
+   "id": "f048",
+   "statement": "I no longer own the parser.",
+   "entities": [
+    "parser",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f049",
+   "statement": "Meera will handle the Postgres migration.",
+   "entities": [
+    "Meera",
+    "Postgres"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f050",
+   "statement": "Our largest customer churned in June.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f051",
+   "statement": "I studied physics before this.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f052",
+   "statement": "The security audit is due before the board meeting.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.7,
+   "sourceType": "document"
+  },
+  {
+   "id": "f053",
+   "statement": "Aquiplex has eleven people.",
+   "entities": [
+    "Aquiplex"
+   ],
+   "confidence": 0.9,
+   "sourceType": "document"
+  },
+  {
+   "id": "f054",
+   "statement": "I run the weekly standup.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f055",
+   "statement": "We chose Postgres over Mongo for the substrate.",
+   "entities": [
+    "Postgres",
+    "Mongo",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f056",
+   "statement": "Neha owns the retrieval work.",
+   "entities": [
+    "Neha"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f057",
+   "statement": "The injection corpus is done.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f058",
+   "statement": "I am learning Rust at the moment.",
+   "entities": [
+    "Rust",
+    "You"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f059",
+   "statement": "Farah leads our security review.",
+   "entities": [
+    "Farah"
+   ],
+   "confidence": 0.6,
+   "sourceType": "conversation"
+  },
+  {
+   "id": "f060",
+   "statement": "The board meeting is on 30 September.",
+   "entities": [
+    "You"
+   ],
+   "confidence": 0.7,
+   "sourceType": "document"
+  }
+ ],
+ "queries": [
+  {
+   "id": "q001",
+   "cat": "direct",
+   "q": "Where do I work?",
+   "kind": "org",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [
+    "f004",
+    "f020"
+   ]
+  },
+  {
+   "id": "q002",
+   "cat": "direct",
+   "q": "Who is our head of design?",
+   "kind": "person",
+   "relevant": [
+    "f006"
+   ],
+   "acceptable": [
+    "f043"
+   ]
+  },
+  {
+   "id": "q003",
+   "cat": "direct",
+   "q": "Who reports to me?",
+   "kind": "person",
+   "relevant": [
+    "f007"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q004",
+   "cat": "direct",
+   "q": "Who is my co-founder?",
+   "kind": "person",
+   "relevant": [
+    "f008"
+   ],
+   "acceptable": [
+    "f004"
+   ]
+  },
+  {
+   "id": "q005",
+   "cat": "direct",
+   "q": "When does the beta ship?",
+   "kind": "time",
+   "relevant": [
+    "f017"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q006",
+   "cat": "direct",
+   "q": "What is our stack?",
+   "kind": "thing",
+   "relevant": [
+    "f019"
+   ],
+   "acceptable": [
+    "f037"
+   ]
+  },
+  {
+   "id": "q007",
+   "cat": "direct",
+   "q": "Who owns the mobile app?",
+   "kind": "person",
+   "relevant": [
+    "f010"
+   ],
+   "acceptable": [
+    "f045"
+   ]
+  },
+  {
+   "id": "q008",
+   "cat": "direct",
+   "q": "What is our biggest problem?",
+   "kind": "thing",
+   "relevant": [
+    "f005"
+   ],
+   "acceptable": [
+    "f050"
+   ]
+  },
+  {
+   "id": "q009",
+   "cat": "direct",
+   "q": "Where is Aquiplex based?",
+   "kind": "place",
+   "relevant": [
+    "f031"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q010",
+   "cat": "direct",
+   "q": "Who manages the support team?",
+   "kind": "person",
+   "relevant": [
+    "f024"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q011",
+   "cat": "direct",
+   "q": "What are we building?",
+   "kind": "thing",
+   "relevant": [
+    "f015"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q012",
+   "cat": "direct",
+   "q": "When did I co-found Aquiplex?",
+   "kind": "time",
+   "relevant": [
+    "f004"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q013",
+   "cat": "direct",
+   "q": "Which model provider do we use?",
+   "kind": "org",
+   "relevant": [
+    "f037"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q014",
+   "cat": "direct",
+   "q": "What does the billing service depend on?",
+   "kind": "thing",
+   "relevant": [
+    "f016"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q015",
+   "cat": "direct",
+   "q": "Who joined the billing team in March?",
+   "kind": "person",
+   "relevant": [
+    "f009"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q016",
+   "cat": "direct",
+   "q": "What is Priya blocked on?",
+   "kind": "thing",
+   "relevant": [
+    "f022"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q017",
+   "cat": "direct",
+   "q": "What is on hold?",
+   "kind": "thing",
+   "relevant": [
+    "f023"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q018",
+   "cat": "direct",
+   "q": "Who is on the infrastructure team?",
+   "kind": "person",
+   "relevant": [
+    "f028"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q019",
+   "cat": "direct",
+   "q": "When was the Nummo contract signed?",
+   "kind": "time",
+   "relevant": [
+    "f029"
+   ],
+   "acceptable": [
+    "f021"
+   ]
+  },
+  {
+   "id": "q020",
+   "cat": "direct",
+   "q": "How many people work at Aquiplex?",
+   "kind": "thing",
+   "relevant": [
+    "f053"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q021",
+   "cat": "direct",
+   "q": "What is our runway?",
+   "kind": "thing",
+   "relevant": [
+    "f033"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q022",
+   "cat": "direct",
+   "q": "Who owns the deploy checklist?",
+   "kind": "person",
+   "relevant": [
+    "f041"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q023",
+   "cat": "direct",
+   "q": "Where is Karan based?",
+   "kind": "place",
+   "relevant": [
+    "f046"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q024",
+   "cat": "direct",
+   "q": "When is the board meeting?",
+   "kind": "time",
+   "relevant": [
+    "f060"
+   ],
+   "acceptable": [
+    "f052"
+   ]
+  },
+  {
+   "id": "q025",
+   "cat": "direct",
+   "q": "Who leads the security review?",
+   "kind": "person",
+   "relevant": [
+    "f059"
+   ],
+   "acceptable": [
+    "f052"
+   ]
+  },
+  {
+   "id": "q026",
+   "cat": "direct",
+   "q": "What did we choose for the substrate?",
+   "kind": "thing",
+   "relevant": [
+    "f055"
+   ],
+   "acceptable": [
+    "f018"
+   ]
+  },
+  {
+   "id": "q027",
+   "cat": "direct",
+   "q": "Who owns the retrieval work?",
+   "kind": "person",
+   "relevant": [
+    "f056"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q028",
+   "cat": "direct",
+   "q": "What am I learning right now?",
+   "kind": "thing",
+   "relevant": [
+    "f058"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q029",
+   "cat": "direct",
+   "q": "How do I commute?",
+   "kind": "thing",
+   "relevant": [
+    "f012"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q030",
+   "cat": "direct",
+   "q": "How much do I sleep?",
+   "kind": "thing",
+   "relevant": [
+    "f027"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q031",
+   "cat": "direct",
+   "q": "What do I dislike?",
+   "kind": "thing",
+   "relevant": [
+    "f014"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q032",
+   "cat": "direct",
+   "q": "Which language do I prefer?",
+   "kind": "thing",
+   "relevant": [
+    "f013"
+   ],
+   "acceptable": [
+    "f035"
+   ]
+  },
+  {
+   "id": "q033",
+   "cat": "direct",
+   "q": "Where do I keep my notes?",
+   "kind": "thing",
+   "relevant": [
+    "f039"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q034",
+   "cat": "direct",
+   "q": "When is the design review?",
+   "kind": "time",
+   "relevant": [
+    "f040"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q035",
+   "cat": "direct",
+   "q": "Who is stuck on the worker memory cap?",
+   "kind": "person",
+   "relevant": [
+    "f036"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q036",
+   "cat": "direct",
+   "q": "What did Sam finish?",
+   "kind": "thing",
+   "relevant": [
+    "f038"
+   ],
+   "acceptable": [
+    "f010"
+   ]
+  },
+  {
+   "id": "q037",
+   "cat": "direct",
+   "q": "When did we raise?",
+   "kind": "time",
+   "relevant": [
+    "f042"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q038",
+   "cat": "direct",
+   "q": "Where do I travel most quarters?",
+   "kind": "place",
+   "relevant": [
+    "f044"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q039",
+   "cat": "direct",
+   "q": "When did the mobile app launch slip to?",
+   "kind": "time",
+   "relevant": [
+    "f045"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q040",
+   "cat": "direct",
+   "q": "How do we measure success?",
+   "kind": "thing",
+   "relevant": [
+    "f047"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q041",
+   "cat": "direct",
+   "q": "What did I study before this?",
+   "kind": "thing",
+   "relevant": [
+    "f051"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q042",
+   "cat": "direct",
+   "q": "Who will handle the Postgres migration?",
+   "kind": "person",
+   "relevant": [
+    "f049"
+   ],
+   "acceptable": [
+    "f018"
+   ]
+  },
+  {
+   "id": "q043",
+   "cat": "direct",
+   "q": "What did I hire in July?",
+   "kind": "thing",
+   "relevant": [
+    "f032"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q044",
+   "cat": "direct",
+   "q": "Which team do I lead?",
+   "kind": "thing",
+   "relevant": [
+    "f020"
+   ],
+   "acceptable": [
+    "f054"
+   ]
+  },
+  {
+   "id": "q045",
+   "cat": "direct",
+   "q": "When did our largest customer churn?",
+   "kind": "time",
+   "relevant": [
+    "f050"
+   ],
+   "acceptable": [
+    "f005"
+   ]
+  },
+  {
+   "id": "q046",
+   "cat": "category",
+   "q": "What is my job?",
+   "kind": "role",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [
+    "f020"
+   ]
+  },
+  {
+   "id": "q047",
+   "cat": "category",
+   "q": "Which city am I in?",
+   "kind": "place",
+   "relevant": [
+    "f002"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q048",
+   "cat": "category",
+   "q": "What is my company?",
+   "kind": "org",
+   "relevant": [
+    "f004"
+   ],
+   "acceptable": [
+    "f031"
+   ]
+  },
+  {
+   "id": "q049",
+   "cat": "category",
+   "q": "Am I a morning person?",
+   "kind": "thing",
+   "relevant": [
+    "f011"
+   ],
+   "acceptable": [
+    "f027"
+   ]
+  },
+  {
+   "id": "q050",
+   "cat": "category",
+   "q": "What is my role at the company?",
+   "kind": "role",
+   "relevant": [
+    "f020"
+   ],
+   "acceptable": [
+    "f001"
+   ]
+  },
+  {
+   "id": "q051",
+   "cat": "category",
+   "q": "Which office do I go to?",
+   "kind": "place",
+   "relevant": [
+    "f002"
+   ],
+   "acceptable": [
+    "f012"
+   ]
+  },
+  {
+   "id": "q052",
+   "cat": "category",
+   "q": "What kind of product is AQUA?",
+   "kind": "thing",
+   "relevant": [
+    "f015"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q053",
+   "cat": "category",
+   "q": "Who founded the business?",
+   "kind": "person",
+   "relevant": [
+    "f004"
+   ],
+   "acceptable": [
+    "f008"
+   ]
+  },
+  {
+   "id": "q054",
+   "cat": "category",
+   "q": "What is my daily routine like?",
+   "kind": "thing",
+   "relevant": [
+    "f011"
+   ],
+   "acceptable": [
+    "f012",
+    "f054"
+   ]
+  },
+  {
+   "id": "q055",
+   "cat": "category",
+   "q": "How do I get to work?",
+   "kind": "thing",
+   "relevant": [
+    "f012"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q056",
+   "cat": "category",
+   "q": "What programming language do I write in?",
+   "kind": "thing",
+   "relevant": [
+    "f013"
+   ],
+   "acceptable": [
+    "f035",
+    "f019"
+   ]
+  },
+  {
+   "id": "q057",
+   "cat": "category",
+   "q": "What is my sleep like?",
+   "kind": "thing",
+   "relevant": [
+    "f027"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q058",
+   "cat": "category",
+   "q": "Which meetings do I run?",
+   "kind": "thing",
+   "relevant": [
+    "f054"
+   ],
+   "acceptable": [
+    "f040"
+   ]
+  },
+  {
+   "id": "q059",
+   "cat": "category",
+   "q": "What is the health of the business?",
+   "kind": "thing",
+   "relevant": [
+    "f033"
+   ],
+   "acceptable": [
+    "f050",
+    "f047"
+   ]
+  },
+  {
+   "id": "q060",
+   "cat": "category",
+   "q": "Who is my design lead?",
+   "kind": "person",
+   "relevant": [
+    "f006"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q061",
+   "cat": "category",
+   "q": "What is the team size?",
+   "kind": "thing",
+   "relevant": [
+    "f053"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q062",
+   "cat": "category",
+   "q": "Where is the head office?",
+   "kind": "place",
+   "relevant": [
+    "f031"
+   ],
+   "acceptable": [
+    "f002"
+   ]
+  },
+  {
+   "id": "q063",
+   "cat": "category",
+   "q": "What database are we moving to?",
+   "kind": "thing",
+   "relevant": [
+    "f018"
+   ],
+   "acceptable": [
+    "f055"
+   ]
+  },
+  {
+   "id": "q064",
+   "cat": "category",
+   "q": "What is my educational background?",
+   "kind": "thing",
+   "relevant": [
+    "f051"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q065",
+   "cat": "category",
+   "q": "Which frontend framework do we run?",
+   "kind": "thing",
+   "relevant": [
+    "f019"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q066",
+   "cat": "category",
+   "q": "Who handles infrastructure?",
+   "kind": "person",
+   "relevant": [
+    "f028"
+   ],
+   "acceptable": [
+    "f049"
+   ]
+  },
+  {
+   "id": "q067",
+   "cat": "category",
+   "q": "What is blocking design?",
+   "kind": "thing",
+   "relevant": [
+    "f022"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q068",
+   "cat": "category",
+   "q": "What is our customer situation?",
+   "kind": "thing",
+   "relevant": [
+    "f021"
+   ],
+   "acceptable": [
+    "f050",
+    "f005"
+   ]
+  },
+  {
+   "id": "q069",
+   "cat": "category",
+   "q": "What am I personally coding?",
+   "kind": "thing",
+   "relevant": [
+    "f030"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q070",
+   "cat": "category",
+   "q": "Which shipping decision did we make?",
+   "kind": "thing",
+   "relevant": [
+    "f025"
+   ],
+   "acceptable": [
+    "f034"
+   ]
+  },
+  {
+   "id": "q071",
+   "cat": "multi",
+   "q": "Tell me about Priya.",
+   "kind": "person",
+   "relevant": [
+    "f006",
+    "f022"
+   ],
+   "acceptable": [
+    "f043"
+   ]
+  },
+  {
+   "id": "q072",
+   "cat": "multi",
+   "q": "Tell me about Nummo.",
+   "kind": "org",
+   "relevant": [
+    "f001",
+    "f021"
+   ],
+   "acceptable": [
+    "f029"
+   ]
+  },
+  {
+   "id": "q073",
+   "cat": "multi",
+   "q": "What do we know about Sam?",
+   "kind": "person",
+   "relevant": [
+    "f010",
+    "f038"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q074",
+   "cat": "multi",
+   "q": "What is happening with billing?",
+   "kind": "thing",
+   "relevant": [
+    "f016",
+    "f038"
+   ],
+   "acceptable": [
+    "f009"
+   ]
+  },
+  {
+   "id": "q075",
+   "cat": "multi",
+   "q": "What is the state of the Postgres migration?",
+   "kind": "thing",
+   "relevant": [
+    "f018",
+    "f049"
+   ],
+   "acceptable": [
+    "f055"
+   ]
+  },
+  {
+   "id": "q076",
+   "cat": "multi",
+   "q": "What are our deadlines?",
+   "kind": "time",
+   "relevant": [
+    "f017",
+    "f052"
+   ],
+   "acceptable": [
+    "f060",
+    "f045"
+   ]
+  },
+  {
+   "id": "q077",
+   "cat": "multi",
+   "q": "Who is on the team?",
+   "kind": "person",
+   "relevant": [
+    "f006",
+    "f007",
+    "f024"
+   ],
+   "acceptable": [
+    "f028",
+    "f056",
+    "f059"
+   ]
+  },
+  {
+   "id": "q078",
+   "cat": "multi",
+   "q": "What did we decide recently?",
+   "kind": "thing",
+   "relevant": [
+    "f025",
+    "f055"
+   ],
+   "acceptable": [
+    "f026",
+    "f034"
+   ]
+  },
+  {
+   "id": "q079",
+   "cat": "multi",
+   "q": "What are my habits?",
+   "kind": "thing",
+   "relevant": [
+    "f011",
+    "f012",
+    "f027"
+   ],
+   "acceptable": [
+    "f054"
+   ]
+  },
+  {
+   "id": "q080",
+   "cat": "multi",
+   "q": "What is blocked?",
+   "kind": "thing",
+   "relevant": [
+    "f022",
+    "f023"
+   ],
+   "acceptable": [
+    "f036"
+   ]
+  },
+  {
+   "id": "q081",
+   "cat": "multi",
+   "q": "Tell me about Karan.",
+   "kind": "person",
+   "relevant": [
+    "f024",
+    "f046"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q082",
+   "cat": "multi",
+   "q": "What is going on with the mobile app?",
+   "kind": "thing",
+   "relevant": [
+    "f010",
+    "f045"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q083",
+   "cat": "category",
+   "q": "What do we use for AI?",
+   "kind": "thing",
+   "relevant": [
+    "f037"
+   ],
+   "acceptable": [
+    "f015"
+   ]
+  },
+  {
+   "id": "q084",
+   "cat": "multi",
+   "q": "What is Meera working on?",
+   "kind": "thing",
+   "relevant": [
+    "f028",
+    "f049"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q085",
+   "cat": "multi",
+   "q": "Which things ship in September?",
+   "kind": "time",
+   "relevant": [
+    "f017",
+    "f060"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q086",
+   "cat": "multi",
+   "q": "Tell me about Rahul.",
+   "kind": "person",
+   "relevant": [
+    "f009",
+    "f041"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q087",
+   "cat": "multi",
+   "q": "What are our engineering decisions?",
+   "kind": "thing",
+   "relevant": [
+    "f055",
+    "f025"
+   ],
+   "acceptable": [
+    "f018",
+    "f037"
+   ]
+  },
+  {
+   "id": "q088",
+   "cat": "multi",
+   "q": "What is the security position?",
+   "kind": "thing",
+   "relevant": [
+    "f052",
+    "f059"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q089",
+   "cat": "multi",
+   "q": "What do I own personally?",
+   "kind": "thing",
+   "relevant": [
+    "f030",
+    "f020"
+   ],
+   "acceptable": [
+    "f054"
+   ]
+  },
+  {
+   "id": "q090",
+   "cat": "multi",
+   "q": "What is our funding history?",
+   "kind": "thing",
+   "relevant": [
+    "f042",
+    "f033"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q091",
+   "cat": "multi",
+   "q": "Who joined recently?",
+   "kind": "person",
+   "relevant": [
+    "f009",
+    "f032"
+   ],
+   "acceptable": [
+    "f043"
+   ]
+  },
+  {
+   "id": "q092",
+   "cat": "multi",
+   "q": "What is Dev doing?",
+   "kind": "thing",
+   "relevant": [
+    "f007",
+    "f036"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q093",
+   "cat": "multi",
+   "q": "What is our customer health?",
+   "kind": "thing",
+   "relevant": [
+    "f005",
+    "f050"
+   ],
+   "acceptable": [
+    "f021",
+    "f047"
+   ]
+  },
+  {
+   "id": "q094",
+   "cat": "category",
+   "q": "What did we reject?",
+   "kind": "thing",
+   "relevant": [
+    "f026"
+   ],
+   "acceptable": [
+    "f055"
+   ]
+  },
+  {
+   "id": "q095",
+   "cat": "multi",
+   "q": "What is done already?",
+   "kind": "thing",
+   "relevant": [
+    "f038",
+    "f057"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q096",
+   "cat": "temporal",
+   "q": "Where do I work now?",
+   "kind": "org",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [
+    "f004"
+   ]
+  },
+  {
+   "id": "q097",
+   "cat": "temporal",
+   "q": "What is my current city?",
+   "kind": "place",
+   "relevant": [
+    "f002"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q098",
+   "cat": "temporal",
+   "q": "Do I still own the parser?",
+   "kind": "thing",
+   "relevant": [
+    "f048"
+   ],
+   "acceptable": [
+    "f023"
+   ]
+  },
+  {
+   "id": "q099",
+   "cat": "temporal",
+   "q": "What language do I use these days?",
+   "kind": "thing",
+   "relevant": [
+    "f035"
+   ],
+   "acceptable": [
+    "f013"
+   ]
+  },
+  {
+   "id": "q100",
+   "cat": "temporal",
+   "q": "What is next Monday?",
+   "kind": "time",
+   "relevant": [
+    "f018"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q101",
+   "cat": "temporal",
+   "q": "What is coming up this month?",
+   "kind": "time",
+   "relevant": [
+    "f017"
+   ],
+   "acceptable": [
+    "f060",
+    "f052"
+   ]
+  },
+  {
+   "id": "q102",
+   "cat": "temporal",
+   "q": "What happened last month?",
+   "kind": "time",
+   "relevant": [
+    "f002"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q103",
+   "cat": "temporal",
+   "q": "What is the latest on pricing?",
+   "kind": "thing",
+   "relevant": [
+    "f025"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q104",
+   "cat": "temporal",
+   "q": "What did we do in 2024?",
+   "kind": "time",
+   "relevant": [
+    "f042"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q105",
+   "cat": "temporal",
+   "q": "What is due before the board meeting?",
+   "kind": "time",
+   "relevant": [
+    "f052"
+   ],
+   "acceptable": [
+    "f060"
+   ]
+  },
+  {
+   "id": "q106",
+   "cat": "temporal",
+   "q": "What happened in June?",
+   "kind": "time",
+   "relevant": [
+    "f050"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q107",
+   "cat": "temporal",
+   "q": "What happens every Thursday?",
+   "kind": "time",
+   "relevant": [
+    "f040"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q108",
+   "cat": "temporal",
+   "q": "What did I do last year?",
+   "kind": "time",
+   "relevant": [
+    "f035"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q109",
+   "cat": "temporal",
+   "q": "What is the newest thing about Priya?",
+   "kind": "person",
+   "relevant": [
+    "f022"
+   ],
+   "acceptable": [
+    "f006"
+   ]
+  },
+  {
+   "id": "q110",
+   "cat": "temporal",
+   "q": "What ships first, the eval harness or the migration?",
+   "kind": "thing",
+   "relevant": [
+    "f034"
+   ],
+   "acceptable": [
+    "f018"
+   ]
+  },
+  {
+   "id": "q111",
+   "cat": "temporal",
+   "q": "When did Rahul join?",
+   "kind": "time",
+   "relevant": [
+    "f009"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q112",
+   "cat": "temporal",
+   "q": "What slipped?",
+   "kind": "thing",
+   "relevant": [
+    "f045"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q113",
+   "cat": "temporal",
+   "q": "What did I hire and when?",
+   "kind": "time",
+   "relevant": [
+    "f032"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q114",
+   "cat": "temporal",
+   "q": "What is our most recent contract?",
+   "kind": "time",
+   "relevant": [
+    "f029"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q115",
+   "cat": "temporal",
+   "q": "What is the current beta date?",
+   "kind": "time",
+   "relevant": [
+    "f017"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q116",
+   "cat": "superseded",
+   "q": "Where am I employed?",
+   "kind": "org",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [],
+   "note": "f003 says Intercom and is superseded by f001"
+  },
+  {
+   "id": "q117",
+   "cat": "superseded",
+   "q": "Which company pays me?",
+   "kind": "org",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [],
+   "note": "outdated employer must rank below"
+  },
+  {
+   "id": "q118",
+   "cat": "superseded",
+   "q": "What is my employer today?",
+   "kind": "org",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [],
+   "note": "f003 is the trap"
+  },
+  {
+   "id": "q119",
+   "cat": "superseded",
+   "q": "Do I work at Intercom?",
+   "kind": "org",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [
+    "f003"
+   ],
+   "note": "the outdated fact is acceptable context, never the answer"
+  },
+  {
+   "id": "q120",
+   "cat": "superseded",
+   "q": "Who employs me right now?",
+   "kind": "org",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q121",
+   "cat": "superseded",
+   "q": "Which product do I run?",
+   "kind": "thing",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [
+    "f015"
+   ]
+  },
+  {
+   "id": "q122",
+   "cat": "superseded",
+   "q": "Am I still at my old job?",
+   "kind": "org",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [
+    "f003"
+   ]
+  },
+  {
+   "id": "q123",
+   "cat": "superseded",
+   "q": "Where does my salary come from?",
+   "kind": "org",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q124",
+   "cat": "superseded",
+   "q": "What is my present workplace?",
+   "kind": "place",
+   "relevant": [
+    "f002"
+   ],
+   "acceptable": [
+    "f001"
+   ]
+  },
+  {
+   "id": "q125",
+   "cat": "superseded",
+   "q": "Which office is current?",
+   "kind": "place",
+   "relevant": [
+    "f002"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q126",
+   "cat": "negation",
+   "q": "What do I no longer own?",
+   "kind": "thing",
+   "relevant": [
+    "f048"
+   ],
+   "acceptable": [
+    "f023"
+   ]
+  },
+  {
+   "id": "q127",
+   "cat": "negation",
+   "q": "What did we decide against?",
+   "kind": "thing",
+   "relevant": [
+    "f026"
+   ],
+   "acceptable": [
+    "f055"
+   ]
+  },
+  {
+   "id": "q128",
+   "cat": "negation",
+   "q": "Which database did we NOT choose?",
+   "kind": "thing",
+   "relevant": [
+    "f055"
+   ],
+   "acceptable": [],
+   "note": "Mongo is the rejected side of f055"
+  },
+  {
+   "id": "q129",
+   "cat": "negation",
+   "q": "Where do I not work anymore?",
+   "kind": "org",
+   "relevant": [
+    "f003"
+   ],
+   "acceptable": [
+    "f001"
+   ],
+   "note": "the superseded fact IS the answer here"
+  },
+  {
+   "id": "q130",
+   "cat": "negation",
+   "q": "What is not happening right now?",
+   "kind": "thing",
+   "relevant": [
+    "f023"
+   ],
+   "acceptable": [
+    "f026"
+   ]
+  },
+  {
+   "id": "q131",
+   "cat": "negation",
+   "q": "What did we turn down?",
+   "kind": "thing",
+   "relevant": [
+    "f026"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q132",
+   "cat": "negation",
+   "q": "Which relocation was refused?",
+   "kind": "place",
+   "relevant": [
+    "f026"
+   ],
+   "acceptable": [
+    "f002"
+   ]
+  },
+  {
+   "id": "q133",
+   "cat": "negation",
+   "q": "What is not my responsibility now?",
+   "kind": "thing",
+   "relevant": [
+    "f048"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q134",
+   "cat": "negation",
+   "q": "What is paused?",
+   "kind": "thing",
+   "relevant": [
+    "f023"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q135",
+   "cat": "negation",
+   "q": "Which option lost?",
+   "kind": "thing",
+   "relevant": [
+    "f055"
+   ],
+   "acceptable": [
+    "f026"
+   ]
+  },
+  {
+   "id": "q136",
+   "cat": "selfword",
+   "q": "Can you write me a python script?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": [],
+   "note": "NOTHING should come back — this exact query produced 7 of 9 noise lines in the rollout harness"
+  },
+  {
+   "id": "q137",
+   "cat": "selfword",
+   "q": "Could you explain how OAuth works?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q138",
+   "cat": "selfword",
+   "q": "What do you know about me?",
+   "kind": "thing",
+   "relevant": [
+    "f001",
+    "f004"
+   ],
+   "acceptable": [
+    "f002",
+    "f020"
+   ]
+  },
+  {
+   "id": "q139",
+   "cat": "selfword",
+   "q": "Can you remind me where I work?",
+   "kind": "org",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [
+    "f004"
+   ]
+  },
+  {
+   "id": "q140",
+   "cat": "selfword",
+   "q": "Would you summarise your understanding of my team?",
+   "kind": "person",
+   "relevant": [
+    "f006",
+    "f007"
+   ],
+   "acceptable": [
+    "f024",
+    "f028"
+   ]
+  },
+  {
+   "id": "q141",
+   "cat": "selfword",
+   "q": "Can you help me with your API?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q142",
+   "cat": "selfword",
+   "q": "Do you remember my co-founder?",
+   "kind": "person",
+   "relevant": [
+    "f008"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q143",
+   "cat": "selfword",
+   "q": "Can you fix your own bug?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q144",
+   "cat": "selfword",
+   "q": "What did you learn about Priya?",
+   "kind": "person",
+   "relevant": [
+    "f006"
+   ],
+   "acceptable": [
+    "f022",
+    "f043"
+   ]
+  },
+  {
+   "id": "q145",
+   "cat": "selfword",
+   "q": "Are you able to open your settings?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q146",
+   "cat": "selfword",
+   "q": "Tell me what you have on our stack.",
+   "kind": "thing",
+   "relevant": [
+    "f019"
+   ],
+   "acceptable": [
+    "f037"
+   ]
+  },
+  {
+   "id": "q147",
+   "cat": "selfword",
+   "q": "Can you run your tests for me?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q148",
+   "cat": "selfword",
+   "q": "Does your model know my city?",
+   "kind": "place",
+   "relevant": [
+    "f002"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q149",
+   "cat": "selfword",
+   "q": "Will you write your own documentation?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q150",
+   "cat": "selfword",
+   "q": "What is your read on our churn?",
+   "kind": "thing",
+   "relevant": [
+    "f005"
+   ],
+   "acceptable": [
+    "f050"
+   ]
+  },
+  {
+   "id": "q151",
+   "cat": "stopword",
+   "q": "What is the capital of France?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": [],
+   "note": "once matched a stored fact through the word 'the'"
+  },
+  {
+   "id": "q152",
+   "cat": "stopword",
+   "q": "Is the sky blue?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q153",
+   "cat": "stopword",
+   "q": "What are the best restaurants in the area?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q154",
+   "cat": "stopword",
+   "q": "How do volcanoes form?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q155",
+   "cat": "stopword",
+   "q": "What is the meaning of the word ontology?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q156",
+   "cat": "stopword",
+   "q": "Are the Olympics on this year?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q157",
+   "cat": "stopword",
+   "q": "What is the difference between a hash map and a b-tree?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q158",
+   "cat": "stopword",
+   "q": "Who won the match in the final?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q159",
+   "cat": "stopword",
+   "q": "Is the weather going to be good?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q160",
+   "cat": "stopword",
+   "q": "What are the rules of the game?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q161",
+   "cat": "unknown",
+   "q": "What is my dog's name?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q162",
+   "cat": "unknown",
+   "q": "Where did I go to primary school?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q163",
+   "cat": "unknown",
+   "q": "What is my partner's birthday?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q164",
+   "cat": "unknown",
+   "q": "Which car do I drive?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q165",
+   "cat": "unknown",
+   "q": "What is my blood type?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q166",
+   "cat": "unknown",
+   "q": "Where did I holiday last summer?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q167",
+   "cat": "unknown",
+   "q": "What is my favourite film?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q168",
+   "cat": "unknown",
+   "q": "Which gym do I go to?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q169",
+   "cat": "unknown",
+   "q": "What is my mother's maiden name?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q170",
+   "cat": "unknown",
+   "q": "How tall am I?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q171",
+   "cat": "unknown",
+   "q": "What is my landlord called?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q172",
+   "cat": "unknown",
+   "q": "Which bank do I use?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q173",
+   "cat": "unknown",
+   "q": "What was my first job?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q174",
+   "cat": "unknown",
+   "q": "Who is my dentist?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q175",
+   "cat": "unknown",
+   "q": "What is my shoe size?",
+   "kind": "none",
+   "relevant": [],
+   "acceptable": []
+  },
+  {
+   "id": "q176",
+   "cat": "direct",
+   "q": "Who is Neha?",
+   "kind": "person",
+   "relevant": [
+    "f056"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q177",
+   "cat": "direct",
+   "q": "Who is Farah?",
+   "kind": "person",
+   "relevant": [
+    "f059"
+   ],
+   "acceptable": [
+    "f052"
+   ]
+  },
+  {
+   "id": "q178",
+   "cat": "direct",
+   "q": "What did we raise in 2024?",
+   "kind": "thing",
+   "relevant": [
+    "f042"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q179",
+   "cat": "direct",
+   "q": "Which customer signed in Q2?",
+   "kind": "org",
+   "relevant": [
+    "f021"
+   ],
+   "acceptable": [
+    "f029"
+   ]
+  },
+  {
+   "id": "q180",
+   "cat": "direct",
+   "q": "What is the churn window?",
+   "kind": "time",
+   "relevant": [
+    "f005"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q181",
+   "cat": "direct",
+   "q": "Which service does billing need?",
+   "kind": "thing",
+   "relevant": [
+    "f016"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q182",
+   "cat": "direct",
+   "q": "Who came from a design agency?",
+   "kind": "person",
+   "relevant": [
+    "f043"
+   ],
+   "acceptable": [
+    "f006"
+   ]
+  },
+  {
+   "id": "q183",
+   "cat": "direct",
+   "q": "What is fourteen months?",
+   "kind": "thing",
+   "relevant": [
+    "f033"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q184",
+   "cat": "direct",
+   "q": "Which two engineers were hired?",
+   "kind": "person",
+   "relevant": [
+    "f032"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q185",
+   "cat": "direct",
+   "q": "What is the primary provider?",
+   "kind": "org",
+   "relevant": [
+    "f037"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q186",
+   "cat": "category",
+   "q": "How big is the company?",
+   "kind": "thing",
+   "relevant": [
+    "f053"
+   ],
+   "acceptable": [
+    "f032"
+   ]
+  },
+  {
+   "id": "q187",
+   "cat": "category",
+   "q": "What do I do all day?",
+   "kind": "thing",
+   "relevant": [
+    "f054"
+   ],
+   "acceptable": [
+    "f011",
+    "f030"
+   ]
+  },
+  {
+   "id": "q188",
+   "cat": "category",
+   "q": "Where does the team sit?",
+   "kind": "place",
+   "relevant": [
+    "f031"
+   ],
+   "acceptable": [
+    "f002",
+    "f046"
+   ]
+  },
+  {
+   "id": "q189",
+   "cat": "category",
+   "q": "What is our go-to-market metric?",
+   "kind": "thing",
+   "relevant": [
+    "f047"
+   ],
+   "acceptable": []
+  },
+  {
+   "id": "q190",
+   "cat": "category",
+   "q": "Which infrastructure change is coming?",
+   "kind": "thing",
+   "relevant": [
+    "f018"
+   ],
+   "acceptable": [
+    "f049",
+    "f055"
+   ]
+  },
+  {
+   "id": "q191",
+   "cat": "multi",
+   "q": "Give me everything about the substrate migration.",
+   "kind": "thing",
+   "relevant": [
+    "f018",
+    "f055"
+   ],
+   "acceptable": [
+    "f049",
+    "f034"
+   ]
+  },
+  {
+   "id": "q192",
+   "cat": "multi",
+   "q": "Summarise the design workstream.",
+   "kind": "thing",
+   "relevant": [
+    "f006",
+    "f022"
+   ],
+   "acceptable": [
+    "f040",
+    "f043"
+   ]
+  },
+  {
+   "id": "q193",
+   "cat": "multi",
+   "q": "What should I worry about?",
+   "kind": "thing",
+   "relevant": [
+    "f005",
+    "f050"
+   ],
+   "acceptable": [
+    "f033",
+    "f022"
+   ]
+  },
+  {
+   "id": "q194",
+   "cat": "multi",
+   "q": "What is shipping and when?",
+   "kind": "time",
+   "relevant": [
+    "f017",
+    "f025"
+   ],
+   "acceptable": [
+    "f045",
+    "f034"
+   ]
+  },
+  {
+   "id": "q195",
+   "cat": "multi",
+   "q": "Who does what on the team?",
+   "kind": "person",
+   "relevant": [
+    "f006",
+    "f010",
+    "f024"
+   ],
+   "acceptable": [
+    "f041",
+    "f056"
+   ]
+  },
+  {
+   "id": "q196",
+   "cat": "temporal",
+   "q": "What changed most recently?",
+   "kind": "thing",
+   "relevant": [
+    "f002"
+   ],
+   "acceptable": [
+    "f025"
+   ]
+  },
+  {
+   "id": "q197",
+   "cat": "temporal",
+   "q": "What is true today that was not before?",
+   "kind": "thing",
+   "relevant": [
+    "f001"
+   ],
+   "acceptable": [
+    "f003"
+   ]
+  },
+  {
+   "id": "q198",
+   "cat": "temporal",
+   "q": "What is the next deadline?",
+   "kind": "time",
+   "relevant": [
+    "f017"
+   ],
+   "acceptable": [
+    "f052",
+    "f060"
+   ]
+  },
+  {
+   "id": "q199",
+   "cat": "temporal",
+   "q": "What is happening this week?",
+   "kind": "time",
+   "relevant": [
+    "f040"
+   ],
+   "acceptable": [
+    "f018"
+   ]
+  },
+  {
+   "id": "q200",
+   "cat": "temporal",
+   "q": "What is the state of things right now?",
+   "kind": "thing",
+   "relevant": [
+    "f025"
+   ],
+   "acceptable": [
+    "f018",
+    "f022"
+   ]
+  }
+ ]
+}

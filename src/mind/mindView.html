@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AQUA — Mind View</title>
+<style>
+  /* Matches platform.css direction: ink/aqua palette, Inter/Newsreader */
+  :root{
+    --ink-950:#0a0f14;--ink-900:#0f1720;--ink-800:#16212e;--ink-700:#22303f;
+    --ink-400:#5b6b7b;--ink-200:#9fb0c0;--ink-100:#dbe4ec;
+    --aqua-500:#22d3ee;--aqua-600:#0ea5c4;--aqua-glow:rgba(34,211,238,.14);
+    --ok:#34d399;--warn:#fbbf24;--bad:#f87171;
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--ink-950);color:var(--ink-100);font:14px/1.55 Inter,system-ui,sans-serif;padding:28px}
+  h1{font-family:Newsreader,Georgia,serif;font-weight:500;font-size:26px;letter-spacing:.2px}
+  h1 span{color:var(--aqua-500)}
+  .sub{color:var(--ink-400);margin:4px 0 22px;font-size:13px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+  .card{background:var(--ink-900);border:1px solid var(--ink-800);border-radius:12px;padding:16px 18px}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--aqua-500);margin-bottom:10px;font-weight:600}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--ink-800);font-size:13px}
+  .row:last-child{border-bottom:0}
+  .k{color:var(--ink-200)}
+  .v{color:var(--ink-100);text-align:right;max-width:60%;overflow-wrap:anywhere}
+  .conf{display:inline-block;min-width:44px;text-align:center;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:600;margin-left:8px}
+  .c-hi{background:rgba(52,211,153,.15);color:var(--ok)}
+  .c-md{background:rgba(251,191,36,.14);color:var(--warn)}
+  .c-lo{background:rgba(248,113,113,.14);color:var(--bad)}
+  .pill{display:inline-block;background:var(--ink-800);border:1px solid var(--ink-700);border-radius:999px;padding:2px 10px;margin:2px 4px 2px 0;font-size:12px;color:var(--ink-200)}
+  .pill b{color:var(--aqua-500);font-weight:600}
+  .bar{height:6px;background:var(--ink-800);border-radius:4px;overflow:hidden;margin-top:4px}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--aqua-600),var(--aqua-500))}
+  .tl{font-size:12.5px;color:var(--ink-200);padding:4px 0 4px 14px;border-left:2px solid var(--ink-700);margin-left:4px}
+  .tl b{color:var(--ink-100);font-weight:500}
+  .tl .t{color:var(--ink-400);font-size:11px}
+  .muted{color:var(--ink-400);font-size:12.5px}
+  .err{color:var(--bad)}
+  input{background:var(--ink-900);border:1px solid var(--ink-700);color:var(--ink-100);border-radius:8px;padding:7px 12px;font:inherit;width:280px}
+  button{background:var(--aqua-600);border:0;color:#04212a;font-weight:600;border-radius:8px;padding:7px 16px;font:inherit;cursor:pointer;margin-left:8px}
+  button:hover{background:var(--aqua-500);box-shadow:0 0 18px var(--aqua-glow)}
+  .top{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+  .lock{opacity:.75}.lock::after{content:" 🔒";font-size:11px}
+</style>
+</head>
+<body>
+<h1>AQUA <span>Mind View</span></h1>
+<p class="sub">Internal developer panel — the live cognitive model. Enabled via <code>AQUA_MIND_VIEW=1</code>. Never user-facing.</p>
+<div class="top">
+  <input id="conv" placeholder="conversationId (dev fallback, blank = session user)"/>
+  <button onclick="load()">Load mind</button>
+  <span id="meta" class="muted"></span>
+</div>
+<div id="root" class="grid"><div class="muted">No model loaded.</div></div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const confCls=c=>c>=.75?'c-hi':c>=.5?'c-md':'c-lo';
+const pct=c=>Math.round(c*100)+'%';
+const fmtV=v=>typeof v==='object'?JSON.stringify(v):String(v);
+const ago=ts=>{if(!ts)return'';const m=(Date.now()-ts)/60000;return m<60?Math.round(m)+'m ago':m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago'};
+
+function beliefRows(list){
+  if(!list?.length) return '<div class="muted">Nothing inferred yet.</div>';
+  return list.map(b=>`<div class="row"><span class="k${b.locked?' lock':''}">${esc(b.key.replace(/_/g,' ').replace('tech:',''))}</span>
+    <span class="v">${esc(fmtV(b.value))}<span class="conf ${confCls(b.confidence)}">${pct(b.confidence)}</span></span></div>`).join('');
+}
+
+function card(title,body){return `<div class="card"><h2>${title}</h2>${body}</div>`}
+
+async function load(){
+  const conv=$('#conv').value.trim();
+  const url='/api/aqua/mind'+(conv?`?conversationId=${encodeURIComponent(conv)}`:'');
+  $('#root').innerHTML='<div class="muted">Loading…</div>';
+  let d;
+  try{const r=await fetch(url);d=await r.json();if(!d.success)throw new Error(d.error)}
+  catch(e){$('#root').innerHTML=`<div class="err">${esc(e.message)}</div>`;return}
+
+  $('#meta').textContent=`owner=${d.ownerId} · ${d.turnCount} turns observed · updated ${ago(d.updatedAt)}`;
+
+  const goals=(d.goals||[]).slice(0,8).map(g=>`
+    <div class="row"><span class="k">${esc(g.title)}</span>
+      <span class="v">${esc(g.status)}<span class="conf ${confCls(g.confidence)}">${pct(g.confidence)}</span></span></div>
+    <div class="bar"><i style="width:${Math.round((g.progress||0)*100)}%"></i></div>`).join('')||'<div class="muted">No goals tracked.</div>';
+
+  const w=d.working||{};
+  const working=[
+    (w.focusRanked||[]).map(f=>`<span class="pill">${esc(f.topic)} <b>${f.weight}</b></span>`).join('')||'<div class="muted">No focus yet.</div>',
+    (w.blockers||[]).length?`<div class="row"><span class="k">Blocked on</span><span class="v">${esc(w.blockers.map(b=>b.text).join('; '))}</span></div>`:'',
+    (w.deadlines||[]).length?`<div class="row"><span class="k">Deadlines</span><span class="v">${esc(w.deadlines.map(x=>x.label).join('; '))}</span></div>`:'',
+    (w.openQuestions||[]).length?`<div class="row"><span class="k">Open questions</span><span class="v">${esc(w.openQuestions.map(x=>x.text).join('; '))}</span></div>`:'',
+  ].join('');
+
+  const preds=(d.predictions||[]).map(p=>`
+    <div class="row"><span class="k">${esc(p.label)}</span><span class="v"><span class="conf ${confCls(p.probability)}">p=${p.probability}</span></span></div>
+    <div class="muted" style="padding-left:2px">${esc(p.basis)}</div>`).join('')||'<div class="muted">No predictions yet.</div>';
+
+  const eps=(d.episodes||[]).map(e=>`
+    <div class="row"><span class="k">${esc(e.title)}</span><span class="v">${e.status==='active'?'<b style="color:var(--ok)">active</b>':esc(e.outcome||'closed')}</span></div>`).join('')||'<div class="muted">No episodes.</div>';
+
+  const tl=(d.timeline||[]).slice(0,14).map(e=>`
+    <div class="tl"><b>${esc(e.kind.replace(/_/g,' '))}</b> — ${esc(e.subject)} <span class="t">${ago(e.ts)}</span></div>`).join('')||'<div class="muted">Empty timeline.</div>';
+
+  const refl=(d.reflections||[]).slice(-3).reverse().map(r=>`
+    <div class="tl"><b>turn ${r.turnCount}</b> — promoted ${r.promoted.length}, archived ${r.archived.length}, weakened ${r.weakened.length} <span class="t">${ago(r.ts)}</span></div>`).join('')||'<div class="muted">No reflections yet.</div>';
+
+  $('#root').innerHTML=[
+    card('Identity',beliefRows(d.identity)),
+    card('Communication',beliefRows(d.communication)),
+    card('Preferences',beliefRows(d.preferences)),
+    card('Knowledge',beliefRows(d.knowledge)),
+    card('Decision & Behavior',beliefRows([...(d.decision||[]),...(d.behavior||[])])),
+    card('Goals',goals),
+    card('Working memory',working),
+    card('Predictions',preds),
+    card('Episodes',eps),
+    card(`Knowledge graph`,`<div class="muted">${d.graph.nodeCount} nodes · ${d.graph.edgeCount} edges — <code>GET /api/aqua/mind/graph</code></div>`),
+    card('Timeline',tl),
+    card('Reflection history',refl),
+  ].join('');
+}
+</script>
+</body>
+</html>

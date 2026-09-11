@@ -1,0 +1,316 @@
+{
+  "id": "forensic-edited",
+  "version": "v1",
+  "about": "Labelled statement PAIRS for the forensics `edited_number` rule. Built after FINDING-2 measured 90 alert-severity findings from 20 ordinary ledger rows. Precision is what matters: this rule accuses a document of being tampered with, so a false positive is louder than a missed one.",
+  "limitations": [
+    "SYNTHETIC, and the per-item-table class is deliberately over-represented \u2014 it is the class that fires.",
+    "Scores the TEXTUAL predicate only. The engine also gates on cross-FILE provenance first; FINDING-2's false positives all passed that gate legitimately, so the text is where the error is.",
+    "One annotator. 'edited' means the two statements are the SAME claim with one figure changed \u2014 not merely that they disagree, which is contradiction-core.v1's question.",
+    "Real tampering in the wild is rarer and subtler than these fixtures. High precision here is necessary, not sufficient."
+  ],
+  "cases": [
+    {
+      "id": "e001",
+      "a": "Total contract value for VendorCo is 4200000 as agreed.",
+      "b": "Total contract value for VendorCo is 9100000 as agreed.",
+      "label": "edited",
+      "cat": "genuine",
+      "why": "one figure altered in an identical sentence"
+    },
+    {
+      "id": "e002",
+      "a": "The invoice total is 88400 including tax.",
+      "b": "The invoice total is 12750 including tax.",
+      "label": "edited",
+      "cat": "genuine",
+      "why": "same invoice line, different total"
+    },
+    {
+      "id": "e003",
+      "a": "Payment of 250000 was received on 2026-03-04.",
+      "b": "Payment of 750000 was received on 2026-03-04.",
+      "label": "edited",
+      "cat": "genuine",
+      "why": "same payment, different amount"
+    },
+    {
+      "id": "e004",
+      "a": "Headcount at year end was 42 employees.",
+      "b": "Headcount at year end was 61 employees.",
+      "label": "edited",
+      "cat": "genuine",
+      "why": "same measure, altered"
+    },
+    {
+      "id": "e005",
+      "a": "The penalty clause caps liability at 500000 dollars.",
+      "b": "The penalty clause caps liability at 50000 dollars.",
+      "label": "edited",
+      "cat": "genuine",
+      "why": "a decimal place moved"
+    },
+    {
+      "id": "e006",
+      "a": "Acme holds 34 percent of the outstanding shares.",
+      "b": "Acme holds 51 percent of the outstanding shares.",
+      "label": "edited",
+      "cat": "genuine",
+      "why": "control threshold altered"
+    },
+    {
+      "id": "e007",
+      "a": "The loan matures on 2027-06-30 at 4500000.",
+      "b": "The loan matures on 2027-06-30 at 8500000.",
+      "label": "edited",
+      "cat": "genuine",
+      "why": "same maturity, different principal"
+    },
+    {
+      "id": "e008",
+      "a": "Deposit received was 15000 on signing.",
+      "b": "Deposit received was 95000 on signing.",
+      "label": "edited",
+      "cat": "genuine",
+      "why": "same deposit, altered"
+    },
+    {
+      "id": "e009",
+      "a": "Item 0 for VendorCo recorded value 1000 on 2026-01-10.",
+      "b": "Item 1 for VendorCo recorded value 1001 on 2026-02-11.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "different line items in one ledger \u2014 both true"
+    },
+    {
+      "id": "e010",
+      "a": "Item 1 for VendorCo recorded value 1001 on 2026-02-11.",
+      "b": "Item 2 for VendorCo recorded value 1002 on 2026-03-12.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "different line items in one ledger \u2014 both true"
+    },
+    {
+      "id": "e011",
+      "a": "Item 2 for VendorCo recorded value 1002 on 2026-03-12.",
+      "b": "Item 3 for VendorCo recorded value 1003 on 2026-04-13.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "different line items in one ledger \u2014 both true"
+    },
+    {
+      "id": "e012",
+      "a": "Item 3 for VendorCo recorded value 1003 on 2026-04-13.",
+      "b": "Item 4 for VendorCo recorded value 1004 on 2026-05-14.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "different line items in one ledger \u2014 both true"
+    },
+    {
+      "id": "e013",
+      "a": "Item 4 for VendorCo recorded value 1004 on 2026-05-14.",
+      "b": "Item 5 for VendorCo recorded value 1005 on 2026-06-15.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "different line items in one ledger \u2014 both true"
+    },
+    {
+      "id": "e014",
+      "a": "Item 5 for VendorCo recorded value 1005 on 2026-06-15.",
+      "b": "Item 6 for VendorCo recorded value 1006 on 2026-01-16.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "different line items in one ledger \u2014 both true"
+    },
+    {
+      "id": "e015",
+      "a": "Item 6 for VendorCo recorded value 1006 on 2026-01-16.",
+      "b": "Item 7 for VendorCo recorded value 1007 on 2026-02-17.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "different line items in one ledger \u2014 both true"
+    },
+    {
+      "id": "e016",
+      "a": "Item 7 for VendorCo recorded value 1007 on 2026-02-17.",
+      "b": "Item 8 for VendorCo recorded value 1008 on 2026-03-18.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "different line items in one ledger \u2014 both true"
+    },
+    {
+      "id": "e017",
+      "a": "Item 8 for VendorCo recorded value 1008 on 2026-03-18.",
+      "b": "Item 9 for VendorCo recorded value 1009 on 2026-04-10.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "different line items in one ledger \u2014 both true"
+    },
+    {
+      "id": "e018",
+      "a": "Item 9 for VendorCo recorded value 1009 on 2026-04-10.",
+      "b": "Item 10 for VendorCo recorded value 1010 on 2026-05-11.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "different line items in one ledger \u2014 both true"
+    },
+    {
+      "id": "e019",
+      "a": "Invoice 1042 for Acme totals 3200 net.",
+      "b": "Invoice 1043 for Acme totals 4750 net.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "two different invoices"
+    },
+    {
+      "id": "e020",
+      "a": "Sprint 4 closed 18 tickets this cycle.",
+      "b": "Sprint 5 closed 22 tickets this cycle.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "two different sprints"
+    },
+    {
+      "id": "e021",
+      "a": "Region 1 reported 4200 active users.",
+      "b": "Region 2 reported 9100 active users.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "two different regions"
+    },
+    {
+      "id": "e022",
+      "a": "Batch 7 yielded 2400 units at spec.",
+      "b": "Batch 8 yielded 3100 units at spec.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "two different batches"
+    },
+    {
+      "id": "e023",
+      "a": "Row 12 shows a balance of 15000 owing.",
+      "b": "Row 13 shows a balance of 21000 owing.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "two different rows"
+    },
+    {
+      "id": "e024",
+      "a": "Q1 revenue was 1100000 before costs.",
+      "b": "Q2 revenue was 1450000 before costs.",
+      "label": "ordinary",
+      "cat": "per-item-table",
+      "why": "two different quarters"
+    },
+    {
+      "id": "e025",
+      "a": "Total contract value for VendorCo is 4200000 as agreed.",
+      "b": "Total contract value for VendorCo is 4200000 as agreed.",
+      "label": "ordinary",
+      "cat": "restatement",
+      "why": "byte-identical, two sources"
+    },
+    {
+      "id": "e026",
+      "a": "The invoice total is 88400 including tax.",
+      "b": "The invoice total is 88400 including tax.",
+      "label": "ordinary",
+      "cat": "restatement",
+      "why": "the same figure twice"
+    },
+    {
+      "id": "e027",
+      "a": "Total contract value for VendorCo is 4200000 as agreed.",
+      "b": "VendorCo was incorporated in Delaware in 2019.",
+      "label": "ordinary",
+      "cat": "different-shape",
+      "why": "unrelated sentences"
+    },
+    {
+      "id": "e028",
+      "a": "The invoice total is 88400 including tax.",
+      "b": "Payment terms are net 30 from receipt.",
+      "label": "ordinary",
+      "cat": "different-shape",
+      "why": "different shape entirely"
+    },
+    {
+      "id": "e029",
+      "a": "Headcount at year end was 42 employees.",
+      "b": "The office lease runs to 2029.",
+      "label": "ordinary",
+      "cat": "different-shape",
+      "why": "different subject and shape"
+    },
+    {
+      "id": "e030",
+      "label": "ordinary",
+      "cat": "per-item-table-single",
+      "a": "Item 5 for VendorCo recorded value 1000.",
+      "b": "Item 6 for VendorCo recorded value 1000.",
+      "why": "THE PRECISION HOLE THE FIX DOES NOT CLOSE. Two adjacent table rows whose only differing number is the row index. Every per-item-table case in v1 differs in two or four positions, so a one-differing-number row was never tested and a fix tuned to 'exactly one number changed' passes the v1 dataset while still accusing this shape. Recorded as a known false positive rather than discovered later in production."
+    },
+    {
+      "id": "e031",
+      "label": "edited",
+      "cat": "genuine-multi",
+      "a": "Payment of 250000 was received on 2026-03-04.",
+      "b": "Payment of 750000 was received on 2026-09-04.",
+      "why": "THE RECALL COST OF THE FIX, stated up front. A doctored payment where both the amount and the date moved. All eight genuine cases in v1 change exactly one number, so 'exactly one' scored a perfect 1.000 against a dataset that could not contradict it. This case can, and it is expected to FAIL after the fix."
+    },
+    {
+      "id": "e032",
+      "label": "edited",
+      "cat": "genuine-multi",
+      "a": "Acme holds 34 percent worth 500000 dollars.",
+      "b": "Acme holds 51 percent worth 900000 dollars.",
+      "why": "Second multi-number doctoring, so the recall cost is a measured rate rather than a single anecdote that could be dismissed as unrepresentative."
+    },
+    {
+      "id": "e033",
+      "label": "edited",
+      "cat": "genuine",
+      "a": "The retainer was 24000 per quarter.",
+      "b": "The retainer was 96000 per quarter.",
+      "why": "CONTROL for the two cases above: a single-number doctoring in the same money shape. If this fails alongside them the fix broke the main path; if it passes, the loss is specifically multi-number edits and nothing wider."
+    },
+    {
+      "id": "e034",
+      "label": "ordinary",
+      "cat": "per-item-table-single",
+      "a": "Section 3 of the agreement covers indemnity.",
+      "b": "Section 4 of the agreement covers indemnity.",
+      "why": "SECOND instance of the e030 hole, in a different surface \u2014 section numbering rather than table rows. Included even though it FAILS, because one failing case can be dismissed as unrepresentative and two make the residual hole a rate. Structural numbering that increments is common in contracts, so this shape will occur in real documents."
+    },
+    {
+      "id": "e035",
+      "label": "ordinary",
+      "cat": "different-shape",
+      "a": "The agreed fee is 500000 payable on completion.",
+      "b": "The agreed fee is 500000, payable upon completion.",
+      "why": "Same figure, reworded. Originally filed as `restatement`, which was wrong: an existing dataset invariant defines restatement as a===b \u2014 identical text is corroboration, not a reworded twin. The shape gate is what must reject this pair, so `different-shape` is the category that actually describes the guard it provides."
+    },
+    {
+      "id": "e036",
+      "label": "ordinary",
+      "cat": "different-shape",
+      "a": "The deposit of 15000 was returned in full.",
+      "b": "A deposit of 15000 was returned to the client.",
+      "why": "Same number, different sentence. Keeps the shape gate honest: the rule must require an identical mask, not merely a shared figure, or every document mentioning the same amount becomes a tampering alert."
+    }
+  ],
+  "census": {
+    "cases": 36,
+    "by_label": {
+      "edited": 11,
+      "ordinary": 25
+    },
+    "by_cat": {
+      "different-shape": 5,
+      "genuine": 9,
+      "genuine-multi": 2,
+      "per-item-table": 16,
+      "per-item-table-single": 2,
+      "restatement": 2
+    }
+  }
+}

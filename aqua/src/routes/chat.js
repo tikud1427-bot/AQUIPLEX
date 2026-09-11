@@ -382,6 +382,9 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // semanticFactScores never rejects — it resolves to null when embeddings
   // are unavailable, and the retriever then behaves exactly as pre-Phase-2.
   const semanticScoresP = semanticFactScores(memoryOwner, userMessage);
+  // E7 canonical semantic lane: fact.id is the retrieval identity, so dense
+  // scores can be consumed directly by Context Engine candidate.semanticId.
+  const canonicalSemanticP = Brain.canonicalSemanticScores(memoryOwner, userMessage);
   // Phase D — file content recall: same seam, same contract. Resolves to []
   // when embeddings are unavailable or no uploaded content matches.
   const fileChunksP = semanticFileChunks(memoryOwner, userMessage);
@@ -612,7 +615,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
           //
           // The OTHER consumer is correct and untouched: line ~505 passes the
           // same map to `memoryRetrieve`, which ranks LTM facts by LTM key.
-          semanticScores: null,
+          semanticClaimScores: await canonicalSemanticP,
           activeProjectId: workspaceId ?? null,
         })
       : floorRetrieve(memoryOwner, userMessage, { limit: 8 });

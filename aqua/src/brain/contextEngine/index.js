@@ -29,9 +29,10 @@
  * scoring/selection it delegates to is pure.
  */
 import { assembleContext } from './assembler.js';
-import { tokensOf } from './scorer.js';
+import { tokensOf, scoreCandidate } from './scorer.js';
 import { analyseQuestion, factAffinity, MIN_AFFINITY } from '../../pic/questionShape.js';
 import { brainEnabled } from '../worldModel/schema.js';
+import { lanesFromCandidates, reciprocalRankFusion, rerankWithFusion } from './retrievalV3.js';
 
 const metrics = {
   calls: 0, v2Assemblies: 0, floorFallbacks: 0, errors: 0,
@@ -45,6 +46,14 @@ const metrics = {
 /** V2 assembly is opt-in on top of the read-side switch. */
 export function contextV2Enabled() {
   return brainEnabled() && String(process.env.AQUA_CONTEXT_V2 ?? '').toLowerCase() === 'on';
+}
+
+export function retrievalV3Enabled() {
+  return brainEnabled() && String(process.env.AQUA_RETRIEVAL_V3 ?? '').toLowerCase() === 'on';
+}
+
+function scoreForCandidate(candidate, ctx) {
+  return scoreCandidate(candidate, ctx).score;
 }
 
 /**
@@ -73,7 +82,19 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
     metrics.candidatesSeen += candidates.length;
 
     const ctx = buildSignalBag(deps, ownerId, query, candidates, opts);
-    const assembled = assembleContext(candidates, ctx, { limit, charBudget });
+    const scoredCandidates = retrievalV3Enabled()
+      ? candidates.map(c => ({ ...c, score: scoreForCandidate(c, ctx) }))
+      : candidates;
+    const fused = retrievalV3Enabled()
+      ? reciprocalRankFusion(lanesFromCandidates(scoredCandidates).map(l => l.rows), { limit: Math.max(limit * 4, 32) })
+      : [];
+    const rankedCandidates = retrievalV3Enabled()
+      ? rerankWithFusion(scoredCandidates, fused)
+      : candidates;
+    const assembled = assembleContext(
+      rankedCandidates.map(c => ({ ...c, selectionScore: retrievalV3Enabled() ? c.fusedScore : c.score })),
+      ctx, { limit, charBudget },
+    );
 
     metrics.v2Assemblies += 1;
     metrics.itemsSelected += assembled.items.length;
@@ -122,16 +143,20 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
       const key = `fact:${it.id}`;
       byId.set(key, normFact(it.id, it.statement, {
         confidence: it.confidence, citations: it.citations,
+        // Preserve the retrieval lane that produced the floor item. Dense
+        // candidates were previously relabelled as lexical here, making RRF
+        // unable to see the independent dense vote it was designed to fuse.
+        lanes: [laneForVia(it.via)],
         trusted: it.trusted, disputed: it.disputed, stale: it.stale,
         via: it.via, sourceType: 'document',
         entityIds: [], timestamp: null, semanticId: it.id,
       }));
     } else if (it.kind === 'entity') {
       byId.set(`entity:${it.nodeId}`, normEntity(it.nodeId, it.entity, {
-        entityType: it.entityType, aliases: it.aliases, files: it.files,
+        entityType: it.entityType, aliases: it.aliases, files: it.files, lanes: ['entity'],
       }));
     } else if (it.kind === 'event') {
-      byId.set(`event:${it.statement}`, normEvent(it.statement, it.statement, { timestamp: it.timestamp, certainty: it.certainty }));
+      byId.set(`event:${it.statement}`, normEvent(it.statement, it.statement, { timestamp: it.timestamp, certainty: it.certainty, lanes: ['timeline'] }));
     }
   }
 
@@ -164,7 +189,7 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
       byId.set(ekey, normEntity(ent.id, ent.label, {
         entityType: ent.data?.entityType, aliases: ent.data?.aliases ?? [],
         files: G.neighbors(ownerId, ent.id, { type: 'file', edgeType: 'mentions' }).map(({ node }) => node.label),
-        hops: 0,
+        hops: 0, lanes: ['graph'],
       }));
     } else {
       byId.get(ekey).hops = 0;
@@ -177,7 +202,13 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
       for (const { node } of G.neighbors(ownerId, ent.id, { type: 'fact', edgeType: 'about' })) {
         const factId = node.id.replace(/^fact:/, '');
         const key = `fact:${factId}`;
-        if (byId.has(key)) { byId.get(key).hops = Math.min(byId.get(key).hops ?? 9, 1); byId.get(key).entityIds.push(ent.id); continue; }
+        if (byId.has(key)) {
+          const existing = byId.get(key);
+          existing.hops = Math.min(existing.hops ?? 9, 1);
+          existing.entityIds.push(ent.id);
+          existing.lanes = Array.from(new Set([...(existing.lanes ?? []), 'graph']));
+          continue;
+        }
         const fact = ES.getFact(ownerId, factId);
         if (!fact) continue;
         if (fact.archived) continue;
@@ -188,13 +219,36 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
           confidence: fact.confidence,
           citations: formatCitation ? evidence.map(formatCitation) : [],
           via: `graph: about ${ent.label}`, sourceType: sourceTypeOf(node),
-          entityIds: [ent.id], hops: 1, timestamp: fact.createdAt ?? null, semanticId: factId,
+          entityIds: [ent.id], hops: 1, timestamp: fact.createdAt ?? null, semanticId: factId, lanes: ['graph'],
         }));
       }
     }
   }
 
-  return [...byId.values()];
+  return [...byId.values()].map(c => ({
+    ...c,
+    lanes: Array.from(new Set([...(c.lanes ?? []), laneForCandidate(c)])),
+  }));
+}
+
+function laneForVia(via) {
+  const value = String(via ?? '').toLowerCase();
+  if (value.startsWith('dense')) return 'dense';
+  if (value.startsWith('graph')) return 'graph';
+  if (value.startsWith('polarity')) return 'structured';
+  if (value.startsWith('lexical')) return 'lexical';
+  return 'unknown';
+}
+
+function laneForCandidate(c) {
+  const via = String(c?.via ?? '').toLowerCase();
+  if (via.startsWith('dense')) return 'dense';
+  if (via.startsWith('graph')) return 'graph';
+  if (via.startsWith('polarity')) return 'structured';
+  if (via.startsWith('lexical')) return 'lexical';
+  if (c?.kind === 'entity') return 'entity';
+  if (c?.kind === 'event') return 'timeline';
+  return 'unknown';
 }
 
 /**

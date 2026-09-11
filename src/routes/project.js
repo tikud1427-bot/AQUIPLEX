@@ -1,0 +1,460 @@
+/**
+ * AQUA Project Intelligence Engine — HTTP Routes
+ *
+ * POST   /project/workspace                — create workspace
+ * POST   /project/workspace/:id/files      — upload + ingest files
+ * GET    /project/workspace/:id            — status + stats
+ * GET    /project/workspace/:id/files      — list indexed files
+ * GET    /project/workspace/:id/graph      — dependency graph
+ * POST   /project/workspace/:id/query      — query index
+ * DELETE /project/workspace/:id            — delete workspace
+ * GET    /project/workspaces               — list all workspaces
+ *
+ * File upload format (JSON body):
+ *   { files: [{ path: string, content: string, encoding?: 'base64' }] } — raw files array
+ *   { zip: "<base64>" }                                                 — base64-encoded ZIP
+ *
+ * encoding: 'base64' marks binary document formats (.pdf/.docx/.pptx/.xlsx)
+ * — content is their raw bytes, base64-encoded, not UTF-8 text. Omit it
+ * (or omit the field) for ordinary text/code files — unchanged, exactly
+ * as before. See project/fileIngester.js + project/documentParser.js.
+ */
+import express from 'express';
+import { createWorkspace, getWorkspace, updateWorkspace, deleteWorkspace, listWorkspaces } from '../project/workspaceManager.js';
+import { extractZipBounded }                                                               from '../upload/boundedParse.js';
+import { runWorkspaceIngestion }                                                           from '../project/ingestionPipeline.js';
+import { getIndex, getIndexStats, queryIndex }                                             from '../project/projectIndex.js';
+import { serializeGraph, detectCycles }                                                    from '../project/dependencyGraph.js';
+import { formatPatch }                                                                     from '../project/patchGenerator.js';
+import {
+  proposeEdit, getProposal, listProposals, applyProposal, rejectProposal, revertProposal,
+  serializeProposal,
+} from '../project/editEngine.js';
+import { proposeEditWithRepair } from '../project/autonomousEdit.js';
+import { createCheckpoint, restoreCheckpoint, listCheckpoints, deleteCheckpoint } from '../project/checkpointEngine.js';
+import { whoImports, whatImports } from '../project/dependencyGraph.js';
+import { serializeCallGraph, getCallGraphStats, whoCalls, whatCalls, impactOf, traceFrom, getDefinitions } from '../project/callGraph.js';
+
+import { resolveOwner, rememberWorkspace } from '../memory/engine.js';
+import { ownerForUser }                     from '../memory/ownerResolver.js';
+
+const router = express.Router();
+
+// ── Ownership guard (404-uniform, conversations.js / artifacts.js pattern) ────
+//
+// Workspaces recorded an ownerId at creation (resolveOwner below) but nothing
+// ever checked it: every read, the file-upload write, and DELETE were guarded
+// only by "does this id exist", so any authenticated caller could read, write
+// to, or delete any workspace by guessing its UUID. Same IDOR class already
+// fixed for conversations (Phase 1) and artifacts; this closes it for
+// /project/*.
+//
+// Applied through router.param('id') rather than 21 per-handler calls: one
+// hook, and every current AND FUTURE route carrying :id is covered by
+// construction. A route using a different param name would bypass it — the
+// coverage test in routes/tests/projectRoutes.test.js walks the router stack
+// and fails if any :id route is left unprotected.
+//
+// Contract is unchanged: an unowned workspace returns exactly what a missing
+// one returns — same 404, same body — so the guard is not an existence oracle.
+// Dev/standalone (no platform session → req.aquaUserId undefined) enforces
+// nothing, exactly as before. Legacy workspaces with a null ownerId become
+// invisible to authenticated callers rather than readable by all of them,
+// matching the rule conversations.js already set.
+
+function assertWorkspaceOwner(req, res, id) {
+  const workspace = getWorkspace(id);
+  if (!workspace) {
+    res.status(404).json({ success: false, error: 'Workspace not found' });
+    return false;
+  }
+  const scopeUser = req.aquaUserId ?? null;
+  if (scopeUser && workspace.ownerId !== ownerForUser(scopeUser)) {
+    res.status(404).json({ success: false, error: 'Workspace not found' });
+    return false;
+  }
+  return true;
+}
+
+router.param('id', (req, res, next, id) => {
+  if (!assertWorkspaceOwner(req, res, id)) return; // response already sent
+  next();
+});
+
+// ── Create workspace ──────────────────────────────────────────────────────────
+
+router.post('/workspace', (req, res) => {
+  const { name, description } = req.body ?? {};
+  const ownerId = resolveOwner({ userId: req.aquaUserId ?? null, conversationId: req.body?.conversationId ?? null });
+  const workspace = createWorkspace({ name, description, ownerId });
+  rememberWorkspace(ownerId, workspace);
+  res.json({
+    success:   true,
+    workspace: { id: workspace.id, createdAt: workspace.createdAt, indexStatus: workspace.indexStatus },
+  });
+});
+
+// ── Upload + ingest files ─────────────────────────────────────────────────────
+
+router.post('/workspace/:id/files', async (req, res) => {
+  const { id } = req.params;
+  const workspace = getWorkspace(id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+
+  const { files, zip } = req.body ?? {};
+  let rawFiles = [];
+
+  if (zip) {
+    try {
+      rawFiles = await extractZipBounded(zip);
+    } catch (err) {
+      return res.status(400).json({ success: false, error: err.message });
+    }
+  } else if (Array.isArray(files)) {
+    rawFiles = files;
+  } else {
+    return res.status(400).json({
+      success: false,
+      error:   'Provide "files": [{ path, content }] or "zip": "<base64>"',
+    });
+  }
+
+  // Day 5: the pipeline (ingest → index → summarize → graph → analyze →
+  // persist) is now the shared runWorkspaceIngestion() in
+  // project/ingestionPipeline.js — identical behavior, one implementation,
+  // also used by the unified /upload endpoint. Error semantics preserved:
+  // any failure marks the workspace 'failed' (retryable) and returns
+  // structured JSON.
+  try {
+    const result = await runWorkspaceIngestion(id, rawFiles);
+    res.json({ success: true, workspaceId: id, ...result });
+  } catch (err) {
+    if (err.code === 'NO_VALID_FILES') {
+      return res.status(400).json({ success: false, error: err.message });
+    }
+    res.status(500).json({
+      success: false,
+      workspaceId: id,
+      error: `Indexing failed: ${err.message}. The workspace was marked failed — you can retry the upload.`,
+    });
+  }
+});
+
+// ── Workspace status ──────────────────────────────────────────────────────────
+
+router.get('/workspace/:id', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  res.json({ success: true, workspace: { ...workspace, indexStats: getIndexStats(req.params.id) } });
+});
+
+// ── File list ─────────────────────────────────────────────────────────────────
+
+router.get('/workspace/:id/files', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  res.json({ success: true, workspaceId: req.params.id, files: workspace.files });
+});
+
+// ── Workspace overview (cached intelligence) ──────────────────────────────────
+// Generated once at index time; this endpoint only serves the cache.
+// Overview cannot be regenerated post-upload (raw content is not persisted).
+
+router.get('/workspace/:id/overview', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+
+  if (!workspace.overview) {
+    return res.status(200).json({
+      success:  true,
+      workspaceId: req.params.id,
+      overview: null,
+      note: workspace.indexStatus === 'indexed'
+        ? 'This workspace was indexed before overview generation existed. Re-upload to generate one.'
+        : `Workspace not yet indexed (status: ${workspace.indexStatus}).`,
+    });
+  }
+  res.json({ success: true, workspaceId: req.params.id, overview: workspace.overview });
+});
+
+// ── Dependency graph ──────────────────────────────────────────────────────────
+
+router.get('/workspace/:id/graph', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  const graph  = serializeGraph(req.params.id);
+  const cycles = detectCycles(req.params.id);
+  res.json({ success: true, workspaceId: req.params.id, graph, cycles });
+});
+
+// ── Call graph (function → function) ──────────────────────────────────────────
+
+// GET /project/workspace/:id/call-graph  → serialized caller map + stats
+router.get('/workspace/:id/call-graph', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  const graph = serializeCallGraph(req.params.id);
+  res.json({ success: true, workspaceId: req.params.id, built: !!graph, graph, stats: getCallGraphStats(req.params.id) });
+});
+
+// GET /project/workspace/:id/callers?symbol=NAME&depth=8
+//   directCallers — "who calls this?"
+//   impact        — "what breaks if I modify this?" (transitive callers)
+//   trace         — "trace this request" (forward call chain)
+router.get('/workspace/:id/callers', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+
+  const symbol = req.query.symbol;
+  if (!symbol) return res.status(400).json({ success: false, error: 'Query param ?symbol= required' });
+
+  const depth = Math.min(Math.max(parseInt(req.query.depth, 10) || 8, 1), 20);
+  res.json({
+    success:       true,
+    workspaceId:   req.params.id,
+    symbol,
+    defined:       getDefinitions(req.params.id, symbol),
+    directCallers: whoCalls(req.params.id, symbol),
+    callees:       whatCalls(req.params.id, symbol),
+    impact:        impactOf(req.params.id, symbol, { maxDepth: depth }),
+    trace:         traceFrom(req.params.id, symbol, { maxDepth: depth }),
+  });
+});
+
+// ── Index query ───────────────────────────────────────────────────────────────
+
+router.post('/workspace/:id/query', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+
+  const { symbol, keyword, importModule, filePath } = req.body ?? {};
+  const results = queryIndex(req.params.id, { symbol, keyword, importModule, filePath });
+
+  res.json({
+    success:     true,
+    workspaceId: req.params.id,
+    results: {
+      files:   results.files.map(f => ({ path: f.path, lang: f.lang, summary: f.summary, functions: f.functions })),
+      symbols: results.symbols,
+      imports: results.imports,
+    },
+  });
+});
+
+// ── List all workspaces ───────────────────────────────────────────────────────
+
+router.get('/workspaces', (req, res) => {
+  // Scoped like GET /conversations and GET /artifacts: a platform session sees
+  // only its own workspaces. Sessionless (dev/standalone) is unchanged and
+  // still sees everything the local instance holds.
+  const scopeUser = req.aquaUserId ?? null;
+  const owner     = scopeUser ? ownerForUser(scopeUser) : null;
+  const workspaces = listWorkspaces().filter(ws => !owner || ws.ownerId === owner);
+  res.json({
+    success:    true,
+    count:      workspaces.length,
+    workspaces: workspaces.map(ws => ({
+      id:          ws.id,
+      projectType: ws.projectType,
+      indexStatus: ws.indexStatus,
+      fileCount:   ws.files?.length ?? 0,
+      createdAt:   ws.createdAt,
+      meta:        ws.meta,
+    })),
+  });
+});
+
+// ── Delete workspace ──────────────────────────────────────────────────────────
+
+router.delete('/workspace/:id', (req, res) => {
+  const deleted = deleteWorkspace(req.params.id);
+  if (!deleted) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  res.json({ success: true, deleted: req.params.id });
+});
+
+// ── File content fetch ────────────────────────────────────────────────────────
+// GET /project/workspace/:id/file-content?path=src/foo.js
+
+router.get('/workspace/:id/file-content', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+
+  const { path: filePath } = req.query;
+  if (!filePath) return res.status(400).json({ success: false, error: 'Query param ?path= required' });
+
+  // Day 4 fix: the in-memory index HAS full content (index.byPath entries carry
+  // it — retrieval and patch editing both depend on that). Serve it when the
+  // index is live so file navigation ("open this referenced file") works.
+  // Persisted workspace records still store metadata only, unchanged.
+  const index = getIndex(req.params.id);
+  const entry = index?.byPath.get(filePath);
+  if (entry) {
+    return res.json({
+      success:     true,
+      workspaceId: req.params.id,
+      file: {
+        path:      filePath,
+        lang:      entry.lang,
+        size:      entry.size,
+        summary:   entry.summary,
+        content:   entry.content,
+        functions: entry.functions ?? [],
+        exports:   entry.exports ?? [],
+        imports:   entry.imports ?? [],
+        importedBy: whoImports(req.params.id, filePath),
+        importsFiles: whatImports(req.params.id, filePath),
+      },
+    });
+  }
+
+  const meta = workspace.files?.find(f => f.path === filePath);
+  if (!meta) {
+    return res.status(404).json({ success: false, error: `File '${filePath}' not in index` });
+  }
+  // Index gone (server restarted) — metadata only.
+  res.json({
+    success:     true,
+    workspaceId: req.params.id,
+    file:        meta,
+    note:        'Index is not live (server restarted since upload). Re-upload to restore file content.',
+  });
+});
+
+// ── Patch proposal ────────────────────────────────────────────────────────────
+// POST /project/workspace/:id/patch
+// Body: { description, reasoning, changes: [{ file, original?, modified, explanation }] }
+
+router.post('/workspace/:id/patch', (req, res) => {
+  const workspace = getWorkspace(req.params.id);
+  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+
+  const { description, reasoning, changes } = req.body ?? {};
+  if (!Array.isArray(changes) || !changes.length) {
+    return res.status(400).json({
+      success: false,
+      error: 'Body must include { description, reasoning, changes: [...] }',
+    });
+  }
+
+  const patch = formatPatch({ description, reasoning, changes });
+  res.json({ success: true, workspaceId: req.params.id, patch });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Day 4 — Patch-First Editing
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Propose an edit ───────────────────────────────────────────────────────────
+// POST /project/workspace/:id/edit   Body: { instruction }
+// Runs the full pipeline: locate → LLM minimal edits → in-memory apply →
+// diff → static verify → related-file recommendations. NOTHING is applied.
+
+router.post('/workspace/:id/edit', async (req, res) => {
+  const { instruction, repair, maxAttempts } = req.body ?? {};
+  if (!instruction || typeof instruction !== 'string' || !instruction.trim()) {
+    return res.status(400).json({ success: false, error: 'Body must include a non-empty "instruction" string' });
+  }
+  try {
+    // Phase 4a — opt-in autonomous repair. Default (no `repair`) is the exact
+    // single-shot behavior as before. With repair:true, static-verification
+    // failures are fed back to the model and corrected within a bounded loop.
+    if (repair) {
+      const outcome = await proposeEditWithRepair({
+        workspaceId: req.params.id,
+        instruction: instruction.trim(),
+        maxAttempts: Number.isInteger(maxAttempts) ? maxAttempts : undefined,
+      });
+      if (!outcome.proposal) {
+        return res.status(422).json({ success: false, error: 'No usable patch could be produced.', attempts: outcome.attempts });
+      }
+      return res.json({
+        success: true, workspaceId: req.params.id,
+        proposal: serializeProposal(outcome.proposal),
+        repair: { converged: outcome.converged, repaired: outcome.repaired, attemptCount: outcome.attemptCount, attempts: outcome.attempts },
+      });
+    }
+
+    const proposal = await proposeEdit({ workspaceId: req.params.id, instruction: instruction.trim() });
+    res.json({ success: true, workspaceId: req.params.id, proposal: serializeProposal(proposal) });
+  } catch (err) {
+    const status = err.code === 'NO_WORKSPACE' ? 404
+                 : err.code === 'NOT_INDEXED' || err.code === 'NO_TARGETS' || err.code === 'BAD_EDIT_PLAN' || err.code === 'ALL_OPS_FAILED' ? 422
+                 : 500;
+    console.error(`[EDIT] proposal failed workspace=${req.params.id}:`, err.message);
+    res.status(status).json({ success: false, error: err.message, code: err.code ?? 'EDIT_FAILED', failedOperations: err.failedOperations ?? [] });
+  }
+});
+
+// ── List / fetch proposals ────────────────────────────────────────────────────
+
+router.get('/workspace/:id/edits', (req, res) => {
+  res.json({ success: true, workspaceId: req.params.id, proposals: listProposals(req.params.id) });
+});
+
+router.get('/workspace/:id/edit/:proposalId', (req, res) => {
+  const p = getProposal(req.params.id, req.params.proposalId);
+  if (!p) return res.status(404).json({ success: false, error: 'Proposal not found' });
+  res.json({ success: true, workspaceId: req.params.id, proposal: serializeProposal(p) });
+});
+
+// ── Apply (safe, atomic, conflict-checked) ────────────────────────────────────
+
+router.post('/workspace/:id/edit/:proposalId/apply', (req, res) => {
+  // Phase 4a — opt-in: snapshot the workspace before applying so a bad apply is
+  // rollback-able at the workspace level (beyond single-proposal revert).
+  let checkpoint = null;
+  if (req.body?.checkpoint) {
+    const cp = createCheckpoint(req.params.id, { label: `pre-apply ${req.params.proposalId}` });
+    if (cp.ok) checkpoint = cp.checkpoint;
+  }
+  const result = applyProposal(req.params.id, req.params.proposalId);
+  if (!result.ok) {
+    return res.status(result.conflicts ? 409 : 400).json({
+      success: false, error: result.error,
+      ...(result.conflicts ? { conflicts: result.conflicts, suggestion: result.suggestion } : {}),
+    });
+  }
+  res.json({ success: true, workspaceId: req.params.id, proposal: result.proposal, indexStats: result.indexStats, ...(checkpoint ? { checkpoint } : {}) });
+});
+
+// ── Checkpoints (workspace-level recovery, Phase 4a) ──────────────────────────
+
+router.post('/workspace/:id/checkpoint', (req, res) => {
+  const result = createCheckpoint(req.params.id, { label: req.body?.label });
+  if (!result.ok) return res.status(result.error === 'Workspace not found' ? 404 : 400).json({ success: false, error: result.error });
+  res.json({ success: true, workspaceId: req.params.id, checkpoint: result.checkpoint });
+});
+
+router.get('/workspace/:id/checkpoints', (req, res) => {
+  res.json({ success: true, workspaceId: req.params.id, checkpoints: listCheckpoints(req.params.id) });
+});
+
+router.post('/workspace/:id/checkpoint/:checkpointId/restore', (req, res) => {
+  const result = restoreCheckpoint(req.params.id, req.params.checkpointId);
+  if (!result.ok) return res.status(result.error === 'Checkpoint not found' ? 404 : 400).json({ success: false, error: result.error });
+  res.json({ success: true, workspaceId: req.params.id, restored: result.restored, indexStats: result.indexStats });
+});
+
+router.delete('/workspace/:id/checkpoint/:checkpointId', (req, res) => {
+  const result = deleteCheckpoint(req.params.id, req.params.checkpointId);
+  if (!result.ok) return res.status(404).json({ success: false, error: result.error });
+  res.json({ success: true, workspaceId: req.params.id, deleted: result.deleted });
+});
+
+// ── Reject ────────────────────────────────────────────────────────────────────
+
+router.post('/workspace/:id/edit/:proposalId/reject', (req, res) => {
+  const result = rejectProposal(req.params.id, req.params.proposalId);
+  if (!result.ok) return res.status(400).json({ success: false, error: result.error });
+  res.json({ success: true, workspaceId: req.params.id, proposal: result.proposal });
+});
+
+// ── Revert an applied proposal ────────────────────────────────────────────────
+
+router.post('/workspace/:id/edit/:proposalId/revert', (req, res) => {
+  const result = revertProposal(req.params.id, req.params.proposalId);
+  if (!result.ok) return res.status(400).json({ success: false, error: result.error });
+  res.json({ success: true, workspaceId: req.params.id, proposal: result.proposal });
+});
+
+export default router;

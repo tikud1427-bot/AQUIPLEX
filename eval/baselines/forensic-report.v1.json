@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-30T16:33:33.926Z",
+  "node": "v22.22.2",
+  "suiteFingerprint": "ffb96f5ef9cb1316",
+  "caseCount": 36,
+  "note": "The OTHER half of the edited_number rule. forensic-edited grades _looksEditedForTests(a, b) and names its scope in its own title \u2014 'the textual half'. This lane seeds all 36 labelled pairs into one owner across two files and reads the findings back out of the real forensicReport, covering what that suite cannot see: masking, slot bucketing, the cross-file condition, the identical-representation skip.\n\nWHY IT EXISTS. The edited_number grouping was rewritten from an every-pair scan into slot buckets \u2014 quadratic to linear, 179,700 -> 7,500 comparisons at 600 facts \u2014 and all twelve metrics in forensic-edited.v1 sat perfectly still, because that suite never runs the loop. Correctness had to be shown with a hand-built snapshot in a scratch file. This is that snapshot, promoted to a gated instrument.\n\nTHE HEADLINE RESULT: every shared metric is IDENTICAL to forensic-edited.v1 \u2014 precision, recall, f1, all three counts, all four false_fire categories. The plumbing is faithful to the predicate. No pair the predicate fires on is lost by the grouping, and none is spuriously added. That equality is the finding, and a future divergence between the two baselines is the alarm.\n\nn_report_findings (17) is corpus-level, not per-pair. The 36 cases share one owner deliberately \u2014 one owner per pair would make every group size two and never exercise the bucketing this lane exists to cover \u2014 so statements from different cases can also meet each other. Eleven of the seventeen are the labelled pairs; the rest are cross-case. A change that starts emitting spurious accusations moves this count even when every labelled pair still scores correctly, which no per-pair verdict would catch.\n\nA pair counts as FIRED when some emitted finding names both of its statements \u2014 what a user would be shown, not an internal boolean.\n\nRegenerate with: npm run eval:gate -- forensic-report --update",
+  "coverage": {
+    "total": 36,
+    "executed": 36,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "precision": 0.8181818181818182,
+    "recall": 0.8181818181818182,
+    "f1": 0.8181818181818182,
+    "n_true_positives": 9,
+    "n_false_positives": 2,
+    "n_false_negatives": 2,
+    "false_fire_different_shape": 0,
+    "false_fire_per_item_table": 0,
+    "false_fire_per_item_table_single": 1,
+    "false_fire_restatement": 0,
+    "n_edited_pairs": 11,
+    "n_ordinary_pairs": 25,
+    "n_report_findings": 17
+  }
+}

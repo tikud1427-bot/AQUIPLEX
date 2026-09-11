@@ -1,0 +1,145 @@
+{
+  "id": "extraction-prompt",
+  "version": 1,
+  "about": "Worked examples for the E6 extraction contract. These serve two jobs at once: they are the few-shot examples embedded in the prompt, and they are the parse fixtures the contract is tested against. Keeping one set means a change to the expected shape cannot pass the tests while the prompt still teaches the old shape.",
+  "asOf": "2026-08-23T00:00:00.000Z",
+  "examples": [
+    {
+      "id": "fx-employment",
+      "segment": "I run product at Nummo, a fintech in Bangalore.",
+      "why": "The canonical self-disclosure. Three claims from one sentence \u2014 employer, role, and the company's location \u2014 which is the point of a semantic extractor over a regex: one sentence is not one claim. The role literal stays as written ('runs product') rather than being normalised to 'head of product': rule 7 in the same prompt forbids adding what is probably also true, and an example that embellishes teaches the model to embellish.",
+      "claims": [
+        {
+          "subject": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Nummo"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "I run product at Nummo"
+        },
+        {
+          "subject": "self",
+          "predicate": "role_is",
+          "object": {
+            "literal": "runs product"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "I run product at Nummo"
+        },
+        {
+          "subject": "Nummo",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Bangalore"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "Nummo, a fintech in Bangalore"
+        }
+      ]
+    },
+    {
+      "id": "fx-supersession",
+      "segment": "I stopped working at Intercom last month because I want to focus entirely on Nummo.",
+      "why": "The blueprint's own worked example. A negated employment with a closing boundary, plus an intent \u2014 and the intent must NOT be recorded as a fact. `valid_to` is relative because 'last month' is not a date; inventing one would be the exact 'do not convert uncertainty into fact' failure.",
+      "claims": [
+        {
+          "subject": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Intercom"
+          },
+          "polarity": "negated",
+          "modality": "fact",
+          "validTo": "last month",
+          "timePrecision": "relative",
+          "statementText": "I stopped working at Intercom last month"
+        },
+        {
+          "subject": "self",
+          "predicate": "plans_to",
+          "object": {
+            "literal": "focus entirely on Nummo"
+          },
+          "polarity": "asserted",
+          "modality": "intent",
+          "timePrecision": "none",
+          "statementText": "I want to focus entirely on Nummo"
+        }
+      ]
+    },
+    {
+      "id": "fx-negation",
+      "segment": "Dev isn't on the platform team anymore.",
+      "why": "Polarity is the claim. Dropping the negation would store the opposite of what was said, which is worse than storing nothing at all.",
+      "claims": [
+        {
+          "subject": "Dev",
+          "predicate": "member_of",
+          "object": {
+            "entity": "platform team"
+          },
+          "polarity": "negated",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "Dev isn't on the platform team anymore"
+        }
+      ]
+    },
+    {
+      "id": "fx-hypothetical",
+      "segment": "If we hired two more engineers, could we ship sooner?",
+      "why": "A question containing a hypothetical. Nothing here is asserted about the world, and an extractor that records 'we hired two more engineers' has manufactured a fact from a conditional. The correct output is NO CLAIMS.",
+      "claims": []
+    },
+    {
+      "id": "fx-quote",
+      "segment": "Priya said she wants to own onboarding.",
+      "why": "Reported speech. The user is not claiming Priya owns onboarding, nor that the user intends it \u2014 modality `quote` keeps the attribution honest and stops the claim being read as the user's own intent.",
+      "claims": [
+        {
+          "subject": "Priya",
+          "predicate": "plans_to",
+          "object": {
+            "literal": "own onboarding"
+          },
+          "polarity": "asserted",
+          "modality": "quote",
+          "timePrecision": "none",
+          "statementText": "Priya said she wants to own onboarding"
+        }
+      ]
+    },
+    {
+      "id": "fx-temporal",
+      "segment": "The migration starts next Monday.",
+      "why": "A dated event with no named person. `relative` precision because 'next Monday' resolves only against the turn's timestamp, and resolution is PR-7's job, not the model's \u2014 asking the model to compute a date invites it to guess one.",
+      "claims": [
+        {
+          "subject": "the migration",
+          "predicate": "has_status",
+          "object": {
+            "literal": "starts next Monday"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "validFrom": "next Monday",
+          "timePrecision": "relative",
+          "statementText": "The migration starts next Monday"
+        }
+      ]
+    },
+    {
+      "id": "fx-request",
+      "segment": "Can you write me a python script?",
+      "why": "A request to AQUA is not information about the user's world. The gate should never have sent this, and if it does the extractor must still return nothing rather than inventing a preference for Python.",
+      "claims": []
+    }
+  ]
+}

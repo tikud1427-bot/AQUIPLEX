@@ -24,8 +24,7 @@
 
 import { GoogleGenAI } from '@google/genai';
 import {
-  getCandidateModels, markModelWorking, markModelUnavailable, markModelTempFailed,
-} from './modelRegistry.js';
+  getCandidateModels, markModelWorking, markModelUnavailable, markModelTempFailed, pinCandidates } from './modelRegistry.js';
 import { classifyProviderError, retryAfterMs } from './providerErrors.js';
 
 // ── Key management ────────────────────────────────────────────────────────────
@@ -106,11 +105,25 @@ function toContents(messages) {
  *   actually selected. Omitted entirely → field is not sent to the API.
  * @returns {Promise<{ text: string, truncated: boolean, finishReason: string }>}
  */
-export async function generateGemini(systemPrompt, messages, signal, maxTokens) {
+/**
+ * @param {object} [opts] E6/PR-5b — additive, and inert when omitted.
+ *   `opts.model`       pin to exactly this model, or throw
+ *                      MODEL_PIN_UNAVAILABLE. Never silently substituted.
+ *   `opts.temperature` sent only when supplied, so an omitted value leaves
+ *                      the request bytes identical to before this change.
+ *   The return gains `model`, naming which model actually answered. Additive:
+ *   every existing caller destructures { text, truncated, finishReason }.
+ *   Without it a run cannot be attributed — disqualifying for a measurement,
+ *   and invisible in the old return shape.
+ *   STREAMING IS DELIBERATELY UNTOUCHED. Extraction never streams, and the
+ *   stream paths carry their own truncation and abort handling; widening the
+ *   change to reach them would grow the risk envelope for no caller.
+ */
+export async function generateGemini(systemPrompt, messages, signal, maxTokens, opts = {}) {
   const keys = getKeys();
   if (!keys.length) throw new Error('No Gemini keys configured');
 
-  const candidates = getCandidateModels('gemini');
+  const candidates = pinCandidates(getCandidateModels('gemini'), opts.model ?? null, 'gemini');
   if (!candidates.length) throw Object.assign(new Error('No Gemini models currently available (cooling down or deprecated)'), { code: 'NO_CANDIDATE_MODELS' });
 
   let lastError;
@@ -145,6 +158,7 @@ export async function generateGemini(systemPrompt, messages, signal, maxTokens) 
             config: {
               ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
               ...(capTokens ? { maxOutputTokens: capTokens } : {}),
+              ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
             },
           } : {}),
         });
@@ -173,14 +187,14 @@ export async function generateGemini(systemPrompt, messages, signal, maxTokens) 
           if (!text.trim()) throw new Error('INVALID_RESPONSE'); // nothing usable came back — genuine failure
           console.log(`[GEMINI] model=${modelId} hit maxTokens=${capTokens} cap — returning partial as successful completion`);
           markModelWorking('gemini', modelId);
-          return { text, truncated: true, finishReason: 'length' };
+          return { text, truncated: true, finishReason: 'length', model: modelId };
         }
 
         if (!text) throw new Error('INVALID_RESPONSE');
 
         markModelWorking('gemini', modelId);
         console.log(`[GEMINI] model=${modelId} success key=...${key.slice(-4)}`);
-        return { text, truncated: false, finishReason: 'stop' };
+        return { text, truncated: false, finishReason: 'stop', model: modelId };
 
       } catch (err) {
         // TIMEOUT comes from our AbortController — propagate immediately,

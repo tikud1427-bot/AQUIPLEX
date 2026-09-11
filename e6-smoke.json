@@ -1,0 +1,100 @@
+{
+  "cases": 20,
+  "baseline": {
+    "overall_strict_accuracy": 0.18,
+    "detection_recall": 0.71875,
+    "subject_recall": 0.5568862275449101,
+    "predicate_accuracy": 0,
+    "fidelity_accuracy": 0.6467065868263473,
+    "silence_on_negatives": 0.9,
+    "false_positives": 4,
+    "detection_decision": 0.5333333333333333,
+    "detection_identity": 0.85,
+    "detection_modality": 0.72,
+    "detection_negation": 0.5,
+    "detection_people": 0.95,
+    "detection_task": 0.6666666666666666,
+    "detection_temporal": 0.64,
+    "positives": 160,
+    "negatives": 40,
+    "labelled_claims": 167
+  },
+  "current": {
+    "overall_strict_accuracy": 0,
+    "detection_recall": 0.7,
+    "subject_recall": 0.55,
+    "predicate_accuracy": 0,
+    "fidelity_accuracy": 0.7,
+    "silence_on_negatives": 0,
+    "false_positives": 0,
+    "detection_identity": 0.7,
+    "positives": 20,
+    "negatives": 0,
+    "labelled_claims": 20
+  },
+  "e6": {
+    "overall_strict_accuracy": 0,
+    "detection_recall": 0.9,
+    "subject_recall": 0,
+    "predicate_accuracy": 0.65,
+    "fidelity_accuracy": 0.85,
+    "silence_on_negatives": 0,
+    "false_positives": 0,
+    "detection_identity": 0.9,
+    "positives": 20,
+    "negatives": 0,
+    "labelled_claims": 20
+  },
+  "verdict": {
+    "checks": [
+      {
+        "name": "precision",
+        "got": 1,
+        "need": 0.85,
+        "pass": true
+      },
+      {
+        "name": "recall",
+        "got": 0.9,
+        "need": 0.7,
+        "pass": true
+      },
+      {
+        "name": "negation",
+        "got": 0,
+        "need": 0.95,
+        "pass": false
+      }
+    ],
+    "regressions": [
+      {
+        "metric": "subject_recall",
+        "before": 0.5568862275449101,
+        "after": 0
+      },
+      {
+        "metric": "silence_on_negatives",
+        "before": 0.9,
+        "after": 0
+      }
+    ],
+    "gatePassed": false,
+    "promote": false
+  },
+  "attributable": true,
+  "models": [
+    "openai/gpt-oss-120b"
+  ],
+  "stats": {
+    "called": 20,
+    "cached": 0,
+    "errors": 0,
+    "models": [
+      "openai/gpt-oss-120b"
+    ],
+    "discardedByGate": {
+      "2": 2,
+      "contract": 1
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-30T12:19:40.629Z",
+  "node": "v22.22.2",
+  "suiteFingerprint": "ce5b0decb21c4ef9",
+  "caseCount": 200,
+  "note": "Baseline for gate-core: the production candidate gate over the 200 labelled segments in extraction-core.v1 (160 claim-bearing, 40 not), asking only whether a segment is ADMITTED \u2014 not whether the extractor then reads it correctly.\n\ngate_recall 0.99375 is the metric that matters: a HARD CEILING on E6, because a rejected segment reaches no extractor at all. gate_precision is the extraction bill, not a quality score. The two are never combined.\n\nREGENERATED, CAUSE TRACED. This file had reported the same unexplained improvement on every run for three sessions (gate_precision 0.9034 -> 0.9086, n_false_admits 17 -> 16) and was deliberately left stale until someone could say why. The headline understated it: twenty segments changed ROUTE.\n  n_via_cue_proper_noun     45 -> 29\n  n_via_declarative_intent  61 -> 57\n  n_via_entity_extractor    70 -> 89\nCause: the third-person subject fix in conversationEntities.js. Tier 2 required a copula, so people who DO things ('Sam finished the billing refactor', 'The team chose React over Vue') were invisible to the entity extractor and fell through to the proper-noun cue. They now resolve at filter 1. Recall did not move; this is a re-attribution plus one fewer false admit.\n\n\u26a0\ufe0f WHAT THE IMPROVING HEADLINE HID. gateSegment runs filter 1 (entity-extractor) BEFORE the isRequestOrQuestion guard, so a question containing a recognisable entity is admitted before the guard that exists to reject questions ever runs. A better entity extractor therefore drove more traffic through the route that skips it. THREE false admits arrive this way, all generic knowledge requests ('What is the capital of France?'). Net precision still rose, which is exactly how a new failure mode hides inside an improving aggregate.\n\nNOT FIXED, AND MEASURED BEFORE DECIDING. Moving the guard above filter 1 was implemented and run: recall 0.99375 -> 0.95625, n_claims_never_sent 1 -> 7, recall_modality 0.96 -> 0.72. It kills six claim-bearing modality segments that are interrogative in form but assert about the user's world ('Are we still using Groq?'). Against a hard recall ceiling that is the wrong trade, so the order stays and the cost is pinned in src/brain/tests/gateQuestionBypass.test.js at exactly three.\n\nThe single n_claims_never_sent is 'If we hired two more engineers, could we ship sooner?' \u2014 the one claim-bearing question naming no entity, so filter 1 misses it and the guard rejects it. The bypass above is the only thing holding recall at 0.99375.\n\nThe n_via_* counts are DIAGNOSTIC route counts, not quality metrics. Regenerate with: npm run eval:gate -- gate-core --update",
+  "coverage": {
+    "total": 200,
+    "executed": 200,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "gate_recall": 0.99375,
+    "gate_precision": 0.9085714285714286,
+    "n_admitted": 175,
+    "n_claim_bearing": 160,
+    "n_claims_never_sent": 1,
+    "n_false_admits": 16,
+    "recall_decision": 1,
+    "recall_identity": 1,
+    "recall_modality": 0.96,
+    "recall_negation": 1,
+    "recall_people": 1,
+    "recall_task": 1,
+    "recall_temporal": 1,
+    "n_via_cue_proper_noun": 29,
+    "n_via_declarative_intent": 57,
+    "n_via_entity_extractor": 89
+  }
+}

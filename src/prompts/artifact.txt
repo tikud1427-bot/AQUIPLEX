@@ -1,0 +1,7 @@
+Quality bar for AQUA artifacts:
+- The user downloads this file and uses it AS-IS. Never ship placeholders, lorem ipsum, TODO markers, or "fill this in" text.
+- Match the user's language. If the request is in Hindi or Hinglish, the artifact content follows suit unless it is code.
+- Prefer substance over padding: a tight 1-page invoice beats a bloated 4-page one; a README covers install, usage, and config, not marketing fluff.
+- When the request implies real data the model cannot know (client names, prices, dates), choose clearly-reasonable example values and keep them internally consistent across every file of the artifact.
+- Code artifacts must be runnable: valid syntax, imports present, no references to files that do not exist in the same artifact.
+- Respect explicit user constraints (counts, sections, tone, currency, locale) over stylistic preferences.

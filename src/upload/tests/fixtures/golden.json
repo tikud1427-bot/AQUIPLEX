@@ -1,0 +1,140 @@
+{
+  "specVersion": 1,
+  "documentParser.xlsx": {
+    "text": "-- Sheet: Results --\nName,Score,Note\nAlice,90,\n\"Smith, John\",85.5,café ☕\n007,0,Rock & Roll <live>\n,,\nZoë,100,\n\n-- Sheet: Notes --\nA note about the results\n\n-- Sheet: Empty --",
+    "meta": {
+      "sheetCount": 3
+    }
+  },
+  "documentParser.pptx": {
+    "text": "-- Slide 1 --\nRock & Roll <live> Slide number 1\n\n-- Slide 2 --\nSlide number 2\n\n-- Slide 3 --\nSlide number 3\n\n-- Slide 4 --\nSlide number 4\n\n-- Slide 5 --\nSlide number 5\n\n-- Slide 6 --\nSlide number 6\n\n-- Slide 7 --\nSlide number 7\n\n-- Slide 8 --\nSlide number 8\n\n-- Slide 9 --\nSlide number 9\n\n-- Slide 10 --\nSlide number 10",
+    "meta": {
+      "slideCount": 10
+    }
+  },
+  "documentParser.docx": {
+    "text": "First paragraph.\n\nSecond paragraph with café ☕.\n\nThird & last.",
+    "meta": {
+      "warnings": 0
+    }
+  },
+  "documentPipeline.odt": {
+    "title": "Quarterly Notes",
+    "format": "odt",
+    "metadata": {
+      "title": "Quarterly Notes"
+    },
+    "content": "First ODT paragraph.\nSecond with & entity and café.\nLine one\nline two",
+    "pages": null,
+    "sections": [
+      {
+        "heading": null,
+        "text": "First ODT paragraph.\nSecond with & entity and café.\nLine one\nline two"
+      }
+    ],
+    "language": null,
+    "truncated": false
+  },
+  "documentPipeline.epub": {
+    "title": "The Frozen Fixture",
+    "format": "epub",
+    "metadata": {
+      "title": "The Frozen Fixture",
+      "chapters": 2
+    },
+    "content": "Chapter One \nThe first chapter body.\n\nChapter Two \nThe second chapter, with café and &.",
+    "pages": 2,
+    "sections": [
+      {
+        "heading": null,
+        "text": "Chapter One \nThe first chapter body."
+      },
+      {
+        "heading": null,
+        "text": "Chapter Two \nThe second chapter, with café and &."
+      }
+    ],
+    "language": null,
+    "truncated": false
+  },
+  "archiveExtractor.zip": [
+    {
+      "path": "README.md",
+      "content": "# Demo project\n\nA fixture repository.\n"
+    },
+    {
+      "path": "src/app.js",
+      "content": "export const app = () => 'hello';\n"
+    },
+    {
+      "path": "src/util.js",
+      "content": "export const add = (a, b) => a + b;\n"
+    },
+    {
+      "path": "docs/deck.pptx",
+      "encoding": "base64",
+      "contentBytes": 5681,
+      "contentSha256": "5bad004e6181e4d0978101864260a7cc19ca05e5059f95e266356a948549b08d"
+    }
+  ],
+  "archiveExtractor.tar": [
+    {
+      "path": "README.md",
+      "content": "# Demo project\n\nA fixture repository.\n"
+    },
+    {
+      "path": "src/app.js",
+      "content": "export const app = () => 'hello';\n"
+    },
+    {
+      "path": "src/util.js",
+      "content": "export const add = (a, b) => a + b;\n"
+    },
+    {
+      "path": "docs/deck.pptx",
+      "encoding": "base64",
+      "contentBytes": 5681,
+      "contentSha256": "5bad004e6181e4d0978101864260a7cc19ca05e5059f95e266356a948549b08d"
+    }
+  ],
+  "archiveExtractor.tar.gz": [
+    {
+      "path": "README.md",
+      "content": "# Demo project\n\nA fixture repository.\n"
+    },
+    {
+      "path": "src/app.js",
+      "content": "export const app = () => 'hello';\n"
+    },
+    {
+      "path": "src/util.js",
+      "content": "export const add = (a, b) => a + b;\n"
+    },
+    {
+      "path": "docs/deck.pptx",
+      "encoding": "base64",
+      "contentBytes": 5681,
+      "contentSha256": "5bad004e6181e4d0978101864260a7cc19ca05e5059f95e266356a948549b08d"
+    }
+  ],
+  "fileIngester.extractZip": [
+    {
+      "path": "README.md",
+      "content": "# Demo project\n\nA fixture repository.\n"
+    },
+    {
+      "path": "src/app.js",
+      "content": "export const app = () => 'hello';\n"
+    },
+    {
+      "path": "src/util.js",
+      "content": "export const add = (a, b) => a + b;\n"
+    },
+    {
+      "path": "docs/deck.pptx",
+      "encoding": "base64",
+      "contentBytes": 5681,
+      "contentSha256": "5bad004e6181e4d0978101864260a7cc19ca05e5059f95e266356a948549b08d"
+    }
+  ]
+}

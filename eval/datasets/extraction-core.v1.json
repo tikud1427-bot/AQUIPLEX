@@ -1,0 +1,2691 @@
+{
+ "id": "extraction-core",
+ "version": "v1",
+ "about": "200 labelled sentences for measuring extraction quality against the blueprint's claim schema. Labels carry subject, predicate, object, polarity, modality and time — the FULL target, not what the current regex extractor can express.",
+ "limitations": [
+  "SYNTHETIC. These sentences were authored for this dataset, not sampled from real transcripts. They are therefore biased toward what the author expected an extractor to find, and a system tuned against them can look better than it is.",
+  "The real dataset is CORRECTIONS-LIVE (Blueprint Part 11): every user correction is a labelled example produced by the person best qualified to judge. This is v1 and should be replaced, not defended, once corrections accumulate.",
+  "Single-sentence cases. Coreference across turns ('he', 'that project') is not represented and cannot be measured here.",
+  "One annotator. No inter-annotator agreement, so the labels carry no measured reliability.",
+  "English only."
+ ],
+ "cases": [
+  {
+   "id": "identity-001",
+   "cat": "identity",
+   "text": "I run product at Nummo.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "role_is",
+     "o": "product lead",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-002",
+   "cat": "identity",
+   "text": "I work at Aquiplex.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "works_at",
+     "o": "Aquiplex",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-003",
+   "cat": "identity",
+   "text": "I'm a backend engineer.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "role_is",
+     "o": "backend engineer",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-004",
+   "cat": "identity",
+   "text": "I moved to the Bangalore office last month.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "located_in",
+     "o": "Bangalore",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "last month",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "identity-005",
+   "cat": "identity",
+   "text": "We're building an AI operating system.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "builds",
+     "o": "AI operating system",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-006",
+   "cat": "identity",
+   "text": "I use Postgres for everything.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Postgres",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-007",
+   "cat": "identity",
+   "text": "My company is called Aquiplex.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "member_of",
+     "o": "Aquiplex",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-008",
+   "cat": "identity",
+   "text": "I co-founded Aquiplex in 2023.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "founded",
+     "o": "Aquiplex",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "2023",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "identity-009",
+   "cat": "identity",
+   "text": "I usually think best in the mornings.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "thinking in the mornings",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-010",
+   "cat": "identity",
+   "text": "I commute by metro.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "commuting by metro",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-011",
+   "cat": "identity",
+   "text": "I prefer TypeScript over JavaScript.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "prefers",
+     "o": "TypeScript",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-012",
+   "cat": "identity",
+   "text": "I dislike long meetings.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "dislikes",
+     "o": "long meetings",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-013",
+   "cat": "identity",
+   "text": "I'm based in Guwahati.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "located_in",
+     "o": "Guwahati",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-014",
+   "cat": "identity",
+   "text": "I lead the platform team.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "manages",
+     "o": "platform team",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-015",
+   "cat": "identity",
+   "text": "I switched from Python to Go last year.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Go",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "last year",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "identity-016",
+   "cat": "identity",
+   "text": "I sleep about six hours a night.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "six hours of sleep",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-017",
+   "cat": "identity",
+   "text": "I taught a class on distributed systems.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "teaching distributed systems",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-018",
+   "cat": "identity",
+   "text": "I hired two engineers in July.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "manages",
+     "o": "two engineers",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "July",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "identity-019",
+   "cat": "identity",
+   "text": "I own the billing service.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "owns",
+     "o": "billing service",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-020",
+   "cat": "identity",
+   "text": "My title is CTO.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "role_is",
+     "o": "CTO",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-021",
+   "cat": "identity",
+   "text": "I travel to Delhi most quarters.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "travelling to Delhi",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-022",
+   "cat": "identity",
+   "text": "I'm on the infrastructure team now.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "member_of",
+     "o": "infrastructure team",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-023",
+   "cat": "identity",
+   "text": "I write most of the frontend myself.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "builds",
+     "o": "frontend",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-024",
+   "cat": "identity",
+   "text": "I studied physics before this.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "studying physics",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-025",
+   "cat": "identity",
+   "text": "Our stack is Node and React.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Node",
+     "polarity": "asserted",
+     "modality": "fact"
+    },
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "React",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-026",
+   "cat": "identity",
+   "text": "I meet the design team on Tuesdays.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "meeting design on Tuesdays",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-027",
+   "cat": "identity",
+   "text": "I'm the only person maintaining the parser.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "owns",
+     "o": "parser",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-028",
+   "cat": "identity",
+   "text": "I joined Aquiplex as employee number one.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "member_of",
+     "o": "Aquiplex",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-029",
+   "cat": "identity",
+   "text": "I prefer working alone.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "prefers",
+     "o": "working alone",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-030",
+   "cat": "identity",
+   "text": "I'm responsible for the retrieval layer.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "owns",
+     "o": "retrieval layer",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-031",
+   "cat": "identity",
+   "text": "I ship on Fridays.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "shipping on Fridays",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-032",
+   "cat": "identity",
+   "text": "I keep my notes in Obsidian.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Obsidian",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-033",
+   "cat": "identity",
+   "text": "I run the weekly standup.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "running the weekly standup",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-034",
+   "cat": "identity",
+   "text": "I'm learning Rust at the moment.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "learning Rust",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-035",
+   "cat": "identity",
+   "text": "My main project is AQUA.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "owns",
+     "o": "AQUA",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-036",
+   "cat": "identity",
+   "text": "I work remotely three days a week.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "working remotely three days a week",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-037",
+   "cat": "identity",
+   "text": "I use Linux on my laptop.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Linux",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-038",
+   "cat": "identity",
+   "text": "I care a lot about test coverage.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "prefers",
+     "o": "test coverage",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-039",
+   "cat": "identity",
+   "text": "I've been an engineer for nine years.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "role_is",
+     "o": "engineer",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "identity-040",
+   "cat": "identity",
+   "text": "I handle all the deploys.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "owns",
+     "o": "deploys",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-001",
+   "cat": "people",
+   "text": "Priya is our head of design.",
+   "claims": [
+    {
+     "s": "Priya",
+     "p": "role_is",
+     "o": "head of design",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-002",
+   "cat": "people",
+   "text": "Dev reports to me.",
+   "claims": [
+    {
+     "s": "Dev",
+     "p": "reports_to",
+     "o": "SELF",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-003",
+   "cat": "people",
+   "text": "Chhanda is my co-founder.",
+   "claims": [
+    {
+     "s": "Chhanda",
+     "p": "related_to",
+     "o": "co-founder",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-004",
+   "cat": "people",
+   "text": "Rahul joined the billing team in March.",
+   "claims": [
+    {
+     "s": "Rahul",
+     "p": "member_of",
+     "o": "billing team",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "March",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "people-005",
+   "cat": "people",
+   "text": "Maya introduced me to our first investor.",
+   "claims": [
+    {
+     "s": "Maya",
+     "p": "knows",
+     "o": "first investor",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-006",
+   "cat": "people",
+   "text": "Sam owns the mobile app.",
+   "claims": [
+    {
+     "s": "Sam",
+     "p": "owns",
+     "o": "mobile app",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-007",
+   "cat": "people",
+   "text": "Anita works at Nummo.",
+   "claims": [
+    {
+     "s": "Anita",
+     "p": "works_at",
+     "o": "Nummo",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-008",
+   "cat": "people",
+   "text": "Karan manages the support team.",
+   "claims": [
+    {
+     "s": "Karan",
+     "p": "manages",
+     "o": "support team",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-009",
+   "cat": "people",
+   "text": "Neha and I built the first prototype.",
+   "claims": [
+    {
+     "s": "Neha",
+     "p": "builds",
+     "o": "first prototype",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-010",
+   "cat": "people",
+   "text": "Vikram is based in Pune.",
+   "claims": [
+    {
+     "s": "Vikram",
+     "p": "located_in",
+     "o": "Pune",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-011",
+   "cat": "people",
+   "text": "Ishaan knows the payments code better than anyone.",
+   "claims": [
+    {
+     "s": "Ishaan",
+     "p": "knows",
+     "o": "payments code",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-012",
+   "cat": "people",
+   "text": "Tara founded the company before this one.",
+   "claims": [
+    {
+     "s": "Tara",
+     "p": "founded",
+     "o": "company",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-013",
+   "cat": "people",
+   "text": "Arjun uses Vim for everything.",
+   "claims": [
+    {
+     "s": "Arjun",
+     "p": "uses",
+     "o": "Vim",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-014",
+   "cat": "people",
+   "text": "Meera is on the infrastructure team.",
+   "claims": [
+    {
+     "s": "Meera",
+     "p": "member_of",
+     "o": "infrastructure team",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-015",
+   "cat": "people",
+   "text": "Rohit prefers async updates.",
+   "claims": [
+    {
+     "s": "Rohit",
+     "p": "prefers",
+     "o": "async updates",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-016",
+   "cat": "people",
+   "text": "Farah leads our security review.",
+   "claims": [
+    {
+     "s": "Farah",
+     "p": "manages",
+     "o": "security review",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-017",
+   "cat": "people",
+   "text": "Nikhil depends on the search service.",
+   "claims": [
+    {
+     "s": "Nikhil",
+     "p": "depends_on",
+     "o": "search service",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-018",
+   "cat": "people",
+   "text": "Divya is a part of the growth pod.",
+   "claims": [
+    {
+     "s": "Divya",
+     "p": "member_of",
+     "o": "growth pod",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-019",
+   "cat": "people",
+   "text": "Aman reports to Priya now.",
+   "claims": [
+    {
+     "s": "Aman",
+     "p": "reports_to",
+     "o": "Priya",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "people-020",
+   "cat": "people",
+   "text": "Zoë handles our investor updates.",
+   "claims": [
+    {
+     "s": "Zoë",
+     "p": "owns",
+     "o": "investor updates",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-001",
+   "cat": "negation",
+   "text": "Priya no longer works at Aquiplex.",
+   "claims": [
+    {
+     "s": "Priya",
+     "p": "works_at",
+     "o": "Aquiplex",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-002",
+   "cat": "negation",
+   "text": "I don't use Postgres anymore.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Postgres",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-003",
+   "cat": "negation",
+   "text": "We never shipped the mobile app.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "builds",
+     "o": "mobile app",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-004",
+   "cat": "negation",
+   "text": "Dev isn't on the platform team.",
+   "claims": [
+    {
+     "s": "Dev",
+     "p": "member_of",
+     "o": "platform team",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-005",
+   "cat": "negation",
+   "text": "I'm not the CTO.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "role_is",
+     "o": "CTO",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-006",
+   "cat": "negation",
+   "text": "Rahul does not report to me.",
+   "claims": [
+    {
+     "s": "Rahul",
+     "p": "reports_to",
+     "o": "SELF",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-007",
+   "cat": "negation",
+   "text": "I stopped commuting by metro.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "commuting by metro",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-008",
+   "cat": "negation",
+   "text": "The billing service doesn't depend on search.",
+   "claims": [
+    {
+     "s": "billing service",
+     "p": "depends_on",
+     "o": "search",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-009",
+   "cat": "negation",
+   "text": "We're no longer based in Delhi.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "located_in",
+     "o": "Delhi",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-010",
+   "cat": "negation",
+   "text": "I don't work weekends.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "working weekends",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-011",
+   "cat": "negation",
+   "text": "Maya isn't involved in the redesign.",
+   "claims": [
+    {
+     "s": "Maya",
+     "p": "member_of",
+     "o": "redesign",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-012",
+   "cat": "negation",
+   "text": "I never learned Rust properly.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "learning Rust",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-013",
+   "cat": "negation",
+   "text": "Nummo is not one of our customers.",
+   "claims": [
+    {
+     "s": "Nummo",
+     "p": "related_to",
+     "o": "customer",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-014",
+   "cat": "negation",
+   "text": "I don't own the parser now.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "owns",
+     "o": "parser",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-015",
+   "cat": "negation",
+   "text": "Sam no longer manages the support team.",
+   "claims": [
+    {
+     "s": "Sam",
+     "p": "manages",
+     "o": "support team",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-016",
+   "cat": "negation",
+   "text": "We haven't decided on pricing.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "decided",
+     "o": "pricing",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-017",
+   "cat": "negation",
+   "text": "I'm not using Obsidian for notes.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Obsidian",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-018",
+   "cat": "negation",
+   "text": "Karan doesn't know the payments code.",
+   "claims": [
+    {
+     "s": "Karan",
+     "p": "knows",
+     "o": "payments code",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-019",
+   "cat": "negation",
+   "text": "The launch is not blocked by design.",
+   "claims": [
+    {
+     "s": "design",
+     "p": "blocks",
+     "o": "launch",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negation-020",
+   "cat": "negation",
+   "text": "I dislike neither option.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "dislikes",
+     "o": "option",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "modality-001",
+   "cat": "modality",
+   "text": "I want to hire a designer.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "plans_to",
+     "o": "hire a designer",
+     "polarity": "asserted",
+     "modality": "intent"
+    }
+   ]
+  },
+  {
+   "id": "modality-002",
+   "cat": "modality",
+   "text": "We're planning to launch in October.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "plans_to",
+     "o": "launch",
+     "polarity": "asserted",
+     "modality": "intent",
+     "time": {
+      "expr": "October",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "modality-003",
+   "cat": "modality",
+   "text": "What if we moved to Bangalore?",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "located_in",
+     "o": "Bangalore",
+     "polarity": "asserted",
+     "modality": "hypothetical"
+    }
+   ]
+  },
+  {
+   "id": "modality-004",
+   "cat": "modality",
+   "text": "I might switch us to Postgres.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Postgres",
+     "polarity": "asserted",
+     "modality": "hypothetical"
+    }
+   ]
+  },
+  {
+   "id": "modality-005",
+   "cat": "modality",
+   "text": "Should I make Dev the tech lead?",
+   "claims": [
+    {
+     "s": "Dev",
+     "p": "role_is",
+     "o": "tech lead",
+     "polarity": "asserted",
+     "modality": "question"
+    }
+   ]
+  },
+  {
+   "id": "modality-006",
+   "cat": "modality",
+   "text": "Priya said she wants to own onboarding.",
+   "claims": [
+    {
+     "s": "Priya",
+     "p": "plans_to",
+     "o": "own onboarding",
+     "polarity": "asserted",
+     "modality": "quote"
+    }
+   ]
+  },
+  {
+   "id": "modality-007",
+   "cat": "modality",
+   "text": "I'd like to work fewer weekends.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "plans_to",
+     "o": "work fewer weekends",
+     "polarity": "asserted",
+     "modality": "intent"
+    }
+   ]
+  },
+  {
+   "id": "modality-008",
+   "cat": "modality",
+   "text": "Suppose the launch slipped to November.",
+   "claims": [
+    {
+     "s": "launch",
+     "p": "deadline_for",
+     "o": "November",
+     "polarity": "asserted",
+     "modality": "hypothetical",
+     "time": {
+      "expr": "November",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "modality-009",
+   "cat": "modality",
+   "text": "Are we still using Groq?",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Groq",
+     "polarity": "asserted",
+     "modality": "question"
+    }
+   ]
+  },
+  {
+   "id": "modality-010",
+   "cat": "modality",
+   "text": "The investor deck claims we have 10,000 users.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "has_property",
+     "o": "10,000 users",
+     "polarity": "asserted",
+     "modality": "quote"
+    }
+   ]
+  },
+  {
+   "id": "modality-011",
+   "cat": "modality",
+   "text": "I hope to finish the migration this quarter.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "plans_to",
+     "o": "finish the migration",
+     "polarity": "asserted",
+     "modality": "intent",
+     "time": {
+      "expr": "this quarter",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "modality-012",
+   "cat": "modality",
+   "text": "Maybe Rahul should own billing.",
+   "claims": [
+    {
+     "s": "Rahul",
+     "p": "owns",
+     "o": "billing",
+     "polarity": "asserted",
+     "modality": "hypothetical"
+    }
+   ]
+  },
+  {
+   "id": "modality-013",
+   "cat": "modality",
+   "text": "Do I still report to Priya?",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "reports_to",
+     "o": "Priya",
+     "polarity": "asserted",
+     "modality": "question"
+    }
+   ]
+  },
+  {
+   "id": "modality-014",
+   "cat": "modality",
+   "text": "Sam mentioned that Nummo is churning.",
+   "claims": [
+    {
+     "s": "Nummo",
+     "p": "has_property",
+     "o": "churning",
+     "polarity": "asserted",
+     "modality": "quote"
+    }
+   ]
+  },
+  {
+   "id": "modality-015",
+   "cat": "modality",
+   "text": "We aim to be profitable next year.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "plans_to",
+     "o": "be profitable",
+     "polarity": "asserted",
+     "modality": "intent",
+     "time": {
+      "expr": "next year",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "modality-016",
+   "cat": "modality",
+   "text": "If we hired two more engineers, could we ship sooner?",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "plans_to",
+     "o": "hire two more engineers",
+     "polarity": "asserted",
+     "modality": "hypothetical"
+    }
+   ]
+  },
+  {
+   "id": "modality-017",
+   "cat": "modality",
+   "text": "I intend to move the team to Bangalore.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "plans_to",
+     "o": "move the team to Bangalore",
+     "polarity": "asserted",
+     "modality": "intent"
+    }
+   ]
+  },
+  {
+   "id": "modality-018",
+   "cat": "modality",
+   "text": "Is Meera on the infra team?",
+   "claims": [
+    {
+     "s": "Meera",
+     "p": "member_of",
+     "o": "infra team",
+     "polarity": "asserted",
+     "modality": "question"
+    }
+   ]
+  },
+  {
+   "id": "modality-019",
+   "cat": "modality",
+   "text": "The README says the project uses Redis.",
+   "claims": [
+    {
+     "s": "project",
+     "p": "uses",
+     "o": "Redis",
+     "polarity": "asserted",
+     "modality": "quote"
+    }
+   ]
+  },
+  {
+   "id": "modality-020",
+   "cat": "modality",
+   "text": "I'm considering dropping the mobile app.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "builds",
+     "o": "mobile app",
+     "polarity": "asserted",
+     "modality": "hypothetical"
+    }
+   ]
+  },
+  {
+   "id": "modality-021",
+   "cat": "modality",
+   "text": "We'd need Postgres before we could shard.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Postgres",
+     "polarity": "asserted",
+     "modality": "hypothetical"
+    }
+   ]
+  },
+  {
+   "id": "modality-022",
+   "cat": "modality",
+   "text": "Karan asked whether he owns the search service.",
+   "claims": [
+    {
+     "s": "Karan",
+     "p": "owns",
+     "o": "search service",
+     "polarity": "asserted",
+     "modality": "question"
+    }
+   ]
+  },
+  {
+   "id": "modality-023",
+   "cat": "modality",
+   "text": "I plan to write the retrieval layer myself.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "plans_to",
+     "o": "write the retrieval layer",
+     "polarity": "asserted",
+     "modality": "intent"
+    }
+   ]
+  },
+  {
+   "id": "modality-024",
+   "cat": "modality",
+   "text": "Apparently Tara founded two companies.",
+   "claims": [
+    {
+     "s": "Tara",
+     "p": "founded",
+     "o": "two companies",
+     "polarity": "asserted",
+     "modality": "quote"
+    }
+   ]
+  },
+  {
+   "id": "modality-025",
+   "cat": "modality",
+   "text": "Could Aquiplex be based in Pune instead?",
+   "claims": [
+    {
+     "s": "Aquiplex",
+     "p": "located_in",
+     "o": "Pune",
+     "polarity": "asserted",
+     "modality": "question"
+    }
+   ]
+  },
+  {
+   "id": "temporal-001",
+   "cat": "temporal",
+   "text": "I joined Aquiplex in March 2023.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "member_of",
+     "o": "Aquiplex",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "March 2023",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-002",
+   "cat": "temporal",
+   "text": "We ship the beta on 15 September.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "deadline_for",
+     "o": "beta",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "15 September",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-003",
+   "cat": "temporal",
+   "text": "I moved to Bangalore last month.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "located_in",
+     "o": "Bangalore",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "last month",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-004",
+   "cat": "temporal",
+   "text": "Priya leaves at the end of the quarter.",
+   "claims": [
+    {
+     "s": "Priya",
+     "p": "works_at",
+     "o": "Aquiplex",
+     "polarity": "negated",
+     "modality": "fact",
+     "time": {
+      "expr": "end of the quarter",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-005",
+   "cat": "temporal",
+   "text": "The migration starts next Monday.",
+   "claims": [
+    {
+     "s": "migration",
+     "p": "deadline_for",
+     "o": "next Monday",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "next Monday",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-006",
+   "cat": "temporal",
+   "text": "I used Python until 2024.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "uses",
+     "o": "Python",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "until 2024",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-007",
+   "cat": "temporal",
+   "text": "We hired Rahul two weeks ago.",
+   "claims": [
+    {
+     "s": "Rahul",
+     "p": "member_of",
+     "o": "Aquiplex",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "two weeks ago",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-008",
+   "cat": "temporal",
+   "text": "The contract was signed on 2026-01-12.",
+   "claims": [
+    {
+     "s": "contract",
+     "p": "has_status",
+     "o": "signed",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "2026-01-12",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-009",
+   "cat": "temporal",
+   "text": "I'll be in Delhi tomorrow.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "located_in",
+     "o": "Delhi",
+     "polarity": "asserted",
+     "modality": "intent",
+     "time": {
+      "expr": "tomorrow",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-010",
+   "cat": "temporal",
+   "text": "Sam took over billing in July.",
+   "claims": [
+    {
+     "s": "Sam",
+     "p": "owns",
+     "o": "billing",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "July",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-011",
+   "cat": "temporal",
+   "text": "We launched the first version three years ago.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "builds",
+     "o": "first version",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "three years ago",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-012",
+   "cat": "temporal",
+   "text": "The audit is due before the board meeting.",
+   "claims": [
+    {
+     "s": "audit",
+     "p": "deadline_for",
+     "o": "board meeting",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "before the board meeting",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-013",
+   "cat": "temporal",
+   "text": "I stopped teaching in 2022.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "teaching",
+     "polarity": "negated",
+     "modality": "fact",
+     "time": {
+      "expr": "2022",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-014",
+   "cat": "temporal",
+   "text": "Design review happens every Thursday.",
+   "claims": [
+    {
+     "s": "Design review",
+     "p": "habit_of",
+     "o": "design review on Thursdays",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "every Thursday",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-015",
+   "cat": "temporal",
+   "text": "Nummo signed up in Q2.",
+   "claims": [
+    {
+     "s": "Nummo",
+     "p": "related_to",
+     "o": "customer",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "Q2",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-016",
+   "cat": "temporal",
+   "text": "I'm on leave next week.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "has_status",
+     "o": "on leave",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "next week",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-017",
+   "cat": "temporal",
+   "text": "The old pricing ran from 2024 to 2025.",
+   "claims": [
+    {
+     "s": "old pricing",
+     "p": "has_status",
+     "o": "active",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "2024 to 2025",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-018",
+   "cat": "temporal",
+   "text": "We move offices in the spring.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "located_in",
+     "o": "new office",
+     "polarity": "asserted",
+     "modality": "intent",
+     "time": {
+      "expr": "spring",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-019",
+   "cat": "temporal",
+   "text": "Karan joined yesterday.",
+   "claims": [
+    {
+     "s": "Karan",
+     "p": "member_of",
+     "o": "Aquiplex",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "yesterday",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-020",
+   "cat": "temporal",
+   "text": "The deadline for the eval harness is Friday.",
+   "claims": [
+    {
+     "s": "eval harness",
+     "p": "deadline_for",
+     "o": "Friday",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "Friday",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-021",
+   "cat": "temporal",
+   "text": "I ran the platform team throughout 2025.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "manages",
+     "o": "platform team",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "throughout 2025",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-022",
+   "cat": "temporal",
+   "text": "Meera transfers to infra at month end.",
+   "claims": [
+    {
+     "s": "Meera",
+     "p": "member_of",
+     "o": "infra",
+     "polarity": "asserted",
+     "modality": "intent",
+     "time": {
+      "expr": "month end",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-023",
+   "cat": "temporal",
+   "text": "We reviewed the architecture on 4 August.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "habit_of",
+     "o": "architecture review",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "4 August",
+      "kind": "absolute"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-024",
+   "cat": "temporal",
+   "text": "Billing breaks every time we deploy.",
+   "claims": [
+    {
+     "s": "billing",
+     "p": "has_property",
+     "o": "breaks on deploy",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "every deploy",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "temporal-025",
+   "cat": "temporal",
+   "text": "The trial ends in fourteen days.",
+   "claims": [
+    {
+     "s": "trial",
+     "p": "deadline_for",
+     "o": "fourteen days",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "in fourteen days",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "decision-001",
+   "cat": "decision",
+   "text": "We decided to ship pricing tiers on Friday.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "decided",
+     "o": "ship pricing tiers",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "Friday",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "decision-002",
+   "cat": "decision",
+   "text": "We're going with Postgres, not Mongo.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "decided",
+     "o": "Postgres",
+     "polarity": "asserted",
+     "modality": "fact"
+    },
+    {
+     "s": "SELF",
+     "p": "rejected",
+     "o": "Mongo",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-003",
+   "cat": "decision",
+   "text": "I've decided to drop the mobile app.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "decided",
+     "o": "drop the mobile app",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-004",
+   "cat": "decision",
+   "text": "The team chose React over Vue.",
+   "claims": [
+    {
+     "s": "team",
+     "p": "decided",
+     "o": "React",
+     "polarity": "asserted",
+     "modality": "fact"
+    },
+    {
+     "s": "team",
+     "p": "rejected",
+     "o": "Vue",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-005",
+   "cat": "decision",
+   "text": "We agreed Priya owns onboarding.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "decided",
+     "o": "Priya owns onboarding",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-006",
+   "cat": "decision",
+   "text": "After the review we settled on weekly releases.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "decided",
+     "o": "weekly releases",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-007",
+   "cat": "decision",
+   "text": "I'm rejecting the Bangalore move for now.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "rejected",
+     "o": "Bangalore move",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-008",
+   "cat": "decision",
+   "text": "We decided against raising this year.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "rejected",
+     "o": "raising",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "this year",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "decision-009",
+   "cat": "decision",
+   "text": "Final call: the eval harness ships before E3.",
+   "claims": [
+    {
+     "s": "eval harness",
+     "p": "decided",
+     "o": "eval harness before E3",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-010",
+   "cat": "decision",
+   "text": "We picked Groq as the primary provider.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "decided",
+     "o": "Groq as primary provider",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-011",
+   "cat": "decision",
+   "text": "I reversed the decision on pricing.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "decided",
+     "o": "pricing",
+     "polarity": "negated",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-012",
+   "cat": "decision",
+   "text": "The board approved the new headcount.",
+   "claims": [
+    {
+     "s": "board",
+     "p": "decided",
+     "o": "new headcount",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-013",
+   "cat": "decision",
+   "text": "We opted to keep adm-zip rather than replace it.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "decided",
+     "o": "keep adm-zip",
+     "polarity": "asserted",
+     "modality": "fact"
+    },
+    {
+     "s": "SELF",
+     "p": "rejected",
+     "o": "replace adm-zip",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-014",
+   "cat": "decision",
+   "text": "We concluded that the substrate has to change.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "decided",
+     "o": "change the substrate",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "decision-015",
+   "cat": "decision",
+   "text": "I turned down the partnership.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "rejected",
+     "o": "partnership",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-001",
+   "cat": "task",
+   "text": "Rahul is writing the migration script.",
+   "claims": [
+    {
+     "s": "Rahul",
+     "p": "task_owner",
+     "o": "migration script",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-002",
+   "cat": "task",
+   "text": "I need to fix the retrieval bug by Friday.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "task_owner",
+     "o": "fix retrieval bug",
+     "polarity": "asserted",
+     "modality": "fact",
+     "time": {
+      "expr": "Friday",
+      "kind": "relative"
+     }
+    }
+   ]
+  },
+  {
+   "id": "task-003",
+   "cat": "task",
+   "text": "Priya is blocked on the design tokens.",
+   "claims": [
+    {
+     "s": "Priya",
+     "p": "has_status",
+     "o": "blocked",
+     "polarity": "asserted",
+     "modality": "fact"
+    },
+    {
+     "s": "design tokens",
+     "p": "blocks",
+     "o": "Priya",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-004",
+   "cat": "task",
+   "text": "The eval dataset is still in progress.",
+   "claims": [
+    {
+     "s": "eval dataset",
+     "p": "has_status",
+     "o": "in progress",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-005",
+   "cat": "task",
+   "text": "Sam finished the billing refactor.",
+   "claims": [
+    {
+     "s": "Sam",
+     "p": "task_owner",
+     "o": "billing refactor",
+     "polarity": "asserted",
+     "modality": "fact"
+    },
+    {
+     "s": "billing refactor",
+     "p": "has_status",
+     "o": "done",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-006",
+   "cat": "task",
+   "text": "Someone has to review the security audit.",
+   "claims": [
+    {
+     "s": "security audit",
+     "p": "has_status",
+     "o": "needs review",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-007",
+   "cat": "task",
+   "text": "I'm picking up the frontend tests next.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "task_owner",
+     "o": "frontend tests",
+     "polarity": "asserted",
+     "modality": "intent"
+    }
+   ]
+  },
+  {
+   "id": "task-008",
+   "cat": "task",
+   "text": "Karan owns the deploy checklist.",
+   "claims": [
+    {
+     "s": "Karan",
+     "p": "task_owner",
+     "o": "deploy checklist",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-009",
+   "cat": "task",
+   "text": "The parser rewrite is on hold.",
+   "claims": [
+    {
+     "s": "parser rewrite",
+     "p": "has_status",
+     "o": "on hold",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-010",
+   "cat": "task",
+   "text": "Meera will handle the Postgres migration.",
+   "claims": [
+    {
+     "s": "Meera",
+     "p": "task_owner",
+     "o": "Postgres migration",
+     "polarity": "asserted",
+     "modality": "intent"
+    }
+   ]
+  },
+  {
+   "id": "task-011",
+   "cat": "task",
+   "text": "We still need to write the CI gate.",
+   "claims": [
+    {
+     "s": "SELF",
+     "p": "task_owner",
+     "o": "CI gate",
+     "polarity": "asserted",
+     "modality": "intent"
+    }
+   ]
+  },
+  {
+   "id": "task-012",
+   "cat": "task",
+   "text": "The injection corpus is done.",
+   "claims": [
+    {
+     "s": "injection corpus",
+     "p": "has_status",
+     "o": "done",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-013",
+   "cat": "task",
+   "text": "Dev is stuck on the worker memory cap.",
+   "claims": [
+    {
+     "s": "Dev",
+     "p": "has_status",
+     "o": "blocked",
+     "polarity": "asserted",
+     "modality": "fact"
+    },
+    {
+     "s": "worker memory cap",
+     "p": "blocks",
+     "o": "Dev",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-014",
+   "cat": "task",
+   "text": "Nobody has started the timeline engine.",
+   "claims": [
+    {
+     "s": "timeline engine",
+     "p": "has_status",
+     "o": "not started",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "task-015",
+   "cat": "task",
+   "text": "I assigned the retrieval work to Neha.",
+   "claims": [
+    {
+     "s": "Neha",
+     "p": "task_owner",
+     "o": "retrieval work",
+     "polarity": "asserted",
+     "modality": "fact"
+    }
+   ]
+  },
+  {
+   "id": "negative-001",
+   "cat": "negative",
+   "text": "Can you write me a python script?",
+   "claims": []
+  },
+  {
+   "id": "negative-002",
+   "cat": "negative",
+   "text": "I need to check the logs.",
+   "claims": []
+  },
+  {
+   "id": "negative-003",
+   "cat": "negative",
+   "text": "What is the capital of France?",
+   "claims": []
+  },
+  {
+   "id": "negative-004",
+   "cat": "negative",
+   "text": "Explain how OAuth works.",
+   "claims": []
+  },
+  {
+   "id": "negative-005",
+   "cat": "negative",
+   "text": "Thanks, that's really helpful.",
+   "claims": []
+  },
+  {
+   "id": "negative-006",
+   "cat": "negative",
+   "text": "Hey, good morning!",
+   "claims": []
+  },
+  {
+   "id": "negative-007",
+   "cat": "negative",
+   "text": "Could you summarise this document for me?",
+   "claims": []
+  },
+  {
+   "id": "negative-008",
+   "cat": "negative",
+   "text": "I want to know how retrieval works.",
+   "claims": []
+  },
+  {
+   "id": "negative-009",
+   "cat": "negative",
+   "text": "Fix this bug in my code please.",
+   "claims": []
+  },
+  {
+   "id": "negative-010",
+   "cat": "negative",
+   "text": "const cmp = (a, b) => a < b;",
+   "claims": []
+  },
+  {
+   "id": "negative-011",
+   "cat": "negative",
+   "text": "How do I set up Postgres locally?",
+   "claims": []
+  },
+  {
+   "id": "negative-012",
+   "cat": "negative",
+   "text": "That doesn't look right to me.",
+   "claims": []
+  },
+  {
+   "id": "negative-013",
+   "cat": "negative",
+   "text": "Sorry, I meant the other file.",
+   "claims": []
+  },
+  {
+   "id": "negative-014",
+   "cat": "negative",
+   "text": "Let me think about that for a second.",
+   "claims": []
+  },
+  {
+   "id": "negative-015",
+   "cat": "negative",
+   "text": "Give me three options and I'll pick one.",
+   "claims": []
+  },
+  {
+   "id": "negative-016",
+   "cat": "negative",
+   "text": "Why did the deploy fail?",
+   "claims": []
+  },
+  {
+   "id": "negative-017",
+   "cat": "negative",
+   "text": "npm install --save-dev vitest",
+   "claims": []
+  },
+  {
+   "id": "negative-018",
+   "cat": "negative",
+   "text": "Show me the retrieval code.",
+   "claims": []
+  },
+  {
+   "id": "negative-019",
+   "cat": "negative",
+   "text": "Is that everything?",
+   "claims": []
+  },
+  {
+   "id": "negative-020",
+   "cat": "negative",
+   "text": "Never mind, I figured it out.",
+   "claims": []
+  },
+  {
+   "id": "negative-021",
+   "cat": "negative",
+   "text": "Please make it shorter.",
+   "claims": []
+  },
+  {
+   "id": "negative-022",
+   "cat": "negative",
+   "text": "What do you think about this approach?",
+   "claims": []
+  },
+  {
+   "id": "negative-023",
+   "cat": "negative",
+   "text": "I'd like a summary in bullet points.",
+   "claims": []
+  },
+  {
+   "id": "negative-024",
+   "cat": "negative",
+   "text": "Run the tests again.",
+   "claims": []
+  },
+  {
+   "id": "negative-025",
+   "cat": "negative",
+   "text": "Okay.",
+   "claims": []
+  },
+  {
+   "id": "negative-026",
+   "cat": "negative",
+   "text": "Actually, ignore my last message.",
+   "claims": []
+  },
+  {
+   "id": "negative-027",
+   "cat": "negative",
+   "text": "Which one is faster, a hash map or a b-tree?",
+   "claims": []
+  },
+  {
+   "id": "negative-028",
+   "cat": "negative",
+   "text": "Draft an email to the investor.",
+   "claims": []
+  },
+  {
+   "id": "negative-029",
+   "cat": "negative",
+   "text": "SELECT * FROM users WHERE id = 1;",
+   "claims": []
+  },
+  {
+   "id": "negative-030",
+   "cat": "negative",
+   "text": "Can you explain the difference between the two?",
+   "claims": []
+  },
+  {
+   "id": "negative-031",
+   "cat": "negative",
+   "text": "Do it however you think is best.",
+   "claims": []
+  },
+  {
+   "id": "negative-032",
+   "cat": "negative",
+   "text": "I need help with something else.",
+   "claims": []
+  },
+  {
+   "id": "negative-033",
+   "cat": "negative",
+   "text": "That's the wrong file, try again.",
+   "claims": []
+  },
+  {
+   "id": "negative-034",
+   "cat": "negative",
+   "text": "How long will that take?",
+   "claims": []
+  },
+  {
+   "id": "negative-035",
+   "cat": "negative",
+   "text": "Write a test for this function.",
+   "claims": []
+  },
+  {
+   "id": "negative-036",
+   "cat": "negative",
+   "text": "Great, ship it.",
+   "claims": []
+  },
+  {
+   "id": "negative-037",
+   "cat": "negative",
+   "text": "What are the trade-offs here?",
+   "claims": []
+  },
+  {
+   "id": "negative-038",
+   "cat": "negative",
+   "text": "Hmm.",
+   "claims": []
+  },
+  {
+   "id": "negative-039",
+   "cat": "negative",
+   "text": "Open the pull request when you're done.",
+   "claims": []
+  },
+  {
+   "id": "negative-040",
+   "cat": "negative",
+   "text": "Tell me more about that.",
+   "claims": []
+  }
+ ]
+}

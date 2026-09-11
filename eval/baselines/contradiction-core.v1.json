@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-18T09:34:29.498Z",
+  "node": "v22.22.2",
+  "suiteFingerprint": "b18699af41614157",
+  "caseCount": 53,
+  "note": "Baseline after FIX-2 (value-token qualifiers). History: 0.2143/0.4000 pre-fix \u2192 1.0000/0.7333 after FIX-1 \u2192 1.0000/0.9333 now. A further fix must beat BOTH precision and recall, together \u2014 one genuine contradiction is still missed.\n\nRegenerate with: npm run eval:gate -- contradiction-core --update",
+  "coverage": {
+    "complete": true,
+    "errored": 0,
+    "executed": 53,
+    "skipped": 0,
+    "total": 53
+  },
+  "metrics": {
+    "f1": 0.9655172413793104,
+    "false_fire_per_item_table": 0,
+    "false_fire_restatement": 0,
+    "false_fire_temporal_sequence": 0,
+    "false_fire_unrelated": 0,
+    "false_negatives": 1,
+    "false_positives": 0,
+    "genuine_pairs": 15,
+    "independent_pairs": 38,
+    "precision": 1,
+    "recall": 0.9333333333333333,
+    "true_negatives": 38,
+    "true_positives": 14
+  }
+}

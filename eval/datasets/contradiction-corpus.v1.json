@@ -1,0 +1,482 @@
+{
+ "id": "contradiction-corpus",
+ "version": "v1",
+ "about": "A CORPUS, not pairs. Measures whether the detector FINDS the genuine contradictions planted in it and how many pairs it examines to do so. The pair-level eval scores the predicate; this scores PAIR SELECTION, which is what a bucketing optimisation changes.",
+ "limitations": [
+  "SYNTHETIC and small (56 facts). It measures SELECTION, not predicate quality — contradiction-core.v1 does that, and a fix must not regress either.",
+  "Every genuine pair is planted cross-file, because the detector gates on that before comparing. A same-file contradiction is out of scope here and would be a different finding.",
+  "comparisons_examined is an implementation counter, not a user-visible metric. It exists so a bucketing change is measurable rather than argued."
+ ],
+ "facts": [
+  {
+   "id": "f001",
+   "file": "ledger-a.pdf",
+   "statement": "Item 0 for Acme recorded value 1000 on 2026-01-10",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f002",
+   "file": "ledger-a.pdf",
+   "statement": "Item 1 for Acme recorded value 1001 on 2026-02-11",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f003",
+   "file": "ledger-a.pdf",
+   "statement": "Item 2 for Acme recorded value 1002 on 2026-03-12",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f004",
+   "file": "ledger-a.pdf",
+   "statement": "Item 3 for Acme recorded value 1003 on 2026-04-13",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f005",
+   "file": "ledger-a.pdf",
+   "statement": "Item 4 for Acme recorded value 1004 on 2026-05-14",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f006",
+   "file": "ledger-a.pdf",
+   "statement": "Item 5 for Acme recorded value 1005 on 2026-06-15",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f007",
+   "file": "ledger-a.pdf",
+   "statement": "Item 6 for Acme recorded value 1006 on 2026-01-16",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f008",
+   "file": "ledger-a.pdf",
+   "statement": "Item 7 for Acme recorded value 1007 on 2026-02-17",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f009",
+   "file": "ledger-a.pdf",
+   "statement": "Item 8 for Acme recorded value 1008 on 2026-03-18",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f010",
+   "file": "ledger-a.pdf",
+   "statement": "Item 9 for Acme recorded value 1009 on 2026-04-10",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f011",
+   "file": "ledger-a.pdf",
+   "statement": "Item 10 for Acme recorded value 1010 on 2026-05-11",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f012",
+   "file": "ledger-a.pdf",
+   "statement": "Item 11 for Acme recorded value 1011 on 2026-06-12",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f013",
+   "file": "ledger-a.pdf",
+   "statement": "Item 12 for Acme recorded value 1012 on 2026-01-13",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f014",
+   "file": "ledger-a.pdf",
+   "statement": "Item 13 for Acme recorded value 1013 on 2026-02-14",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f015",
+   "file": "ledger-a.pdf",
+   "statement": "Item 14 for Acme recorded value 1014 on 2026-03-15",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f016",
+   "file": "ledger-a.pdf",
+   "statement": "Item 15 for Acme recorded value 1015 on 2026-04-16",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f017",
+   "file": "ledger-a.pdf",
+   "statement": "Item 16 for Acme recorded value 1016 on 2026-05-17",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f018",
+   "file": "ledger-a.pdf",
+   "statement": "Item 17 for Acme recorded value 1017 on 2026-06-18",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f019",
+   "file": "ledger-a.pdf",
+   "statement": "Item 18 for Acme recorded value 1018 on 2026-01-10",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f020",
+   "file": "ledger-a.pdf",
+   "statement": "Item 19 for Acme recorded value 1019 on 2026-02-11",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f021",
+   "file": "ledger-b.pdf",
+   "statement": "Item 0 for Acme recorded value 1000 on 2026-01-10",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f022",
+   "file": "ledger-b.pdf",
+   "statement": "Item 1 for Acme recorded value 1001 on 2026-02-11",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f023",
+   "file": "ledger-b.pdf",
+   "statement": "Item 2 for Acme recorded value 1002 on 2026-03-12",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f024",
+   "file": "ledger-b.pdf",
+   "statement": "Item 3 for Acme recorded value 1003 on 2026-04-13",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f025",
+   "file": "ledger-b.pdf",
+   "statement": "Item 4 for Acme recorded value 1004 on 2026-05-14",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f026",
+   "file": "ledger-b.pdf",
+   "statement": "Item 5 for Acme recorded value 1005 on 2026-06-15",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f027",
+   "file": "ledger-b.pdf",
+   "statement": "Item 6 for Acme recorded value 1006 on 2026-01-16",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f028",
+   "file": "ledger-b.pdf",
+   "statement": "Item 7 for Acme recorded value 1007 on 2026-02-17",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f029",
+   "file": "ledger-b.pdf",
+   "statement": "Item 8 for Acme recorded value 1008 on 2026-03-18",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f030",
+   "file": "ledger-b.pdf",
+   "statement": "Item 9 for Acme recorded value 1009 on 2026-04-10",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f031",
+   "file": "ledger-b.pdf",
+   "statement": "Item 10 for Acme recorded value 1010 on 2026-05-11",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f032",
+   "file": "ledger-b.pdf",
+   "statement": "Item 11 for Acme recorded value 1011 on 2026-06-12",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f033",
+   "file": "ledger-b.pdf",
+   "statement": "Item 12 for Acme recorded value 1012 on 2026-01-13",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f034",
+   "file": "ledger-b.pdf",
+   "statement": "Item 13 for Acme recorded value 1013 on 2026-02-14",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f035",
+   "file": "ledger-b.pdf",
+   "statement": "Item 14 for Acme recorded value 1014 on 2026-03-15",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f036",
+   "file": "ledger-b.pdf",
+   "statement": "Item 15 for Acme recorded value 1015 on 2026-04-16",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f037",
+   "file": "ledger-b.pdf",
+   "statement": "Item 16 for Acme recorded value 1016 on 2026-05-17",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f038",
+   "file": "ledger-b.pdf",
+   "statement": "Item 17 for Acme recorded value 1017 on 2026-06-18",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f039",
+   "file": "ledger-b.pdf",
+   "statement": "Item 18 for Acme recorded value 1018 on 2026-01-10",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f040",
+   "file": "ledger-b.pdf",
+   "statement": "Item 19 for Acme recorded value 1019 on 2026-02-11",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f041",
+   "file": "report.pdf",
+   "statement": "Acme revenue for Q3 2025 was 4200000.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f042",
+   "file": "deck.pptx",
+   "statement": "Acme revenue for Q3 2025 was 9100000.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f043",
+   "file": "report.pdf",
+   "statement": "Acme runway is fourteen months.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f044",
+   "file": "deck.pptx",
+   "statement": "Acme runway is six months.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f045",
+   "file": "report.pdf",
+   "statement": "The Acme audit passed.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f046",
+   "file": "deck.pptx",
+   "statement": "The Acme audit failed.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f047",
+   "file": "report.pdf",
+   "statement": "Acme has eleven people.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f048",
+   "file": "deck.pptx",
+   "statement": "Acme has twenty-four people.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f049",
+   "file": "report.pdf",
+   "statement": "Acme raised 2400000 in the seed round.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f050",
+   "file": "deck.pptx",
+   "statement": "Acme raised 7500000 in the seed round.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f051",
+   "file": "report.pdf",
+   "statement": "Acme is based in Guwahati.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f052",
+   "file": "deck.pptx",
+   "statement": "Acme uses Postgres for storage.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f053",
+   "file": "report.pdf",
+   "statement": "Acme signed a contract in January.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f054",
+   "file": "deck.pptx",
+   "statement": "Acme runs a weekly standup.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f055",
+   "file": "report.pdf",
+   "statement": "Acme revenue for Q1 2025 was 1100000.",
+   "entities": [
+    "Acme"
+   ]
+  },
+  {
+   "id": "f056",
+   "file": "deck.pptx",
+   "statement": "Acme revenue for Q2 2025 was 1450000.",
+   "entities": [
+    "Acme"
+   ]
+  }
+ ],
+ "expectedPairs": [
+  [
+   "f041",
+   "f042"
+  ],
+  [
+   "f043",
+   "f044"
+  ],
+  [
+   "f045",
+   "f046"
+  ],
+  [
+   "f047",
+   "f048"
+  ],
+  [
+   "f049",
+   "f050"
+  ]
+ ]
+}

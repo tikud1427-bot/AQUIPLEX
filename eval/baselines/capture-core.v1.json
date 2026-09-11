@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-23T15:48:37.269Z",
+  "node": "v22.22.2",
+  "suiteFingerprint": "3e7e2b76425baf86",
+  "caseCount": 23,
+  "note": "Baseline for capture-core: 23 short conversations (34 turns) driven through the PRODUCTION turn path \u2014 memoryObserve, addMessage, runPostTurn with default deps, then the real drainJobs \u2014 and read back through pic/core.js retrieveKnowledge.\n\nNOTE RESTORED. This file carried the generic 'Baseline for capture-core.' placeholder that `--update` writes when no note exists, which is the one part of a baseline a human writes on purpose. The figures below were not re-measured; only the note was written.\n\ncapture_rate 0.8261 and retrievability_rate 0.8947 are SEPARATE and must stay separate \u2014 retrievability is computed only over captured cases, so a capture collapse cannot hide behind clean retrieval of the survivors. Two per-category rates sit at 0.5 and are the visible gaps: capture_situation and capture_supersession. capture_concurrency 0.3333 is the lowest number in the file.\n\nA change must not raise capture_rate by lowering retrievability_rate, or vice versa. Regenerate with: npm run eval:gate -- capture-core --update",
+  "coverage": {
+    "total": 23,
+    "executed": 23,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "capture_rate": 0.8260869565217391,
+    "capture_fact_rate": 0.8125,
+    "n_cases_fully_captured": 19,
+    "n_cases_partially_captured": 2,
+    "n_cases_not_captured": 2,
+    "n_expected_facts": 32,
+    "n_captured_facts": 26,
+    "retrievability_rate": 0.8947368421052632,
+    "retrieval_top1_rate": 0.8947368421052632,
+    "n_captured_cases": 19,
+    "n_captured_but_unreachable": 2,
+    "n_total_turns": 34,
+    "n_world_model_facts": 28,
+    "facts_per_turn": 0.8235294117647058,
+    "capture_concurrency": 0.3333333333333333,
+    "capture_decision": 1,
+    "capture_entity": 1,
+    "capture_goal": 1,
+    "capture_multi_turn": 1,
+    "capture_negation": 1,
+    "capture_person": 1,
+    "capture_preference": 1,
+    "capture_self_disclosure": 1,
+    "capture_situation": 0.5,
+    "capture_supersession": 0.5
+  }
+}

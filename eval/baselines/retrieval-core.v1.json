@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-30T05:27:45.380Z",
+  "node": "v22.22.2",
+  "suiteFingerprint": "9f00d650629e4796",
+  "caseCount": 200,
+  "note": "Baseline of the PIC floor \u2014 pic/core retrieveKnowledge \u2014 over retrieval-core.v1, all understanding flags ON.\n\n\u26a0\ufe0f THIS IS NOT THE PATH PRODUCTION READS, AND THE NOTE SAID OTHERWISE FOR TOO LONG. routes/chat.js:587 hands retrieveKnowledge to Brain.assembleContext as a FLOOR and ships the Context Engine's selection, with AQUA_CONTEXT_V2=on in the environment template. This suite grades the floor; context-core.v1 grades what the user actually sees. Both are kept, because 'the floor improved' and 'the answer improved' are different claims and folding them into one number is how the gap stayed invisible.\n\nAFTER E7 lane 5 \u2014 the polarity lane, the first lane that proposes candidates on a CLAIM ATTRIBUTE rather than on surface words or graph adjacency:\n  recall_negation 0.3000 -> 0.8000; mrr, ndcg@8, recall@8, top1_correct and top1_kind all moved up with it, because the negated answer was previously never reaching the pool.\n  unknown_honesty (0.71875) and noise_lines (16) UNCHANGED \u2014 the load-bearing part. A non-lexical lane is the shape that historically buys recall with noise; this one cannot, because it only runs when the QUESTION carries a negation cue and zero of the 32 silence-expecting queries do.\n\nTWO NEGATION CASES REMAIN MISSED ON PURPOSE (q128, q135). Both need 'We chose Postgres over Mongo', where the negation attaches to the OBJECT, not the statement. Surface polarity cannot see that; it needs E6 typed claims. Adding 'over' as a cue would move this number and be wrong.\n\nrecall_category (0.46875) is the worst metric on BOTH lanes and is not fixable this way \u2014 its failures are semantic gaps ('educational background' -> 'I studied physics') that a hand-built lexicon would only fit to this dataset.\n\nA further change must beat these WITHOUT moving unknown_honesty or noise_lines down. Regenerate with: npm run eval:gate -- retrieval-core --update",
+  "coverage": {
+    "total": 200,
+    "executed": 200,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "recall_at_8": 0.7559523809523809,
+    "mrr": 0.6865079365079364,
+    "ndcg_at_8": 0.6710137081379317,
+    "top1_correct": 0.6428571428571429,
+    "top1_kind": 0.5714285714285714,
+    "unknown_honesty": 0.71875,
+    "noise_lines": 16,
+    "noisy_queries": 9,
+    "recall_category": 0.46875,
+    "recall_direct": 1,
+    "recall_multi": 0.7142857142857143,
+    "recall_negation": 0.8,
+    "recall_selfword": 0.75,
+    "recall_superseded": 0.6,
+    "recall_temporal": 0.68,
+    "answerable_queries": 168,
+    "silence_queries": 32
+  }
+}

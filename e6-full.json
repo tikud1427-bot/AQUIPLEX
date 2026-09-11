@@ -1,0 +1,126 @@
+{
+  "cases": 200,
+  "baseline": {
+    "overall_strict_accuracy": 0.18,
+    "detection_recall": 0.71875,
+    "subject_recall": 0.5568862275449101,
+    "predicate_accuracy": 0,
+    "fidelity_accuracy": 0.6467065868263473,
+    "silence_on_negatives": 0.9,
+    "false_positives": 4,
+    "detection_decision": 0.5333333333333333,
+    "detection_identity": 0.85,
+    "detection_modality": 0.72,
+    "detection_negation": 0.5,
+    "detection_people": 0.95,
+    "detection_task": 0.6666666666666666,
+    "detection_temporal": 0.64,
+    "positives": 160,
+    "negatives": 40,
+    "labelled_claims": 167
+  },
+  "current": {
+    "overall_strict_accuracy": 0.18,
+    "detection_recall": 0.71875,
+    "subject_recall": 0.5568862275449101,
+    "predicate_accuracy": 0,
+    "fidelity_accuracy": 0.6467065868263473,
+    "silence_on_negatives": 0.9,
+    "false_positives": 4,
+    "detection_decision": 0.5333333333333333,
+    "detection_identity": 0.85,
+    "detection_modality": 0.72,
+    "detection_negation": 0.5,
+    "detection_people": 0.95,
+    "detection_task": 0.6666666666666666,
+    "detection_temporal": 0.64,
+    "n_cases_decision": 15,
+    "n_cases_identity": 40,
+    "n_cases_modality": 25,
+    "n_cases_negation": 20,
+    "n_cases_people": 20,
+    "n_cases_task": 15,
+    "n_cases_temporal": 25,
+    "positives": 160,
+    "negatives": 40,
+    "labelled_claims": 167
+  },
+  "e6": {
+    "overall_strict_accuracy": 0.385,
+    "detection_recall": 0.825,
+    "subject_recall": 0.437125748502994,
+    "predicate_accuracy": 0.49101796407185627,
+    "fidelity_accuracy": 0.6646706586826348,
+    "silence_on_negatives": 0.975,
+    "false_positives": 1,
+    "detection_decision": 0.8666666666666667,
+    "detection_identity": 0.9,
+    "detection_modality": 0.52,
+    "detection_negation": 0.85,
+    "detection_people": 0.9,
+    "detection_task": 0.7333333333333333,
+    "detection_temporal": 0.96,
+    "n_cases_decision": 15,
+    "n_cases_identity": 40,
+    "n_cases_modality": 25,
+    "n_cases_negation": 20,
+    "n_cases_people": 20,
+    "n_cases_task": 15,
+    "n_cases_temporal": 25,
+    "positives": 160,
+    "negatives": 40,
+    "labelled_claims": 167
+  },
+  "verdict": {
+    "comparable": true,
+    "checks": [
+      {
+        "name": "precision",
+        "got": 0.975,
+        "need": 0.85,
+        "pass": true,
+        "measured": true
+      },
+      {
+        "name": "recall",
+        "got": 0.825,
+        "need": 0.7,
+        "pass": true,
+        "measured": true
+      },
+      {
+        "name": "negation",
+        "got": 0.85,
+        "need": 0.95,
+        "pass": false,
+        "measured": true
+      }
+    ],
+    "regressions": [
+      {
+        "metric": "subject_recall",
+        "before": 0.5568862275449101,
+        "after": 0.437125748502994
+      }
+    ],
+    "gatePassed": false,
+    "promote": false
+  },
+  "attributable": true,
+  "models": [
+    "openai/gpt-oss-120b"
+  ],
+  "stats": {
+    "called": 175,
+    "cached": 0,
+    "errors": 0,
+    "models": [
+      "openai/gpt-oss-120b"
+    ],
+    "discardedByGate": {
+      "2:object-not-in-quote": 6,
+      "?:contract": 7,
+      "1:quote-not-verbatim": 2
+    }
+  }
+}

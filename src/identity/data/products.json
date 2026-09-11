@@ -1,0 +1,23 @@
+{
+  "products": [
+    {
+      "name": "AQUA",
+      "type": "AI assistant",
+      "description": "The flagship first-party AI of Aquiplex — chat, memory, reasoning, codebase and document understanding, and repository editing in one."
+    },
+    {
+      "name": "Workspace Intelligence",
+      "type": "Platform capability",
+      "description": "Upload a repository and get an automatic codebase overview, dependency graph, and architecture map that AQUA can reason over and edit."
+    },
+    {
+      "name": "Universal Upload",
+      "type": "Platform capability",
+      "description": "Bring in any file — archives, PDFs, spreadsheets, slides, images, audio — and AQUA classifies, extracts, and uses it in the conversation."
+    }
+  ],
+  "_meta": {
+    "sourceOfTruth": true,
+    "note": "Add or rename products as the platform grows."
+  }
+}

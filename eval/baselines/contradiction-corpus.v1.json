@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-08-19T17:10:39.939Z",
+  "node": "v22.22.2",
+  "suiteFingerprint": "84a2b0a407780919",
+  "caseCount": 1,
+  "note": "Baseline AFTER subject bucketing. Was 1104 comparisons / 71.7% of all pairs; now 561 / 36.4%, holding selection_recall at 1.0 and spurious_emitted at 0. A further change must keep selection_recall at 1.0 while reducing cost \u2014 recall and cost are reported separately so they cannot be traded silently.\n\nRegenerate with: npm run eval:gate -- contradiction-corpus --update",
+  "coverage": {
+    "complete": true,
+    "errored": 0,
+    "executed": 1,
+    "skipped": 0,
+    "total": 1
+  },
+  "metrics": {
+    "comparisons_examined": 561,
+    "comparisons_per_fact": 10.017857142857142,
+    "expected_pairs": 5,
+    "fact_count": 56,
+    "found_pairs": 5,
+    "fraction_of_all_pairs": 0.36428571428571427,
+    "selection_recall": 1,
+    "spurious_emitted": 0
+  }
+}
