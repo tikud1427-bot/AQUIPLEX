@@ -20,7 +20,7 @@
 import { test, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-const { snapshotGraph, diffSnapshots, detectObsolescence, computeWorldDelta } = await import('../reflectionV2/deltaReflector.js');
+const { snapshotGraph, snapshotCanonicalWorldModel, diffSnapshots, detectObsolescence, detectCanonicalObsolescence, computeWorldDelta } = await import('../reflectionV2/deltaReflector.js');
 const { applyWorldDelta } = await import('../reflectionV2/deltaApplier.js');
 const RV2 = await import('../reflectionV2/index.js');
 
@@ -40,6 +40,50 @@ const edge = (id, from, to, type, confidence = 0.6) => ({ id, from, to, type, co
 
 beforeEach(() => { RV2._resetReflectionV2ForTests(); delete process.env.AQUA_REFLECT_V2; delete process.env.AQUA_BRAIN; });
 afterEach(() => { delete process.env.AQUA_REFLECT_V2; delete process.env.AQUA_BRAIN; });
+
+
+test('CANONICAL: Postgres snapshot uses opaque entity ids and canonical edge predicates', () => {
+  const snap = snapshotCanonicalWorldModel({
+    entities: [{ entity_id: 'uuid-e1', identity_key: 'aq:person:maya', canonical_label: 'Maya', type: 'person', source_count: 2 }],
+    claims: [{ claim_id: 'c1', subject_entity_id: 'uuid-e1', predicate: 'works_on', statement_text: 'Maya works on Aqua', asserted_at: '2026-09-10T00:00:00Z' }],
+    edges: [{ edge_id: 'r1', from_entity_id: 'uuid-e1', to_entity_id: 'uuid-e2', predicate: 'works_on', confidence: 0.8, claim_id: 'c1' }],
+    events: [],
+  });
+  assert.equal(snap.canonical, true);
+  assert.equal(snap.nodes.get('uuid-e1').identityKey, 'aq:person:maya');
+  assert.equal(snap.nodes.get('uuid-e1').sourceCount, 2);
+  assert.equal(snap.edges.get('r1').type, 'works_on');
+});
+
+test('CANONICAL OBSOLESCENCE: newer overlapping claim supersedes older value', () => {
+  const result = detectCanonicalObsolescence({
+    claims: [
+      { claim_id: 'old', subject_entity_id: 'e1', subject_label: 'Aqua', predicate: 'status',
+        object_literal: 'beta', statement_text: 'Aqua is beta', asserted_at: '2026-09-01T00:00:00Z' },
+      { claim_id: 'new', subject_entity_id: 'e1', subject_label: 'Aqua', predicate: 'status',
+        object_literal: 'released', statement_text: 'Aqua is released', asserted_at: '2026-09-10T00:00:00Z' },
+    ],
+  }, { since: Date.parse('2026-09-05T00:00:00Z') });
+  assert.equal(result.obsoleted.length, 1);
+  assert.deepEqual(result.obsoleted[0], {
+    factId: 'old', supersededBy: 'new', entity: 'Aqua',
+    reason: 'canonical status conflict; newer claim supersedes',
+  });
+});
+
+test('CANONICAL OBSOLESCENCE: non-overlapping validity windows are history, not contradiction', () => {
+  const result = detectCanonicalObsolescence({
+    claims: [
+      { claim_id: 'old', subject_entity_id: 'e1', subject_label: 'Aqua', predicate: 'status',
+        object_literal: 'beta', valid_from: '2026-08-01T00:00:00Z', valid_to: '2026-09-01T00:00:00Z',
+        asserted_at: '2026-08-01T00:00:00Z' },
+      { claim_id: 'new', subject_entity_id: 'e1', subject_label: 'Aqua', predicate: 'status',
+        object_literal: 'released', valid_from: '2026-09-02T00:00:00Z',
+        asserted_at: '2026-09-10T00:00:00Z' },
+    ],
+  }, { since: Date.parse('2026-09-05T00:00:00Z') });
+  assert.equal(result.obsoleted.length, 0);
+});
 
 // ── STRUCTURED, NOT TEXT ─────────────────────────────────────────────────────
 

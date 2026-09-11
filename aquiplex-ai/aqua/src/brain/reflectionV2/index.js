@@ -26,15 +26,20 @@
  * Impure only at the store boundary (reads graph, writes lifecycle); the diff
  * it delegates to is pure.
  */
-import { snapshotGraph, diffSnapshots, detectObsolescence, computeWorldDelta } from './deltaReflector.js';
+import {
+  snapshotGraph, snapshotCanonicalWorldModel, diffSnapshots,
+  detectObsolescence, detectCanonicalObsolescence, computeWorldDelta,
+} from './deltaReflector.js';
 import { applyWorldDelta } from './deltaApplier.js';
 import { brainEnabled } from '../worldModel/schema.js';
 import {
   loadSnapshot, loadWatermark, saveReflectionState,
-  forgetReflectionState, reflectionStoreStats,
+  forgetReflectionState, reflectionStoreStats, _resetReflectionStoreForTests,
 } from './reflectionStore.js';
 import { ledger } from '../../pic/picStore.js';
 import { SELF_LABEL } from '../identity/selfEntity.js';
+import { snapshotWorldModel } from '../../core/worldModel/worldModelReader.js';
+import { applyReflectionDelta } from '../../core/worldModel/worldModelRepository.js';
 
 /** owner → last snapshot. LRU-capped. */
 const snapshots = new Map();
@@ -74,6 +79,70 @@ function rememberSnapshot(ownerId, snap) {
  * @param {object} [opts] - { mindReport, apply? }
  * @returns {{ delta, applied, report? }}
  */
+
+/**
+ * Canonical reflection path. Postgres is the source of truth; legacy graph
+ * reflection remains available as a compatibility fallback for deployments
+ * without the E5 substrate.
+ */
+export async function reflectCanonicalWorldModel(deps, ownerId, opts = {}) {
+  if (!ownerId) return { delta: null, applied: false };
+  const started = Date.now();
+  try {
+    metrics.reflections += 1;
+    const raw = await snapshotWorldModel(ownerId, { claimLimit: opts.claimLimit ?? 1000 });
+    const after = snapshotCanonicalWorldModel(raw);
+    const before = loadSnapshot(ownerId);
+    const canonicalBefore = before?.canonical ? before : { nodes: new Map(), edges: new Map(), takenAt: 0, canonical: true };
+    const diff = diffSnapshots(canonicalBefore, after);
+    const since = loadWatermark(ownerId);
+    const obsolescence = detectCanonicalObsolescence(raw, { since });
+    const delta = computeWorldDelta({ diff, obsolescence, mindReport: opts.mindReport ?? null });
+
+    const wantApply = opts.apply ?? reflectV2Enabled();
+    let report = null;
+    if (wantApply && delta.worldModelUpdated) {
+      report = await applyReflectionDelta(ownerId, delta, { actor: opts.actor ?? 'reflection-v2' });
+      metrics.applied += 1;
+    } else if (delta.worldModelUpdated) {
+      metrics.dryRuns += 1;
+    }
+
+    rememberSnapshot(ownerId, after);
+    saveReflectionState(ownerId, after, after.takenAt);
+
+    if (delta.worldModelUpdated) {
+      try {
+        ledger(ownerId, 'reflection', {
+          summary: delta.summary,
+          entities: delta.entitiesChanged.length,
+          relationships: delta.relationshipsChanged.length,
+          obsoleted: delta.obsoleted.length,
+          revised: delta.assumptionsRevised?.length ?? 0,
+          applied: !!report,
+          subjects: delta.entitiesChanged.map(e => String(e?.label ?? '').trim())
+            .filter(l => l && l.toLowerCase() !== String(SELF_LABEL).toLowerCase()).slice(0, 5),
+          revisions: (delta.assumptionsRevised ?? []).slice(0, 2).map(a => ({
+            subject: String(a?.subject ?? '').slice(0, 120),
+            from: String(a?.from ?? '').slice(0, 200),
+            to: String(a?.to ?? '').slice(0, 200),
+          })).filter(a => a.subject || a.to),
+        });
+      } catch {}
+    }
+
+    metrics.entitiesChanged += delta.entitiesChanged.length;
+    metrics.relationshipsChanged += delta.relationshipsChanged.length;
+    metrics.obsoleted += delta.obsoleted.length;
+    metrics.lastDurationMs = Date.now() - started;
+    return { delta, applied: !!report, report, canonical: true };
+  } catch (err) {
+    metrics.errors += 1;
+    console.warn(`[BRAIN] Canonical Reflection V2 failed (fail-open): ${err?.message ?? err}`);
+    return { delta: null, applied: false, canonical: true, error: err?.message ?? String(err) };
+  }
+}
+
 export function reflectWorldModel(deps, ownerId, opts = {}) {
   if (!ownerId) return { delta: null, applied: false };
   const started = Date.now();
@@ -205,4 +274,5 @@ export function reflectionV2Metrics() {
 export function _resetReflectionV2ForTests() {
   snapshots.clear();
   lastReflectionAt.clear();
+  _resetReflectionStoreForTests();
 }

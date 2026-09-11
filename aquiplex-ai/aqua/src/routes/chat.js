@@ -91,6 +91,7 @@ import {
   canAccessConversation,
 } from '../memory/conversationStore.js';
 import { resolveOwner, memoryObserve, memoryRetrieve, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
+import { semanticClaimScores } from '../embeddings/semanticMemory.js';
 import * as Brain from '../brain/index.js';
 import { runPostTurn } from './turnPostProcess.js';
 import { formatCitation } from '../files/evidence.js';
@@ -385,6 +386,14 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // Phase D — file content recall: same seam, same contract. Resolves to []
   // when embeddings are unavailable or no uploaded content matches.
   const fileChunksP = semanticFileChunks(memoryOwner, userMessage);
+  // Canonical World Model read: query the same identity space that E6 writes.
+  // It is independent of the legacy PIC floor and fail-open by Brain's seam.
+  const canonicalWorldModelP = Brain.contextV2Active()
+    ? Brain.searchCanonicalWorldModel(memoryOwner, userMessage, { limit: 12 })
+    : Promise.resolve({ items: [], stats: { enabled: false } });
+  const canonicalSemanticScoresP = Brain.contextV2Active()
+    ? semanticClaimScores(memoryOwner, userMessage)
+    : Promise.resolve(null);
   // ── 2. Classify (once — result passed to router, no double classification) ──
   onStage('classify', 'Understanding your request…');
   // Mark the intro conversation so the first-run gate can tell an account that
@@ -612,7 +621,8 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
           //
           // The OTHER consumer is correct and untouched: line ~505 passes the
           // same map to `memoryRetrieve`, which ranks LTM facts by LTM key.
-          semanticScores: null,
+          semanticScores: await canonicalSemanticScoresP,
+          canonicalCandidates: (await canonicalWorldModelP).items ?? [],
           activeProjectId: workspaceId ?? null,
         })
       : floorRetrieve(memoryOwner, userMessage, { limit: 8 });

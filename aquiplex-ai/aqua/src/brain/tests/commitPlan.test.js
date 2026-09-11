@@ -94,7 +94,7 @@ describe('S9 — the idempotency key is exactly (source, range, version)', () =>
 });
 
 describe('S9 — nothing vanishes quietly', () => {
-  test('the four missing targets are MARKED, not dropped', () => {
+  test('all S9 targets are present in the plan', () => {
     const plan = buildCommitPlan(base({
       edges: [{ from: 'self', to: 'Nummo', type: 'works_at' }],
       events: [{ kind: 'joined' }],
@@ -104,25 +104,14 @@ describe('S9 — nothing vanishes quietly', () => {
     assert.ok(targets.includes('lifecycle_transitions'));
     assert.ok(targets.includes('outbox'));
 
-    for (const o of plan.operations.filter(x => PENDING_TARGETS.has(x.target))) {
-      assert.equal(o.writable, false, `${o.target} must not claim to be writable`);
-      assert.match(o.note, /no migration/);
-    }
+    for (const o of plan.operations) assert.equal(o.writable, true, `${o.target} must be writable now`);
   });
 
-  test('blocked rows are counted SEPARATELY from total rows', () => {
-    // A plan reporting healthy totals while a third of it cannot land is the
-    // failure this stat exists to prevent.
+  test('all nine targets are writable and one transaction is possible', () => {
     const plan = buildCommitPlan(base({ edges: [{ from: 'a', to: 'b', type: 'knows' }] }));
-    assert.ok(plan.stats.blocked > 0);
-    assert.ok(plan.stats.rows > plan.stats.blocked);
-    assert.ok(plan.stats.blockedTargets.includes('edges'));
-  });
-
-  test('atomicPossible is FALSE while any target is missing', () => {
-    // S9 says "single transaction". It cannot be one until every target
-    // exists, and claiming otherwise would be the whole point missed.
-    assert.equal(buildCommitPlan(base()).stats.atomicPossible, false);
+    assert.equal(plan.stats.blocked, 0);
+    assert.deepEqual(plan.stats.blockedTargets, []);
+    assert.equal(plan.stats.atomicPossible, true);
   });
 
   // LOGICAL → PHYSICAL lives here, not in the module. The plan names logical
@@ -132,7 +121,7 @@ describe('S9 — nothing vanishes quietly', () => {
   const PHYSICAL = Object.freeze({
     sources: 'aqua_sources', evidence: 'aqua_evidence', entities: 'aqua_entities',
     aliases: 'aqua_entity_aliases', claims: 'aqua_claims', claim_evidence: 'aqua_claim_evidence',
-    edges: 'edges', events: 'events', lifecycle_transitions: 'lifecycle_transitions', outbox: 'outbox',
+    edges: 'aqua_edges', events: 'aqua_events', lifecycle_transitions: 'aqua_lifecycle_transitions', outbox: 'aqua_outbox',
   });
 
   test('every logical target has a physical mapping', () => {
@@ -144,7 +133,7 @@ describe('S9 — nothing vanishes quietly', () => {
     }
   });
 
-  test('the writable/pending split matches the migrations ON DISK', () => {
+  test('the writable set matches the migrations ON DISK', () => {
     // Read from the filesystem, not from a hand-kept list — the two would
     // drift the first time a migration lands, and the plan would keep
     // reporting `edges` as blocked after it became writable.
@@ -155,10 +144,7 @@ describe('S9 — nothing vanishes quietly', () => {
     for (const t of WRITABLE_TARGETS) {
       assert.ok(exists(t), `${t} (${PHYSICAL[t]}) is listed writable but has no migration`);
     }
-    for (const t of PENDING_TARGETS) {
-      assert.ok(!exists(t),
-        `${t} now HAS a migration — move it to WRITABLE_TARGETS and re-check atomicPossible`);
-    }
+    assert.equal(PENDING_TARGETS.size, 0, 'all S9 targets now have migrations');
   });
 });
 

@@ -1,7 +1,7 @@
 /**
  * Embedding key must equal retrieval identity — blueprint §10.
  *
- * 🔴 THE DEFECT THIS PINS
+ * The historical defect and its completed canonical fix:
  * -----------------------
  * `semanticFactScores` embeds LONG-TERM MEMORY facts. `factText()` builds
  * `"key: value"` strings and the vectors are keyed by the LTM mind fact key —
@@ -19,9 +19,8 @@
  * measured it. Nothing compared the two keyspaces, which is the only check that
  * could have caught it.
  *
- * BITE, MEASURED (revert the named change → count failures):
- *   chat.js passes null to the Context Engine   → 2 fail
- *   the LTM consumer keeps its correct map      → 1 fail
+ * Canonical claims now use a separate `claims:<owner>` namespace and claim_id
+ * as the vector key. The LTM namespace remains unchanged for legacy memory.
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -44,20 +43,20 @@ describe('the two keyspaces are different, and the seam knows it', () => {
       'factText no longer embeds "key: value" — the corpus may have changed');
   });
 
-  test('the Context Engine looks up by evidence-store fact id', () => {
+  test('the Context Engine still looks up by candidate semantic identity', () => {
     const scorer = readFileSync(path.join(HERE, '../contextEngine/scorer.js'), 'utf8');
     assert.match(scorer, /ctx\.semanticScores\.get\(candidate\.semanticId\)/);
     const ce = readFileSync(path.join(HERE, '../contextEngine/index.js'), 'utf8');
     assert.match(ce, /semanticId: it\.id/, 'floor lane no longer keys on the fact id');
   });
 
-  test('chat.js does NOT hand the LTM map to the Context Engine', () => {
+  test('chat.js hands only canonical claim-keyed scores to the Context Engine', () => {
     // The fix. Not a behaviour change — a map whose every lookup misses and no
     // map at all reach the same fallback — but the code now states the truth
     // instead of implying a dense signal that cannot exist.
     const ceCall = CHAT.slice(CHAT.indexOf('Brain.assembleContext'), CHAT.indexOf('activeProjectId: workspaceId'));
-    assert.match(ceCall, /semanticScores: null/,
-      'the Context Engine is being fed a map keyed for a different store');
+    assert.match(ceCall, /semanticScores: await canonicalSemanticScoresP/,
+      'the Context Engine must receive claim-keyed canonical scores');
     assert.ok(!/semanticScores: await semanticScoresP/.test(ceCall),
       'the LTM-keyed map must not reach the Context Engine');
   });
@@ -68,9 +67,15 @@ describe('the two keyspaces are different, and the seam knows it', () => {
     assert.match(CHAT, /semanticScores: await semanticScoresP,\s*\/\/ Phase 2/,
       'the correct consumer lost its scores');
   });
+
+  test('canonical claim vectors use claim_id as the retrieval identity', () => {
+    assert.match(SEMANTIC, /const claimNamespace = ownerId => `claims:\$\{ownerId\}`/);
+    assert.match(SEMANTIC, /upsert\(ns, x\.id, vecs\[i\], x\.hash\)/);
+    assert.match(SEMANTIC, /scoreAgainst\(claimNamespace\(ownerId\), qvec\)/);
+  });
 });
 
-describe('passing null changes nothing today, and that is the point', () => {
+describe('semantic identity contract', () => {
   const cand = (over = {}) => ({
     kind: 'fact', id: 'f001', text: 'I run product at Nummo.', confidence: 0.6,
     sourceType: 'conversation', entityIds: [], hops: null, timestamp: null,
@@ -82,8 +87,6 @@ describe('passing null changes nothing today, and that is the point', () => {
   });
 
   test('a map that never hits scores identically to no map at all', () => {
-    // The evidence that this fix is safe. The old behaviour was already the
-    // fallback; only the honesty of the code changed.
     const wrongKeyspace = new Map([['workplace', 0.93], ['cofounder', 0.81]]);
     const withMap = scoreCandidate(cand(), ctx(wrongKeyspace)).dimensions.semantic_similarity;
     const withNull = scoreCandidate(cand(), ctx(null)).dimensions.semantic_similarity;

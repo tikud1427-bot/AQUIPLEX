@@ -247,7 +247,7 @@ export function runPostTurn({
     if (!d.e6Enabled()) return undefined;
     const started = Date.now();
     return Promise.resolve()
-      .then(() => d.understandTurn({ ownerId, conversationId, userMessage }))
+      .then(() => d.understandTurn({ ownerId, conversationId, turn: d.getConversation(conversationId).length, userMessage }))
       .then(
         result => d.reportE6({ ownerId, conversationId, result, ms: Date.now() - started }),
         error => d.reportE6({ ownerId, conversationId, error, ms: Date.now() - started }),

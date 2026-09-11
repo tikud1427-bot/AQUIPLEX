@@ -89,3 +89,44 @@ export async function semanticFactScores(ownerId, query) {
     return null;
   }
 }
+
+/** Canonical World Model semantic namespace. Retrieval identity is claim_id. */
+const claimNamespace = ownerId => `claims:${ownerId}`;
+
+/**
+ * Index canonical claims after a successful E5 commit. Fire-and-forget callers
+ * should not await this on the response path. Keys are exactly claim IDs, so
+ * the Context Engine's semantic lookup and retrieval identity cannot drift.
+ */
+export async function indexOwnerClaims(ownerId, claims = []) {
+  if (!ownerId || !isEmbeddingEnabled() || !Array.isArray(claims)) return;
+  try {
+    const ns = claimNamespace(ownerId);
+    const toEmbed = [];
+    for (const c of claims) {
+      if (!c?.claimId || !c?.statementText) continue;
+      const text = String(c.statementText).trim();
+      const h = contentHash(text);
+      if (!has(ns, c.claimId, h)) toEmbed.push({ id: c.claimId, text, hash: h });
+    }
+    if (!toEmbed.length) return;
+    const vecs = await embed(toEmbed.map(x => x.text));
+    toEmbed.forEach((x, i) => { if (vecs[i]) upsert(ns, x.id, vecs[i], x.hash); });
+  } catch (err) {
+    console.warn('[SEM_MEM] indexOwnerClaims failed (non-fatal):', err.message);
+  }
+}
+
+/** Semantic scores keyed by canonical claim_id — the Context Engine identity. */
+export async function semanticClaimScores(ownerId, query) {
+  if (!ownerId || !isEmbeddingEnabled() || !query || !query.trim()) return null;
+  try {
+    const qvec = await embedOne(query);
+    if (!qvec) return null;
+    const scores = scoreAgainst(claimNamespace(ownerId), qvec);
+    return scores.size ? scores : null;
+  } catch (err) {
+    console.warn('[SEM_MEM] semanticClaimScores failed (non-fatal):', err.message);
+    return null;
+  }
+}

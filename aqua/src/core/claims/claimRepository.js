@@ -125,42 +125,113 @@ async function pool() {
  */
 export async function recordClaim(input) {
   const { polarity, modality } = validate(input);
-  const predicate = ensurePredicate(input.predicate).name;
+  const predicateMeta = ensurePredicate(input.predicate);
+  const predicate = predicateMeta.name;
   const objects = objectColumns(predicate, input.object ?? {});
   const norm = normalizeStatement(input.statementText);
   const p = await pool();
+  const client = await p.connect();
 
-  const existing = await p.query(
-    `SELECT claim_id FROM aqua_claims
-      WHERE owner_id = $1 AND subject_entity_id = $2 AND predicate = $3 AND statement_norm = $4`,
-    [input.ownerId, input.subjectEntityId, predicate, norm]);
+  try {
+    await client.query('BEGIN');
 
-  if (existing.rows.length) {
-    const claimId = existing.rows[0].claim_id;
-    const added = await attachEvidence(claimId, input.ownerId, input.evidence, 'corroborating');
-    return { claimId, created: false, evidenceAdded: added };
+    // Lock the matching claim while deciding whether this write is new. This
+    // makes the SELECT → INSERT/attach decision atomic for concurrent turns.
+    const existing = await client.query(
+      `SELECT claim_id FROM aqua_claims
+        WHERE owner_id = $1 AND subject_entity_id = $2 AND predicate = $3 AND statement_norm = $4
+        FOR UPDATE`,
+      [input.ownerId, input.subjectEntityId, predicate, norm]);
+
+    if (existing.rows.length) {
+      const claimId = existing.rows[0].claim_id;
+      const added = await attachEvidenceWithClient(
+        client, claimId, input.ownerId, input.evidence, 'corroborating');
+      await client.query('COMMIT');
+      return { claimId, created: false, evidenceAdded: added };
+    }
+
+    const claimId = crypto.randomUUID();
+    await client.query(
+      `INSERT INTO aqua_claims (
+         claim_id, owner_id, subject_entity_id, predicate,
+         object_entity_id, object_literal, object_quantity, object_time_from,
+         polarity, modality, valid_from, valid_to, asserted_at, time_precision,
+         state, confidence_extraction, confidence_source, confidence_corroboration,
+         extractor, extractor_version, actor, statement_text, statement_norm)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)`,
+      [claimId, input.ownerId, input.subjectEntityId, predicate,
+        objects.object_entity_id, objects.object_literal, objects.object_quantity, objects.object_time_from,
+        polarity, modality, input.validFrom ?? null, input.validTo ?? null,
+        input.assertedAt ?? new Date(), input.timePrecision ?? 'none',
+        input.state ?? 'extracted',
+        input.confidenceExtraction ?? 0.5, input.confidenceSource ?? 0.5, 0.0,
+        input.extractor, input.extractorVersion ?? 'v1', input.actor,
+        input.statementText, norm]);
+
+    const added = await attachEvidenceWithClient(
+      client, claimId, input.ownerId, input.evidence, 'primary');
+
+    // The outbox row is part of the SAME transaction as the belief. A crash
+    // after COMMIT cannot lose the notification, and a crash before COMMIT
+    // cannot publish a belief that was rolled back.
+    await client.query(
+      `INSERT INTO aqua_outbox (owner_id, event_type, aggregate_kind, aggregate_id, payload, actor)
+       VALUES ($1, 'claim.created', 'claim', $2, $3::jsonb, $4)`,
+      [input.ownerId, claimId, JSON.stringify({ claimId, predicate, polarity, modality }), input.actor]);
+
+    await client.query('COMMIT');
+    return { claimId, created: true, evidenceAdded: added };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+async function attachEvidenceWithClient(client, claimId, ownerId, evidenceIds, role = 'corroborating') {
+  // Confirm the claim itself belongs to this owner before touching its links.
+  const claim = await client.query(
+    `SELECT 1 FROM aqua_claims WHERE claim_id = $1 AND owner_id = $2 FOR UPDATE`,
+    [claimId, ownerId]);
+  if (!claim.rows.length) {
+    throw new ClaimError(`claim ${claimId} does not belong to ${ownerId} — cross-owner link refused`);
   }
 
-  const claimId = crypto.randomUUID();
-  await p.query(
-    `INSERT INTO aqua_claims (
-       claim_id, owner_id, subject_entity_id, predicate,
-       object_entity_id, object_literal, object_quantity, object_time_from,
-       polarity, modality, valid_from, valid_to, asserted_at, time_precision,
-       state, confidence_extraction, confidence_source, confidence_corroboration,
-       extractor, extractor_version, actor, statement_text, statement_norm)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)`,
-    [claimId, input.ownerId, input.subjectEntityId, predicate,
-      objects.object_entity_id, objects.object_literal, objects.object_quantity, objects.object_time_from,
-      polarity, modality, input.validFrom ?? null, input.validTo ?? null,
-      input.assertedAt ?? new Date(), input.timePrecision ?? 'none',
-      input.state ?? 'extracted',
-      input.confidenceExtraction ?? 0.5, input.confidenceSource ?? 0.5, 0.0,
-      input.extractor, input.extractorVersion ?? 'v1', input.actor,
-      input.statementText, norm]);
+  let added = 0;
+  for (const evidenceId of evidenceIds) {
+    const owned = await client.query(
+      `SELECT 1 FROM aqua_evidence WHERE evidence_id = $1 AND owner_id = $2`, [evidenceId, ownerId]);
+    if (!owned.rows.length) {
+      throw new ClaimError(`evidence ${evidenceId} does not belong to ${ownerId} — cross-owner link refused`);
+    }
+    const existing = await client.query(
+      `SELECT 1 FROM aqua_claim_evidence WHERE owner_id=$1 AND claim_id=$2 AND evidence_id=$3`,
+      [ownerId, claimId, evidenceId]);
+    if (existing.rows.length) continue;
+    await client.query(
+      `INSERT INTO aqua_claim_evidence (owner_id, claim_id, evidence_id, role) VALUES ($1,$2,$3,$4)`,
+      [ownerId, claimId, evidenceId, role]);
+    added++;
+  }
+  if (added) await recomputeCorroborationWithClient(client, claimId, ownerId);
+  return added;
+}
 
-  const added = await attachEvidence(claimId, input.ownerId, input.evidence, 'primary');
-  return { claimId, created: true, evidenceAdded: added };
+async function recomputeCorroborationWithClient(client, claimId, ownerId) {
+  const { rows } = await client.query(
+    `SELECT count(DISTINCT e.source_id)::int AS sources
+       FROM aqua_claim_evidence ce
+       JOIN aqua_evidence e ON e.evidence_id = ce.evidence_id
+      WHERE ce.owner_id = $1 AND ce.claim_id = $2 AND ce.role <> 'contradicting'`,
+    [ownerId, claimId]);
+  const sources = Number(rows[0]?.sources ?? 0);
+  const score = sources <= 1 ? 0 : Math.min(0.9, 1 - 1 / sources);
+  await client.query(
+    `UPDATE aqua_claims SET confidence_corroboration = $3, updated_at = now()
+      WHERE claim_id = $1 AND owner_id = $2`, [claimId, ownerId, score]);
+  return { sources, score };
 }
 
 /**
@@ -171,24 +242,18 @@ export async function recordClaim(input) {
  */
 export async function attachEvidence(claimId, ownerId, evidenceIds, role = 'corroborating') {
   const p = await pool();
-  let added = 0;
-  for (const evidenceId of evidenceIds) {
-    const owned = await p.query(
-      `SELECT 1 FROM aqua_evidence WHERE evidence_id = $1 AND owner_id = $2`, [evidenceId, ownerId]);
-    if (!owned.rows.length) {
-      throw new ClaimError(`evidence ${evidenceId} does not belong to ${ownerId} — cross-owner link refused`);
-    }
-    const existing = await p.query(
-      `SELECT 1 FROM aqua_claim_evidence WHERE owner_id=$1 AND claim_id=$2 AND evidence_id=$3`,
-      [ownerId, claimId, evidenceId]);
-    if (existing.rows.length) continue;
-    await p.query(
-      `INSERT INTO aqua_claim_evidence (owner_id, claim_id, evidence_id, role) VALUES ($1,$2,$3,$4)`,
-      [ownerId, claimId, evidenceId, role]);
-    added++;
+  const client = await p.connect();
+  try {
+    await client.query('BEGIN');
+    const added = await attachEvidenceWithClient(client, claimId, ownerId, evidenceIds, role);
+    await client.query('COMMIT');
+    return added;
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
   }
-  if (added) await recomputeCorroboration(claimId, ownerId);
-  return added;
 }
 
 /**
@@ -203,20 +268,7 @@ export async function attachEvidence(claimId, ownerId, evidenceIds, role = 'corr
  */
 export async function recomputeCorroboration(claimId, ownerId) {
   const p = await pool();
-  const { rows } = await p.query(
-    `SELECT count(DISTINCT e.source_id)::int AS sources
-       FROM aqua_claim_evidence ce
-       JOIN aqua_evidence e ON e.evidence_id = ce.evidence_id
-      WHERE ce.owner_id = $1 AND ce.claim_id = $2 AND ce.role <> 'contradicting'`,
-    [ownerId, claimId]);
-  const sources = Number(rows[0]?.sources ?? 0);
-  // Diminishing returns, capped below 1: a second source is worth much more
-  // than a sixth, and nothing is ever certain from corroboration alone.
-  const score = sources <= 1 ? 0 : Math.min(0.9, 1 - 1 / sources);
-  await p.query(
-    `UPDATE aqua_claims SET confidence_corroboration = $3, updated_at = now()
-      WHERE claim_id = $1 AND owner_id = $2`, [claimId, ownerId, score]);
-  return { sources, score };
+  return recomputeCorroborationWithClient(p, claimId, ownerId);
 }
 
 /**

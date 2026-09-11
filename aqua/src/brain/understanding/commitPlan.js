@@ -6,25 +6,15 @@
  *   idempotency key = (source_id, segment_range, extractor_version)
  *   → re-ingest is a no-op; extractor upgrade re-runs cleanly
  *
- * ⚠️ S9 CANNOT BE EXECUTED TODAY. FOUR OF ITS NINE WRITE TARGETS DO NOT EXIST.
+ * S9 substrate is now present. The plan remains pure; execution belongs to the canonical World Model writer.
  * ---------------------------------------------------------------------------
  * Audited against the migrations on disk (logical names here; the test holds
  * the logical → physical mapping):
  *
- *   ✓ claims · evidence · claim_evidence · entities · aliases
- *   ✗ edges · events · lifecycle_transitions · outbox
+ * *   ✓ all nine logical targets now have schema support.
  *
- * The blueprint itself schedules those as migration work, so this is a
- * sequencing fact rather than a contradiction. What matters is that a commit
- * module written today would either invent the tables or silently drop a third
- * of the write, and the second failure is the dangerous one: edges and events
- * would vanish, the claim rows would look fine, and the graph would simply be
- * emptier than the store for reasons nothing reported.
- *
- * So this builds the PLAN — ordered, keyed, and explicit about which
- * operations have somewhere to go — and executes nothing. Every operation
- * carries `writable`, and `stats.blocked` counts the ones waiting on a
- * migration. A plan that quietly omitted them would make S9 look finished.
+ * The plan still executes nothing. It is the inspectable, idempotency-keyed
+ * input to the canonical writer, which is responsible for one transaction.
  *
  * THREE DEFECTS IN THE EXISTING WRITER, FOUND WHILE READING FOR THIS
  * ------------------------------------------------------------------
@@ -81,12 +71,12 @@ import crypto from 'node:crypto';
  */
 export const WRITABLE_TARGETS = Object.freeze(new Set([
   'sources', 'evidence', 'entities', 'aliases', 'claims', 'claim_evidence',
-]));
-
-/** Targets S9 names that have no migration yet. */
-export const PENDING_TARGETS = Object.freeze(new Set([
   'edges', 'events', 'lifecycle_transitions', 'outbox',
 ]));
+
+/** Kept as an explicit empty set so callers can distinguish a complete S9
+ * substrate from a future target that has not yet landed. */
+export const PENDING_TARGETS = Object.freeze(new Set());
 
 /**
  * Dependency order. Not alphabetical, not the order the spec lists them —

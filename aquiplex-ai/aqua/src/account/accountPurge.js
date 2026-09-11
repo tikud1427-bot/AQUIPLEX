@@ -51,6 +51,7 @@ import { purgeOwner as purgeClaims } from '../core/claims/claimRepository.js';
 // claims are. Caught by the purge-completeness pin the moment jobQueue.js
 // exported purgeOwner, which is the pin doing exactly what it is for.
 import { purgeOwner as purgeJobs } from '../core/jobs/jobQueue.js';
+import { purgeOwner as purgeWorldModel } from '../core/worldModel/worldModelRepository.js';
 import { listArtifacts, deleteArtifact } from '../artifacts/artifactStore.js';
 import { listWorkspaces, deleteWorkspace } from '../project/workspaceManager.js';
 import { clearIndex } from '../project/projectIndex.js';
@@ -156,6 +157,7 @@ export async function purgeOwnerData({ userId } = {}) {
   // E5/PR-6 — claim shadow rows. Async because Postgres is.
   report.claims = (await stepAsync(report, 'claims', () => purgeClaims(ownerId)))?.claims ?? 0;
   report.jobs = (await stepAsync(report, 'jobs', () => purgeJobs(ownerId)))?.jobs ?? 0;
+  report.worldModel = (await stepAsync(report, 'worldModel', () => purgeWorldModel(ownerId)))?.rows ?? 0;
 
   // ── 5. Generated artifacts (manifest index + files on disk) ───────────────
   const artifacts = step(report, 'artifacts:list', () => listArtifacts({ ownerId })) ?? [];

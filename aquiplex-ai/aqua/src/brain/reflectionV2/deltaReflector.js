@@ -53,6 +53,108 @@ import { round3 } from '../worldModel/schema.js';
  * @param {object} deps - { graph }
  * @returns {{ nodes: Map, edges: Map, takenAt: number }}
  */
+
+/**
+ * Canonical Postgres snapshot adapter.
+ *
+ * The canonical substrate is authoritative for E5+ reflection. It deliberately
+ * uses the same fingerprint shape as the legacy graph snapshot so the pure
+ * diff machinery remains reusable and testable.
+ */
+export function snapshotCanonicalWorldModel(snapshot) {
+  const nodes = new Map();
+  const edges = new Map();
+  const claims = Array.isArray(snapshot?.claims) ? snapshot.claims : [];
+
+  for (const e of snapshot?.entities ?? []) {
+    nodes.set(e.entity_id, {
+      id: e.entity_id,
+      label: e.canonical_label,
+      sourceCount: Number(e.source_count ?? e.mention_count ?? 0),
+      type: e.type ?? null,
+      identityKey: e.identity_key ?? null,
+    });
+  }
+
+  for (const edge of snapshot?.edges ?? []) {
+    edges.set(edge.edge_id, {
+      id: edge.edge_id,
+      type: edge.predicate,
+      confidence: Number(edge.confidence ?? 0.5),
+      from: edge.from_entity_id,
+      to: edge.to_entity_id,
+      claimId: edge.claim_id ?? null,
+    });
+  }
+
+  return { nodes, edges, claims, events: snapshot?.events ?? [], takenAt: Date.now(), canonical: true };
+}
+
+/**
+ * Canonical contradiction/obsolescence proposal. Two claims can supersede
+ * one another only when they describe the same subject + predicate, differ in
+ * their asserted value, and their validity windows overlap (or are timeless).
+ * This avoids turning legitimate historical changes into contradictions.
+ */
+export function detectCanonicalObsolescence(snapshot, { since = 0 } = {}) {
+  const claims = Array.isArray(snapshot?.claims) ? snapshot.claims : [];
+  const groups = new Map();
+  const out = [];
+  const revised = [];
+
+  const time = c => {
+    const v = c.asserted_at ?? c.updated_at ?? c.created_at;
+    const n = typeof v === 'number' ? v : Date.parse(String(v ?? ''));
+    return Number.isFinite(n) ? n : 0;
+  };
+  const normValue = c => JSON.stringify([
+    c.object_entity_id ?? null,
+    c.object_literal ?? null,
+    c.object_quantity ?? null,
+    c.object_unit ?? null,
+    c.object_time_from ?? null,
+    c.object_time_to ?? null,
+    c.polarity ?? 'asserted',
+    c.modality ?? 'fact',
+  ]);
+  const overlaps = (a, b) => {
+    const af = a.valid_from ? Date.parse(String(a.valid_from)) : -Infinity;
+    const at = a.valid_to ? Date.parse(String(a.valid_to)) : Infinity;
+    const bf = b.valid_from ? Date.parse(String(b.valid_from)) : -Infinity;
+    const bt = b.valid_to ? Date.parse(String(b.valid_to)) : Infinity;
+    return af <= bt && bf <= at;
+  };
+
+  for (const c of claims) {
+    if (!c?.claim_id || !c.subject_entity_id || !c.predicate) continue;
+    const key = `${c.subject_entity_id}\0${c.predicate}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(c);
+  }
+
+  for (const [key, group] of groups) {
+    group.sort((a, b) => time(a) - time(b));
+    for (let i = 1; i < group.length; i += 1) {
+      const older = group[i - 1], newer = group[i];
+      if (normValue(older) === normValue(newer) || !overlaps(older, newer)) continue;
+      if (time(newer) < since) continue;
+      out.push({
+        factId: older.claim_id,
+        supersededBy: newer.claim_id,
+        entity: newer.subject_label ?? newer.subject_identity ?? key.split('\0')[0],
+        reason: `canonical ${newer.predicate} conflict; newer claim supersedes`,
+      });
+      revised.push({
+        subject: newer.subject_label ?? newer.subject_identity ?? key.split('\0')[0],
+        from: older.statement_text ?? '',
+        to: newer.statement_text ?? '',
+        reason: `canonical ${newer.predicate} conflict`,
+      });
+    }
+  }
+  return { obsoleted: out, assumptionsRevised: revised };
+}
+
 export function snapshotGraph(deps, ownerId) {
   const { graph: G } = deps;
   const nodes = new Map();

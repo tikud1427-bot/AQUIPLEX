@@ -27,6 +27,7 @@
  * B2 has no callers yet by design — the retrieval seam is B4's job. Landing
  * the model first keeps that change to a swap-in rather than a rewrite.
  */
+import crypto from 'node:crypto';
 import * as graph from '../reasoning/reasoningGraph.js';
 import * as evidenceStore from '../files/evidenceStore.js';
 import { peekMind } from '../mind/mindStore.js';
@@ -53,6 +54,7 @@ import * as pic from '../pic/core.js';
 import { ensureSelfEntity, SELF_CANONICAL_ID } from './identity/selfEntity.js';
 import { entityStoreFor } from './identity/entityStoreView.js';
 import { getEntry as getIdEntry } from './identity/idStore.js';
+import { commitUnderstanding as commitCanonicalUnderstanding } from '../core/worldModel/worldModelRepository.js';
 
 /**
  * The owner's self entity id, or null when they do not have one.
@@ -429,7 +431,7 @@ export function e6Enabled() {
  * invoke them and nothing here commits.
  */
 export async function understandTurn(
-  { ownerId, conversationId, userMessage, callModel = null } = {},
+  { ownerId, conversationId, turn = null, userMessage, callModel = null } = {},
   { deps = REAL_DEPS } = {},
 ) {
   if (!e6Enabled()) return null;
@@ -450,10 +452,96 @@ export async function understandTurn(
     selfEntityId = null;
   }
 
-  return runUnderstandingPipeline(userMessage, {
+  const result = await runUnderstandingPipeline(userMessage, {
     ownerId, conversationId, callModel: callModel ?? (await e6Transport()),
     entityStore, selfEntityId,
   });
+
+  // E5/E6 bridge — deliberately opt-in. Extraction and canonical persistence
+  // are separate gates so a measured-but-not-promoted extractor can be wired
+  // to the real turn path without silently becoming authoritative.
+  if (!e6CommitEnabled() || !result?.readyForS7?.length) return result;
+
+  try {
+    const allEntities = entityStore?.all?.() ?? [];
+    const byId = new Map(allEntities.map(e => [e.entityId ?? e.id, e]));
+    const sourceId = deterministicUuid(
+      `conversation-turn:${ownerId}:${conversationId ?? 'unknown'}:${Number.isInteger(turn) ? turn : 'unknown'}`
+    );
+    const extractorVersion = process.env.AQUA_E6_EXTRACTOR_VERSION ?? 'e6-v1';
+    const actor = `e6:${extractorVersion}`;
+
+    const bySegment = new Map();
+    for (const claim of result.readyForS7) {
+      const range = claim.segment ?? {};
+      const key = `${range.start}:${range.end}`;
+      if (!bySegment.has(key)) bySegment.set(key, { start: range.start, end: range.end, claims: [] });
+      const subject = byId.get(claim.resolution?.subject?.entityId) ?? {
+        entityId: claim.resolution?.subject?.entityId,
+        canonical: claim.subject,
+        name: claim.subject,
+        type: 'concept',
+      };
+      const object = claim.objectKind === 'entity'
+        ? (byId.get(claim.resolution?.object?.entityId) ?? {
+            entityId: claim.resolution?.object?.entityId,
+            canonical: claim.object?.entity,
+            name: claim.object?.entity,
+            type: 'concept',
+          })
+        : null;
+      bySegment.get(key).claims.push({
+        ...claim,
+        _canonicalSubject: subject,
+        _canonicalObject: object,
+      });
+    }
+
+    const commits = [];
+    for (const segment of bySegment.values()) {
+      const canonicalClaims = segment.claims.map(c => ({
+        ...c,
+        subjectEntityId: null,
+        objectEntityId: null,
+      }));
+      commits.push(await commitCanonicalUnderstanding({
+        ownerId, sourceId, actor, extractorVersion,
+        segmentRange: { start: segment.start, end: segment.end },
+        sourceKind: 'conversation',
+        externalRef: conversationId
+          ? `${conversationId}:turn:${Number.isInteger(turn) ? turn : 'unknown'}`
+          : null,
+        title: `AQUIPLEX conversation${Number.isInteger(turn) ? ` — turn ${turn}` : ''}`, 
+        contentHash: crypto.createHash('sha256').update(userMessage).digest('hex'),
+        assertedAt: new Date(),
+        claims: canonicalClaims,
+      }));
+    }
+    result.canonicalCommit = {
+      enabled: true,
+      sourceId,
+      commits,
+      committedClaims: commits.reduce((n, c) => n + (c.claims?.length ?? 0), 0),
+    };
+  } catch (error) {
+    // L11: understanding is enrichment; persistence failure must never sink
+    // the user's turn. The result remains available for observability.
+    result.canonicalCommit = { enabled: true, committed: false, error: error?.message ?? String(error) };
+  }
+
+  return result;
+}
+
+export function e6CommitEnabled() {
+  return String(process.env.AQUA_E6_COMMIT ?? 'off').toLowerCase() === 'on';
+}
+
+function deterministicUuid(seed) {
+  const bytes = crypto.createHash('sha256').update(String(seed)).digest().subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString('hex');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
 /**

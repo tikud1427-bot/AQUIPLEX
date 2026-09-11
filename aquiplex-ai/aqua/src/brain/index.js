@@ -34,7 +34,10 @@ import * as annotations from './worldModel/annotationStore.js';
 import * as P from './worldModel/projection.js';
 import { ingestConversationTurn, ingestMetrics, ingestEnabled, factIngestEnabled } from './knowledgeExtraction/conversationIngest.js';
 import { assembleTurnContext, contextEngineMetrics, contextV2Enabled } from './contextEngine/index.js';
-import { reflectWorldModel, reflectionV2Metrics, reflectV2Enabled, forgetOwner as forgetReflectionOwner } from './reflectionV2/index.js';
+import {
+  reflectWorldModel, reflectCanonicalWorldModel, reflectionV2Metrics,
+  reflectV2Enabled, forgetOwner as forgetReflectionOwner,
+} from './reflectionV2/index.js';
 import { loadSurfacedAt, markSurfaced } from './reflectionV2/reflectionStore.js';
 import { buildRevisionDirective, isSuitableTurn } from './reflectionV2/revisionVoice.js';
 import { getLedger } from '../pic/picStore.js';
@@ -53,6 +56,9 @@ import * as pic from '../pic/core.js';
 import { ensureSelfEntity, SELF_CANONICAL_ID } from './identity/selfEntity.js';
 import { entityStoreFor } from './identity/entityStoreView.js';
 import { getEntry as getIdEntry } from './identity/idStore.js';
+import { commitUnderstanding, commitEnabled as e6CommitEnabled } from '../core/worldModel/worldModelRepository.js';
+import { isConfigured as worldModelDbConfigured } from '../core/db/pool.js';
+import { searchWorldModel } from '../core/worldModel/worldModelReader.js';
 
 /**
  * The owner's self entity id, or null when they do not have one.
@@ -263,6 +269,13 @@ export function reflectTurn(ownerId, opts = {}) {
     transition,
     annotate: (oid, eid, patch) => deps.annotations.annotate(oid, eid, patch),
   };
+  // Once the canonical E5 substrate is configured, Reflection reads and
+  // writes it directly. Keep the legacy synchronous path only for deployments
+  // that have no canonical database yet; this preserves old test/integration
+  // contracts during migration.
+  if (worldModelDbConfigured() && deps === REAL_DEPS) {
+    return reflectCanonicalWorldModel(reflectDeps, ownerId, { mindReport, apply });
+  }
   return guard('reflectTurn', { delta: null, applied: false },
     () => reflectWorldModel(reflectDeps, ownerId, { mindReport, apply }));
 }
@@ -344,6 +357,15 @@ export function revisionDirectiveFor(ownerId, { taskType = null, mode = null } =
   });
 }
 
+/** Canonical World Model read seam. Fail-open when Postgres is absent. */
+export async function searchCanonicalWorldModel(ownerId, query, opts = {}) {
+  try { return await searchWorldModel(ownerId, query, opts); }
+  catch (err) {
+    console.warn(`[BRAIN] canonical world-model read failed (fail-open): ${err?.message ?? err}`);
+    return { items: [], stats: { enabled: true, error: err?.message ?? String(err) } };
+  }
+}
+
 // ── Context Engine V2 (B4) ───────────────────────────────────────────────────
 
 /**
@@ -386,6 +408,8 @@ export function contextV2Active() { return contextV2Enabled(); }
  * its own promotion gate — negation detection sits at 85% against a 95% bar on
  * both valid full shadow runs — so the default is the honest one.
  */
+export function e6CommitActive() { return e6CommitEnabled(); }
+
 export function e6Enabled() {
   return String(process.env.AQUA_E6 ?? 'off').toLowerCase() === 'on';
 }
@@ -450,10 +474,27 @@ export async function understandTurn(
     selfEntityId = null;
   }
 
-  return runUnderstandingPipeline(userMessage, {
+  const result = await runUnderstandingPipeline(userMessage, {
     ownerId, conversationId, callModel: callModel ?? (await e6Transport()),
     entityStore, selfEntityId,
   });
+
+  // E5 → E6 canonical write seam. Kept behind its own kill switch while the
+  // E6 promotion gate is still unmet. Only fully resolved claims are eligible;
+  // unresolved/provisional entities never become canonical rows.
+  if (e6CommitEnabled() && result?.readyForS7?.length) {
+    const entities = entityStore?.all?.() ?? [];
+    const byId = new Map(entities.map(e => [e.entityId ?? e.id, e]));
+    const ready = result.readyForS7.map(c => ({
+      ...c,
+      subjectCanonical: byId.get(c.subjectEntityId)?.name ?? null,
+      objectCanonical: c.objectEntityId ? (byId.get(c.objectEntityId)?.name ?? null) : null,
+    }));
+    result.commit = await commitUnderstanding({ ...result, readyForS7: ready }, {
+      ownerId, conversationId, extractorVersion: 'e6-v1', actor: 'e6-understanding', entityById: byId,
+    });
+  }
+  return result;
 }
 
 /**

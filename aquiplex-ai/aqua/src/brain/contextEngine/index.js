@@ -51,7 +51,8 @@ export function contextV2Enabled() {
  * @param {object} deps - {
  *     picRetrieve(ownerId, query, opts) → { items, block, stats },  // the floor
  *     graph, evidenceStore, peekMind, formatCitation,
- *     semanticScores?: Map|null,      // pre-awaited by the caller (async boundary)
+ *     semanticScores?: Map|null,      // claim-keyed scores when available
+ *     canonicalCandidates?: Array,     // canonical WM read projection
  *     activeProjectId?: string|null,
  *   }
  * @param {string} ownerId
@@ -115,6 +116,14 @@ function safeFloor(deps, ownerId, query, opts) {
 function gatherCandidates(deps, ownerId, query, floor, opts) {
   const { graph: G, evidenceStore: ES, formatCitation } = deps;
   const byId = new Map();
+
+  // (a0) Canonical Postgres World Model candidates. These use canonical claim
+  // ids as semantic identities and therefore participate in the same scoring
+  // path as the floor instead of becoming a second prompt injection lane.
+  for (const it of deps.canonicalCandidates ?? []) {
+    if (!it?.id || !it?.text) continue;
+    byId.set(`wm:${it.id}`, { ...it, semanticId: it.semanticId ?? it.id, via: it.via ?? 'canonical-world-model' });
+  }
 
   // (a) PIC facts — carry their provenance, lifecycle flags, citations.
   for (const it of floor.items ?? []) {
