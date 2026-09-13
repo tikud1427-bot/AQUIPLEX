@@ -13,7 +13,7 @@
  */
 
 export const RRF_DEFAULT_K = 60;
-export const RRF_DEFAULT_WEIGHT = 0.12;
+export const RRF_DEFAULT_WEIGHT = 0.04;
 
 /**
  * Reciprocal Rank Fusion.
@@ -59,8 +59,8 @@ export function reciprocalRankFusion(lanes = [], { k = RRF_DEFAULT_K, limit = In
  */
 export function rerankWithFusion(candidates = [], fused = [], { tieEpsilon = 0.04, fusionWeight = RRF_DEFAULT_WEIGHT } = {}) {
   const byId = new Map(fused.map(x => [String(x.id), x]));
-  const weight = Number.isFinite(fusionWeight) ? Math.max(0, Math.min(0.5, fusionWeight)) : RRF_DEFAULT_WEIGHT;
   const epsilon = Number.isFinite(tieEpsilon) ? Math.max(0, tieEpsilon) : 0.04;
+  const weight = Number.isFinite(fusionWeight) ? Math.max(0, Math.min(epsilon, fusionWeight)) : Math.min(RRF_DEFAULT_WEIGHT, epsilon);
 
   const maxRrf = fused.reduce((m, x) => Math.max(m, x.rrf), 0) || 1;
   return candidates.map((c, index) => {
@@ -84,15 +84,51 @@ export function rerankWithFusion(candidates = [], fused = [], { tieEpsilon = 0.0
 }
 
 /** Group candidates into the independent retrieval lanes V3 can fuse. */
-export function lanesFromCandidates(candidates = []) {
+export function lanesFromCandidates(candidates = [], { semanticScores = null, enabledLanes = null } = {}) {
   const groups = new Map();
+  const allowed = enabledLanes instanceof Set
+    ? enabledLanes
+    : Array.isArray(enabledLanes)
+      ? new Set(enabledLanes)
+      : null;
+  const addRow = (lane, row) => {
+    if (allowed && !allowed.has(lane)) return;
+    if (!groups.has(lane)) groups.set(lane, []);
+    groups.get(lane).push(row);
+  };
   for (const c of candidates) {
     const lanes = Array.isArray(c.lanes) && c.lanes.length ? c.lanes : [laneOf(c)];
     for (const lane of lanes) {
-      if (!groups.has(lane)) groups.set(lane, []);
-      groups.get(lane).push({ id: c.id, score: c.score ?? 0, candidate: c });
+      addRow(lane, { id: c.id, score: c.score ?? 0, candidate: c });
     }
   }
+  // Dense is an independent lane even when the same fact was already admitted
+  // by lexical retrieval. The semantic map is keyed by evidence-store fact id,
+  // which is the same identity carried by candidate.semanticId. This preserves
+  // genuine cross-lane agreement instead of letting first-admission erase a vote.
+  // The gates mirror PIC's measured dense lane: enough corpus mass, a standout
+  // top-vs-median margin, cosine floor, and a bounded proposal set.
+  if (semanticScores instanceof Map && semanticScores.size >= 60) {
+    const values = [...semanticScores.values()].filter(Number.isFinite).sort((a, b) => b - a);
+    const margin = values.length ? values[0] - values[Math.floor(values.length / 2)] : 0;
+    if (margin >= 0.15) {
+      const candidatesBySemanticId = new Map(
+        candidates
+          .filter(c => c?.kind === 'fact' && c.semanticId != null)
+          .map(c => [String(c.semanticId), c]),
+      );
+      const denseRows = [...semanticScores.entries()]
+        .filter(([id, sim]) => candidatesBySemanticId.has(String(id)) && Number.isFinite(sim) && sim >= 0.55)
+        .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+        .slice(0, 12)
+        .map(([id, sim]) => {
+          const candidate = candidatesBySemanticId.get(String(id));
+          return { id: candidate.id, score: sim, candidate };
+        });
+      if (denseRows.length && (!allowed || allowed.has('dense'))) groups.set('dense', denseRows);
+    }
+  }
+
   for (const rows of groups.values()) rows.sort((a, b) => b.score - a.score || String(a.id).localeCompare(String(b.id)));
   return [...groups.entries()].map(([name, rows]) => ({ name, rows }));
 }

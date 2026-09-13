@@ -80,7 +80,7 @@ async function loadEngine() {
  * floor baseline measures. Passing invented values would make the two lanes
  * incomparable in exactly the dimension being isolated.
  */
-export async function retrieveWithContextEngine(ownerId, query, { limit = 8, semanticScores = null, retrievalV3 = false } = {}) {
+export async function retrieveWithContextEngine(ownerId, query, { limit = 8, semanticScores = null, retrievalV3 = false, retrievalV3Lanes = null } = {}) {
   if (retrievalV3) process.env.AQUA_RETRIEVAL_V3 = 'on';
   else delete process.env.AQUA_RETRIEVAL_V3;
   const { pic, brain } = await loadEngine();
@@ -88,12 +88,16 @@ export async function retrieveWithContextEngine(ownerId, query, { limit = 8, sem
     throw new Error('AQUA_CONTEXT_V2 is off — this adapter would silently measure the PIC floor a second time.');
   }
 
+  // E7 ablation isolation: the PIC floor is deliberately lexical-only.
+  // Semantic scores are supplied separately to the Context Engine so the
+  // dense lane can introduce candidates rather than being baked into the
+  // floor. This prevents `dense` from measuring "PIC lexical+dense".
   const floorRetrieve = (oid, q, o) => pic.retrieveKnowledge(oid, q, {
     limit: o?.limit ?? limit,
-    semanticScores,
+    semanticScores: null,
   });
   const out = brain.assembleContext(ownerId, query, floorRetrieve, {
-    limit, semanticScores, activeProjectId: null,
+    limit, semanticScores, activeProjectId: null, retrievalV3Lanes,
   });
 
   return {

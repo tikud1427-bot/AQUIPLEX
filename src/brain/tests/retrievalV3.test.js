@@ -20,6 +20,18 @@ describe('E7 retrieval V3 fusion', () => {
     assert.equal(fused.length, 2);
   });
 
+  test('dense semantic scores form an independent lane for already-admitted facts', () => {
+    const semanticScores = new Map(Array.from({ length: 60 }, (_, i) => [`f${i}`, i === 7 ? 0.95 : 0.50]));
+    const rows = lanesFromCandidates([
+      { id: 'f7', semanticId: 'f7', kind: 'fact', score: 0.80, via: 'lexical' },
+      { id: 'f8', semanticId: 'f8', kind: 'fact', score: 0.79, via: 'lexical' },
+    ], { semanticScores });
+    const dense = rows.find(x => x.name === 'dense');
+    assert.ok(dense);
+    assert.equal(dense.rows[0].id, 'f7');
+    assert.equal(dense.rows[0].score, 0.95);
+  });
+
   test('lane grouping is deterministic', () => {
     const rows = lanesFromCandidates([
       { id: 'a', score: .9, via: 'lexical' },
@@ -43,5 +55,6 @@ describe('E7 retrieval V3 fusion', () => {
       { id: 'b', score: .50 },
     ], fused, { tieEpsilon: .01, fusionWeight: .5 });
     assert.equal(far[0].id, 'a');
+    assert.ok(far.find(x => x.id === 'a').fusedScore > far.find(x => x.id === 'b').fusedScore);
   });
 });

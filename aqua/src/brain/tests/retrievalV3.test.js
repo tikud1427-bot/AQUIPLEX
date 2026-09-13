@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { reciprocalRankFusion, rerankWithFusion, lanesFromCandidates } from '../contextEngine/retrievalV3.js';
+import { reciprocalRankFusion, rerankWithFusion, rerankWithCrossEncoder, lanesFromCandidates } from '../contextEngine/retrievalV3.js';
 
 describe('E7 retrieval V3 fusion', () => {
   test('RRF rewards candidates appearing in multiple lanes', () => {
@@ -18,6 +18,18 @@ describe('E7 retrieval V3 fusion', () => {
     const fused = reciprocalRankFusion([[{ id: 'a' }, { id: 'a' }, { id: 'b' }]], { k: 60 });
     assert.equal(fused.find(x => x.id === 'a').laneCount, 1);
     assert.equal(fused.length, 2);
+  });
+
+  test('dense semantic scores form an independent lane for already-admitted facts', () => {
+    const semanticScores = new Map(Array.from({ length: 60 }, (_, i) => [`f${i}`, i === 7 ? 0.95 : 0.50]));
+    const rows = lanesFromCandidates([
+      { id: 'f7', semanticId: 'f7', kind: 'fact', score: 0.80, via: 'lexical' },
+      { id: 'f8', semanticId: 'f8', kind: 'fact', score: 0.79, via: 'lexical' },
+    ], { semanticScores });
+    const dense = rows.find(x => x.name === 'dense');
+    assert.ok(dense);
+    assert.equal(dense.rows[0].id, 'f7');
+    assert.equal(dense.rows[0].score, 0.95);
   });
 
   test('lane grouping is deterministic', () => {
@@ -45,4 +57,30 @@ describe('E7 retrieval V3 fusion', () => {
     assert.equal(far[0].id, 'a');
     assert.ok(far.find(x => x.id === 'a').fusedScore > far.find(x => x.id === 'b').fusedScore);
   });
+  test('cross-encoder reranks only the bounded fused pool and preserves RRF fail-safe', () => {
+    const fused = reciprocalRankFusion([
+      [{ id: 'a' }, { id: 'b' }, { id: 'c' }],
+    ], { k: 60 });
+    const out = rerankWithCrossEncoder(
+      [{ id: 'a', score: .9 }, { id: 'b', score: .8 }, { id: 'c', score: .7 }],
+      fused,
+      { query: 'q', candidateLimit: 2, scorePair: (_q, c) => c.id === 'b' ? 1 : 0, blendWeight: 0 },
+    );
+    assert.equal(out[0].id, 'b');
+    assert.equal(out[1].id, 'a');
+    assert.equal(out[2].id, 'c');
+  });
+
+  test('cross-encoder failure fails closed to RRF ordering', () => {
+    const fused = reciprocalRankFusion([
+      [{ id: 'a' }, { id: 'b' }],
+    ], { k: 60 });
+    const out = rerankWithCrossEncoder(
+      [{ id: 'a', score: .9 }, { id: 'b', score: .8 }],
+      fused,
+      { query: 'q', scorePair: () => { throw new Error('model unavailable'); } },
+    );
+    assert.deepEqual(out.map(x => x.id), ['a', 'b']);
+  });
+
 });

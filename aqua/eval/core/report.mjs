@@ -84,10 +84,20 @@ export function toHuman(report) {
     lines.push('   (no metrics — nothing executed)');
   } else {
     for (const [name, value] of Object.entries(metrics).sort()) {
-      const shown = typeof value === 'number'
-        ? (value >= 0 && value <= 1 ? `${value.toFixed(4)}  (${pct(value)})` : String(value))
-        : String(value);
-      lines.push(`   ${name.padEnd(24)} ${shown}`);
+      const formatMetric = (v) => {
+        if (typeof v === 'number') {
+          return v >= 0 && v <= 1 ? `${v.toFixed(4)}  (${pct(v)})` : String(v);
+        }
+        return String(v);
+      };
+      if (value && typeof value === 'object' && !Array.isArray(value)) {
+        lines.push(`   ${name}`);
+        for (const [metricName, metricValue] of Object.entries(value).sort()) {
+          lines.push(`     ${metricName.padEnd(20)} ${formatMetric(metricValue)}`);
+        }
+      } else {
+        lines.push(`   ${name.padEnd(24)} ${formatMetric(value)}`);
+      }
     }
   }
 

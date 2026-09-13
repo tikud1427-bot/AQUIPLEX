@@ -83,16 +83,179 @@ export function rerankWithFusion(candidates = [], fused = [], { tieEpsilon = 0.0
   });
 }
 
+
+/**
+ * Cross-encoder reranking contract (E7 PR-8).
+ *
+ * The scorer is deliberately injected rather than hard-coding a model runtime:
+ * assembleTurnContext is synchronous, while model inference may be hosted by
+ * a local synchronous runtime in production. The scorer receives (query,
+ * candidate) and MUST return a finite relevance score. A failed/invalid scorer
+ * causes a fail-safe to the RRF ordering.
+ *
+ * Only the fused top-N candidate pool is reranked; the remaining candidates
+ * retain their RRF ordering. This bounds latency and prevents a reranker from
+ * becoming an unbounded second retrieval system.
+ */
+
+/**
+ * Async cross-encoder reranking for real model adapters (E7 PR-8).
+ *
+ * Kept separate from the synchronous contract so the existing Context Engine
+ * and all tests remain backwards compatible. A production adapter should
+ * batch score the bounded pool through `scorePairs(query, candidates)`.
+ */
+export async function rerankWithCrossEncoderAsync(
+  candidates = [],
+  fused = [],
+  {
+    query = '',
+    scorePairs = null,
+    candidateLimit = 32,
+    outputLimit = Infinity,
+    blendWeight = 0.20,
+  } = {},
+) {
+  if (!Array.isArray(candidates) || !candidates.length || typeof scorePairs !== 'function') {
+    return candidates;
+  }
+  const limit = Math.max(1, Number.isFinite(candidateLimit) ? Math.floor(candidateLimit) : 32);
+  const weight = Number.isFinite(blendWeight) ? Math.max(0, Math.min(1, blendWeight)) : 0.20;
+  const byId = new Map(fused.map((x, i) => [String(x.id), { ...x, rank: i }]));
+  const ordered = [...candidates].sort((a, b) => {
+    const ar = byId.get(String(a.id))?.rank ?? Number.MAX_SAFE_INTEGER;
+    const br = byId.get(String(b.id))?.rank ?? Number.MAX_SAFE_INTEGER;
+    return ar - br || String(a.id).localeCompare(String(b.id));
+  });
+  const pool = ordered.slice(0, limit);
+  try {
+    const rawScores = await scorePairs(query, pool);
+    if (!Array.isArray(rawScores) || rawScores.length !== pool.length) {
+      throw new Error('cross-encoder returned an invalid score vector');
+    }
+    const scored = pool.map((candidate, index) => {
+      const raw = Number(rawScores[index]);
+      if (!Number.isFinite(raw)) throw new Error('cross-encoder returned a non-finite score');
+      const f = byId.get(String(candidate.id));
+      const rrf = f?.rrf ?? 0;
+      return {
+        ...candidate,
+        crossEncoderScore: raw,
+        crossEncoderFusedScore: raw * (1 - weight) + rrf * weight,
+        _crossEncoderIndex: index,
+      };
+    }).sort((a, b) =>
+      b.crossEncoderFusedScore - a.crossEncoderFusedScore ||
+      b.crossEncoderScore - a.crossEncoderScore ||
+      a._crossEncoderIndex - b._crossEncoderIndex
+    );
+    const tail = ordered.slice(limit);
+    const result = [...scored, ...tail];
+    return Number.isFinite(outputLimit) ? result.slice(0, Math.max(0, outputLimit)) : result;
+  } catch {
+    return ordered;
+  }
+}
+
+export function rerankWithCrossEncoder(
+  candidates = [],
+  fused = [],
+  {
+    query = '',
+    scorePair = null,
+    candidateLimit = 32,
+    outputLimit = Infinity,
+    blendWeight = 0.20,
+  } = {},
+) {
+  if (!Array.isArray(candidates) || !candidates.length || typeof scorePair !== 'function') {
+    return candidates;
+  }
+
+  const limit = Math.max(1, Number.isFinite(candidateLimit) ? Math.floor(candidateLimit) : 32);
+  const weight = Number.isFinite(blendWeight) ? Math.max(0, Math.min(1, blendWeight)) : 0.20;
+  const byId = new Map(fused.map((x, i) => [String(x.id), { ...x, rank: i }]));
+  const ordered = [...candidates].sort((a, b) => {
+    const ar = byId.get(String(a.id))?.rank ?? Number.MAX_SAFE_INTEGER;
+    const br = byId.get(String(b.id))?.rank ?? Number.MAX_SAFE_INTEGER;
+    return ar - br || String(a.id).localeCompare(String(b.id));
+  });
+  const pool = ordered.slice(0, limit);
+
+  try {
+    const scored = pool.map((candidate, index) => {
+      const raw = scorePair(query, candidate);
+      if (!Number.isFinite(raw)) throw new Error('cross-encoder returned a non-finite score');
+      const f = byId.get(String(candidate.id));
+      const rrf = f?.rrf ?? 0;
+      return {
+        ...candidate,
+        crossEncoderScore: raw,
+        // RRF remains a bounded prior; CE controls ordering inside the pool.
+        crossEncoderFusedScore: raw * (1 - weight) + rrf * weight,
+        _crossEncoderIndex: index,
+      };
+    }).sort((a, b) =>
+      b.crossEncoderFusedScore - a.crossEncoderFusedScore ||
+      b.crossEncoderScore - a.crossEncoderScore ||
+      a._crossEncoderIndex - b._crossEncoderIndex
+    );
+
+    const tail = ordered.slice(limit);
+    const result = [...scored, ...tail];
+    return Number.isFinite(outputLimit) ? result.slice(0, Math.max(0, outputLimit)) : result;
+  } catch {
+    // Reranking is an optimization, never a correctness dependency.
+    return ordered;
+  }
+}
+
 /** Group candidates into the independent retrieval lanes V3 can fuse. */
-export function lanesFromCandidates(candidates = []) {
+export function lanesFromCandidates(candidates = [], { semanticScores = null, enabledLanes = null } = {}) {
   const groups = new Map();
+  const allowed = enabledLanes instanceof Set
+    ? enabledLanes
+    : Array.isArray(enabledLanes)
+      ? new Set(enabledLanes)
+      : null;
+  const addRow = (lane, row) => {
+    if (allowed && !allowed.has(lane)) return;
+    if (!groups.has(lane)) groups.set(lane, []);
+    groups.get(lane).push(row);
+  };
   for (const c of candidates) {
     const lanes = Array.isArray(c.lanes) && c.lanes.length ? c.lanes : [laneOf(c)];
     for (const lane of lanes) {
-      if (!groups.has(lane)) groups.set(lane, []);
-      groups.get(lane).push({ id: c.id, score: c.score ?? 0, candidate: c });
+      addRow(lane, { id: c.id, score: c.score ?? 0, candidate: c });
     }
   }
+  // Dense is an independent lane even when the same fact was already admitted
+  // by lexical retrieval. The semantic map is keyed by evidence-store fact id,
+  // which is the same identity carried by candidate.semanticId. This preserves
+  // genuine cross-lane agreement instead of letting first-admission erase a vote.
+  // The gates mirror PIC's measured dense lane: enough corpus mass, a standout
+  // top-vs-median margin, cosine floor, and a bounded proposal set.
+  if (semanticScores instanceof Map && semanticScores.size >= 60) {
+    const values = [...semanticScores.values()].filter(Number.isFinite).sort((a, b) => b - a);
+    const margin = values.length ? values[0] - values[Math.floor(values.length / 2)] : 0;
+    if (margin >= 0.15) {
+      const candidatesBySemanticId = new Map(
+        candidates
+          .filter(c => c?.kind === 'fact' && c.semanticId != null)
+          .map(c => [String(c.semanticId), c]),
+      );
+      const denseRows = [...semanticScores.entries()]
+        .filter(([id, sim]) => candidatesBySemanticId.has(String(id)) && Number.isFinite(sim) && sim >= 0.55)
+        .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+        .slice(0, 12)
+        .map(([id, sim]) => {
+          const candidate = candidatesBySemanticId.get(String(id));
+          return { id: candidate.id, score: sim, candidate };
+        });
+      if (denseRows.length && (!allowed || allowed.has('dense'))) groups.set('dense', denseRows);
+    }
+  }
+
   for (const rows of groups.values()) rows.sort((a, b) => b.score - a.score || String(a.id).localeCompare(String(b.id)));
   return [...groups.entries()].map(([name, rows]) => ({ name, rows }));
 }

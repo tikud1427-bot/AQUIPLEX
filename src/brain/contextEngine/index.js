@@ -48,6 +48,14 @@ export function contextV2Enabled() {
   return brainEnabled() && String(process.env.AQUA_CONTEXT_V2 ?? '').toLowerCase() === 'on';
 }
 
+export function retrievalV3Enabled() {
+  return brainEnabled() && String(process.env.AQUA_RETRIEVAL_V3 ?? '').toLowerCase() === 'on';
+}
+
+function scoreForCandidate(candidate, ctx) {
+  return scoreCandidate(candidate, ctx).score;
+}
+
 /**
  * @param {object} deps - {
  *     picRetrieve(ownerId, query, opts) → { items, block, stats },  // the floor
@@ -65,34 +73,37 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
   metrics.calls += 1;
 
   // 1. The floor: the existing, tested PIC retrieval. Always computed.
-  //
-  // V3 needs a candidate pool, not merely the final floor. PIC's `limit`
-  // controls its returned ranking, so asking it for the same `limit` would
-  // truncate independent dense/graph candidates before RRF can see them.
-  // Keep the ordinary V2 path byte-compatible; widen only when V3 is enabled.
-  // The requested output limit is still enforced by the assembler below.
-  const v3Active = contextV2Enabled() && retrievalV3Enabled();
-  const floorCandidateLimit = v3Active
-    ? Math.max(limit * 4, 32)
-    : limit;
-  const floor = safeFloor(deps, ownerId, query, {
-    limit: floorCandidateLimit,
-    plan: opts.plan,
-  });
-  if (!contextV2Enabled() || !ownerId || !query) return floor;
+  const semanticScores = opts.semanticScores ?? deps.semanticScores ?? null;
+  const floor = safeFloor(deps, ownerId, query, { limit, plan: opts.plan, semanticScores });
+  if ((!contextV2Enabled() && !Array.isArray(opts.retrievalV3Lanes)) || !ownerId || !query) return floor;
 
   const started = Date.now();
   try {
-    const candidates = gatherCandidates(deps, ownerId, query, floor, opts);
+    const gathered = gatherCandidates(deps, ownerId, query, floor, opts);
+    const enabledLanes = opts.retrievalV3Lanes;
+    const candidates = Array.isArray(enabledLanes)
+      ? gathered.filter(c => (c.lanes ?? []).some(lane => enabledLanes.includes(lane)))
+      : gathered;
     metrics.candidatesSeen += candidates.length;
 
-    const ctx = buildSignalBag(deps, ownerId, query, candidates, opts);
-    const fused = v3Active ? reciprocalRankFusion(lanesFromCandidates(candidates).map(l => l.rows), { limit: Math.max(limit * 4, 32) }) : [];
-    const rankedCandidates = v3Active ? rerankWithFusion(
-      candidates.map(c => ({ ...c, score: scoreForCandidate(c, ctx) })), fused,
-    ) : candidates;
+    const ctx = buildSignalBag(deps, ownerId, query, candidates, { ...opts, semanticScores });
+    const scoredCandidates = retrievalV3Enabled()
+      ? candidates.map(c => ({ ...c, score: scoreForCandidate(c, ctx) }))
+      : candidates;
+    const fused = retrievalV3Enabled()
+      ? reciprocalRankFusion(
+          lanesFromCandidates(scoredCandidates, {
+            semanticScores,
+            enabledLanes: opts.retrievalV3Lanes ?? null,
+          }).map(l => l.rows),
+          { limit: Math.max(limit * 4, 32) },
+        )
+      : [];
+    const rankedCandidates = retrievalV3Enabled()
+      ? rerankWithFusion(scoredCandidates, fused)
+      : candidates;
     const assembled = assembleContext(
-      rankedCandidates.map(c => ({ ...c, selectionScore: v3Active ? c.fusedScore : c.score })),
+      rankedCandidates.map(c => ({ ...c, selectionScore: retrievalV3Enabled() ? c.fusedScore : c.score })),
       ctx, { limit, charBudget },
     );
 
@@ -105,17 +116,14 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
     // not an improvement.
     if (!assembled.items.length && floor.items.length) {
       metrics.floorFallbacks += 1;
+      // Lane-isolated E7 ablations must not silently reintroduce the PIC floor;
+      // otherwise an empty dense/graph lane would be scored as whatever the
+      // lexical floor happened to return. Production/default mode retains the
+      // fail-safe contract.
+      if (Array.isArray(opts.retrievalV3Lanes)) return emptyResult();
       return floor;
     }
     assembled.stats.contextEngine.floorItems = floor.items.length;
-    if (v3Active) {
-      assembled.stats.contextEngine.retrievalV3 = {
-        enabled: true,
-        fusedCandidates: fused.length,
-        laneCount: lanesFromCandidates(candidates).length,
-        rrfK: 60,
-      };
-    }
     return assembled;
   } catch (err) {
     metrics.errors += 1;
@@ -123,14 +131,6 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
     console.warn(`[BRAIN] Context Engine V2 failed (floor fallback): ${err?.message ?? err}`);
     return floor;
   }
-}
-
-export function retrievalV3Enabled() {
-  return brainEnabled() && String(process.env.AQUA_RETRIEVAL_V3 ?? '').toLowerCase() === 'on';
-}
-
-function scoreForCandidate(candidate, ctx) {
-  return scoreCandidate(candidate, ctx).score;
 }
 
 function safeFloor(deps, ownerId, query, opts) {
@@ -154,11 +154,23 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
   const byId = new Map();
 
   // (a) PIC facts — carry their provenance, lifecycle flags, citations.
+  // In a lane-isolated E7 ablation, only admit floor facts whose originating
+  // lane is explicitly enabled. Production/default mode remains unchanged.
+  const enabledLanes = Array.isArray(opts.retrievalV3Lanes)
+    ? new Set(opts.retrievalV3Lanes)
+    : null;
+  const laneAllowed = lane => !enabledLanes || enabledLanes.has(lane);
   for (const it of floor.items ?? []) {
     if (it.kind === 'fact') {
+      const floorLane = laneForVia(it.via);
+      if (!laneAllowed(floorLane)) continue;
       const key = `fact:${it.id}`;
       byId.set(key, normFact(it.id, it.statement, {
-        confidence: it.confidence, citations: it.citations, lanes: ['lexical'],
+        confidence: it.confidence, citations: it.citations,
+        // Preserve the retrieval lane that produced the floor item. Dense
+        // candidates were previously relabelled as lexical here, making RRF
+        // unable to see the independent dense vote it was designed to fuse.
+        lanes: [laneForVia(it.via)],
         trusted: it.trusted, disputed: it.disputed, stale: it.stale,
         via: it.via, sourceType: 'document',
         entityIds: [], timestamp: null, semanticId: it.id,
@@ -188,6 +200,7 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
   //     the floor. Reach is preserved: a fact the query has real affinity for
   //     still arrives, it just has to be about the question.
   const shape = analyseQuestion(query);
+  if (enabledLanes && !enabledLanes.has('graph')) return addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowed);
   const entityTypes = new Map();
   for (const n of G.nodesByType(ownerId, 'entity')) {
     const t = n?.data?.entityType;
@@ -214,7 +227,13 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
       for (const { node } of G.neighbors(ownerId, ent.id, { type: 'fact', edgeType: 'about' })) {
         const factId = node.id.replace(/^fact:/, '');
         const key = `fact:${factId}`;
-        if (byId.has(key)) { const existing = byId.get(key); existing.hops = Math.min(existing.hops ?? 9, 1); existing.entityIds.push(ent.id); existing.lanes = Array.from(new Set([...(existing.lanes ?? []), 'graph'])); continue; }
+        if (byId.has(key)) {
+          const existing = byId.get(key);
+          existing.hops = Math.min(existing.hops ?? 9, 1);
+          existing.entityIds.push(ent.id);
+          existing.lanes = Array.from(new Set([...(existing.lanes ?? []), 'graph']));
+          continue;
+        }
         const fact = ES.getFact(ownerId, factId);
         if (!fact) continue;
         if (fact.archived) continue;
@@ -231,10 +250,76 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
     }
   }
 
-  return [...byId.values()].map(c => ({
+  // Dense is a genuine proposal lane in production as well as in the
+  // lane-isolated E7 harness. This is what lets dense retrieval recover facts
+  // the PIC lexical floor never admitted, while preserving canonical fact ids.
+  const withDense = addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowed);
+  return withDense.map(c => ({
     ...c,
     lanes: Array.from(new Set([...(c.lanes ?? []), laneForCandidate(c)])),
   }));
+}
+
+
+/**
+ * In E7 lane-isolated experiments, dense retrieval must be a real proposal
+ * source, not a semantic annotation on whatever PIC happened to return.
+ * Production uses the same canonical evidence-store identity, but this helper
+ * is activated whenever canonical semantic scores are supplied. The same
+ * helper also powers lane-isolated E7 evaluation; `retrievalV3Lanes` controls
+ * which floor/reach lanes are admitted, while dense remains a real proposal
+ * source when enabled.
+ */
+function addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowed) {
+  if (!laneAllowed('dense')) return [...byId.values()];
+  const ES = deps.evidenceStore;
+  const semanticScores = opts.semanticScores;
+  if (!(semanticScores instanceof Map) || semanticScores.size < 60) return [...byId.values()];
+
+  const values = [...semanticScores.values()].filter(Number.isFinite).sort((a, b) => b - a);
+  const margin = values.length ? values[0] - values[Math.floor(values.length / 2)] : 0;
+  if (margin < 0.15) return [...byId.values()];
+
+  const ranked = [...semanticScores.entries()]
+    .filter(([, sim]) => Number.isFinite(sim) && sim >= 0.55)
+    .sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0])))
+    .slice(0, 12);
+
+  for (const [factId, sim] of ranked) {
+    const key = `fact:${factId}`;
+    if (byId.has(key)) {
+      const existing = byId.get(key);
+      existing.lanes = Array.from(new Set([...(existing.lanes ?? []), 'dense']));
+      continue;
+    }
+    const fact = ES?.getFact?.(ownerId, String(factId));
+    if (!fact || fact.archived) continue;
+    const evidence = ES.evidenceForFact(ownerId, String(factId));
+    byId.set(key, normFact(String(factId), fact.statement, {
+      confidence: fact.confidence,
+      citations: deps.formatCitation ? evidence.map(deps.formatCitation) : [],
+      via: `dense: ${sim.toFixed(2)}`,
+      sourceType: 'document',
+      entityIds: [],
+      hops: null,
+      timestamp: fact.createdAt ?? null,
+      semanticId: String(factId),
+      lanes: ['dense'],
+      trusted: fact.trusted,
+      disputed: fact.disputed,
+      stale: fact.stale,
+    }));
+  }
+  return [...byId.values()];
+}
+
+function laneForVia(via) {
+  const value = String(via ?? '').toLowerCase();
+  if (value.startsWith('dense')) return 'dense';
+  if (value.startsWith('graph')) return 'graph';
+  if (value.startsWith('polarity')) return 'structured';
+  if (value.startsWith('lexical')) return 'lexical';
+  return 'unknown';
 }
 
 function laneForCandidate(c) {
@@ -309,6 +394,7 @@ function findFocusEntities(G, ownerId, query, shape) {
 
 function buildSignalBag(deps, ownerId, query, candidates, opts) {
   const { peekMind } = deps;
+  const semanticScores = opts.semanticScores ?? deps.semanticScores ?? null;
   const mind = peekMind?.(ownerId) ?? null;
 
   const activeProjectTokens = new Set();
@@ -322,7 +408,7 @@ function buildSignalBag(deps, ownerId, query, candidates, opts) {
 
   return {
     queryTokens: tokensOf(query),
-    semanticScores: deps.semanticScores ?? null,
+    semanticScores,
     activeProjectTokens,
     activeGoalTokens,
     focusEntityIds,
@@ -357,6 +443,7 @@ function normFact(id, text, extra = {}) {
     hops: extra.hops ?? null,
     timestamp: extra.timestamp ?? null,
     semanticId: extra.semanticId ?? id,
+    lanes: Array.isArray(extra.lanes) ? [...new Set(extra.lanes)] : [],
     epistemic: 'observed',
   };
 }

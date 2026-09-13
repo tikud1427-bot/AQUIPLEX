@@ -141,8 +141,9 @@ export function broadenQuery(query) {
  * @param {object} [opts]  { limit, plan, _retrieve }  (_retrieve: test DI, same pattern as PIC's deps)
  */
 export function cognitiveKnowledgeRetrieve(ownerId, query, opts = {}) {
-  const { limit = 8, plan = null, _retrieve = picRetrieveKnowledge } = opts;
-  const first = _retrieve(ownerId, query, { limit });
+  const { limit = 8, plan = null, semanticScores = null, _retrieve = picRetrieveKnowledge } = opts;
+  const retrieveOpts = { limit, semanticScores };
+  const first = _retrieve(ownerId, query, retrieveOpts);
   if (!cieEnabled() || !plan) return first;
 
   try {
@@ -154,7 +155,7 @@ export function cognitiveKnowledgeRetrieve(ownerId, query, opts = {}) {
     if (!bq) return first;
 
     metrics.retrieval.broadened += 1;
-    const second = _retrieve(ownerId, bq, { limit: limit + 4 });
+    const second = _retrieve(ownerId, bq, { limit: limit + 4, semanticScores });
 
     if (!second.items.length) {
       metrics.retrieval.emptyAfterBroaden += 1;

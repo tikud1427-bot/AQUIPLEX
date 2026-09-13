@@ -92,6 +92,7 @@ import {
 } from '../memory/conversationStore.js';
 import { resolveOwner, memoryObserve, memoryRetrieve, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
 import * as Brain from '../brain/index.js';
+import { scorePairs as crossEncoderScorePairs } from '../brain/contextEngine/crossEncoderLocal.js';
 import { runPostTurn } from './turnPostProcess.js';
 import { formatCitation } from '../files/evidence.js';
 import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
@@ -587,37 +588,28 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     // The semantic scores are pre-awaited here — the async boundary the CIE
     // path already owns — and handed in, keeping the engine itself pure.
     const floorRetrieve = (oid, q, o) => cognitiveKnowledgeRetrieve(oid, q, { ...o, plan: cognition.plan });
+    const useCrossEncoder = Brain.contextV2Active() && String(process.env.AQUA_CROSS_ENCODER ?? '').toLowerCase() === 'on';
     const knowledge = Brain.contextV2Active()
-      ? Brain.assembleContext(memoryOwner, userMessage, floorRetrieve, {
-          limit: 8, plan: cognition.plan, formatCitation,
-          // 🔴 NULL ON PURPOSE — THE MAP HANDED HERE COULD NEVER MATCH.
-          //
-          // `semanticScoresP` is `semanticFactScores`, which embeds LONG-TERM
-          // MEMORY facts: `factText()` builds "key: value" strings and keys the
-          // vectors by the LTM mind fact key — `workplace`, `cofounder`,
-          // `custom_biggest_constraint`.
-          //
-          // The Context Engine ranks EVIDENCE-STORE facts and looks the score up
-          // with `ctx.semanticScores.get(candidate.semanticId)`, where
-          // `semanticId` is an evidence-store fact id. Two stores, two
-          // namespaces, no overlap by construction — every lookup missed.
-          //
-          // Blueprint §10: "A semantic embedding is useless if embedding key ≠
-          // retrieval identity." This is that defect, and it survived because a
-          // miss falls through to token Jaccard, so `semantic_similarity` — the
-          // second-heaviest dimension at 0.20 — has been reporting lexical
-          // overlap under an embedding's name since it was added.
-          //
-          // Passing null is BEHAVIOURALLY IDENTICAL: a map whose every lookup
-          // misses and no map at all both reach the same fallback line. What
-          // changes is that the code now says what is true. Claim-keyed vectors
-          // arrive in E7/PR-3; until then this dimension is lexical and admits it.
-          //
-          // The OTHER consumer is correct and untouched: line ~505 passes the
-          // same map to `memoryRetrieve`, which ranks LTM facts by LTM key.
-          semanticClaimScores: await canonicalSemanticP,
-          activeProjectId: workspaceId ?? null,
-        })
+      ? (useCrossEncoder
+          ? Brain.assembleContextAsync(memoryOwner, userMessage, floorRetrieve, {
+              limit: 8, plan: cognition.plan, formatCitation,
+              semanticScores: await canonicalSemanticP,
+              activeProjectId: workspaceId ?? null,
+              crossEncoder: {
+                scorePairs: crossEncoderScorePairs,
+                candidateLimit: Number(process.env.AQUA_CROSS_ENCODER_POOL ?? 32),
+                blendWeight: Number(process.env.AQUA_CROSS_ENCODER_BLEND ?? 0.20),
+              },
+            })
+          : Brain.assembleContext(memoryOwner, userMessage, floorRetrieve, {
+              limit: 8, plan: cognition.plan, formatCitation,
+              // E7 canonical dense lane: these scores are keyed by the same
+              // evidence-store fact id used by Context Engine candidate.semanticId.
+              // The legacy `semanticScoresP` map remains reserved for memoryRetrieve,
+              // whose LTM keyspace is different.
+              semanticScores: await canonicalSemanticP,
+              activeProjectId: workspaceId ?? null,
+            }))
       : floorRetrieve(memoryOwner, userMessage, { limit: 8 });
     knowledgeContext = knowledge.block;
     knowledgeItems   = knowledge.items;

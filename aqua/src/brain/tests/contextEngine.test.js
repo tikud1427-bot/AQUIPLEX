@@ -232,10 +232,70 @@ test('V2 never regresses below the floor when it would select nothing', () => {
   assert.ok(out.items.length >= 1, 'floor preserved rather than an empty assembly');
 });
 
+test('E7 DENSE PROPAGATION: canonical semantic scores reach the PIC floor', () => {
+  process.env.AQUA_BRAIN = 'on';
+  process.env.AQUA_CONTEXT_V2 = 'on';
+  const semanticScores = new Map([['f1', 0.91]]);
+  let received = null;
+  const floor = {
+    items: [{ kind: 'fact', id: 'f1', statement: 'aqua billing', confidence: 0.9, citations: [] }],
+    block: 'FLOOR', stats: { facts: 1 },
+  };
+  const deps = {
+    picRetrieve: (_owner, _query, opts) => {
+      received = opts?.semanticScores ?? null;
+      return floor;
+    },
+    graph: stubGraph(),
+    evidenceStore: null,
+    peekMind: () => null,
+  };
+  CE.assembleTurnContext(deps, 'o', 'aqua billing', { semanticScores });
+  assert.strictEqual(received, semanticScores,
+    'the Context Engine must pass canonical semantic scores into the floor retrieval lane');
+});
+
 test('facade: assembleContext is guarded and honours the switch', () => {
   const floor = { items: [], block: '', stats: {} };
   const out = Brain.assembleContext('o', 'q', () => floor, { deps: { graph: stubGraph(), evidenceStore: null, peekMind: () => null } });
   assert.ok('items' in out && 'block' in out && 'stats' in out);
+});
+
+test('facade: retrieval V3 lane restriction reaches Context Engine', () => {
+  const floor = {
+    items: [{
+      kind: 'fact', id: 'lexical-floor', statement: 'lexical fact',
+      confidence: 0.9, citations: [], via: 'lexical',
+    }],
+    block: '', stats: {},
+  };
+  const out = Brain.assembleContext('o', 'lexical fact', () => floor, {
+    deps: {
+      graph: stubGraph(),
+      evidenceStore: null,
+      peekMind: () => null,
+    },
+    retrievalV3Lanes: ['dense'],
+  });
+  // With the facade forwarding the lane restriction, the lexical floor is
+  // excluded from the isolated dense candidate pool; without the forwarding
+  // it would leak through and this regression would pass incorrectly.
+  assert.equal(out.items.length, 0);
+});
+
+
+test('facade: semantic scores reach Context Engine dense lane', () => {
+  const floor = { items: [], block: '', stats: {} };
+  const out = Brain.assembleContext('o', 'dense fact', () => floor, {
+    deps: {
+      graph: stubGraph(),
+      evidenceStore: null,
+      peekMind: () => null,
+    },
+    semanticScores: new Map([['dense-fact', 0.95]]),
+    retrievalV3Lanes: ['dense'],
+  });
+  assert.ok(out && Array.isArray(out.items));
 });
 
 // ── stubs ────────────────────────────────────────────────────────────────────

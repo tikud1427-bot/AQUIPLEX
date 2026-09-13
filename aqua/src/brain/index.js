@@ -34,7 +34,7 @@ import { peekMind } from '../mind/mindStore.js';
 import * as annotations from './worldModel/annotationStore.js';
 import * as P from './worldModel/projection.js';
 import { ingestConversationTurn, ingestMetrics, ingestEnabled, factIngestEnabled } from './knowledgeExtraction/conversationIngest.js';
-import { assembleTurnContext, contextEngineMetrics, contextV2Enabled } from './contextEngine/index.js';
+import { assembleTurnContext, assembleTurnContextAsync, contextEngineMetrics, contextV2Enabled } from './contextEngine/index.js';
 import { indexCanonicalClaims, canonicalClaimScores } from './contextEngine/canonicalSemantic.js';
 import { reflectWorldModel, reflectionV2Metrics, reflectV2Enabled, forgetOwner as forgetReflectionOwner } from './reflectionV2/index.js';
 import { loadSurfacedAt, markSurfaced } from './reflectionV2/reflectionStore.js';
@@ -362,7 +362,17 @@ export function revisionDirectiveFor(ownerId, { taskType = null, mode = null } =
  * AQUA_CONTEXT_V2=on, in which case this is a pure passthrough of the floor.
  */
 export function assembleContext(ownerId, query, floorRetrieve, opts = {}) {
-  const { deps = REAL_DEPS, semanticScores = null, semanticClaimScores = null, activeProjectId = null, priorEntityIds = null, limit = 8, charBudget = 1600, plan = null } = opts;
+  const {
+    deps = REAL_DEPS,
+    semanticScores = null,
+    semanticClaimScores = null,
+    activeProjectId = null,
+    priorEntityIds = null,
+    limit = 8,
+    charBudget = 1600,
+    plan = null,
+    retrievalV3Lanes = null,
+  } = opts;
   const engineDeps = {
     picRetrieve: floorRetrieve,
     graph: deps.graph,
@@ -374,7 +384,15 @@ export function assembleContext(ownerId, query, floorRetrieve, opts = {}) {
   };
   return guard('assembleContext',
     { items: [], block: '', stats: {} },
-    () => assembleTurnContext(engineDeps, ownerId, query, { limit, charBudget, priorEntityIds: priorEntityIds ?? undefined, plan }));
+    () => assembleTurnContext(engineDeps, ownerId, query, {
+      limit,
+      charBudget,
+      priorEntityIds: priorEntityIds ?? undefined,
+      plan,
+      semanticScores,
+      semanticClaimScores,
+      retrievalV3Lanes: Array.isArray(retrievalV3Lanes) ? retrievalV3Lanes : null,
+    }));
 }
 
 /**
@@ -383,6 +401,41 @@ export function assembleContext(ownerId, query, floorRetrieve, opts = {}) {
  * Map is keyed by evidence-store fact.id, which is Context Engine's
  * candidate.semanticId.
  */
+
+/** Async E7 PR-8 variant. Keeps the existing synchronous API untouched. */
+export async function assembleContextAsync(ownerId, query, floorRetrieve, opts = {}) {
+  const {
+    deps = REAL_DEPS,
+    semanticScores = null,
+    semanticClaimScores = null,
+    activeProjectId = null,
+    priorEntityIds = null,
+    limit = 8,
+    charBudget = 1600,
+    plan = null,
+    retrievalV3Lanes = null,
+    crossEncoder = null,
+  } = opts;
+  const engineDeps = {
+    picRetrieve: floorRetrieve,
+    graph: deps.graph,
+    evidenceStore: deps.evidenceStore,
+    peekMind: deps.peekMind,
+    formatCitation: opts.formatCitation ?? null,
+    semanticScores: semanticClaimScores ?? semanticScores,
+    activeProjectId,
+  };
+  return assembleTurnContextAsync(engineDeps, ownerId, query, {
+    limit, charBudget,
+    priorEntityIds: priorEntityIds ?? undefined,
+    plan,
+    semanticScores,
+    semanticClaimScores,
+    retrievalV3Lanes: Array.isArray(retrievalV3Lanes) ? retrievalV3Lanes : null,
+    crossEncoder,
+  });
+}
+
 export async function canonicalSemanticScores(ownerId, query) {
   if (!ownerId || !query) return null;
   try {

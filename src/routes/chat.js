@@ -382,6 +382,9 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // semanticFactScores never rejects — it resolves to null when embeddings
   // are unavailable, and the retriever then behaves exactly as pre-Phase-2.
   const semanticScoresP = semanticFactScores(memoryOwner, userMessage);
+  // E7 canonical semantic lane: fact.id is the retrieval identity, so dense
+  // scores can be consumed directly by Context Engine candidate.semanticId.
+  const canonicalSemanticP = Brain.canonicalSemanticScores(memoryOwner, userMessage);
   // Phase D — file content recall: same seam, same contract. Resolves to []
   // when embeddings are unavailable or no uploaded content matches.
   const fileChunksP = semanticFileChunks(memoryOwner, userMessage);
@@ -587,32 +590,11 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     const knowledge = Brain.contextV2Active()
       ? Brain.assembleContext(memoryOwner, userMessage, floorRetrieve, {
           limit: 8, plan: cognition.plan, formatCitation,
-          // 🔴 NULL ON PURPOSE — THE MAP HANDED HERE COULD NEVER MATCH.
-          //
-          // `semanticScoresP` is `semanticFactScores`, which embeds LONG-TERM
-          // MEMORY facts: `factText()` builds "key: value" strings and keys the
-          // vectors by the LTM mind fact key — `workplace`, `cofounder`,
-          // `custom_biggest_constraint`.
-          //
-          // The Context Engine ranks EVIDENCE-STORE facts and looks the score up
-          // with `ctx.semanticScores.get(candidate.semanticId)`, where
-          // `semanticId` is an evidence-store fact id. Two stores, two
-          // namespaces, no overlap by construction — every lookup missed.
-          //
-          // Blueprint §10: "A semantic embedding is useless if embedding key ≠
-          // retrieval identity." This is that defect, and it survived because a
-          // miss falls through to token Jaccard, so `semantic_similarity` — the
-          // second-heaviest dimension at 0.20 — has been reporting lexical
-          // overlap under an embedding's name since it was added.
-          //
-          // Passing null is BEHAVIOURALLY IDENTICAL: a map whose every lookup
-          // misses and no map at all both reach the same fallback line. What
-          // changes is that the code now says what is true. Claim-keyed vectors
-          // arrive in E7/PR-3; until then this dimension is lexical and admits it.
-          //
-          // The OTHER consumer is correct and untouched: line ~505 passes the
-          // same map to `memoryRetrieve`, which ranks LTM facts by LTM key.
-          semanticScores: null,
+          // E7 canonical dense lane: these scores are keyed by the same
+          // evidence-store fact id used by Context Engine candidate.semanticId.
+          // The legacy `semanticScoresP` map remains reserved for memoryRetrieve,
+          // whose LTM keyspace is different.
+          semanticScores: await canonicalSemanticP,
           activeProjectId: workspaceId ?? null,
         })
       : floorRetrieve(memoryOwner, userMessage, { limit: 8 });

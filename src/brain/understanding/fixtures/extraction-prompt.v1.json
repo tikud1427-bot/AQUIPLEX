@@ -7,7 +7,7 @@
     {
       "id": "fx-employment",
       "segment": "I run product at Nummo, a fintech in Bangalore.",
-      "why": "The canonical self-disclosure. Three claims from one sentence \u2014 employer, role, and the company's location \u2014 which is the point of a semantic extractor over a regex: one sentence is not one claim. The role literal stays as written ('runs product') rather than being normalised to 'head of product': rule 7 in the same prompt forbids adding what is probably also true, and an example that embellishes teaches the model to embellish.",
+      "why": "The canonical self-disclosure. Three claims from one sentence — employer, role, and the company's location — which is the point of a semantic extractor over a regex: one sentence is not one claim. The role literal stays as written ('runs product') rather than being normalised to 'head of product': rule 7 in the same prompt forbids adding what is probably also true, and an example that embellishes teaches the model to embellish.",
       "claims": [
         {
           "subject": "self",
@@ -47,7 +47,7 @@
     {
       "id": "fx-supersession",
       "segment": "I stopped working at Intercom last month because I want to focus entirely on Nummo.",
-      "why": "The blueprint's own worked example. A negated employment with a closing boundary, plus an intent \u2014 and the intent must NOT be recorded as a fact. `valid_to` is relative because 'last month' is not a date; inventing one would be the exact 'do not convert uncertainty into fact' failure.",
+      "why": "The blueprint's own worked example. A negated employment with a closing boundary, plus an intent — and the intent must NOT be recorded as a fact. `valid_to` is relative because 'last month' is not a date; inventing one would be the exact 'do not convert uncertainty into fact' failure.",
       "claims": [
         {
           "subject": "self",
@@ -93,6 +93,42 @@
       ]
     },
     {
+      "id": "fx-negation-first-person-contraction",
+      "segment": "I don't use Postgres anymore.",
+      "why": "A first-person negative declarative is still a claim. The contraction \"don't\" and the word \"anymore\" express negation; do not treat the sentence as silence, a request, or a preference. Preserve the negative polarity and use the predicate/object types exactly as registered.",
+      "claims": [
+        {
+          "subject": "self",
+          "predicate": "uses",
+          "object": {
+            "literal": "Postgres"
+          },
+          "polarity": "negated",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "I don't use Postgres anymore"
+        }
+      ]
+    },
+    {
+      "id": "fx-negation-first-person-perfect",
+      "segment": "We haven't decided on pricing.",
+      "why": "A first-person negative declarative with a contracted auxiliary is a claim about the current state. \"haven't\" expresses negation; emit the negated claim rather than returning an empty list.",
+      "claims": [
+        {
+          "subject": "self",
+          "predicate": "decided",
+          "object": {
+            "literal": "pricing"
+          },
+          "polarity": "negated",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "We haven't decided on pricing"
+        }
+      ]
+    },
+    {
       "id": "fx-hypothetical",
       "segment": "If we hired two more engineers, could we ship sooner?",
       "why": "A question containing a hypothetical. Nothing here is asserted about the world, and an extractor that records 'we hired two more engineers' has manufactured a fact from a conditional. The correct output is NO CLAIMS.",
@@ -101,7 +137,7 @@
     {
       "id": "fx-quote",
       "segment": "Priya said she wants to own onboarding.",
-      "why": "Reported speech. The user is not claiming Priya owns onboarding, nor that the user intends it \u2014 modality `quote` keeps the attribution honest and stops the claim being read as the user's own intent.",
+      "why": "Reported speech. The user is not claiming Priya owns onboarding, nor that the user intends it — modality `quote` keeps the attribution honest and stops the claim being read as the user's own intent.",
       "claims": [
         {
           "subject": "Priya",
@@ -119,7 +155,7 @@
     {
       "id": "fx-temporal",
       "segment": "The migration starts next Monday.",
-      "why": "A dated event with no named person. `relative` precision because 'next Monday' resolves only against the turn's timestamp, and resolution is PR-7's job, not the model's \u2014 asking the model to compute a date invites it to guess one.",
+      "why": "A dated event with no named person. `relative` precision because 'next Monday' resolves only against the turn's timestamp, and resolution is PR-7's job, not the model's — asking the model to compute a date invites it to guess one.",
       "claims": [
         {
           "subject": "the migration",

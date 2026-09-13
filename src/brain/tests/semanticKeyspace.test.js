@@ -51,15 +51,14 @@ describe('the two keyspaces are different, and the seam knows it', () => {
     assert.match(ce, /semanticId: it\.id/, 'floor lane no longer keys on the fact id');
   });
 
-  test('chat.js does NOT hand the LTM map to the Context Engine', () => {
-    // The fix. Not a behaviour change — a map whose every lookup misses and no
-    // map at all reach the same fallback — but the code now states the truth
-    // instead of implying a dense signal that cannot exist.
+  test('chat.js hands the canonical evidence-store map to the Context Engine', () => {
     const ceCall = CHAT.slice(CHAT.indexOf('Brain.assembleContext'), CHAT.indexOf('activeProjectId: workspaceId'));
-    assert.match(ceCall, /semanticScores: null/,
-      'the Context Engine is being fed a map keyed for a different store');
+    assert.match(ceCall, /semanticScores: await canonicalSemanticP/,
+      'the Context Engine must receive canonical evidence-store keyed semantic scores');
     assert.ok(!/semanticScores: await semanticScoresP/.test(ceCall),
       'the LTM-keyed map must not reach the Context Engine');
+    assert.ok(!/semanticClaimScores:/.test(ceCall),
+      'the option must use the Context Engine semanticScores contract');
   });
 
   test('the LTM consumer still gets its map — it was never the broken half', () => {
