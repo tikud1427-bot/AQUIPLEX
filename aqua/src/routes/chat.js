@@ -100,7 +100,7 @@ import { semanticFileScores }                              from '../project/sema
 import { formatAttachmentsForPrompt, getAttachments }       from '../upload/attachmentStore.js';
 import { proposeEdit, serializeProposal }                   from '../project/editEngine.js';
 import { getIndex }                                         from '../project/projectIndex.js';
-import { detectIdentityIntent, answerFromIdentity, isRefusal } from '../identity/index.js';
+import { detectIdentityIntent, answerFromIdentity, isRefusal, violatesIdentityContract } from '../identity/index.js';
 import { detectArtifactIntent, detectArtifactEditIntent, MIN_ARTIFACT_CONFIDENCE } from '../artifacts/artifactIntent.js';
 import { editArtifact } from '../artifacts/editEngine.js';
 import { publicManifest, composeArtifactEditSummary } from '../artifacts/engine.js';
@@ -1088,12 +1088,12 @@ router.post('/', async (req, res) => {
     }
     logVerificationEvent(ctx, verification);
 
-    // ── 8c. Identity refusal guard (spec: never "I don't know" about self) ──────
+    // ── 8c. Identity contract guard — self answers must stay first-party grounded ─
     // The compact identity block + directive make a hedge on a self-question
     // extremely unlikely, but this is the hard guarantee: if the model still
     // refused, replace the answer with the deterministic profile answer.
     let identityGuarded = false;
-    if (prep.identityIntent?.isSelf && isRefusal(finalAnswer)) {
+    if (prep.identityIntent?.isSelf && (isRefusal(finalAnswer) || violatesIdentityContract(finalAnswer))) {
       const grounded = answerFromIdentity(userMessage);
       if (grounded) {
         console.warn(`[IDENTITY] guard engaged — model hedged on a self-question; substituting profile answer req=${requestId}`);
@@ -1409,13 +1409,13 @@ router.post('/stream', async (req, res) => {
     }
     logVerificationEvent(ctx, verification);
 
-    // ── 8c. Identity refusal guard (spec: never "I don't know" about self) ──────
+    // ── 8c. Identity contract guard — self answers must stay first-party grounded ─
     // Runs regardless of whether verification was enabled. If the model hedged
     // on a self-question, replace with the deterministic profile answer and
     // emit `replace` so the UI swaps the draft (same mechanism verification
     // uses). The always-injected identity block makes this path rare.
     let identityGuarded = false;
-    if (prep.identityIntent?.isSelf && !clientAbort.signal.aborted && isRefusal(finalAnswer)) {
+    if (prep.identityIntent?.isSelf && !clientAbort.signal.aborted && (isRefusal(finalAnswer) || violatesIdentityContract(finalAnswer))) {
       const grounded = answerFromIdentity(userMessage);
       if (grounded) {
         console.warn(`[IDENTITY] guard engaged (stream) — substituting profile answer req=${requestId}`);

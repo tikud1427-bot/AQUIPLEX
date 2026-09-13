@@ -38,4 +38,5 @@ export {
   answerFromIdentity,
   composeAnswer,
   isRefusal,
+  violatesIdentityContract,
 } from './identityRouter.js';

@@ -34,11 +34,11 @@ src/identity/
    `detectIdentityIntent(userMessage)` **before** retrieval. On a self/brand
    question it (a) **skips project/vector retrieval**, (b) injects the **full**
    profile section(s) for the matched topic(s) plus a **confidence directive**.
-3. **Refusal guard** — after generation, both `/chat` and `/chat/stream` run:
-   `if (intent.isSelf && isRefusal(answer)) answer = answerFromIdentity(msg)`.
-   This is the hard guarantee: a hedged self-answer is replaced by the
-   deterministic profile answer before it reaches the user (stream emits
-   `replace`). The always-on block makes this path rare.
+3. **Identity contract guard** — after generation, both `/chat` and
+   `/chat/stream` replace a self-answer when it either refuses or makes a
+   detectable unsupported self/competitor claim (for example, inventing an
+   underlying model or saying the profile is 'not documented'). The deterministic
+   profile answer is emitted/replaced before persistence.
 
 ## Editing
 
@@ -55,9 +55,9 @@ src/identity/
 npm run test:identity        # from aqua/
 ```
 
-Enforces the spec's FAILURE CONDITIONS: every required identity prompt is
-detected and answered, and no self-answer may contain "I don't know",
-"I'm not familiar", "I don't have information", or "I don't have a source".
+Enforces the self-knowledge contract: required identity prompts are detected
+and grounded, generic comparisons do not trigger it, and unsupported/refusal
+patterns are caught before they can be persisted as the assistant answer.
 
 ## TODO for the team (placeholders in the data files)
 

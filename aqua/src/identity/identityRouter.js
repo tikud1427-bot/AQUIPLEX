@@ -74,17 +74,18 @@ const TOPIC_PATTERNS = {
   roadmap:         [/\broad\s?map\b/i, /\bwhat['’]?s\s+next\b/i, /\bfuture\s+plans?\b/i, /\bupcoming\b/i, /\bwhat\s+are\s+you\s+(building|planning)\b/i],
   models:          [/\bmodels?\b/i, /\bllms?\b/i, /\bwhich\s+ai\b/i, /\bwhat\s+ai\b/i, /\bproviders?\b/i, /\bpowered\s+by\b/i, /\bunder\s+the\s+hood\b/i],
   products:        [/\bproducts?\b/i, /\bofferings?\b/i, /\bwhat\s+do\s+you\s+(offer|sell)\b/i],
+  comparison:      [/\b(?:vs\.?|versus)\b/i, /\bcompared?\s+(?:with|to)\b/i, /\bcomparison\b/i, /\bcompare\b/i, /\b(?:different|differentiate\w*)\s+(?:about|from|than)\s+(?:aqua|aquiplex|you|chatgpt)\b/i],
   pricing:         [/\bpric(e|es|ing)\b/i, /\bcost\b/i, /\bhow\s+much\b/i, /\bplans?\b/i, /\bsubscription\b/i, /\bfree\s+tier\b/i],
   limitations:     [/\blimitations?\b/i, /\bwhat\s+can['’]?t\s+you\b/i, /\bcannot\s+you\b/i, /\bweakness(es)?\b/i, /\bdrawbacks?\b/i, /\bconstraints?\b/i],
   company:         [/\baquiplex\b/i],
-  overview:        [/\b(what|who)\s+is\s+(aqua|aquiplex)\b/i, /\b(who|what)\s+are\s+you\b/i, /\btell\s+me\s+about\s+(yourself|aqua|aquiplex)\b/i, /\bwhat['’]?s\s+aqua\b/i, /\bintroduce\s+yourself\b/i],
+  overview:        [/\b(what|who)\s+is\s+(aqua|aquiplex)\b/i, /\b(who|what)(?:\s+exactly)?\s+are\s+you\b/i, /\btell\s+me\s+about\s+(yourself|aqua|aquiplex)\b/i, /\bwhat['’]?s\s+aqua\b/i, /\bintroduce\s+yourself\b/i],
 };
 
 // Topics that are only meaningful as questions ABOUT the assistant, so a bare
 // self-noun isn't required if the user is clearly addressing "you".
 const SELF_OWNED_TOPICS = new Set([
   'vision', 'mission', 'values', 'capabilities', 'files', 'differentiators',
-  'creator', 'roadmap', 'models', 'products', 'pricing', 'limitations',
+  'creator', 'roadmap', 'models', 'products', 'comparison', 'pricing', 'limitations',
 ]);
 
 /**
@@ -112,6 +113,8 @@ export function detectIdentityIntent(query) {
   let isSelf = false;
   if (hasSelfNoun) {
     isSelf = matched.length > 0;                       // e.g. "What is Aquiplex?", "What makes AQUA different?"
+  } else if (matched.includes('comparison') && hasSecond && !hasFirst) {
+    isSelf = true;                                     // e.g. "you vs chatgpt", "you versus other assistants"
   } else if (contextHit) {
     isSelf = true;                                     // e.g. "Who built you?", "Who founded Aquiplex?"
   } else if (selfOwnedHit && hasSecond && !hasFirst) {
@@ -158,10 +161,13 @@ export function composeAnswer(topics, profile = getIdentityProfile()) {
   const one = (topic) => t.has(topic);
 
   if (one('overview') || one('company')) {
-    blocks.push(`I'm ${a.fullName ?? a.name}, the first-party AI built by ${c.name}. ${c.description}`);
+    blocks.push(`I'm ${a.fullName ?? a.name}, the first-party AI built by ${c.name}. ${a.productThesis ?? a.description} My core capability is ${a.coreCapability ?? 'building and applying an evolving understanding of your world'}. The goal is to use that understanding to ${a.userOutcome ?? 'help you think, decide, plan, and act better over time'}.`);
   }
   if (one('vision'))  blocks.push(`Our vision: ${c.vision}`);
   if (one('mission')) blocks.push(`Our mission: ${c.mission}`);
+  if (one('product')) blocks.push(`Product: ${a.productThesis ?? a.description}
+Core capability: ${a.coreCapability ?? 'an evolving model of the user and their world'}
+User outcome: ${a.userOutcome ?? 'help the user think, decide, plan, and act better'}`);
   if (one('values')) {
     const vals = c.coreValues ?? [];
     if (vals.length) blocks.push(`Our core values are:\n${vals.map(v => `• ${v.name}${v.detail ? ` — ${v.detail}` : ''}`).join('\n')}`);
@@ -179,6 +185,9 @@ export function composeAnswer(topics, profile = getIdentityProfile()) {
       if (f.media?.length)     parts.push(`media (${f.media.join(', ')})`);
       blocks.push(`I can process ${parts.join(', ')}.${f.note ? ` ${f.note}` : ''}`);
     }
+  }
+  if (one('comparison')) {
+    blocks.push(`Aqua vs another AI: the meaningful difference is what Aqua is designed to do. ${a.productThesis ?? a.description} Its core capability is ${a.coreCapability ?? 'an evolving model of the user and their world'}. Its intended outcome is ${a.userOutcome ?? 'more relevant assistance over time'}. I will describe Aqua from first-party knowledge and will not invent claims about the other AI's model, memory, tools, or capabilities.`);
   }
   if (one('differentiators')) {
     const d = a.differentiators ?? [];
@@ -248,6 +257,36 @@ const REFUSAL_PATTERNS = [
 export function isRefusal(text) {
   if (!text) return false;
   return REFUSAL_PATTERNS.some(re => re.test(text));
+}
+
+// A self-answer can be fluent and still be wrong. The most common failure mode
+// is an otherwise helpful model filling gaps in the identity profile with its
+// generic training knowledge (for example, guessing that Aqua is "based on
+// GPT-4" or asserting what ChatGPT does). These checks are deliberately
+// conservative: they only identify claims that are unsafe for the self-knowledge
+// contract. Normal user-facing prose remains the model's job.
+export function violatesIdentityContract(text, profile = getIdentityProfile()) {
+  if (!text) return false;
+  const q = String(text);
+  const modelIds = (profile.models?.providers ?? [])
+    .flatMap(p => p.models ?? [])
+    .map(x => String(x).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+  // Unsupported claims about Aqua's underlying model/provider.
+  const unsupportedModelClaim = /\b(?:based|built|powered|running|trained)\s+(?:on|by)\b[^.\n]{0,100}\b(?:gpt-4|gpt-4o|claude|anthropic|openai)\b/i;
+  if (unsupportedModelClaim.test(q) && !modelIds.some(id => new RegExp(id, 'i').test(q))) return true;
+
+  // The self-knowledge contract must not hallucinate facts about competitors.
+  // Mentioning a competitor is fine; asserting undocumented capabilities is not.
+  if (/\bchatgpt\b|\bopenai\b/i.test(q) && /\b(?:has no|doesn't have|does not have|cannot|can't|is just|only|always|never|uses|is based on|has built-in)\b/i.test(q)) {
+    return true;
+  }
+
+  // These are the exact meta-hedges that caused the screenshot's failure mode:
+  // the model describes the profile as if it were unavailable to it.
+  if (/\b(?:not documented|not provided|provided context|available context|i (?:don't|do not) have (?:enough )?(?:information|context|details)|i(?:'m| am) not familiar)\b/i.test(q)) return true;
+
+  return false;
 }
 
 function dedupe(arr) { return [...new Set(arr)]; }

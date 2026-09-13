@@ -37,6 +37,9 @@ export function compactBlock(profile = getIdentityProfile()) {
     `### ${HEADER}`,
     `You are ${a.fullName ?? a.name}, the first-party AI built by ${a.builtBy ?? c.name}.`,
     `${c.name} is ${c.tagline ? c.tagline.replace(/\.$/, '') : 'an AI Operating System'} — ${c.shortDescription ?? c.description}`,
+    `Product: ${a.productThesis ?? a.description}`,
+    `Core capability: ${a.coreCapability ?? 'Build and apply an evolving understanding of the user and their world.'}`,
+    `User outcome: ${a.userOutcome ?? 'Help the user think, decide, plan, and act better.'}`,
     `Vision: ${c.vision}`,
     `Mission: ${c.mission}`,
   ];
@@ -53,6 +56,9 @@ const R = {
     const c = p.company, a = p.assistant;
     return sect('Overview', [
       `${a.fullName ?? a.name} is ${a.description}`,
+      `Product thesis: ${a.productThesis ?? a.description}`,
+      `Core capability: ${a.coreCapability ?? ''}`,
+      `User outcome: ${a.userOutcome ?? ''}`,
       `${c.name} is ${c.description}`,
       a.role ? `Role: ${a.role}` : '',
     ]);
@@ -68,6 +74,7 @@ const R = {
   },
   vision(p)  { return sect('Vision',  [p.company.vision]); },
   mission(p) { return sect('Mission', [p.company.mission]); },
+  product(p) { return sect('Aqua as a product', [p.assistant.productThesis ?? p.assistant.description, p.assistant.coreCapability ? `Core capability: ${p.assistant.coreCapability}` : '', p.assistant.userOutcome ? `User outcome: ${p.assistant.userOutcome}` : '']); },
   values(p) {
     const vals = p.company.coreValues ?? [];
     if (!vals.length) return '';
@@ -86,6 +93,15 @@ const R = {
     if (f.documents?.length) groups.push(`Documents: ${f.documents.join(', ')}`);
     if (f.media?.length)     groups.push(`Media: ${f.media.join(', ')}`);
     return sect('Files AQUA can process', [...groups.map(g => `- ${g}`), f.note ? f.note : '']);
+  },
+  comparison(p) {
+    const a = p.assistant;
+    return sect('How Aqua should be compared with a generic chatbot', [
+      `Aqua's product is ${a.productThesis ?? a.description}`,
+      `Its core capability is ${a.coreCapability ?? 'an evolving model of the user and their world'}.`,
+      `Its intended outcome is ${a.userOutcome ?? 'more relevant, personal assistance over time'}.`,
+      "Do not claim that a competitor has or lacks a particular memory, model, tool, or feature unless that fact is independently established. The comparison should focus on Aqua's documented design and currently supported capabilities."
+    ]);
   },
   differentiators(p) {
     const d = p.assistant.differentiators ?? [];
@@ -132,7 +148,7 @@ const R = {
 
 const TOPIC_ORDER = [
   'overview', 'company', 'vision', 'mission', 'values', 'capabilities',
-  'files', 'differentiators', 'products', 'models', 'roadmap',
+  'files', 'comparison', 'differentiators', 'products', 'models', 'roadmap',
   'founders', 'limitations', 'pricing',
 ];
 
@@ -148,6 +164,9 @@ export function directive(profile = getIdentityProfile()) {
     `IDENTITY DIRECTIVE — this question is about ${a.name} / ${c.name} itself.`,
     `Everything you need is in the "${HEADER}" section above. It is authoritative and first-party.`,
     `Answer confidently and specifically from it. Do NOT say you lack information, aren't familiar, have no source, or don't know — that would be wrong, because the information is provided above.`,
+    `Do not infer or invent Aqua implementation details that are not stated in the profile. In particular, do not guess an underlying model, vendor, pricing plan, competitor capability, or production status.`,
+    `When the user asks for a comparison with another AI, describe Aqua from this profile first. Do not make unsupported claims about the other AI.`,
+    `Keep the distinction clear: the company vision is the ambition; the Aqua product thesis is the product; the core capability is the evolving model of the user's world; implementation status tells you what is live today.`,
     `Only express uncertainty about details that are genuinely absent from the section above.`,
   ].join('\n');
 }
