@@ -90,14 +90,14 @@ describe('the flag registry matches the source, in both directions', () => {
     assert.equal(new Set(names).size, names.length, 'a flag is registered twice');
   });
 
-  test('the census is what it is — 27 gates, 16 settings, 43 read', () => {
+  test('the census is what it is — 29 gates, 25 settings, 54 read', () => {
     // Pinned as a NUMBER because the audit's figure was wrong and the wrong
     // figure survived into two reports. If this changes, someone added a flag
     // and should say so; if it changes without a registry edit, the tests above
     // fail first and this one explains why the total moved.
-    assert.equal(GATES.length, 27);
-    assert.equal(SETTINGS.length, 16);
-    assert.equal(readFromEnv().size, 43);
+    assert.equal(GATES.length, 29);
+    assert.equal(SETTINGS.length, 25);
+    assert.equal(readFromEnv().size, 54);
   });
 });
 
@@ -134,9 +134,9 @@ describe('the registry records how each gate actually reads its variable', () =>
 });
 
 describe('the boot line is worth printing', () => {
-  test('it names the overridden gates, not all 27', () => {
+  test('it names the overridden gates, not all 29', () => {
     const line = flagBootLine({ AQUA_E6: 'on' });
-    assert.match(line, /27 gates · 16 settings/);
+    assert.match(line, /29 gates · 25 settings/);
     assert.match(line, /AQUA_E6=on/);
     assert.ok(!line.includes('AQUA_TWIN_V2'), 'a default gate was listed — the line is noise');
   });

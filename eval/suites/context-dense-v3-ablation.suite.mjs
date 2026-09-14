@@ -74,7 +74,7 @@ async function runMode(testCase, mode, lanes) {
     await seedWorld(owner, DS.corpus);
     seeded.add(owner);
   }
-  const semanticScores = (mode === 'all' || (Array.isArray(lanes) && lanes.includes('dense')))
+  const semanticScores = (lanes === null || (Array.isArray(lanes) && lanes.includes('dense')))
     ? factSimilarities(testCase.id, fixture)
     : null;
   const r = await retrieveWithContextEngine(owner, testCase.q, {

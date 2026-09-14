@@ -95,7 +95,18 @@ export function createMemoryPg() {
   };
 
   const tolerant = (query) => async (...args) => {
-    if (typeof args[0] === 'string') args[0] = stripPartialIndexes(args[0]);
+    if (typeof args[0] === 'string') {
+      // pg-mem does not implement pgvector, partitioned-table DDL, or HNSW.
+      // These are production-only substrate features; the memory harness must
+      // not pretend it validated them. Skip only the two E7 substrate
+      // migrations by their immutable migration headers, while still recording
+      // them in the migration ledger so ordering/numbering remains exercised.
+      if (/^\\s*--\\s*0012\\s*[—-]/m.test(args[0]) ||
+          /^\\s*--\\s*0013\\s*[—-]/m.test(args[0])) {
+        return { rows: [], rowCount: 0 };
+      }
+      args[0] = stripPartialIndexes(args[0]);
+    }
     try {
       return await query(...args);
     } catch (err) {

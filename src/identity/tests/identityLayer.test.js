@@ -22,12 +22,12 @@ import assert   from 'node:assert/strict';
 
 import {
   getIdentityProfile, updateIdentityProfile, reloadIdentity, _resetForTests,
-  detectIdentityIntent, answerFromIdentity, composeAnswer, isRefusal,
+  detectIdentityIntent, answerFromIdentity, composeAnswer, isRefusal, violatesIdentityContract,
   buildIdentityInjection, compactBlock, IDENTITY_VERSION,
 } from '../index.js';
 import { buildSystemPrompt } from '../../core/promptBuilder.js';
 
-// The 12 prompts the spec requires to ALL pass.
+// The identity prompts the self-knowledge contract requires to ALL pass.
 const REQUIRED_PROMPTS = [
   'What is Aquiplex?',
   'What is your vision?',
@@ -47,6 +47,9 @@ const REQUIRED_PROMPTS = [
   'What does Aqua do?',
   'Why should I use Aqua?',
   'Why would someone use Aqua instead of a normal chatbot?',
+  'you vs chatgpt',
+  'How is Aqua different from ChatGPT?',
+  'What exactly are you?',
 ];
 
 // The exact phrases the spec says must FAIL the build if present in a
@@ -127,6 +130,8 @@ const NON_IDENTITY = [
   'write a function to sort an array',   // coding
   'how do I add rate limiting?',         // coding/how-to
   'what do you think about React?',      // opinion (has "you" but no identity topic)
+  'React vs Vue',                        // generic comparison — no self signal
+  'ChatGPT vs Claude',                   // generic comparison — no self signal
   'What is the capital of France?',      // general QA
   'summarize this document',             // task
   'explain how promises work',           // research
@@ -137,7 +142,7 @@ const NON_IDENTITY = [
   // this boundary — every added pattern requires the self-noun AND a
   // specific request shape ("why should/would ... use", "what does ... do"),
   // neither of which "compare X with Y" matches.
-  "Compare Aqua with ChatGPT's architecture.",
+  "Compare React with ChatGPT's architecture.",
   'My favorite AI assistant used to be Aqua, from a different company.',
 ];
 
@@ -240,6 +245,32 @@ test('refusal guard replaces a hedged self-answer (the hard guarantee)', () => {
       assert.ok(!finalAnswer.toLowerCase().includes(banned), `no "${banned}" after guard`);
     }
   }
+});
+
+
+test('comparison phrasing about Aqua is detected and grounded', () => {
+  const queries = ['you vs chatgpt', 'How is Aqua different from ChatGPT?'];
+  for (const q of queries) {
+    const intent = detectIdentityIntent(q);
+    assert.equal(intent.isSelf, true, `comparison should be self-owned: ${q}`);
+    assert.ok(intent.topics.includes('comparison'), `comparison topic missing: ${q}`);
+    const answer = answerFromIdentity(q);
+    assert.match(answer, /personal thinking system/i);
+    assert.match(answer, /evolving model/i);
+    assert.doesNotMatch(answer, /ChatGPT has no built-in|GPT-4-family|GPT-4 \(Free tier\)/i);
+  }
+});
+
+test('identity contract catches the screenshot failure pattern', () => {
+  const screenshotAnswer = `AQUA is based on a GPT-4-family model. ChatGPT has no built-in long-term memory; each chat is independent.`;
+  assert.equal(violatesIdentityContract(screenshotAnswer, getIdentityProfile()), true);
+});
+
+test('identity contract catches fluent but unsupported self-claims', () => {
+  assert.equal(violatesIdentityContract('Aqua is based on GPT-4.', getIdentityProfile()), true);
+  assert.equal(violatesIdentityContract('ChatGPT has no built-in long-term memory.', getIdentityProfile()), true);
+  assert.equal(violatesIdentityContract('Aqua is a personal thinking system that understands your world.', getIdentityProfile()), false);
+  assert.equal(violatesIdentityContract('Aqua routes across Groq and Google Gemini.', getIdentityProfile()), false);
 });
 
 // Ensure a clean profile for any suite that runs after this file.

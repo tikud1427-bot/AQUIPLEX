@@ -45,6 +45,7 @@ import crypto from 'node:crypto';
 
 import { getPool, isConfigured } from '../db/pool.js';
 import { registerPredicate, isRegistered } from './predicateRegistry.js';
+import { linkClaimRetrievalKey } from '../worldModel/claimRetrievalBridge.js';
 
 /**
  * The predicate a backfilled fact gets until something understands it.
@@ -95,6 +96,7 @@ export async function backfillOwner(ownerId, facts, evidenceById, { dryRun = fal
   const report = {
     ownerId, total: facts.length,
     projected: 0, skipped: [], entitiesCreated: 0, sourcesCreated: 0,
+    mappings: [],
     deferredFields: assess(facts[0] ?? {}).deferred,
   };
 
@@ -191,7 +193,9 @@ export async function backfillOwner(ownerId, facts, evidenceById, { dryRun = fal
         `INSERT INTO aqua_claim_evidence (owner_id, claim_id, evidence_id, role) VALUES ($1,$2,$3,'primary')`,
         [ownerId, claimId, evId]);
     }
+    await linkClaimRetrievalKey({ ownerId, claimId, retrievalKey: String(fact.id) });
     report.projected++;
+    report.mappings.push({ factId: String(fact.id), claimId });
   }
 
   return report;

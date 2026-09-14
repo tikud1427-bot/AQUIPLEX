@@ -409,3 +409,77 @@ test('REACH GATE: gated facts are counted, not silently discarded', () => {
   CE.assembleTurnContext(deps, 'o', 'Where do I work?', { limit: 8 });
   assert.ok(CE.contextEngineMetrics().reachGated > before, 'reachGated never moved');
 });
+
+test('E8 INTEGRATION CONTRACT: taskType reaches the query plan on the production sync seam', () => {
+  process.env.AQUA_BRAIN = 'on';
+  process.env.AQUA_CONTEXT_V2 = 'on';
+  const floor = {
+    items: [{ kind: 'fact', id: 'f1', text: 'Ship the beta by Friday.', confidence: 0.9, entityIds: [], citations: ['doc-1'] }],
+    block: 'F', stats: {},
+  };
+  const out = CE.assembleTurnContext(
+    { picRetrieve: () => floor, graph: null, evidenceStore: null, peekMind: () => null },
+    'o',
+    'Should I launch this week?',
+    { taskType: 'decision', limit: 8, charBudget: 1600 },
+  );
+  assert.equal(out.stats.contextEngine.queryPlan.taskType, 'decision');
+  assert.ok(out.stats.contextEngine.queryPlan.slots.some(s => s.id === 'deadline'));
+});
+
+test('E8 HIERARCHICAL COMPRESSION: repeated entity framing is grouped without changing evidence', () => {
+  const candidates = [
+    fact('a1', 'AQUA billing runs nightly', { entityIds: ['ent:a'], citations: ['doc-1'] }),
+    fact('a2', 'AQUA billing retries failed jobs', { entityIds: ['ent:a'], citations: ['doc-2'] }),
+    fact('b1', 'AQUA invoices are exported weekly', { entityIds: ['ent:b'], citations: ['doc-3'] }),
+  ];
+  const out = assembleContext(candidates, bag(), { limit: 8, charBudget: 1600 });
+  const ce = out.stats.contextEngine;
+  assert.equal(ce.version, 3);
+  assert.equal(ce.compression.level, 2);
+  assert.equal(ce.compression.groups, 2);
+  assert.equal(ce.compression.renderedItems, 3);
+  assert.match(out.block, /▸ Entity ent:a/);
+  assert.match(out.block, /AQUA billing runs nightly/);
+  assert.match(out.block, /\[doc-1\]/);
+  assert.match(out.block, /AQUA billing retries failed jobs/);
+  assert.match(out.block, /▸ Entity ent:b/);
+});
+
+test('E8 HIERARCHICAL COMPRESSION: canonical statements are not paraphrased', () => {
+  const statement = 'The canonical claim says Aqua never deletes a committed evidence record.';
+  const out = assembleContext([
+    fact('f1', statement, { entityIds: ['ent:a'], citations: ['claim-17'], disputed: true }),
+  ], bag(), { charBudget: 1600 });
+  assert.match(out.block, new RegExp(statement.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&')));
+  assert.match(out.block, /claim-17/);
+  assert.match(out.block, /disputed/);
+});
+
+test('E8 PR-8: second-round exhaustion becomes explicit unknown without discarding available evidence', () => {
+  const candidates = [fact('f1', 'The project has a documented goal.', { slotIds: ['goal'], citations: ['doc-goal'] })];
+  const plan = {
+    version: 3, round: 2,
+    slots: [
+      { id: 'goal', kind: 'goal', required: true, status: 'filled', matches: candidates },
+      { id: 'deadline', kind: 'time', required: true, status: 'unfilled', matches: [] },
+    ],
+  };
+  const out = assembleContext(candidates, bag(), { queryPlan: plan, charBudget: 1600 });
+  assert.equal(out.stats.contextEngine.abstention.shouldAbstain, true);
+  assert.deepEqual(out.stats.contextEngine.abstention.requiredSlotsMissing, ['deadline']);
+  assert.match(out.block, /Retrieval status: UNKNOWN/);
+  assert.match(out.block, /Do not infer missing required slots: deadline/);
+  assert.match(out.block, /The project has a documented goal/);
+});
+
+test('E8 PR-8: final items preserve retrieval provenance and slot identity', () => {
+  const out = assembleContext([
+    fact('f1', 'Goal is to ship the beta.', { slotIds: ['goal'], entityIds: ['project:a'], via: 'dense', citations: ['claim-1'] }),
+  ], bag(), { charBudget: 1600 });
+  assert.deepEqual(out.items[0].provenance, {
+    via: 'dense', citations: ['claim-1'], slotIds: ['goal'], entityIds: ['project:a'],
+  });
+  assert.match(out.block, /via dense/);
+  assert.match(out.block, /\[claim-1\]/);
+});

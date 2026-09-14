@@ -56,6 +56,7 @@ import { resolveOwner } from '../memory/engine.js';
 import { getLedger } from '../pic/picStore.js';
 import * as Brain from '../brain/index.js';
 import { selfEntityEnabled } from '../brain/identity/selfEntity.js';
+import { flagReport } from '../core/flags.js';
 
 const router = express.Router();
 
@@ -123,6 +124,7 @@ function orderedStages() {
  * the answer is in the payload the frontend already has.
  */
 function flagState() {
+  const registered = Object.fromEntries(flagReport().map(f => [f.name, f.value === 'on' || f.value === 'shadow']));
   return {
     AQUA_BRAIN: Brain.brainEnabled(),
     AQUA_BRAIN_INGEST: Brain.ingestEnabled(),
@@ -138,6 +140,9 @@ function flagState() {
     // silently; this one changes what it SAYS, unprompted. That is the one most
     // worth being able to read off a running instance.
     AQUA_REVISION_VOICE: Brain.revisionVoiceEnabled(),
+    // L13: expose every registered gate, not only the historical Brain subset.
+    // Existing keys remain booleans for frontend compatibility.
+    ...registered,
   };
 }
 

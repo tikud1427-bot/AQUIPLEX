@@ -32,7 +32,8 @@ import { assembleContext } from './assembler.js';
 import { tokensOf, scoreCandidate } from './scorer.js';
 import { analyseQuestion, factAffinity, MIN_AFFINITY } from '../../pic/questionShape.js';
 import { brainEnabled } from '../worldModel/schema.js';
-import { lanesFromCandidates, reciprocalRankFusion, rerankWithFusion } from './retrievalV3.js';
+import { lanesFromCandidates, reciprocalRankFusion, rerankWithFusion, rerankWithCrossEncoder, rerankWithCrossEncoderAsync } from './retrievalV3.js';
+import { buildQueryPlan, fillQueryPlan, assessSufficiency, withRound } from './queryPlan.js';
 
 const metrics = {
   calls: 0, v2Assemblies: 0, floorFallbacks: 0, errors: 0,
@@ -44,6 +45,87 @@ const metrics = {
 };
 
 /** V2 assembly is opt-in on top of the read-side switch. */
+
+/**
+ * Async PR-8 seam. The legacy assembleTurnContext remains synchronous for
+ * compatibility; this variant is used only when a real model adapter is
+ * enabled and keeps the model/network await outside the pure scorer path.
+ */
+export async function assembleTurnContextAsync(deps, ownerId, query, opts = {}) {
+  const { limit = 8, charBudget = 1600 } = opts;
+  metrics.calls += 1;
+  const semanticScores = opts.semanticScores ?? deps.semanticScores ?? null;
+  const initialFloor = safeFloor(deps, ownerId, query, { limit, plan: opts.plan, semanticScores });
+  if ((!contextV2Enabled() && !Array.isArray(opts.retrievalV3Lanes)) || !ownerId || !query) return initialFloor;
+  const started = Date.now();
+  try {
+    const plan = opts.queryPlan ?? buildQueryPlan(query, { taskType: opts.taskType ?? 'conversation' });
+    const firstPlan = withRound(fillQueryPlan(plan, floorItemsToCandidates(initialFloor.items ?? [])), 1);
+    const firstSufficiency = assessSufficiency(firstPlan);
+    let floor = initialFloor;
+    let planState = firstPlan;
+    if (firstSufficiency.outcome === 'needs_round_two') {
+      const roundTwoItems = [];
+      for (const slotId of firstSufficiency.missing) {
+        const slot = plan.slots.find(s => s.id === slotId);
+        for (const slotQuery of (slot?.queries ?? []).slice(0, 2)) {
+          const targeted = safeFloor(deps, ownerId, `${query} ${slotQuery}`, { limit: Math.max(limit, 8), plan: withRound(plan, 2), semanticScores });
+          for (const item of targeted.items ?? []) roundTwoItems.push({ ...item, slotIds: [slotId] });
+        }
+      }
+      floor = mergeFloorResults(initialFloor, { ...emptyResult(), items: dedupeFloorItems(roundTwoItems) });
+      planState = withRound(fillQueryPlan(plan, floorItemsToCandidates(floor.items ?? [])), 2);
+    }
+    const gathered = gatherCandidates(deps, ownerId, query, floor, { ...opts, queryPlan: planState });
+    const enabledLanes = opts.retrievalV3Lanes;
+    const candidates = Array.isArray(enabledLanes)
+      ? gathered.filter(c => (c.lanes ?? []).some(lane => enabledLanes.includes(lane)))
+      : gathered;
+    metrics.candidatesSeen += candidates.length;
+    const ctx = buildSignalBag(deps, ownerId, query, candidates, { ...opts, semanticScores });
+    const scoredCandidates = retrievalV3Enabled()
+      ? candidates.map(c => ({ ...c, score: scoreForCandidate(c, ctx) }))
+      : candidates;
+    const fused = retrievalV3Enabled()
+      ? reciprocalRankFusion(
+          lanesFromCandidates(scoredCandidates, { semanticScores, enabledLanes: opts.retrievalV3Lanes ?? null }).map(l => l.rows),
+          { limit: Math.max(limit * 4, 32) },
+        )
+      : [];
+    const fusedRankedCandidates = retrievalV3Enabled() ? rerankWithFusion(scoredCandidates, fused) : candidates;
+    const rankedCandidates = retrievalV3Enabled() && opts.crossEncoder?.scorePairs
+      ? await rerankWithCrossEncoderAsync(fusedRankedCandidates, fused, {
+          query,
+          scorePairs: opts.crossEncoder.scorePairs,
+          candidateLimit: opts.crossEncoder.candidateLimit,
+          outputLimit: Math.max(limit * 4, 32),
+          blendWeight: opts.crossEncoder.blendWeight,
+        })
+      : fusedRankedCandidates;
+    const assembled = assembleContext(
+      rankedCandidates.map(c => ({ ...c, selectionScore: retrievalV3Enabled() ? (c.crossEncoderFusedScore ?? c.fusedScore) : c.score })),
+      ctx, { limit, charBudget, queryPlan: planState },
+    );
+    metrics.v2Assemblies += 1;
+    metrics.itemsSelected += assembled.items.length;
+    metrics.lastDurationMs = Date.now() - started;
+    if (!assembled.items.length && floor.items.length) {
+      metrics.floorFallbacks += 1;
+      if (Array.isArray(opts.retrievalV3Lanes)) return emptyResult();
+      return floor;
+    }
+    assembled.stats.contextEngine.floorItems = floor.items.length;
+    assembled.stats.contextEngine.queryPlan = planState;
+    assembled.stats.contextEngine.sufficiency = assessSufficiency(planState);
+    return assembled;
+  } catch (err) {
+    metrics.errors += 1;
+    metrics.floorFallbacks += 1;
+    console.warn(`[BRAIN] Async Context Engine V2 failed (floor fallback): ${err?.message ?? err}`);
+    return floor;
+  }
+}
+
 export function contextV2Enabled() {
   return brainEnabled() && String(process.env.AQUA_CONTEXT_V2 ?? '').toLowerCase() === 'on';
 }
@@ -74,12 +156,37 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
 
   // 1. The floor: the existing, tested PIC retrieval. Always computed.
   const semanticScores = opts.semanticScores ?? deps.semanticScores ?? null;
-  const floor = safeFloor(deps, ownerId, query, { limit, plan: opts.plan, semanticScores });
-  if ((!contextV2Enabled() && !Array.isArray(opts.retrievalV3Lanes)) || !ownerId || !query) return floor;
+  const initialFloor = safeFloor(deps, ownerId, query, { limit, plan: opts.plan, semanticScores });
+  if ((!contextV2Enabled() && !Array.isArray(opts.retrievalV3Lanes)) || !ownerId || !query) return initialFloor;
 
   const started = Date.now();
   try {
-    const gathered = gatherCandidates(deps, ownerId, query, floor, opts);
+    const plan = opts.queryPlan ?? buildQueryPlan(query, { taskType: opts.taskType ?? 'conversation' });
+    const firstPlan = withRound(fillQueryPlan(plan, floorItemsToCandidates(initialFloor.items ?? [])), 1);
+    const firstSufficiency = assessSufficiency(firstPlan);
+    let floor = initialFloor;
+    let planState = firstPlan;
+
+    // E8/PR-4: one bounded second retrieval round, targeted only at missing
+    // required slots. A candidate returned by a slot-specific query is marked
+    // for that slot by retrieval provenance; we never infer slot meaning from
+    // arbitrary candidate text.
+    if (firstSufficiency.outcome === 'needs_round_two') {
+      const missing = firstSufficiency.missing;
+      const queries = missing.flatMap(id => (plan.slots.find(s => s.id === id)?.queries ?? []).slice(0, 2));
+      const roundTwoItems = [];
+      for (const slotId of missing) {
+        const slot = plan.slots.find(s => s.id === slotId);
+        for (const slotQuery of (slot?.queries ?? []).slice(0, 2)) {
+          const targeted = safeFloor(deps, ownerId, `${query} ${slotQuery}`, { limit: Math.max(limit, 8), plan: withRound(plan, 2), semanticScores });
+          for (const item of targeted.items ?? []) roundTwoItems.push({ ...item, slotIds: [slotId] });
+        }
+      }
+      floor = mergeFloorResults(initialFloor, { ...emptyResult(), items: dedupeFloorItems(roundTwoItems) });
+      planState = withRound(fillQueryPlan(plan, floorItemsToCandidates(floor.items ?? [])), 2);
+    }
+
+    const gathered = gatherCandidates(deps, ownerId, query, floor, { ...opts, queryPlan: planState });
     const enabledLanes = opts.retrievalV3Lanes;
     const candidates = Array.isArray(enabledLanes)
       ? gathered.filter(c => (c.lanes ?? []).some(lane => enabledLanes.includes(lane)))
@@ -99,12 +206,21 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
           { limit: Math.max(limit * 4, 32) },
         )
       : [];
-    const rankedCandidates = retrievalV3Enabled()
+    const fusedRankedCandidates = retrievalV3Enabled()
       ? rerankWithFusion(scoredCandidates, fused)
       : candidates;
+    const rankedCandidates = retrievalV3Enabled() && opts.crossEncoder?.scorePair
+      ? rerankWithCrossEncoder(fusedRankedCandidates, fused, {
+          query,
+          scorePair: opts.crossEncoder.scorePair,
+          candidateLimit: opts.crossEncoder.candidateLimit,
+          outputLimit: Math.max(limit * 4, 32),
+          blendWeight: opts.crossEncoder.blendWeight,
+        })
+      : fusedRankedCandidates;
     const assembled = assembleContext(
-      rankedCandidates.map(c => ({ ...c, selectionScore: retrievalV3Enabled() ? c.fusedScore : c.score })),
-      ctx, { limit, charBudget },
+      rankedCandidates.map(c => ({ ...c, selectionScore: retrievalV3Enabled() ? (c.crossEncoderFusedScore ?? c.fusedScore) : c.score })),
+      ctx, { limit, charBudget, queryPlan: planState },
     );
 
     metrics.v2Assemblies += 1;
@@ -124,6 +240,8 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
       return floor;
     }
     assembled.stats.contextEngine.floorItems = floor.items.length;
+    assembled.stats.contextEngine.queryPlan = planState;
+    assembled.stats.contextEngine.sufficiency = assessSufficiency(planState);
     return assembled;
   } catch (err) {
     metrics.errors += 1;
@@ -173,14 +291,14 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
         lanes: [laneForVia(it.via)],
         trusted: it.trusted, disputed: it.disputed, stale: it.stale,
         via: it.via, sourceType: 'document',
-        entityIds: [], timestamp: null, semanticId: it.id,
+        entityIds: [], timestamp: null, semanticId: it.id, slotIds: it.slotIds ?? [],
       }));
     } else if (it.kind === 'entity') {
       byId.set(`entity:${it.nodeId}`, normEntity(it.nodeId, it.entity, {
-        entityType: it.entityType, aliases: it.aliases, files: it.files, lanes: ['entity'],
+        entityType: it.entityType, aliases: it.aliases, files: it.files, lanes: ['entity'], slotIds: it.slotIds ?? [],
       }));
     } else if (it.kind === 'event') {
-      byId.set(`event:${it.statement}`, normEvent(it.statement, it.statement, { timestamp: it.timestamp, certainty: it.certainty, lanes: ['timeline'] }));
+      byId.set(`event:${it.statement}`, normEvent(it.statement, it.statement, { timestamp: it.timestamp, certainty: it.certainty, lanes: ['timeline'], slotIds: it.slotIds ?? [] }));
     }
   }
 
@@ -443,6 +561,7 @@ function normFact(id, text, extra = {}) {
     hops: extra.hops ?? null,
     timestamp: extra.timestamp ?? null,
     semanticId: extra.semanticId ?? id,
+    slotIds: Array.isArray(extra.slotIds) ? [...new Set(extra.slotIds)] : [],
     lanes: Array.isArray(extra.lanes) ? [...new Set(extra.lanes)] : [],
     epistemic: 'observed',
   };
@@ -459,6 +578,7 @@ function normEntity(id, text, extra = {}) {
     entityIds: [id],
     hops: extra.hops ?? null,
     timestamp: null,
+    slotIds: Array.isArray(extra.slotIds) ? [...new Set(extra.slotIds)] : [],
     epistemic: 'derived',
   };
 }
@@ -469,6 +589,7 @@ function normEvent(id, text, extra = {}) {
     timestamp: extra.timestamp ?? null,
     certainty: extra.certainty ?? null,
     confidence: 0.5,
+    slotIds: Array.isArray(extra.slotIds) ? [...new Set(extra.slotIds)] : [],
     sourceType: 'derived',
     entityIds: [],
     hops: null,
@@ -479,6 +600,33 @@ function normEvent(id, text, extra = {}) {
 function sourceTypeOf(node) {
   if (node?.data?.fromConversation) return 'conversation';
   return 'document';
+}
+
+function floorItemsToCandidates(items = []) {
+  return items.map(it => ({
+    kind: it.kind, id: it.id ?? it.nodeId ?? it.statement,
+    slotIds: Array.isArray(it.slotIds) ? it.slotIds : [],
+  }));
+}
+
+function dedupeFloorItems(items = []) {
+  const seen = new Set();
+  return items.filter(it => {
+    const key = `${it.kind}:${it.id ?? it.nodeId ?? it.statement ?? it.text}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function mergeFloorResults(base, extra) {
+  const items = dedupeFloorItems([...(base?.items ?? []), ...(extra?.items ?? [])]);
+  return {
+    ...(base ?? emptyResult()),
+    items,
+    block: [...new Set([base?.block, extra?.block].filter(Boolean))].join('\n\n'),
+    stats: { ...(base?.stats ?? {}), ...(extra?.stats ?? {}), facts: items.filter(x => x.kind === 'fact').length, entities: items.filter(x => x.kind === 'entity').length, timelineEvents: items.filter(x => x.kind === 'event').length },
+  };
 }
 
 function emptyResult() {

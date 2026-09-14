@@ -24,6 +24,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import express from 'express';
+import { flagReport } from '../../core/flags.js';
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-brain-routes-'));
 process.env.AQUA_DATA_DIR = TMP;
@@ -140,10 +141,7 @@ test('METRICS: needs no owner and reports live flag state', async () => {
   // operator happened to have exported — so `AQUA_SELF_ENTITY=on npm test`
   // failed against completely unmodified code, which makes a red result
   // uninformative exactly when someone is testing a rollout.
-  const FLAG_KEYS = [
-    'AQUA_BRAIN', 'AQUA_BRAIN_INGEST', 'AQUA_BRAIN_INGEST_FACTS', 'AQUA_CONTEXT_V2',
-    'AQUA_REFLECT_V2', 'AQUA_REVISION_VOICE', 'AQUA_SELF_ENTITY', 'AQUA_TWIN_V2',
-  ];
+  const FLAG_KEYS = flagReport().map(f => f.name);
   const saved = Object.fromEntries(FLAG_KEYS.map(k => [k, process.env[k]]));
   const restore = () => {
     for (const k of FLAG_KEYS) {

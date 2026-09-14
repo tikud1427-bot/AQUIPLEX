@@ -45,12 +45,15 @@ const DEFAULTS = {
   minScore: 0.12,          // below this an item is not worth prompt space
   perEntitySoftCap: 2,     // items about one entity before diversity kicks in
   diversityPenalty: 0.6,   // multiplier applied past the soft cap
+  slotOverBudgetPenalty: 0.35,
+  requiredSlotBoost: 1.15,
+  optionalSlotBudgetShare: 0.25,
 };
 
 /**
  * @param {Array} candidates - normalized candidate objects (see scorer)
  * @param {object} ctx - the shared signal bag for scoring
- * @param {object} [opts] - { limit, charBudget, minScore, perEntitySoftCap, diversityPenalty }
+ * @param {object} [opts] - { limit, charBudget, minScore, perEntitySoftCap, diversityPenalty, queryPlan }
  * @returns {{ items, block, stats }} PIC-superset
  */
 export function assembleContext(candidates, ctx, opts = {}) {
@@ -78,6 +81,8 @@ export function assembleContext(candidates, ctx, opts = {}) {
   const selected = [];
   const perEntityCount = new Map();
   let usedChars = 0;
+  const slotBudget = buildSlotBudget(cfg.queryPlan, cfg.charBudget);
+  const slotUsed = new Map();
 
   while (selected.length < cfg.limit && pool.length) {
     // Effective score for each remaining candidate under the current coverage.
@@ -87,7 +92,15 @@ export function assembleContext(candidates, ctx, opts = {}) {
       const primary = pool[i].entityIds?.[0] ?? null;
       const covered = primary ? (perEntityCount.get(primary) ?? 0) : 0;
       const base = pool[i].selectionScore ?? pool[i].score;
-      const eff = covered >= cfg.perEntitySoftCap ? base * cfg.diversityPenalty : base;
+      let eff = covered >= cfg.perEntitySoftCap ? base * cfg.diversityPenalty : base;
+
+      const slotId = bestSlotForCandidate(pool[i], slotBudget, slotUsed);
+      if (slotId) {
+        const budget = slotBudget.get(slotId) ?? 0;
+        const used = slotUsed.get(slotId) ?? 0;
+        if (used >= budget) eff *= cfg.slotOverBudgetPenalty;
+        else if (isRequiredSlot(cfg.queryPlan, slotId) && used === 0) eff *= cfg.requiredSlotBoost;
+      }
       if (eff > bestEff) { bestEff = eff; bestIdx = i; }
     }
     if (bestIdx < 0) break;
@@ -105,6 +118,8 @@ export function assembleContext(candidates, ctx, opts = {}) {
 
     selected.push({ ...c, effectiveScore: round3(bestEff) });
     usedChars += cost;
+    const selectedSlot = bestSlotForCandidate(c, slotBudget, slotUsed);
+    if (selectedSlot) slotUsed.set(selectedSlot, (slotUsed.get(selectedSlot) ?? 0) + cost);
     const primary = c.entityIds?.[0] ?? null;
     if (primary) perEntityCount.set(primary, (perEntityCount.get(primary) ?? 0) + 1);
   }
@@ -112,7 +127,9 @@ export function assembleContext(candidates, ctx, opts = {}) {
 
   // 3. Render + structured items (PIC-shaped) + observability stats.
   const items = selected.map(toItem);
-  const block = renderBlock(selected, cfg.charBudget);
+  const sufficiency = assessPlanSufficiency(cfg.queryPlan);
+  const rendered = renderBlock(selected, cfg.charBudget, sufficiency);
+  const block = rendered.block;
 
   const stats = {
     // PIC-compatible fields (chat.js logs these).
@@ -124,13 +141,21 @@ export function assembleContext(candidates, ctx, opts = {}) {
     durationMs: Date.now() - started,
     // B4 observability — the assembly is explainable.
     contextEngine: {
-      version: 2,
+      version: 3,
+      compression: rendered.stats,
+      sufficiency,
+      abstention: rendered.stats.abstention,
       candidates: candidates.length,
       selected: selected.length,
       dropped: dropped.length,
       dropReasons: tally(dropped.map(d => d.reason)),
       usedChars,
       charBudget: cfg.charBudget,
+      slotBudgets: Object.fromEntries([...slotBudget.entries()].map(([id, budget]) => [id, {
+        budget,
+        used: slotUsed.get(id) ?? 0,
+        remaining: Math.max(0, budget - (slotUsed.get(id) ?? 0)),
+      }])),
       topDimensionsPerItem: selected.slice(0, 5).map(s => ({
         id: s.id ?? s.entity,
         score: s.score,
@@ -140,6 +165,37 @@ export function assembleContext(candidates, ctx, opts = {}) {
   };
 
   return { items, block, stats };
+}
+
+function buildSlotBudget(plan, charBudget) {
+  const slots = Array.isArray(plan?.slots) ? plan.slots : [];
+  if (!slots.length) return new Map();
+  const required = slots.filter(s => s.required);
+  const optional = slots.filter(s => !s.required);
+  const reserve = Math.floor(charBudget * 0.75);
+  const requiredBudget = required.length ? Math.floor(reserve / required.length) : 0;
+  const optionalPool = Math.max(0, charBudget - requiredBudget * required.length);
+  const optionalBudget = optional.length ? Math.floor(optionalPool * 0.25 / optional.length) : 0;
+  const out = new Map();
+  for (const slot of required) out.set(slot.id, requiredBudget);
+  for (const slot of optional) out.set(slot.id, optionalBudget);
+  return out;
+}
+
+function isRequiredSlot(plan, slotId) {
+  return !!plan?.slots?.find(s => s.id === slotId)?.required;
+}
+
+function bestSlotForCandidate(candidate, slotBudget, slotUsed) {
+  const ids = Array.isArray(candidate?.slotIds) ? candidate.slotIds : [];
+  if (!ids.length || !slotBudget.size) return null;
+  return ids
+    .filter(id => slotBudget.has(id))
+    .sort((a, b) => {
+      const ar = (slotBudget.get(a) - (slotUsed.get(a) ?? 0)) / Math.max(1, slotBudget.get(a));
+      const br = (slotBudget.get(b) - (slotUsed.get(b) ?? 0)) / Math.max(1, slotBudget.get(b));
+      return br - ar;
+    })[0] ?? null;
 }
 
 // ── Rendering ────────────────────────────────────────────────────────────────
@@ -163,18 +219,113 @@ function renderItemLine(c) {
   return `• ${c.text}${cite} (confidence ${fmt(c.confidence)}${flags ? `; ${flags}` : ''})`;
 }
 
-function renderBlock(selected, charBudget) {
-  if (!selected.length) return '';
-  const lines = ['── CONTEXT AQUA ASSEMBLED FOR THIS QUESTION ──'];
-  for (const c of selected) lines.push(renderItemLine(c));
+function renderBlock(selected, charBudget, sufficiency = { outcome: 'sufficient', missing: [] }) {
+  if (!selected.length) return { block: '', stats: { ...emptyCompressionStats(), abstention: buildAbstention(sufficiency) } };
+
+  // Hierarchical compression is STRUCTURAL, not semantic: exact canonical
+  // statements remain intact, while repeated entity/slot framing is emitted
+  // once at the group level. Provenance, confidence, lifecycle flags and
+  // citations stay attached to every evidence line.
+  const groups = hierarchicalGroups(selected);
+  const rawLength = selected.reduce((n, c) => n + renderItemLine(c).length + 1, 0);
+  const lines = ['── CONTEXT AQUA ASSEMBLED FOR THIS QUESTION ──', `Retrieval status: ${sufficiency.outcome.toUpperCase()}`];
+  if (sufficiency.outcome === 'unknown') {
+    lines.push(`Do not infer missing required slots: ${sufficiency.missing.join(', ')}. State what is unknown.`);
+  }
+
+  for (const group of groups) {
+    lines.push(group.header);
+    for (const c of group.items) lines.push(renderCompactEvidence(c));
+  }
   lines.push('Use the context above with its citations; disputed items must be presented as contested, never as settled.');
 
   let out = '';
+  let emittedItems = 0;
   for (const l of lines) {
-    if (out.length + l.length + 1 > charBudget) break;
-    out += (out ? '\n' : '') + l;
+    const next = out ? `${out}\n${l}` : l;
+    if (next.length > charBudget) break;
+    out = next;
+    if (l.startsWith('  •')) emittedItems += 1;
   }
-  return out;
+
+  // Selection is already budget-aware, but the hierarchy adds group headers.
+  // Never exceed the hard rendering budget. If the safety footer cannot fit,
+  // evidence is still returned rather than truncating an evidence line.
+  if (!out) out = lines[0].slice(0, charBudget);
+
+  return {
+    block: out,
+    stats: {
+      level: 2,
+      groups: groups.length,
+      selectedItems: selected.length,
+      renderedItems: emittedItems,
+      rawChars: rawLength,
+      compressedChars: out.length,
+      savedChars: Math.max(0, rawLength - out.length),
+      ratio: rawLength ? Number((out.length / rawLength).toFixed(3)) : 1,
+      truncatedByBudget: emittedItems < selected.length,
+      groupTypes: tally(groups.map(g => g.type)),
+      abstention: buildAbstention(sufficiency),
+    },
+  };
+}
+
+function emptyCompressionStats() {
+  return { level: 2, groups: 0, selectedItems: 0, renderedItems: 0, rawChars: 0, compressedChars: 0, savedChars: 0, ratio: 1, truncatedByBudget: false, groupTypes: {}, abstention: buildAbstention({ outcome: 'sufficient', missing: [] }) };
+}
+
+function assessPlanSufficiency(plan) {
+  if (!plan?.slots?.length) return { outcome: 'sufficient', missing: [] };
+  const required = plan.slots.filter(s => s.required);
+  const missing = required.filter(s => s.status !== 'filled').map(s => s.id);
+  const round = Number(plan.round ?? 1);
+  if (!missing.length) return { outcome: 'sufficient', missing: [] };
+  return { outcome: round >= 2 ? 'unknown' : 'needs_round_two', missing };
+}
+
+function buildAbstention(sufficiency) {
+  const outcome = sufficiency?.outcome ?? 'sufficient';
+  return {
+    requiredSlotsMissing: Array.isArray(sufficiency?.missing) ? [...sufficiency.missing] : [],
+    shouldAbstain: outcome === 'unknown',
+    mode: outcome === 'unknown' ? 'explicit_unknown' : 'answer_with_context',
+  };
+}
+
+function hierarchicalGroups(selected) {
+  const groups = new Map();
+  for (const c of selected) {
+    const entity = c.entityIds?.[0];
+    const slot = c.slotIds?.[0];
+    const key = entity ? `entity:${entity}` : slot ? `slot:${slot}` : `evidence:${c.kind ?? 'unknown'}`;
+    if (!groups.has(key)) {
+      const type = entity ? 'entity' : slot ? 'slot' : 'evidence';
+      const label = entity ? `Entity ${entity}` : slot ? `Slot ${slot}` : `${capitalize(c.kind ?? 'evidence')} evidence`;
+      groups.set(key, { key, type, header: `▸ ${label}`, items: [] });
+    }
+    groups.get(key).items.push(c);
+  }
+  return [...groups.values()];
+}
+
+function renderCompactEvidence(c) {
+  const text = c.kind === 'entity' ? c.text : c.kind === 'event' ? c.text : c.text;
+  const cite = c.citations?.length ? ` [${c.citations.slice(0, 2).join(', ')}]` : '';
+  const flags = [c.trusted && 'trusted', c.disputed && 'disputed', c.stale && 'stale']
+    .filter(Boolean).join(', ');
+  const certainty = c.kind === 'event'
+    ? (c.certainty != null ? ` certainty ${fmt(c.certainty)}` : '')
+    : c.kind === 'entity'
+      ? ''
+      : ` confidence ${fmt(c.confidence)}`;
+  const meta = [certainty.trim(), flags, c.via ? `via ${c.via}` : ''].filter(Boolean).join('; ');
+  return `  • ${text}${cite}${meta ? ` (${meta})` : ''}`;
+}
+
+function capitalize(value) {
+  const s = String(value);
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
 
 function toItem(c) {
@@ -184,6 +335,7 @@ function toItem(c) {
       entity: c.text, entityType: c.entityType, aliases: c.aliases ?? [],
       files: c.files ?? [], nodeId: c.id,
       score: c.score, dimensions: c.dimensions,
+      provenance: { via: c.via ?? 'entity', slotIds: c.slotIds ?? [], entityIds: c.entityIds ?? [] },
     };
   }
   if (c.kind === 'event') {
@@ -191,6 +343,7 @@ function toItem(c) {
       kind: 'event', epistemic: 'derived',
       statement: c.text, timestamp: c.timestamp, certainty: c.certainty,
       score: c.score, dimensions: c.dimensions,
+      provenance: { via: c.via ?? 'event', slotIds: c.slotIds ?? [], entityIds: c.entityIds ?? [] },
     };
   }
   return {
@@ -199,6 +352,7 @@ function toItem(c) {
     trusted: !!c.trusted, disputed: !!c.disputed, stale: !!c.stale,
     citations: c.citations ?? [], via: c.via ?? 'lexical',
     score: c.score, dimensions: c.dimensions,
+    provenance: { via: c.via ?? 'lexical', citations: c.citations ?? [], slotIds: c.slotIds ?? [], entityIds: c.entityIds ?? [] },
   };
 }
 

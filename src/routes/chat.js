@@ -92,6 +92,7 @@ import {
 } from '../memory/conversationStore.js';
 import { resolveOwner, memoryObserve, memoryRetrieve, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
 import * as Brain from '../brain/index.js';
+import { scorePairs as crossEncoderScorePairs } from '../brain/contextEngine/crossEncoderLocal.js';
 import { runPostTurn } from './turnPostProcess.js';
 import { formatCitation } from '../files/evidence.js';
 import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
@@ -99,7 +100,7 @@ import { semanticFileScores }                              from '../project/sema
 import { formatAttachmentsForPrompt, getAttachments }       from '../upload/attachmentStore.js';
 import { proposeEdit, serializeProposal }                   from '../project/editEngine.js';
 import { getIndex }                                         from '../project/projectIndex.js';
-import { detectIdentityIntent, answerFromIdentity, isRefusal } from '../identity/index.js';
+import { detectIdentityIntent, answerFromIdentity, isRefusal, violatesIdentityContract } from '../identity/index.js';
 import { detectArtifactIntent, detectArtifactEditIntent, MIN_ARTIFACT_CONFIDENCE } from '../artifacts/artifactIntent.js';
 import { editArtifact } from '../artifacts/editEngine.js';
 import { publicManifest, composeArtifactEditSummary } from '../artifacts/engine.js';
@@ -587,16 +588,28 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     // The semantic scores are pre-awaited here — the async boundary the CIE
     // path already owns — and handed in, keeping the engine itself pure.
     const floorRetrieve = (oid, q, o) => cognitiveKnowledgeRetrieve(oid, q, { ...o, plan: cognition.plan });
+    const useCrossEncoder = Brain.contextV2Active() && String(process.env.AQUA_CROSS_ENCODER ?? '').toLowerCase() === 'on';
     const knowledge = Brain.contextV2Active()
-      ? Brain.assembleContext(memoryOwner, userMessage, floorRetrieve, {
-          limit: 8, plan: cognition.plan, formatCitation,
-          // E7 canonical dense lane: these scores are keyed by the same
-          // evidence-store fact id used by Context Engine candidate.semanticId.
-          // The legacy `semanticScoresP` map remains reserved for memoryRetrieve,
-          // whose LTM keyspace is different.
-          semanticScores: await canonicalSemanticP,
-          activeProjectId: workspaceId ?? null,
-        })
+      ? (useCrossEncoder
+          ? Brain.assembleContextAsync(memoryOwner, userMessage, floorRetrieve, {
+              limit: 8, plan: cognition.plan, taskType, formatCitation,
+              semanticScores: await canonicalSemanticP,
+              activeProjectId: workspaceId ?? null,
+              crossEncoder: {
+                scorePairs: crossEncoderScorePairs,
+                candidateLimit: Number(process.env.AQUA_CROSS_ENCODER_POOL ?? 32),
+                blendWeight: Number(process.env.AQUA_CROSS_ENCODER_BLEND ?? 0.20),
+              },
+            })
+          : Brain.assembleContext(memoryOwner, userMessage, floorRetrieve, {
+              limit: 8, plan: cognition.plan, taskType, formatCitation,
+              // E7 canonical dense lane: these scores are keyed by the same
+              // evidence-store fact id used by Context Engine candidate.semanticId.
+              // The legacy `semanticScoresP` map remains reserved for memoryRetrieve,
+              // whose LTM keyspace is different.
+              semanticScores: await canonicalSemanticP,
+              activeProjectId: workspaceId ?? null,
+            }))
       : floorRetrieve(memoryOwner, userMessage, { limit: 8 });
     knowledgeContext = knowledge.block;
     knowledgeItems   = knowledge.items;
@@ -1075,12 +1088,12 @@ router.post('/', async (req, res) => {
     }
     logVerificationEvent(ctx, verification);
 
-    // ── 8c. Identity refusal guard (spec: never "I don't know" about self) ──────
+    // ── 8c. Identity contract guard — self answers must stay first-party grounded ─
     // The compact identity block + directive make a hedge on a self-question
     // extremely unlikely, but this is the hard guarantee: if the model still
     // refused, replace the answer with the deterministic profile answer.
     let identityGuarded = false;
-    if (prep.identityIntent?.isSelf && isRefusal(finalAnswer)) {
+    if (prep.identityIntent?.isSelf && (isRefusal(finalAnswer) || violatesIdentityContract(finalAnswer))) {
       const grounded = answerFromIdentity(userMessage);
       if (grounded) {
         console.warn(`[IDENTITY] guard engaged — model hedged on a self-question; substituting profile answer req=${requestId}`);
@@ -1396,13 +1409,13 @@ router.post('/stream', async (req, res) => {
     }
     logVerificationEvent(ctx, verification);
 
-    // ── 8c. Identity refusal guard (spec: never "I don't know" about self) ──────
+    // ── 8c. Identity contract guard — self answers must stay first-party grounded ─
     // Runs regardless of whether verification was enabled. If the model hedged
     // on a self-question, replace with the deterministic profile answer and
     // emit `replace` so the UI swaps the draft (same mechanism verification
     // uses). The always-injected identity block makes this path rare.
     let identityGuarded = false;
-    if (prep.identityIntent?.isSelf && !clientAbort.signal.aborted && isRefusal(finalAnswer)) {
+    if (prep.identityIntent?.isSelf && !clientAbort.signal.aborted && (isRefusal(finalAnswer) || violatesIdentityContract(finalAnswer))) {
       const grounded = answerFromIdentity(userMessage);
       if (grounded) {
         console.warn(`[IDENTITY] guard engaged (stream) — substituting profile answer req=${requestId}`);

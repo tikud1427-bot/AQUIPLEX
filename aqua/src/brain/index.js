@@ -371,6 +371,8 @@ export function assembleContext(ownerId, query, floorRetrieve, opts = {}) {
     limit = 8,
     charBudget = 1600,
     plan = null,
+    queryPlan = null,
+    taskType = 'conversation',
     retrievalV3Lanes = null,
   } = opts;
   const engineDeps = {
@@ -389,6 +391,8 @@ export function assembleContext(ownerId, query, floorRetrieve, opts = {}) {
       charBudget,
       priorEntityIds: priorEntityIds ?? undefined,
       plan,
+      queryPlan,
+      taskType,
       semanticScores,
       semanticClaimScores,
       retrievalV3Lanes: Array.isArray(retrievalV3Lanes) ? retrievalV3Lanes : null,
@@ -413,6 +417,8 @@ export async function assembleContextAsync(ownerId, query, floorRetrieve, opts =
     limit = 8,
     charBudget = 1600,
     plan = null,
+    queryPlan = null,
+    taskType = 'conversation',
     retrievalV3Lanes = null,
     crossEncoder = null,
   } = opts;
@@ -429,6 +435,8 @@ export async function assembleContextAsync(ownerId, query, floorRetrieve, opts =
     limit, charBudget,
     priorEntityIds: priorEntityIds ?? undefined,
     plan,
+    queryPlan,
+    taskType,
     semanticScores,
     semanticClaimScores,
     retrievalV3Lanes: Array.isArray(retrievalV3Lanes) ? retrievalV3Lanes : null,

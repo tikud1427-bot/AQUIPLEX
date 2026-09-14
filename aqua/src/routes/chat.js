@@ -592,7 +592,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     const knowledge = Brain.contextV2Active()
       ? (useCrossEncoder
           ? Brain.assembleContextAsync(memoryOwner, userMessage, floorRetrieve, {
-              limit: 8, plan: cognition.plan, formatCitation,
+              limit: 8, plan: cognition.plan, taskType, formatCitation,
               semanticScores: await canonicalSemanticP,
               activeProjectId: workspaceId ?? null,
               crossEncoder: {
@@ -602,7 +602,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
               },
             })
           : Brain.assembleContext(memoryOwner, userMessage, floorRetrieve, {
-              limit: 8, plan: cognition.plan, formatCitation,
+              limit: 8, plan: cognition.plan, taskType, formatCitation,
               // E7 canonical dense lane: these scores are keyed by the same
               // evidence-store fact id used by Context Engine candidate.semanticId.
               // The legacy `semanticScoresP` map remains reserved for memoryRetrieve,

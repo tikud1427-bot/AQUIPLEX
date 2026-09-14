@@ -66,6 +66,8 @@ export const GATES = Object.freeze([
     note: 'E5/PR-5 — degrades to off with a stated reason when DATABASE_URL is absent' },
   { name: 'AQUA_CONSOLIDATE', subsystem: 'pic', dflt: 'off', reads: ON },
   { name: 'AQUA_CONTEXT_V2', subsystem: 'brain', dflt: 'off', reads: ON },
+  { name: 'AQUA_CROSS_ENCODER', subsystem: 'brain', dflt: 'off', reads: ON },
+  { name: 'AQUA_RETRIEVAL_V3', subsystem: 'brain', dflt: 'off', reads: ON },
   { name: 'AQUA_CORRECTION_PHRASES', subsystem: 'memory', dflt: 'off', reads: ON },
   { name: 'AQUA_DISABLE_MONGO_MIRROR', subsystem: 'store', dflt: 'off', reads: ONE, inverted: true,
     note: 'set to 1 to DISABLE the mirror — the variable turns something off' },
@@ -99,6 +101,8 @@ export const SETTINGS = Object.freeze([
   { name: 'AQUA_DATA_DIR', subsystem: 'store', note: 'eval isolation depends on this' },
   { name: 'AQUA_E6_MODEL', subsystem: 'brain' },
   { name: 'AQUA_E6_PROVIDER', subsystem: 'brain' },
+  { name: 'AQUA_E6_COMMIT', subsystem: 'brain' },
+  { name: 'AQUA_E6_EXTRACTOR_VERSION', subsystem: 'brain' },
   { name: 'AQUA_EMBED_DIM', subsystem: 'embeddings' },
   { name: 'AQUA_EMBED_MODEL', subsystem: 'embeddings' },
   { name: 'AQUA_MIRROR_CHUNK_BYTES', subsystem: 'store' },
@@ -110,6 +114,13 @@ export const SETTINGS = Object.freeze([
   { name: 'AQUA_PROVIDER_BACKOFF_MS', subsystem: 'providers' },
   { name: 'AQUA_PROVIDER_MAX_ROUNDS', subsystem: 'providers' },
   { name: 'AQUA_PROVIDER_RETRY_BUDGET_MS', subsystem: 'providers' },
+  { name: 'AQUA_CROSS_ENCODER_BLEND', subsystem: 'brain' },
+  { name: 'AQUA_CROSS_ENCODER_CACHE_SIZE', subsystem: 'brain' },
+  { name: 'AQUA_CROSS_ENCODER_CACHE_TTL_MS', subsystem: 'brain' },
+  { name: 'AQUA_CROSS_ENCODER_DTYPE', subsystem: 'brain' },
+  { name: 'AQUA_CROSS_ENCODER_MODEL', subsystem: 'brain' },
+  { name: 'AQUA_CROSS_ENCODER_POOL', subsystem: 'brain' },
+  { name: 'AQUA_CROSS_ENCODER_TIMEOUT_MS', subsystem: 'brain' },
 ]);
 
 /** Every registered name, gates and settings alike. */

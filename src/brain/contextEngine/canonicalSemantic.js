@@ -11,6 +11,9 @@
  */
 import { embed, embedOne, isEmbeddingEnabled, contentHash } from '../../embeddings/embeddingProvider.js';
 import { upsert, has, remove, idsIn, scoreAgainst } from '../../embeddings/vectorStore.js';
+import { isConfigured } from '../../core/db/pool.js';
+import { scoreClaimEmbeddings } from '../../core/worldModel/embeddingRepository.js';
+import { retrievalKeysForClaimIds } from '../../core/worldModel/claimRetrievalBridge.js';
 
 export const CANONICAL_CLAIM_NAMESPACE = 'canonical-claims';
 
@@ -98,6 +101,27 @@ export async function canonicalClaimScores(ownerId, query) {
   try {
     const qvec = await embedOne(query);
     if (!qvec) return null;
+
+    // Prefer canonical Postgres embeddings when the database is configured.
+    // The bridge resolves canonical claim ids back to the legacy retrieval key
+    // consumed by Context Engine. No statement matching or second fact identity.
+    if (isConfigured()) {
+      try {
+        const claimScores = await scoreClaimEmbeddings({ ownerId, queryVector: qvec, limit: 64 });
+        if (claimScores.size) {
+          const keyByClaim = await retrievalKeysForClaimIds({ ownerId, claimIds: [...claimScores.keys()] });
+          const resolved = new Map();
+          for (const [claimId, score] of claimScores) {
+            const key = keyByClaim.get(claimId);
+            if (key) resolved.set(key, score);
+          }
+          if (resolved.size) return resolved;
+        }
+      } catch (err) {
+        console.warn('[E7] Postgres canonical semantic lane unavailable; local fallback:', err?.message ?? err);
+      }
+    }
+
     const scores = scoreAgainst(namespace(ownerId), qvec);
     return scores.size ? scores : null;
   } catch (err) {
