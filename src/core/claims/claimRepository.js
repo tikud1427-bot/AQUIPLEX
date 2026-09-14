@@ -147,6 +147,13 @@ export async function recordClaim(input) {
       const claimId = existing.rows[0].claim_id;
       const added = await attachEvidenceWithClient(
         client, claimId, input.ownerId, input.evidence, 'corroborating');
+      if (added > 0) {
+        await recomputeCorroborationWithClient(client, claimId, input.ownerId);
+        await client.query(
+          `INSERT INTO aqua_outbox (owner_id, event_type, aggregate_kind, aggregate_id, payload, actor)
+           VALUES ($1, 'claim.corroborated', 'claim', $2, $3::jsonb, $4)`,
+          [input.ownerId, claimId, JSON.stringify({ claimId }), input.actor]);
+      }
       await client.query('COMMIT');
       return { claimId, created: false, evidenceAdded: added };
     }
@@ -278,7 +285,7 @@ export async function recomputeCorroboration(claimId, ownerId) {
  * superseded — and the retrieval baseline already measures what ambiguous
  * currency costs: the OLD employer wins, 20% on the superseded category.
  */
-export async function supersede(oldClaimId, newClaimId, ownerId, { validTo = new Date() } = {}) {
+export async function supersede(oldClaimId, newClaimId, ownerId, { validTo = new Date(), actor = 'system:claimRepository' } = {}) {
   if (oldClaimId === newClaimId) throw new ClaimError('a claim cannot supersede itself');
   const p = await pool();
   const client = await p.connect();
@@ -294,6 +301,10 @@ export async function supersede(oldClaimId, newClaimId, ownerId, { validTo = new
       throw new ClaimError(
         `claim ${oldClaimId} is not supersedable by ${ownerId} — it is missing, already superseded, or another owner's`);
     }
+    await client.query(
+      `INSERT INTO aqua_outbox (owner_id, event_type, aggregate_kind, aggregate_id, payload, actor)
+       VALUES ($1, 'claim.superseded', 'claim', $2, $3::jsonb, $4)`,
+      [ownerId, oldClaimId, JSON.stringify({ claimId: oldClaimId, supersededBy: newClaimId }), actor]);
     await client.query('COMMIT');
     return { superseded: oldClaimId, by: newClaimId };
   } catch (err) {
