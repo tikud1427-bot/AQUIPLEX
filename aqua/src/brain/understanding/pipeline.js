@@ -99,6 +99,21 @@ export async function runUnderstandingPipeline(text, opts = {}) {
     parsed: 0, admitted: 0, proposed: 0, discarded: 0,
     byGate: {}, models: [],
   };
+  // Diagnostics — OFF unless a caller explicitly asks. `byGate` already
+  // aggregates a count per rejection reason; it has never carried WHICH claim
+  // tripped which rule, so a run that fails one case in twenty could not say
+  // whether the model returned nothing or a gate ate it — see the "PER-CASE
+  // RECORD" comment in `scripts/e6-shadow.mjs` for the audit this was missing
+  // for. `stats.discards` is that missing detail: one entry per S3-contract or
+  // S4-validator rejection, carrying the raw claim fields the model produced.
+  //
+  // Opt-in and additive only: `opts.diagnostics` defaults to false, in which
+  // case `stats.discards` is never added to the returned object at all — the
+  // production shape `understandTurn` has always returned is byte-identical
+  // for every caller that does not ask for this. Existing aggregate metrics
+  // (`byGate`, `discarded`, `proposed`, …) are computed exactly as before;
+  // this only adds a parallel, opt-in record alongside them.
+  if (opts.diagnostics) stats.discards = [];
   const empty = extra => ({
     claims: [], proposals: [], entityResolution: 'unresolved',
     stagesRun: [], notImplemented: NOT_IMPLEMENTED, stats, ...extra,
@@ -212,6 +227,15 @@ export async function runUnderstandingPipeline(text, opts = {}) {
         const rule = reason.split(':')[0] || 'unknown';
         const key = `?:contract:${rule}`;
         stats.byGate[key] = (stats.byGate[key] ?? 0) + 1;
+        if (stats.discards) {
+          stats.discards.push({
+            stage: 'S3-contract', gate: null, reason,
+            segment: seg.text,
+            subject: r.raw?.subject ?? null, predicate: r.raw?.predicate ?? null,
+            object: r.raw?.object ?? null, polarity: r.raw?.polarity ?? null,
+            modality: r.raw?.modality ?? null, statementText: r.raw?.statementText ?? null,
+          });
+        }
       }
     }
 
@@ -244,6 +268,15 @@ export async function runUnderstandingPipeline(text, opts = {}) {
         // this is fixing.
         const key = `${v.gate ?? '?'}:${v.reason ?? 'unknown'}`;
         stats.byGate[key] = (stats.byGate[key] ?? 0) + 1;
+        if (stats.discards) {
+          stats.discards.push({
+            stage: 'S4-validator', gate: v.gate ?? null, reason: v.reason ?? 'unknown',
+            segment: seg.text,
+            subject: raw.subject ?? null, predicate: raw.predicate ?? null,
+            object: raw.object ?? null, polarity: raw.polarity ?? null,
+            modality: raw.modality ?? null, statementText: raw.statementText ?? null,
+          });
+        }
         continue;
       }
       stats.admitted++;

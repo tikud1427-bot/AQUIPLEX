@@ -227,6 +227,61 @@ async function upsertEntityInTransaction(client, { ownerId, entity, actor, sourc
   return entityId;
 }
 
+
+/** Read the owner's existing canonical claims relevant to an S8 batch.
+ *  This is intentionally a read primitive: S8 remains the decision-maker;
+ *  the repository only supplies persisted history so S8 can compare against it.
+ */
+export async function findClaimsForDedup({ ownerId, claims = [] } = {}) {
+  const owner = required(ownerId, 'ownerId');
+  const predicates = [...new Set((Array.isArray(claims) ? claims : [])
+    .map(c => c?.predicate).filter(Boolean))];
+  if (!predicates.length) return [];
+  const p = await getPool();
+  const { rows } = await p.query(`
+    SELECT c.claim_id, c.owner_id, c.subject_entity_id, se.canonical_label AS subject,
+           c.predicate, c.object_entity_id, oe.canonical_label AS object_entity,
+           c.object_literal, c.object_quantity, c.object_unit,
+           c.object_time_from, c.object_time_to,
+           c.polarity, c.modality, c.valid_from, c.valid_to, c.asserted_at,
+           c.state, c.statement_text, c.extractor_version,
+           COALESCE(MAX(s.trust_tier), 1) AS trust_tier
+      FROM aqua_claims c
+      JOIN aqua_entities se ON se.entity_id = c.subject_entity_id AND se.owner_id = c.owner_id
+      LEFT JOIN aqua_entities oe ON oe.entity_id = c.object_entity_id AND oe.owner_id = c.owner_id
+      LEFT JOIN aqua_evidence ev ON ev.owner_id = c.owner_id
+        AND ev.evidence_id IN (SELECT ce.evidence_id FROM aqua_claim_evidence ce
+                               WHERE ce.owner_id = c.owner_id AND ce.claim_id = c.claim_id)
+      LEFT JOIN aqua_sources s ON s.source_id = ev.source_id AND s.owner_id = c.owner_id
+     WHERE c.owner_id = $1 AND c.predicate = ANY($2::text[])
+       AND c.state <> 'archived'
+     GROUP BY c.claim_id, c.owner_id, c.subject_entity_id, se.canonical_label,
+              c.predicate, c.object_entity_id, oe.canonical_label,
+              c.object_literal, c.object_quantity, c.object_unit,
+              c.object_time_from, c.object_time_to, c.polarity, c.modality,
+              c.valid_from, c.valid_to, c.asserted_at, c.state,
+              c.statement_text, c.extractor_version
+  `, [owner, predicates]);
+  return rows.map(r => ({
+    claimId: r.claim_id,
+    subject: r.subject,
+    subjectEntityId: r.subject_entity_id,
+    predicate: r.predicate,
+    objectKind: r.object_entity_id ? 'entity'
+      : r.object_quantity != null ? 'quantity'
+      : r.object_time_from != null ? 'time' : 'literal',
+    object: r.object_entity_id ? { entity: r.object_entity, entityId: r.object_entity_id }
+      : r.object_quantity != null ? { quantity: Number(r.object_quantity), unit: r.object_unit }
+      : r.object_time_from != null ? { time: r.object_time_from }
+      : { literal: r.object_literal },
+    polarity: r.polarity, modality: r.modality,
+    validFrom: r.valid_from, validTo: r.valid_to, assertedAt: r.asserted_at,
+    state: r.state, statementText: r.statement_text,
+    sourceTier: r.trust_tier >= 3 ? 'file' : r.trust_tier >= 2 ? 'chat' : 'inferred',
+    _persisted: true,
+  }));
+}
+
 export async function commitUnderstanding(input = {}) {
   const ownerId = required(input.ownerId, 'ownerId');
   const sourceId = required(input.sourceId, 'sourceId');
@@ -251,114 +306,112 @@ export async function commitUnderstanding(input = {}) {
       extractorVersion,actor,metadata:{claimCount:claims.length}}, {client});
     if (ledger.committed) return {...ledger,skipped:true,claims:[]};
     const committed=[];
+    const persistedById = new Map();
     for (const c of claims) {
-      if (!c?.resolution?.ready && !c._canonicalSubject) continue;
+      if (!c?.resolution?.ready && !c._canonicalSubject && !c._persisted) continue;
       const statement=required(c.statementText,'claim.statementText');
-      const subjectEntityId = await upsertEntityInTransaction(client, {
-        ownerId, actor, sourceId,
-        entity: c._canonicalSubject ?? { name: c.subject, canonical: c.subject, type: 'concept' },
-      });
-      const objectEntityId = c.objectKind === 'entity'
-        ? await upsertEntityInTransaction(client, {
+      const subjectEntityId = c._persisted && c.subjectEntityId
+        ? c.subjectEntityId
+        : await upsertEntityInTransaction(client, {
             ownerId, actor, sourceId,
-            entity: c._canonicalObject ?? { name: c.object?.entity, canonical: c.object?.entity, type: 'concept' },
-          })
+            entity: c._canonicalSubject ?? { name: c.subject, canonical: c.subject, type: 'concept' },
+          });
+      const objectEntityId = c.objectKind === 'entity'
+        ? (c._persisted && c.object?.entityId
+          ? c.object.entityId
+          : await upsertEntityInTransaction(client, {
+              ownerId, actor, sourceId,
+              entity: c._canonicalObject ?? { name: c.object?.entity, canonical: c.object?.entity, type: 'concept' },
+            }))
         : null;
       const object=c.object??{}, norm=statement.trim().toLowerCase().replace(/\s+/g,' ');
-      // Validate the claim shape BEFORE creating evidence. Evidence without a
-      // corresponding claim would violate the canonical claim/evidence atom
-      // and would become orphaned if the caller supplied an unsupported
-      // objectKind. The entire transaction must remain clean even when an
-      // extractor produces malformed output.
-      const cols={entity:['object_entity_id',objectEntityId ?? object.entity],literal:['object_literal',String(object.literal)],
-        quantity:['object_quantity',Number(object.quantity),'object_unit',object.unit??null],
-        time:['object_time_from',object.time??c.validFrom??null,'object_time_to',c.validTo??null]}[c.objectKind];
+      const cols={entity:['object_entity_id',objectEntityId],literal:['object_literal',String(object.literal)],quantity:['object_quantity',Number(object.quantity),'object_unit',object.unit??null],time:['object_time_from',object.time??c.validFrom??null,'object_time_to',c.validTo??null]}[c.objectKind];
       if(!cols) continue;
-      const claimId=c.claimId??crypto.randomUUID(), evidenceId=crypto.randomUUID();
+
+      // S8 survivor handling: an exact existing claim is never re-created.
+      // Its new evidence is attached to the incumbent claim, preserving both
+      // corroboration and provenance without inflating canonical claim rows.
+      const existingClaimId = c._persisted ? c.claimId : null;
+      const claimId=existingClaimId ?? c.claimId ?? crypto.randomUUID();
+      const evidenceId=crypto.randomUUID();
       await client.query(`INSERT INTO aqua_evidence
         (evidence_id,owner_id,source_id,locator,quote,checksum) VALUES ($1,$2,$3,$4::jsonb,$5,$6)`,
         [evidenceId,ownerId,sourceId,JSON.stringify({segmentStart:start,segmentEnd:end}),statement,crypto.createHash('sha256').update(statement).digest('hex')]);
-      const fields=['claim_id','owner_id','subject_entity_id','predicate',...Array.from({length:cols.length/2},(_,i)=>cols[i*2]),'polarity','modality','valid_from','valid_to','asserted_at','time_precision','state','extractor','extractor_version','actor','statement_text','statement_norm'];
-      const vals=[claimId,ownerId,subjectEntityId,c.predicate,...Array.from({length:cols.length/2},(_,i)=>cols[i*2+1]),
-        c.polarity??'asserted',c.modality??'fact',c.validFrom??null,c.validTo??null,input.assertedAt??new Date(),c.timePrecision??'none','extraction',extractorVersion,actor,statement,norm];
-      const placeholders=vals.map((_,i)=>'$'+(i+1)).join(',');
-      await client.query(`INSERT INTO aqua_claims (${fields.join(',')}) VALUES (${placeholders}) ON CONFLICT (claim_id) DO NOTHING`,vals);
+
+      if (!existingClaimId) {
+        const fields=['claim_id','owner_id','subject_entity_id','predicate',...Array.from({length:cols.length/2},(_,i)=>cols[i*2]),'polarity','modality','valid_from','valid_to','asserted_at','time_precision','state','extractor','extractor_version','actor','statement_text','statement_norm'];
+        const vals=[claimId,ownerId,subjectEntityId,c.predicate,...Array.from({length:cols.length/2},(_,i)=>cols[i*2+1]),
+          c.polarity??'asserted',c.modality??'fact',c.validFrom??null,c.validTo??null,input.assertedAt??new Date(),c.timePrecision??'none','extraction',extractorVersion,actor,statement,norm];
+        const placeholders=vals.map((_,i)=>'$'+(i+1)).join(',');
+        await client.query(`INSERT INTO aqua_claims (${fields.join(',')}) VALUES (${placeholders})`,vals);
+        await lifecycle(client,{ownerId,targetKind:'claim',targetId:claimId,fromState:null,toState:'extracted',reason:'e6-commit',actor});
+        await revision(client,{ownerId,targetKind:'claim',targetId:claimId,changeKind:'create',before:null,after:{predicate:c.predicate,polarity:c.polarity,modality:c.modality},reason:'e6-commit',actor,source:'e6'});
+        await outbox(client,{ownerId,eventType:'claim.created',aggregateKind:'claim',aggregateId:claimId,actor,payload:{claimId,sourceId,segmentStart:start,segmentEnd:end}});
+      } else {
+        await client.query(`UPDATE aqua_claims
+          SET confidence_corroboration=LEAST(1,confidence_corroboration+0.1), updated_at=now()
+          WHERE claim_id=$1 AND owner_id=$2`, [claimId, ownerId]);
+      }
       await client.query(`INSERT INTO aqua_claim_evidence(owner_id,claim_id,evidence_id,role) VALUES($1,$2,$3,'primary') ON CONFLICT DO NOTHING`,[ownerId,claimId,evidenceId]);
-      await lifecycle(client,{ownerId,targetKind:'claim',targetId:claimId,fromState:null,toState:'extracted',reason:'e6-commit',actor});
-      await revision(client,{ownerId,targetKind:'claim',targetId:claimId,changeKind:'create',before:null,after:{predicate:c.predicate,polarity:c.polarity,modality:c.modality},reason:'e6-commit',actor,source:'e6'});
-      await outbox(client,{ownerId,eventType:'claim.created',aggregateKind:'claim',aggregateId:claimId,actor,payload:{claimId,sourceId,segmentStart:start,segmentEnd:end}});
 
-      // E5 canonical projections: relationship/event rows are indexes over the
-      // claim atom, never independent facts. Keep them in THIS transaction so
-      // a claim can never become visible without its graph/timeline projection.
       let edgeId = null;
-      let eventId = null;
-
-      if (c.objectKind === 'entity' && objectEntityId && subjectEntityId) {
-        // The claim's subject/object entity IDs are the canonical graph nodes.
-        // Do not use labels as graph keys and never manufacture a free edge.
+      const s7Edge = input.s7Edges?.find(e => e.claimId === c.claimId) ?? c._s7Edge ?? null;
+      if (c.objectKind === 'entity' && objectEntityId && subjectEntityId && s7Edge && !existingClaimId) {
+        const labelToId = new Map([
+          [String(c._canonicalSubject?.canonical ?? c._canonicalSubject?.name ?? c.subject), subjectEntityId],
+          [String(c._canonicalObject?.canonical ?? c._canonicalObject?.name ?? c.object?.entity), objectEntityId],
+        ]);
+        const fromEntityId = labelToId.get(String(s7Edge.from));
+        const toEntityId = labelToId.get(String(s7Edge.to));
+        if (!fromEntityId || !toEntityId) throw new WorldModelError('S7 edge endpoint could not be mapped to canonical entity');
         edgeId = crypto.randomUUID();
         await client.query(`INSERT INTO aqua_edges
-          (edge_id,owner_id,from_entity_id,to_entity_id,predicate,claim_id,
-           state,valid_from,valid_to)
+          (edge_id,owner_id,from_entity_id,to_entity_id,predicate,claim_id,state,valid_from,valid_to)
          VALUES ($1,$2,$3,$4,$5,$6,'active',$7,$8)`,
-          [edgeId, ownerId, subjectEntityId, objectEntityId, c.predicate, claimId,
-            c.validFrom ?? null, c.validTo ?? null]);
-
-        await lifecycle(client, {
-          ownerId, targetKind: 'edge', targetId: edgeId, fromState: null,
-          toState: 'active', reason: 'e6-claim-projection', actor
-        });
-        await revision(client, {
-          ownerId, targetKind: 'edge', targetId: edgeId, changeKind: 'create',
-          before: null,
-          after: {
-            fromEntityId: subjectEntityId,
-            toEntityId: objectEntityId,
-            predicate: c.predicate,
-            claimId,
-          },
-          reason: 'e6-claim-projection', actor, source: 'e6'
-        });
-        await outbox(client, {
-          ownerId, eventType: 'edge.created', aggregateKind: 'edge',
-          aggregateId: edgeId, actor,
-          payload: { edgeId, claimId, fromEntityId: subjectEntityId,
-            toEntityId: objectEntityId, predicate: c.predicate }
-        });
+          [edgeId, ownerId, fromEntityId, toEntityId, s7Edge.type, claimId, c.validFrom ?? null, c.validTo ?? null]);
+        await lifecycle(client,{ownerId,targetKind:'edge',targetId:edgeId,fromState:null,toState:'active',reason:'e6-s7-relationship',actor});
+        await revision(client,{ownerId,targetKind:'edge',targetId:edgeId,changeKind:'create',before:null,after:{fromEntityId,toEntityId,predicate:s7Edge.type,claimId,assertedAs:s7Edge.assertedAs},reason:'e6-s7-relationship',actor,source:'e6'});
+        await outbox(client,{ownerId,eventType:'edge.created',aggregateKind:'edge',aggregateId:edgeId,actor,payload:{edgeId,claimId,fromEntityId,toEntityId,predicate:s7Edge.type}});
       }
 
-      // Events are projected only when the extractor explicitly identifies an
-      // event type. A temporal claim alone is not enough to invent an event:
-      // L2/L7 require the event to remain a derived view of a real claim.
-      if (c.eventType) {
+      let eventId = null;
+      if (c.eventType && !existingClaimId) {
         eventId = crypto.randomUUID();
         await client.query(`INSERT INTO aqua_events
-          (event_id,owner_id,event_type,statement_text,subject_entity_id,claim_id,
-           occurred_at,occurred_to,asserted_at,time_precision,state)
+          (event_id,owner_id,event_type,statement_text,subject_entity_id,claim_id,occurred_at,occurred_to,asserted_at,time_precision,state)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'active')`,
-          [eventId, ownerId, c.eventType, statement, subjectEntityId ?? null,
-            claimId, c.occurredAt ?? c.validFrom ?? null, c.occurredTo ?? c.validTo ?? null,
-            input.assertedAt ?? new Date(), c.timePrecision ?? c.timePrecision ?? 'none']);
-
-        await lifecycle(client, {
-          ownerId, targetKind: 'event', targetId: eventId, fromState: null,
-          toState: 'active', reason: 'e6-event-projection', actor
-        });
-        await revision(client, {
-          ownerId, targetKind: 'event', targetId: eventId, changeKind: 'create',
-          before: null,
-          after: { eventType: c.eventType, statementText: statement, claimId },
-          reason: 'e6-event-projection', actor, source: 'e6'
-        });
-        await outbox(client, {
-          ownerId, eventType: 'event.created', aggregateKind: 'event',
-          aggregateId: eventId, actor,
-          payload: { eventId, claimId, eventType: c.eventType }
-        });
+          [eventId,ownerId,c.eventType,statement,subjectEntityId,claimId,c.occurredAt??c.validFrom??null,c.occurredTo??c.validTo??null,input.assertedAt??new Date(),c.timePrecision??'none']);
+        await lifecycle(client,{ownerId,targetKind:'event',targetId:eventId,fromState:null,toState:'active',reason:'e6-event-projection',actor});
+        await revision(client,{ownerId,targetKind:'event',targetId:eventId,changeKind:'create',before:null,after:{eventType:c.eventType,statementText:statement,claimId},reason:'e6-event-projection',actor,source:'e6'});
+        await outbox(client,{ownerId,eventType:'event.created',aggregateKind:'event',aggregateId:eventId,actor,payload:{eventId,claimId,eventType:c.eventType}});
       }
 
-      committed.push({claimId,evidenceId,edgeId,eventId});
+      persistedById.set(claimId, true);
+      committed.push({claimId,evidenceId,edgeId,eventId,corroborated:Boolean(existingClaimId)});
+
+      // Corroborating evidence from S8 may target an incumbent claim while the
+      // survivor itself is not in the incoming claim list. It is handled below.
+    }
+
+    for (const a of (input.evidenceAttachments ?? [])) {
+      const targetClaimId = a?.targetClaimId;
+      if (!targetClaimId) continue;
+      // Only attach evidence to an owner-scoped claim. The target must already
+      // exist; this prevents S8 metadata from becoming a cross-owner write.
+      await assertOwned(client, 'aqua_claims', 'claim_id', targetClaimId, ownerId);
+      const statement = required(a.claim?.statementText, 'evidenceAttachment.claim.statementText');
+      const evidenceId = crypto.randomUUID();
+      await client.query(`INSERT INTO aqua_evidence
+        (evidence_id,owner_id,source_id,locator,quote,checksum) VALUES ($1,$2,$3,$4::jsonb,$5,$6)`,
+        [evidenceId,ownerId,sourceId,JSON.stringify({segmentStart:start,segmentEnd:end}),statement,crypto.createHash('sha256').update(statement).digest('hex')]);
+      await client.query(`INSERT INTO aqua_claim_evidence(owner_id,claim_id,evidence_id,role) VALUES($1,$2,$3,'corroborating') ON CONFLICT DO NOTHING`,[ownerId,targetClaimId,evidenceId]);
+      await client.query(`UPDATE aqua_claims SET confidence_corroboration=LEAST(1,confidence_corroboration+0.1),updated_at=now() WHERE claim_id=$1 AND owner_id=$2`,[targetClaimId,ownerId]);
+      committed.push({claimId:targetClaimId,evidenceId,edgeId:null,eventId:null,corroborated:true});
+    }
+
+    for (const contradiction of (input.contradictions ?? [])) {
+      const claimId = contradiction?.incoming?.claimId ?? contradiction?.existing?.claimId ?? crypto.randomUUID();
+      await outbox(client,{ownerId,eventType:'ContradictionDetected',aggregateKind:'claim',aggregateId:claimId,actor,payload:{kind:contradiction.kind,reason:contradiction.reason,subject:contradiction.subject,predicate:contradiction.predicate,incomingClaimId:contradiction.incoming?.claimId ?? null,existingClaimId:contradiction.existing?.claimId ?? null}});
     }
     return {...ledger,skipped:false,claims:committed};
   });

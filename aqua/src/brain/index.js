@@ -55,7 +55,10 @@ import * as pic from '../pic/core.js';
 import { ensureSelfEntity, SELF_CANONICAL_ID } from './identity/selfEntity.js';
 import { entityStoreFor } from './identity/entityStoreView.js';
 import { getEntry as getIdEntry } from './identity/idStore.js';
-import { commitUnderstanding as commitCanonicalUnderstanding } from '../core/worldModel/worldModelRepository.js';
+import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup } from '../core/worldModel/worldModelRepository.js';
+import { resolveRelationships } from './understanding/relationshipResolver.js';
+import { dedupAndDetect } from './understanding/claimDedup.js';
+import { buildCommitPlan } from './understanding/commitPlan.js';
 
 /**
  * The owner's self entity id, or null when they do not have one.
@@ -578,11 +581,40 @@ export async function understandTurn(
     }
 
     const commits = [];
+    const s7s8s9 = [];
     for (const segment of bySegment.values()) {
-      const canonicalClaims = segment.claims.map(c => ({
+      // S8 compares the incoming structured claims with persisted owner-scoped
+      // history before S9. The repository supplies history only; it never
+      // decides deduplication or contradiction.
+      const existing = await findClaimsForDedup({ ownerId, claims: segment.claims });
+      const s8 = dedupAndDetect(segment.claims, existing);
+
+      // S7 receives canonical entity labels for deterministic relationship
+      // direction. Persistence later maps those endpoints to Postgres ids; S7
+      // itself never writes storage.
+      const s7Claims = s8.claims.map(c => ({
         ...c,
-        subjectEntityId: null,
-        objectEntityId: null,
+        claimId: c.claimId ?? crypto.randomUUID(),
+        subject: c._canonicalSubject?.canonical ?? c._canonicalSubject?.name ?? c.subject,
+        object: c.objectKind === 'entity'
+          ? { entity: c._canonicalObject?.canonical ?? c._canonicalObject?.name ?? c.object?.entity }
+          : c.object,
+      }));
+      const s7 = resolveRelationships(s7Claims);
+
+      // Build the inspectable S9 plan from the actual S7/S8 output. The plan
+      // remains pure; the repository is the sole transaction executor.
+      const plan = buildCommitPlan({
+        sourceId, segmentRange: { start: segment.start, end: segment.end },
+        extractorVersion, claims: s7Claims.filter(c => !c._persisted), edges: s7.edges.filter(e => !s7Claims.find(c => c.claimId === e.claimId)?._persisted),
+        contradictions: s8.contradictions,
+      });
+      if (!plan.stats.atomicPossible) throw new Error(`S9 plan blocked: ${plan.stats.blockedTargets.join(',')}`);
+
+      const canonicalClaims = s7Claims.map(c => ({
+        ...c,
+        _s7Edge: s7.edges.find(e => e.claimId === c.claimId) ?? null,
+        _s8Existing: Boolean(c._persisted),
       }));
       commits.push(await commitCanonicalUnderstanding({
         ownerId, sourceId, actor, extractorVersion,
@@ -595,13 +627,19 @@ export async function understandTurn(
         contentHash: crypto.createHash('sha256').update(userMessage).digest('hex'),
         assertedAt: new Date(),
         claims: canonicalClaims,
+        evidenceAttachments: s8.evidenceAttachments,
+        contradictions: s8.contradictions,
+        s7Edges: s7.edges,
+        s9Plan: plan,
       }));
+      s7s8s9.push({ segment: { start: segment.start, end: segment.end }, s7, s8, s9: plan });
     }
     result.canonicalCommit = {
       enabled: true,
       sourceId,
       commits,
       committedClaims: commits.reduce((n, c) => n + (c.claims?.length ?? 0), 0),
+      stages: s7s8s9,
     };
   } catch (error) {
     // L11: understanding is enrichment; persistence failure must never sink

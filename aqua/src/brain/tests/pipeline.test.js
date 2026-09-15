@@ -361,3 +361,57 @@ describe('S3 contract discards name the rule they tripped', () => {
     assert.equal(r.stats.discarded, 0);
   });
 });
+
+describe('diagnostics (opts.diagnostics) — off by default, additive when asked', () => {
+  const seg = 'I own the billing service.';
+  const respond = claim => async () => ({
+    text: JSON.stringify({ claims: [claim] }), model: 'stub/model',
+  });
+  const run = async (claim, opts = {}) => {
+    __clearExtractionCache();
+    return runUnderstandingPipeline(seg, {
+      ownerId: 'o', conversationId: 'c', callModel: respond(claim), ...opts,
+    });
+  };
+  const base = {
+    subject: 'self', predicate: 'owns', object: { entity: 'billing service' },
+    polarity: 'asserted', modality: 'fact', timePrecision: 'none',
+    statementText: seg,
+  };
+
+  test('WITHOUT the flag, stats.discards does not exist — the return shape is unchanged', async () => {
+    const r = await run({ ...base, modality: 'speculative' });
+    assert.equal('discards' in r.stats, false,
+      'a caller that never asked for diagnostics must see byte-identical output to before this change');
+  });
+
+  test('an S3-contract rejection is captured with the raw claim', async () => {
+    const r = await run({ ...base, modality: 'speculative' }, { diagnostics: true });
+    assert.ok(Array.isArray(r.stats.discards));
+    const d = r.stats.discards.find(x => x.stage === 'S3-contract');
+    assert.ok(d, `no S3-contract discard: ${JSON.stringify(r.stats.discards)}`);
+    assert.match(d.reason, /bad-modality/);
+    assert.equal(d.predicate, 'owns');
+    assert.equal(d.subject, 'self');
+  });
+
+  test('an S4-validator rejection is captured with its gate number', async () => {
+    // Contract-level shape passes; the subject just never appears in the
+    // segment, which only S4 (gate ⑤) checks — the contract does not.
+    const r = await run({ ...base, subject: 'Priya' }, { diagnostics: true });
+    assert.ok(Array.isArray(r.stats.discards));
+    const d = r.stats.discards.find(x => x.stage === 'S4-validator');
+    assert.ok(d, `no S4-validator discard: ${JSON.stringify(r.stats.discards)}`);
+    assert.equal(d.gate, 5);
+    assert.match(d.reason, /subject-not-in-segment/);
+  });
+
+  test('existing aggregate metrics are identical with or without the flag', async () => {
+    const claim = { ...base, modality: 'speculative' };
+    const plain = await run(claim);
+    const diag = await run(claim, { diagnostics: true });
+    assert.deepEqual(plain.stats.byGate, diag.stats.byGate);
+    assert.equal(plain.stats.discarded, diag.stats.discarded);
+    assert.equal(plain.stats.proposed, diag.stats.proposed);
+  });
+});

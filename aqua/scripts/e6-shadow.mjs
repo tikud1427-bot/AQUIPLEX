@@ -436,7 +436,7 @@ async function main() {
       // earlier run issued 175 calls back to back and cooled every key.
       if (paceMs > 0 && !(pass === 0 && i === 0)) await sleep(paceMs);
 
-      let e6 = await extractE6(c.text, { callModel, modelPin });
+      let e6 = await extractE6(c.text, { callModel, modelPin, diagnostics: true });
 
       // A stall is waitable when the provider says when it ends. Retry the SAME
       // case once after sleeping; the alternative is scoring an empty
@@ -446,7 +446,7 @@ async function main() {
         if (wait != null && wait > 0 && wait <= MAX_STALL_WAIT_MS) {
           process.stderr.write(`\n  ⏸  all keys cooling — sleeping ${Math.ceil(wait / 1000)}s, retrying case ${i + 1}\n`);
           await sleep(wait + 1000);
-          e6 = await extractE6(c.text, { callModel, modelPin });
+          e6 = await extractE6(c.text, { callModel, modelPin, diagnostics: true });
         } else if (wait != null && wait > MAX_STALL_WAIT_MS) {
           process.stderr.write(`\n  ✗ cooldown is ${Math.ceil(wait / 60000)} min — that is the DAILY quota, not the per-minute one.\n`);
         }
@@ -500,6 +500,8 @@ async function main() {
       // happened per case, not a new measurement.
       perCase.push({
         id: c.id, cat: c.cat,
+        input: c.text,
+        expectedClaims: c.claims ?? [],
         labelledClaims: (c.claims ?? []).length,
         e6Emitted: e6.facts.length,
         e6DiscardedBy: e6.stats.byGate ?? {},
@@ -508,6 +510,19 @@ async function main() {
         predicateHits: sc.predicateHits ?? 0,
         fidelityHits: sc.fidelityHits ?? 0,
         correct: !!sc.correct,
+        // ── Added for per-case diagnosis (does not affect any scored metric
+        // above — every field already existed and is computed exactly as
+        // before this addition) ──
+        // `finalClaims`: what was actually admitted, e.g. subject/predicate/
+        // objectKind/polarity/modality/temporal fields — the full claim
+        // `toFact()` narrows away for scoring.
+        finalClaims: e6.claims ?? [],
+        // `discards`: one entry per S3-contract or S4-validator rejection,
+        // naming the stage, gate, and reason, with the raw claim that
+        // tripped it — the detail `byGate`'s per-run counter has never
+        // carried. Empty when nothing was rejected, absent only if
+        // diagnostics was somehow not requested (it always is here).
+        discards: e6.stats.discards ?? [],
       });
 
       const errs = e6.stats.errors ?? 0;

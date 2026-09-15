@@ -181,6 +181,7 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
   const kept = new Map();
   const corroborations = [];
   const contradictions = [];
+  const evidenceAttachments = [];
 
   // Seed with what is already stored so incoming claims corroborate and
   // contradict against history, not only against each other in this batch.
@@ -209,6 +210,7 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
         hit.claim = { ...claim, evidence: hit.evidence };
       }
       corroborations.push({ key, count: hit.corroborationCount });
+      evidenceAttachments.push({ targetClaimId: hit.claim.claimId, claim: { ...claim } });
       continue;
     }
 
@@ -232,6 +234,7 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
   return {
     claims: [...kept.values()].map(k => ({ ...k.claim, corroborationCount: k.corroborationCount })),
     corroborations,
+    evidenceAttachments,
     contradictions,
     stats: {
       incoming: Array.isArray(incoming) ? incoming.length : 0,

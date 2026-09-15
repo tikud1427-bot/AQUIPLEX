@@ -93,15 +93,33 @@
       ]
     },
     {
+      "id": "fx-negation-project-membership",
+      "segment": "Priya isn't part of the onboarding revamp anymore.",
+      "why": "member_of is not limited to a formal team or org — it covers involvement in a named project or initiative just as much as a team. The only prior example ('platform team') could read as team-membership specifically; without a second example the model has no signal that a project counts too, and tends to fall back to a more generic relation for project involvement. This is the negated case, so the predicate must survive with polarity 'negated', not be dropped or hedged into a different relation.",
+      "claims": [
+        {
+          "subject": "Priya",
+          "predicate": "member_of",
+          "object": {
+            "entity": "onboarding revamp"
+          },
+          "polarity": "negated",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "Priya isn't part of the onboarding revamp anymore"
+        }
+      ]
+    },
+    {
       "id": "fx-negation-first-person-contraction",
       "segment": "I don't use Postgres anymore.",
-      "why": "A first-person negative declarative is still a claim. The contraction \"don't\" and the word \"anymore\" express negation; do not treat the sentence as silence, a request, or a preference. Preserve the negative polarity and use the predicate/object types exactly as registered.",
+      "why": "A first-person negative declarative is still a claim. The contraction \"don't\" and the word \"anymore\" express negation; do not treat the sentence as silence, a request, or a preference. Preserve the negative polarity and use the predicate/object types exactly as registered — Postgres is a named technology, so `uses` takes an entity object here, the same as every other uses example.",
       "claims": [
         {
           "subject": "self",
           "predicate": "uses",
           "object": {
-            "literal": "Postgres"
+            "entity": "Postgres"
           },
           "polarity": "negated",
           "modality": "fact",
@@ -125,6 +143,24 @@
           "modality": "fact",
           "timePrecision": "none",
           "statementText": "We haven't decided on pricing"
+        }
+      ]
+    },
+    {
+      "id": "fx-negation-habit",
+      "segment": "I never really picked up French, even after two years of classes.",
+      "why": "habit_of is not limited to an ongoing routine ('works weekends') — it also covers a skill or practice the speaker never acquired, stated as a negated habitual claim rather than a one-off historical event. Before this example habit_of had no worked example at all despite being registered, so the model had nothing to generalise a durative-but-negative claim like this from and tended to decline extraction rather than force a predicate it had never seen demonstrated.",
+      "claims": [
+        {
+          "subject": "self",
+          "predicate": "habit_of",
+          "object": {
+            "literal": "speaking French"
+          },
+          "polarity": "negated",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "I never really picked up French"
         }
       ]
     },

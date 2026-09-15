@@ -137,5 +137,13 @@ export async function extractE6(text, opts = {}) {
     if (claim.objectKind === 'entity' && claim.object?.entity) add(claim.object.entity);
   }
 
-  return { available: true, facts, surfaces: [...surfaces], stats: run.stats };
+  return {
+    available: true, facts, surfaces: [...surfaces], stats: run.stats,
+    // Diagnostic-only. NOT read by `extraction-core.suite.mjs` — `facts`
+    // above is the entire scored surface, exactly as the comment on
+    // `toFact()` says. This is the admitted claims verbatim (with
+    // `objectKind`, which `toFact()` deliberately drops) for a `--json`
+    // per-case dump to show, not for anything that computes a metric.
+    claims: run.claims,
+  };
 }

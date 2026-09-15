@@ -114,7 +114,32 @@ const SEED = [
 
   // attributes and habits
   ['builds',      { class: C.ATTRIBUTE, objectKind: 'literal' }],
-  ['uses',        { class: C.ATTRIBUTE, objectKind: 'literal' }],
+  // `uses` HAS NO INVERSE, SO THE STRUCTURAL RULE ABOVE SAYS NOTHING ABOUT IT —
+  // THIS IS THE EVIDENCE-BASED CALL THE TESTS LEFT OPEN.
+  //
+  // `predicateRegistry.test.js` — "predicates WITHOUT an inverse are untouched
+  // by this rule" — deliberately does not pin objectKind for `uses`, "so a
+  // later reader does not mistake silence for endorsement." This is that
+  // reading: every `uses` claim in `extraction-core.v1` (14/14 — Postgres, Go,
+  // Node, React, Obsidian, Linux, Vim, Redis, Groq, Python) names a specific
+  // technology, never a generic descriptor. That is unanimous, not majority,
+  // and it is exactly the shape `entity` exists for — a resolvable node the
+  // model already recognises as one (S2's proper-noun cue admits every one of
+  // these segments on that basis before extraction even runs).
+  //
+  // Concretely this was the second of the two current negation-gate misses:
+  // "I don't use Postgres anymore" — model reports `entity: Postgres`
+  // (correctly, matching every other `uses` case), the old `literal`
+  // declaration refused it as `object-kind-mismatch`, S4 discarded the claim,
+  // detection scored it a miss. Flipping the declared kind to what the data
+  // and the model already agree on should recover it and, on the same
+  // evidence, several `identity`/`modality`/`temporal` `uses` cases besides.
+  //
+  // `task_owner` is NOT touched here — the same test leaves it open too, but
+  // its gold objects ("deploy checklist") are not resolvable named entities,
+  // so the entity case is not the unanimous, clean read `uses` is. Left as the
+  // open ontology question it already was.
+  ['uses',        { class: C.ATTRIBUTE, objectKind: 'entity' }],
   ['prefers',     { class: C.ATTRIBUTE, objectKind: 'literal' }],
   ['dislikes',    { class: C.ATTRIBUTE, objectKind: 'literal' }],
   ['habit_of',    { class: C.ATTRIBUTE, objectKind: 'literal' }],

@@ -213,7 +213,7 @@ describe('extraction client — batching is concurrency, not prompt-stuffing', (
       const which = ['a', 'b', 'c'].find(k => user.includes(`seg-${k}`));
       await new Promise(r => setTimeout(r, delays[which]));
       return { model: 'm', text: JSON.stringify({ claims: [{
-        subject: 'self', predicate: 'uses', object: { literal: which },
+        subject: 'self', predicate: 'role_is', object: { literal: which },
         polarity: 'asserted', modality: 'fact', timePrecision: 'none',
         statementText: `seg-${which}`,
       }] }) };
