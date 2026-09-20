@@ -66,13 +66,16 @@ export async function scoreClaimEmbeddings({ ownerId, queryVector, signature = m
   const k = Math.max(1, Math.min(256, Math.floor(Number(limit) || 64)));
   const p = await configuredPool();
   const { rows } = await p.query(
-    `SELECT target_id AS claim_id,
-            1 - (vector <=> $2::vector) AS similarity
-       FROM aqua_embeddings
-      WHERE owner_id=$1
-        AND target_kind='claim'
-        AND model_signature=$3
-      ORDER BY vector <=> $2::vector
+    `SELECT e.target_id AS claim_id,
+            1 - (e.vector <=> $2::vector) AS similarity
+       FROM aqua_embeddings e
+       JOIN aqua_claims c
+         ON c.claim_id = e.target_id AND c.owner_id = e.owner_id
+      WHERE e.owner_id=$1
+        AND e.target_kind='claim'
+        AND e.model_signature=$3
+        AND c.state IN ('active','trusted')
+      ORDER BY e.vector <=> $2::vector
       LIMIT $4`,
     [ownerId, literal, signature, k],
   );
@@ -102,4 +105,18 @@ export async function removeClaimEmbedding({ ownerId, claimId, signature = model
     [ownerId, claimId, signature],
   );
   return result.rowCount ?? 0;
+}
+
+// P0.1: bulk, owner-scoped, model-signature-independent — unlike
+// removeClaimEmbedding above, this drops every embedding row this owner has
+// regardless of target_kind or model_signature. Named `purgeOwner` (not
+// `removeOwnerEmbeddings`) specifically so purgeCompleteness.test.js's scan
+// finds it and can enforce that account deletion actually calls it — before
+// this, no module owned bulk owner-scoped erasure of aqua_embeddings at all.
+export async function purgeOwner(ownerId) {
+  if (!ownerId) return { embeddings: 0, skipped: 'no owner' };
+  if (!isConfigured()) return { embeddings: 0, skipped: 'postgres not configured' };
+  const p = await configuredPool();
+  const result = await p.query('DELETE FROM aqua_embeddings WHERE owner_id = $1', [ownerId]);
+  return { embeddings: result.rowCount ?? 0, skipped: null };
 }

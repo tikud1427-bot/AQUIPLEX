@@ -369,13 +369,31 @@ describe('the harness waits out a cooldown instead of scoring silence', () => {
    * a pause it could have slept through.
    */
   test('the provider exposes when a key frees, so the wait is knowable', async () => {
-    const { msUntilAnyKeyFree } = await import('../../providers/groq.js');
-    assert.equal(typeof msUntilAnyKeyFree, 'function');
-    // No keys configured in this environment — null, not a crash and not 0,
+  const { msUntilAnyKeyFree } = await import('../../providers/groq.js');
+  assert.equal(typeof msUntilAnyKeyFree, 'function');
+
+  // This test must exercise the "no configured keys" branch regardless of
+  // whether the developer's root .env contains real Groq credentials.
+  // The production harness intentionally loads .env, so relying on the
+  // machine's ambient environment would make this unit test nondeterministic.
+  const names = [1, 2, 3, 4].map(i => `GROQ_API_KEY_${i}`);
+  const saved = new Map(names.map(name => [name, process.env[name]]));
+
+  try {
+    for (const name of names) delete process.env[name];
+
+    // No keys configured — null, not a crash and not 0,
     // because "none exist" and "one is free now" are different answers.
     assert.equal(msUntilAnyKeyFree(), null);
-  });
-
+  } finally {
+    // Restore the caller's environment exactly, including variables that
+    // were originally absent.
+    for (const [name, value] of saved) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
   test('the harness consults it before counting a transport error', () => {
     const src = readFileSync(path.join(HERE, '../../../scripts/e6-shadow.mjs'), 'utf8');
     assert.match(src, /msUntilAnyKeyFree\(\)/);

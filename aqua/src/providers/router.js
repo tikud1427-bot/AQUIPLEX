@@ -286,7 +286,14 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
         fallbackChain.push({ provider, outcome: 'failed', reason: cls.type, status: cls.status, retryable: cls.retryable, latencyMs: null });
         ctx.attempts?.push({ provider, outcome: 'failed', reason: cls.type, status: cls.status, retryable: cls.retryable, score, error: perr.toJSON() });
 
-        console.log(`[ROUTER] ✗ ${provider} type=${cls.type}${cls.status ? ` status=${cls.status}` : ''} retryable=${cls.retryable} scope=${cls.scope} round=${round} — ${cls.retryable ? 'will retry' : 'terminal for this provider'} req=${requestId}`);
+        console.log(
+  `[ROUTER] ✗ ${provider} type=${cls.type}` +
+  `${cls.status ? ` status=${cls.status}` : ''}` +
+  ` retryable=${cls.retryable} scope=${cls.scope}` +
+  ` round=${round}` +
+  ` cause=${err?.message ?? 'unknown'}` +
+  ` req=${requestId}`
+);
 
         if (cls.retryable) {
           retryableThisRound = true; anyRetryable = true;

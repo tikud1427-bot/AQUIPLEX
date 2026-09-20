@@ -112,8 +112,11 @@ export async function canonicalClaimScores(ownerId, query) {
           const keyByClaim = await retrievalKeysForClaimIds({ ownerId, claimIds: [...claimScores.keys()] });
           const resolved = new Map();
           for (const [claimId, score] of claimScores) {
-            const key = keyByClaim.get(claimId);
-            if (key) resolved.set(key, score);
+            // Canonical claims are valid retrieval candidates even when an older
+            // bridge row has not been backfilled. Prefer the explicit bridge, but
+            // fall back to the canonical UUID rather than dropping the dense hit.
+            const key = keyByClaim.get(claimId) ?? String(claimId);
+            resolved.set(key, score);
           }
           if (resolved.size) return resolved;
         }

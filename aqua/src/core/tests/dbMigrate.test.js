@@ -243,6 +243,15 @@ describe('migrations — wiring', () => {
     const walk = (dir) => {
       for (const name of readdirSync(dir, { withFileTypes: true })) {
         if (name.name === 'tests' || name.name.startsWith('.')) continue;
+        // Colocated test files (e.g. worldModel/claimRetrievalBridge.test.js)
+        // are a second, equally real convention in this codebase besides a
+        // dedicated tests/ subdirectory — this walker only excluded the
+        // first. A colocated test that legitimately calls migrate() against
+        // an in-memory Postgres (to exercise code that needs the schema to
+        // exist) tripped this as a false "production module migrates on
+        // import" failure. Test files are never the "on boot" path either
+        // way, so exclude them by suffix too, not just by directory name.
+        if (name.name.endsWith('.test.js') || name.name.endsWith('.test.mjs')) continue;
         const full = path.join(dir, name.name);
         if (name.isDirectory()) { walk(full); continue; }
         if (!/\.(m?js|cjs)$/.test(name.name)) continue;

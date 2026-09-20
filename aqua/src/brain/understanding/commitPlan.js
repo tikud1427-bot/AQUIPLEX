@@ -204,7 +204,7 @@ export function buildCommitPlan(input = {}) {
   const outbox = [
     ...claims.map(c => ({ type: 'ClaimCommitted', claimId: c.claimId })),
     ...contradictions.map(c => ({
-      type: 'ContradictionDetected',
+      type: 'claim.contradiction.detected',
       subject: c.subject, predicate: c.predicate, kind: c.kind,
     })),
   ];

@@ -55,7 +55,7 @@ import * as pic from '../pic/core.js';
 import { ensureSelfEntity, SELF_CANONICAL_ID } from './identity/selfEntity.js';
 import { entityStoreFor } from './identity/entityStoreView.js';
 import { getEntry as getIdEntry } from './identity/idStore.js';
-import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup } from '../core/worldModel/worldModelRepository.js';
+import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup, claimWithEvidence } from '../core/worldModel/worldModelRepository.js';
 import { resolveRelationships } from './understanding/relationshipResolver.js';
 import { dedupAndDetect } from './understanding/claimDedup.js';
 import { buildCommitPlan } from './understanding/commitPlan.js';
@@ -73,7 +73,7 @@ const selfEntityIdFor = ownerId =>
   (ownerId && getIdEntry(ownerId, SELF_CANONICAL_ID) ? SELF_CANONICAL_ID : null);
 
 /** Real dependency set. Tests inject their own via the `deps` option. */
-const REAL_DEPS = { graph, peekMind, evidenceStore, annotations, getMind, observeSignals, canonicalIds, pic, ensureSelfEntity, entityStoreFor, selfEntityIdFor };
+const REAL_DEPS = { graph, peekMind, evidenceStore, annotations, getMind, observeSignals, canonicalIds, pic, ensureSelfEntity, entityStoreFor, selfEntityIdFor, canonicalClaims: { get: claimWithEvidence } };
 
 const metrics = {
   calls: 0, errors: 0, disabled: 0,
@@ -385,6 +385,7 @@ export function assembleContext(ownerId, query, floorRetrieve, opts = {}) {
     peekMind: deps.peekMind,
     formatCitation: opts.formatCitation ?? null,
     semanticScores: semanticClaimScores ?? semanticScores,
+    canonicalClaimsById: (semanticClaimScores ?? semanticScores)?.canonicalClaimsById ?? null,
     activeProjectId,
   };
   return guard('assembleContext',
@@ -432,6 +433,7 @@ export async function assembleContextAsync(ownerId, query, floorRetrieve, opts =
     peekMind: deps.peekMind,
     formatCitation: opts.formatCitation ?? null,
     semanticScores: semanticClaimScores ?? semanticScores,
+    canonicalClaimsById: (semanticClaimScores ?? semanticScores)?.canonicalClaimsById ?? null,
     activeProjectId,
   };
   return assembleTurnContextAsync(engineDeps, ownerId, query, {
@@ -452,7 +454,25 @@ export async function canonicalSemanticScores(ownerId, query) {
   try {
     const facts = evidenceStore.listFacts(ownerId, { limit: 5000 });
     await indexCanonicalClaims(ownerId, facts);
-    return canonicalClaimScores(ownerId, query);
+    const scores = await canonicalClaimScores(ownerId, query);
+    if (!(scores instanceof Map) || !scores.size) return scores;
+
+    // Hydrate canonical candidates once, at the async retrieval seam. This
+    // prevents Context Engine from needing a DB call inside its synchronous
+    // scorer while also eliminating the old requirement that every canonical
+    // claim have a legacy evidence-store fact row.
+    const canonicalClaimsById = new Map();
+    const ids = [...scores.keys()].filter(id => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(id)));
+    await Promise.all(ids.slice(0, 64).map(async id => {
+      try {
+        const claim = await claimWithEvidence(ownerId, String(id));
+        if (claim) canonicalClaimsById.set(String(id), claim);
+      } catch (err) {
+        console.warn(`[BRAIN] canonical claim hydration skipped id=${id}: ${err?.message ?? err}`);
+      }
+    }));
+    Object.defineProperty(scores, 'canonicalClaimsById', { value: canonicalClaimsById, enumerable: false });
+    return scores;
   } catch (err) {
     console.warn(`[BRAIN] canonical semantic lane failed (non-fatal): ${err?.message ?? err}`);
     return null;

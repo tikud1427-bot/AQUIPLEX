@@ -39,3 +39,9 @@ Thumbs.db
 *.diff
 .fuse_hidden*
 *.migrated-to-datadir
+
+#aqua frontend build output
+/aqua-frontend/dist/
+
+#generated repository tree
+/codebase-tree.txt

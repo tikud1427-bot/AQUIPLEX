@@ -130,6 +130,8 @@ describe('every owner-purgeable store is reachable from account deletion (G4)', 
       'brain/index.js', 'brain/identity/idStore.js', 'brain/worldModel/annotationStore.js',
       'files/evidenceStore.js', 'files/fileSearchIndex.js', 'files/ukoStore.js',
       'pic/picStore.js', 'reasoning/reasoningGraph.js',
+      'core/worldModel/worldModelRepository.js', 'core/worldModel/embeddingRepository.js',
+      'core/jobs/jobQueue.js',
     ]) assert.ok(found.includes(expected), `scan missed a known purge module: ${expected}`);
   });
 
@@ -159,5 +161,19 @@ describe('every owner-purgeable store is reachable from account deletion (G4)', 
     try {
       assert.deepEqual(purgesPerformedBy(fake), [], 'an unresolvable import was counted as a purge');
     } finally { rmSync(fake, { force: true }); }
+  });
+
+  test('purgeOwnerEntities is called — the scanner cannot see this one on its own', () => {
+    // worldModelRepository.js exports TWO erasure functions, not one:
+    // `purgeOwner` (edges/events/belief_claims/etc. — must run BEFORE
+    // claimRepository deletes claims) and `purgeOwnerEntities` (must run
+    // AFTER, since aqua_claims REFERENCES aqua_entities). The scan above only
+    // matches the literal name `purgeOwner`, so `purgeOwnerEntities` is
+    // invisible to it — pinned here by name instead, so dropping the call
+    // from accountPurge.js still fails a test even though the generic scan
+    // would stay green.
+    const direct = readFileSync(ENTRY, 'utf8');
+    assert.ok(/purgeOwnerEntities\s*\(/.test(direct),
+      'accountPurge.js no longer calls purgeOwnerEntities — entities would never be erased');
   });
 });

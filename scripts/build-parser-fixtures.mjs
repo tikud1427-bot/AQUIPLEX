@@ -54,7 +54,7 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-export const FIXTURE_DIR = path.join(ROOT, 'src/upload/tests/fixtures');
+export const FIXTURE_DIR = path.join(ROOT, 'aqua/src/upload/tests/fixtures');
 
 /** Bump when the fixture SPEC changes. A bump invalidates every hash below. */
 export const SPEC_VERSION = 1;

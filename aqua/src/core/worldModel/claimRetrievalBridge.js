@@ -16,7 +16,7 @@ function required(v, name) {
 export async function linkClaimRetrievalKey({ ownerId, claimId, retrievalKey }) {
   required(ownerId, 'ownerId'); required(claimId, 'claimId'); required(retrievalKey, 'retrievalKey');
   if (!isConfigured()) throw new ClaimRetrievalBridgeError('DATABASE_URL is not set');
-  const p = getPool();
+  const p = await getPool();
   const { rows } = await p.query(`
     INSERT INTO aqua_claim_retrieval_bridge (owner_id, claim_id, retrieval_key)
     VALUES ($1,$2,$3)
@@ -28,7 +28,7 @@ export async function linkClaimRetrievalKey({ ownerId, claimId, retrievalKey }) 
 export async function claimIdsForRetrievalKeys({ ownerId, retrievalKeys = [] }) {
   required(ownerId, 'ownerId');
   if (!isConfigured() || !retrievalKeys.length) return new Map();
-  const p = getPool();
+  const p = await getPool();
   const { rows } = await p.query(`
     SELECT retrieval_key, claim_id
       FROM aqua_claim_retrieval_bridge
@@ -39,7 +39,7 @@ export async function claimIdsForRetrievalKeys({ ownerId, retrievalKeys = [] }) 
 export async function retrievalKeysForClaimIds({ ownerId, claimIds = [] }) {
   required(ownerId, 'ownerId');
   if (!isConfigured() || !claimIds.length) return new Map();
-  const p = getPool();
+  const p = await getPool();
   const { rows } = await p.query(`
     SELECT claim_id, retrieval_key
       FROM aqua_claim_retrieval_bridge

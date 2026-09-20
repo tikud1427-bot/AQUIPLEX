@@ -44,7 +44,7 @@ test('polarity contradiction preserves both claims and S9 emits an event', () =>
   assert.equal(r.contradictions.length, 1);
   const plan = buildCommitPlan({ sourceId: 's', segmentRange: [0, 10], extractorVersion: 'v1', claims: r.claims, contradictions: r.contradictions });
   const outbox = plan.operations.find(o => o.target === 'outbox');
-  assert.ok(outbox.rows.some(e => e.type === 'ContradictionDetected'));
+  assert.ok(outbox.rows.some(e => e.type === 'claim.contradiction.detected'));
 });
 
 test('multi-valued predicates do not become false contradictions', () => {
@@ -69,7 +69,7 @@ test('repository is one transactional writer and enforces owner scope on dedup r
   assert.match(repo, /await client\.query\('ROLLBACK'/);
   assert.match(repo, /WHERE c\.owner_id = \$1/);
   assert.match(repo, /aqua_claim_evidence/);
-  assert.match(repo, /ContradictionDetected/);
+  assert.match(repo, /claim.contradiction.detected/);
   assert.match(repo, /input\.s7Edges/);
   assert.match(repo, /recordUnderstandingCommit/);
 });

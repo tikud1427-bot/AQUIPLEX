@@ -54,11 +54,32 @@ ROOT=$(find_root) || die "Could not find the repo root (a directory containing a
 cd "$ROOT"
 printf '%srepo    : %s%s\n' "$DIM" "$ROOT" "$OFF"
 
+# ── Pre-flight: package.json "scripts" values are NOT covered by referenced() ──
+# referenced() only greps require(...)/from "..." import syntax. An npm script
+# string like "node src/core/db/cli.mjs" is neither — it is a bare path in a
+# JSON value — so it was invisible to the safety gate below. That is exactly
+# how db:migrate/db:drift/db:status/test:edit/bench:cognition/soak:providers
+# ended up quietly pointed at root src/ after PR-7 first shipped: the gate said
+# "safe", and it was wrong about these six. Refuse to run until package.json
+# stops pointing at the tree this script is about to delete.
+if [ -f package.json ]; then
+  bad_scripts=$(grep -oE '"[a-zA-Z0-9:_-]+": *"[^"]*\bsrc/[^"]*"' package.json \
+    | grep -v '\baqua/src/' \
+    | grep -vE 'run-tests\.mjs' \
+    || true)
+  if [ -n "$bad_scripts" ]; then
+    warn "package.json scripts still point at root src/ (not aqua/src/) — these will break once src/ is removed:"
+    printf '%s\n' "$bad_scripts" | sed 's/^/    /'
+    die "Fix these package.json scripts first, then re-run."
+  fi
+fi
+
 # ── What goes ───────────────────────────────────────────────────────────────
 
 # Modules and their orphaned tests. Each is checked for references first.
 CODE=(
   "src"                               # drifted duplicate provider tree + 1,363-line fossil chat.js
+  "router.js"                         # root fossil of aqua/router.js — index.js only ever mounts aqua/router.js
   "callGraph.js"
   "callGraph.test.js"
   "contextCompressor.js"
@@ -136,6 +157,21 @@ for g in "${GLOBS[@]}"; do
     removed=$((removed+1))
   done
 done
+
+# `how *`-style redirect-accident files are handled separately from GLOBS, not
+# as a GLOBS entry: that loop expands each pattern unquoted (SC2231,
+# intentionally, so real globs like "*.diff" work) and a pattern that itself
+# contains a space word-splits into "how" + a BARE "*" — which matches every
+# file in the directory. Tried it as a GLOBS entry, dry-run caught it (would
+# remove "routes", "scripts", "services", ...), reverted to this instead.
+shopt -s nullglob
+for f in ./"how "*; do
+  rel="${f#./}"
+  if [ "$DRY" = 1 ]; then printf '  would remove   %s\n' "$rel"
+  else rm -f -- "$f"; printf '  removed        %s\n' "$rel"; fi
+  removed=$((removed+1))
+done
+shopt -u nullglob
 
 # ── Kept on purpose ─────────────────────────────────────────────────────────
 echo

@@ -232,6 +232,84 @@ async function upsertEntityInTransaction(client, { ownerId, entity, actor, sourc
  *  This is intentionally a read primitive: S8 remains the decision-maker;
  *  the repository only supplies persisted history so S8 can compare against it.
  */
+/**
+ * Canonical claim read primitive for E9. This deliberately lives beside the
+ * canonical writer so reflection never falls back to the legacy claim store.
+ */
+export async function claimWithEvidence(ownerId, claimId) {
+  const owner = required(ownerId, 'ownerId');
+  const id = required(claimId, 'claimId');
+  const p = await getPool();
+  const { rows } = await p.query(`
+    SELECT c.claim_id, c.owner_id, c.subject_entity_id,
+           se.canonical_label AS subject,
+           c.predicate, c.object_entity_id,
+           oe.canonical_label AS object_entity,
+           c.object_literal, c.object_quantity, c.object_unit,
+           c.object_time_from, c.object_time_to,
+           c.polarity, c.modality, c.valid_from, c.valid_to,
+           c.asserted_at, c.state, c.superseded_by, c.statement_text,
+           c.confidence_extraction, c.confidence_corroboration,
+           c.extractor_version, c.actor,
+           COALESCE(MAX(s.kind), 'conversation') AS source_kind
+      FROM aqua_claims c
+      JOIN aqua_entities se
+        ON se.entity_id=c.subject_entity_id AND se.owner_id=c.owner_id
+      LEFT JOIN aqua_entities oe
+        ON oe.entity_id=c.object_entity_id AND oe.owner_id=c.owner_id
+      LEFT JOIN aqua_claim_evidence ce
+        ON ce.owner_id=c.owner_id AND ce.claim_id=c.claim_id
+      LEFT JOIN aqua_evidence ev
+        ON ev.owner_id=ce.owner_id AND ev.evidence_id=ce.evidence_id
+      LEFT JOIN aqua_sources s
+        ON s.owner_id=ev.owner_id AND s.source_id=ev.source_id
+     WHERE c.owner_id=$1 AND c.claim_id=$2
+     GROUP BY c.claim_id, c.owner_id, c.subject_entity_id, se.canonical_label,
+              c.predicate, c.object_entity_id, oe.canonical_label, c.object_literal,
+              c.object_quantity, c.object_unit, c.object_time_from, c.object_time_to,
+              c.polarity, c.modality, c.valid_from, c.valid_to, c.asserted_at,
+              c.state, c.superseded_by, c.statement_text, c.confidence_extraction,
+              c.confidence_corroboration, c.extractor_version, c.actor`, [owner, id]);
+  if (!rows.length) return null;
+  const evidence = await p.query(`
+    SELECT e.*, ce.role
+      FROM aqua_claim_evidence ce
+      JOIN aqua_evidence e
+        ON e.evidence_id=ce.evidence_id AND e.owner_id=ce.owner_id
+     WHERE ce.owner_id=$1 AND ce.claim_id=$2
+     ORDER BY e.created_at ASC, e.evidence_id ASC`, [owner, id]);
+  const r = rows[0];
+  return {
+    claimId: r.claim_id,
+    ownerId: r.owner_id,
+    subject: r.subject,
+    subjectEntityId: r.subject_entity_id,
+    predicate: r.predicate,
+    objectKind: r.object_entity_id ? 'entity'
+      : r.object_quantity != null ? 'quantity'
+      : r.object_time_from != null ? 'time' : 'literal',
+    object: r.object_entity_id ? { entity: r.object_entity, entityId: r.object_entity_id }
+      : r.object_quantity != null ? { quantity: Number(r.object_quantity), unit: r.object_unit }
+      : r.object_time_from != null ? { time: r.object_time_from }
+      : { literal: r.object_literal },
+    polarity: r.polarity,
+    modality: r.modality,
+    validFrom: r.valid_from,
+    validTo: r.valid_to,
+    assertedAt: r.asserted_at,
+    state: r.state,
+    supersededBy: r.superseded_by,
+    statementText: r.statement_text,
+    confidence: Number(r.confidence_extraction ?? 0.5),
+    confidenceExtraction: Number(r.confidence_extraction ?? 0.5),
+    confidenceCorroboration: Number(r.confidence_corroboration ?? 0),
+    extractorVersion: r.extractor_version,
+    actor: r.actor,
+    sourceKind: r.source_kind,
+    evidence: evidence.rows,
+  };
+}
+
 export async function findClaimsForDedup({ ownerId, claims = [] } = {}) {
   const owner = required(ownerId, 'ownerId');
   const predicates = [...new Set((Array.isArray(claims) ? claims : [])
@@ -344,9 +422,29 @@ export async function commitUnderstanding(input = {}) {
           c.polarity??'asserted',c.modality??'fact',c.validFrom??null,c.validTo??null,input.assertedAt??new Date(),c.timePrecision??'none','extraction',extractorVersion,actor,statement,norm];
         const placeholders=vals.map((_,i)=>'$'+(i+1)).join(',');
         await client.query(`INSERT INTO aqua_claims (${fields.join(',')}) VALUES (${placeholders})`,vals);
+        // E6 only hands the repository S7/S8-ready claims. Persist the
+        // extraction state first for an auditable lifecycle, then promote the
+        // canonical claim to active in the same transaction. This is the
+        // transition promised by the commit plan and makes the claim eligible
+        // for E7 current retrieval immediately after COMMIT.
         await lifecycle(client,{ownerId,targetKind:'claim',targetId:claimId,fromState:null,toState:'extracted',reason:'e6-commit',actor});
-        await revision(client,{ownerId,targetKind:'claim',targetId:claimId,changeKind:'create',before:null,after:{predicate:c.predicate,polarity:c.polarity,modality:c.modality},reason:'e6-commit',actor,source:'e6'});
-        await outbox(client,{ownerId,eventType:'claim.created',aggregateKind:'claim',aggregateId:claimId,actor,payload:{claimId,sourceId,segmentStart:start,segmentEnd:end}});
+        await revision(client,{ownerId,targetKind:'claim',targetId:claimId,changeKind:'create',before:null,after:{predicate:c.predicate,polarity:c.polarity,modality:c.modality,state:'extracted'},reason:'e6-commit',actor,source:'e6'});
+        await client.query(`UPDATE aqua_claims SET state='active', updated_at=now() WHERE claim_id=$1 AND owner_id=$2`, [claimId, ownerId]);
+        await lifecycle(client,{ownerId,targetKind:'claim',targetId:claimId,fromState:'extracted',toState:'active',reason:'e6-validated',actor});
+        await revision(client,{ownerId,targetKind:'claim',targetId:claimId,changeKind:'update',before:{state:'extracted'},after:{state:'active'},reason:'e6-validated',actor,source:'e6'});
+        await outbox(client,{ownerId,eventType:'claim.created',aggregateKind:'claim',aggregateId:claimId,actor,payload:{claimId,sourceId,segmentStart:start,segmentEnd:end,state:'active'}});
+        // E7 identity bridge: canonical claim id is the stable retrieval identity.
+        // We keep this explicit bridge for consumers that still expect a retrieval key,
+        // but never manufacture a second knowledge record.
+        await client.query(`INSERT INTO aqua_claim_retrieval_bridge
+          (owner_id,claim_id,retrieval_key) VALUES ($1,$2,$3)
+          ON CONFLICT (owner_id,claim_id) DO UPDATE SET retrieval_key=EXCLUDED.retrieval_key`,
+          [ownerId, claimId, String(claimId)]);
+        await outbox(client, {
+          ownerId, eventType: 'claim.embedding.requested', aggregateKind: 'claim',
+          aggregateId: claimId, actor,
+          payload: { claimId, statementText: statement, contentHash: crypto.createHash('sha256').update(statement).digest('hex') },
+        });
       } else {
         await client.query(`UPDATE aqua_claims
           SET confidence_corroboration=LEAST(1,confidence_corroboration+0.1), updated_at=now()
@@ -411,7 +509,7 @@ export async function commitUnderstanding(input = {}) {
 
     for (const contradiction of (input.contradictions ?? [])) {
       const claimId = contradiction?.incoming?.claimId ?? contradiction?.existing?.claimId ?? crypto.randomUUID();
-      await outbox(client,{ownerId,eventType:'ContradictionDetected',aggregateKind:'claim',aggregateId:claimId,actor,payload:{kind:contradiction.kind,reason:contradiction.reason,subject:contradiction.subject,predicate:contradiction.predicate,incomingClaimId:contradiction.incoming?.claimId ?? null,existingClaimId:contradiction.existing?.claimId ?? null}});
+      await outbox(client,{ownerId,eventType:'claim.contradiction.detected',aggregateKind:'claim',aggregateId:claimId,actor,payload:{kind:contradiction.kind,reason:contradiction.reason,subject:contradiction.subject,predicate:contradiction.predicate,incomingClaimId:contradiction.incoming?.claimId ?? null,existingClaimId:contradiction.existing?.claimId ?? null}});
     }
     return {...ledger,skipped:false,claims:committed};
   });
@@ -596,8 +694,16 @@ export async function transition(input) {
     let params = [toState, targetId, ownerId];
     if (toState === 'superseded') {
       const successor = required(input.supersededBy, 'supersededBy');
-      extra = ', superseded_by=$4';
-      params.push(successor);
+      await assertOwned(client, 'aqua_claims', 'claim_id', successor, ownerId);
+      if (successor === targetId) throw new WorldModelError('claim cannot supersede itself');
+      // A supersession is both a lifecycle event and a temporal boundary.
+      // Without valid_to, the old claim is correctly hidden from current
+      // retrieval but cannot be recovered by the temporal projection. When
+      // callers know the actual world-validity cutoff they may provide it;
+      // otherwise the correction time is the conservative boundary.
+      const validTo = input.validTo ?? new Date();
+      extra = ', superseded_by=$4, valid_to=COALESCE(valid_to,$5)';
+      params.push(successor, validTo);
     } else if (targetKind !== 'entity') {
       extra = ', superseded_by=NULL';
     } else if (toState !== 'merged') {
@@ -625,9 +731,17 @@ export async function transition(input) {
       reason: input.reason, actor, source: input.source ?? 'world-model'
     });
     await outbox(client, {
-      ownerId, eventType: 'world-model.lifecycle', aggregateKind: targetKind,
+      ownerId,
+      eventType: targetKind === 'claim' && toState === 'superseded'
+        ? 'claim.superseded'
+        : 'world-model.lifecycle',
+      aggregateKind: targetKind,
       aggregateId: targetId, actor,
-      payload: { targetKind, targetId, fromState, toState }
+      payload: {
+        targetKind, targetId, fromState, toState,
+        ...(targetKind === 'claim' && toState === 'superseded'
+          ? { claimId: targetId, supersededBy: input.supersededBy } : {})
+      }
     });
     return { targetKind, targetId, fromState, toState };
   });
@@ -740,4 +854,104 @@ export async function readHistory(input) {
       ORDER BY created_at ASC`,
     [ownerId, targetKind, targetId]);
   return { revisions, transitions, corrections };
+}
+
+// ── Owner erasure (G4 / L19 / L5-exception) ─────────────────────────────────
+//
+// P0.1 GAP CLOSED: nothing in this file exported `purgeOwner` before this
+// change, so `purgeCompleteness.test.js`'s scan never found it, and
+// `accountPurge.js` never called it. An account deletion emptied
+// aqua_claims/aqua_claim_evidence/aqua_jobs and stopped there — every entity,
+// edge, event, lifecycle transition, revision, correction, belief/claim link,
+// source, evidence row, outbox row and commit-ledger row this module owns
+// survived the deletion, unbounded, forever. That is the compliance failure
+// the header of purgeCompleteness.test.js describes in the abstract; this was
+// a live instance of it.
+//
+// TWO FUNCTIONS, NOT ONE — because the FK topology has a genuine ordering
+// conflict, not an arbitrary split:
+//   aqua_edges/aqua_events/aqua_belief_claims  → REFERENCE aqua_claims (RESTRICT)
+//   aqua_claims                                → REFERENCES aqua_entities (RESTRICT)
+// so edges/events/belief_claims must be gone BEFORE claimRepository deletes
+// claims, and entities can only go AFTER claims are gone. One owner-scoped
+// DELETE statement can't sit on both sides of another module's delete call.
+// `purgeOwner` is phase 1 + the claim-independent tables (picked up by the
+// completeness scan under its exact name); `purgeOwnerEntities` is phase 3,
+// wired explicitly in accountPurge.js and pinned by name in
+// purgeCompleteness.test.js since the scanner only matches `purgeOwner` and
+// won't discover it on its own.
+//
+// Self-referencing FKs (edges.superseded_by, events.superseded_by) are NULLed
+// before their table's own rows are deleted rather than relying on
+// same-statement FK evaluation order — cheap, and removes any doubt.
+
+/**
+ * Phase 1: everything that must be gone before claimRepository deletes claims,
+ * plus every claim-INDEPENDENT owner-scoped table this module owns.
+ * @returns {Promise<object>} counts per table, or `{ skipped }` without Postgres.
+ */
+export async function purgeOwner(ownerId) {
+  const empty = {
+    edges: 0, events: 0, lifecycleTransitions: 0, revisions: 0, corrections: 0,
+    beliefClaims: 0, evidence: 0, understandingCommitLedger: 0, sources: 0, outbox: 0,
+  };
+  if (!ownerId) return { ...empty, skipped: 'no owner' };
+  if (!isConfigured()) return { ...empty, skipped: 'postgres not configured' };
+
+  const p = await getPool();
+  await p.query('UPDATE aqua_edges SET superseded_by = NULL WHERE owner_id = $1', [ownerId]);
+  await p.query('UPDATE aqua_events SET superseded_by = NULL WHERE owner_id = $1', [ownerId]);
+
+  const edges = await p.query('DELETE FROM aqua_edges WHERE owner_id = $1', [ownerId]);
+  const events = await p.query('DELETE FROM aqua_events WHERE owner_id = $1', [ownerId]);
+  const beliefClaims = await p.query('DELETE FROM aqua_belief_claims WHERE owner_id = $1', [ownerId]);
+  const lifecycleTransitions = await p.query(
+    'DELETE FROM aqua_lifecycle_transitions WHERE owner_id = $1', [ownerId]);
+  const revisions = await p.query('DELETE FROM aqua_revisions WHERE owner_id = $1', [ownerId]);
+  const corrections = await p.query('DELETE FROM aqua_corrections WHERE owner_id = $1', [ownerId]);
+  const outbox = await p.query('DELETE FROM aqua_outbox WHERE owner_id = $1', [ownerId]);
+
+  // aqua_evidence and aqua_understanding_commit_ledger both REFERENCE
+  // aqua_sources (RESTRICT) — clear them before sources.
+  const evidence = await p.query('DELETE FROM aqua_evidence WHERE owner_id = $1', [ownerId]);
+  const understandingCommitLedger = await p.query(
+    'DELETE FROM aqua_understanding_commit_ledger WHERE owner_id = $1', [ownerId]);
+  const sources = await p.query('DELETE FROM aqua_sources WHERE owner_id = $1', [ownerId]);
+
+  return {
+    edges: edges.rowCount ?? 0,
+    events: events.rowCount ?? 0,
+    lifecycleTransitions: lifecycleTransitions.rowCount ?? 0,
+    revisions: revisions.rowCount ?? 0,
+    corrections: corrections.rowCount ?? 0,
+    beliefClaims: beliefClaims.rowCount ?? 0,
+    evidence: evidence.rowCount ?? 0,
+    understandingCommitLedger: understandingCommitLedger.rowCount ?? 0,
+    sources: sources.rowCount ?? 0,
+    outbox: outbox.rowCount ?? 0,
+    skipped: null,
+  };
+}
+
+/**
+ * Phase 3: entities, once claimRepository has removed every claim that could
+ * reference one. Must run AFTER claimRepository.purgeOwner, not before.
+ * aqua_entity_aliases cascades automatically (ON DELETE CASCADE); entity_merges
+ * and the self-referencing merged_into column do not, so they are handled here.
+ * @returns {Promise<object>} counts, or `{ skipped }` without Postgres.
+ */
+export async function purgeOwnerEntities(ownerId) {
+  if (!ownerId) return { entities: 0, entityMerges: 0, skipped: 'no owner' };
+  if (!isConfigured()) return { entities: 0, entityMerges: 0, skipped: 'postgres not configured' };
+
+  const p = await getPool();
+  await p.query('UPDATE aqua_entities SET merged_into = NULL WHERE owner_id = $1', [ownerId]);
+  const entityMerges = await p.query('DELETE FROM aqua_entity_merges WHERE owner_id = $1', [ownerId]);
+  const entities = await p.query('DELETE FROM aqua_entities WHERE owner_id = $1', [ownerId]);
+
+  return {
+    entities: entities.rowCount ?? 0,
+    entityMerges: entityMerges.rowCount ?? 0,
+    skipped: null,
+  };
 }

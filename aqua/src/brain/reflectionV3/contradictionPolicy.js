@@ -64,7 +64,8 @@ function evidenceCount(claim) {
 }
 
 function createdAt(claim) {
-  const n = Number(claim?.createdAt ?? claim?.assertedAt ?? 0);
+  const raw = claim?.createdAt ?? claim?.assertedAt ?? 0;
+  const n = typeof raw === 'number' ? raw : Date.parse(raw);
   return Number.isFinite(n) ? n : 0;
 }
 

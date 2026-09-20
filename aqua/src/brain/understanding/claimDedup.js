@@ -5,7 +5,7 @@
  *   semantic: cosine ≥ τ AND same subject+predicate → LLM equivalence check
  *     → merge, survivor = higher source tier (document absorbs chat)
  *   CONTRADICTION: same subject+predicate, incompatible object OR opposite
- *     polarity, overlapping validity → emit ContradictionDetected;
+ *     polarity, overlapping validity → emit claim.contradiction.detected;
  *     DO NOT resolve here (that is Reflection)
  *
  * IT DETECTS AND REFUSES TO DECIDE

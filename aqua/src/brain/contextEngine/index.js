@@ -381,11 +381,12 @@ function addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowe
   if (!laneAllowed('dense')) return [...byId.values()];
   const ES = deps.evidenceStore;
   const semanticScores = opts.semanticScores;
-  if (!(semanticScores instanceof Map) || semanticScores.size < 60) return [...byId.values()];
+  const canonicalClaimsById = deps.canonicalClaimsById instanceof Map ? deps.canonicalClaimsById : null;
+  if (!(semanticScores instanceof Map) || (!canonicalClaimsById?.size && semanticScores.size < 60)) return [...byId.values()];
 
   const values = [...semanticScores.values()].filter(Number.isFinite).sort((a, b) => b - a);
   const margin = values.length ? values[0] - values[Math.floor(values.length / 2)] : 0;
-  if (margin < 0.15) return [...byId.values()];
+  if (!canonicalClaimsById?.size && margin < 0.15) return [...byId.values()];
 
   const ranked = [...semanticScores.entries()]
     .filter(([, sim]) => Number.isFinite(sim) && sim >= 0.55)
@@ -400,21 +401,42 @@ function addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowe
       continue;
     }
     const fact = ES?.getFact?.(ownerId, String(factId));
-    if (!fact || fact.archived) continue;
-    const evidence = ES.evidenceForFact(ownerId, String(factId));
-    byId.set(key, normFact(String(factId), fact.statement, {
-      confidence: fact.confidence,
-      citations: deps.formatCitation ? evidence.map(deps.formatCitation) : [],
+    if (fact && !fact.archived) {
+      const evidence = ES.evidenceForFact(ownerId, String(factId));
+      byId.set(key, normFact(String(factId), fact.statement, {
+        confidence: fact.confidence,
+        citations: deps.formatCitation ? evidence.map(deps.formatCitation) : [],
+        via: `dense: ${sim.toFixed(2)}`,
+        sourceType: 'document',
+        entityIds: [],
+        hops: null,
+        timestamp: fact.createdAt ?? null,
+        semanticId: String(factId),
+        lanes: ['dense'],
+        trusted: fact.trusted,
+        disputed: fact.disputed,
+        stale: fact.stale,
+      }));
+      continue;
+    }
+    // Canonical World Model candidate: E7 must not require a legacy fact row.
+    // The canonical UUID is the semantic identity and the repository supplies
+    // the authoritative statement/provenance projection.
+    const canonical = deps.canonicalClaimsById?.get(String(factId)) ?? null;
+    if (!canonical || canonical.state === 'superseded' || canonical.state === 'archived') continue;
+    byId.set(key, normFact(String(factId), canonical.statementText, {
+      confidence: canonical.confidence,
+      citations: canonical.evidence ?? [],
       via: `dense: ${sim.toFixed(2)}`,
-      sourceType: 'document',
-      entityIds: [],
+      sourceType: canonical.sourceKind ?? 'conversation',
+      entityIds: canonical.subjectEntityId ? [canonical.subjectEntityId] : [],
       hops: null,
-      timestamp: fact.createdAt ?? null,
+      timestamp: canonical.assertedAt ?? null,
       semanticId: String(factId),
       lanes: ['dense'],
-      trusted: fact.trusted,
-      disputed: fact.disputed,
-      stale: fact.stale,
+      trusted: Number(canonical.confidenceCorroboration ?? 0) >= 0.5,
+      disputed: canonical.state === 'disputed',
+      stale: false,
     }));
   }
   return [...byId.values()];

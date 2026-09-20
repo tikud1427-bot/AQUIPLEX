@@ -101,8 +101,18 @@ export function createMemoryPg() {
       // not pretend it validated them. Skip only the two E7 substrate
       // migrations by their immutable migration headers, while still recording
       // them in the migration ledger so ordering/numbering remains exercised.
-      if (/^\\s*--\\s*0012\\s*[—-]/m.test(args[0]) ||
-          /^\\s*--\\s*0013\\s*[—-]/m.test(args[0])) {
+      //
+      // BUG FOUND AND FIXED HERE: this was `/^\\s*--\\s*0012.../` — a DOUBLE
+      // backslash inside a regex LITERAL matches a literal backslash
+      // character, not whitespace (that's `\s`, one backslash). The pattern
+      // could never match a real SQL comment, so it never fired: migration
+      // 0012 always ran for real against pg-mem and always failed on
+      // `CREATE EXTENSION IF NOT EXISTS vector`. That is the actual cause of
+      // several pre-existing failures in this suite (anything whose `before`
+      // hook calls the full `migrate()` past 0011) — not a pg-mem gap, a
+      // dead guard that was written to cover exactly that gap.
+      if (/^\s*--\s*0012\s*[—-]/m.test(args[0]) ||
+          /^\s*--\s*0013\s*[—-]/m.test(args[0])) {
         return { rows: [], rowCount: 0 };
       }
       args[0] = stripPartialIndexes(args[0]);

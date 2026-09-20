@@ -72,6 +72,27 @@ describe('repo hygiene — the duplicate tree stays gone', () => {
   test('the superseded apply script is gone', () => {
     assert.equal(exists('apply.sh'), false, 'apply.sh is superseded by apply-pr.sh');
   });
+
+  test('the root router.js fossil is gone', () => {
+    // index.js only ever does `import("./aqua/router.js")`. This file had zero
+    // live importers and was never in the original PR-7 delete list.
+    assert.equal(exists('router.js'), false,
+      'root router.js is back — index.js mounts aqua/router.js, this copy is dead');
+  });
+
+  test('no package.json script points at the removed root src/ tree', () => {
+    // The reference-check in PR7-cleanup.sh greps require()/import syntax; an
+    // npm script string ("node src/core/db/cli.mjs") is neither, so it was
+    // invisible to that gate. db:migrate, db:drift, db:status, test:edit,
+    // bench:cognition and soak:providers all drifted back to root src/ this
+    // way. This is what keeps that regression from recurring silently.
+    const pkg = JSON.parse(fs.readFileSync(at('package.json'), 'utf8'));
+    const offenders = Object.entries(pkg.scripts)
+      .filter(([, v]) => /\bsrc\//.test(v) && !/\baqua\/src\//.test(v) && !/run-tests\.mjs/.test(v))
+      .map(([k]) => k);
+    assert.deepEqual(offenders, [],
+      `these scripts still reference root src/: ${offenders.join(', ')}`);
+  });
 });
 
 describe('repo hygiene — what must NOT be deleted', () => {

@@ -227,7 +227,7 @@ describe('S9 — contradictions are OUTBOX EVENTS, never claim mutations', () =>
       contradictions: [{ subject: 'self', predicate: 'works_at', kind: 'polarity' }],
     }));
     const outbox = plan.operations.find(o => o.target === 'outbox');
-    assert.ok(outbox.rows.some(r => r.type === 'ContradictionDetected'));
+    assert.ok(outbox.rows.some(r => r.type === 'claim.contradiction.detected'));
     assert.equal(plan.operations.find(o => o.target === 'claims').count, 1,
       'the claim count is unchanged by the contradiction');
     assert.equal(plan.stats.contradictions, 1);

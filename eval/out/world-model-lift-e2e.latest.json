@@ -1,0 +1,1031 @@
+{
+  "schemaVersion": 1,
+  "manifest": {
+    "caseCount": 200,
+    "commit": "0662a0915f860208f90d2e5495d41c44d3c2e92a",
+    "dirty": true,
+    "node": "v24.19.0",
+    "platform": "win32-x64",
+    "ranAt": "2026-09-17T17:19:23.328Z",
+    "suiteFingerprint": "a792e2e94aabd569",
+    "suiteId": "world-model-lift-e2e"
+  },
+  "result": {
+    "cases": [
+      {
+        "id": "q001",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q002",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q003",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q004",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q005",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q006",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q007",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q008",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q009",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q010",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q011",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q012",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q013",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q014",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q015",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q016",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q017",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q018",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q019",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q020",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q021",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q022",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q023",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q024",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q025",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q026",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q027",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q028",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q029",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q030",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q031",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q032",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q033",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q034",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q035",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q036",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q037",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q038",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q039",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q040",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q041",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q042",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q043",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q044",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q045",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q046",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q047",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q048",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q049",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q050",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q051",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q052",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q053",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q054",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q055",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q056",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q057",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q058",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q059",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q060",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q061",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q062",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q063",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q064",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q065",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q066",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q067",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q068",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q069",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q070",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q071",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q072",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q073",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q074",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q075",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q076",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q077",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q078",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q079",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q080",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q081",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q082",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q083",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q084",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q085",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q086",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q087",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q088",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q089",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q090",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q091",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q092",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q093",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q094",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q095",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q096",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q097",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q098",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q099",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q100",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q101",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q102",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q103",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q104",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q105",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q106",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q107",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q108",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q109",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q110",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q111",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q112",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q113",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q114",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q115",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q116",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q117",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q118",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q119",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q120",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q121",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q122",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q123",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q124",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q125",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q126",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q127",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q128",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q129",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q130",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q131",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q132",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q133",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q134",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q135",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q136",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q137",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q138",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q139",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q140",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q141",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q142",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q143",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q144",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q145",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q146",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q147",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q148",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q149",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q150",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q151",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q152",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q153",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q154",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q155",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q156",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q157",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q158",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q159",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q160",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q161",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q162",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q163",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q164",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q165",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q166",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q167",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q168",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q169",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q170",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q171",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q172",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q173",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q174",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q175",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q176",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q177",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q178",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q179",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q180",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q181",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q182",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q183",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q184",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q185",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q186",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q187",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q188",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q189",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q190",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q191",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q192",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q193",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q194",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q195",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q196",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q197",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q198",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q199",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      },
+      {
+        "id": "q200",
+        "reason": "All providers exhausted | task=personal_info | chain=groq:failed(config) → gemini:failed(config) → openrouter:failed(config)",
+        "status": "error"
+      }
+    ],
+    "coverage": {
+      "complete": false,
+      "errored": 200,
+      "executed": 0,
+      "skipped": 0,
+      "total": 200
+    },
+    "metrics": {},
+    "metricsError": null,
+    "suite": {
+      "about": "Same 60-fact world, same query set, same provider/router and same answer rubric.\nControl receives production-floor evidence; treatment receives Context Engine evidence.\nAutomated scoring is conservative reference-token coverage, not a semantic or human-quality score.",
+      "id": "world-model-lift-e2e",
+      "title": "World-Model Lift — paired provider answers"
+    }
+  }
+}

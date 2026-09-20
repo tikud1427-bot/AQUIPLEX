@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+const root = process.cwd();
+const worker = fs.readFileSync(path.join(root, 'scripts/worker.mjs'), 'utf8');
+assert.match(worker, /\.\.\/aqua\/scripts\/worker\.mjs/);
+assert.doesNotMatch(worker, /\.\.\/src\//);
+const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+assert.equal(pkg.type, undefined);
+assert.equal(pkg.scripts.worker, 'node scripts/worker.mjs');
+console.log('AQUIPLEX PLATFORM BOUNDARY PASS');
