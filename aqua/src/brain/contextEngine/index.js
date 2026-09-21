@@ -120,7 +120,7 @@ export async function assembleTurnContextAsync(deps, ownerId, query, opts = {}) 
     metrics.errors += 1;
     metrics.floorFallbacks += 1;
     console.warn(`[BRAIN] Async Context Engine V2 failed (floor fallback): ${err?.message ?? err}`);
-    return floor;
+    return initialFloor;
   }
 }
 
@@ -236,7 +236,7 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
     metrics.errors += 1;
     metrics.floorFallbacks += 1;
     console.warn(`[BRAIN] Context Engine V2 failed (floor fallback): ${err?.message ?? err}`);
-    return floor;
+    return initialFloor;
   }
 }
 

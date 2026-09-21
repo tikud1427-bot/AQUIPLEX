@@ -186,7 +186,7 @@ test('SUPERSET: returns the PIC contract plus contextEngine observability', () =
     assert.ok(k in out.stats, `PIC stat ${k} missing`);
   }
   const ce = out.stats.contextEngine;
-  assert.equal(ce.version, 2);
+  assert.equal(ce.version, 3);
   assert.ok('candidates' in ce && 'selected' in ce && 'dropReasons' in ce);
   // Items keep the PIC fact shape.
   const it = out.items[0];
@@ -214,6 +214,32 @@ test('FAIL-SAFE FLOOR: a broken graph returns the PIC floor, never worse', () =>
   };
   const out = CE.assembleTurnContext(brokenDeps, 'o', 'aqua billing', {});
   assert.equal(out.block, 'FLOOR', 'fell back to the floor on failure');
+});
+
+test('FAIL-SAFE FLOOR: sync early pipeline failure returns initial floor', () => {
+  process.env.AQUA_CONTEXT_V2 = 'on';
+  const floor = { items: [{ kind: 'fact', id: 'x', statement: 'floor fact', confidence: 0.9, citations: [] }], block: 'FLOOR', stats: { facts: 1 } };
+  const deps = {
+    picRetrieve: () => floor,
+    graph: stubGraph(),
+    evidenceStore: null, peekMind: () => null,
+  };
+  const throwingTaskType = { toString: () => { throw new Error('pipeline setup failed'); } };
+  const out = CE.assembleTurnContext(deps, 'o', 'aqua billing', { taskType: throwingTaskType });
+  assert.deepEqual(out, floor, 'early pipeline failure must return the already-computed PIC floor');
+});
+
+test('FAIL-SAFE FLOOR: async early pipeline failure returns initial floor', async () => {
+  process.env.AQUA_CONTEXT_V2 = 'on';
+  const floor = { items: [{ kind: 'fact', id: 'x', statement: 'floor fact', confidence: 0.9, citations: [] }], block: 'FLOOR', stats: { facts: 1 } };
+  const deps = {
+    picRetrieve: () => floor,
+    graph: stubGraph(),
+    evidenceStore: null, peekMind: () => null,
+  };
+  const throwingTaskType = { toString: () => { throw new Error('pipeline setup failed'); } };
+  const out = await CE.assembleTurnContextAsync(deps, 'o', 'aqua billing', { taskType: throwingTaskType });
+  assert.deepEqual(out, floor, 'early pipeline failure must return the already-computed PIC floor');
 });
 
 test('the read-side kill switch disables V2 assembly', () => {
