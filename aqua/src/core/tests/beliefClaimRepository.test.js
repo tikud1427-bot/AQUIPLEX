@@ -28,7 +28,13 @@ test('relationship SQL is owner-scoped and cannot cross owners structurally', as
   const sql = await source.readFile(
     new URL('../db/migrations/0015_belief_claims.sql', import.meta.url), 'utf8'
   );
+  // The schema-level owner scoping (FK, PK) lives in the migration above; the
+  // query-level owner scoping is a property of the repository's own SQL, not
+  // the table DDL — checked separately against the module that issues it.
+  const repoSource = await source.readFile(
+    new URL('../mind/beliefClaimRepository.js', import.meta.url), 'utf8'
+  );
   assert.match(sql, /FOREIGN KEY \(owner_id, claim_id\)\s+REFERENCES aqua_claims\(owner_id, claim_id\)/);
   assert.match(sql, /PRIMARY KEY \(owner_id, belief_id, claim_id\)/);
-  assert.match(sql, /WHERE owner_id = \$1 AND claim_id = \$2/);
+  assert.match(repoSource, /WHERE owner_id = \$1 AND claim_id = \$2/);
 });

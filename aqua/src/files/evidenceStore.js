@@ -22,6 +22,27 @@
  *
  * Persisted through the standard atomicStore + dataDir primitives
  * (schema-versioned, Mongo mirror for free), bounded per owner.
+ *
+ * E10 NOTE — why this is not an accidental second store, and why it should
+ * NOT be mechanically merged into canonical `aqua_claims`:
+ *
+ *   1. FAIL-SAFE FLOOR. This store is what `routes/chat.js`'s `floorRetrieve`
+ *      actually reads, via `cognitiveKnowledgeRetrieve()` →
+ *      `pic/core.js:retrieveKnowledge()`. It is the always-available floor
+ *      E7/E8's retrieval pipeline falls back to on any failure — proved by
+ *      `contextEngine.test.js`'s "FAIL-SAFE FLOOR" tests. Collapsing it into
+ *      the same Postgres substrate the sophisticated path depends on would
+ *      remove the one fallback that survives when that substrate is the
+ *      thing that failed.
+ *   2. A SECOND, DELIBERATE RETRIEVAL LANE. `indexCanonicalClaim(s)` below
+ *      embeds these facts for E7 Retrieval V3's dense lane under the
+ *      contract in `canonicalSemantic.js` (evidenceStore fact.id === vector
+ *      id === candidate.semanticId) — fused with canonical `aqua_claims` via
+ *      reciprocal-rank fusion, not a duplicate of it.
+ *
+ *   Any real E10 unification here is a deliberate redesign of both contracts
+ *   above, not a data migration — audited 2026-09-22, see project notes
+ *   before changing this file's relationship to `aqua_claims`.
  */
 import {
   createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore,

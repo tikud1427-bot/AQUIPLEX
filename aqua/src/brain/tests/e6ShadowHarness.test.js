@@ -29,7 +29,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { stratify, evaluatePromotion, spread, isRealRegression,
+import { filterCategory, stratify, evaluatePromotion, spread, isRealRegression,
   MAX_PASS_ERROR_RATE, ABORT_AFTER_CONSECUTIVE_ERRORS, MAX_STALL_WAIT_MS,
   passIsValid, pickReportedPass, PROMOTION_GATE } from '../../../scripts/e6-shadow.mjs';
 import suite from '../../../eval/suites/extraction-core.suite.mjs';
@@ -130,6 +130,20 @@ describe('E6 adapter — the self sentinel the suite actually checks', () => {
 });
 
 // ── 2. Stratified sampling ───────────────────────────────────────────────────
+
+describe('--category isolates one evaluation population', () => {
+  test('negation selects only negation cases', () => {
+    const picked = filterCategory(DS.cases, 'negation');
+    assert.ok(picked.length > 0);
+    assert.ok(picked.every(c => c.cat === 'negation'));
+    assert.equal(picked.length, new Set(picked.map(c => c.id)).size);
+  });
+
+  test('category matching is case-insensitive and unknown categories are empty', () => {
+    assert.deepEqual(filterCategory(DS.cases, 'NEGATION'), filterCategory(DS.cases, 'negation'));
+    assert.deepEqual(filterCategory(DS.cases, 'does-not-exist'), []);
+  });
+});
 
 describe('--limit samples the dataset rather than slicing its front', () => {
   test('a small limit still reaches negatives', () => {

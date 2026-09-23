@@ -344,23 +344,38 @@ describe('claim repository — wiring', () => {
     const walk = (dir) => {
       for (const name of fs.readdirSync(dir)) {
         if (name === 'tests' || name.startsWith('.')) continue;
+        // Colocated test files (e.g. worldModel/claimRetrievalBridge.test.js)
+        // are a second, equally real convention in this codebase besides a
+        // dedicated tests/ subdirectory — dbMigrate.test.js's "wiring" guard
+        // hit this same gap first. A colocated test's own raw fixture INSERT
+        // is not a production write path either way, so exclude by suffix
+        // too, not just by directory name.
+        if (name.endsWith('.test.js') || name.endsWith('.test.mjs')) continue;
         const full = path.join(dir, name);
         if (fs.statSync(full).isDirectory()) { walk(full); continue; }
         if (!/\.(m?js|cjs)$/.test(name)) continue;
-        // E5/PR-4's backfill is the SECOND and LAST writer, and it is a
-        // deliberate exception: a migration cannot go through a repository
-        // that refuses claims without a predicate, because legacy facts have
-        // none. It writes `unresolved` claims and nothing else — asserted in
-        // backfill.test.js. Any THIRD writer fails here.
+        // E5/PR-4's backfill is the second writer, and it is a deliberate
+        // exception: a migration cannot go through a repository that refuses
+        // claims without a predicate, because legacy facts have none. It
+        // writes `unresolved` claims and nothing else — asserted in
+        // backfill.test.js.
         if (full.endsWith(path.join('claims', 'claimRepository.js'))) continue;
         if (full.endsWith(path.join('claims', 'backfill.js'))) continue;
+        // E6/PR-10's canonical World Model writer (commitUnderstanding) is the
+        // third, and it is deliberate, not drift: commitPlan.js's own audit
+        // found recordClaim is not transactional across evidence/entity/
+        // lifecycle/outbox writes, its dedupe key ignores extractor_version,
+        // and it auto-registers predicates past the S4 gate — three reasons
+        // execution "belongs to the canonical World Model writer" instead.
+        // Gated by AQUA_E6_COMMIT. Any FOURTH writer still fails here.
+        if (full.endsWith(path.join('worldModel', 'worldModelRepository.js'))) continue;
         if (/INSERT INTO aqua_claims/i.test(fs.readFileSync(full, 'utf8'))) {
           offenders.push(path.relative(ROOT, full));
         }
       }
     };
     walk(path.join(ROOT, 'src'));
-    assert.deepEqual(offenders, [], 'a second claim writer exists — that is how the audit found three stores');
+    assert.deepEqual(offenders, [], 'an undeclared claim writer exists — that is how the audit found three stores');
   });
 
   test('only DECLARED callers touch the repository — no drift onto the writer', () => {
@@ -387,6 +402,10 @@ describe('claim repository — wiring', () => {
     const walk = (dir) => {
       for (const name of fs.readdirSync(dir)) {
         if (name === 'tests' || name.startsWith('.')) continue;
+        // Same colocated-test-file gap as the sibling guard above and
+        // dbMigrate.test.js — a test file mentioning the identifier in its
+        // own imports/fixtures is not a caller drifting onto the writer.
+        if (name.endsWith('.test.js') || name.endsWith('.test.mjs')) continue;
         const full = path.join(dir, name);
         if (fs.statSync(full).isDirectory()) { walk(full); continue; }
         if (!/\.(m?js|cjs)$/.test(name)) continue;

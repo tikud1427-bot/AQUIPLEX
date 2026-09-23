@@ -27,6 +27,13 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User   = require("./models/User");
 const Tool   = require("./models/Tool");
 const Bundle = require("./models/Bundle");
+const NativeOAuthCode = require("./models/NativeOAuthCode");
+const {
+  validateNativeNonce,
+  generateNativeOAuthCode,
+  hashNativeOAuthCode,
+  nativeCodeExpiresAt,
+} = require("./services/auth/nativeOAuth.service");
 
 // ── Service imports ───────────────────────────────────────────────────────────
 // ai.client is the platform-internal LLM client (tool insights, bundle
@@ -149,6 +156,29 @@ const engineLimiter = rateLimit({
 app.use(express.json({ limit: "50mb" })); // AQUA project uploads (base64 archives) need a large body limit
 app.use(express.urlencoded({ extended: true }));
 
+// Android App Link association. The upload certificate is documented in the
+// Android project; the Play App Signing certificate is deployment-specific and
+// must be supplied as AQUA_PLAY_APP_SIGNING_SHA256 in production. Never invent
+// a production certificate fingerprint.
+app.get("/.well-known/assetlinks.json", (req, res) => {
+  const fingerprints = [
+    "15:F7:A9:A8:72:79:D4:39:1F:DE:E5:5A:7E:02:B0:D2:9D:56:57:CB:AC:17:F0:CA:0F:ED:61:F4:B1:40:1C:2B",
+  ];
+  const playFingerprint = process.env.AQUA_PLAY_APP_SIGNING_SHA256;
+  if (playFingerprint) fingerprints.unshift(playFingerprint.trim());
+
+  res.type("application/json").set("Cache-Control", "no-cache, must-revalidate").send(JSON.stringify([
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: "com.aquiplex.aqua",
+        sha256_cert_fingerprints: fingerprints,
+      },
+    },
+  ]));
+});
+
 // P0 (cache) — the service worker file MUST always be revalidated, otherwise
 // browsers keep running whatever worker they installed months ago and the
 // kill-switch in public/service-worker.js can never reach them. Registered
@@ -178,22 +208,40 @@ app.use(express.static(path.join(__dirname, "public"), {
 }));
 
 // ── Session ───────────────────────────────────────────────────────────────────
-// Use connect-mongo if installed, otherwise fall back to in-memory store.
-// To persist sessions across restarts: npm install connect-mongo
+// Authentication sessions are production state. A process-local MemoryStore is
+// never an acceptable production fallback: it logs every user out on restart
+// and cannot be shared by multiple application instances.
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 let sessionStore;
 try {
   const MongoStore = require("connect-mongo");
-  sessionStore = MongoStore.create({ mongoUrl: process.env.MONGO_URI });
-  console.log("✅ Session store: MongoDB (connect-mongo)");
-} catch (_) {
+  if (!process.env.MONGO_URI) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("MONGO_URI is required for the production session store");
+    }
+    console.warn("⚠️  MONGO_URI is not set; development session store will be in-process only.");
+  } else {
+    sessionStore = MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      ttl: SESSION_TTL_MS / 1000,
+      autoRemove: "native",
+      touchAfter: 24 * 60 * 60,
+    });
+    console.log("✅ Session store: MongoDB (connect-mongo, 30-day rolling TTL)");
+  }
+} catch (err) {
+  if (process.env.NODE_ENV === "production") {
+    console.error("[FATAL] Persistent Mongo session store could not be initialized:", err.message);
+    process.exit(1);
+  }
   try {
     const MemoryStoreFactory = require("memorystore");
     const MemoryStore = MemoryStoreFactory(require("express-session"));
-    sessionStore = new MemoryStore({ checkPeriod: 86400000 }); // prune expired every 24h
-    console.log("✅ Session store: memorystore (in-process, resets on restart — add connect-mongo for persistence)");
+    sessionStore = new MemoryStore({ checkPeriod: 86400000 });
+    console.warn("⚠️  Development-only MemoryStore: sessions reset on process restart.");
   } catch (_2) {
     sessionStore = undefined;
-    console.warn("⚠️  No persistent session store — using bare MemoryStore. Run: npm install connect-mongo");
+    console.warn("⚠️  Development-only in-process session store unavailable.");
   }
 }
 
@@ -217,8 +265,9 @@ app.use(
     saveUninitialized: false,
     name:              "aidex_session",
     store:             sessionStore,
+    rolling:          true,
     cookie: {
-      maxAge:   7 * 24 * 60 * 60 * 1000,
+      maxAge:   SESSION_TTL_MS,
       httpOnly: true,
       secure:   process.env.NODE_ENV === "production",
       // SECURITY (E1/PR-6): explicit rather than relying on the browser
@@ -1163,27 +1212,162 @@ app.post("/login", authLimiter, async (req, res) => {
   }
 });
 
-app.get("/auth/google", authLimiter, passport.authenticate("google", { scope: ["profile", "email"] }));
+app.get("/auth/google", authLimiter, (req, res, next) => {
+  const native = req.query.native === "1";
+  if (!native) {
+    return passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+  }
+
+  const nonce = validateNativeNonce(req.query.nonce);
+  if (!nonce) {
+    return res.status(400).send("Invalid authentication request.");
+  }
+
+  // These markers are deliberately server-side. The browser must prove it owns
+  // the OAuth session that started this native handoff before Passport accepts
+  // the Google callback.
+  req.session.nativeReturn = true;
+  req.session.nativeNonce = nonce;
+
+  return passport.authenticate("google", {
+    scope: ["profile", "email"],
+    prompt: "select_account",
+  })(req, res, next);
+});
 
 app.get(
   "/auth/google/callback",
-  // Consume the switch-account target BEFORE passport runs. passport 0.6
-  // regenerates the session inside req.logIn() to prevent session fixation,
-  // which would discard anything written to it earlier — so the value is moved
-  // onto the request object while it still exists.
-  (req, res, next) => { req._postLoginNext = takePostLoginNext(req, "/home"); next(); },
+  // Capture native state before the OAuth authentication middleware logs the user in. It may
+  // regenerate the session as part of req.logIn(), so the handoff markers
+  // cannot be read only after the authentication middleware has completed.
+  (req, res, next) => {
+    req._nativeOAuth = req.session?.nativeReturn === true
+      ? { nonce: req.session.nativeNonce }
+      : null;
+    req._postLoginNext = takePostLoginNext(req, "/home");
+    next()
+  },
   passport.authenticate("google", { failureRedirect: "/login" }),
-  (req, res) => {
+  async (req, res) => {
+    const native = req._nativeOAuth;
+    const firstRun = req.user?.$locals?.justCreated === true;
+
+    if (native?.nonce) {
+      const rawCode = generateNativeOAuthCode();
+      const codeHash = hashNativeOAuthCode(rawCode);
+      const expiresAt = nativeCodeExpiresAt();
+
+      try {
+        await NativeOAuthCode.create({
+          codeHash,
+          userId: req.user._id,
+          expiresAt,
+        });
+
+        // Do not carry native markers into a browser session. The WebView will
+        // establish its own authenticated session only after code redemption.
+        if (req.session) {
+          delete req.session.nativeReturn;
+          delete req.session.nativeNonce;
+        }
+
+        const returnUrl = new URL("https://aquiplex.com/auth/native/return");
+        returnUrl.searchParams.set("code", rawCode);
+        returnUrl.searchParams.set("nonce", native.nonce);
+
+        return req.session?.save
+          ? req.session.save(() => res.redirect(returnUrl.toString()))
+          : res.redirect(returnUrl.toString());
+      } catch (err) {
+        console.error("[AUTH] Native OAuth handoff creation failed:", err.message);
+        return res.redirect("/login?error=oauth");
+      }
+    }
+
     req.session.user   = { _id: req.user._id, email: req.user.email, username: req.user.email.split("@")[0] };
     req.session.userId = req.user._id;
-    // Same first-run rule as /signup — a Google account created during THIS
-    // round trip is a new user and belongs in the product. A returning one
-    // keeps the workspace. Optional chaining because `$locals` is only set on
-    // the creation path.
-    const firstRun = req.user?.$locals?.justCreated === true;
-    req.session.save(() => res.redirect(firstRun ? "/aqua" : (req._postLoginNext || "/home")));
+    return req.session.save(() =>
+      res.redirect(firstRun ? "/aqua" : (req._postLoginNext || "/home"))
+    );
   },
 );
+
+// Fallback only. A browser reaching this endpoint directly must not be
+// authenticated and must not receive the handoff code in rendered HTML.
+app.get("/auth/native/return", (req, res) => {
+  const message = req.query.error
+    ? "Google sign-in didn't finish. Please return to the Aqua app and try again."
+    : "Return to the Aqua app to finish signing in.";
+  res.status(200).type("html").send(`<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Aqua sign-in</title></head><body><main><p>${message}</p>
+<p>If Aqua did not open automatically, open the Aqua app and try signing in again.</p></main></body></html>`);
+});
+
+app.get("/auth/native/complete", async (req, res) => {
+  const rawCode = typeof req.query.code === "string" ? req.query.code : "";
+  if (!rawCode || rawCode.length > 512) {
+    return res.redirect("/aqua?auth_error=invalid_code");
+  }
+
+  const codeHash = hashNativeOAuthCode(rawCode);
+  const now = new Date();
+
+  try {
+    // One atomic update is the replay/race protection. Two simultaneous
+    // requests cannot both transition usedAt from null to a timestamp.
+    const handoff = await NativeOAuthCode.findOneAndUpdate(
+      {
+        codeHash,
+        usedAt: null,
+        expiresAt: { $gt: now },
+      },
+      { $set: { usedAt: now } },
+      { new: true },
+    );
+
+    if (!handoff) {
+      return res.redirect("/aqua?auth_error=invalid_code");
+    }
+
+    const user = await User.findById(handoff.userId);
+    if (!user) {
+      return res.redirect("/aqua?auth_error=invalid_code");
+    }
+
+    return req.session.regenerate((regenerateErr) => {
+      if (regenerateErr) {
+        console.error("[AUTH] Native session regeneration failed:", regenerateErr.message);
+        return res.redirect("/aqua?auth_error=invalid_code");
+      }
+
+      req.login(user, (loginErr) => {
+        if (loginErr) {
+          console.error("[AUTH] Native session login failed:", loginErr.message);
+          return res.redirect("/aqua?auth_error=invalid_code");
+        }
+
+        req.session.user = {
+          _id: user._id,
+          email: user.email,
+          username: user.email.split("@")[0],
+        };
+        req.session.userId = user._id;
+
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error("[AUTH] Native session save failed:", saveErr.message);
+            return res.redirect("/aqua?auth_error=invalid_code");
+          }
+          return res.redirect("/aqua");
+        });
+      });
+    });
+  } catch (err) {
+    console.error("[AUTH] Native OAuth completion failed:", err.message);
+    return res.redirect("/aqua?auth_error=invalid_code");
+  }
+});
 
 // ── Google reauthentication (account deletion only) ──────────────────────────
 // Sends the user back through Google to prove ownership, then returns them to

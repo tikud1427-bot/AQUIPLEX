@@ -27,6 +27,7 @@
  *   node scripts/e6-shadow.mjs --model <model-id>   # pin, strongly advised
  *   node scripts/e6-shadow.mjs --provider groq      # groq or openrouter (default)
  *   node scripts/e6-shadow.mjs --repeat 3           # measure run-to-run noise
+ *   node scripts/e6-shadow.mjs --category negation --repeat 5  # gate-focused repeat
  *   node scripts/e6-shadow.mjs --pace 1200          # ms between calls (default 350)
  *   node scripts/e6-shadow.mjs --json out.json      # machine record
  *
@@ -215,6 +216,13 @@ export function evaluatePromotion(metrics, baseline, { comparable = true, noise 
  * per-category proportions as even as the budget allows and is fully
  * deterministic, so `--limit 40` twice is the same forty cases.
  */
+export function filterCategory(cases, category = null) {
+  if (!category) return cases;
+  const wanted = String(category).trim().toLowerCase();
+  if (!wanted) return cases;
+  return cases.filter(c => String(c.cat ?? '').toLowerCase() === wanted);
+}
+
 export function stratify(cases, limit) {
   if (!Number.isFinite(limit) || limit >= cases.length) return cases;
   const buckets = new Map();
@@ -331,7 +339,12 @@ async function main() {
   const dataset = JSON.parse(readFileSync(path.join(ROOT, 'eval/datasets/extraction-core.v1.json'), 'utf8'));
   const baseline = JSON.parse(readFileSync(path.join(ROOT, 'eval/baselines/extraction-core.v1.json'), 'utf8')).metrics;
 
-  const limit = Number(flag('--limit', dataset.cases.length));
+  const category = flag('--category', null);
+  const categoryCases = filterCategory(dataset.cases, category);
+  if (category && !categoryCases.length) {
+    throw new Error(`Unknown/empty E6 category: ${category}`);
+  }
+  const limit = Number(flag('--limit', categoryCases.length));
 
   /**
    * 🔴 `--limit` TOOK A PREFIX OF A CATEGORY-ORDERED DATASET.
@@ -351,7 +364,7 @@ async function main() {
    * and it takes from every category before taking a second from any, so a
    * small budget still touches negatives.
    */
-  const cases = stratify(dataset.cases, limit);
+  const cases = stratify(categoryCases, limit);
   const modelPin = flag('--model', null);
 
   /**
@@ -691,6 +704,7 @@ async function main() {
     console.log(`  ${reported.unmeasured.map(u => u.id).join(', ')}`);
   }
 
+  if (category) console.log(`\nCATEGORY: ${category} (${cases.length} case(s))`);
   console.log(`\nVERDICT: ${verdict.promote && attributable ? 'PROMOTE' : 'DO NOT PROMOTE'}`);
   if (verdict.gatePassed && verdict.regressions.length) {
     console.log('  (the gate passed but a committed metric went backwards — that is a regression wearing a passing grade)');
@@ -702,7 +716,7 @@ async function main() {
     const p = path.resolve(process.cwd(), out);
     mkdirSync(path.dirname(p), { recursive: true });
     writeFileSync(p, JSON.stringify({
-      cases: cases.length, baseline, current: mCur, e6: mE6, verdict,
+      cases: cases.length, category: category ?? null, baseline, current: mCur, e6: mE6, verdict,
       attributable, models: [...e6Stats.models], stats: { ...e6Stats, models: [...e6Stats.models] },
       reportedPass: reported.index, validPasses: good.length, totalPasses: passes.length,
       // Per case, from the REPORTED pass. This is what turns a score into a

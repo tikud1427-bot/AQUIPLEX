@@ -6,7 +6,7 @@
  * canonical event -> idempotent job -> worker effect -> acknowledgement,
  * including crash/retry/reconciliation cases.
  *
- * Production adapters remain claimRepository, jobQueue, reflectionWorker and
+ * Production adapters remain the claim writer, jobQueue, reflectionWorker and
  * reflectionReconciliation. This module gives those seams one contract test
  * that can run without DATABASE_URL or node_modules.
  */

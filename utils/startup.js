@@ -24,11 +24,31 @@ const REQUIRED_ENV = [
   "SESSION_SECRET",
 ];
 
+const PRODUCTION_AUTH_ENV = [
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "GOOGLE_CALLBACK_URL",
+  "AQUA_PLAY_APP_SIGNING_SHA256",
+];
+
 function validateEnv() {
-  const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
+  const required = process.env.NODE_ENV === "production"
+    ? [...REQUIRED_ENV, ...PRODUCTION_AUTH_ENV]
+    : REQUIRED_ENV;
+  const missing = required.filter((k) => !process.env[k]);
   if (missing.length > 0) {
     console.error("❌ STARTUP FAILED — Missing required env variables:");
     missing.forEach((k) => console.error(`   - ${k}`));
+    process.exit(1);
+  }
+  if (process.env.NODE_ENV === "production" &&
+      !/^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/i.test(process.env.AQUA_PLAY_APP_SIGNING_SHA256 || "")) {
+    console.error("❌ STARTUP FAILED — AQUA_PLAY_APP_SIGNING_SHA256 must be a valid SHA-256 certificate fingerprint");
+    process.exit(1);
+  }
+  if (process.env.NODE_ENV === "production" &&
+      process.env.GOOGLE_CALLBACK_URL !== "https://aquiplex.com/auth/google/callback") {
+    console.error("❌ STARTUP FAILED — GOOGLE_CALLBACK_URL must be https://aquiplex.com/auth/google/callback in production");
     process.exit(1);
   }
   console.log("✅ Env vars validated");

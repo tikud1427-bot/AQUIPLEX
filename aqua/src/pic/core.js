@@ -18,6 +18,11 @@
  *   reasoningGraph = derived connections                 memory/ = memory
  *   search + embeddings = their own lanes
  * PIC state (picStore) is meta only — lifecycle, versions, feedback, ledger.
+ *
+ * E10 NOTE: `retrieveKnowledge()` here is also `routes/chat.js`'s
+ * `floorRetrieve` — the production fail-safe floor E7/E8 falls back to on
+ * failure, not legacy dead weight. See the fuller note in
+ * `files/evidenceStore.js` before treating this as a store to unify away.
  * Delete .aqua-pic.json and AQUA degrades gracefully to Phase-3 behavior:
  * no knowledge is lost, because none lives here.
  *

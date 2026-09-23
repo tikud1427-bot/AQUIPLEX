@@ -10,11 +10,12 @@ import { getSearchHealth }            from '../search/searchManager.js';
 import { getMirrorStatus }            from '../core/mongoMirror.js';
 import '../orchestrator/capabilities.js'; // side-effect: registers every capability definition
 import { getAllCapabilities }         from '../orchestrator/capabilityRegistry.js';
+import { ok }                         from './envelope.js';
 
 const router = express.Router();
 
 router.get('/', (req, res) => {
-  res.json({
+  ok(res, {
     status:    'ok',
     ts:        new Date().toISOString(),
     uptime:    getUptime(),
@@ -39,17 +40,13 @@ router.get('/', (req, res) => {
 });
 
 router.get('/uptime', (req, res) => {
-  res.json({ success: true, ...getUptime() });
+  ok(res, getUptime());
 });
 
 router.get('/logs', (req, res) => {
   const limit = Math.min(parseInt(req.query.limit ?? '50', 10), 200);
   const logs  = getRecentLogs(limit);
-  res.json({
-    success: true,
-    count:   logs.length,
-    logs,
-  });
+  ok(res, { count: logs.length, logs });
 });
 
 // Phase 6 — Adaptive Tool Orchestrator: static registry introspection.
@@ -61,8 +58,7 @@ router.get('/logs', (req, res) => {
 // requirement: a future plugin registering itself in capabilities.js
 // shows up here automatically, with no change needed to this route.
 router.get('/orchestrator', (req, res) => {
-  res.json({
-    success: true,
+  ok(res, {
     profiles: listProfiles().map(p => ({
       id: p.id,
       label: p.label,

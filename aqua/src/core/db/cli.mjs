@@ -16,6 +16,22 @@
  * an unconfigured database as success will happily start an app whose schema
  * was never created.
  */
+import 'dotenv/config';
+
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// aqua/src/core/db → aqua → project root
+const projectRoot = path.resolve(__dirname, '../../../..');
+
+dotenv.config({
+  path: path.join(projectRoot, '.env'),
+});
+
 import { migrate, status, discover, validate, MigrationError } from './migrate.js';
 import { isConfigured, closePool, bootLine } from './pool.js';
 

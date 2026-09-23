@@ -872,7 +872,7 @@ export async function readHistory(input) {
 // conflict, not an arbitrary split:
 //   aqua_edges/aqua_events/aqua_belief_claims  → REFERENCE aqua_claims (RESTRICT)
 //   aqua_claims                                → REFERENCES aqua_entities (RESTRICT)
-// so edges/events/belief_claims must be gone BEFORE claimRepository deletes
+// so edges/events/belief_claims must be gone BEFORE the claim writer deletes
 // claims, and entities can only go AFTER claims are gone. One owner-scoped
 // DELETE statement can't sit on both sides of another module's delete call.
 // `purgeOwner` is phase 1 + the claim-independent tables (picked up by the
@@ -886,7 +886,7 @@ export async function readHistory(input) {
 // same-statement FK evaluation order — cheap, and removes any doubt.
 
 /**
- * Phase 1: everything that must be gone before claimRepository deletes claims,
+ * Phase 1: everything that must be gone before the claim writer deletes claims,
  * plus every claim-INDEPENDENT owner-scoped table this module owns.
  * @returns {Promise<object>} counts per table, or `{ skipped }` without Postgres.
  */
@@ -934,8 +934,8 @@ export async function purgeOwner(ownerId) {
 }
 
 /**
- * Phase 3: entities, once claimRepository has removed every claim that could
- * reference one. Must run AFTER claimRepository.purgeOwner, not before.
+ * Phase 3: entities, once the claim writer has removed every claim that could
+ * reference one. Must run AFTER the claim writer's own purgeOwner, not before.
  * aqua_entity_aliases cascades automatically (ON DELETE CASCADE); entity_merges
  * and the self-referencing merged_into column do not, so they are handled here.
  * @returns {Promise<object>} counts, or `{ skipped }` without Postgres.

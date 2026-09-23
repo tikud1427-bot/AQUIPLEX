@@ -16,6 +16,7 @@ import {
   updateConversationMeta,
 } from '../memory/conversationStore.js';
 import { clearAttachments } from '../upload/attachmentStore.js';
+import { ok, fail, ErrorCodes } from './envelope.js';
 
 const router = express.Router();
 
@@ -28,13 +29,13 @@ const router = express.Router();
 // mismatch is indistinguishable from a missing id — no existence oracle.
 function assertOwnership(req, res, id) {
   if (!conversationExists(id)) {
-    res.status(404).json({ success: false, error: 'Conversation not found' });
+    fail(res, ErrorCodes.NOT_FOUND, 'Conversation not found');
     return false;
   }
   const scopeUser = req.aquaUserId ?? null;
   const owner = getConversationMeta(id)?.userId ?? null;
   if (scopeUser && owner !== scopeUser) {
-    res.status(404).json({ success: false, error: 'Conversation not found' });
+    fail(res, ErrorCodes.NOT_FOUND, 'Conversation not found');
     return false;
   }
   return true;
@@ -72,8 +73,7 @@ router.get('/', (req, res) => {
   // Most recent activity first (falls back to creation time for old rows).
   entries.sort((a, b) => b.updatedAt - a.updatedAt);
 
-  res.json({
-    success: true,
+  ok(res, {
     total:   entries.length,
     count:   Math.min(limit, Math.max(0, entries.length - skip)),
     conversations: entries.slice(skip, skip + limit),
@@ -87,13 +87,7 @@ router.get('/:id', (req, res) => {
   if (!assertOwnership(req, res, id)) return;
   const messages = getConversation(id);
   const meta     = getConversationMeta(id);
-  res.json({
-    success: true,
-    id,
-    meta,
-    messageCount: messages.length,
-    messages,
-  });
+  ok(res, { id, meta, messageCount: messages.length, messages });
 });
 
 // ── Update conversation metadata (title / pin / archive) ─────────────────────
@@ -109,10 +103,10 @@ router.patch('/:id', (req, res) => {
   if (pinned   !== undefined) patch.pinned   = pinned;
   if (archived !== undefined) patch.archived = archived;
   if (Object.keys(patch).length === 0) {
-    return res.status(400).json({ success: false, error: 'Nothing to update — provide title, pinned, or archived.' });
+    return fail(res, ErrorCodes.BAD_REQUEST, 'Nothing to update — provide title, pinned, or archived.');
   }
   const meta = updateConversationMeta(id, patch);
-  res.json({ success: true, id, meta });
+  ok(res, { id, meta });
 });
 
 // ── Clear a conversation ──────────────────────────────────────────────────────
@@ -122,7 +116,7 @@ router.delete('/:id', (req, res) => {
   if (!assertOwnership(req, res, id)) return;
   clearConversation(id);
   clearAttachments(id); // P0 — attachments persist now; don't orphan their blobs
-  res.json({ success: true, cleared: id });
+  ok(res, { cleared: id });
 });
 
 export default router;

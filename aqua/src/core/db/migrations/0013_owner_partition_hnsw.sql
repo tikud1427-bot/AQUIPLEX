@@ -36,15 +36,15 @@ BEGIN
       created_at      timestamptz NOT NULL DEFAULT now(),
       updated_at      timestamptz NOT NULL DEFAULT now(),
 
-      CONSTRAINT aqua_embeddings_kind_ck
-        CHECK (target_kind IN ('claim')),
-      CONSTRAINT aqua_embeddings_pk
-        PRIMARY KEY (embedding_id, owner_id),
-      CONSTRAINT aqua_embeddings_target_uq
-        UNIQUE (owner_id, target_kind, target_id, model_signature),
-      CONSTRAINT aqua_embeddings_claim_owner_fk
-        FOREIGN KEY (target_id, owner_id)
-        REFERENCES aqua_claims (claim_id, owner_id) ON DELETE CASCADE
+      CONSTRAINT aqua_embeddings_partitioned_kind_ck
+  CHECK (target_kind IN ('claim')),
+CONSTRAINT aqua_embeddings_partitioned_pk
+  PRIMARY KEY (embedding_id, owner_id),
+CONSTRAINT aqua_embeddings_partitioned_target_uq
+  UNIQUE (owner_id, target_kind, target_id, model_signature),
+CONSTRAINT aqua_embeddings_partitioned_claim_owner_fk
+  FOREIGN KEY (target_id, owner_id)
+  REFERENCES aqua_claims (claim_id, owner_id) ON DELETE CASCADE
     ) PARTITION BY HASH (owner_id);
 
     FOR i IN 0..63 LOOP
