@@ -23,6 +23,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setMobileSidebarOpen = useUiStore((s) => s.setMobileSidebarOpen);
   const setSettingsOpen = useUiStore((s) => s.setSettingsOpen);
   const setProjectUploadOpen = useUiStore((s) => s.setProjectUploadOpen);
+  const toast = useUiStore((s) => s.toast);
   const newConversation = useChatStore((s) => s.newConversation);
   const stopGenerating = useChatStore((s) => s.stopGenerating);
   const loadSession = useSessionStore((s) => s.load);
@@ -34,6 +35,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void loadSession();
   }, [loadSession]);
+
+  /* Surface a failed native OAuth handoff (GET /auth/native/complete →
+     /aqua?auth_error=invalid_code — see index.js) as a plain retry prompt
+     instead of the silent no-op this previously was. The error code is
+     deliberately generic server-side (never reveals missing vs expired vs
+     already-used vs wrong — see nativeOAuth.service.js), so every value maps
+     to the same message here; there's nothing more specific it would be
+     honest to say. Stripped from the URL immediately so refreshing /aqua
+     doesn't re-show it. */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('auth_error')) return;
+    params.delete('auth_error');
+    const rest = params.toString();
+    window.history.replaceState({}, '', window.location.pathname + (rest ? `?${rest}` : ''));
+    toast('error', "Sign-in didn't finish", 'Please try Continue with Google again.');
+  }, [toast]);
 
   const handlers = {
     onNewChat: useCallback(() => {

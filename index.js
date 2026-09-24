@@ -27,13 +27,6 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const User   = require("./models/User");
 const Tool   = require("./models/Tool");
 const Bundle = require("./models/Bundle");
-const NativeOAuthCode = require("./models/NativeOAuthCode");
-const {
-  validateNativeNonce,
-  generateNativeOAuthCode,
-  hashNativeOAuthCode,
-  nativeCodeExpiresAt,
-} = require("./services/auth/nativeOAuth.service");
 
 // ── Service imports ───────────────────────────────────────────────────────────
 // ai.client is the platform-internal LLM client (tool insights, bundle
@@ -43,6 +36,7 @@ const ai            = require("./services/ai.client");
 const { usageGuard } = require("./middleware/usage/usageGuard");
 const { attachCsrfToken, verifyCsrf, enforceSameOrigin, safeEqual } = require("./middleware/csrf");
 const { safeNextPath, rememberPostLoginNext, takePostLoginNext } = require("./middleware/redirectTarget");
+const { validateNonce, mintNativeCode, redeemNativeCode } = require("./services/auth/nativeOAuth.service");
 
 // ── Static data ───────────────────────────────────────────────────────────────
 const blogs = require("./blogs");
@@ -156,29 +150,6 @@ const engineLimiter = rateLimit({
 app.use(express.json({ limit: "50mb" })); // AQUA project uploads (base64 archives) need a large body limit
 app.use(express.urlencoded({ extended: true }));
 
-// Android App Link association. The upload certificate is documented in the
-// Android project; the Play App Signing certificate is deployment-specific and
-// must be supplied as AQUA_PLAY_APP_SIGNING_SHA256 in production. Never invent
-// a production certificate fingerprint.
-app.get("/.well-known/assetlinks.json", (req, res) => {
-  const fingerprints = [
-    "15:F7:A9:A8:72:79:D4:39:1F:DE:E5:5A:7E:02:B0:D2:9D:56:57:CB:AC:17:F0:CA:0F:ED:61:F4:B1:40:1C:2B",
-  ];
-  const playFingerprint = process.env.AQUA_PLAY_APP_SIGNING_SHA256;
-  if (playFingerprint) fingerprints.unshift(playFingerprint.trim());
-
-  res.type("application/json").set("Cache-Control", "no-cache, must-revalidate").send(JSON.stringify([
-    {
-      relation: ["delegate_permission/common.handle_all_urls"],
-      target: {
-        namespace: "android_app",
-        package_name: "com.aquiplex.aqua",
-        sha256_cert_fingerprints: fingerprints,
-      },
-    },
-  ]));
-});
-
 // P0 (cache) — the service worker file MUST always be revalidated, otherwise
 // browsers keep running whatever worker they installed months ago and the
 // kill-switch in public/service-worker.js can never reach them. Registered
@@ -187,6 +158,49 @@ app.get("/service-worker.js", (req, res) => {
   res.set("Cache-Control", "no-cache, no-store, must-revalidate");
   res.set("Service-Worker-Allowed", "/");
   res.sendFile(path.join(__dirname, "public", "service-worker.js"));
+});
+
+// Android App Link verification (Bug 1 dependency). Without this, at exactly
+// this path, returning HTTP 200 application/json with NO redirect, Android
+// silently leaves the OAuth return hop with Chrome and the native handoff
+// above never fires — the bug looks unfixed even though the code is correct.
+// Registered as an explicit route rather than a static file: express.static's
+// default `dotfiles` option ignores anything under a dotfile directory, which
+// `.well-known` is, and would 404 this if left to the static middleware below.
+//
+// Two fingerprints, not one:
+//   - The UPLOAD key: verified 2026-09 against the shipped app-release.apk's
+//     own signing certificate (`unzip -p app-release.apk META-INF/*.RSA |
+//     keytool -printcert`) — this is a real, checked-in value, not invented.
+//   - The Play App Signing key: the certificate Google re-signs the app with
+//     for real installs is NOT the upload key and cannot be derived from
+//     anything in this repository — it only exists in Play Console → Test
+//     and release → App integrity → App signing key certificate, after the
+//     app has been uploaded there at least once. Sourced from an env var so
+//     it can be supplied without a code change; omitted (with a startup
+//     warning) rather than faked if not yet set.
+const AQUA_ANDROID_PACKAGE = "com.aquiplex.aqua";
+const AQUA_ANDROID_UPLOAD_KEY_SHA256 =
+  "15:F7:A9:A8:72:79:D4:39:1F:DE:E5:5A:7E:02:B0:D2:9D:56:57:CB:AC:17:F0:CA:0F:ED:61:F4:B1:40:1C:2B";
+if (!process.env.PLAY_APP_SIGNING_SHA256) {
+  console.warn("⚠️  PLAY_APP_SIGNING_SHA256 is not set — /.well-known/assetlinks.json will only carry the upload-key fingerprint. Android App Link verification (and therefore native Google sign-in) will fail on real Play-installed builds until this is set from Play Console → App integrity.");
+}
+app.get("/.well-known/assetlinks.json", (req, res) => {
+  const fingerprints = [AQUA_ANDROID_UPLOAD_KEY_SHA256];
+  if (process.env.PLAY_APP_SIGNING_SHA256) fingerprints.unshift(process.env.PLAY_APP_SIGNING_SHA256);
+
+  res.type("application/json");
+  res.set("Cache-Control", "public, max-age=3600");
+  return res.status(200).json([
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: AQUA_ANDROID_PACKAGE,
+        sha256_cert_fingerprints: fingerprints,
+      },
+    },
+  ]);
 });
 
 // P0 (cache) — platform assets are NOT content-hashed, so they may never be
@@ -208,40 +222,60 @@ app.use(express.static(path.join(__dirname, "public"), {
 }));
 
 // ── Session ───────────────────────────────────────────────────────────────────
-// Authentication sessions are production state. A process-local MemoryStore is
-// never an acceptable production fallback: it logs every user out on restart
-// and cannot be shared by multiple application instances.
-const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+// SESSION LIFETIME (Bug 2 fix): 30-day ROLLING window, not a fixed 7-day expiry.
+// `rolling: true` makes express-session re-issue Set-Cookie with a fresh
+// 30-day Max-Age on every response, and (with resave:false) calls
+// store.touch() on the Mongo-backed session record to extend it the same way
+// — so a user who opens the app at least once every 30 days never sees an
+// unexpected logout purely from elapsed time. A user who genuinely walks away
+// for 30+ days does re-authenticate; that is the deliberate ceiling, not an
+// oversight — "signed in forever" is not a real security posture, and a
+// bounded ceiling is what lets a stale/abandoned session eventually die on
+// its own. `ttl` below is set to the SAME 30 days so the Mongo TTL index and
+// the cookie never disagree about how long a session should live.
+const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+const isProduction = process.env.NODE_ENV === "production";
+
+// Persistent, shared session store. PRODUCTION MUST NOT SILENTLY FALL BACK TO
+// AN IN-PROCESS MEMORYSTORE: that store is per-instance (breaks the moment
+// there is more than one server process) and resets on every restart/deploy
+// (a user who was signed in five minutes ago is logged out for free). Both
+// failure modes look, from the user's side, exactly like Bug 2. So: fail
+// fast and loud in production if the persistent store cannot be built: the
+// in-memory fallback chain below only ever runs outside production.
 let sessionStore;
 try {
-  const MongoStore = require("connect-mongo");
   if (!process.env.MONGO_URI) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("MONGO_URI is required for the production session store");
-    }
-    console.warn("⚠️  MONGO_URI is not set; development session store will be in-process only.");
-  } else {
-    sessionStore = MongoStore.create({
-      mongoUrl: process.env.MONGO_URI,
-      ttl: SESSION_TTL_MS / 1000,
-      autoRemove: "native",
-      touchAfter: 24 * 60 * 60,
-    });
-    console.log("✅ Session store: MongoDB (connect-mongo, 30-day rolling TTL)");
+    throw new Error("MONGO_URI is not set");
   }
+  const MongoStore = require("connect-mongo");
+  sessionStore = MongoStore.create({
+    mongoUrl:   process.env.MONGO_URI,
+    ttl:        SESSION_MAX_AGE_MS / 1000, // seconds; kept equal to cookie maxAge
+    touchAfter: 24 * 3600,                 // lazy touch: at most one extra write/session/day
+  });
+  sessionStore.on("error", (err) => {
+    // A store that starts fine and later drops its connection does not throw
+    // here — express-session surfaces that per-request instead. Logged loudly
+    // either way so a degraded store is visible in production logs rather
+    // than only showing up as a wave of confused "logged out" reports.
+    console.error("[session-store] MongoDB session store error:", err.message);
+  });
+  console.log(`✅ Session store: MongoDB (connect-mongo), rolling ${Math.round(SESSION_MAX_AGE_MS / 86400000)}-day TTL`);
 } catch (err) {
-  if (process.env.NODE_ENV === "production") {
-    console.error("[FATAL] Persistent Mongo session store could not be initialized:", err.message);
+  if (isProduction) {
+    console.error(`[FATAL] Persistent session store could not be initialized in production (${err.message}). Refusing to start on an in-process store — sessions would not survive a restart or be shared across instances. Set MONGO_URI and ensure connect-mongo is installed.`);
     process.exit(1);
   }
+  console.warn(`⚠️  Persistent session store unavailable in development (${err.message}) — falling back to an in-process store. This path never runs in production (NODE_ENV=production fails fast instead).`);
   try {
     const MemoryStoreFactory = require("memorystore");
     const MemoryStore = MemoryStoreFactory(require("express-session"));
-    sessionStore = new MemoryStore({ checkPeriod: 86400000 });
-    console.warn("⚠️  Development-only MemoryStore: sessions reset on process restart.");
+    sessionStore = new MemoryStore({ checkPeriod: 86400000 }); // prune expired every 24h
+    console.log("✅ Session store: memorystore (dev only, in-process, resets on restart)");
   } catch (_2) {
     sessionStore = undefined;
-    console.warn("⚠️  Development-only in-process session store unavailable.");
+    console.warn("⚠️  No persistent session store — using bare MemoryStore (dev only). Run: npm install connect-mongo");
   }
 }
 
@@ -263,11 +297,11 @@ app.use(
     })(),
     resave:            false,
     saveUninitialized: false,
+    rolling:           true, // re-issue Set-Cookie (and touch the store) on every response — see SESSION_MAX_AGE_MS note above
     name:              "aidex_session",
     store:             sessionStore,
-    rolling:          true,
     cookie: {
-      maxAge:   SESSION_TTL_MS,
+      maxAge:   SESSION_MAX_AGE_MS,
       httpOnly: true,
       secure:   process.env.NODE_ENV === "production",
       // SECURITY (E1/PR-6): explicit rather than relying on the browser
@@ -275,7 +309,10 @@ app.use(
       // cookie on top-level navigations arriving from another site, which
       // breaks the Google OAuth callback: the user returns from
       // accounts.google.com and lands logged out. "lax" still blocks the
-      // cross-site POST that CSRF depends on, which is the attack.
+      // cross-site POST that CSRF depends on, which is the attack. It is
+      // also sufficient for /auth/native/complete (Bug 1 fix, below), which
+      // is reached by a top-level GET navigation from the WebView, not a
+      // cross-site POST.
       sameSite: "lax",
     },
   })
@@ -1212,159 +1249,160 @@ app.post("/login", authLimiter, async (req, res) => {
   }
 });
 
+// ── Native (Android WebView) Google OAuth handoff ─────────────────────────────
+// See aqua-android's docs/OAUTH_NATIVE_HANDOFF.md for the full contract and
+// the reasoning. Short version (Bug 1 fix):
+//
+// The Android shell cannot run Google OAuth inside its own WebView — Google
+// rejects embedded WebViews outright — so it opens the leg in the external
+// browser. That means Set-Cookie from /auth/google/callback lands in
+// Chrome's cookie jar, which the WebView cannot read; the WebView has a
+// separate jar entirely. Sharing cookies between them is neither possible
+// nor safe. Instead, the browser leg ends with a short-lived one-time code;
+// a verified Android App Link hands that code to the app; and the WEBVIEW
+// ITSELF redeems it at /auth/native/complete, so the session cookie is set
+// on a request the WebView actually made.
+//
+// `native=1&nonce=<app-generated>` on the START of the leg is what the app
+// sent (see AuthCallback.externalAuthStartUrl in the Android repo); the same
+// nonce must come back on the return hop, or the app refuses it. That bind
+// defeats a login-CSRF where a malicious app fires a fabricated callback at
+// Aqua's exported launcher activity to sign the victim into an
+// attacker-controlled account.
 app.get("/auth/google", authLimiter, (req, res, next) => {
-  const native = req.query.native === "1";
-  if (!native) {
-    return passport.authenticate("google", { scope: ["profile", "email"] })(req, res, next);
+  // A missing/oversized nonce is IGNORED rather than turned into an error
+  // page: the safer failure mode is to fall through to the exact ordinary
+  // browser login this route has always done, not to strand the user on an
+  // error screen inside Chrome for a malformed app-side value.
+  const nativeNonce = req.query.native === "1" ? validateNonce(req.query.nonce) : null;
+
+  const authOptions = { scope: ["profile", "email"] };
+  if (nativeNonce) {
+    req.session.nativeReturn = true;
+    req.session.nativeNonce  = nativeNonce; // never logged — see validateNonce
+    // Chrome may already hold a Google session from a previous native login
+    // on this device. Without forcing the chooser, "log out in Aqua, log
+    // back in with Google" could silently re-authenticate as the OLD
+    // account (Part 18 of the audit). Scoped to the native leg only —
+    // ordinary desktop OAuth is unaffected.
+    authOptions.prompt = "select_account";
   }
-
-  const nonce = validateNativeNonce(req.query.nonce);
-  if (!nonce) {
-    return res.status(400).send("Invalid authentication request.");
-  }
-
-  // These markers are deliberately server-side. The browser must prove it owns
-  // the OAuth session that started this native handoff before Passport accepts
-  // the Google callback.
-  req.session.nativeReturn = true;
-  req.session.nativeNonce = nonce;
-
-  return passport.authenticate("google", {
-    scope: ["profile", "email"],
-    prompt: "select_account",
-  })(req, res, next);
+  return passport.authenticate("google", authOptions)(req, res, next);
 });
 
 app.get(
   "/auth/google/callback",
-  // Capture native state before the OAuth authentication middleware logs the user in. It may
-  // regenerate the session as part of req.logIn(), so the handoff markers
-  // cannot be read only after the authentication middleware has completed.
-  (req, res, next) => {
-    req._nativeOAuth = req.session?.nativeReturn === true
-      ? { nonce: req.session.nativeNonce }
-      : null;
-    req._postLoginNext = takePostLoginNext(req, "/home");
-    next()
-  },
+  // Consume the switch-account target BEFORE passport runs. passport 0.6
+  // regenerates the session inside req.logIn() to prevent session fixation,
+  // which would discard anything written to it earlier — so the value is moved
+  // onto the request object while it still exists.
+  (req, res, next) => { req._postLoginNext = takePostLoginNext(req, "/home"); next(); },
   passport.authenticate("google", { failureRedirect: "/login" }),
   async (req, res) => {
-    const native = req._nativeOAuth;
+    req.session.user   = { _id: req.user._id, email: req.user.email, username: req.user.email.split("@")[0] };
+    req.session.userId = req.user._id;
+    // Same first-run rule as /signup — a Google account created during THIS
+    // round trip is a new user and belongs in the product. A returning one
+    // keeps the workspace. Optional chaining because `$locals` is only set on
+    // the creation path. Untouched by the native branch below: first-run
+    // status is decided by the Passport verify callback, not by which client
+    // is finishing the login.
     const firstRun = req.user?.$locals?.justCreated === true;
 
-    if (native?.nonce) {
-      const rawCode = generateNativeOAuthCode();
-      const codeHash = hashNativeOAuthCode(rawCode);
-      const expiresAt = nativeCodeExpiresAt();
+    // NATIVE LEG: this request started at /auth/google?native=1. Ordinary
+    // browser logins never set req.session.nativeReturn, so this branch
+    // changes nothing about the existing web flow below it.
+    if (req.session.nativeReturn) {
+      const nonce = req.session.nativeNonce;
+      // Cleared immediately so a replay of this exact callback (e.g. the
+      // browser's back button) cannot mint a second code from stale markers.
+      delete req.session.nativeReturn;
+      delete req.session.nativeNonce;
 
       try {
-        await NativeOAuthCode.create({
-          codeHash,
-          userId: req.user._id,
-          expiresAt,
+        const { code } = await mintNativeCode(req.user._id);
+        return req.session.save(() => {
+          // The Android App Link (autoVerify, exact path, exact host)
+          // intercepts this before Chrome ever renders it. code+nonce are
+          // in the URL, which is unavoidable — but PART 5's page never
+          // echoes them into the response BODY. See /auth/native/return.
+          res.redirect(`/auth/native/return?code=${encodeURIComponent(code)}&nonce=${encodeURIComponent(nonce || "")}`);
         });
-
-        // Do not carry native markers into a browser session. The WebView will
-        // establish its own authenticated session only after code redemption.
-        if (req.session) {
-          delete req.session.nativeReturn;
-          delete req.session.nativeNonce;
-        }
-
-        const returnUrl = new URL("https://aquiplex.com/auth/native/return");
-        returnUrl.searchParams.set("code", rawCode);
-        returnUrl.searchParams.set("nonce", native.nonce);
-
-        return req.session?.save
-          ? req.session.save(() => res.redirect(returnUrl.toString()))
-          : res.redirect(returnUrl.toString());
       } catch (err) {
-        console.error("[AUTH] Native OAuth handoff creation failed:", err.message);
-        return res.redirect("/login?error=oauth");
+        // The Chrome-side session is still validly authenticated at this
+        // point (Passport already ran) — only the handoff to the app
+        // failed. Degrade to a visible, generic error rather than a silent
+        // hang the user can't explain.
+        console.error("[native oauth] failed to mint handoff code:", err.message);
+        return res.redirect("/auth/native/return?error=server_error");
       }
     }
 
-    req.session.user   = { _id: req.user._id, email: req.user.email, username: req.user.email.split("@")[0] };
-    req.session.userId = req.user._id;
-    return req.session.save(() =>
-      res.redirect(firstRun ? "/aqua" : (req._postLoginNext || "/home"))
-    );
+    req.session.save(() => res.redirect(firstRun ? "/aqua" : (req._postLoginNext || "/home")));
   },
 );
 
-// Fallback only. A browser reaching this endpoint directly must not be
-// authenticated and must not receive the handoff code in rendered HTML.
+// Normally intercepted by the verified Android App Link before the browser
+// ever renders it (see AndroidManifest.xml's autoVerify intent-filter on
+// exactly this host+path in the aqua-android repo). This route exists only
+// for the two cases where that interception does not happen: App Link
+// verification failed (see /.well-known/assetlinks.json below), or the URL
+// was opened somewhere without the app installed. It authenticates no one,
+// creates no session, and never echoes the code into the page body.
 app.get("/auth/native/return", (req, res) => {
-  const message = req.query.error
-    ? "Google sign-in didn't finish. Please return to the Aqua app and try again."
-    : "Return to the Aqua app to finish signing in.";
-  res.status(200).type("html").send(`<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Aqua sign-in</title></head><body><main><p>${message}</p>
-<p>If Aqua did not open automatically, open the Aqua app and try signing in again.</p></main></body></html>`);
+  res.set("Cache-Control", "no-store");
+  const hadError = typeof req.query.error === "string" && req.query.error.length > 0;
+  return res.render("auth-native-return", {
+    message: hadError
+      ? "Sign-in didn't finish. Return to the Aqua app and try again."
+      : "Finishing sign-in… open the Aqua app to continue.",
+  });
 });
 
-app.get("/auth/native/complete", async (req, res) => {
+// The WebView redemption endpoint — this is the request that actually
+// establishes the authenticated WebView session (Bug 1's fix point).
+app.get("/auth/native/complete", authLimiter, async (req, res) => {
   const rawCode = typeof req.query.code === "string" ? req.query.code : "";
-  if (!rawCode || rawCode.length > 512) {
+
+  let result;
+  try {
+    result = await redeemNativeCode(rawCode);
+  } catch (err) {
+    console.error("[native oauth] redemption lookup failed:", err.message);
+    result = { ok: false, reason: "internal_error" };
+  }
+
+  if (!result.ok) {
+    // Generic on purpose (Part 6 of the audit): never reveal whether the
+    // code was missing, expired, already redeemed, or simply invalid — any
+    // of those distinctions is free information to an attacker probing the
+    // endpoint, and none of them changes what the legitimate user should do
+    // (go back to the app and try again).
     return res.redirect("/aqua?auth_error=invalid_code");
   }
 
-  const codeHash = hashNativeOAuthCode(rawCode);
-  const now = new Date();
-
   try {
-    // One atomic update is the replay/race protection. Two simultaneous
-    // requests cannot both transition usedAt from null to a timestamp.
-    const handoff = await NativeOAuthCode.findOneAndUpdate(
-      {
-        codeHash,
-        usedAt: null,
-        expiresAt: { $gt: now },
-      },
-      { $set: { usedAt: now } },
-      { new: true },
-    );
+    const user = await User.findById(result.userId);
+    if (!user) return res.redirect("/aqua?auth_error=invalid_code");
 
-    if (!handoff) {
-      return res.redirect("/aqua?auth_error=invalid_code");
-    }
-
-    const user = await User.findById(handoff.userId);
-    if (!user) {
-      return res.redirect("/aqua?auth_error=invalid_code");
-    }
-
-    return req.session.regenerate((regenerateErr) => {
-      if (regenerateErr) {
-        console.error("[AUTH] Native session regeneration failed:", regenerateErr.message);
+    // req.login() (Passport 0.6+) regenerates the session before writing the
+    // new identity into it — the same session-fixation defence the ordinary
+    // /auth/google/callback flow already relies on above, applied here to
+    // whatever session, if any, the WebView happened to be carrying.
+    req.login(user, (err) => {
+      if (err) {
+        console.error("[native oauth] req.login failed:", err.message);
         return res.redirect("/aqua?auth_error=invalid_code");
       }
-
-      req.login(user, (loginErr) => {
-        if (loginErr) {
-          console.error("[AUTH] Native session login failed:", loginErr.message);
-          return res.redirect("/aqua?auth_error=invalid_code");
-        }
-
-        req.session.user = {
-          _id: user._id,
-          email: user.email,
-          username: user.email.split("@")[0],
-        };
-        req.session.userId = user._id;
-
-        req.session.save((saveErr) => {
-          if (saveErr) {
-            console.error("[AUTH] Native session save failed:", saveErr.message);
-            return res.redirect("/aqua?auth_error=invalid_code");
-          }
-          return res.redirect("/aqua");
-        });
-      });
+      // Same representation the ordinary callback writes, so every
+      // downstream check (requireLogin, res.locals.user, etc.) treats a
+      // native completion identically to a normal login.
+      req.session.user   = { _id: user._id, email: user.email, username: user.email.split("@")[0] };
+      req.session.userId = user._id;
+      req.session.save(() => res.redirect("/aqua"));
     });
   } catch (err) {
-    console.error("[AUTH] Native OAuth completion failed:", err.message);
+    console.error("[native oauth] completion failed:", err.message);
     return res.redirect("/aqua?auth_error=invalid_code");
   }
 });

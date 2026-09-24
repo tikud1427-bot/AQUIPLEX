@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Returning to Aqua | Aquiplex</title>
+  <link rel="icon" href="/logo/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/css/platform.css">
+  <!--
+    This page is a FALLBACK ONLY. In normal operation, Android's verified App
+    Link (com.aquiplex.aqua, autoVerify="true", exact path /auth/native/return)
+    intercepts this URL before the browser ever renders it. Landing here means
+    either App Link verification failed (check
+    https://aquiplex.com/.well-known/assetlinks.json) or this was opened on a
+    device without the app.
+
+    The one-time code in this URL's query string is deliberately never
+    rendered into the page body below — see docs/OAUTH_NATIVE_HANDOFF.md.
+  -->
+</head>
+<body class="px-page">
+
+  <main class="px-error-wrap">
+    <h1>Returning to Aqua</h1>
+    <p><%= message %></p>
+    <div class="px-btn-row center">
+      <a href="/aqua" class="px-btn px-btn-primary">Open Aqua</a>
+    </div>
+  </main>
+
+<script src="/js/sw-cleanup.js" defer></script>
+</body>
+</html>

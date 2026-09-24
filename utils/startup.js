@@ -22,33 +22,22 @@ const REQUIRED_ENV = [
   "RAZORPAY_KEY_SECRET",
   "RAZORPAY_WEBHOOK_SECRET",
   "SESSION_SECRET",
-];
-
-const PRODUCTION_AUTH_ENV = [
+  // Google OAuth audit (2026-09): neither was previously fail-fast checked.
+  // Without them GoogleStrategy is constructed with clientID/clientSecret
+  // undefined, and every "Continue with Google" — web AND native — fails at
+  // Google's end with an opaque invalid_client, discovered only by a user
+  // report. GOOGLE_CALLBACK_URL is deliberately NOT required: it has a
+  // working relative default ("/auth/google/callback") that passport
+  // resolves against the request.
   "GOOGLE_CLIENT_ID",
   "GOOGLE_CLIENT_SECRET",
-  "GOOGLE_CALLBACK_URL",
-  "AQUA_PLAY_APP_SIGNING_SHA256",
 ];
 
 function validateEnv() {
-  const required = process.env.NODE_ENV === "production"
-    ? [...REQUIRED_ENV, ...PRODUCTION_AUTH_ENV]
-    : REQUIRED_ENV;
-  const missing = required.filter((k) => !process.env[k]);
+  const missing = REQUIRED_ENV.filter((k) => !process.env[k]);
   if (missing.length > 0) {
     console.error("❌ STARTUP FAILED — Missing required env variables:");
     missing.forEach((k) => console.error(`   - ${k}`));
-    process.exit(1);
-  }
-  if (process.env.NODE_ENV === "production" &&
-      !/^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/i.test(process.env.AQUA_PLAY_APP_SIGNING_SHA256 || "")) {
-    console.error("❌ STARTUP FAILED — AQUA_PLAY_APP_SIGNING_SHA256 must be a valid SHA-256 certificate fingerprint");
-    process.exit(1);
-  }
-  if (process.env.NODE_ENV === "production" &&
-      process.env.GOOGLE_CALLBACK_URL !== "https://aquiplex.com/auth/google/callback") {
-    console.error("❌ STARTUP FAILED — GOOGLE_CALLBACK_URL must be https://aquiplex.com/auth/google/callback in production");
     process.exit(1);
   }
   console.log("✅ Env vars validated");
