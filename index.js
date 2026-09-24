@@ -248,7 +248,7 @@ try {
   if (!process.env.MONGO_URI) {
     throw new Error("MONGO_URI is not set");
   }
-  const MongoStore = require("connect-mongo");
+  const { MongoStore } = require("connect-mongo");
   sessionStore = MongoStore.create({
     mongoUrl:   process.env.MONGO_URI,
     ttl:        SESSION_MAX_AGE_MS / 1000, // seconds; kept equal to cookie maxAge
