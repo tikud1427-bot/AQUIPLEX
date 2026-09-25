@@ -1352,10 +1352,31 @@ app.get(
 app.get("/auth/native/return", (req, res) => {
   res.set("Cache-Control", "no-store");
   const hadError = typeof req.query.error === "string" && req.query.error.length > 0;
+  const rawCode  = typeof req.query.code === "string" && req.query.code.length > 0 ? req.query.code : null;
+  const nonce    = typeof req.query.nonce === "string" ? req.query.nonce : "";
+
+  // Explicit-package deep link, computed here rather than left to the App Link
+  // alone. autoVerify only governs whether an ORDINARY, non-package-specific
+  // top-level https navigation is auto-claimed by the app; it does not gate
+  // an explicit `package=`-targeted intent, which still matches the
+  // manifest's declared intent-filter even when Digital Asset Links
+  // verification failed or never ran. That covers every real reason the
+  // App Link itself can miss: a debug-signed build (whose certificate can
+  // never match the published upload-key fingerprint — this is not a defect,
+  // debug and release are different keys by design), an OEM with unreliable
+  // link verification, or a device that simply hasn't re-verified since
+  // install. Falls back to the Play listing if the app isn't installed at all.
+  const deepLink = rawCode
+    ? `intent://aquiplex.com/auth/native/return?code=${encodeURIComponent(rawCode)}&nonce=${encodeURIComponent(nonce)}` +
+      `#Intent;scheme=https;package=com.aquiplex.aqua;` +
+      `S.browser_fallback_url=${encodeURIComponent("https://play.google.com/store/apps/details?id=com.aquiplex.aqua")};end`
+    : null;
+
   return res.render("auth-native-return", {
     message: hadError
       ? "Sign-in didn't finish. Return to the Aqua app and try again."
-      : "Finishing sign-in… open the Aqua app to continue.",
+      : "Finishing sign-in…",
+    deepLink,
   });
 });
 

@@ -311,16 +311,49 @@ describe("native OAuth routes — wiring", () => {
     assert.match(indexSrc, /res\.redirect\(firstRun \? "\/aqua" : \(req\._postLoginNext \|\| "\/home"\)\)/);
   });
 
-  test("GET /auth/native/return exists, renders the fallback view, and never echoes req.query.code", () => {
+  test("GET /auth/native/return builds an explicit-package deep link from the code, but the visible message never contains it", () => {
+    // Superseded design decision (see the fix logged 2026-09-24): the route now
+    // DOES read req.query.code — that's required to build the intent:// deep
+    // link fallback for installs where App Link verification never succeeded
+    // (debug-signed builds, chiefly). What must still hold is that the code
+    // never reaches the *visible* message text, only the functional deep link.
     const m = indexSrc.match(/app\.get\("\/auth\/native\/return",([\s\S]*?)\n\}\);/);
     assert.ok(m, "GET /auth/native/return is not registered");
     assert.match(m[1], /res\.render\("auth-native-return"/);
-    assert.ok(!m[1].includes("req.query.code"), "the route body must never reference req.query.code");
+    assert.match(m[1], /package=com\.aquiplex\.aqua/);
+    const messageBlock = m[1].slice(m[1].indexOf("message:"), m[1].indexOf("deepLink,"));
+    assert.ok(!messageBlock.includes("rawCode"), "the code must never be interpolated into the visible message");
   });
 
-  test("the auth-native-return view never renders the code into the page body", () => {
+  test("the auth-native-return view only interpolates the code inside the deep link, never into visible text", () => {
     const view = fs.readFileSync(path.join(ROOT, "views", "auth-native-return.ejs"), "utf8");
-    assert.ok(!/code/i.test(view.replace(/<!--[\s\S]*?-->/g, "")), "the view template must not reference a code outside of comments");
+    assert.match(view, /<p><%= message %><\/p>/);
+    // The view receives only the pre-built `deepLink` string and `message` —
+    // it never re-derives or re-interpolates the raw code/nonce itself.
+    assert.ok(!/rawCode|req\.query\.code/.test(view));
+  });
+
+  test("[bite] no code means no deep link — the view falls back to the plain /aqua link", () => {
+    const m = indexSrc.match(/app\.get\("\/auth\/native\/return",([\s\S]*?)\n\}\);/);
+    assert.ok(m);
+    assert.match(m[1], /const deepLink = rawCode\s*\n?\s*\?/);
+    const view = fs.readFileSync(path.join(ROOT, "views", "auth-native-return.ejs"), "utf8");
+    assert.match(view, /<% \} else \{ %>\s*\n\s*<a href="\/aqua"/);
+  });
+
+  test("[bite] the deep link falls back to the Play listing if the app isn't installed", () => {
+    const m = indexSrc.match(/app\.get\("\/auth\/native\/return",([\s\S]*?)\n\}\);/);
+    assert.ok(m);
+    assert.match(m[1], /S\.browser_fallback_url/);
+    assert.match(m[1], /play\.google\.com\/store\/apps\/details\?id=com\.aquiplex\.aqua/);
+  });
+
+  test("the view auto-attempts the deep link via a safely-embedded redirect, only when one exists", () => {
+    const view = fs.readFileSync(path.join(ROOT, "views", "auth-native-return.ejs"), "utf8");
+    assert.match(view, /<% if \(deepLink\) \{ %>\s*\n<script>/);
+    // JSON.stringify, not a raw `<%=`/`<%-` splice of the URL string, so the
+    // value is correctly quoted as a JS string literal inside the script tag.
+    assert.match(view, /window\.location\.href = <%- JSON\.stringify\(deepLink\) %>;/);
   });
 
   test("GET /auth/native/complete calls redeemNativeCode and logs the user in via req.login", () => {
