@@ -293,6 +293,30 @@ describe("native OAuth routes — wiring", () => {
     assert.match(indexSrc, /const authOptions = \{ scope: \["profile", "email"\] \}/);
   });
 
+  // Sep 26: three checkpoints added specifically to root-cause a live report
+  // of "the native leg silently falls back to ordinary web login" (browser
+  // ends up on the normal logged-in website instead of handing off to the
+  // app) without more guessing. Never log the nonce/code value itself —
+  // only whether each checkpoint was reached, so the three log lines
+  // together answer exactly one question: at which of the three hops
+  // (start, mid-callback, post-auth) did the native marker go missing.
+  test("[diagnostics] each native-oauth checkpoint logs reach/loss but never the nonce or code value", () => {
+    const startBlock = indexSrc.slice(
+      indexSrc.indexOf('app.get("/auth/google", authLimiter'),
+      indexSrc.indexOf('app.get(\n  "/auth/google/callback"'),
+    );
+    assert.match(startBlock, /console\.(log|warn)\(.*\[native oauth\].*\/auth\/google:/s);
+    assert.doesNotMatch(startBlock, /console\.(log|warn)\([^)]*nonce\)/); // logs metadata, not the raw value
+
+    const callbackBlock = indexSrc.slice(
+      indexSrc.indexOf('app.get(\n  "/auth/google/callback"'),
+      indexSrc.indexOf('app.get("/auth/native/return"'),
+    );
+    const checkpoints = callbackBlock.match(/console\.log\("\[native oauth\] \/auth\/google\/callback:/g) || [];
+    assert.equal(checkpoints.length, 2, "expected one checkpoint entering the passport middleware and one after it authenticates");
+    assert.doesNotMatch(callbackBlock, /console\.log\([^)]*\bnonce\b[^)]*\)/i);
+  });
+
   test("the callback mints a code ONLY when req.session.nativeReturn was set", () => {
     const m = indexSrc.match(/app\.get\(\s*\n\s*"\/auth\/google\/callback",([\s\S]*?)\n\);/);
     assert.ok(m, "could not locate the GET /auth/google/callback route registration");

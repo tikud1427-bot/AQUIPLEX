@@ -1286,7 +1286,23 @@ app.get("/auth/google", authLimiter, (req, res, next) => {
   // page: the safer failure mode is to fall through to the exact ordinary
   // browser login this route has always done, not to strand the user on an
   // error screen inside Chrome for a malformed app-side value.
+  const wantedNative = req.query.native === "1";
   const nativeNonce = req.query.native === "1" ? validateNonce(req.query.nonce) : null;
+
+  // Diagnostics only — never the nonce value itself, per the "never log
+  // nonces/codes" rule. This one line is what tells us, on the NEXT report
+  // of "browser shows the ordinary website instead of returning to the app",
+  // whether the native leg was ever entered at all (app didn't ask for it /
+  // nonce got mangled in transit) vs. entered fine here but lost somewhere
+  // between here and the callback below.
+  if (wantedNative && !nativeNonce) {
+    console.warn("[native oauth] /auth/google: native=1 but nonce rejected by validateNonce", {
+      nonceLength: typeof req.query.nonce === "string" ? req.query.nonce.length : null,
+      nonceType: typeof req.query.nonce,
+    });
+  } else if (wantedNative) {
+    console.log("[native oauth] /auth/google: native leg entered, nonce accepted, session.id=", req.sessionID);
+  }
 
   const authOptions = { scope: ["profile", "email"] };
   if (nativeNonce) {
@@ -1313,6 +1329,14 @@ app.get(
   (req, res, next) => { req._postLoginNext = takePostLoginNext(req, "/home"); next(); },
   (req, res, next) => {
     const keepNativeSessionInfo = req.session?.nativeReturn === true;
+    // Diagnostics only. Pairs with the /auth/google log above: if THIS line
+    // ever shows `nativeReturn: false` right after that one showed the nonce
+    // was accepted, the native marker was lost somewhere in the Google
+    // round-trip (session not persisted before the redirect to Google, a
+    // different session store row on the way back, etc.) rather than never
+    // having been set — a different bug than "the app never asked for it".
+    console.log("[native oauth] /auth/google/callback: entering, session.id=", req.sessionID,
+      "nativeReturn=", keepNativeSessionInfo);
     return passport.authenticate("google", {
       failureRedirect: "/login",
       keepSessionInfo: keepNativeSessionInfo,
@@ -1332,6 +1356,8 @@ app.get(
     // NATIVE LEG: this request started at /auth/google?native=1. Ordinary
     // browser logins never set req.session.nativeReturn, so this branch
     // changes nothing about the existing web flow below it.
+    console.log("[native oauth] /auth/google/callback: authenticated, session.id=", req.sessionID,
+      "nativeReturn=", req.session.nativeReturn === true);
     if (req.session.nativeReturn) {
       // The callback middleware above uses keepSessionInfo ONLY when this
       // native marker existed before Passport regenerated the session.
