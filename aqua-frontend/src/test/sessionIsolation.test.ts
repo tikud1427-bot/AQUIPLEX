@@ -24,12 +24,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const SRC = path.resolve(__dirname, '..');
 
-const getAccount = vi.fn();
+const getAccountStatus = vi.fn();
 const logoutSession = vi.fn();
 const clearPersistedAppData = vi.fn();
 
 vi.mock('@/api/account', () => ({
-  getAccount: (...a: unknown[]) => getAccount(...a),
+  getAccountStatus: (...a: unknown[]) => getAccountStatus(...a),
   logoutSession: (...a: unknown[]) => logoutSession(...a),
   clearPersistedAppData: (...a: unknown[]) => clearPersistedAppData(...a),
 }));
@@ -94,8 +94,9 @@ function allStoreText(): string {
 beforeEach(() => {
   useSessionStore.setState({ ...initialSession }, true);
   sessionNavigation.go = vi.fn();
-  getAccount.mockReset().mockResolvedValue({
-    email: 'chhanda@example.com', authMethod: 'password', reauthFresh: false,
+  getAccountStatus.mockReset().mockResolvedValue({
+    kind: 'authenticated',
+    account: { email: 'chhanda@example.com', authMethod: 'password', reauthFresh: false },
   });
   logoutSession.mockReset().mockResolvedValue({ ok: true });
   clearPersistedAppData.mockReset();
@@ -232,14 +233,21 @@ describe('the authenticated surface is unreachable once the session is gone', ()
   const clientSrc = fs.readFileSync(path.join(SRC, 'api', 'client.ts'), 'utf8');
   const routesSrc = fs.readFileSync(path.join(SRC, 'api', 'routes.ts'), 'utf8');
 
-  it('every 401 from the engine sends the browser to the login page', () => {
+  it('every 401 from the engine sends the browser to the login page, preserving where it was', () => {
     // The SPA has no client-side route guard by design — /aqua's shell is
     // served ungated so the PWA manifest is readable. What actually protects
     // the app is requireLogin on /api/aqua/* server-side plus this interceptor,
     // so once the session is destroyed the first gated call ejects the user.
+    // It must land them back where they were (loginWithReturn), not strip
+    // their current route — see routes.ts's `?next=`.
     expect(clientSrc).toMatch(/status === 401/);
-    expect(clientSrc).toMatch(/window\.location\.href = LOGIN_PATH/);
+    expect(clientSrc).toMatch(/loginWithReturn/);
+    expect(clientSrc).toMatch(/window\.location\.replace/);
     expect(routesSrc).toMatch(/LOGIN_PATH = '\/login'/);
+  });
+
+  it('uses replace(), not href, so a signed-out user cannot Back into a dead page', () => {
+    expect(clientSrc).not.toMatch(/window\.location\.href\s*=/);
   });
 
   it('the interceptor does not let the caller continue after a 401', () => {
@@ -257,6 +265,55 @@ describe('the authenticated surface is unreachable once the session is gone', ()
     expect(clientSrc).not.toMatch(/['"]\/login['"]/);
   });
 });
+
+// ── The false-logout bug: network/5xx must never look like a 401 ────────────
+
+describe('a session check that cannot get an authoritative answer is not a logout', () => {
+  it('keeps a known-authenticated session when the next check is indeterminate', async () => {
+    await useSessionStore.getState().load(); // authenticated, from the top-level mock
+    expect(useSessionStore.getState().status).toBe('authenticated');
+
+    getAccountStatus.mockResolvedValue({ kind: 'indeterminate', message: 'offline' });
+    await useSessionStore.getState().load();
+
+    expect(useSessionStore.getState().status).toBe('authenticated');
+    expect(useSessionStore.getState().account).not.toBeNull();
+    expect(useSessionStore.getState().connectionError).toBe('offline');
+  });
+
+  it('does not claim "unauthenticated" on a first indeterminate check either', async () => {
+    getAccountStatus.mockResolvedValue({ kind: 'indeterminate', message: 'timed out' });
+    await useSessionStore.getState().load();
+
+    // Neither a false "signed in" nor a false "signed out" — stays 'loading'
+    // so the UI shows a retry state instead of bouncing to /login.
+    expect(useSessionStore.getState().status).toBe('loading');
+    expect(useSessionStore.getState().connectionError).toBe('timed out');
+  });
+
+  it('only an authoritative 401 (unauthenticated) actually signs the user out', async () => {
+    await useSessionStore.getState().load();
+    expect(useSessionStore.getState().status).toBe('authenticated');
+
+    getAccountStatus.mockResolvedValue({ kind: 'unauthenticated' });
+    await useSessionStore.getState().load();
+
+    expect(useSessionStore.getState().status).toBe('unauthenticated');
+    expect(useSessionStore.getState().account).toBeNull();
+  });
+
+  it('clears connectionError once a check resolves authoritatively', async () => {
+    getAccountStatus.mockResolvedValue({ kind: 'indeterminate', message: 'offline' });
+    await useSessionStore.getState().load();
+    expect(useSessionStore.getState().connectionError).toBe('offline');
+
+    getAccountStatus.mockResolvedValue({ kind: 'unauthenticated' });
+    await useSessionStore.getState().load();
+    expect(useSessionStore.getState().connectionError).toBeNull();
+  });
+});
+
+
 
 // ── The assumption the narrow teardown rests on ──────────────────────────────
 

@@ -40,7 +40,8 @@ const CODE_BYTES = 32;
  */
 function validateNonce(raw) {
   if (typeof raw !== "string") return null;
-  if (raw.length === 0 || raw.length > NONCE_MAX_LENGTH) return null;
+  if (raw.length < 16 || raw.length > NONCE_MAX_LENGTH) return null;
+  if (!/^[A-Za-z0-9_-]+$/.test(raw)) return null;
   return raw;
 }
 

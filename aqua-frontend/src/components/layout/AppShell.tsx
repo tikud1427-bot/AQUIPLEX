@@ -27,6 +27,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const newConversation = useChatStore((s) => s.newConversation);
   const stopGenerating = useChatStore((s) => s.stopGenerating);
   const loadSession = useSessionStore((s) => s.load);
+  const connectionError = useSessionStore((s) => s.connectionError);
 
   /* Resolve the signed-in identity once, here, rather than inside the account
      control: the sidebar is rendered twice (rail + mobile drawer) and two
@@ -35,6 +36,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void loadSession();
   }, [loadSession]);
+
+  /* GET /api/account couldn't get an authoritative answer (offline, timeout,
+     backend 5xx) — NOT a 401. sessionStore.load() already refused to treat
+     this as a logout; surface it as a plain "couldn't check" toast with a
+     retry, rather than silently doing nothing and rather than pretending the
+     user is signed out. */
+  useEffect(() => {
+    if (!connectionError) return;
+    toast('error', "Couldn't check your sign-in status", connectionError, {
+      label: 'Retry',
+      onClick: () => void loadSession(),
+    });
+  }, [connectionError, loadSession, toast]);
 
   /* Surface a failed native OAuth handoff (GET /auth/native/complete →
      /aqua?auth_error=invalid_code — see index.js) as a plain retry prompt

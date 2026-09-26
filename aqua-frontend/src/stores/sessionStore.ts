@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import {
   clearPersistedAppData,
-  getAccount,
+  getAccountStatus,
   logoutSession,
   type AccountInfo,
 } from '@/api/account';
@@ -46,6 +46,14 @@ interface SessionState {
   phase: SessionPhase;
   /** Last logout failure, already a human sentence. Never a stack trace. */
   error: string | null;
+  /**
+   * Set when the last account check could not get an authoritative answer
+   * (network failure, timeout, 403/5xx) — as opposed to a real 401. Distinct
+   * from `error`: this is never a reason to sign anyone out, only to show a
+   * "couldn't check" state and offer retry. Cleared the moment a check
+   * resolves either way.
+   */
+  connectionError: string | null;
   /** A GET /api/account is in flight. */
   fetching: boolean;
 
@@ -59,26 +67,45 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   account: null,
   phase: 'idle',
   error: null,
+  connectionError: null,
   fetching: false,
 
   /**
-   * Resolve the current identity. Starts at 'loading' and only ever moves to a
-   * real answer, so the account control renders a placeholder rather than
-   * guessing at a name it does not have yet.
+   * Resolve the current identity. Starts at 'loading' and only ever moves to
+   * 'unauthenticated' on an AUTHORITATIVE answer (a real 401), so the account
+   * control renders a placeholder rather than guessing at a name it does not
+   * have yet — and a flaky connection never gets mistaken for a logout.
+   *
+   * Callable again as a retry: a prior indeterminate result does not block a
+   * fresh attempt (only `fetching` does, to collapse StrictMode's double
+   * mount into one request).
    */
   load: async () => {
     if (get().fetching) return; // React StrictMode double-mounts; one call is enough
     set({ fetching: true });
 
-    // getAccount() already swallows its own failures and returns null. A null
-    // therefore means "no usable session" — 401, expired, or unreachable — and
-    // all three are correctly rendered as signed out.
-    const account = await getAccount();
+    const result = await getAccountStatus();
 
+    if (result.kind === 'authenticated') {
+      set({ fetching: false, account: result.account, status: 'authenticated', connectionError: null });
+      return;
+    }
+
+    if (result.kind === 'unauthenticated') {
+      set({ fetching: false, account: null, status: 'unauthenticated', connectionError: null });
+      return;
+    }
+
+    // Indeterminate: the server never said "logged out". If we already knew
+    // this session was authenticated, keep that — do not let a network blip
+    // overwrite a known-good identity. Otherwise stay in 'loading' (not
+    // 'unauthenticated') so the UI shows "couldn't check" rather than a
+    // false sign-in prompt.
+    const wasAuthenticated = get().status === 'authenticated';
     set({
       fetching: false,
-      account,
-      status: account ? 'authenticated' : 'unauthenticated',
+      status: wasAuthenticated ? 'authenticated' : 'loading',
+      connectionError: result.message,
     });
   },
 

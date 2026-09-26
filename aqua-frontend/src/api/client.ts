@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import type { ApiError } from '@/types';
-import { LOGIN_PATH } from './routes';
+import { loginWithReturn } from './routes';
 
 export const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '/api/aqua').replace(/\/+$/, '');
 
@@ -23,7 +23,12 @@ apiClient.interceptors.response.use(
   (res) => res,
   (err) => {
     if (axios.isAxiosError(err) && err.response?.status === 401) {
-      window.location.href = LOGIN_PATH;
+      // Preserve where the user was (loginWithReturn + server-side
+      // middleware/redirectTarget.js sanitises it — see routes.ts), and use
+      // replace() rather than href so a signed-out user isn't one Back tap
+      // away from a page that will just 401 again.
+      const here = `${window.location.pathname}${window.location.search}`;
+      window.location.replace(loginWithReturn(here));
       return new Promise(() => {}); // navigation is underway; let it happen
     }
     return Promise.reject(err);

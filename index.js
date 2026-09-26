@@ -169,9 +169,8 @@ app.get("/service-worker.js", (req, res) => {
 // `.well-known` is, and would 404 this if left to the static middleware below.
 //
 // Two fingerprints, not one:
-//   - The UPLOAD key: verified 2026-09 against the shipped app-release.apk's
-//     own signing certificate (`unzip -p app-release.apk META-INF/*.RSA |
-//     keytool -printcert`) — this is a real, checked-in value, not invented.
+//   - The UPLOAD key: supplied by the current Play Console signing/certificate
+//     material and retained here because it is also useful for non-Play builds.
 //   - The Play App Signing key: the certificate Google re-signs the app with
 //     for real installs is NOT the upload key and cannot be derived from
 //     anything in this repository — it only exists in Play Console → Test
@@ -182,12 +181,25 @@ app.get("/service-worker.js", (req, res) => {
 const AQUA_ANDROID_PACKAGE = "com.aquiplex.aqua";
 const AQUA_ANDROID_UPLOAD_KEY_SHA256 =
   "15:F7:A9:A8:72:79:D4:39:1F:DE:E5:5A:7E:02:B0:D2:9D:56:57:CB:AC:17:F0:CA:0F:ED:61:F4:B1:40:1C:2B";
-if (!process.env.PLAY_APP_SIGNING_SHA256) {
-  console.warn("⚠️  PLAY_APP_SIGNING_SHA256 is not set — /.well-known/assetlinks.json will only carry the upload-key fingerprint. Android App Link verification (and therefore native Google sign-in) will fail on real Play-installed builds until this is set from Play Console → App integrity.");
+const SHA256_FINGERPRINT_RE = /^(?:[0-9A-F]{2}:){31}[0-9A-F]{2}$/;
+function readPlaySigningFingerprints(raw) {
+  if (typeof raw !== "string") return [];
+  return [...new Set(
+    raw
+      .split(/[\s,;]+/)
+      .map((value) => value.trim().toUpperCase())
+      .filter((value) => SHA256_FINGERPRINT_RE.test(value))
+  )];
+}
+const configuredPlaySigningFingerprints = readPlaySigningFingerprints(process.env.PLAY_APP_SIGNING_SHA256);
+if (configuredPlaySigningFingerprints.length === 0) {
+  console.warn("⚠️  PLAY_APP_SIGNING_SHA256 is not set to a valid SHA-256 certificate fingerprint — /.well-known/assetlinks.json will carry only the upload-key fingerprint until the Play App Signing certificate is configured.");
 }
 app.get("/.well-known/assetlinks.json", (req, res) => {
-  const fingerprints = [AQUA_ANDROID_UPLOAD_KEY_SHA256];
-  if (process.env.PLAY_APP_SIGNING_SHA256) fingerprints.unshift(process.env.PLAY_APP_SIGNING_SHA256);
+  const fingerprints = [...new Set([
+    ...configuredPlaySigningFingerprints,
+    AQUA_ANDROID_UPLOAD_KEY_SHA256,
+  ])];
 
   res.type("application/json");
   res.set("Cache-Control", "public, max-age=3600");
@@ -1292,12 +1304,20 @@ app.get("/auth/google", authLimiter, (req, res, next) => {
 
 app.get(
   "/auth/google/callback",
-  // Consume the switch-account target BEFORE passport runs. passport 0.6
-  // regenerates the session inside req.logIn() to prevent session fixation,
-  // which would discard anything written to it earlier — so the value is moved
-  // onto the request object while it still exists.
+  // Consume the switch-account target BEFORE passport runs. Passport 0.6+
+  // regenerates the session on login by default, so the safe post-login target
+  // is moved onto the request object. The native OAuth marker is intentionally
+  // kept only for the native branch: it is short-lived protocol state needed to
+  // bridge Chrome -> Android, while ordinary browser logins retain Passport's
+  // default session cleanup.
   (req, res, next) => { req._postLoginNext = takePostLoginNext(req, "/home"); next(); },
-  passport.authenticate("google", { failureRedirect: "/login" }),
+  (req, res, next) => {
+    const keepNativeSessionInfo = req.session?.nativeReturn === true;
+    return passport.authenticate("google", {
+      failureRedirect: "/login",
+      keepSessionInfo: keepNativeSessionInfo,
+    })(req, res, next);
+  },
   async (req, res) => {
     req.session.user   = { _id: req.user._id, email: req.user.email, username: req.user.email.split("@")[0] };
     req.session.userId = req.user._id;
@@ -1313,6 +1333,8 @@ app.get(
     // browser logins never set req.session.nativeReturn, so this branch
     // changes nothing about the existing web flow below it.
     if (req.session.nativeReturn) {
+      // The callback middleware above uses keepSessionInfo ONLY when this
+      // native marker existed before Passport regenerated the session.
       const nonce = req.session.nativeNonce;
       // Cleared immediately so a replay of this exact callback (e.g. the
       // browser's back button) cannot mint a second code from stale markers.
@@ -1350,7 +1372,8 @@ app.get(
 // was opened somewhere without the app installed. It authenticates no one,
 // creates no session, and never echoes the code into the page body.
 app.get("/auth/native/return", (req, res) => {
-  res.set("Cache-Control", "no-store");
+  res.set("Cache-Control", "no-store, max-age=0");
+  res.set("Pragma", "no-cache");
   const hadError = typeof req.query.error === "string" && req.query.error.length > 0;
   const rawCode  = typeof req.query.code === "string" && req.query.code.length > 0 ? req.query.code : null;
   const nonce    = typeof req.query.nonce === "string" ? req.query.nonce : "";
@@ -1383,6 +1406,8 @@ app.get("/auth/native/return", (req, res) => {
 // The WebView redemption endpoint — this is the request that actually
 // establishes the authenticated WebView session (Bug 1's fix point).
 app.get("/auth/native/complete", authLimiter, async (req, res) => {
+  res.set("Cache-Control", "no-store, max-age=0");
+  res.set("Pragma", "no-cache");
   const rawCode = typeof req.query.code === "string" ? req.query.code : "";
 
   let result;

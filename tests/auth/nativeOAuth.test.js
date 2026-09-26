@@ -89,9 +89,16 @@ describe("validateNonce", () => {
     assert.equal(validateNonce("n".repeat(NONCE_MAX_LENGTH + 1)), null);
   });
 
-  test("accepts a nonce at exactly the length ceiling", () => {
-    const nonce = "n".repeat(NONCE_MAX_LENGTH);
+  test("accepts a URL-safe nonce at exactly the length ceiling", () => {
+    const nonce = "A".repeat(NONCE_MAX_LENGTH);
     assert.equal(validateNonce(nonce), nonce);
+  });
+
+  test("rejects weak or unsafe nonce formats", () => {
+    assert.equal(validateNonce("short"), null);
+    assert.equal(validateNonce("0123456789abcdef"), "0123456789abcdef");
+    assert.equal(validateNonce("0123456789abcdef+unsafe"), null);
+    assert.equal(validateNonce("0123456789abcdef\n"), null);
   });
 
   test("[bite:type] rejects non-string input", () => {
@@ -466,11 +473,10 @@ describe("/.well-known/assetlinks.json — App Link verification dependency", ()
     assert.match(indexSrc, /AQUA_ANDROID_PACKAGE = "com\.aquiplex\.aqua"/);
   });
 
-  test("the checked-in upload-key fingerprint matches the one verified against app-release.apk", () => {
-    // Verified independently during this audit: `unzip -p app-release.apk
-    // META-INF/*.RSA | keytool -printcert` on the shipped release APK
-    // produced exactly this SHA-256. This test guards against it silently
-    // drifting from the real signing key in a future edit.
+  test("the checked-in upload-key fingerprint matches the supplied Play certificate material", () => {
+    // This is the upload certificate fingerprint supplied with the project.
+    // The Play App Signing certificate is deliberately NOT hardcoded because
+    // the supplied screenshot does not expose the complete value.
     assert.match(
       indexSrc,
       /AQUA_ANDROID_UPLOAD_KEY_SHA256 =\s*\n\s*"15:F7:A9:A8:72:79:D4:39:1F:DE:E5:5A:7E:02:B0:D2:9D:56:57:CB:AC:17:F0:CA:0F:ED:61:F4:B1:40:1C:2B"/,
@@ -496,5 +502,34 @@ describe("/.well-known/assetlinks.json — App Link verification dependency", ()
     assert.match(m[1], /res\.type\("application\/json"\)/);
     assert.match(m[1], /res\.status\(200\)/);
     assert.ok(!/res\.redirect/.test(m[1]), "must never redirect");
+  });
+});
+
+
+describe("native Passport session handoff", () => {
+  test("preserves native session markers across Passport regeneration only for native OAuth", () => {
+    const callbackStart = indexSrc.indexOf('"/auth/google/callback"');
+    const callbackEnd = indexSrc.indexOf('// Normally intercepted by the verified Android App Link', callbackStart);
+    const callbackBlock = indexSrc.slice(callbackStart, callbackEnd);
+
+    assert.match(callbackBlock, /const keepNativeSessionInfo = req\.session\?\.nativeReturn === true/);
+    assert.match(callbackBlock, /keepSessionInfo: keepNativeSessionInfo/);
+    assert.match(callbackBlock, /if \(req\.session\.nativeReturn\)/);
+    assert.match(callbackBlock, /const nonce = req\.session\.nativeNonce/);
+  });
+});
+
+describe("native route hardening", () => {
+  test("asset links emit the Android package and configured Play/upload fingerprints", () => {
+    assert.match(indexSrc, /AQUA_ANDROID_PACKAGE = ["']com\.aquiplex\.aqua["']/);
+    assert.match(indexSrc, /PLAY_APP_SIGNING_SHA256/);
+    assert.match(indexSrc, /SHA256_FINGERPRINT_RE/);
+  });
+
+  test("native return and completion routes are explicitly non-cacheable", () => {
+    const returnBlock = indexSrc.slice(indexSrc.indexOf('app.get("/auth/native/return"'), indexSrc.indexOf('app.get("/auth/native/complete"'));
+    const completeBlock = indexSrc.slice(indexSrc.indexOf('app.get("/auth/native/complete"'));
+    assert.match(returnBlock, /Cache-Control.*no-store/);
+    assert.match(completeBlock, /Cache-Control.*no-store/);
   });
 });

@@ -14,12 +14,12 @@ import { TooltipProvider } from '@/components/ui/tooltip';
  * either that trap or a cross-account leak back with it.
  */
 
-const getAccount = vi.fn();
+const getAccountStatus = vi.fn();
 const logoutSession = vi.fn();
 const clearPersistedAppData = vi.fn();
 
 vi.mock('@/api/account', () => ({
-  getAccount: (...a: unknown[]) => getAccount(...a),
+  getAccountStatus: (...a: unknown[]) => getAccountStatus(...a),
   logoutSession: (...a: unknown[]) => logoutSession(...a),
   clearPersistedAppData: (...a: unknown[]) => clearPersistedAppData(...a),
 }));
@@ -54,7 +54,7 @@ beforeEach(() => {
   useSessionStore.setState({ ...initialSession }, true);
   go = vi.fn();
   sessionNavigation.go = go;
-  getAccount.mockReset().mockResolvedValue(USER_A);
+  getAccountStatus.mockReset().mockResolvedValue({ kind: 'authenticated', account: USER_A });
   logoutSession.mockReset().mockResolvedValue({ ok: true });
   clearPersistedAppData.mockReset();
 });
@@ -86,8 +86,8 @@ describe('the account control', () => {
   });
 
   it('offers a way back in when the session has expired', async () => {
-    // Test 13. GET /api/account 401s → getAccount() resolves null.
-    getAccount.mockResolvedValue(null);
+    // Test 13. GET /api/account 401s → getAccountStatus() resolves 'unauthenticated'.
+    getAccountStatus.mockResolvedValue({ kind: 'unauthenticated' });
     await act(async () => { await useSessionStore.getState().load(); });
     renderMenu();
 
@@ -278,7 +278,7 @@ describe('log out', () => {
 
 describe('after switching accounts', () => {
   it('shows the new user and nothing of the previous one', async () => {
-    getAccount.mockResolvedValue(USER_A);
+    getAccountStatus.mockResolvedValue({ kind: 'authenticated', account: USER_A });
     await act(async () => { await useSessionStore.getState().load(); });
 
     // Whatever User A had loaded (Test 8's subject, checked in depth in
@@ -297,7 +297,7 @@ describe('after switching accounts', () => {
     expect(useSessionStore.getState().account).toBeNull();
 
     // …and the reloaded app resolves User B.
-    getAccount.mockResolvedValue(USER_B);
+    getAccountStatus.mockResolvedValue({ kind: 'authenticated', account: USER_B });
     useSessionStore.setState({ ...initialSession }, true);
     await act(async () => { await useSessionStore.getState().load(); });
 

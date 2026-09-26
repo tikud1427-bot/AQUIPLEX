@@ -28,19 +28,75 @@ export interface DeleteAccountResult {
 
 const jsonHeaders = { 'Content-Type': 'application/json', Accept: 'application/json' };
 
-export async function getAccount(): Promise<AccountInfo | null> {
+/**
+ * The three, and only three, things GET /api/account can mean.
+ *
+ * 'unauthenticated' is an AUTHORITATIVE answer from the server: the session is
+ * genuinely gone (401), or the server explicitly says there is no account. It
+ * is the only kind that may ever cause a signed-in user to be treated as
+ * signed out.
+ *
+ * 'indeterminate' is everything else that isn't a clean 200 with an account:
+ * a network failure, a timeout, a 403/5xx, an unreachable backend. The server
+ * did not say "you are logged out" — it said nothing, or something else
+ * failed — so the caller must not treat this as a logout. A flaky connection
+ * must never look identical to an expired session.
+ */
+export type AccountResult =
+  | { kind: 'authenticated'; account: AccountInfo }
+  | { kind: 'unauthenticated' }
+  | { kind: 'indeterminate'; message: string };
+
+export async function getAccountStatus(): Promise<AccountResult> {
+  let res: Response;
   try {
-    const res = await fetch('/api/account', {
+    res = await fetch('/api/account', {
       credentials: 'same-origin',
       headers: { Accept: 'application/json' },
       cache: 'no-store',
     });
-    if (!res.ok) return null; // logged out / older backend — the tab explains itself
-    const body = (await res.json()) as { success?: boolean; account?: AccountInfo };
-    return body?.account ?? null;
   } catch {
-    return null;
+    // fetch() itself threw: offline, DNS/TLS failure, or the request never
+    // reached a server at all. The server said nothing — not "logged out".
+    return {
+      kind: 'indeterminate',
+      message: "Couldn't reach the server. Check your connection and try again.",
+    };
   }
+
+  // The only authoritative "you are not signed in" answer.
+  if (res.status === 401) return { kind: 'unauthenticated' };
+
+  if (!res.ok) {
+    // 403, 5xx, or anything else: the server answered but did not say the
+    // session is invalid. Treating this as a logout would turn a backend
+    // hiccup into every open tab silently signing itself out.
+    return { kind: 'indeterminate', message: `Server error (HTTP ${res.status}). Please try again.` };
+  }
+
+  try {
+    const body = (await res.json()) as { success?: boolean; account?: AccountInfo };
+    return body?.account
+      ? { kind: 'authenticated', account: body.account }
+      : { kind: 'unauthenticated' };
+  } catch {
+    // 200 with an unparsable body is a server bug, not proof of logout.
+    return { kind: 'indeterminate', message: 'Unexpected response from the server.' };
+  }
+}
+
+/**
+ * Convenience wrapper for call sites that only ever run while already
+ * authenticated and can tolerate collapsing a transient failure into "no
+ * update available" (e.g. refreshing account details in a settings pane).
+ *
+ * Do NOT use this to decide whether to sign someone out — that decision must
+ * go through getAccountStatus() and distinguish 'unauthenticated' from
+ * 'indeterminate'. See sessionStore.ts.
+ */
+export async function getAccount(): Promise<AccountInfo | null> {
+  const result = await getAccountStatus();
+  return result.kind === 'authenticated' ? result.account : null;
 }
 
 /**
@@ -140,23 +196,51 @@ export async function logoutSession(): Promise<LogoutResult> {
 }
 
 /**
- * Remove everything about the signed-in account that this device wrote to disk:
- * the persisted zustand stores ('aqua-ui', 'aqua-settings',
- * 'aqua-conversation-overlay') and every sessionStorage marker.
+ * Every localStorage/sessionStorage key the AQUA SPA itself writes.
  *
- * THIS IS THE WHOLE TEARDOWN FOR A LOGOUT, and deliberately no more. The
- * service worker caches hashed static assets and Google Fonts only — there is
- * no runtimeCaching rule for /api, so no response containing user data is ever
- * stored there. src/test/sessionIsolation.test.ts asserts that against
- * vite.config.ts, so if an API caching rule is ever added, that test fails and
- * whoever adds it has to extend this function.
+ * aquiplex.com is a shared origin — the billing/bundles page
+ * (views/bundles.ejs) writes its own `aqua_goal` / `aqua_bundle_cache` keys
+ * there, and a plain "starts with aqua" prefix match would sweep those up
+ * too. So this is an explicit allowlist, not a prefix: it must name every key
+ * any Aqua module writes, one line per module below, kept in sync by hand.
+ * If you add a new persisted store or sessionStorage marker to the SPA, add
+ * its key here or logout will silently leave it behind.
+ */
+const AQUA_LOCAL_STORAGE_KEYS = [
+  'aqua-ui',                 // stores/uiStore.ts
+  'aqua-settings',           // stores/settingsStore.ts
+  'aqua-conversation-overlay', // stores/conversationStore.ts
+] as const;
+
+const AQUA_SESSION_STORAGE_KEYS = [
+  'aqua-reloaded-for',            // hooks/useVersionGuard.ts
+  'aqua-boundary-reloaded',       // components/feedback/ErrorBoundary.tsx
+  'aqua.understanding.dismissed', // hooks/useUnderstandingGate.ts
+] as const;
+
+/**
+ * Remove everything about the signed-in account that this device wrote to
+ * disk — and ONLY that. THIS IS THE WHOLE TEARDOWN FOR A LOGOUT, deliberately
+ * scoped to Aqua-owned keys: aquiplex.com hosts other platform features on
+ * the same origin (e.g. the bundles/billing page), and logging out of Aqua
+ * must not erase their unrelated local state.
+ *
+ * The service worker caches hashed static assets and Google Fonts only —
+ * there is no runtimeCaching rule for /api, so no response containing user
+ * data is ever stored there. src/test/sessionIsolation.test.ts asserts that
+ * against vite.config.ts, so if an API caching rule is ever added, that test
+ * fails and whoever adds it has to extend this function.
  *
  * Best-effort throughout: a browser that blocks storage must never block the
  * redirect to /login.
  */
 export function clearPersistedAppData(): void {
-  try { localStorage.clear(); } catch { /* storage disabled */ }
-  try { sessionStorage.clear(); } catch { /* storage disabled */ }
+  for (const key of AQUA_LOCAL_STORAGE_KEYS) {
+    try { localStorage.removeItem(key); } catch { /* storage disabled */ }
+  }
+  for (const key of AQUA_SESSION_STORAGE_KEYS) {
+    try { sessionStorage.removeItem(key); } catch { /* storage disabled */ }
+  }
 }
 
 /**

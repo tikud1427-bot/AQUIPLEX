@@ -1,13 +1,16 @@
 apply plugin: 'com.android.application'
 
 android {
+    buildFeatures {
+        buildConfig = true
+    }
     namespace = "com.aquiplex.aqua"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.aquiplex.aqua"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        versionCode 4
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,10 +19,33 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        // Optional release signing for CI/local release builds. The existing
+        // upload key is supplied out-of-band; no private key is committed.
+        release {
+            def storePath = project.findProperty('AQUA_RELEASE_STORE_FILE')
+            def storePasswordValue = project.findProperty('AQUA_RELEASE_STORE_PASSWORD')
+            def keyAliasValue = project.findProperty('AQUA_RELEASE_KEY_ALIAS')
+            def keyPasswordValue = project.findProperty('AQUA_RELEASE_KEY_PASSWORD')
+            if (storePath && storePasswordValue && keyAliasValue && keyPasswordValue) {
+                storeFile file(storePath)
+                storePassword storePasswordValue
+                keyAlias keyAliasValue
+                keyPassword keyPasswordValue
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            def signingConfigured = project.findProperty('AQUA_RELEASE_STORE_FILE') &&
+                    project.findProperty('AQUA_RELEASE_STORE_PASSWORD') &&
+                    project.findProperty('AQUA_RELEASE_KEY_ALIAS') &&
+                    project.findProperty('AQUA_RELEASE_KEY_PASSWORD')
+            if (signingConfigured) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
