@@ -94,6 +94,12 @@ export function assembleContext(candidates, ctx, opts = {}) {
   const slotBudget = buildSlotBudget(cfg.queryPlan, cfg.charBudget);
   const slotUsed = new Map();
 
+  // Why the loop can end with items still in the pool: `limit` reached (they
+  // lost on rank) or nothing left is ELIGIBLE (each is worth less than
+  // `minScore` once its slot situation is priced in). The two are reported
+  // as different reasons — conflating them is how a gate hid inside a
+  // re-ranking for as long as it did.
+  let exhaustedEligible = false;
   while (selected.length < cfg.limit && pool.length) {
     // Effective score for each remaining candidate under the current coverage.
     let bestIdx = -1;
@@ -102,21 +108,33 @@ export function assembleContext(candidates, ctx, opts = {}) {
       const primary = pool[i].entityIds?.[0] ?? null;
       const covered = primary ? (perEntityCount.get(primary) ?? 0) : 0;
       const base = pool[i].selectionScore ?? pool[i].score;
-      let eff = covered >= cfg.perEntitySoftCap ? base * cfg.diversityPenalty : base;
 
+      // What the item is worth BEFORE crowding: its score, adjusted by where
+      // it sits in the slot plan. This — not the diversity-penalised value —
+      // is what `minScore` judges. Diversity is a RE-RANKING (see the comment
+      // above): it may move an item down the order, it may never remove one
+      // that cleared the floor. Judging the penalised value turned a soft
+      // cap into a hard one: in a self-scoped world nearly every fact has the
+      // user as its primary entity, so after two picks every remaining fact
+      // was multiplied by diversityPenalty, fell under `minScore` together,
+      // and was dropped with reason 'diversity' — while 194 of 1600 chars of
+      // budget went unused.
+      let worth = base;
       const slotId = bestSlotForCandidate(pool[i], slotBudget, slotUsed);
       if (slotId) {
         const budget = slotBudget.get(slotId) ?? 0;
         const used = slotUsed.get(slotId) ?? 0;
-        if (used >= budget) eff *= cfg.slotOverBudgetPenalty;
-        else if (isRequiredSlot(cfg.queryPlan, slotId) && used === 0) eff *= cfg.requiredSlotBoost;
+        if (used >= budget) worth *= cfg.slotOverBudgetPenalty;
+        else if (isRequiredSlot(cfg.queryPlan, slotId) && used === 0) worth *= cfg.requiredSlotBoost;
       }
+      if (worth < cfg.minScore) continue;   // not eligible this round
+
+      const eff = covered >= cfg.perEntitySoftCap ? worth * cfg.diversityPenalty : worth;
       if (eff > bestEff) { bestEff = eff; bestIdx = i; }
     }
-    if (bestIdx < 0) break;
+    if (bestIdx < 0) { exhaustedEligible = true; break; }
 
     const c = pool.splice(bestIdx, 1)[0];
-    if (bestEff < cfg.minScore) { dropped.push({ id: c.id, reason: 'diversity', score: round3(bestEff) }); continue; }
 
     // Budget as selection: value must justify the space. A near-empty budget
     // still admits a short, strong item.
@@ -133,7 +151,7 @@ export function assembleContext(candidates, ctx, opts = {}) {
     const primary = c.entityIds?.[0] ?? null;
     if (primary) perEntityCount.set(primary, (perEntityCount.get(primary) ?? 0) + 1);
   }
-  for (const c of pool) dropped.push({ id: c.id, reason: 'limit', score: c.score });
+  for (const c of pool) dropped.push({ id: c.id, reason: exhaustedEligible ? 'below-threshold' : 'limit', score: c.score });
 
   // 3. Render + structured items (PIC-shaped) + observability stats.
   const items = selected.map(c => toItem(c));

@@ -39,6 +39,7 @@
  * neither adds a millisecond to the response the user is waiting on.
  */
 import { defer } from '../core/jobs/jobRegistry.js';
+import { enqueue, queueConfigured as durableQueueConfigured } from '../core/jobs/jobQueue.js';
 import * as Brain from '../brain/index.js';
 import { memoryAfterTurn } from '../memory/engine.js';
 import { getConversation } from '../memory/conversationStore.js';
@@ -83,6 +84,11 @@ const REAL_DEPS = Object.freeze({
   // provider; see the note at the deferred block below.
   understandTurn: Brain.understandTurn,
   e6Enabled: Brain.e6Enabled,
+  // E4/E6 — durable scheduling. With Postgres configured the provider call
+  // runs in the worker (`understanding.turn.v1`), which survives a deploy or
+  // an OOM kill; the in-process path below is only the fallback.
+  enqueueUnderstanding: enqueue,
+  durableQueueAvailable: durableQueueConfigured,
   // E5/PR-6 — the claim shadow projection. Injected so a wiring test can prove
   // the production default rather than a fixture, and so the mode check and the
   // projection stay one seam instead of two things a caller must remember.
@@ -246,13 +252,38 @@ export function runPostTurn({
   d.defer(() => {
     if (!d.e6Enabled()) return undefined;
     const started = Date.now();
-    return Promise.resolve()
-      .then(() => d.understandTurn({ ownerId, conversationId, turn: d.getConversation(conversationId).length, userMessage }))
+    const turn = d.getConversation(conversationId).length;
+
+    // The original in-process path, unchanged. It is now the FALLBACK.
+    const runInProcess = () => Promise.resolve()
+      .then(() => d.understandTurn({ ownerId, conversationId, turn, userMessage }))
       .then(
         result => d.reportE6({ ownerId, conversationId, result, ms: Date.now() - started }),
         error => d.reportE6({ ownerId, conversationId, error, ms: Date.now() - started }),
       )
       .catch(() => { /* fail-open: understanding must never affect the turn */ });
+
+    // DURABLE PATH (blueprint §3.2: understanding leaves the request thread).
+    // Idempotent on (owner, conversation, turn), so a retried post-turn cannot
+    // become two provider calls. If Postgres is not configured, or the enqueue
+    // throws, fall back to in-process rather than losing the turn's
+    // understanding — a queue outage must degrade to the old behaviour, never
+    // to silence. Exactly ONE of the two paths runs for a given turn.
+    if (d.durableQueueAvailable?.() && typeof d.enqueueUnderstanding === 'function') {
+      return Promise.resolve()
+        .then(() => d.enqueueUnderstanding({
+          ownerId,
+          kind: 'understanding.turn.v1',
+          payload: { conversationId, turn, userMessage },
+          idempotencyKey: `understanding.turn.v1:${conversationId}:${turn}`,
+        }))
+        .then(
+          job => d.reportE6({ ownerId, conversationId, scheduled: job ?? { created: true }, ms: Date.now() - started }),
+          () => runInProcess(),
+        )
+        .catch(() => { /* fail-open floor: reporter threw; stay silent (see note above) */ });
+    }
+    return runInProcess();
   });
 
   // Brain Reflection V2 (B5) — on the Mind's reflection cadence, compute a

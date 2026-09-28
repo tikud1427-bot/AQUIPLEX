@@ -48,7 +48,8 @@
     "doctor:deps": "node scripts/dependency-doctor.mjs",
     "test:e8:gate": "node --test src/brain/tests/e8Pipeline.test.js src/brain/tests/queryPlan.test.js src/brain/tests/e8IntegrationGate.test.js",
     "test:e9:contradiction": "node --test src/brain/reflectionV3/contradictionPolicy.test.js",
-    "doctor:e7": "node scripts/e7-doctor.mjs"
+    "doctor:e7": "node scripts/e7-doctor.mjs",
+    "doctor:dlq": "node scripts/dlq-doctor.mjs"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",

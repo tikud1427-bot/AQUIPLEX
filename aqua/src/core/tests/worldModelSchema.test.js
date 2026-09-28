@@ -545,6 +545,11 @@ describe('world model schema — canonical writer only', () => {
       // G4 — purgeOwner must delete across all five tables directly; a purge
       // cascade is not expressible through the narrow repository API.
       'src/account/accountPurge.js',
+      // E7/PR-4 — the canonical graph lane. READ-ONLY (graphLane.test.js pins
+      // that: no write statement in its SQL), an index over edges, never a
+      // second store. Its test seeds edges directly to exercise the walk.
+      'src/core/worldModel/graphLane.js',
+      'src/core/worldModel/graphLane.test.js',
     ];
     const NEEDLE = /aqua_edges\b|aqua_events\b|aqua_lifecycle_transitions\b|aqua_revisions\b|aqua_corrections\b/;
     const offenders = [];

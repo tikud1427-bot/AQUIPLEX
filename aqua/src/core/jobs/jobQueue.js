@@ -41,6 +41,14 @@ export function backoffMs(attempts, capMs = BACKOFF_CAP_MS) {
   return Math.min(capMs, 2 ** n * 1000);
 }
 
+/**
+ * Is there a durable queue to schedule onto? Lets callers above the storage
+ * layer ask WITHOUT importing the pool (the pool has a declared-consumers guard).
+ */
+export function queueConfigured() {
+  return isConfigured();
+}
+
 async function pool() {
   if (!isConfigured()) throw new Error('DATABASE_URL is not set — the job queue has nowhere to go');
   return getPool();
@@ -182,6 +190,28 @@ export async function deadLetters(limit = 50) {
     `SELECT job_id, owner_id, kind, attempts, last_error, updated_at
        FROM aqua_jobs WHERE state = 'dead' ORDER BY updated_at DESC LIMIT $1`, [limit]);
   return rows;
+}
+
+/**
+ * E4/PR-7 — operator action: give one dead job a fresh retry budget.
+ *
+ * Reversible and non-destructive (L5): the row is kept, `last_error` is kept as
+ * the record of why it died, only state/attempts/run_after change. It requeues
+ * a job ONLY while it is `dead` — a running or done job is never touched, so a
+ * double-click cannot run the same work twice. Idempotent consumers (G2) make
+ * the re-run itself safe.
+ * @returns {Promise<{ requeued: boolean }>}
+ */
+export async function requeueDead(jobId) {
+  const id = Number(jobId);
+  if (!Number.isInteger(id) || id <= 0) return { requeued: false };
+  const p = await pool();
+  const { rowCount } = await p.query(
+    `UPDATE aqua_jobs
+        SET state = 'queued', attempts = 0, run_after = now(),
+            claimed_by = NULL, updated_at = now()
+      WHERE job_id = $1 AND state = 'dead'`, [id]);
+  return { requeued: (rowCount ?? 0) === 1 };
 }
 
 /** G4. Account deletion reaches the queue like everything else. */

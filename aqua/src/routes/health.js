@@ -2,6 +2,10 @@ import express from 'express';
 import { getHealthReport, getUptime } from '../core/health.js';
 import { getRegistrySnapshot }        from '../providers/modelRegistry.js';
 import { getMetrics, getRecentLogs }  from '../core/observability.js';
+import { renderPrometheus }           from '../core/metricsExposition.js';
+import { getCostMetrics }             from '../core/costAccounting.js';
+import { queueStats, deadLetters, queueConfigured as pgConfigured } from '../core/jobs/jobQueue.js';
+import { evaluateDlq }                from '../core/jobs/dlqPolicy.js';
 import { getStoreStats }              from '../memory/conversationStore.js';
 import { getMemoryStats }             from '../memory/longTermMemory.js';
 import { getProjectStats }            from '../project/workspaceManager.js';
@@ -37,6 +41,23 @@ router.get('/', (req, res) => {
     // material), circuit breakers, cache hit/miss, and effective config.
     search:  getSearchHealth(),
   });
+});
+
+// E12 — Prometheus scrape target. Same exposure level as GET / above (which
+// already returns getMetrics()); adds cost counters and durable-queue / DLQ
+// state. Queue state is fail-open: with no Postgres, or a DB error, the scrape
+// still succeeds with the in-process metrics rather than 500-ing the monitor.
+router.get('/metrics', async (req, res) => {
+  let queue = null, dlq = null;
+  if (pgConfigured()) {
+    try {
+      const [stats, dead] = await Promise.all([queueStats(), deadLetters(200)]);
+      queue = stats;
+      dlq = evaluateDlq({ stats, dead });
+    } catch { /* fail open — see above */ }
+  }
+  res.type('text/plain; version=0.0.4; charset=utf-8')
+     .send(renderPrometheus({ metrics: getMetrics(), cost: getCostMetrics(), queue, dlq }));
 });
 
 router.get('/uptime', (req, res) => {

@@ -671,7 +671,12 @@ export async function understandTurn(
 }
 
 export function e6CommitEnabled() {
-  return String(process.env.AQUA_E6_COMMIT ?? 'off').toLowerCase() === 'on';
+  // Follows AQUA_E6 unless set explicitly: once understanding is ON it should
+  // reach the canonical world model by default, or the loop writes nowhere.
+  // `AQUA_E6_COMMIT=off` is the explicit rollback. With AQUA_E6 off (today's
+  // production state) this is still 'off' — no behaviour change until E6 is
+  // deliberately promoted past its gate.
+  return String(process.env.AQUA_E6_COMMIT ?? (e6Enabled() ? 'on' : 'off')).toLowerCase() === 'on';
 }
 
 function deterministicUuid(seed) {

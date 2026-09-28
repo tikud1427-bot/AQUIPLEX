@@ -91,6 +91,7 @@ const e6 = {
   turns: 0,        // deferred blocks that actually ran (flag on, input present)
   failures: 0,     // understandTurn threw or rejected — NOT a zero-claim turn
   skipped: 0,      // ran, returned null (no owner / no message)
+  scheduled: 0,    // handed to the durable queue (E4) — work happens in the worker, not here
   emptyTurns: 0,   // completed cleanly and admitted nothing
   segments: 0, gated: 0, called: 0, cached: 0, errors: 0,
   parsed: 0, admitted: 0, proposed: 0, discarded: 0,
@@ -107,9 +108,19 @@ const e6 = {
  * @param {object?} args.result   what `understandTurn` returned (null if it refused)
  * @param {Error?}  args.error    what it threw, if it threw
  */
-export function logE6Turn({ ownerId = null, conversationId = null, result = null, error = null, ms = 0 } = {}) {
+export function logE6Turn({ ownerId = null, conversationId = null, result = null, error = null, ms = 0, scheduled = null } = {}) {
   try {
     const at = `owner=${ownerId ?? '?'} conv=${conversationId ?? '?'} ms=${Math.round(ms)}`;
+
+    // A QUEUED JOB IS NOT A SKIP. The provider call happens later, in the
+    // worker, which reports its own `result` line. Counting this as `skipped`
+    // (or as a turn) would make the dashboard read "E6 ran and found nothing"
+    // for work that has not started — the 0/0-as-0.0 confusion again.
+    if (scheduled) {
+      e6.scheduled += 1;
+      console.log(`[E6] ${at} scheduled=on job=${scheduled.created === false ? 'duplicate' : 'created'}`);
+      return;
+    }
 
     // A FAILURE IS A DIFFERENT LINE, NOT A MISSING ONE. Distinguishing "found
     // nothing" from "never got to look" is the whole point of this function.

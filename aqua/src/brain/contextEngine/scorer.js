@@ -170,7 +170,16 @@ function tokenTouch(candidate, tokenSet) {
 export function tokensOf(text) {
   return new Set(
     [...String(text ?? '').toLowerCase().matchAll(/[a-z0-9][\w\-.]{1,}/g)]
-      .map(m => m[0])
+      // The class above keeps INTERNAL `.` and `-` ("co-founder", "node.js",
+      // "v1.2") but it also swallows a sentence-final period. Facts are
+      // sentences ("Chhanda is my co-founder.") and queries are not
+      // ("Who is my co-founder?"), so without this trim the LAST word of every
+      // stored statement is "co-founder." here and "co-founder" there — never
+      // equal. That silently zeroed user_focus and semantic_similarity (0.36 of
+      // the total weight) on exactly the word that usually carries the answer,
+      // leaving only the confidence/source priors to rank — which put the same
+      // high-confidence document facts on top of every query.
+      .map(m => m[0].replace(/[.\-]+$/, ''))
       .filter(t => t.length > 2),
   );
 }

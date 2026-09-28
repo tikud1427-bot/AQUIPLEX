@@ -341,6 +341,8 @@ describe('claim schema — writers are declared, not accidental', () => {
       'src/core/worldModel/claimRetrievalBridge.test.js',
       'src/core/worldModel/embeddingLifecycle.test.js',
       'src/core/worldModel/embeddingRepository.test.js',
+      // E7/PR-4 — seeds claims only to satisfy aqua_edges' claim FK.
+      'src/core/worldModel/graphLane.test.js',
     ];
     const stripComments = (src) => src
       .replace(/\/\*[\s\S]*?\*\//g, '')

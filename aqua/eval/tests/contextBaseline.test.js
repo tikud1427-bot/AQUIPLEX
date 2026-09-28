@@ -23,17 +23,26 @@ const FLOOR = load('retrieval-core.v1.json');
 const CE = load('context-core.v1.json');
 
 describe('the Context Engine earns nothing over the lane it wraps', () => {
-  test('RECORDED: the CE is WORSE than its own floor on nine of eleven metrics', () => {
-    // Not a subtlety. The layer that decides what reaches the model loses
-    // answers the layer beneath it already found.
-    for (const m of ['recall_at_8', 'mrr', 'ndcg_at_8', 'top1_kind',
-      'recall_direct', 'recall_superseded', 'recall_temporal', 'recall_negation', 'recall_category']) {
-      assert.ok(CE[m] < FLOOR[m], `${m}: CE ${CE[m]} is no longer below floor ${FLOOR[m]} — re-read the note`);
+  test('RECORDED: after the diversity-gate fix the CE EQUALS the floor on recall, on every category', () => {
+    // Before Sep 28 the CE was worse than its floor on nine of eleven metrics
+    // (recall_at_8 0.6786 vs 0.7560): assembler.js applied the diversity
+    // penalty BEFORE the minScore gate, so in a self-scoped world every fact
+    // after the second fell under the floor together and was dropped. Fixed;
+    // see src/brain/tests/contextSelfCrowding.test.js and the baseline note.
+    for (const m of ['recall_at_8', 'recall_direct', 'recall_superseded',
+      'recall_temporal', 'recall_negation', 'recall_category', 'recall_selfword']) {
+      assert.equal(CE[m], FLOOR[m], `${m}: CE ${CE[m]} vs floor ${FLOOR[m]} — parity moved, re-read the note`);
     }
   });
 
-  test('RECORDED: the only thing it buys is three noise lines', () => {
-    assert.ok(CE.noise_lines < FLOOR.noise_lines);
+  test('RECORDED: it is still slightly BEHIND on ordering, and carries two more noise lines', () => {
+    // Parity on recall is the ceiling the note already recorded for a CE that
+    // re-ranks what the floor hands it. Ordering is worse because the floor's
+    // own relevance score is not one of the ten dimensions.
+    for (const m of ['mrr', 'ndcg_at_8', 'top1_kind']) {
+      assert.ok(CE[m] < FLOOR[m], `${m}: CE ${CE[m]} no longer below floor ${FLOOR[m]} — the floor-relevance signal may have landed; re-run the separation measurement`);
+    }
+    assert.ok(CE.noise_lines > FLOOR.noise_lines);
     assert.equal(CE.unknown_honesty, FLOOR.unknown_honesty);
   });
 
@@ -68,6 +77,9 @@ describe('the Context Engine earns nothing over the lane it wraps', () => {
     // met with evidence rather than tried a fifth time.
     assert.ok(CE.recall_at_8 <= FLOOR.recall_at_8,
       'the CE now beats its floor on recall — re-run the separation measurement and rewrite this finding');
+    // NOTE (Sep 28): the four-configuration paragraph above predates the
+    // diversity-gate fix. Shipped, the CE now sits at recall 0.7560 / noise 18,
+    // the same ceiling reached by the 'floor exempt' configuration.
   });
 });
 
