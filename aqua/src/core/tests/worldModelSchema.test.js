@@ -530,9 +530,22 @@ describe('purge — an owner can be fully erased from all five tables', () => {
 
 // ── Inertness ────────────────────────────────────────────────────────────────
 
-describe('world model schema — nothing uses it yet', () => {
-  test('no production module references the five new tables — schema only, same as PR-1', () => {
-    const ALLOWED = [];
+describe('world model schema — canonical writer only', () => {
+  test('only the declared canonical writer and purge path reference the five tables', () => {
+    // Was "nothing uses it yet" at PR-1 (schema only, ALLOWED = []). PR-2 shipped
+    // the canonical repository on schedule, which is why this went red — the
+    // guard did its job. Updated deliberately (Blueprint L: "update the
+    // status/documentation instead of reverting" a superseding implementation)
+    // rather than weakened: the invariant is now "declared writer(s) only", not
+    // "nothing", and a THIRD module showing up here should still fail loudly.
+    const ALLOWED = [
+      // E5 — the canonical World Model writer/reader for lifecycle, edges,
+      // events, revisions and corrections.
+      'src/core/worldModel/worldModelRepository.js',
+      // G4 — purgeOwner must delete across all five tables directly; a purge
+      // cascade is not expressible through the narrow repository API.
+      'src/account/accountPurge.js',
+    ];
     const NEEDLE = /aqua_edges\b|aqua_events\b|aqua_lifecycle_transitions\b|aqua_revisions\b|aqua_corrections\b/;
     const offenders = [];
     const walk = (dir) => {
@@ -547,7 +560,7 @@ describe('world model schema — nothing uses it yet', () => {
     walk(path.join(ROOT, 'src'));
     const undeclared = offenders.filter(f => !ALLOWED.includes(f.split(path.sep).join('/')));
     assert.deepEqual(undeclared, [],
-      'a module already writes to the new tables — this PR was meant to ship the shape only');
+      'an undeclared module touches the world-model tables — add it to ALLOWED on purpose, or do not');
   });
 
   test('every index in 0008 leads with owner_id — L19 is structural, not conventional', () => {

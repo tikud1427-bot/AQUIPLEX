@@ -34,6 +34,7 @@ import { resolveOwner }                          from '../memory/engine.js';
 import { ingestFiles }                           from '../files/fileEngine.js';
 import { observeIngest }                         from '../understanding/observeIngest.js';
 import { listParsers }                           from '../files/parserRegistry.js';
+import { ok, fail, ErrorCodes }                  from './envelope.js';
 
 const router = express.Router();
 
@@ -66,16 +67,12 @@ router.post('/', async (req, res) => {
   const { files, conversationId: requestedConversationId, workspaceName } = req.body ?? {};
 
   if (!Array.isArray(files) || !files.length) {
-    return res.status(400).json({
-      success: false,
-      error:   'Body must include "files": [{ name, content }] with base64 content.',
-    });
+    return fail(res, ErrorCodes.BAD_REQUEST,
+      'Body must include "files": [{ name, content }] with base64 content.');
   }
   if (files.length > MAX_FILES_PER_UPLOAD) {
-    return res.status(400).json({
-      success: false,
-      error:   `Too many files in one upload (${files.length} > ${MAX_FILES_PER_UPLOAD}). Zip the folder instead — archives ingest as a full workspace.`,
-    });
+    return fail(res, ErrorCodes.BAD_REQUEST,
+      `Too many files in one upload (${files.length} > ${MAX_FILES_PER_UPLOAD}). Zip the folder instead — archives ingest as a full workspace.`);
   }
 
   // Phase 0 (audit F4) — write-side IDOR guard. An EXISTING conversation may
@@ -139,15 +136,19 @@ router.post('/', async (req, res) => {
 
   const anyReady = results.some(r => r.status === 'ready') || !!workspacePayload;
 
-  res.status(anyReady ? 200 : 422).json({
-    success: anyReady,
+  // Byte-compatible with pre-V1 (+ marks additive): `code` is new on the
+  // failure branch only, and only because nothing ever read it before —
+  // adding a field a client never checked cannot break that client.
+  const payload = {
     conversationId,
     isNewConversation,
     results,
     ...(workspacePayload ? { workspace: workspacePayload } : {}),
     attachments: getAttachments(conversationId).map(serializeAttachment),
-    ...(anyReady ? {} : { error: 'No file in the upload could be processed — see per-file results.' }),
-  });
+  };
+  if (anyReady) return ok(res, payload);
+  return fail(res, ErrorCodes.UNPROCESSABLE,
+    'No file in the upload could be processed — see per-file results.', payload);
 });
 
 // ── GET /upload/formats ───────────────────────────────────────────────────────

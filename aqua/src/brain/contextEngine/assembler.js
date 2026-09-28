@@ -60,10 +60,20 @@ export function assembleContext(candidates, ctx, opts = {}) {
   const cfg = { ...DEFAULTS, ...opts };
   const started = Date.now();
 
-  // 1. Score every candidate on all ten dimensions.
+  // 1. Score every candidate on all ten dimensions, then apply a lifecycle
+  // adjustment (opt-in via an explicit `validTo` key) so a superseded fact
+  // never outranks its current replacement on tied dimension scores alone —
+  // the ten dimensions have no sense of "is this still true", only "is this
+  // relevant". Candidates that don't declare `validTo` are untouched.
   const scored = candidates.map(c => {
     const { score, dimensions } = scoreCandidate(c, ctx);
-    return { ...c, score, selectionScore: Number.isFinite(c.selectionScore) ? c.selectionScore : score, dimensions };
+    const lifecycle = lifecycleInfo(c);
+    const adjusted = lifecycle ? round3(score * lifecycle.penalty) : score;
+    return {
+      ...c, score: adjusted,
+      selectionScore: Number.isFinite(c.selectionScore) ? c.selectionScore : adjusted,
+      dimensions, lifecycleLabel: lifecycle?.label ?? null,
+    };
   });
 
   // 2. Select with diversity + budget as actual constraints.
@@ -217,7 +227,8 @@ function renderItemLine(c) {
     return `• ${c.timestamp ? `[${c.timestamp}] ` : ''}${String(c.text).slice(0, 120)}${slots}`;
   }
   const cite = c.citations?.[0] ? ` [${c.citations[0]}]` : '';
-  const flags = [c.trusted && 'trusted', c.disputed && 'disputed — treat as contested', c.stale && 'stale']
+  const flags = [c.trusted && 'trusted', c.disputed && 'disputed — treat as contested', c.stale && 'stale',
+    c.lifecycleLabel && `lifecycle ${c.lifecycleLabel}`]
     .filter(Boolean).join(', ');
   const via = c.via ? `; via ${c.via}` : '';
   return `• ${c.text}${cite} (confidence ${fmt(c.confidence)}${flags ? `; ${flags}` : ''}${via})${slots}`;
@@ -289,6 +300,21 @@ function toItem(c) {
 }
 
 // ── small utils ──────────────────────────────────────────────────────────────
+
+/**
+ * Opt-in lifecycle adjustment: only candidates that explicitly declare a
+ * `validTo` (even `null`) participate — everything else renders exactly as
+ * before. `validTo: null` means "still open" (current); a `validTo` in the
+ * past means a later fact superseded this one and it should rank behind it
+ * on tied relevance, never ahead of it.
+ */
+function lifecycleInfo(c) {
+  if (!Object.prototype.hasOwnProperty.call(c, 'validTo')) return null;
+  if (c.validTo == null) return { label: 'current', penalty: 1 };
+  const validTo = new Date(c.validTo).getTime();
+  if (Number.isFinite(validTo) && validTo < Date.now()) return { label: 'superseded', penalty: 0.5 };
+  return { label: 'current', penalty: 1 };
+}
 
 function tally(arr) {
   const out = {};

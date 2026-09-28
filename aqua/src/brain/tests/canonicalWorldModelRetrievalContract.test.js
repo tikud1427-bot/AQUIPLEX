@@ -24,7 +24,17 @@ describe('canonical World Model retrieval closure', () => {
     assert.match(src, /Canonical World Model candidate/);
     assert.match(src, /deps\.canonicalClaimsById/);
     assert.match(src, /canonical\.statementText/);
-    assert.match(src, /canonical\.state === 'superseded'/);
+    assert.match(src, /canonical\.state === 'archived'/);
+  });
+
+  test('a superseded canonical claim follows the PIC currency rule, not a blanket ban', () => {
+    // Mirrors pic/retrievalIntelligence.js's "supersession is not unconditional
+    // suppression": a superseded claim must not answer a present-tense
+    // question, but IS the right answer to a retrospective one. This lane
+    // used to drop every superseded claim unconditionally — a regression
+    // relative to the legacy lane it is meant to replace.
+    const src = read('brain/contextEngine/index.js');
+    assert.match(src, /canonical\.state === 'superseded' && !\(shape\.currency === 'past' \|\| shape\.polarity === 'negated'\)/);
   });
 
   test('small canonical corpora bypass the legacy 60-candidate dense gate', () => {

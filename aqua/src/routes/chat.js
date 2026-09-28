@@ -106,6 +106,7 @@ import { editArtifact } from '../artifacts/editEngine.js';
 import { publicManifest, composeArtifactEditSummary } from '../artifacts/engine.js';
 import { listArtifacts as listStoredArtifacts } from '../artifacts/artifactStore.js';
 import '../artifacts/engine.js';               // side-effect: registers the 'artifact' agent on load (Artifact Engine P1)
+import { ErrorCodes } from './envelope.js';
 
 const router = express.Router();
 
@@ -957,7 +958,7 @@ router.post('/', async (req, res) => {
   const requestedId = req.body?.conversationId ?? null;
   if (requestedId && conversationExists(requestedId)
       && !canAccessConversation(req.aquaUserId ?? null, requestedId)) {
-    return res.status(404).json({ success: false, requestId, error: 'Conversation not found' });
+    return res.status(404).json({ success: false, code: ErrorCodes.NOT_FOUND, requestId, error: 'Conversation not found' });
   }
   const { id: conversationId, isNew } = getOrCreateConversation(requestedId, {
     userAgent: req.headers['user-agent']?.slice(0, 80),
@@ -974,6 +975,7 @@ router.post('/', async (req, res) => {
         success: false,
         requestId,
         conversationId,
+        code: ErrorCodes.BAD_REQUEST,
         error: 'message is required and must be a non-empty string',
       });
     }
@@ -1159,6 +1161,7 @@ router.post('/', async (req, res) => {
     console.error(`[CHAT] → HTTP ${status} retryable=${retryable} type=${err?.type ?? 'n/a'} req=${requestId}`);
     return res.status(status).json({
       success:        false,
+      code:           retryable ? ErrorCodes.UNAVAILABLE : ErrorCodes.INTERNAL,
       requestId,
       conversationId,
       error:          err?.message ?? 'Internal server error',
@@ -1179,7 +1182,7 @@ router.post('/stream', async (req, res) => {
   const requestedId = req.body?.conversationId ?? null;
   if (requestedId && conversationExists(requestedId)
       && !canAccessConversation(req.aquaUserId ?? null, requestedId)) {
-    return res.status(404).json({ success: false, requestId, error: 'Conversation not found' });
+    return res.status(404).json({ success: false, code: ErrorCodes.NOT_FOUND, requestId, error: 'Conversation not found' });
   }
   const { id: conversationId, isNew } = getOrCreateConversation(requestedId, {
     userAgent: req.headers['user-agent']?.slice(0, 80),
@@ -1195,6 +1198,7 @@ router.post('/stream', async (req, res) => {
       success: false,
       requestId,
       conversationId,
+      code: ErrorCodes.BAD_REQUEST,
       error: 'message is required and must be a non-empty string',
     });
   }

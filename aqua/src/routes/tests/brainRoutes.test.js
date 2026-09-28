@@ -25,6 +25,7 @@ import os from 'os';
 import path from 'path';
 import express from 'express';
 import { flagReport } from '../../core/flags.js';
+import { ErrorCodes } from '../envelope.js';
 
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-brain-routes-'));
 process.env.AQUA_DATA_DIR = TMP;
@@ -106,6 +107,7 @@ test('OWNER: no session and no conversationId → 400 on every owned endpoint', 
     const { status, body } = await req(p);
     assert.equal(status, 400, `${p} should require an owner`);
     assert.equal(body.success, false);
+    assert.equal(body.code, ErrorCodes.BAD_REQUEST);
     assert.match(body.error, /No owner/);
   }
 });
@@ -141,7 +143,7 @@ test('METRICS: needs no owner and reports live flag state', async () => {
   // operator happened to have exported — so `AQUA_SELF_ENTITY=on npm test`
   // failed against completely unmodified code, which makes a red result
   // uninformative exactly when someone is testing a rollout.
-  const FLAG_KEYS = flagReport().map(f => f.name);
+  const FLAG_KEYS = flagReport().map(f => f.name).sort();
   const saved = Object.fromEntries(FLAG_KEYS.map(k => [k, process.env[k]]));
   const restore = () => {
     for (const k of FLAG_KEYS) {
@@ -274,10 +276,12 @@ test('DETAIL: mind-only ids containing a slash work via the query form', async (
 test('DETAIL: unknown id → 404 with flags, missing id → 400', async () => {
   const missing = await req('/brain/entity', { user: 'alice' });
   assert.equal(missing.status, 400);
+  assert.equal(missing.body.code, ErrorCodes.BAD_REQUEST);
 
   const unknown = await req('/brain/entity?id=ent:name:nope', { user: 'alice' });
   assert.equal(unknown.status, 404);
   assert.equal(unknown.body.success, false);
+  assert.equal(unknown.body.code, ErrorCodes.NOT_FOUND);
   assert.ok(unknown.body.flags, 'a 404 still reports flag state — it may BE the explanation');
 });
 

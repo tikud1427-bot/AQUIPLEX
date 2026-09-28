@@ -37,7 +37,8 @@ describe('envelope.js — fail()', () => {
     const cases = [
       [ErrorCodes.BAD_REQUEST, 400], [ErrorCodes.UNAUTHORIZED, 401],
       [ErrorCodes.FORBIDDEN, 403], [ErrorCodes.NOT_FOUND, 404],
-      [ErrorCodes.CONFLICT, 409], [ErrorCodes.INTERNAL, 500],
+      [ErrorCodes.CONFLICT, 409], [ErrorCodes.UNPROCESSABLE, 422],
+      [ErrorCodes.UNAVAILABLE, 503], [ErrorCodes.INTERNAL, 500],
     ];
     for (const [code, status] of cases) {
       const res = mockRes();

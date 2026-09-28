@@ -80,6 +80,17 @@ let compared = 0;
 
 for (const file of readdirSync(SUITES).filter(f => f.endsWith('.suite.mjs')).sort()) {
   const suite = (await import(pathToFileURL(path.join(SUITES, file)).href)).default;
+  // Not every `.suite.mjs` file is a gate-compatible suite — some (e.g.
+  // reflection-lifecycle-integration.suite.mjs) are dependency-free
+  // integration checks meant to be run directly (`node eval/suites/<file>`),
+  // documented that way, and share the directory/extension for organization
+  // only. Reported and skipped, never a crash that takes the rest of the
+  // gate run down with it (L13: a gate that fails without saying why is
+  // indistinguishable from a lane that never ran).
+  if (!suite || typeof suite.id !== 'string') {
+    console.log(`\n── gate: ${file} ──\n   not a gate-compatible suite module (no default export with an id) — skipped, not gated. Run it directly if it's meant to be a standalone check.`);
+    continue;
+  }
   const baselinePath = path.join(BASELINES, `${suite.id}.v1.json`);
 
   if (NOT_GATED.has(suite.id)) {

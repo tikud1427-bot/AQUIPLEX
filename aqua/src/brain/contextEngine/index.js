@@ -307,7 +307,7 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
   //     the floor. Reach is preserved: a fact the query has real affinity for
   //     still arrives, it just has to be about the question.
   const shape = analyseQuestion(query);
-  if (enabledLanes && !enabledLanes.has('graph')) return addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowed);
+  if (enabledLanes && !enabledLanes.has('graph')) return addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowed, shape);
   const entityTypes = new Map();
   for (const n of G.nodesByType(ownerId, 'entity')) {
     const t = n?.data?.entityType;
@@ -360,7 +360,7 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
   // Dense is a genuine proposal lane in production as well as in the
   // lane-isolated E7 harness. This is what lets dense retrieval recover facts
   // the PIC lexical floor never admitted, while preserving canonical fact ids.
-  const withDense = addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowed);
+  const withDense = addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowed, shape);
   return withDense.map(c => ({
     ...c,
     lanes: Array.from(new Set([...(c.lanes ?? []), laneForCandidate(c)])),
@@ -377,7 +377,7 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
  * which floor/reach lanes are admitted, while dense remains a real proposal
  * source when enabled.
  */
-function addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowed) {
+function addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowed, shape) {
   if (!laneAllowed('dense')) return [...byId.values()];
   const ES = deps.evidenceStore;
   const semanticScores = opts.semanticScores;
@@ -423,7 +423,13 @@ function addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowe
     // The canonical UUID is the semantic identity and the repository supplies
     // the authoritative statement/provenance projection.
     const canonical = deps.canonicalClaimsById?.get(String(factId)) ?? null;
-    if (!canonical || canonical.state === 'superseded' || canonical.state === 'archived') continue;
+    if (!canonical || canonical.state === 'archived') continue;
+    // Same rule the PIC lane already enforces (retrievalIntelligence.js):
+    // supersession is not unconditional suppression. A superseded claim must
+    // not answer a present-tense question, but IS the answer to a question
+    // about the past — a blanket exclusion here would make the canonical
+    // lane less honest than the legacy lane it's meant to replace.
+    if (canonical.state === 'superseded' && !(shape.currency === 'past' || shape.polarity === 'negated')) continue;
     byId.set(key, normFact(String(factId), canonical.statementText, {
       confidence: canonical.confidence,
       citations: canonical.evidence ?? [],

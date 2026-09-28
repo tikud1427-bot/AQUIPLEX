@@ -57,6 +57,7 @@ import { getLedger } from '../pic/picStore.js';
 import * as Brain from '../brain/index.js';
 import { selfEntityEnabled } from '../brain/identity/selfEntity.js';
 import { flagReport } from '../core/flags.js';
+import { ErrorCodes } from './envelope.js';
 
 const router = express.Router();
 
@@ -74,6 +75,7 @@ function requireOwner(req, res) {
   if (!ownerId) {
     res.status(400).json({
       success: false,
+      code: ErrorCodes.BAD_REQUEST,
       error: 'No owner (no session and no ?conversationId)',
     });
     return null;
@@ -188,7 +190,7 @@ function guarded(handler) {
       handler(req, res);
     } catch (err) {
       console.error(`[BRAIN_API] ${req.method} ${req.path} failed:`, err?.stack ?? err?.message ?? err);
-      res.status(500).json({ success: false, error: err?.message ?? 'Internal error' });
+      res.status(500).json({ success: false, code: ErrorCodes.INTERNAL, error: err?.message ?? 'Internal error' });
     }
   };
 }
@@ -274,7 +276,7 @@ function entityDetail(req, res) {
 
   const id = String(req.params.id ?? req.query.id ?? '').trim();
   if (!id) {
-    return res.status(400).json({ success: false, error: 'id is required (?id=<entityId>)' });
+    return res.status(400).json({ success: false, code: ErrorCodes.BAD_REQUEST, error: 'id is required (?id=<entityId>)' });
   }
 
   const detail = Brain.describeEntity(ownerId, id, {
@@ -286,6 +288,7 @@ function entityDetail(req, res) {
   if (!detail) {
     return res.status(404).json({
       success: false,
+      code: ErrorCodes.NOT_FOUND,
       error: `Unknown entity: ${id}`,
       flags: flagState(),
     });

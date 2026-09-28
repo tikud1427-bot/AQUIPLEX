@@ -3,12 +3,33 @@
  * Blueprint E5/PR-3 · D2, L2 (the claim is the only atom), L9 (every write has
  * an actor), L19 (per-owner isolation is structural)
  *
- * THE ONE WRITER.
+ * THE ORIGINAL ONE WRITER — since joined by a second, both intentionally
+ * gated off by default.
  *
- * Every claim that ever exists is created here. Not because a facade is tidy,
- * but because the alternative is what the audit found: three semantic stores
- * with three write paths, and the reason nobody can say what AQUA believes is
- * that it depends which one you ask.
+ * This is where `AQUA_CLAIMS_SHADOW`'s parity-projection path (via
+ * shadowProjector.js → backfill.js → recordClaim below) still lands. It is
+ * NOT the only writer to aqua_claims/aqua_entities anymore: E6's canonical
+ * commit path (worldModelRepository.js, gated separately behind AQUA_E6 AND
+ * AQUA_E6_COMMIT — both also off by default) is more complete — it wires the
+ * write into the same transaction as entity upsert, lifecycle transitions,
+ * revisions and the outbox, none of which recordClaim below produces.
+ * commitPlan.js's own docstring documents why the canonical path doesn't
+ * call recordClaim: it isn't transactional, and it auto-registers unknown
+ * predicates without review.
+ *
+ * That makes this module's write functions (recordClaim, attachEvidence,
+ * recomputeCorroboration, supersede) a deliberate, still-gated, pre-E6
+ * migration bridge — not dead code, and not a bug to "fix" by picking one.
+ * Both paths are correctly off by default pending their own promotion bar
+ * (E6's negation gate; the shadow path's parity report "boring for a long
+ * time"). `purgeOwner` below is the one function every live caller
+ * (accountPurge.js) actually uses today, regardless of which path is active,
+ * because a purge must clear this table no matter which one wrote to it.
+ *
+ * Every claim written through THIS module happens here. Not because a facade
+ * is tidy, but because the alternative is what the audit found: three
+ * semantic stores with three write paths, and the reason nobody can say what
+ * AQUA believes is that it depends which one you ask.
  *
  * WHAT THIS MODULE REFUSES TO DO, AND WHY EACH REFUSAL IS LOAD-BEARING
  * -------------------------------------------------------------------

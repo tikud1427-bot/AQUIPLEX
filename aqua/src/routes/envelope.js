@@ -25,21 +25,25 @@
  */
 
 export const ErrorCodes = Object.freeze({
-  BAD_REQUEST:  'bad_request',
-  UNAUTHORIZED: 'unauthorized',
-  FORBIDDEN:    'forbidden',
-  NOT_FOUND:    'not_found',
-  CONFLICT:     'conflict',
-  INTERNAL:     'internal',
+  BAD_REQUEST:   'bad_request',
+  UNAUTHORIZED:  'unauthorized',
+  FORBIDDEN:     'forbidden',
+  NOT_FOUND:     'not_found',
+  CONFLICT:      'conflict',
+  UNPROCESSABLE: 'unprocessable',
+  UNAVAILABLE:   'unavailable',
+  INTERNAL:      'internal',
 });
 
 const STATUS_FOR_CODE = Object.freeze({
-  [ErrorCodes.BAD_REQUEST]:  400,
-  [ErrorCodes.UNAUTHORIZED]: 401,
-  [ErrorCodes.FORBIDDEN]:    403,
-  [ErrorCodes.NOT_FOUND]:    404,
-  [ErrorCodes.CONFLICT]:     409,
-  [ErrorCodes.INTERNAL]:     500,
+  [ErrorCodes.BAD_REQUEST]:   400,
+  [ErrorCodes.UNAUTHORIZED]:  401,
+  [ErrorCodes.FORBIDDEN]:     403,
+  [ErrorCodes.NOT_FOUND]:     404,
+  [ErrorCodes.CONFLICT]:      409,
+  [ErrorCodes.UNPROCESSABLE]: 422,
+  [ErrorCodes.UNAVAILABLE]:   503,
+  [ErrorCodes.INTERNAL]:      500,
 });
 
 /** Success envelope. `data` is spread onto the envelope, matching the

@@ -101,6 +101,23 @@ describe('db pool — inert by default', () => {
       // degrades to off carrying a stated reason, rather than throwing (L11) or
       // going quiet (L13). It reads availability only; it writes nothing.
       'src/core/claims/shadowMode.js',
+      // E5 canonical World Model — the central owner-scoped write/read path.
+      'src/core/worldModel/worldModelRepository.js',
+      // E7 — dense retrieval lane: production claim embeddings.
+      'src/core/worldModel/embeddingRepository.js',
+      // E7 — canonical claim retrieval bridge (lexical/dense/graph fan-in) and its co-located test.
+      'src/core/worldModel/claimRetrievalBridge.js',
+      'src/core/worldModel/claimRetrievalBridge.test.js',
+      // E4/PR-3 — durable job queue backing the transactional outbox/worker.
+      'src/core/jobs/jobQueue.js',
+      // E9 — belief/claim projection repository.
+      'src/core/mind/beliefClaimRepository.js',
+      // E9 — reflection outbox, reconciliation and recovery (durable reflection pipeline).
+      'src/brain/reflectionV3/reflectionOutbox.js',
+      'src/brain/reflectionV3/reflectionReconciliation.js',
+      'src/brain/reflectionV3/reflectionRecovery.js',
+      // E8 — Context Engine V3 canonical semantic lane over the World Model.
+      'src/brain/contextEngine/canonicalSemantic.js',
     ];
     const offenders = [];
     const walk = (dir) => {
