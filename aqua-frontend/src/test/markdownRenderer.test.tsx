@@ -155,3 +155,35 @@ describe('fixture specifics', () => {
     expect(table()?.querySelectorAll('tbody tr')).toHaveLength(10);
   });
 });
+
+describe('math rendering (regression: AQUA formulas showed as raw LaTeX)', () => {
+  const sample = [
+    '**(a)** y is in the image of f',
+    '',
+    '\\[ \\exists x \\in X;\\; \\bigl(f(x)=y\\bigr) \\]',
+    '',
+    'there exists \\(x\\) in the domain \\(X\\).',
+    '',
+    '\\[ \\neg\\exists x \\in X;\\; \\bigl(f(x)=z\\bigr) \\qquad\\text{or equivalently}\\qquad \\forall x \\in X;\\; \\bigl(f(x)\\neq z\\bigr) \\]',
+  ].join('\n');
+
+  it('renders KaTeX and leaves no raw commands behind', () => {
+    const { container } = render(<MarkdownRenderer content={sample} />);
+    expect(container.querySelectorAll('.katex-display').length).toBe(2);
+    expect(container.querySelectorAll('.katex').length).toBeGreaterThanOrEqual(4);
+    // KaTeX keeps the TeX source in a visually-hidden MathML annotation for
+    // screen readers; what a sighted user sees is the .katex-html layer.
+    container.querySelectorAll('.katex-mathml').forEach((n) => n.remove());
+    const text = container.textContent ?? '';
+    expect(text).not.toContain('\\bigl');
+    expect(text).not.toContain('\\exists');
+    expect(text).toContain('∃');
+    expect(container.querySelector('.katex-error')).toBeNull();
+  });
+
+  it('keeps currency as prose', () => {
+    const { container } = render(<MarkdownRenderer content="It costs $5 and $10." />);
+    expect(container.querySelector('.katex')).toBeNull();
+    expect(container.textContent).toContain('$5 and $10');
+  });
+});

@@ -1,10 +1,14 @@
+import type React from 'react';
 import { memo, useMemo, type ReactElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { CodeBlock } from './CodeBlock';
 import { MarkdownTable, MarkdownTd, MarkdownTh, MarkdownTr } from './MarkdownTable';
 import { stripCitationMarkers } from '@/lib/citations';
-import { splitMarkdownBlocks } from '@/lib/markdown';
+import { normalizeMath, splitMarkdownBlocks } from '@/lib/markdown';
 
 interface CodeChildProps {
   className?: string;
@@ -97,9 +101,20 @@ const components: Components = {
   strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
 };
 
+// Single-dollar parsing is OFF: "$5 and $10" must stay prose. normalizeMath()
+// rewrites `\(…\)`, `\[…\]` and unambiguous `$…$` to the `$$` form first.
+// throwOnError:false → a malformed formula renders as red source, never as a
+// crashed message.
+const remarkPlugins = [remarkGfm, [remarkMath, { singleDollarTextMath: false }]] as NonNullable<
+  React.ComponentProps<typeof ReactMarkdown>['remarkPlugins']
+>;
+const rehypePlugins = [[rehypeKatex, { throwOnError: false, strict: 'ignore' }]] as NonNullable<
+  React.ComponentProps<typeof ReactMarkdown>['rehypePlugins']
+>;
+
 const MarkdownBlock = memo(function MarkdownBlock({ content }: { content: string }) {
   return (
-    <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+    <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
       {content}
     </ReactMarkdown>
   );
@@ -119,7 +134,7 @@ export const MarkdownRenderer = memo(function MarkdownRenderer({
   stripCitations?: boolean;
 }) {
   const prepared = useMemo(
-    () => (stripCitations ? stripCitationMarkers(content, { streaming }) : content),
+    () => normalizeMath(stripCitations ? stripCitationMarkers(content, { streaming }) : content, { streaming }),
     [content, stripCitations, streaming],
   );
   const blocks = useMemo(() => splitMarkdownBlocks(prepared), [prepared]);

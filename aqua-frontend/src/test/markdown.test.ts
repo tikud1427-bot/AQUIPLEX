@@ -91,3 +91,38 @@ describe('stripCitationMarkers', () => {
     expect(stripCitationMarkers('an array like [1')).toBe('an array like [1');
   });
 });
+
+import { normalizeMath } from '@/lib/markdown';
+
+describe('normalizeMath (LaTeX delimiters must survive markdown)', () => {
+  it('rewrites \\[ \\] to a $$ display block', () => {
+    const out = normalizeMath('x\n\n\\[ \\exists x \\in X;\\ f(x)=y \\]\n\ny');
+    expect(out).toContain('$$\n\\exists x \\in X;\\ f(x)=y\n$$');
+    expect(out).not.toContain('\\[');
+  });
+
+  it('rewrites \\( \\) to inline $$ (single-dollar parsing is off)', () => {
+    expect(normalizeMath('the element \\(x\\) in \\(X\\)')).toBe('the element $$x$$ in $$X$$');
+  });
+
+  it('converts unambiguous $x$ but leaves currency alone', () => {
+    expect(normalizeMath('let $f: X \\to Y$ be a map')).toBe('let $$f: X \\to Y$$ be a map');
+    expect(normalizeMath('it costs $5 and $10 total')).toBe('it costs $5 and $10 total');
+  });
+
+  it('never touches code', () => {
+    const md = 'use `\\(x\\)` and\n\n```tex\n\\[ a \\]\n```';
+    expect(normalizeMath(md)).toBe(md);
+  });
+
+  it('opens an unclosed \\[ while streaming', () => {
+    expect(normalizeMath('so\n\\[ \\forall x', { streaming: true })).toContain('$$\n \\forall x');
+  });
+});
+
+describe('splitMarkdownBlocks with display math', () => {
+  it('keeps a $$ block together across blank lines', () => {
+    const blocks = splitMarkdownBlocks('a\n\n$$\nx\n\ny\n$$\n\nb');
+    expect(blocks).toEqual(['a', '$$\nx\n\ny\n$$', 'b']);
+  });
+});

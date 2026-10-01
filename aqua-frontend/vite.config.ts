@@ -156,6 +156,7 @@ export default defineConfig(({ mode }) => ({
             '@radix-ui/react-slot',
           ],
           'vendor-markdown': ['react-markdown', 'remark-gfm'],
+          'vendor-math': ['katex', 'remark-math', 'rehype-katex'],
         },
       },
     },
