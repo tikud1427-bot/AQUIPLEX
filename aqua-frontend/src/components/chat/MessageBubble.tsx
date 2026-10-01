@@ -209,7 +209,7 @@ export const MessageBubble = memo(function MessageBubble({
         ) : (
           <>
             <div ref={contentRef}>
-              <MarkdownRenderer content={message.content} streaming={isStreaming} stripCitations />
+              <MarkdownRenderer content={message.content} streaming={isStreaming && generating} stripCitations />
             </div>
 
             <SourceCards sources={message.sources} />

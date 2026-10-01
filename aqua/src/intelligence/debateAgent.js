@@ -155,6 +155,7 @@ export async function runDebate({
   conversationId,
   responseBudget,
   maxPasses = 1,
+  costLedger = null,
   evidenceContext = '',           // Phase 0 (F3): grounding contract — see buildPanelPrompt
   generate = generateText,
 }) {
@@ -171,6 +172,8 @@ export async function runDebate({
     conversationId,
     requestId: requestId ? `${requestId}-debate` : undefined,
   });
+  debateCtx.costLedger = costLedger;
+  debateCtx.costPurpose = 'verification';
 
   const cap   = Math.max(1, maxPasses);
   const start = Date.now();
@@ -277,6 +280,19 @@ export async function runDebate({
         responseBudget,
       );
       provider = result.provider ?? provider;
+
+      // A provider may return a nominally successful completion that was cut
+      // off by the execution budget. Such a response is not a complete
+      // replacement answer and must never overwrite the current draft. Keep
+      // the best known answer instead and surface the truncation through the
+      // normal turn diagnostics/Continue path.
+      if (result.truncated) {
+        disagreements = synth.issues;
+        console.warn(`[DEBATE] truncated revision SUPPRESSED (pass ${passes}/${cap}) — keeping ${revised ? 'latest revision' : 'draft'}`);
+        converged = false;
+        break;
+      }
+
       const revision = (result.text ?? '').trim();
 
       // ── Forensic pass (Bug 1) — malformed/empty-revision guard ──────────────

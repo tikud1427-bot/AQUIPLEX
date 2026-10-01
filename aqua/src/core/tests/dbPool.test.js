@@ -118,6 +118,14 @@ describe('db pool — inert by default', () => {
       'src/brain/reflectionV3/reflectionRecovery.js',
       // E8 — Context Engine V3 canonical semantic lane over the World Model.
       'src/brain/contextEngine/canonicalSemantic.js',
+      // Sep 29 closure — READ-ONLY pool consumers (readOnlyConsumers.test.js pins
+      // that none of them contains a write statement). They ask for the pool to
+      // read canonical claims/revisions, or to report whether one is configured.
+      'src/core/worldModel/canonicalReadModel.js',
+      'src/brain/reflectionV3/revisionFeed.js',
+      'src/brain/contextEngine/index.js',
+      'src/brain/index.js',
+      'src/routes/brain.js',
     ];
     const offenders = [];
     const walk = (dir) => {

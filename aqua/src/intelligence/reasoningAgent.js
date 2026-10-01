@@ -94,6 +94,7 @@ export async function runReasoningPass({
   taskType,
   requestId,
   conversationId,
+  costLedger = null,
   responseBudget = REASONING_BUDGET,
   generate = generateText,
 }) {
@@ -105,6 +106,8 @@ export async function runReasoningPass({
     conversationId,
     requestId: requestId ? `${requestId}-reason` : undefined,
   });
+  reasonCtx.costLedger = costLedger;
+  reasonCtx.costPurpose = 'chat';
 
   try {
     const result = await generate(

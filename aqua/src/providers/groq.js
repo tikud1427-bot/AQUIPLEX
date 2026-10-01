@@ -28,6 +28,17 @@ import {
   getCandidateModels, markModelWorking, markModelUnavailable, markModelTempFailed, pinCandidates } from './modelRegistry.js';
 import { classifyProviderError, retryAfterMs } from './providerErrors.js';
 
+/** Normalize Groq/OpenAI-compatible usage metadata for E12 cost accounting. */
+export function normalizeUsage(usage) {
+  const inputTokens = Number(usage?.prompt_tokens ?? usage?.promptTokens);
+  const outputTokens = Number(usage?.completion_tokens ?? usage?.completionTokens);
+  if (!Number.isFinite(inputTokens) && !Number.isFinite(outputTokens)) return null;
+  return {
+    inputTokens: Number.isFinite(inputTokens) ? inputTokens : 0,
+    outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0,
+  };
+}
+
 function getKeys() {
   return [
     process.env.GROQ_API_KEY_1,
@@ -210,7 +221,7 @@ export async function generateGroq(systemPrompt, messages, signal, maxTokens, op
       }
       console.log(`[GROQ] model=${modelId} hit maxTokens=${capTokens} cap — returning partial as successful completion`);
       markModelWorking('groq', modelId);
-      return { text, truncated: true, finishReason: 'length', model: modelId };
+      return { text, truncated: true, finishReason: 'length', model: modelId, usage: normalizeUsage(result?.usage) };
     }
 
     if (!text) {
@@ -219,7 +230,7 @@ export async function generateGroq(systemPrompt, messages, signal, maxTokens, op
     }
 
     markModelWorking('groq', modelId);
-    return { text, truncated: false, finishReason: finishReason ?? 'stop', model: modelId };
+    return { text, truncated: false, finishReason: finishReason ?? 'stop', model: modelId, usage: normalizeUsage(result?.usage) };
   }
 
   throw lastError ?? new Error('All Groq attempts exhausted');
@@ -272,6 +283,7 @@ export async function streamGroq(systemPrompt, messages, signal, maxTokens, onDe
           model:    modelId,
           messages: chatMessages,
           stream:   true,
+          stream_options: { include_usage: true },
           ...(capTokens ? { max_tokens: capTokens } : {}),
         },
         { signal }, // SDK aborts the underlying request when the router/client cancels
@@ -290,11 +302,13 @@ export async function streamGroq(systemPrompt, messages, signal, maxTokens, onDe
 
     let text = '';
     let finishReason = null;
+    let usage = null;
     try {
       for await (const chunk of stream) {
         if (signal?.aborted) throw new Error('TIMEOUT');
         const delta = chunk?.choices?.[0]?.delta?.content;
         finishReason = chunk?.choices?.[0]?.finish_reason ?? finishReason;
+        usage = normalizeUsage(chunk?.usage) ?? usage;
         if (delta) { text += delta; onDelta(delta); }
       }
     } catch (err) {
@@ -313,7 +327,7 @@ export async function streamGroq(systemPrompt, messages, signal, maxTokens, onDe
 
     markModelWorking('groq', modelId);
     const truncated = capTokens && finishReason === 'length';
-    return { text, truncated: !!truncated, finishReason: truncated ? 'length' : (finishReason ?? 'stop'), streamed: true };
+    return { text, truncated: !!truncated, finishReason: truncated ? 'length' : (finishReason ?? 'stop'), streamed: true, model: modelId, usage };
   }
 
   throw lastError ?? new Error('All Groq stream attempts exhausted');

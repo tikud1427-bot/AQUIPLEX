@@ -550,6 +550,10 @@ describe('world model schema — canonical writer only', () => {
       // second store. Its test seeds edges directly to exercise the walk.
       'src/core/worldModel/graphLane.js',
       'src/core/worldModel/graphLane.test.js',
+      // Sep 29 closure — canonical READ model and revision feed. READ-ONLY, pinned
+      // by readOnlyConsumers.test.js; neither may ever become a second writer.
+      'src/core/worldModel/canonicalReadModel.js',
+      'src/brain/reflectionV3/revisionFeed.js',
     ];
     const NEEDLE = /aqua_edges\b|aqua_events\b|aqua_lifecycle_transitions\b|aqua_revisions\b|aqua_corrections\b/;
     const offenders = [];

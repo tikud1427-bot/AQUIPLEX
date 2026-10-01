@@ -23,7 +23,7 @@ import { PERSONAS, selectPanel, normalizeFinding, synthesizeDebate } from './deb
 import { runDebate, parsePanelResponse } from './debateAgent.js';
 import { getAgent } from './agentRegistry.js';
 
-/** Sequenced fake: each call consumes the next scripted response (string or Error). */
+/** Sequenced fake: each call consumes the next scripted response (string, object, or Error). */
 function fakeGenerateSeq(responses) {
   const calls = [];
   const queue = [...responses];
@@ -31,6 +31,7 @@ function fakeGenerateSeq(responses) {
     calls.push({ userMessage, systemPrompt, messages, preTaskType, responseBudget });
     const next = queue.shift();
     if (next instanceof Error) throw next;
+    if (next && typeof next === 'object') return { provider: 'mock-provider', ...next };
     return { text: next, provider: 'mock-provider' };
   };
   fn.calls = calls;
@@ -208,6 +209,19 @@ test('escalation → revision → clean re-panel: converged on the revision, iss
   assert.match(generate.calls[1].messages[0].content, /\[security\/high\] SQL string concatenation/);
   // …and the re-panel reviewed the REVISION, not the original draft.
   assert.match(generate.calls[2].messages[0].content, /parameterized queries/);
+});
+
+test('truncated revision is suppressed and cannot replace the current draft', async () => {
+  const generate = fakeGenerateSeq([
+    panelJSON([issue('skeptic', 'high'), issue('coder', 'high'), issue('performance', 'medium')]),
+    { text: 'This is only the beginning of a replacement answer…', truncated: true },
+  ]);
+  const r = await runDebate({ userMessage: 'q', draftAnswer: 'complete draft', taskType: 'coding', maxPasses: 1, generate });
+  assert.equal(generate.calls.length, 2);
+  assert.equal(r.revised, false);
+  assert.equal(r.finalAnswer, 'complete draft');
+  assert.equal(r.converged, false);
+  assert.equal(r.disagreements.length, 3);
 });
 
 test('iteration cap: still escalating at maxPasses ships the latest revision unreviewed, converged=false', async () => {

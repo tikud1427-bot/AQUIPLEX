@@ -28,6 +28,7 @@
  * the model first keeps that change to a swap-in rather than a rewrite.
  */
 import crypto from 'node:crypto';
+import { mintProvisionalEntities } from './understanding/provisionalMinter.js';
 import * as graph from '../reasoning/reasoningGraph.js';
 import * as evidenceStore from '../files/evidenceStore.js';
 import { peekMind } from '../mind/mindStore.js';
@@ -59,6 +60,8 @@ import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup
 import { resolveRelationships } from './understanding/relationshipResolver.js';
 import { dedupAndDetect } from './understanding/claimDedup.js';
 import { buildCommitPlan } from './understanding/commitPlan.js';
+import { getPool, isConfigured as dbConfigured } from '../core/db/pool.js';
+import * as canonicalReadModel from '../core/worldModel/canonicalReadModel.js';
 
 /**
  * The owner's self entity id, or null when they do not have one.
@@ -74,6 +77,25 @@ const selfEntityIdFor = ownerId =>
 
 /** Real dependency set. Tests inject their own via the `deps` option. */
 const REAL_DEPS = { graph, peekMind, evidenceStore, annotations, getMind, observeSignals, canonicalIds, pic, ensureSelfEntity, entityStoreFor, selfEntityIdFor, canonicalClaims: { get: claimWithEvidence } };
+
+export function canonicalWorldModelReadEnabled() {
+  return brainEnabled() && dbConfigured() && String(process.env.AQUA_CANONICAL_READ ?? '').toLowerCase() === 'on';
+}
+
+async function guardAsync(label, fallback, fn) {
+  if (!brainEnabled()) { metrics.disabled += 1; return fallback; }
+  const t0 = Date.now();
+  try {
+    metrics.calls += 1;
+    return await fn();
+  } catch (err) {
+    metrics.errors += 1;
+    console.warn(`[BRAIN] ${label} failed (fail-open): ${err?.message ?? err}`);
+    return fallback;
+  } finally {
+    track(Date.now() - t0);
+  }
+}
 
 const metrics = {
   calls: 0, errors: 0, disabled: 0,
@@ -188,6 +210,76 @@ export function getTimeline(ownerId, opts = {}) {
 export function getChains(ownerId, opts = {}) {
   const { deps = REAL_DEPS, ...rest } = opts;
   return guard('getChains', [], () => buildUnifiedTimeline(deps, ownerId, rest).chains);
+}
+/** Canonical Postgres read views (E10). Legacy projections remain the fail-open floor. */
+export async function listEntitiesAsync(ownerId, opts = {}) {
+  return guardAsync('listEntitiesAsync', listEntities(ownerId, opts), async () => {
+    if (!canonicalWorldModelReadEnabled()) return listEntities(ownerId, opts);
+    return canonicalReadModel.listEntities(ownerId, opts);
+  });
+}
+
+export async function findEntitiesAsync(ownerId, query, opts = {}) {
+  return guardAsync('findEntitiesAsync', findEntities(ownerId, query, opts), async () => {
+    if (!canonicalWorldModelReadEnabled()) return findEntities(ownerId, query, opts);
+    return canonicalReadModel.findEntities(ownerId, query, opts);
+  });
+}
+
+export async function getEntityAsync(ownerId, entityId, opts = {}) {
+  return guardAsync('getEntityAsync', getEntity(ownerId, entityId, opts), async () => {
+    if (!canonicalWorldModelReadEnabled()) return getEntity(ownerId, entityId, opts);
+    return canonicalReadModel.getEntity(ownerId, entityId, opts);
+  });
+}
+
+export async function describeEntityAsync(ownerId, entityId, opts = {}) {
+  return guardAsync('describeEntityAsync', describeEntity(ownerId, entityId, opts), async () => {
+    if (!canonicalWorldModelReadEnabled()) return describeEntity(ownerId, entityId, opts);
+    const entity = await canonicalReadModel.getEntity(ownerId, entityId, opts);
+    if (!entity) return null;
+    const [relationships, observations, events] = await Promise.all([
+      canonicalReadModel.getRelationships(ownerId, entityId, { limit: opts.relationships ?? 20, retrospective: opts.retrospective === true, pool: opts.pool ?? null }),
+      canonicalReadModel.getObservations(ownerId, entityId, { limit: opts.observations ?? 15, retrospective: opts.retrospective === true, pool: opts.pool ?? null }),
+      canonicalReadModel.getEvents(ownerId, entityId, { limit: opts.events ?? 15, retrospective: opts.retrospective === true, pool: opts.pool ?? null }),
+    ]);
+    return { entity, relationships, observations, events, source: 'canonical' };
+  });
+}
+
+export async function getRelationshipsAsync(ownerId, entityId, opts = {}) {
+  return guardAsync('getRelationshipsAsync', getRelationships(ownerId, entityId, opts), async () => {
+    if (!canonicalWorldModelReadEnabled()) return getRelationships(ownerId, entityId, opts);
+    return canonicalReadModel.getRelationships(ownerId, entityId, opts);
+  });
+}
+
+export async function getObservationsAsync(ownerId, entityId, opts = {}) {
+  return guardAsync('getObservationsAsync', getObservations(ownerId, entityId, opts), async () => {
+    if (!canonicalWorldModelReadEnabled()) return getObservations(ownerId, entityId, opts);
+    return canonicalReadModel.getObservations(ownerId, entityId, opts);
+  });
+}
+
+export async function getEventsAsync(ownerId, entityId, opts = {}) {
+  return guardAsync('getEventsAsync', getEvents(ownerId, entityId, opts), async () => {
+    if (!canonicalWorldModelReadEnabled()) return getEvents(ownerId, entityId, opts);
+    return canonicalReadModel.getEvents(ownerId, entityId, opts);
+  });
+}
+
+export async function getTimelineAsync(ownerId, opts = {}) {
+  return guardAsync('getTimelineAsync', getTimeline(ownerId, opts), async () => {
+    if (!canonicalWorldModelReadEnabled()) return getTimeline(ownerId, opts);
+    return canonicalReadModel.getTimeline(ownerId, opts);
+  });
+}
+
+export async function getChainsAsync(ownerId, opts = {}) {
+  return guardAsync('getChainsAsync', getChains(ownerId, opts), async () => {
+    if (!canonicalWorldModelReadEnabled()) return getChains(ownerId, opts);
+    return (await canonicalReadModel.getTimeline(ownerId, opts)).chains ?? [];
+  });
 }
 
 export { LIFECYCLE_STAGES, buildChains };
@@ -386,6 +478,9 @@ export function assembleContext(ownerId, query, floorRetrieve, opts = {}) {
     formatCitation: opts.formatCitation ?? null,
     semanticScores: semanticClaimScores ?? semanticScores,
     canonicalClaimsById: (semanticClaimScores ?? semanticScores)?.canonicalClaimsById ?? null,
+    canonicalClaimLoader: claimWithEvidence,
+    canonicalGraphPool: async () => { if (!dbConfigured()) throw new Error('DATABASE_URL is not configured'); return getPool(); },
+    enableCanonicalGraph: true,
     activeProjectId,
   };
   return guard('assembleContext',
@@ -434,6 +529,9 @@ export async function assembleContextAsync(ownerId, query, floorRetrieve, opts =
     formatCitation: opts.formatCitation ?? null,
     semanticScores: semanticClaimScores ?? semanticScores,
     canonicalClaimsById: (semanticClaimScores ?? semanticScores)?.canonicalClaimsById ?? null,
+    canonicalClaimLoader: claimWithEvidence,
+    canonicalGraphPool: async () => { if (!dbConfigured()) throw new Error('DATABASE_URL is not configured'); return getPool(); },
+    enableCanonicalGraph: true,
     activeProjectId,
   };
   return assembleTurnContextAsync(engineDeps, ownerId, query, {
@@ -560,6 +658,29 @@ export async function understandTurn(
     entityStore, selfEntityId,
   });
 
+  // S6's missing half — see understanding/provisionalMinter.js. A claim about a
+  // name the identity map has never seen comes back `new-provisional` and
+  // UNREADY, and nothing ever inserted it, so the world model could only learn
+  // about things it already knew. Minting happens only when the claim would
+  // otherwise be COMMITTED: an extractor whose commit is off must not be
+  // growing the identity map on the way to being evaluated. Fail-open (L11).
+  if (e6CommitEnabled() && e6MintEnabled() && result?.entityResolution === 'resolved' && result.claims?.length) {
+    try {
+      const minted = mintProvisionalEntities(result.claims, {
+        ownerId, mint: (o, spec) => deps.canonicalIds.resolve(o, spec),
+      });
+      result.claims = minted.claims;
+      result.readyForS7 = minted.readyForS7;
+      result.stats = {
+        ...result.stats,
+        s6: { ...result.stats?.s6, ready: minted.readyForS7.length,
+          minted: minted.stats.minted, reused: minted.stats.reused, refused: minted.stats.refused },
+      };
+    } catch (err) {
+      console.warn(`[E6] entity minting failed (fail-open): ${err?.message ?? err}`);
+    }
+  }
+
   // E5/E6 bridge — deliberately opt-in. Extraction and canonical persistence
   // are separate gates so a measured-but-not-promoted extractor can be wired
   // to the real turn path without silently becoming authoritative.
@@ -607,7 +728,20 @@ export async function understandTurn(
       // history before S9. The repository supplies history only; it never
       // decides deduplication or contradiction.
       const existing = await findClaimsForDedup({ ownerId, claims: segment.claims });
-      const s8 = dedupAndDetect(segment.claims, existing);
+      // S8 compares by KEY, and stored claims carry the entity's canonical label
+      // ("You") while incoming claims carry the surface text ("I"). Measured on
+      // real Postgres: the keys never matched, so history was never consulted —
+      // no corroboration across turns, no contradiction, whatever the flags. The
+      // incoming side is put into the stored vocabulary before comparing; the
+      // mapping below this call is the same one, so it is idempotent.
+      const forS8 = segment.claims.map(c => ({
+        ...c,
+        subject: c._canonicalSubject?.canonical ?? c._canonicalSubject?.name ?? c.subject,
+        object: c.objectKind === 'entity'
+          ? { ...c.object, entity: c._canonicalObject?.canonical ?? c._canonicalObject?.name ?? c.object?.entity }
+          : c.object,
+      }));
+      const s8 = dedupAndDetect(forS8, existing, { functionalPredicates: singleValuedPredicates() });
 
       // S7 receives canonical entity labels for deterministic relationship
       // direction. Persistence later maps those endpoints to Postgres ids; S7
@@ -668,6 +802,38 @@ export async function understandTurn(
   }
 
   return result;
+}
+
+/**
+ * Predicates that hold ONE value at a time, handed to S8 so a changed employer
+ * is EMITTED as a contradiction instead of two silent active claims.
+ *
+ * MEASURED: with this unset, "I work at Intercom" then "I work at Nummo" left
+ * both claims active and raised nothing — `dedupAndDetect` only flags a
+ * differing object for predicates the caller declares single-valued, and the
+ * facade declared none, so the revision the whole loop exists to notice could
+ * not happen.
+ *
+ * OPT-IN (`AQUA_E6_SINGLE_VALUED=on`), default OFF, because the cost of being
+ * wrong is an accusation: two jobs, or a move mid-sentence, are legitimate and
+ * the detector cannot tell them from a change. It is also EMIT-ONLY — S8 never
+ * resolves, both claims stay — and validity-disjoint claims ("until 2024") are
+ * already exempt upstream. There is no eval for this yet; promote it by
+ * measuring false fires on real turns, not by flipping it.
+ */
+export const SINGLE_VALUED = Object.freeze(['works_at']);
+export function singleValuedPredicates() {
+  return String(process.env.AQUA_E6_SINGLE_VALUED ?? 'off').toLowerCase() === 'on'
+    ? new Set(SINGLE_VALUED) : new Set();
+}
+
+/**
+ * Follows the commit gate unless set explicitly. Minting only makes sense when
+ * there is a commit for the minted id to reach; `AQUA_E6_MINT=off` is the
+ * explicit rollback and restores the pre-existing behaviour exactly.
+ */
+export function e6MintEnabled() {
+  return String(process.env.AQUA_E6_MINT ?? (e6CommitEnabled() ? 'on' : 'off')).toLowerCase() === 'on';
 }
 
 export function e6CommitEnabled() {
@@ -816,6 +982,14 @@ export function worldStats(ownerId, opts = {}) {
   const { deps = REAL_DEPS } = opts;
   return guard('worldStats', { entities: 0, fileOnly: 0, mindOnly: 0, federated: 0 },
     () => P.worldStats(deps, ownerId));
+}
+
+
+export async function worldStatsAsync(ownerId, opts = {}) {
+  return guardAsync('worldStatsAsync', worldStats(ownerId, opts), async () => {
+    if (!canonicalWorldModelReadEnabled()) return worldStats(ownerId, opts);
+    return canonicalReadModel.worldStats(ownerId, opts);
+  });
 }
 
 export function brainMetrics() {

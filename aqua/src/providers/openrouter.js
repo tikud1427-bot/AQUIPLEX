@@ -80,6 +80,14 @@ function getClient(key) {
   return clientCache.get(key);
 }
 
+
+function normalizeUsage(usage) {
+  const inputTokens = Number(usage?.prompt_tokens ?? usage?.promptTokens);
+  const outputTokens = Number(usage?.completion_tokens ?? usage?.completionTokens);
+  if (!Number.isFinite(inputTokens) && !Number.isFinite(outputTokens)) return null;
+  return { inputTokens: Number.isFinite(inputTokens) ? inputTokens : 0, outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0 };
+}
+
 // ── Generate ───────────────────────────────────────────────────────────────────
 
 /**
@@ -196,7 +204,7 @@ export async function generateOpenRouter(systemPrompt, messages, signal, maxToke
         continue;
       }
       console.log(`[OPENROUTER] model=${modelId} hit maxTokens=${capTokens} cap — returning partial as successful completion`);
-      return { text, truncated: true, finishReason: 'length', model: modelId };
+      return { text, truncated: true, finishReason: 'length', model: modelId, usage: normalizeUsage(result?.usage) };
     }
 
     if (!text) {
@@ -204,7 +212,7 @@ export async function generateOpenRouter(systemPrompt, messages, signal, maxToke
       continue;
     }
 
-    return { text, truncated: false, finishReason: finishReason ?? 'stop', model: modelId };
+    return { text, truncated: false, finishReason: finishReason ?? 'stop', model: modelId, usage: normalizeUsage(result?.usage) };
   }
 
   throw lastError ?? new Error('All OpenRouter models exhausted for this request');
@@ -252,6 +260,7 @@ export async function streamOpenRouter(systemPrompt, messages, signal, maxTokens
           model:    modelId,
           messages: chatMessages,
           stream:   true,
+          stream_options: { include_usage: true },
           ...(capTokens ? { max_tokens: capTokens } : {}),
         },
         { signal },
@@ -270,11 +279,13 @@ export async function streamOpenRouter(systemPrompt, messages, signal, maxTokens
 
     let text = '';
     let finishReason = null;
+    let usage = null;
     try {
       for await (const chunk of stream) {
         if (signal?.aborted) throw new Error('TIMEOUT');
         const delta = chunk?.choices?.[0]?.delta?.content;
         finishReason = chunk?.choices?.[0]?.finish_reason ?? finishReason;
+        usage = normalizeUsage(chunk?.usage) ?? usage;
         if (delta) { text += delta; onDelta(delta); }
       }
     } catch (err) {
@@ -290,7 +301,7 @@ export async function streamOpenRouter(systemPrompt, messages, signal, maxTokens
     if (!text.trim()) { lastError = new Error(`OpenRouter: model ${modelId} stream returned empty response`); continue; }
 
     const truncated = capTokens && finishReason === 'length';
-    return { text, truncated: !!truncated, finishReason: truncated ? 'length' : (finishReason ?? 'stop'), streamed: true };
+    return { text, truncated: !!truncated, finishReason: truncated ? 'length' : (finishReason ?? 'stop'), streamed: true, model: modelId, usage };
   }
 
   throw lastError ?? new Error('All OpenRouter stream attempts exhausted');

@@ -419,7 +419,7 @@ export async function commitUnderstanding(input = {}) {
       if (!existingClaimId) {
         const fields=['claim_id','owner_id','subject_entity_id','predicate',...Array.from({length:cols.length/2},(_,i)=>cols[i*2]),'polarity','modality','valid_from','valid_to','asserted_at','time_precision','state','extractor','extractor_version','actor','statement_text','statement_norm'];
         const vals=[claimId,ownerId,subjectEntityId,c.predicate,...Array.from({length:cols.length/2},(_,i)=>cols[i*2+1]),
-          c.polarity??'asserted',c.modality??'fact',c.validFrom??null,c.validTo??null,input.assertedAt??new Date(),c.timePrecision??'none','extraction',extractorVersion,actor,statement,norm];
+          c.polarity??'asserted',c.modality??'fact',c.validFrom??null,c.validTo??null,input.assertedAt??new Date(),c.timePrecision??'none','extracted','extraction',extractorVersion,actor,statement,norm];
         const placeholders=vals.map((_,i)=>'$'+(i+1)).join(',');
         await client.query(`INSERT INTO aqua_claims (${fields.join(',')}) VALUES (${placeholders})`,vals);
         // E6 only hands the repository S7/S8-ready claims. Persist the
@@ -744,6 +744,284 @@ export async function transition(input) {
       }
     });
     return { targetKind, targetId, fromState, toState };
+  });
+}
+
+export async function correctClaim(input = {}) {
+  const ownerId = required(input.ownerId, 'ownerId');
+  const actor = required(input.actor, 'actor');
+  const claimId = required(input.claimId, 'claimId');
+  const statementText = required(input.statementText, 'statementText').trim();
+  if (!statementText) throw new WorldModelError('statementText is required');
+
+  return transact(async client => {
+    const current = await client.query(`
+      SELECT c.*, se.canonical_label AS subject_label
+        FROM aqua_claims c
+        JOIN aqua_entities se ON se.entity_id=c.subject_entity_id AND se.owner_id=c.owner_id
+       WHERE c.owner_id=$1 AND c.claim_id=$2
+       FOR UPDATE`, [ownerId, claimId]);
+    if (!current.rows.length) throw new WorldModelError('claim not found');
+    const old = current.rows[0];
+    if (old.state === 'archived') throw new WorldModelError('archived claim cannot be corrected directly');
+
+    const successorId = input.successorClaimId ?? crypto.randomUUID();
+    const correctionId = input.correctionId ?? crypto.randomUUID();
+    const sourceId = input.sourceId ?? crypto.randomUUID();
+    const evidenceId = input.evidenceId ?? crypto.randomUUID();
+    const now = input.assertedAt ?? new Date();
+    const norm = String(statementText).trim().toLowerCase().replace(/\s+/g, ' ');
+
+    // Preserve the old object by default; a correction can replace exactly one
+    // object form without inventing a new predicate or subject.
+    let objectEntityId = old.object_entity_id;
+    let objectLiteral = old.object_literal;
+    let objectQuantity = old.object_quantity;
+    let objectUnit = old.object_unit;
+    let objectTimeFrom = old.object_time_from;
+    let objectTimeTo = old.object_time_to;
+    const object = input.object ?? null;
+    if (object) {
+      objectEntityId = objectLiteral = objectQuantity = objectTimeFrom = null;
+      objectUnit = null;
+      if (object.entityId) objectEntityId = required(object.entityId, 'object.entityId');
+      else if (object.literal !== undefined) objectLiteral = String(object.literal);
+      else if (object.quantity !== undefined) { objectQuantity = object.quantity; objectUnit = object.unit ?? null; }
+      else if (object.timeFrom || object.timeTo) { objectTimeFrom = object.timeFrom ?? null; objectTimeTo = object.timeTo ?? null; }
+      else throw new WorldModelError('object must contain entityId, literal, quantity, or timeFrom/timeTo');
+    }
+
+    if (objectEntityId) await assertOwned(client, 'aqua_entities', 'entity_id', objectEntityId, ownerId);
+    const polarity = input.polarity ?? old.polarity;
+    const modality = input.modality ?? old.modality;
+    const validFrom = input.validFrom ?? old.valid_from;
+    const validTo = input.validTo ?? null;
+    const timePrecision = input.timePrecision ?? old.time_precision;
+
+    await client.query(`
+      INSERT INTO aqua_sources
+        (source_id,owner_id,kind,external_ref,title,trust_tier,content_hash)
+      VALUES ($1,$2,'user_correction',$3,$4,0.9,$5)`,
+      [sourceId, ownerId, `correction:${correctionId}`, 'User correction',
+        crypto.createHash('sha256').update(statementText).digest('hex')]);
+
+    await client.query(`
+      INSERT INTO aqua_evidence
+        (evidence_id,owner_id,source_id,locator,quote,checksum)
+      VALUES ($1,$2,$3,$4::jsonb,$5,$6)`,
+      [evidenceId, ownerId, sourceId, json({ correctionId, replacedClaimId: claimId }),
+        statementText, crypto.createHash('sha256').update(statementText).digest('hex')]);
+
+    await client.query(`
+      INSERT INTO aqua_claims
+        (claim_id,owner_id,subject_entity_id,predicate,object_entity_id,object_literal,
+         object_quantity,object_unit,object_time_from,object_time_to,polarity,modality,
+         valid_from,valid_to,asserted_at,time_precision,state,superseded_by,
+         confidence_extraction,confidence_source,confidence_corroboration,extractor,
+         extractor_version,actor,statement_text,statement_norm)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'active',NULL,
+              0.9,0.9,0,'user-correction','v1',$17,$18,$19)`,
+      [successorId, ownerId, old.subject_entity_id, old.predicate, objectEntityId,
+        objectLiteral, objectQuantity, objectUnit, objectTimeFrom, objectTimeTo,
+        polarity, modality, validFrom, validTo, now, timePrecision, actor,
+        statementText, norm]);
+
+    await client.query(
+      `INSERT INTO aqua_claim_evidence(owner_id,claim_id,evidence_id,role)
+       VALUES ($1,$2,$3,'primary')`, [ownerId, successorId, evidenceId]);
+
+    const oldValidTo = input.oldValidTo ?? validTo ?? old.valid_to ?? now;
+    await client.query(`
+      UPDATE aqua_claims
+         SET state='superseded', superseded_by=$3,
+             valid_to=COALESCE(valid_to,$4), updated_at=now()
+       WHERE owner_id=$1 AND claim_id=$2`, [ownerId, claimId, successorId, oldValidTo]);
+
+    await client.query(`
+      INSERT INTO aqua_corrections
+        (correction_id,owner_id,target_kind,target_id,action,before,after,actor)
+      VALUES ($1,$2,'claim',$3,'correct',$4::jsonb,$5::jsonb,$6)`,
+      [correctionId, ownerId, claimId,
+        json({ claimId, statementText: old.statement_text, predicate: old.predicate, state: old.state }),
+        json({ claimId: successorId, statementText, predicate: old.predicate, state: 'active' }), actor]);
+
+    await lifecycle(client, {
+      ownerId, targetKind: 'claim', targetId: claimId, fromState: old.state,
+      toState: 'superseded', reason: 'user-correction', actor,
+    });
+    await lifecycle(client, {
+      ownerId, targetKind: 'claim', targetId: successorId, fromState: null,
+      toState: 'active', reason: 'user-correction-successor', actor,
+    });
+    await revision(client, {
+      ownerId, targetKind: 'claim', targetId: claimId, changeKind: 'supersede',
+      before: { state: old.state, supersededBy: null },
+      after: { state: 'superseded', supersededBy: successorId },
+      reason: 'user-correction', actor, source: 'user-correction',
+    });
+    await revision(client, {
+      ownerId, targetKind: 'claim', targetId: successorId, changeKind: 'create',
+      before: null,
+      after: { statementText, predicate: old.predicate, polarity, modality },
+      reason: 'user-correction-successor', actor, source: 'user-correction',
+    });
+
+    await outbox(client, {
+      ownerId, eventType: 'claim.superseded', aggregateKind: 'claim',
+      aggregateId: claimId, actor,
+      payload: { claimId, supersededBy: successorId, correctionId, sourceId },
+    });
+    await outbox(client, {
+      ownerId, eventType: 'claim.created', aggregateKind: 'claim',
+      aggregateId: successorId, actor,
+      payload: { claimId: successorId, correctionId, replacesClaimId: claimId, statementText },
+    });
+    await outbox(client, {
+      ownerId, eventType: 'claim.embedding.requested', aggregateKind: 'claim',
+      aggregateId: successorId, actor,
+      payload: {
+        claimId: successorId, statementText,
+        contentHash: crypto.createHash('sha256').update(statementText).digest('hex'),
+      },
+    });
+
+    return {
+      correctionId,
+      replacedClaimId: claimId,
+      claimId: successorId,
+      evidenceId,
+      sourceId,
+      state: 'active',
+    };
+  });
+}
+
+
+
+/**
+ * Persist one E9 Reflection V3 inference as a canonical claim.
+ *
+ * The input is a proposal from the pure pattern engine; the repository owns
+ * policy. It refuses raw subject strings, requires at least one canonical
+ * evidence claim, clamps the reflection trust ceiling, and emits the normal
+ * lifecycle/revision/outbox/indexing events so inferred knowledge enters the
+ * exact same downstream retrieval path as observed knowledge.
+ */
+export async function persistInferredPattern(input = {}) {
+  const ownerId = required(input.ownerId, 'ownerId');
+  const subjectEntityId = required(input.subjectEntityId, 'subjectEntityId');
+  const predicate = required(input.predicate, 'predicate');
+  const statementText = required(input.statementText, 'statementText').trim();
+  const evidenceClaimIds = [...new Set((input.evidenceClaimIds ?? []).map(String))].slice(0, 32);
+  const actor = 'reflection';
+  const extractor = input.extractor ?? 'reflectionV3.patternInference@1';
+  if (!evidenceClaimIds.length) throw new WorldModelError('inferred pattern requires evidence claims');
+  const confidence = Math.min(0.45, Math.max(0.05, Number(input.confidenceCeiling ?? 0.45) || 0.45));
+
+  return transact(async client => {
+    await assertOwned(client, 'aqua_entities', 'entity_id', subjectEntityId, ownerId);
+    // Every evidence claim must belong to this owner. The query is deliberately
+    // owner-first and structurally scoped; no cross-owner corroboration can be
+    // smuggled through the proposal.
+    const { rows: sources } = await client.query(`
+      SELECT DISTINCT c.claim_id
+        FROM aqua_claims c
+       WHERE c.owner_id=$1 AND c.claim_id = ANY($2::uuid[])`, [ownerId, evidenceClaimIds]);
+    if (sources.length !== evidenceClaimIds.length) {
+      throw new WorldModelError('one or more inferred-pattern evidence claims do not belong to owner');
+    }
+    const { rows: evidence } = await client.query(`
+      SELECT ev.quote, ev.locator, ev.source_id
+        FROM aqua_claim_evidence ce
+        JOIN aqua_evidence ev ON ev.owner_id=ce.owner_id AND ev.evidence_id=ce.evidence_id
+       WHERE ce.owner_id=$1 AND ce.claim_id = ANY($2::uuid[])
+       ORDER BY ev.created_at ASC, ev.evidence_id ASC
+       LIMIT 64`, [ownerId, evidenceClaimIds]);
+    if (!evidence.length) throw new WorldModelError('inferred pattern evidence spans are missing');
+
+    const sourceId = input.sourceId ?? crypto.randomUUID();
+    await client.query(`
+      INSERT INTO aqua_sources
+        (source_id,owner_id,kind,external_ref,title,trust_tier,content_hash)
+      VALUES ($1,$2,'reflection',$3,$4,$5,$6)
+      ON CONFLICT (source_id) DO NOTHING`,
+      [sourceId, ownerId, `reflection:${extractor}`, 'Reflection V3 pattern inference', confidence,
+       crypto.createHash('sha256').update(statementText).digest('hex')]);
+
+    const claimId = crypto.randomUUID();
+    let objectEntityId = null;
+    let objectLiteral = null;
+    let objectQuantity = null;
+    let objectUnit = null;
+    let objectTimeFrom = null;
+    let objectTimeTo = null;
+    const object = input.object ?? null;
+    if (object?.entityId) objectEntityId = required(object.entityId, 'object.entityId');
+    else if (object && object.literal !== undefined) objectLiteral = String(object.literal);
+    else if (object && object.quantity !== undefined) { objectQuantity = Number(object.quantity); objectUnit = object.unit ?? null; }
+    else if (object && (object.timeFrom || object.timeTo)) { objectTimeFrom = object.timeFrom ?? null; objectTimeTo = object.timeTo ?? null; }
+    else throw new WorldModelError('inferred pattern has no valid object form');
+    if (objectEntityId) await assertOwned(client, 'aqua_entities', 'entity_id', objectEntityId, ownerId);
+
+    const norm = statementText.toLowerCase().replace(/\s+/g, ' ');
+    const existing = await client.query(`
+      SELECT claim_id, modality, state
+        FROM aqua_claims
+       WHERE owner_id=$1 AND subject_entity_id=$2 AND predicate=$3 AND statement_norm=$4
+       ORDER BY updated_at DESC, claim_id DESC
+       LIMIT 1
+       FOR UPDATE`, [ownerId, subjectEntityId, predicate, norm]);
+    if (existing.rows.length) {
+      const row = existing.rows[0];
+      return {
+        claimId: row.claim_id,
+        ownerId,
+        modality: row.modality,
+        duplicate: row.modality === 'inferred',
+        skipped: row.modality !== 'inferred',
+        evidenceCount: 0,
+        evidenceClaimIds,
+        reason: row.modality === 'inferred' ? 'inferred-pattern-already-present' : 'canonical-claim-already-represents-pattern',
+      };
+    }
+    await client.query(`
+      INSERT INTO aqua_claims
+        (claim_id,owner_id,subject_entity_id,predicate,object_entity_id,object_literal,
+         object_quantity,object_unit,object_time_from,object_time_to,polarity,modality,
+         valid_from,valid_to,asserted_at,time_precision,state,superseded_by,
+         confidence_extraction,confidence_source,confidence_corroboration,extractor,
+         extractor_version,actor,statement_text,statement_norm)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'inferred',$12,$13,now(),'none','active',NULL,
+              $14,$14,$15,$16,$17,$18,$19)`,
+      [claimId, ownerId, subjectEntityId, predicate, objectEntityId, objectLiteral,
+       objectQuantity, objectUnit, objectTimeFrom, objectTimeTo,
+       input.validFrom ?? null, input.validTo ?? null, confidence,
+       Math.min(1, evidenceClaimIds.length / 4), extractor, extractor.split('@')[1] ?? '1', actor,
+       statementText, norm]);
+
+    // Copy the exact evidence spans into the inferred claim. This is a
+    // provenance index over real source material, not a synthetic citation.
+    for (const ev of evidence) {
+      const evidenceId = crypto.randomUUID();
+      await client.query(`
+        INSERT INTO aqua_evidence (evidence_id,owner_id,source_id,locator,quote,checksum)
+        VALUES ($1,$2,$3,$4::jsonb,$5,$6)`,
+        [evidenceId, ownerId, sourceId, json(ev.locator ?? { sourceClaim: evidenceClaimIds[0] }), ev.quote,
+         crypto.createHash('sha256').update(ev.quote).digest('hex')]);
+      await client.query(`
+        INSERT INTO aqua_claim_evidence(owner_id,claim_id,evidence_id,role)
+        VALUES ($1,$2,$3,'supporting')`, [ownerId, claimId, evidenceId]);
+    }
+
+    await lifecycle(client, { ownerId, targetKind:'claim', targetId:claimId, fromState:null, toState:'active', reason:'reflection-pattern', actor });
+    await revision(client, { ownerId, targetKind:'claim', targetId:claimId, changeKind:'create', before:null,
+      after:{ predicate, modality:'inferred', evidenceClaimIds }, reason:'reflection-pattern', actor, source:extractor });
+    await outbox(client, { ownerId, eventType:'claim.created', aggregateKind:'claim', aggregateId:claimId, actor,
+      payload:{ claimId, modality:'inferred', evidenceClaimIds, statementText } });
+    await outbox(client, { ownerId, eventType:'claim.embedding.requested', aggregateKind:'claim', aggregateId:claimId, actor,
+      payload:{ claimId, statementText, contentHash:crypto.createHash('sha256').update(statementText).digest('hex') } });
+
+    return { claimId, ownerId, modality:'inferred', evidenceCount:evidence.length, evidenceClaimIds };
   });
 }
 

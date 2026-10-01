@@ -35,6 +35,7 @@ import {
 } from './reflectionStore.js';
 import { ledger } from '../../pic/picStore.js';
 import { SELF_LABEL } from '../identity/selfEntity.js';
+import { buildRevisionDeltaV2 } from '../reflectionV3/revisionDelta.js';
 
 /** owner → last snapshot. LRU-capped. */
 const snapshots = new Map();
@@ -123,6 +124,16 @@ export function reflectWorldModel(deps, ownerId, opts = {}) {
     //    Only real deltas are recorded. A no-change reflection is not an event.
     if (delta.worldModelUpdated) {
       try {
+        const namedDelta = buildRevisionDeltaV2({
+          ownerId,
+          entitiesChanged: delta.entitiesChanged
+            .filter(e => String(e?.label ?? '').trim().toLowerCase() !== String(SELF_LABEL).toLowerCase()),
+          relationshipsChanged: delta.relationshipsChanged,
+          goalsChanged: delta.goalsChanged,
+          beliefsChanged: delta.beliefsChanged,
+          assumptionsRevised: delta.assumptionsRevised,
+          obsoleted: delta.obsoleted,
+        });
         ledger(ownerId, 'reflection', {
           summary:  delta.summary,
           entities: delta.entitiesChanged.length,
@@ -130,37 +141,9 @@ export function reflectWorldModel(deps, ownerId, opts = {}) {
           obsoleted: delta.obsoleted.length,
           revised:   delta.assumptionsRevised?.length ?? 0,
           applied:   !!report,
-          // SUBSTANCE, not just counts. The first version of this stored only
-          // the numbers, and the directive built from it read "your
-          // understanding changed: 5 entities changed" — which is the exact
-          // changelog voice the directive then forbids the model from using.
-          // The delta already carries labels; throwing them away and asking the
-          // model to sound human about arithmetic was the bug.
-          //
-          // Bounded hard: this rides a 300-entry ring per owner, and a question
-          // that names five things is already one thing too many to ask.
-          //
-          // The SELF entity is excluded. Its label is the literal word "You",
-          // and a directive reading "what you understand about You, Maya and
-          // Nummo has shifted" is incoherent — the self node IS the person being
-          // spoken to, never a third party they can be asked about. (Fourth
-          // place that label has had to be special-cased; a non-lexical one
-          // would have prevented all of them.)
-          subjects: delta.entitiesChanged
-            .map(e => String(e?.label ?? '').trim())
-            .filter(l => l && l.toLowerCase() !== String(SELF_LABEL).toLowerCase())
-            .slice(0, 5),
-          // A superseded assumption is the strongest material there is: AQUA
-          // believed something and no longer does. from/to are what make the
-          // question answerable instead of vague.
-          revisions: (delta.assumptionsRevised ?? [])
-            .slice(0, 2)
-            .map(a => ({
-              subject: String(a?.subject ?? '').slice(0, 120),
-              from:    String(a?.from ?? '').slice(0, 200),
-              to:      String(a?.to ?? '').slice(0, 200),
-            }))
-            .filter(a => a.subject || a.to),
+          subjects: namedDelta.subjects,
+          revisions: namedDelta.revisions,
+          revisionVersion: namedDelta.version,
         });
       } catch { /* fail-open: bookkeeping must never break reflection */ }
     }

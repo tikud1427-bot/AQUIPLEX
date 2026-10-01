@@ -44,6 +44,7 @@ import understandingRoute from "./src/understanding/understandingRoutes.js";
 import { runStartupValidation } from "./src/core/startupValidation.js";
 import { migrateLegacyMemory }  from "./src/memory/migrate.js";
 import { migrateIdentity }      from "./src/memory/identityMigration.js";
+import { fail, ErrorCodes } from "./src/routes/envelope.js";
 
 // ── One-time unification migration ──────────────────────────────────────────
 // Legacy conversation-scoped facts (.aqua-memory.json) → unified owner-scoped
@@ -192,25 +193,37 @@ router.use("/mind",            mindRoute);   // persistent cognitive model (Mind
 router.use("/intelligence",    intelligenceRoute); // Persistent Intelligence Core (Phase 4)
 router.use("/brain",           brainRoute);   // World Model read API (Brain V1 / Phase 0)
 
-// JSON 404 for unknown engine routes (never fall through to platform HTML 404)
+// JSON 404 for unknown engine routes (never fall through to platform HTML 404).
+// The path is derived from Express' actual mount point so the same router can
+// safely serve both the legacy surface and /v1 without lying about the URL.
 router.use((req, res) => {
-  res.status(404).json({ success: false, error: `Not found: ${req.method} /api/aqua${req.path}` });
+  return fail(res, ErrorCodes.NOT_FOUND, `Not found: ${req.method} ${req.baseUrl}${req.path}`);
 });
 
-// JSON error handler — same contract the AQUA frontend expects
+function errorCodeFor(status) {
+  if (status === 400) return ErrorCodes.BAD_REQUEST;
+  if (status === 401) return ErrorCodes.UNAUTHORIZED;
+  if (status === 403) return ErrorCodes.FORBIDDEN;
+  if (status === 404) return ErrorCodes.NOT_FOUND;
+  if (status === 409) return ErrorCodes.CONFLICT;
+  if (status === 413) return ErrorCodes.PAYLOAD_TOO_LARGE;
+  if (status === 422) return ErrorCodes.UNPROCESSABLE;
+  if (status === 503) return ErrorCodes.UNAVAILABLE;
+  return ErrorCodes.INTERNAL;
+}
+
+// JSON error handler — one response envelope and one closed error taxonomy.
 router.use((err, req, res, _next) => {
   const status = err.status ?? err.statusCode ?? 500;
   if (err.type === "entity.too.large" || status === 413) {
-    return res.status(413).json({
-      success: false,
-      error: "Upload too large. The request body limit is 50 MB — try a smaller archive, or remove build artifacts (node_modules, dist) before zipping.",
-    });
+    return fail(res, ErrorCodes.PAYLOAD_TOO_LARGE,
+      "Upload too large. The request body limit is 50 MB — try a smaller archive, or remove build artifacts (node_modules, dist) before zipping.");
   }
   if (err.type === "entity.parse.failed") {
-    return res.status(400).json({ success: false, error: "Invalid request body (malformed JSON)." });
+    return fail(res, ErrorCodes.BAD_REQUEST, "Invalid request body (malformed JSON).");
   }
-  console.error(`[AQUA] Unhandled error ${req.method} ${req.path}:`, err.stack ?? err.message);
-  res.status(status).json({ success: false, error: err.message ?? "Internal server error" });
+  console.error(`[AQUA] Unhandled error ${req.method} ${req.baseUrl}${req.path}:`, err.stack ?? err.message);
+  return fail(res, errorCodeFor(status), err.message ?? "Internal server error");
 });
 
 export default router;

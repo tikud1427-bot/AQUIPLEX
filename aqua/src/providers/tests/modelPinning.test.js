@@ -184,7 +184,9 @@ describe('all three adapters got the SAME treatment', () => {
         `${name}: the non-streaming path does not pin`);
       assert.ok(src.includes('opts.temperature !== undefined ? { temperature: opts.temperature }'),
         `${name}: temperature is missing, or guarded by truthiness which would swallow 0`);
-      assert.ok(/return \{ text[^}]*model: modelId \}/.test(src),
+      // E12 added `usage` after `model`; the contract is that the return STILL
+      // names the model, not that `model` is the last key.
+      assert.ok(/return \{ text[^}]*model: modelId(?:, usage: [^}]*?)? \}/.test(src),
         `${name}: a non-streaming return does not name the model`);
     });
   }
@@ -198,10 +200,20 @@ describe('all three adapters got the SAME treatment', () => {
       const src = await read(name);
       const streamed = src.split('\n').filter(l => l.includes('streamed: true'));
       assert.ok(streamed.length > 0, `${name}: no streaming returns found — re-read this test`);
-      for (const line of streamed) {
-        assert.ok(!line.includes('model: modelId'),
-          `${name}: a streaming return now names the model — intended, or an accidental widening?`);
+      // WHAT "LEFT ALONE" MEANS NOW. E12 (per-turn cost) deliberately made the
+      // streaming return carry `model` and `usage` — read-only metadata the
+      // turn ledger needs, since chat streams. That is a widening of the RETURN
+      // SHAPE and was intended. What must stay true is that the stream path
+      // takes no `opts` and never PINS: pinning on the answer path would turn a
+      // cooling model into a hard failure for a user mid-turn.
+      for (const line of streamed.filter(l => !l.includes("finishReason: 'interrupted'"))) {
+        assert.ok(line.includes('model: modelId') && line.includes('usage'),
+          `${name}: a completed streaming return lost model/usage — E12 cost accounting reads them`);
       }
+      assert.equal((src.match(/pinCandidates\(/g) ?? []).length, 1,
+        `${name}: pinCandidates appears ${(src.match(/pinCandidates\(/g) ?? []).length}x — only the non-streaming path may pin`);
+      const streamSig = src.match(/export async function stream\w+\(([^)]*)\)/);
+      assert.ok(streamSig && !/opts/.test(streamSig[1]), `${name}: the stream function grew an opts parameter`);
     }
   });
 });

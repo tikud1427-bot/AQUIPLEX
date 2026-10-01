@@ -134,7 +134,25 @@ export const useChatStore = create<ChatState>((set, get) => {
 
     const wasNewConversation = !conversationId;
 
+    // Terminal-turn guard for rAF token batching. A token/replacement can queue
+    // an animation-frame flush immediately before the server's `done` event;
+    // once the turn settles that callback must never be allowed to resurrect
+    // `status: 'streaming'`.
+    let flushScheduled = false;
+    let flushRaf: number | null = null;
+    let turnSettled = false;
+
+    const cancelPendingFlush = () => {
+      turnSettled = true;
+      if (flushRaf !== null) {
+        cancelAnimationFrame(flushRaf);
+        flushRaf = null;
+      }
+      flushScheduled = false;
+    };
+
     const finishTurn = (res: ChatSuccessResponse, contentOverride?: string) => {
+      cancelPendingFlush();
       // The mind evolved during this turn — pull the fresh model so the
       // dashboard (if open) updates the moment the answer lands. Silent +
       // debounced inside the store; no polling anywhere.
@@ -191,6 +209,7 @@ export const useChatStore = create<ChatState>((set, get) => {
     };
 
     const failTurn = (message: string) => {
+      cancelPendingFlush();
       if (!isLive()) return;
       set((s) => ({
         generating: false,
@@ -204,18 +223,18 @@ export const useChatStore = create<ChatState>((set, get) => {
 
     // ── rAF-batched token buffer ────────────────────────────────────────────
     let streamedText = '';
-    let flushScheduled = false;
     let firstTokenSeen = false;
 
     const flush = () => {
       flushScheduled = false;
-      if (!isLive()) return;
+      flushRaf = null;
+      if (turnSettled || !isLive()) return;
       patchMsg({ content: streamedText, status: 'streaming', stage: undefined });
     };
     const scheduleFlush = () => {
-      if (flushScheduled) return;
+      if (turnSettled || flushScheduled) return;
       flushScheduled = true;
-      requestAnimationFrame(flush);
+      flushRaf = requestAnimationFrame(flush);
     };
 
     // ── Legacy request/response path (compat fallback + shared error handling) ──
@@ -276,7 +295,11 @@ export const useChatStore = create<ChatState>((set, get) => {
             if (isLive()) set({ conversationId: e.conversationId });
           },
           onStage: (e) => {
-            if (!firstTokenSeen && isLive()) patchMsg({ stage: { id: e.id, label: e.label } });
+            // Stages can begin after generation (for example verification).
+            // Keep surfacing them after the first token instead of leaving the
+            // composer in a silent blinking state while the server is still
+            // doing legitimate post-draft work.
+            if (isLive()) patchMsg({ stage: { id: e.id, label: e.label } });
           },
           onWorkspace: (e) => {
             if (isLive()) patchMsg({ workspace: e });
@@ -339,6 +362,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       // Stream ended without `done`:
       if (serverError) {
         if (firstTokenSeen && streamedText.trim()) {
+          cancelPendingFlush();
           // Partial answer already on screen — keep it, note the interruption.
           if (!isLive()) return;
           set((s) => ({
@@ -376,6 +400,7 @@ export const useChatStore = create<ChatState>((set, get) => {
 
       // Connection dropped mid-stream with no error event.
       if (firstTokenSeen && streamedText.trim()) {
+        cancelPendingFlush();
         if (!isLive()) return;
         set((s) => ({
           generating: false,
@@ -394,6 +419,7 @@ export const useChatStore = create<ChatState>((set, get) => {
 
       // Stop button / conversation switch — the backend persisted the partial.
       if ((err as Error)?.name === 'AbortError' || isCancel(err)) {
+        cancelPendingFlush();
         if (streamedText.trim()) {
           set((s) => ({
             generating: false,
@@ -424,6 +450,7 @@ export const useChatStore = create<ChatState>((set, get) => {
       }
 
       if (firstTokenSeen && streamedText.trim()) {
+        cancelPendingFlush();
         set((s) => ({
           generating: false,
           abortController: null,

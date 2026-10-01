@@ -18,7 +18,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  analyseQuestion, offeredKinds, statementPolarity, statementIsPast, contentTerms,
+  analyseQuestion, offeredKinds, factAffinity, statementPolarity, statementIsPast, contentTerms,
 } from '../questionShape.js';
 
 const fact = (statement, entities = []) => ({ statement, entities });
@@ -88,12 +88,31 @@ describe('question shape — polarity, currency and self-scope', () => {
     assert.equal(analyseQuestion('What do I own?').polarity, 'affirmed');
   });
 
-  test('past beats present when both cues fire', () => {
+  test('past beats present when both cues fire, and present-state verbs imply current', () => {
     // "no longer" matches both. It is unambiguously about what STOPPED being
     // true, and reading it as a present-tense question inverts the answer.
     assert.equal(analyseQuestion('Where do I no longer work?').currency, 'past');
     assert.equal(analyseQuestion('Where do I work now?').currency, 'current');
-    assert.equal(analyseQuestion('Where do I work?').currency, 'any');
+    assert.equal(analyseQuestion('Where do I work?').currency, 'current');
+    assert.equal(analyseQuestion('Where am I employed?').currency, 'current');
+    assert.equal(analyseQuestion('Which company pays me?').currency, 'current');
+    assert.equal(analyseQuestion('Who employs me?').currency, 'current');
+    assert.equal(analyseQuestion('Where am I based?').currency, 'current');
+    assert.equal(analyseQuestion('What company did I work for?').currency, 'past');
+  });
+
+  test('present-state employer questions demote superseded past claims', () => {
+    const shape = analyseQuestion('Which company pays me?');
+    const current = fact('I run product at Nummo.', ['Nummo']);
+    const superseded = fact('I used to work at Intercom.', ['Intercom']);
+    const currentScore = factAffinity(shape, current);
+    const supersededScore = factAffinity(shape, superseded);
+
+    assert.equal(shape.currency, 'current');
+    assert.ok(
+      currentScore.score > supersededScore.score,
+      `current=${currentScore.score} superseded=${supersededScore.score}`,
+    );
   });
 
   test('object-form first person counts as self-scope', () => {

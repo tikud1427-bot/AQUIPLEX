@@ -429,7 +429,7 @@ function requireLogin(req, res, next) {
   if (!isLoggedIn) {
     // req.path is router-relative inside mounted routers — use originalUrl so
     // /api/aqua/* correctly gets a JSON 401 instead of an HTML redirect.
-    if (req.originalUrl.startsWith("/api/") || req.xhr) return res.status(401).json({ error: "Login required" });
+    if (req.originalUrl.startsWith("/api/") || req.originalUrl.startsWith("/v1") || req.xhr) return res.status(401).json({ error: "Login required" });
     return res.redirect("/login");
   }
   if (req.session && !req.session.userId && req.user) req.session.userId = req.user._id;
@@ -550,23 +550,27 @@ const aquaEngine = express.Router();
 
 // Credit metering on generation endpoints (same wallet as the rest of the platform)
 aquaEngine.use((req, res, next) => {
-  if (req.method === "POST" && (req.path === "/chat" || req.path === "/chat/stream")) {
+  // E11: /v1 is a compatibility alias over the same route tree. Normalize
+  // the mounted prefix before applying usage policy so both API surfaces are
+  // charged identically.
+  const routePath = req.path.replace(/^\/v1(?=\/|$)/, '') || '/';
+
+  if (req.method === "POST" && (routePath === "/chat" || routePath === "/chat/stream")) {
     return usageGuard("chat_message")(req, res, next);
   }
-  if (req.method === "POST" && req.path.startsWith("/upload")) {
+  if (req.method === "POST" && routePath.startsWith("/upload")) {
     return usageGuard("chat_with_file")(req, res, next);
   }
   // Artifact Engine P5 — edit/regenerate re-run generation on an existing
   // artifact; metered at the chat_with_file tier (chat-triggered artifact
   // CREATION already rides the chat_message guard above).
-  if (req.method === "POST" && /^\/artifacts\/[^/]+\/(edit|regenerate)$/.test(req.path)) {
+  if (req.method === "POST" && /^\/artifacts\/[^/]+\/(edit|regenerate)$/.test(routePath)) {
     return usageGuard("chat_with_file")(req, res, next);
   }
   next();
 });
 
-app.use(
-  "/api/aqua",
+const aquaAccess = [
   engineLimiter,          // before requireLogin: an unauthenticated flood still costs us sockets
   requireLogin,
   (req, res, next) => {
@@ -574,14 +578,24 @@ app.use(
     next();
   },
   aquaEngine,
-);
+];
+
+// E11: keep the platform-native /api/aqua surface and expose the same engine
+// at the blueprint's canonical /v1 path. There is still exactly one route
+// implementation and one usage-metering layer.
+app.use("/api/aqua", ...aquaAccess);
+app.use("/v1", ...aquaAccess);
 
 let aquaMounted = false;
 import("./aqua/router.js")
   .then((m) => {
+    // E11 — mount the SAME router instance at /v1 first. The legacy router has
+    // a terminal 404 handler, so ordering makes the alias a real compatibility
+    // layer rather than a second route tree.
+    aquaEngine.use("/v1", m.default);
     aquaEngine.use(m.default);
     aquaMounted = true;
-    console.log("✅ AQUA engine mounted at /api/aqua");
+    console.log("✅ AQUA engine mounted at /api/aqua + /v1 (single route tree)");
   })
   .catch((err) => {
     console.error("❌ AQUA engine failed to mount:", err);

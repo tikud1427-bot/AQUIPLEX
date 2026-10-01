@@ -152,6 +152,8 @@ export function logE6Turn({ ownerId = null, conversationId = null, result = null
     const s6 = s.s6
       ? ` s6.ready=${s.s6.ready} s6.ambiguous=${s.s6.ambiguous} s6.provisional=${s.s6.provisional}`
         + ` s6.byTier=${JSON.stringify(s.s6.byTier ?? {})}`
+        + (s.s6.minted !== undefined ? ` s6.minted=${s.s6.minted} s6.reused=${s.s6.reused}` : '')
+        + (s.s6.refused && Object.keys(s.s6.refused).length ? ` s6.refused=${JSON.stringify(s.s6.refused)}` : '')
       : '';
     console.log(
       `[E6] ${at} segments=${s.segments ?? 0} gated=${s.gated ?? 0} called=${s.called ?? 0} `

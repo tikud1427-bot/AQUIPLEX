@@ -335,6 +335,9 @@ describe('claim schema — writers are declared, not accidental', () => {
       'src/core/claims/projection.js',
       'src/core/worldModel/worldModelRepository.js',
       'src/core/worldModel/embeddingRepository.js',
+      // E5/E8 — canonical async READ model. Declared as a READER, not a writer:
+      // readOnlyConsumers.test.js pins that no write statement appears in it.
+      'src/core/worldModel/canonicalReadModel.js',
       // Inline test fixtures (same convention already accepted in dbPool.test.js).
       'src/brain/reflectionV3/transitionSafety.test.js',
       'src/core/db/migrations/0013_owner_partition_hnsw.test.js',

@@ -14,7 +14,7 @@
 
 import { observeSignal, observeSignals } from '../../mind/beliefEngine.js';
 import { getMind } from '../../mind/mindStore.js';
-import { beliefsForClaim } from '../../core/mind/beliefClaimRepository.js';
+import { beliefsForClaim, linkBeliefClaim } from '../../core/mind/beliefClaimRepository.js';
 
 const clamp01 = n => Math.max(0, Math.min(1, Number(n) || 0));
 
@@ -105,6 +105,7 @@ export async function reflectClaimsToBeliefs({
   if (!ownerId) return { ok: false, ownerId: null, signals: 0, touched: 0, reason: 'no owner' };
 
   const readRelationships = deps.beliefsForClaim ?? beliefsForClaim;
+  const writeRelationship = deps.linkBeliefClaim ?? linkBeliefClaim;
   const load = deps.getMind ?? getMind;
   const apply = deps.observeSignals ?? observeSignals;
 
@@ -131,6 +132,34 @@ export async function reflectClaimsToBeliefs({
   const signals = planned.map(s => ({ ...s, conversationId }));
 
   const touched = signals.length ? apply(mind, signals) : [];
+
+  // E9/PR-2: every claim-backed belief signal records the provenance link
+  // after the belief writer succeeds. The link is an index, not a second
+  // knowledge store. It is intentionally fail-open when Postgres is not yet
+  // configured for a tenant, because Mind remains the authoritative legacy
+  // belief store during migration.
+  let linksWritten = 0;
+  let linksFailed = 0;
+  for (const signal of signals) {
+    const belief = touched.find(b => b?.dimension === signal.dimension && b?.key === signal.key);
+    if (!belief?.id || !signal.claimId) continue;
+    try {
+      await writeRelationship({
+        ownerId,
+        beliefId: belief.id,
+        dimension: belief.dimension,
+        beliefKey: belief.key,
+        claimId: signal.claimId,
+        relation: signal.support === false ? 'contradicting' : 'supporting',
+        weight: clamp01(signal.strength),
+      });
+      linksWritten += 1;
+    } catch (err) {
+      linksFailed += 1;
+      console.warn(`[REFLECTION] belief-claim link unavailable: ${err?.message ?? err}`);
+    }
+  }
+
   return {
     ok: true,
     ownerId,
@@ -138,6 +167,8 @@ export async function reflectClaimsToBeliefs({
     relationships: relationships.length,
     signals: signals.length,
     touched: touched.length,
+    linksWritten,
+    linksFailed,
     claimIds: [...new Set(signals.map(s => s.claimId))],
   };
 }

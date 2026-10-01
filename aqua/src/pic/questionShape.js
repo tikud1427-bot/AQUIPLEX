@@ -136,8 +136,23 @@ const NEGATION_CUE = /\b(not|never|no longer|nobody|none|cannot|can't|won't|don'
 /** Present-tense / currency cues: the asker wants today's answer. */
 const CURRENT_CUE = /\b(now|currently|current|today|these days|right now|still|at the moment|nowadays|present)\b/i;
 
+/**
+ * Present-tense state verbs imply a current-state question even when the user
+ * does not add an explicit time adverb. This matters for the supersession trap:
+ * "Which company pays me?" and "Who employs me?" are present-state questions,
+ * while their corpus contains an older "used to work" claim. Leaving currency
+ * at `any` lets the stale claim compete on kind relevance instead of honoring
+ * the tense already expressed by the question's finite verb.
+ *
+ * Kept intentionally narrow. Past-tense forms are absent; explicit PAST_CUE is
+ * still checked first, so "Which company did I work for?" remains `past`.
+ */
+const PRESENT_STATE_CUE = /\b(work|works|working|employ|employs|employed|live|lives|living|based|locat(?:e|ed)|pay|pays|paying)\b/i;
+
 /** Past cues: the asker wants the superseded answer, and it is the ANSWER. */
 const PAST_CUE = /\b(used to|previously|formerly|former|before|earlier|anymore|any more|no longer|last (?:year|month|week)|back then|originally)\b/i;
+/** Past-tense auxiliaries provide an explicit temporal frame even without an adverb. */
+const PAST_AUX_CUE = /\b(did|was|were|had)\b/i;
 
 /** Words that carry no topic. Kept tight — an over-broad list eats real terms. */
 const STOPWORDS = new Set([
@@ -210,8 +225,8 @@ export function analyseQuestion(query) {
 
   // Currency. PAST is checked first: "no longer" matches both cues, and it is
   // unambiguously a question about what STOPPED being true.
-  if (PAST_CUE.test(q)) shape.currency = 'past';
-  else if (CURRENT_CUE.test(q)) shape.currency = 'current';
+  if (PAST_CUE.test(q) || PAST_AUX_CUE.test(q)) shape.currency = 'past';
+  else if (CURRENT_CUE.test(q) || PRESENT_STATE_CUE.test(q)) shape.currency = 'current';
 
   // Content terms are taken from the question with its GRAMMAR REMOVED.
   //

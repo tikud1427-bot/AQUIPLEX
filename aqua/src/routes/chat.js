@@ -107,6 +107,8 @@ import { publicManifest, composeArtifactEditSummary } from '../artifacts/engine.
 import { listArtifacts as listStoredArtifacts } from '../artifacts/artifactStore.js';
 import '../artifacts/engine.js';               // side-effect: registers the 'artifact' agent on load (Artifact Engine P1)
 import { ErrorCodes } from './envelope.js';
+import { createTurnLedger, recordTurnCost } from '../core/costAccounting.js';
+import { defer } from '../core/jobs/jobRegistry.js';
 
 const router = express.Router();
 
@@ -477,6 +479,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     userMessage,
     requestId,
     conversationId,
+    costLedger: ctx.costLedger,
     // Artifact turns replace generation entirely — the reasoning pass's
     // analysis would be built and thrown away. classifyTask() still labels
     // these 'planning' (correct: it drives provider ranking), so the SKIP is
@@ -591,26 +594,20 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     const floorRetrieve = (oid, q, o) => cognitiveKnowledgeRetrieve(oid, q, { ...o, plan: cognition.plan });
     const useCrossEncoder = Brain.contextV2Active() && String(process.env.AQUA_CROSS_ENCODER ?? '').toLowerCase() === 'on';
     const knowledge = Brain.contextV2Active()
-      ? (useCrossEncoder
-          ? Brain.assembleContextAsync(memoryOwner, userMessage, floorRetrieve, {
-              limit: 8, plan: cognition.plan, taskType, formatCitation,
-              semanticScores: await canonicalSemanticP,
-              activeProjectId: workspaceId ?? null,
-              crossEncoder: {
-                scorePairs: crossEncoderScorePairs,
-                candidateLimit: Number(process.env.AQUA_CROSS_ENCODER_POOL ?? 32),
-                blendWeight: Number(process.env.AQUA_CROSS_ENCODER_BLEND ?? 0.20),
-              },
-            })
-          : Brain.assembleContext(memoryOwner, userMessage, floorRetrieve, {
-              limit: 8, plan: cognition.plan, taskType, formatCitation,
-              // E7 canonical dense lane: these scores are keyed by the same
-              // evidence-store fact id used by Context Engine candidate.semanticId.
-              // The legacy `semanticScoresP` map remains reserved for memoryRetrieve,
-              // whose LTM keyspace is different.
-              semanticScores: await canonicalSemanticP,
-              activeProjectId: workspaceId ?? null,
-            }))
+      ? await Brain.assembleContextAsync(memoryOwner, userMessage, floorRetrieve, {
+          limit: 8, plan: cognition.plan, taskType, formatCitation,
+          // E7 canonical dense lane: these scores are keyed by the canonical
+          // claim retrieval identity and hydrated once at this seam.
+          semanticScores: await canonicalSemanticP,
+          activeProjectId: workspaceId ?? null,
+          ...(useCrossEncoder ? {
+            crossEncoder: {
+              scorePairs: crossEncoderScorePairs,
+              candidateLimit: Number(process.env.AQUA_CROSS_ENCODER_POOL ?? 32),
+              blendWeight: Number(process.env.AQUA_CROSS_ENCODER_BLEND ?? 0.20),
+            },
+          } : {}),
+        })
       : floorRetrieve(memoryOwner, userMessage, { limit: 8 });
     knowledgeContext = knowledge.block;
     knowledgeItems   = knowledge.items;
@@ -742,7 +739,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
  * (falling back to the single critic), with a second pass so a revision
  * gets re-reviewed. Everything else keeps the original single-critic,
  * single-pass check. */
-async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId, plan, confidence, evidenceContext = '', knowledgeItems = [], memoryOwner = null, cognitiveEscalation = null }) {
+async function runVerification({ orchestration, userMessage, draftAnswer, taskType, requestId, conversationId, plan, confidence, evidenceContext = '', knowledgeItems = [], memoryOwner = null, cognitiveEscalation = null, costLedger = null }) {
   let verification = { ran: false, passed: null, revised: false };
   // CIE escalation can only ADD review — the orchestrator's shouldVerify()
   // decision is a floor. A turn the orchestrator skipped gets pulled into
@@ -767,6 +764,7 @@ async function runVerification({ orchestration, userMessage, draftAnswer, taskTy
         maxPasses: deepReview ? 2 : 1,
         tags: orchestration.multiLabel?.tags ?? [], // debate seats security/compliance reviewers from these; verification ignores it
         evidenceContext, // Phase 0 (F1/F3): reviewers see the drafter's evidence — grounding contract
+        costLedger,
       });
     }
   }
@@ -967,6 +965,9 @@ router.post('/', async (req, res) => {
   });
   console.log(`[CHAT] ${isNew ? 'CONVERSATION_CREATED' : 'CONVERSATION_REUSED'} id=${conversationId} req=${requestId}`);
   const ctx = createContext({ conversationId, requestId });
+  const costLedger = createTurnLedger();
+  ctx.costLedger = costLedger;
+  ctx.costPurpose = 'chat';
 
   try {
     const { message, workspaceId, mode = null } = req.body ?? {};
@@ -1084,6 +1085,7 @@ router.post('/', async (req, res) => {
       evidenceContext: prep.evidenceContext,
       knowledgeItems: prep.knowledgeItems, memoryOwner: prep.memoryOwner,   // PIC feedback loop (Phase 4)
       cognitiveEscalation: draftObservation.escalate,                       // CIE: monitor can only ADD review
+      costLedger,
     });
     if (verification.revised && verification.finalAnswer) {
       finalAnswer = verification.finalAnswer;
@@ -1139,6 +1141,7 @@ router.post('/', async (req, res) => {
       latencyMs: result.latency,
     });
 
+    recordTurnCost(costLedger.summary());
     return res.json(payload);
   } catch (err) {
     console.error('[CHAT] Request failed:', err.message);
@@ -1191,6 +1194,9 @@ router.post('/stream', async (req, res) => {
   });
   console.log(`[CHAT] ${isNew ? 'CONVERSATION_CREATED' : 'CONVERSATION_REUSED'} id=${conversationId} req=${requestId} (stream)`);
   const ctx = createContext({ conversationId, requestId });
+  const costLedger = createTurnLedger();
+  ctx.costLedger = costLedger;
+  ctx.costPurpose = 'chat';
 
   const { message, workspaceId, mode = null } = req.body ?? {};
   if (!message || typeof message !== 'string' || !message.trim()) {
@@ -1405,6 +1411,7 @@ router.post('/stream', async (req, res) => {
         evidenceContext: prep.evidenceContext,
         knowledgeItems: prep.knowledgeItems, memoryOwner: prep.memoryOwner,   // PIC feedback loop (Phase 4)
         cognitiveEscalation: draftObservation.escalate,                       // CIE: monitor can only ADD review
+        costLedger,
       });
       if (verification.revised && verification.finalAnswer) {
         finalAnswer = verification.finalAnswer;
@@ -1429,24 +1436,16 @@ router.post('/stream', async (req, res) => {
       }
     }
 
-    // ── 9. Persist ───────────────────────────────────────────────────────────────
+    // ── 9. Persist the visible turn before terminalizing the stream ─────────────
     addMessage(conversationId, 'user',      userMessage);
     addMessage(conversationId, 'assistant', finalAnswer);
 
-    // ── 9b-9d. Post-turn understanding — Mind post-turn, world-model ingest,
-    //          Digital Twin, cadence-gated Reflection V2. Extracted to ONE
-    //          shared unit so both endpoints cannot drift (audit W6); the
-    //          behaviour is unchanged from when this block was inline.
-    runPostTurn({
-      ownerId: prep.memoryOwner,
-      conversationId,
-      userMessage,
-      assistantMessage: finalAnswer,
-      taskType,
-      workspaceId,
-    });
-
-    // ── 10. Done event — same diagnostics shape as POST /chat ───────────────────
+    // ── 10. Build + send the terminal response BEFORE non-critical post-turn
+    // work. Verification is already complete at this point; nothing that follows
+    // is allowed to hold the user's SSE terminal event hostage. In particular,
+    // post-turn understanding / learning can trigger provider calls and durable
+    // writes and must never make the UI sit on a blinking cursor after the answer
+    // itself is ready.
     const payload = buildResponsePayload({
       requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
       promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
@@ -1454,17 +1453,43 @@ router.post('/stream', async (req, res) => {
       identityGuarded, draftObservation,
     });
 
-    // ── 10b. Learning ledger (Phase 11) — fail-open inside recordOutcome ────────
-    recordOutcome({
-      taskType,
-      provider: result.provider,
-      responseConfidence: payload.responseConfidence,
-      verification,
-      verificationWarranted: orchestration.verification.enabled,
-      latencyMs: result.latency,
-    });
-
+    console.log(`[CHAT] STREAM_DONE_SENT req=${requestId} conv=${conversationId} chars=${finalAnswer.length} provider=${result.provider} verificationRan=${!!verification.ran} revised=${!!verification.revised}`);
     send('done', payload);
+
+    // ── 10b. Post-response bookkeeping — explicitly detached from the terminal
+    // SSE event. The job registry gives the deferred work a shutdown-visible
+    // lifecycle without making the client wait for it.
+    defer('post-response', async () => {
+      try {
+        // Phase 11 learning ledger — fail-open inside recordOutcome.
+        recordOutcome({
+          taskType,
+          provider: result.provider,
+          responseConfidence: payload.responseConfidence,
+          verification,
+          verificationWarranted: orchestration.verification.enabled,
+          latencyMs: result.latency,
+        });
+      } catch { /* fail-open: learning must never affect the completed turn */ }
+
+      try {
+        recordTurnCost(costLedger.summary());
+      } catch { /* fail-open: accounting must never affect the completed turn */ }
+
+      // Post-turn understanding — Mind post-turn, world-model ingest, Digital
+      // Twin, cadence-gated Reflection V2. This helper schedules its own
+      // background work and never blocks the already-sent response.
+      try {
+        runPostTurn({
+          ownerId: prep.memoryOwner,
+          conversationId,
+          userMessage,
+          assistantMessage: finalAnswer,
+          taskType,
+          workspaceId,
+        });
+      } catch { /* fail-open */ }
+    });
   } catch (err) {
     if (err.message === 'CLIENT_ABORTED') {
       // The user stopped generation. Persist exactly what they saw so

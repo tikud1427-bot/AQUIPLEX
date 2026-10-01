@@ -56,7 +56,7 @@ function warrantsReasoningPass(complexity, confidence) {
  * deterministic pipeline as before — no model call, no added latency. Fails
  * open: a failed/absent pass falls back to the deterministic brief.
  */
-export async function runIntelligencePipeline({ taskType, complexity, confidence = 1.0, userMessage = '', requestId, conversationId, skipReasoningPass = false }) {
+export async function runIntelligencePipeline({ taskType, complexity, confidence = 1.0, userMessage = '', requestId, conversationId, skipReasoningPass = false, costLedger = null }) {
   const plan      = createPlan({ taskType, complexity, confidence });
   const reasoning = runReasoning(plan, userMessage);
   const critic    = reviewReasoning(plan, reasoning);
@@ -73,7 +73,7 @@ export async function runIntelligencePipeline({ taskType, complexity, confidence
     reasoningPass = { ran: false, skipped: true, reason: 'generation replaced by a specialist engine' };
   } else if (plan.active && reasoningAgent && warrantsReasoningPass(complexity, confidence)) {
     reasoningPass = await reasoningAgent.run({
-      userMessage, plan, reasoning, taskType, requestId, conversationId,
+      userMessage, plan, reasoning, taskType, requestId, conversationId, costLedger,
     });
   }
 

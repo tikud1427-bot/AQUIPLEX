@@ -58,6 +58,9 @@ import * as Brain from '../brain/index.js';
 import { selfEntityEnabled } from '../brain/identity/selfEntity.js';
 import { flagReport } from '../core/flags.js';
 import { ErrorCodes } from './envelope.js';
+import { getRevisionFeed } from '../brain/reflectionV3/revisionFeed.js';
+import { claimWithEvidence, correctClaim, readHistory } from '../core/worldModel/worldModelRepository.js';
+import { isConfigured as dbConfigured } from '../core/db/pool.js';
 
 const router = express.Router();
 
@@ -138,6 +141,7 @@ function flagState() {
     // the deps-forwarding fix, so nothing reported it. Now that it can take
     // effect, it has to be visible here too.
     AQUA_SELF_ENTITY: selfEntityEnabled(),
+    AQUA_CANONICAL_READ: Brain.canonicalWorldModelReadEnabled(),
     // The eighth switch. Every other flag here changes what AQUA KNOWS or does
     // silently; this one changes what it SAYS, unprompted. That is the one most
     // worth being able to read off a running instance.
@@ -187,10 +191,20 @@ function ok(res, ownerId, payload, { empty = false, kind = null } = {}) {
 function guarded(handler) {
   return (req, res) => {
     try {
-      handler(req, res);
+      const result = handler(req, res);
+      if (result && typeof result.then === 'function') {
+        result.catch(err => {
+          console.error(`[BRAIN_API] ${req.method} ${req.path} failed:`, err?.stack ?? err?.message ?? err);
+          if (!res.headersSent) {
+            res.status(500).json({ success: false, code: ErrorCodes.INTERNAL, error: err?.message ?? 'Internal error' });
+          }
+        });
+      }
     } catch (err) {
       console.error(`[BRAIN_API] ${req.method} ${req.path} failed:`, err?.stack ?? err?.message ?? err);
-      res.status(500).json({ success: false, code: ErrorCodes.INTERNAL, error: err?.message ?? 'Internal error' });
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, code: ErrorCodes.INTERNAL, error: err?.message ?? 'Internal error' });
+      }
     }
   };
 }
@@ -221,10 +235,10 @@ router.get('/metrics', guarded((_req, res) => {
  * AQUA_BRAIN_INGEST it counts documents corroborated by the Mind's own chat
  * graph; after, it should climb as chat and documents land on one node.
  */
-router.get('/stats', guarded((req, res) => {
+router.get('/stats', guarded(async (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
-  const stats = Brain.worldStats(ownerId);
+  const stats = await Brain.worldStatsAsync(ownerId);
   ok(res, ownerId, { stats }, { empty: stats.entities === 0 });
 }));
 
@@ -241,7 +255,7 @@ router.get('/stats', guarded((req, res) => {
  * Importance is derived, never stored (brain/worldModel/schema.js), so
  * filtering on it is always consistent with what the detail view shows.
  */
-router.get('/entities', guarded((req, res) => {
+router.get('/entities', guarded(async (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
 
@@ -249,8 +263,8 @@ router.get('/entities', guarded((req, res) => {
   const limit = clampInt(req.query.limit, 50, 1, 200);
 
   const entities = q
-    ? Brain.findEntities(ownerId, q, { limit })
-    : Brain.listEntities(ownerId, {
+    ? await Brain.findEntitiesAsync(ownerId, q, { limit })
+    : await Brain.listEntitiesAsync(ownerId, {
         limit,
         type: req.query.type ? String(req.query.type).slice(0, 40) : null,
         minImportance: clampFloat(req.query.minImportance, 0, 0, 1),
@@ -270,7 +284,7 @@ router.get('/entities', guarded((req, res) => {
  * (`mind:technology:ai/ml`) and can contain a slash. The path form stays for
  * the common case and for readable logs.
  */
-function entityDetail(req, res) {
+async function entityDetail(req, res) {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
 
@@ -279,7 +293,7 @@ function entityDetail(req, res) {
     return res.status(400).json({ success: false, code: ErrorCodes.BAD_REQUEST, error: 'id is required (?id=<entityId>)' });
   }
 
-  const detail = Brain.describeEntity(ownerId, id, {
+  const detail = await Brain.describeEntityAsync(ownerId, id, {
     relationships: clampInt(req.query.relationships, 20, 1, 100),
     observations: clampInt(req.query.observations, 15, 1, 100),
     events: clampInt(req.query.events, 15, 1, 100),
@@ -299,6 +313,76 @@ function entityDetail(req, res) {
 router.get('/entity', guarded(entityDetail));
 router.get('/entity/:id', guarded(entityDetail));
 
+// ── Canonical claims + correction surface (E5/L6/L20) ────────────────────────
+
+function claimApi(claim) {
+  if (!claim) return null;
+  return {
+    ...claim,
+    ref: `/brain/claims/${encodeURIComponent(String(claim.claimId))}`,
+    confidence: {
+      extraction: claim.confidenceExtraction,
+      corroboration: claim.confidenceCorroboration,
+      source: null,
+      recency: null,
+      consistency: null,
+    },
+  };
+}
+
+router.get('/claims/:id', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  if (!dbConfigured()) return res.status(503).json({ success: false, code: 'WORLD_MODEL_UNAVAILABLE', error: 'Canonical world model is not configured' });
+  const id = String(req.params.id ?? '').trim();
+  const claim = await claimWithEvidence(ownerId, id);
+  if (!claim) return res.status(404).json({ success: false, code: ErrorCodes.NOT_FOUND, error: 'Claim not found', flags: flagState() });
+  ok(res, ownerId, { claim: claimApi(claim) });
+}));
+
+router.get('/claims/:id/history', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  if (!dbConfigured()) return res.status(503).json({ success: false, code: 'WORLD_MODEL_UNAVAILABLE', error: 'Canonical world model is not configured' });
+  const id = String(req.params.id ?? '').trim();
+  const history = await readHistory({ ownerId, targetKind: 'claim', targetId: id });
+  ok(res, ownerId, { ref: `/brain/claims/${encodeURIComponent(id)}`, history });
+}));
+
+router.post('/claims/:id/correct', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  if (!dbConfigured()) return res.status(503).json({ success: false, code: 'WORLD_MODEL_UNAVAILABLE', error: 'Canonical world model is not configured' });
+  const id = String(req.params.id ?? '').trim();
+  const statementText = String(req.body?.statementText ?? '').trim();
+  if (!statementText) return res.status(400).json({ success: false, code: ErrorCodes.BAD_REQUEST, error: 'statementText is required', flags: flagState() });
+  try {
+    const result = await correctClaim({
+      ownerId,
+      actor: 'user',
+      claimId: id,
+      statementText: statementText.slice(0, 20_000),
+      object: req.body?.object ?? null,
+      polarity: req.body?.polarity,
+      modality: req.body?.modality,
+      validFrom: req.body?.validFrom,
+      validTo: req.body?.validTo,
+      oldValidTo: req.body?.oldValidTo,
+      timePrecision: req.body?.timePrecision,
+      reason: String(req.body?.reason ?? 'user-correction').slice(0, 500),
+    });
+    const claim = await claimWithEvidence(ownerId, result.claimId);
+    ok(res, ownerId, {
+      correction: result,
+      claim: claimApi(claim),
+      replaced: `/brain/claims/${encodeURIComponent(id)}`,
+    });
+  } catch (error) {
+    const status = /not found|cannot be corrected|object must contain|not belong/i.test(String(error?.message ?? '')) ? 400 : 500;
+    return res.status(status).json({ success: false, code: status === 400 ? ErrorCodes.BAD_REQUEST : ErrorCodes.INTERNAL, error: error?.message ?? 'Correction failed', flags: flagState() });
+  }
+}));
+
 // ── Timeline (B7) ────────────────────────────────────────────────────────────
 
 /**
@@ -311,11 +395,11 @@ router.get('/entity/:id', guarded(entityDetail));
  *   ?subject=    restrict to one subject's story
  *   ?minStages=  2..10   how many lifecycle stages a run needs to be a chain
  */
-router.get('/timeline', guarded((req, res) => {
+router.get('/timeline', guarded(async (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
 
-  const timeline = Brain.getTimeline(ownerId, {
+  const timeline = await Brain.getTimelineAsync(ownerId, {
     limit: clampInt(req.query.limit, 100, 1, 500),
     minStages: clampInt(req.query.minStages, 2, 2, 10),
     subject: req.query.subject ? String(req.query.subject).slice(0, 200) : null,
@@ -337,11 +421,11 @@ router.get('/timeline', guarded((req, res) => {
  * order, never that one stage caused the next. Events that regress a stage
  * are returned as `offSequence` rather than reordered or dropped.
  */
-router.get('/chains', guarded((req, res) => {
+router.get('/chains', guarded(async (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
 
-  const chains = Brain.getChains(ownerId, {
+  const chains = await Brain.getChainsAsync(ownerId, {
     limit: clampInt(req.query.limit, 100, 1, 500),
     minStages: clampInt(req.query.minStages, 2, 2, 10),
     subject: req.query.subject ? String(req.query.subject).slice(0, 200) : null,
@@ -384,52 +468,40 @@ router.get('/twin', guarded((req, res) => {
 }));
 
 /**
- * WHAT CHANGED — AQUA's revisions to its own understanding, newest first.
- *
- * Every other endpoint here answers "what does AQUA know". This one answers
- * "what did AQUA change its mind about, and when", which is the thing an
- * unlimited context window cannot do: a transcript gives you recall, not a
- * position that can be revised.
- *
- * The data was being thrown away until now. `reflectWorldModel` computed a
- * structured WorldDelta on every cadence turn, applied it, logged one line to
- * the console, and returned it to `turnPostProcess`, which discards the return
- * value. Nothing persisted, nothing readable, nothing a user could ever see.
- *
- * READ-ONLY over the PIC ledger, which was already per-owner, bounded,
- * persisted and mirrored. No new store, and this is its first reader.
- *
- * Ledger entries whose `op` is not a reflection are filtered out here rather
- * than at write time — consolidation and ingest write to the same ring, and
- * they are legitimate entries that simply are not revisions.
+ * Canonical revision feed. Prefer the Postgres World Model revision ledger;
+ * fall back to the legacy PIC reflection ring while older tenants migrate.
+ * No second history is written here.
  */
-router.get('/changes', guarded((req, res) => {
+router.get('/changes', guarded(async (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
 
   const limit = clampInt(req.query.limit, 20, 1, 100);
-  let entries = [];
-  try {
-    entries = getLedger(ownerId, { limit: 300 })
-      .filter(e => e?.op === 'reflection')
-      .slice(-limit)
-      .reverse();                       // newest first — this reads as a feed
-  } catch { /* fail-open: an empty history is not an error */ }
+  const legacyReader = async (owner) => {
+    try {
+      return getLedger(owner, { limit: 300 })
+        .filter(e => e?.op === 'reflection')
+        .slice(-limit)
+        .reverse()
+        .map(e => ({
+          at: e.at,
+          summary: e.summary ?? null,
+          entities: e.entities ?? 0,
+          relationships: e.relationships ?? 0,
+          obsoleted: e.obsoleted ?? 0,
+          revised: e.revised ?? 0,
+          applied: e.applied === true,
+        }));
+    } catch {
+      return [];
+    }
+  };
 
+  const feed = await getRevisionFeed(ownerId, { limit, legacyReader });
   ok(res, ownerId, {
-    changes: entries.map(e => ({
-      at: e.at,
-      summary: e.summary ?? null,
-      entities: e.entities ?? 0,
-      relationships: e.relationships ?? 0,
-      obsoleted: e.obsoleted ?? 0,
-      revised: e.revised ?? 0,
-      // Whether AQUA acted on the revision or merely noticed it. With
-      // AQUA_REFLECT_V2 off the delta is still computed (dry-run), so an
-      // unapplied entry is real history, not a failure.
-      applied: e.applied === true,
-    })),
-  }, { empty: entries.length === 0, kind: 'changes' });
+    source: feed.source,
+    changes: feed.changes,
+  }, { empty: feed.changes.length === 0, kind: 'changes' });
 }));
 
 export default router;

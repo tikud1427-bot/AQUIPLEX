@@ -100,9 +100,12 @@ let inFlight = null;
 
 async function dispatchReflections() {
   try {
-    const results = await dispatchPendingClaimReflections({ limit: 25, jobEnqueue: enqueue });
+    const dispatchedBatch = await dispatchPendingClaimReflections({ limit: 25, jobEnqueue: enqueue });
+    const results = Array.isArray(dispatchedBatch) ? dispatchedBatch : (dispatchedBatch.results ?? []);
     const dispatched = results.filter(r => r.dispatched).length;
-    if (dispatched) console.log(`[WORKER] dispatched ${dispatched} claim-reflection outbox event(s)`);
+    const reaped = Number(Array.isArray(dispatchedBatch) ? dispatchedBatch.reaped ?? 0 : dispatchedBatch.reaped ?? 0);
+    if (reaped) console.warn(`[WORKER] reclaimed ${reaped} stale claim outbox row(s)`);
+    if (dispatched) console.log(`[WORKER] dispatched ${dispatched} claim-reflection/embedding outbox event(s)`);
   } catch (err) {
     console.error(`[WORKER] outbox dispatch failed: ${err?.message ?? err}`);
   }

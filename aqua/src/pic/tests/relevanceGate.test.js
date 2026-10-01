@@ -176,6 +176,9 @@ describe('relevance gate — negation and currency are not lost at read time', (
     const got = ids(ask('Where do I work now?'));
     assert.ok(!got.includes('old'), `the stale employer came back: ${JSON.stringify(got)}`);
     assert.ok(got.includes('work'));
+    const employed = ids(ask('Where am I employed?'));
+    assert.ok(!employed.includes('old'), `the stale employer came back: ${JSON.stringify(employed)}`);
+    assert.ok(employed.includes('work'));
   });
 
   test('an inflected form still matches — "reject" finds "rejected"', () => {

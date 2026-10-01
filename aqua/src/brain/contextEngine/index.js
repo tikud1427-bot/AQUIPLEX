@@ -33,7 +33,11 @@ import { tokensOf, scoreCandidate } from './scorer.js';
 import { analyseQuestion, factAffinity, MIN_AFFINITY } from '../../pic/questionShape.js';
 import { brainEnabled } from '../worldModel/schema.js';
 import { lanesFromCandidates, reciprocalRankFusion, rerankWithFusion, rerankWithCrossEncoder, rerankWithCrossEncoderAsync } from './retrievalV3.js';
-import { runBoundedRetrievalRounds } from './e8Pipeline.js';
+import { runBoundedRetrievalRounds, runBoundedRetrievalRoundsAsync } from './e8Pipeline.js';
+import { traverseGraph } from '../../core/worldModel/graphLane.js';
+import { getPool, isConfigured } from '../../core/db/pool.js';
+import * as canonicalWM from '../../core/worldModel/canonicalReadModel.js';
+import { canonicalClaimScores } from './canonicalSemantic.js';
 
 const metrics = {
   calls: 0, v2Assemblies: 0, floorFallbacks: 0, errors: 0,
@@ -59,20 +63,23 @@ export async function assembleTurnContextAsync(deps, ownerId, query, opts = {}) 
   if ((!contextV2Enabled() && !Array.isArray(opts.retrievalV3Lanes)) || !ownerId || !query) return initialFloor;
   const started = Date.now();
   try {
-    const retrievalRounds = runBoundedRetrievalRounds({
+    const retrievalRounds = await runBoundedRetrievalRoundsAsync({
       query,
       taskType: opts.taskType ?? 'conversation',
       limit,
       queryPlan: opts.queryPlan,
-      retrieve: (q, retrievalOpts) => safeFloor(deps, ownerId, q, {
-        limit: retrievalOpts.limit,
-        plan: retrievalOpts.queryPlan,
-        semanticScores,
+      retrieve: (q, retrievalOpts) => retrieveRoundAsync(deps, ownerId, q, retrievalOpts, {
+        ...opts, semanticScores,
       }),
     });
     const floor = retrievalRounds.result;
     const planState = retrievalRounds.plan;
-    const gathered = gatherCandidates(deps, ownerId, query, floor, { ...opts, queryPlan: planState });
+    const canonicalGraphCandidates = await gatherCanonicalGraphCandidates(
+      deps, ownerId, query, floor, { ...opts, queryPlan: planState },
+    );
+    const gathered = gatherCandidates(deps, ownerId, query, floor, {
+      ...opts, queryPlan: planState, canonicalGraphCandidates,
+    });
     const enabledLanes = opts.retrievalV3Lanes;
     const candidates = Array.isArray(enabledLanes)
       ? gathered.filter(c => (c.lanes ?? []).some(lane => enabledLanes.includes(lane)))
@@ -240,6 +247,161 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
   }
 }
 
+async function retrieveRoundAsync(deps, ownerId, query, retrievalOpts, opts = {}) {
+  const floor = safeFloor(deps, ownerId, query, {
+    limit: retrievalOpts.limit,
+    plan: retrievalOpts.queryPlan,
+    semanticScores: opts.semanticScores,
+  });
+  if (!ownerId || !query || !isConfigured()) return floor;
+  if (Array.isArray(opts.retrievalV3Lanes) && opts.retrievalV3Lanes.length === 0) return floor;
+
+  try {
+    const retrospective = analyseQuestion(query).currency === 'past';
+    const canonical = await canonicalCandidatesForQuery(deps, ownerId, query, {
+      limit: Math.max(Number(retrievalOpts.limit) || 8, 12),
+      retrospective,
+      slotId: retrievalOpts.slotId,
+      round: retrievalOpts.round,
+      semanticScores: opts.semanticScores,
+      requestedLanes: opts.retrievalV3Lanes,
+    });
+    if (!canonical.items.length) return floor;
+    return mergeFloorResults(floor, canonical);
+  } catch (err) {
+    console.warn(`[E7/E8] canonical retrieval round failed (floor fallback): ${err?.message ?? err}`);
+    return floor;
+  }
+}
+
+function laneEnabled(requestedLanes, lane) {
+  return !Array.isArray(requestedLanes) || requestedLanes.includes(lane);
+}
+
+function predicateHintsForQuery(query) {
+  const q = String(query ?? '').toLowerCase();
+  const out = [];
+  const add = (p, words) => { if (words.some(w => q.includes(w))) out.push(p); };
+  add('works_at', ['work at', 'works at', 'employed', 'employer', 'job']);
+  add('member_of', ['member of', 'belongs to']);
+  add('owns', ['own', 'owns', 'owner']);
+  add('owned_by', ['owned by']);
+  add('depends_on', ['depends on', 'dependency']);
+  add('blocks', ['block', 'blocking', 'blocks']);
+  add('blocked_by', ['blocked by', 'blocker']);
+  add('plans_to', ['plan', 'plans', 'intend']);
+  add('decided', ['decided', 'decision', 'agreed']);
+  add('has_status', ['status', 'state']);
+  add('deadline_for', ['deadline', 'due', 'target date']);
+  add('uses', ['use', 'uses', 'using']);
+  return [...new Set(out)].slice(0, 8);
+}
+
+async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, retrospective = false, slotId = null, round = 1, semanticScores = null, requestedLanes = null } = {}) {
+  const items = [];
+  const seen = new Set();
+  const pool = await getPool();
+  const add = (claim, lane, score = null, entityIds = []) => {
+    if (!claim?.claimId || !claim.statement) return;
+    if (claim.state === 'archived') return;
+    if (claim.state === 'superseded' && !retrospective) return;
+    if (!laneEnabled(requestedLanes, lane)) return;
+    const key = String(claim.claimId);
+    if (seen.has(key)) return;
+    seen.add(key);
+    items.push(normFact(key, claim.statement, {
+      confidence: claim.confidence?.derived ?? claim.confidence ?? 0.5,
+      citations: Array.isArray(claim.evidence) ? claim.evidence : [],
+      via: `${lane === 'lexical' ? 'canonical-lexical' : lane}:${score == null ? '' : ` ${Number(score).toFixed(3)}`}`.trim(),
+      sourceType: claim.sourceKind ?? 'conversation',
+      entityIds: [...new Set([claim.subjectEntityId, claim.object?.entityId, ...entityIds].filter(Boolean))],
+      timestamp: claim.validFrom ?? claim.assertedAt ?? null,
+      semanticId: key,
+      lanes: [lane],
+      trusted: claim.state === 'trusted',
+      disputed: claim.state === 'disputed',
+      stale: claim.state === 'stale',
+      slotIds: slotId ? [slotId] : [],
+    }));
+  };
+
+  if (laneEnabled(requestedLanes, 'lexical')) {
+    const lexical = await canonicalWM.searchClaims(ownerId, query, { limit: Math.min(limit, 32), retrospective, pool });
+    for (const claim of lexical) add(claim, 'lexical', claim.retrievalScore);
+  }
+
+  if (laneEnabled(requestedLanes, 'structured')) {
+    const anchorIds = await canonicalWM.findEntityIds(ownerId, query, { limit: 8, pool });
+    const predicateHints = predicateHintsForQuery(query);
+    if (!anchorIds.length && !predicateHints.length) {
+      // A structured lane without a predicate/entity constraint would be a
+      // full-corpus scan masquerading as a retrieval lane. L19/G6 forbid it.
+    } else {
+      const structured = await canonicalWM.structuredClaims(ownerId, {
+        entityIds: anchorIds,
+        predicates: predicateHints,
+      currentOnly: !retrospective,
+      limit: Math.min(limit, 32),
+      pool,
+    });
+      for (const claim of structured) add(claim, 'structured', null, anchorIds);
+    }
+  }
+
+  if (laneEnabled(requestedLanes, 'dense')) {
+    try {
+      const scores = (round === 1 && semanticScores instanceof Map && semanticScores.size)
+        ? semanticScores
+        : await canonicalClaimScores(ownerId, query);
+      if (scores instanceof Map && scores.size) {
+        const top = [...scores.entries()]
+          .filter(([, score]) => Number.isFinite(score) && Number(score) >= 0.55)
+          .sort((a, b) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])))
+          .slice(0, Math.min(16, limit * 2));
+        const uuidTop = top.filter(([id]) => UUID_RE.test(String(id)));
+        const canonicalIds = uuidTop.map(([id]) => String(id));
+        if (canonicalIds.length) {
+          const hydrated = await canonicalWM.readClaims(ownerId, canonicalIds, { retrospective, pool });
+          const byId = new Map(hydrated.map(c => [String(c.claimId), c]));
+          for (const [id, score] of uuidTop) add(byId.get(String(id)), 'dense', score);
+        }
+      }
+    } catch (err) {
+      console.warn(`[E7] dense lane unavailable for query (non-fatal): ${err?.message ?? err}`);
+    }
+  }
+
+  if (laneEnabled(requestedLanes, 'graph')) {
+    const anchors = await canonicalWM.findEntityIds(ownerId, query, { limit: 8, pool });
+    if (anchors.length) {
+      const walked = await traverseGraph(pool, ownerId, anchors, {
+        maxHops: 2, fanout: 6, maxEntities: 48, retrospective,
+      });
+      if (walked.ok && walked.entities.length) {
+        const claimIds = [...new Set(walked.entities.map(x => x.viaClaimId).filter(Boolean))].slice(0, 48);
+        const claims = await canonicalWM.readClaims(ownerId, claimIds, { retrospective, pool });
+        const byId = new Map(claims.map(c => [String(c.claimId), c]));
+        for (const hop of walked.entities) add(byId.get(String(hop.viaClaimId)), 'graph', 1 / (1 + Number(hop.hop || 0)), hop.path ?? []);
+      }
+    }
+  }
+
+  items.sort((a, b) => {
+    const sa = Number(a.via?.match(/\s([0-9.]+)$/)?.[1] ?? 0);
+    const sb = Number(b.via?.match(/\s([0-9.]+)$/)?.[1] ?? 0);
+    return sb - sa || String(a.id).localeCompare(String(b.id));
+  });
+  return {
+    items: items.slice(0, Math.max(1, Math.min(64, limit * 4))),
+    block: items.slice(0, Math.min(limit, 12)).map(x => `${x.text} [${x.via}]`).join('\n'),
+    stats: {
+      source: 'canonical', round, slotId: slotId ?? null,
+      claims: items.length,
+      lanes: [...new Set(items.flatMap(x => x.lanes ?? []))],
+    },
+  };
+}
+
 function safeFloor(deps, ownerId, query, opts) {
   try {
     return deps.picRetrieve(ownerId, query, opts) ?? emptyResult();
@@ -250,6 +412,78 @@ function safeFloor(deps, ownerId, query, opts) {
 }
 
 // ── Candidate gathering ──────────────────────────────────────────────────────
+// ── Canonical graph lane bridge (E7) ─────────────────────────────────────────
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * The synchronous scorer remains storage-agnostic. The async seam is where
+ * canonical Postgres graph traversal is wired in, so E7 can contribute claims
+ * that the legacy PIC graph does not know about. Fail-open is intentional.
+ */
+async function gatherCanonicalGraphCandidates(deps, ownerId, query, floor, opts) {
+  if (!isConfigured() || typeof deps.canonicalClaimsById === 'undefined' && !deps.enableCanonicalGraph) return [];
+  if (Array.isArray(opts.retrievalV3Lanes) && !opts.retrievalV3Lanes.includes('graph')) return [];
+
+  const canonical = deps.canonicalClaimsById instanceof Map ? deps.canonicalClaimsById : new Map();
+  const anchors = new Set();
+  for (const claim of canonical.values()) {
+    if (UUID_RE.test(String(claim?.subjectEntityId ?? ''))) anchors.add(String(claim.subjectEntityId));
+    const objectId = claim?.object?.entityId;
+    if (UUID_RE.test(String(objectId ?? ''))) anchors.add(String(objectId));
+    if (anchors.size >= 8) break;
+  }
+  for (const id of (Array.isArray(opts.priorEntityIds) ? opts.priorEntityIds : [])) {
+    if (UUID_RE.test(String(id))) anchors.add(String(id));
+    if (anchors.size >= 8) break;
+  }
+  if (!anchors.size) return [];
+
+  try {
+    const pool = deps.canonicalGraphPool ? await deps.canonicalGraphPool() : await getPool();
+    const walked = await traverseGraph(pool, ownerId, [...anchors], {
+      maxHops: 2,
+      fanout: 6,
+      maxEntities: 40,
+      retrospective: analyseQuestion(query).currency === 'past',
+    });
+    if (!walked.ok || !walked.entities.length) return [];
+
+    const claimIds = [...new Set(walked.entities.map(r => r.viaClaimId).filter(id => UUID_RE.test(String(id))))].slice(0, 32);
+    const loader = deps.canonicalClaimLoader;
+    if (typeof loader !== 'function' || !claimIds.length) return [];
+    const claims = await Promise.all(claimIds.map(async id => {
+      try { return await loader(ownerId, id); } catch { return null; }
+    }));
+    const byClaim = new Map(claims.filter(Boolean).map(c => [String(c.claimId), c]));
+
+    return walked.entities.flatMap(edge => {
+      const claim = byClaim.get(String(edge.viaClaimId));
+      if (!claim || claim.state === 'archived') return [];
+      if (claim.state === 'superseded' && analyseQuestion(query).currency !== 'past') return [];
+      return [{
+        ...normFact(String(claim.claimId), claim.statementText, {
+          confidence: claim.confidence,
+          citations: deps.formatCitation && Array.isArray(claim.evidence) ? claim.evidence.map(deps.formatCitation) : [],
+          via: `graph:${edge.hop}:${edge.direction}:${edge.predicate ?? 'relationship'}`,
+          sourceType: claim.sourceKind ?? 'conversation',
+          entityIds: Array.isArray(edge.path) ? edge.path : [edge.entityId],
+          hops: edge.hop,
+          timestamp: claim.validFrom ?? claim.assertedAt ?? null,
+          semanticId: String(claim.claimId),
+          lanes: ['graph'],
+          trusted: claim.state === 'trusted',
+          disputed: claim.state === 'disputed',
+          stale: claim.state === 'stale',
+        }),
+      }];
+    });
+  } catch (err) {
+    console.warn(`[BRAIN] canonical graph lane failed (non-fatal): ${String(err?.message ?? err).slice(0, 160)}`);
+    return [];
+  }
+}
+
 
 /**
  * Turn the PIC result + world-model neighbours into a flat candidate pool of
@@ -357,6 +591,18 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
     }
   }
 
+  for (const candidate of (opts.canonicalGraphCandidates ?? [])) {
+    const key = `fact:${candidate.id}`;
+    const existing = byId.get(key);
+    if (existing) {
+      existing.lanes = Array.from(new Set([...(existing.lanes ?? []), 'graph']));
+      existing.entityIds = Array.from(new Set([...(existing.entityIds ?? []), ...(candidate.entityIds ?? [])]));
+      existing.hops = Math.min(existing.hops ?? 99, candidate.hops ?? 99);
+    } else if (laneAllowed('graph')) {
+      byId.set(key, candidate);
+    }
+  }
+
   // Dense is a genuine proposal lane in production as well as in the
   // lane-isolated E7 harness. This is what lets dense retrieval recover facts
   // the PIC lexical floor never admitted, while preserving canonical fact ids.
@@ -453,7 +699,7 @@ function laneForVia(via) {
   if (value.startsWith('dense')) return 'dense';
   if (value.startsWith('graph')) return 'graph';
   if (value.startsWith('polarity')) return 'structured';
-  if (value.startsWith('lexical')) return 'lexical';
+  if (value.startsWith('lexical') || value.startsWith('canonical-lexical')) return 'lexical';
   return 'unknown';
 }
 
@@ -462,7 +708,7 @@ function laneForCandidate(c) {
   if (via.startsWith('dense')) return 'dense';
   if (via.startsWith('graph')) return 'graph';
   if (via.startsWith('polarity')) return 'structured';
-  if (via.startsWith('lexical')) return 'lexical';
+  if (via.startsWith('lexical') || via.startsWith('canonical-lexical')) return 'lexical';
   if (c?.kind === 'entity') return 'entity';
   if (c?.kind === 'event') return 'timeline';
   return 'unknown';

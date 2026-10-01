@@ -146,7 +146,7 @@ function timedAbort(ms) {
 async function callProvider(providerFns, provider, systemPrompt, messages, signal, maxTokens) {
   const start  = Date.now();
   const fn     = providerFns[provider] ?? providerFns.openrouter;
-  const result = await fn(systemPrompt, messages, signal, maxTokens); // { text, truncated, finishReason }
+  const result = await fn(systemPrompt, messages, signal, maxTokens); // { text, truncated, finishReason, model, usage }
   return { ...result, latency: Date.now() - start };
 }
 
@@ -230,8 +230,11 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
       if (LOG_DEBUG) console.log(`[PROVIDER] → ${provider} round=${round} score=${score.toFixed(0)} timeout=${timeoutMs}ms task=${taskType}`);
 
       try {
-        const { text, truncated, finishReason, latency } =
+        const { text, truncated, finishReason, latency, model, usage } =
           await callProvider(providerFns, provider, systemPrompt, messages, signal, maxTokens);
+        if (ctx.costLedger && usage) {
+          ctx.costLedger.record({ provider, model, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, purpose: ctx.costPurpose ?? 'chat' });
+        }
         clear();
 
         // ── Issue 1/7/8/9: max-output-tokens is a SUCCESSFUL completion ────────────
@@ -242,7 +245,7 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
           ctx.attempts?.push({ provider, outcome: 'success', truncated: true, latencyMs: latency, score });
           console.log(`[ROUTER] ✓ ${provider} (truncated, finishReason=length) latency=${latency}ms round=${round} req=${requestId}`);
           return {
-            provider, text, taskType, latency, score, confidence, labels, fallbackChain,
+            provider, model, usage, text, taskType, latency, score, confidence, labels, fallbackChain,
             truncated: true, finishReason: 'length', rounds: round, attempts: fallbackChain.length,
           };
         }
@@ -263,7 +266,7 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
         ctx.attempts?.push({ provider, outcome: 'success', latencyMs: latency, score });
         console.log(`[ROUTER] ✓ ${provider} latency=${latency}ms score=${score.toFixed(0)} round=${round} req=${requestId}`);
         return {
-          provider, text, taskType, latency, score, confidence, labels, fallbackChain,
+          provider, model, usage, text, taskType, latency, score, confidence, labels, fallbackChain,
           truncated: false, finishReason: finishReason ?? 'stop', rounds: round, attempts: fallbackChain.length,
         };
 
@@ -438,10 +441,23 @@ export async function generateTextStream({
     onEvent({ type: 'provider_attempt', provider, score: +score.toFixed(1), attempt });
 
     try {
-      const { text, truncated, finishReason, latency } =
+      const { text, truncated, finishReason, latency, model, usage } =
         await callProviderStream(provider, systemPrompt, messages, ctrl.signal, maxTokens, onDelta);
       clearTimeout(stallTimer);
       clientSignal?.removeEventListener('abort', onClientAbort);
+
+      // E12 — streaming is a first-class turn path, so its provider usage must
+      // be accounted for exactly like the non-streaming path. The active turn
+      // ledger is optional for backward compatibility with callers/tests.
+      if (ctx.costLedger && usage) {
+        ctx.costLedger.record({
+          provider,
+          model,
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          purpose: ctx.costPurpose ?? 'chat',
+        });
+      }
 
       markSuccess(provider, latency);
       const outcome = { provider, outcome: 'success', truncated: !!truncated, latencyMs: latency };
@@ -450,7 +466,7 @@ export async function generateTextStream({
       console.log(`[ROUTER] ✓ ${provider} (stream${truncated ? `, ${finishReason}` : ''}) latency=${latency}ms tokens=${tokenCount} req=${requestId}`);
 
       return {
-        provider, text, taskType, latency, score, confidence, labels, fallbackChain,
+        provider, model, usage, text, taskType, latency, score, confidence, labels, fallbackChain,
         truncated: !!truncated, finishReason: finishReason ?? 'stop',
       };
     } catch (err) {

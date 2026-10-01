@@ -27,6 +27,14 @@ import {
   getCandidateModels, markModelWorking, markModelUnavailable, markModelTempFailed, pinCandidates } from './modelRegistry.js';
 import { classifyProviderError, retryAfterMs } from './providerErrors.js';
 
+
+function normalizeUsage(usage) {
+  const inputTokens = Number(usage?.promptTokenCount ?? usage?.promptTokens);
+  const outputTokens = Number(usage?.candidatesTokenCount ?? usage?.completionTokens ?? usage?.candidatesTokenCount);
+  if (!Number.isFinite(inputTokens) && !Number.isFinite(outputTokens)) return null;
+  return { inputTokens: Number.isFinite(inputTokens) ? inputTokens : 0, outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0 };
+}
+
 // ── Key management ────────────────────────────────────────────────────────────
 
 function getKeys() {
@@ -187,14 +195,14 @@ export async function generateGemini(systemPrompt, messages, signal, maxTokens, 
           if (!text.trim()) throw new Error('INVALID_RESPONSE'); // nothing usable came back — genuine failure
           console.log(`[GEMINI] model=${modelId} hit maxTokens=${capTokens} cap — returning partial as successful completion`);
           markModelWorking('gemini', modelId);
-          return { text, truncated: true, finishReason: 'length', model: modelId };
+          return { text, truncated: true, finishReason: 'length', model: modelId, usage: normalizeUsage(result?.usageMetadata) };
         }
 
         if (!text) throw new Error('INVALID_RESPONSE');
 
         markModelWorking('gemini', modelId);
         console.log(`[GEMINI] model=${modelId} success key=...${key.slice(-4)}`);
-        return { text, truncated: false, finishReason: 'stop', model: modelId };
+        return { text, truncated: false, finishReason: 'stop', model: modelId, usage: normalizeUsage(result?.usageMetadata) };
 
       } catch (err) {
         // TIMEOUT comes from our AbortController — propagate immediately,
@@ -302,11 +310,13 @@ export async function streamGemini(systemPrompt, messages, signal, maxTokens, on
 
       let text = '';
       let finishReason = null;
+      let usage = null;
       try {
         for await (const chunk of stream) {
           if (signal?.aborted) throw new Error('TIMEOUT');
           const delta = chunk?.text ?? '';
           finishReason = chunk?.candidates?.[0]?.finishReason ?? finishReason;
+          usage = normalizeUsage(chunk?.usageMetadata) ?? usage;
           if (delta) { text += delta; onDelta(delta); }
         }
       } catch (err) {
@@ -323,7 +333,7 @@ export async function streamGemini(systemPrompt, messages, signal, maxTokens, on
 
       markModelWorking('gemini', modelId);
       const truncated = capTokens && finishReason === 'MAX_TOKENS';
-      return { text, truncated: !!truncated, finishReason: truncated ? 'length' : 'stop', streamed: true };
+      return { text, truncated: !!truncated, finishReason: truncated ? 'length' : 'stop', streamed: true, model: modelId, usage };
     }
   }
 

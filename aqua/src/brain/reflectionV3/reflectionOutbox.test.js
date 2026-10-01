@@ -21,7 +21,7 @@ const testMind = { beliefs: {}, reflectionLedger: {} };
 const result = await runClaimReflectionJob(
   { ownerId: 'user:a', payload: { claimId: 'claim-1' } },
   {
-    loadClaim: async (id, owner) => ({ claimId: id, ownerId: owner, confidence: 0.8 }),
+    loadClaim: async (owner, id) => ({ claimId: id, ownerId: owner, confidence: 0.8 }),
     loadMind: () => testMind,
     reflect: async input => { calls.push(input); return { ok: true, signals: 1, touched: 1 }; },
   });

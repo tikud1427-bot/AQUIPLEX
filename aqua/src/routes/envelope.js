@@ -17,11 +17,10 @@
  *
  * MIGRATION, NOT A REWRITE
  * ------------------------
- * This file only adds `ok()`/`fail()`. It does not touch any route yet.
- * Each route file adopts it as its own PR — start with read-only, low-
- * traffic surfaces (health.js), leave high-traffic ones (chat.js,
- * project.js) for last, with frontend coordination, per the blueprint's
- * own "migrate consumers before removal" rule.
+ * This file only adds `ok()`/`fail()`. The router's terminal 404/error path
+ * and parser failures already use it; individual high-traffic route files
+ * (chat.js, project.js, etc.) remain on the legacy-compatible success shape
+ * until their dedicated migrations land.
  */
 
 export const ErrorCodes = Object.freeze({
@@ -32,6 +31,7 @@ export const ErrorCodes = Object.freeze({
   CONFLICT:      'conflict',
   UNPROCESSABLE: 'unprocessable',
   UNAVAILABLE:   'unavailable',
+  PAYLOAD_TOO_LARGE: 'payload_too_large',
   INTERNAL:      'internal',
 });
 
@@ -43,6 +43,7 @@ const STATUS_FOR_CODE = Object.freeze({
   [ErrorCodes.CONFLICT]:      409,
   [ErrorCodes.UNPROCESSABLE]: 422,
   [ErrorCodes.UNAVAILABLE]:   503,
+  [ErrorCodes.PAYLOAD_TOO_LARGE]: 413,
   [ErrorCodes.INTERNAL]:      500,
 });
 

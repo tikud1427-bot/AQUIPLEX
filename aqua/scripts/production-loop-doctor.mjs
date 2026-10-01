@@ -57,6 +57,26 @@ const checks = [
     file: 'src/brain/contextEngine/canonicalSemantic.js',
     patterns: [/scoreClaimEmbeddings/, /retrievalKeysForClaimIds/],
   },
+  {
+    name: 'canonical graph lane is wired into async context',
+    file: 'src/brain/contextEngine/index.js',
+    patterns: [/traverseGraph/, /gatherCanonicalGraphCandidates/, /canonicalClaimLoader/],
+  },
+  {
+    name: 'claim correction supersedes history and emits durable follow-up work',
+    file: 'src/core/worldModel/worldModelRepository.js',
+    patterns: [/export async function correctClaim/, /state='superseded'/, /claim\.embedding\.requested/, /user-correction/],
+  },
+  {
+    name: 'claim correction is exposed with a writable provenance ref',
+    file: 'src/routes/brain.js',
+    patterns: [/claims\/:id\/correct/, /ref: `\/brain\/claims\//, /correctClaim/],
+  },
+  {
+    name: 'transactional outbox claims rows with SKIP LOCKED and reaps crashes',
+    file: 'src/brain/reflectionV3/reflectionOutbox.js',
+    patterns: [/SKIP LOCKED/, /state='processing'/, /reapStaleClaimOutbox/, /attempts >= 8/],
+  },
 ];
 
 let failed = 0;

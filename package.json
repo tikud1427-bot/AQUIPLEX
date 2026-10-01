@@ -49,7 +49,10 @@
     "eval:world-model-lift": "node eval/run.mjs world-model-lift --json eval/out/world-model-lift.latest.json",
     "eval:world-model-lift-e2e": "node eval/run.mjs world-model-lift-e2e --json eval/out/world-model-lift-e2e.latest.json",
     "test:platform-boundary": "node scripts/platform-boundary.test.mjs",
-    "test:android-release": "node scripts/android-release-check.mjs"
+    "test:android-release": "node scripts/android-release-check.mjs",
+    "doctor:production-loop": "node aqua/scripts/production-loop-doctor.mjs",
+    "start:production": "node scripts/start-production.mjs",
+    "test:world-model-loop": "node aqua/scripts/production-loop-doctor.mjs && node aqua/src/core/tests/repoHygiene.test.js && node aqua/src/core/worldModel/graphLane.test.js && node aqua/src/core/worldModel/embeddingRepository.test.js && node aqua/src/brain/reflectionV3/reflectionOutbox.test.js"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",

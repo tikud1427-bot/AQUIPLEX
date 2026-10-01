@@ -44,6 +44,11 @@ describe('canonical World Model retrieval closure', () => {
     assert.match(src, /!canonicalClaimsById\?\.size && margin < 0\.15/);
   });
 
+  test('structured canonical retrieval can match named object entities, not only subjects', () => {
+    const src = read('core/worldModel/canonicalReadModel.js');
+    assert.ok(src.includes('(c.subject_entity_id = ANY($${params.length}::uuid[]) OR c.object_entity_id = ANY($${params.length}::uuid[]))'));
+  });
+
   test('Brain hydrates canonical claims at the async retrieval seam', () => {
     const src = read('brain/index.js');
     assert.match(src, /claimWithEvidence/);

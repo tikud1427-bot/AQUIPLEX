@@ -80,6 +80,62 @@ export function runBoundedRetrievalRounds({
   };
 }
 
+
+/** Async counterpart of runBoundedRetrievalRounds. The policy is identical;
+ * only the retrieval seam may cross I/O. This is the production E8 bridge.
+ */
+export async function runBoundedRetrievalRoundsAsync({
+  query,
+  taskType = 'conversation',
+  limit = 8,
+  retrieve,
+  queryPlan = null,
+}) {
+  if (typeof retrieve !== 'function') throw new TypeError('retrieve must be a function');
+
+  const plan = queryPlan ?? buildQueryPlan(query, { taskType });
+  const roundCalls = [];
+  const first = await retrieve(query, {
+    limit,
+    round: 1,
+    queryPlan: withRound(plan, 1),
+    slotId: null,
+  });
+  roundCalls.push({ round: 1, query, slotId: null, limit });
+
+  const firstPlan = withRound(fillQueryPlan(plan, floorItemsToCandidates(first?.items ?? [])), 1);
+  const firstSufficiency = assessSufficiency(firstPlan);
+  if (firstSufficiency.outcome !== 'needs_round_two') {
+    return { result: first, plan: firstPlan, sufficiency: firstSufficiency, rounds: 1, roundCalls };
+  }
+
+  const roundTwoItems = [];
+  for (const slotId of firstSufficiency.missing) {
+    const slot = plan.slots.find(s => s.id === slotId);
+    for (const slotQuery of (slot?.queries ?? []).slice(0, 2)) {
+      const targetedQuery = `${query} ${slotQuery}`;
+      const targeted = await retrieve(targetedQuery, {
+        limit: Math.max(limit, 8),
+        round: 2,
+        queryPlan: withRound(plan, 2),
+        slotId,
+      });
+      roundCalls.push({ round: 2, query: targetedQuery, slotId, limit: Math.max(limit, 8) });
+      for (const item of targeted?.items ?? []) roundTwoItems.push({ ...item, slotIds: [slotId] });
+    }
+  }
+
+  const merged = mergeResults(first, { items: dedupeItems(roundTwoItems) });
+  const finalPlan = withRound(fillQueryPlan(plan, floorItemsToCandidates(merged.items ?? [])), 2);
+  return {
+    result: merged,
+    plan: finalPlan,
+    sufficiency: assessSufficiency(finalPlan),
+    rounds: 2,
+    roundCalls,
+  };
+}
+
 function floorItemsToCandidates(items) {
   return items.map(it => ({
     kind: it.kind,

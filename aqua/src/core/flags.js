@@ -60,6 +60,7 @@ export const GATES = Object.freeze([
   { name: 'AQUA_BRAIN_INGEST', subsystem: 'brain', dflt: 'off', reads: ON },
   { name: 'AQUA_BRAIN_INGEST_FACTS', subsystem: 'brain', dflt: 'off', reads: ON },
   { name: 'AQUA_CANONICAL_IDS', subsystem: 'identity', dflt: 'off', reads: ON },
+  { name: 'AQUA_CANONICAL_READ', subsystem: 'world-model', dflt: 'off', reads: ON, note: 'E10 — canonical Postgres read surface; legacy projection remains fail-open' },
   { name: 'AQUA_CIE', subsystem: 'cognition', dflt: 'off', reads: ON },
   { name: 'AQUA_CLAIM_STRICT_PREDICATES', subsystem: 'claims', dflt: 'off', reads: ONE },
   { name: 'AQUA_CLAIMS_SHADOW', subsystem: 'claims', dflt: 'off', reads: ON,
@@ -102,6 +103,8 @@ export const SETTINGS = Object.freeze([
   { name: 'AQUA_E6_MODEL', subsystem: 'brain' },
   { name: 'AQUA_E6_PROVIDER', subsystem: 'brain' },
   { name: 'AQUA_E6_COMMIT', subsystem: 'brain' },
+  { name: 'AQUA_E6_SINGLE_VALUED', subsystem: 'brain', note: 'S8 single-valued predicates (works_at) emit contradictions on a changed object; default off, no eval yet' },
+  { name: 'AQUA_E6_MINT', subsystem: 'brain', note: 'S6 provisional-entity minting; follows AQUA_E6_COMMIT, =off is the rollback' },
   { name: 'AQUA_E6_EXTRACTOR_VERSION', subsystem: 'brain' },
   { name: 'AQUA_EMBED_DIM', subsystem: 'embeddings' },
   { name: 'AQUA_EMBED_MODEL', subsystem: 'embeddings' },
@@ -121,6 +124,7 @@ export const SETTINGS = Object.freeze([
   { name: 'AQUA_CROSS_ENCODER_MODEL', subsystem: 'brain' },
   { name: 'AQUA_CROSS_ENCODER_POOL', subsystem: 'brain' },
   { name: 'AQUA_CROSS_ENCODER_TIMEOUT_MS', subsystem: 'brain' },
+  { name: 'AQUA_OUTBOX_CLAIM_TTL_MS', subsystem: 'jobs' },
 ]);
 
 /** Every registered name, gates and settings alike. */

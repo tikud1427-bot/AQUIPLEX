@@ -21,7 +21,7 @@ const claim = (over = {}) => ({
 
 test('production E6 path explicitly invokes S7 → S8 → S9', () => {
   assert.match(brain, /resolveRelationships\(s7Claims\)/);
-  assert.match(brain, /dedupAndDetect\(segment\.claims, existing\)/);
+  assert.match(brain, /dedupAndDetect\(forS8, existing/); // was segment.claims: S8 now compares in the stored vocabulary
   assert.match(brain, /buildCommitPlan\(/);
   assert.match(brain, /commitCanonicalUnderstanding\(/);
 });

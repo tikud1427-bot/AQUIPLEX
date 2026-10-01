@@ -143,6 +143,7 @@ export async function runVerification({
   conversationId,
   responseBudget,
   maxPasses = 1,
+  costLedger = null,
   evidenceContext = '',           // Phase 0 (F1): grounding contract — see buildCritiquePrompt
   generate = generateText,
 }) {
@@ -159,6 +160,8 @@ export async function runVerification({
     conversationId,
     requestId: requestId ? `${requestId}-verify` : undefined,
   });
+  verifyCtx.costLedger = costLedger;
+  verifyCtx.costPurpose = 'verification';
 
   const cap = Math.max(1, maxPasses);
   const start = Date.now();
