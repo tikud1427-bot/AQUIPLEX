@@ -177,6 +177,22 @@ export function contradictionBetween(a, b, opts = {}) {
  *   τ has not been measured. An unmeasured threshold applied by default is the
  *   thing this project keeps refusing to ship.
  */
+/**
+ * An incoming claim expressed in the vocabulary the store uses: stored claims
+ * carry an entity's CANONICAL label ("You"), incoming ones carry the surface
+ * text ("I"), and S8 compares by key, so the two never met. One definition,
+ * used by the facade and by anything that rehearses the facade.
+ */
+export function inStoredVocabulary(c) {
+  return {
+    ...c,
+    subject: c._canonicalSubject?.canonical ?? c._canonicalSubject?.name ?? c.subject,
+    object: c.objectKind === 'entity'
+      ? { ...c.object, entity: c._canonicalObject?.canonical ?? c._canonicalObject?.name ?? c.object?.entity }
+      : c.object,
+  };
+}
+
 export function dedupAndDetect(incoming, existing = [], opts = {}) {
   const kept = new Map();
   const corroborations = [];

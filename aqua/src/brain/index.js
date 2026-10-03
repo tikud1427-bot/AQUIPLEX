@@ -29,6 +29,7 @@
  */
 import crypto from 'node:crypto';
 import { mintProvisionalEntities } from './understanding/provisionalMinter.js';
+import { canonicalTurnSourceId } from '../core/worldModel/turnSourceIdentity.js';
 import * as graph from '../reasoning/reasoningGraph.js';
 import * as evidenceStore from '../files/evidenceStore.js';
 import { peekMind } from '../mind/mindStore.js';
@@ -58,7 +59,7 @@ import { entityStoreFor } from './identity/entityStoreView.js';
 import { getEntry as getIdEntry } from './identity/idStore.js';
 import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup, claimWithEvidence } from '../core/worldModel/worldModelRepository.js';
 import { resolveRelationships } from './understanding/relationshipResolver.js';
-import { dedupAndDetect } from './understanding/claimDedup.js';
+import { dedupAndDetect, inStoredVocabulary } from './understanding/claimDedup.js';
 import { buildCommitPlan } from './understanding/commitPlan.js';
 import { getPool, isConfigured as dbConfigured } from '../core/db/pool.js';
 import * as canonicalReadModel from '../core/worldModel/canonicalReadModel.js';
@@ -689,9 +690,10 @@ export async function understandTurn(
   try {
     const allEntities = entityStore?.all?.() ?? [];
     const byId = new Map(allEntities.map(e => [e.entityId ?? e.id, e]));
-    const sourceId = deterministicUuid(
-      `conversation-turn:${ownerId}:${conversationId ?? 'unknown'}:${Number.isInteger(turn) ? turn : 'unknown'}`
-    );
+    // One recipe, shared with the E10 reconciliation report — see
+    // core/worldModel/turnSourceIdentity.js. A private copy here would let the
+    // report's join and the writer's key drift apart without a test noticing.
+    const sourceId = canonicalTurnSourceId(ownerId, conversationId, turn);
     const extractorVersion = process.env.AQUA_E6_EXTRACTOR_VERSION ?? 'e6-v1';
     const actor = `e6:${extractorVersion}`;
 
@@ -734,13 +736,7 @@ export async function understandTurn(
       // no corroboration across turns, no contradiction, whatever the flags. The
       // incoming side is put into the stored vocabulary before comparing; the
       // mapping below this call is the same one, so it is idempotent.
-      const forS8 = segment.claims.map(c => ({
-        ...c,
-        subject: c._canonicalSubject?.canonical ?? c._canonicalSubject?.name ?? c.subject,
-        object: c.objectKind === 'entity'
-          ? { ...c.object, entity: c._canonicalObject?.canonical ?? c._canonicalObject?.name ?? c.object?.entity }
-          : c.object,
-      }));
+      const forS8 = segment.claims.map(inStoredVocabulary);
       const s8 = dedupAndDetect(forS8, existing, { functionalPredicates: singleValuedPredicates() });
 
       // S7 receives canonical entity labels for deterministic relationship
@@ -843,14 +839,6 @@ export function e6CommitEnabled() {
   // production state) this is still 'off' — no behaviour change until E6 is
   // deliberately promoted past its gate.
   return String(process.env.AQUA_E6_COMMIT ?? (e6Enabled() ? 'on' : 'off')).toLowerCase() === 'on';
-}
-
-function deterministicUuid(seed) {
-  const bytes = crypto.createHash('sha256').update(String(seed)).digest().subarray(0, 16);
-  bytes[6] = (bytes[6] & 0x0f) | 0x50;
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  const hex = bytes.toString('hex');
-  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
 }
 
 /**

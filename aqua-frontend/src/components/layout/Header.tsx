@@ -92,7 +92,10 @@ export function Header() {
 
   return (
     /* Height has to INCLUDE the safe-area inset, not be eaten by it. `h-12`
-       plus `pt-[env(...)]` under border-box means a notched iPhone in
+       plus a top padding equal to the safe-area inset (written out in words here on
+       purpose: Tailwind scans comments for class names, and an ellipsis inside
+       square brackets compiled to a bogus rule and a CSS warning on every build)
+       under border-box means a notched iPhone in
        standalone PWA mode (status-bar-style: black-translucent) leaves the
        48px bar with ~0px of usable height and the controls sitting under the
        status bar. env() resolves to 0 everywhere else, so the calc is exact

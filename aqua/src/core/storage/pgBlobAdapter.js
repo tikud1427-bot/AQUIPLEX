@@ -39,6 +39,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 import { getPool, isConfigured } from '../db/pool.js';
+import { errorText } from '../errorText.js';
 
 export const TABLE = 'aqua_store_blobs';
 
@@ -100,7 +101,7 @@ export function createPgBlobAdapter() {
       // clears `failures` so it is not sticky. An operator asking "did any
       // write lose a race?" must still get an answer after a flush.
       if (err instanceof StoreConflictError) conflicts.push(err);
-      console.error(`[DB] store write failed: ${err.message}`);
+      console.error(`[DB] store write failed: ${errorText(err)}`);
     });
     pending.add(tracked);
     tracked.finally(() => pending.delete(tracked));

@@ -25,6 +25,7 @@
  */
 import { createJsonFileAdapter } from './jsonFileAdapter.js';
 import { createDualWriteAdapter } from './dualWriteAdapter.js';
+import { errorText } from '../errorText.js';
 
 const REQUIRED = ['id', 'existsSync', 'readSync', 'write', 'writeSync', 'copySync'];
 
@@ -159,7 +160,7 @@ export async function configureStorageFromEnv() {
   } catch (err) {
     mode = 'off';
     resetAdapter();
-    return { mode: 'off', adapter: getAdapter().id, reason: `shadow mode unavailable: ${err.message}` };
+    return { mode: 'off', adapter: getAdapter().id, reason: `shadow mode unavailable: ${errorText(err)}` };
   }
 }
 

@@ -28,6 +28,8 @@
  * before it delivers any benefit is a migration step nobody will turn on. The
  * counter and the log are how it stays visible instead.
  */
+import { errorText } from '../errorText.js';
+
 
 /** Store paths are compared by basename — the same key the blob table uses. */
 const storeName = key => String(key).split(/[\\/]/).pop();
@@ -66,7 +68,7 @@ export function createDualWriteAdapter(primary, shadow, { onShadowError, readFro
 
   const record = (label, err) => {
     shadowFailures++;
-    const msg = `[STORE] shadow write failed (${label}): ${err?.message ?? err}`;
+    const msg = `[STORE] shadow write failed (${label}): ${errorText(err)}`;
     if (onShadowError) onShadowError(err, label); else console.error(msg);
   };
 

@@ -32,6 +32,7 @@
  * credential in a log file, and log files get pasted into issues.
  */
 import { URL } from 'node:url';
+import { errorText } from '../errorText.js';
 
 let pool = null;
 let cachedConfig = null;
@@ -119,7 +120,7 @@ export async function getPool() {
   // listener Node treats it as an unhandled 'error' event and kills the
   // process — the single most common way a pg pool takes down a server.
   pool.on('error', err => {
-    console.error(`[DB] idle client error: ${err.message}`);
+    console.error(`[DB] idle client error: ${errorText(err)}`);
   });
   return pool;
 }
@@ -135,7 +136,7 @@ export async function dbHealth({ timeoutMs = 3_000 } = {}) {
   try {
     cfg = readConfig();
   } catch (err) {
-    return { configured: true, status: 'misconfigured', error: err.message };
+    return { configured: true, status: 'misconfigured', error: errorText(err) };
   }
 
   const started = Date.now();
@@ -156,7 +157,7 @@ export async function dbHealth({ timeoutMs = 3_000 } = {}) {
     return {
       configured: true, status: 'unreachable',
       latencyMs: Date.now() - started,
-      error: err.message,
+      error: errorText(err),
     };
   }
 }

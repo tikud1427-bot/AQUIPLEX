@@ -20,6 +20,7 @@ import crypto from 'node:crypto';
 import { createMemoryPg } from './helpers/memoryPg.mjs';
 import { _setPoolForTests, _resetForTests } from '../db/pool.js';
 import { commitUnderstanding } from '../worldModel/worldModelRepository.js';
+import { dedupAndDetect, inStoredVocabulary } from '../../brain/understanding/claimDedup.js';
 
 let mem, restore;
 const envBefore = process.env.DATABASE_URL;
@@ -129,5 +130,123 @@ describe('canonicalCommit — executed against the migrated schema', () => {
     await assert.rejects(() => commitUnderstanding(input([claim({ statementText: 'good one' }), bad], { ownerId: owner })));
     const { rows } = await mem.pool.query(`SELECT count(*)::int n FROM aqua_claims WHERE owner_id=$1`, [owner]);
     assert.equal(rows[0].n, 0, 'the first claim survived a failed commit');
+  });
+});
+
+
+// ── Provenance: an earlier claim is NOT corroborated by an unrelated new one ──
+//
+// MEASURED on real Postgres after the arity fix let commits land for the first
+// time. Turn 1 "I work at Quillbase", turn 2 "I work at Nummo": turn 2's commit
+// wrote a SECOND evidence row onto the Quillbase claim — role 'primary', quote
+// "I work at Quillbase", source = turn 2, a sentence turn 2 never contained —
+// and raised its confidence_corroboration. S8 returns every claim it SEEDED from
+// history in `claims`, and the repository's loop treated each `_persisted` one
+// as if it had just been said again. A restatement was counted twice (loop +
+// evidenceAttachments); an unrelated claim counted once, falsely.
+describe('commit — history is not re-evidenced by the current turn', () => {
+  const OWNER2 = 'user:prov';
+  const turn = (n) => ({ sourceId: crypto.randomUUID(), segmentRange: { start: n * 100, end: n * 100 + 20 } });
+
+  // Mirrors the production facade: read history, run S8, commit s8.claims.
+  // History is read with plain queries, producing the SAME shape as
+  // findClaimsForDedup. That function's own SQL (a correlated subquery inside a
+  // JOIN) is rejected by pg-mem, so calling it here would fail the harness, not
+  // the code; its output shape is what S8 depends on and is reproduced below.
+  async function history() {
+    const cs = await mem.pool.query(
+      `SELECT claim_id, subject_entity_id, object_entity_id, predicate, polarity, modality,
+              valid_from, valid_to, asserted_at, state, statement_text
+         FROM aqua_claims WHERE owner_id=$1 AND state <> 'archived'`, [OWNER2]);
+    const out = [];
+    for (const r of cs.rows) {
+      const label = async (id) => (await mem.pool.query(
+        `SELECT canonical_label FROM aqua_entities WHERE entity_id=$1 AND owner_id=$2`, [id, OWNER2])).rows[0]?.canonical_label;
+      out.push({
+        claimId: r.claim_id, subject: await label(r.subject_entity_id), subjectEntityId: r.subject_entity_id,
+        predicate: r.predicate, objectKind: 'entity',
+        object: { entity: await label(r.object_entity_id), entityId: r.object_entity_id },
+        polarity: r.polarity, modality: r.modality, validFrom: r.valid_from, validTo: r.valid_to,
+        assertedAt: r.asserted_at, state: r.state, statementText: r.statement_text,
+        sourceTier: 'chat', _persisted: true,
+      });
+    }
+    return out;
+  }
+  async function commitTurn(n, c) {
+    const s8 = dedupAndDetect([inStoredVocabulary(c)], await history(), {});
+    const t = turn(n);
+    return commitUnderstanding({
+      ...input(s8.claims, { ownerId: OWNER2 }), ...t,
+      evidenceAttachments: s8.evidenceAttachments, contradictions: s8.contradictions,
+    });
+  }
+  const rows = async (q, p = [OWNER2]) => (await mem.pool.query(q, p)).rows;
+  // Two plain queries, not a correlated subquery: pg-mem cannot resolve an outer
+  // alias inside a select-list subquery and fails the QUERY, which would have
+  // read as the defect failing. (Same class as the harness limits in memoryPg.mjs.)
+  const claimOf = async (name) => {
+    const c = (await rows(
+      `SELECT claim_id, confidence_corroboration AS corr FROM aqua_claims
+        WHERE owner_id=$1 AND statement_text=$2`, [OWNER2, `I work at ${name}`]))[0];
+    if (!c) return undefined;
+    const ev = await rows(`SELECT count(*)::int AS n FROM aqua_claim_evidence WHERE claim_id=$1`, [c.claim_id]);
+    return { ...c, ev: ev[0].n };
+  };
+  const works = (name) => claim({
+    statementText: `I work at ${name}`, object: { entity: name },
+    _canonicalObject: ent(`aq:name:${name.toLowerCase()}`, name),
+  });
+
+  test('an UNRELATED new claim leaves the earlier claim\'s evidence and confidence untouched', async () => {
+    await commitTurn(1, works('Quillbase'));
+    const before = await claimOf('Quillbase');
+    assert.equal(before.ev, 1);
+
+    await commitTurn(2, works('Nummo'));
+    const after = await claimOf('Quillbase');
+    assert.equal(after.ev, 1, 'turn 2 attached evidence to a claim it never mentioned');
+    assert.equal(after.corr, before.corr, 'turn 2 raised the corroboration of a claim it did not corroborate');
+    assert.equal((await claimOf('Nummo')).ev, 1);
+  });
+
+  test('a true RESTATEMENT adds exactly one corroborating row quoting the NEW sentence, +0.1 once', async () => {
+    await commitTurn(10, works('Initech'));
+    const before = await claimOf('Initech');
+    await commitTurn(11, works('Initech'));
+    const after = await claimOf('Initech');
+    assert.equal(after.ev, before.ev + 1, `restatement attached ${after.ev - before.ev} evidence rows`);
+    assert.ok(Math.abs((after.corr - before.corr) - 0.1) < 1e-6, `corroboration moved by ${after.corr - before.corr}, not 0.1`);
+    const roles = await rows(`SELECT role FROM aqua_claim_evidence WHERE claim_id=$1 ORDER BY added_at`, [after.claim_id]);
+    assert.deepEqual(roles.map(r => r.role), ['primary', 'corroborating']);
+    const claimsN = await rows(`SELECT count(*)::int n FROM aqua_claims WHERE owner_id=$1 AND statement_text='I work at Initech'`);
+    assert.equal(claimsN[0].n, 1, 'a restatement must not create a second claim row');
+  });
+
+  test('corroboration saturates at 1 — it is a bonus, never an unbounded counter', async () => {
+    await commitTurn(20, works('Hooli'));
+    const c = await claimOf('Hooli');
+    await mem.pool.query(`UPDATE aqua_claims SET confidence_corroboration=0.95 WHERE claim_id=$1`, [c.claim_id]);
+    await commitTurn(21, works('Hooli'));
+    assert.equal((await claimOf('Hooli')).corr, 1, 'a restatement at 0.95 must land exactly on 1');
+    await commitTurn(22, works('Hooli'));
+    assert.equal((await claimOf('Hooli')).corr, 1, 'a further restatement must not exceed 1');
+  });
+
+  test('every evidence quote on a claim appears in the sentence of ITS OWN source turn', async () => {
+    // The invariant that makes provenance trustworthy, stated directly: no
+    // evidence row may carry a quote that its source never said.
+    const all = await rows(`SELECT claim_id, statement_text FROM aqua_claims WHERE owner_id=$1`);
+    for (const c of all) {
+      const ev = await rows(`SELECT e.quote, e.source_id FROM aqua_claim_evidence ce
+                              JOIN aqua_evidence e ON e.evidence_id = ce.evidence_id WHERE ce.claim_id=$1`, [c.claim_id]);
+      for (const e of ev) {
+        assert.equal(e.quote, c.statement_text,
+          `claim "${c.statement_text}" carries evidence quoting "${e.quote}" — a sentence it was never said in`);
+      }
+    }
+    const quill = await claimOf('Quillbase');
+    const srcs = await rows(`SELECT e.source_id FROM aqua_claim_evidence ce JOIN aqua_evidence e ON e.evidence_id=ce.evidence_id WHERE ce.claim_id=$1`, [quill.claim_id]);
+    assert.equal(new Set(srcs.map(r => r.source_id)).size, 1, 'the Quillbase claim is supported by a source other than the turn that said it');
   });
 });

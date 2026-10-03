@@ -386,7 +386,17 @@ export async function commitUnderstanding(input = {}) {
     const committed=[];
     const persistedById = new Map();
     for (const c of claims) {
-      if (!c?.resolution?.ready && !c._canonicalSubject && !c._persisted) continue;
+      // HISTORY IS NOT THIS TURN'S OUTPUT. S8 seeds `claims` with every earlier
+      // claim it compared against (`_persisted`), so the incoming list is a mix
+      // of what this turn said and what the store already held. Treating the
+      // held ones as "said again" attached THIS turn's source — and the OLD
+      // claim's sentence as its quote — to claims the turn never mentioned and
+      // raised their corroboration (measured on Postgres: turn 2 "I work at
+      // Nummo" added a second evidence row to the turn-1 Quillbase claim). A
+      // real restatement arrives through `evidenceAttachments` below, once,
+      // quoting the NEW sentence; the loop was double-counting those too.
+      if (c?._persisted) continue;
+      if (!c?.resolution?.ready && !c._canonicalSubject) continue;
       const statement=required(c.statementText,'claim.statementText');
       const subjectEntityId = c._persisted && c.subjectEntityId
         ? c.subjectEntityId
@@ -409,7 +419,7 @@ export async function commitUnderstanding(input = {}) {
       // S8 survivor handling: an exact existing claim is never re-created.
       // Its new evidence is attached to the incumbent claim, preserving both
       // corroboration and provenance without inflating canonical claim rows.
-      const existingClaimId = c._persisted ? c.claimId : null;
+      const existingClaimId = null; // persisted history was skipped above; a restatement is an evidenceAttachment
       const claimId=existingClaimId ?? c.claimId ?? crypto.randomUUID();
       const evidenceId=crypto.randomUUID();
       await client.query(`INSERT INTO aqua_evidence
@@ -445,10 +455,6 @@ export async function commitUnderstanding(input = {}) {
           aggregateId: claimId, actor,
           payload: { claimId, statementText: statement, contentHash: crypto.createHash('sha256').update(statement).digest('hex') },
         });
-      } else {
-        await client.query(`UPDATE aqua_claims
-          SET confidence_corroboration=LEAST(1,confidence_corroboration+0.1), updated_at=now()
-          WHERE claim_id=$1 AND owner_id=$2`, [claimId, ownerId]);
       }
       await client.query(`INSERT INTO aqua_claim_evidence(owner_id,claim_id,evidence_id,role) VALUES($1,$2,$3,'primary') ON CONFLICT DO NOTHING`,[ownerId,claimId,evidenceId]);
 
@@ -503,7 +509,7 @@ export async function commitUnderstanding(input = {}) {
         (evidence_id,owner_id,source_id,locator,quote,checksum) VALUES ($1,$2,$3,$4::jsonb,$5,$6)`,
         [evidenceId,ownerId,sourceId,JSON.stringify({segmentStart:start,segmentEnd:end}),statement,crypto.createHash('sha256').update(statement).digest('hex')]);
       await client.query(`INSERT INTO aqua_claim_evidence(owner_id,claim_id,evidence_id,role) VALUES($1,$2,$3,'corroborating') ON CONFLICT DO NOTHING`,[ownerId,targetClaimId,evidenceId]);
-      await client.query(`UPDATE aqua_claims SET confidence_corroboration=LEAST(1,confidence_corroboration+0.1),updated_at=now() WHERE claim_id=$1 AND owner_id=$2`,[targetClaimId,ownerId]);
+      await client.query(`UPDATE aqua_claims SET confidence_corroboration=CASE WHEN confidence_corroboration+0.1>1 THEN 1 ELSE confidence_corroboration+0.1 END,updated_at=now() WHERE claim_id=$1 AND owner_id=$2`,[targetClaimId,ownerId]);
       committed.push({claimId:targetClaimId,evidenceId,edgeId:null,eventId:null,corroborated:true});
     }
 

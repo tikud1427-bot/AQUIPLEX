@@ -17,6 +17,7 @@
  * archive path (statements are never rewritten, knowledge never deleted).
  */
 import express from 'express';
+import { ok, fail, ErrorCodes } from './envelope.js';
 import { resolveOwner } from '../memory/engine.js';
 import {
   retrieveKnowledge, getProjectIntelligence, getHealth, maintain,
@@ -37,33 +38,33 @@ function ownerOf(req) {
 function requireOwner(req, res) {
   const ownerId = ownerOf(req);
   if (!ownerId) {
-    res.status(400).json({ success: false, error: 'No owner (no session and no ?conversationId)' });
+    fail(res, ErrorCodes.BAD_REQUEST, 'No owner (no session and no ?conversationId)');
     return null;
   }
   return ownerId;
 }
 
 router.get('/metrics', (_req, res) => {
-  res.json({ success: true, metrics: getPICMetrics() });
+  ok(res, { metrics: getPICMetrics() });
 });
 
 router.get('/knowledge', (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
   const q = String(req.query.q || '').slice(0, 500);
-  if (!q) return res.status(400).json({ success: false, error: 'Missing ?q=' });
+  if (!q) return fail(res, ErrorCodes.BAD_REQUEST, 'Missing ?q=');
   const limit = Math.min(20, Math.max(1, parseInt(req.query.limit, 10) || 8));
   const out = retrieveKnowledge(ownerId, q, { limit });
-  res.json({ success: true, ownerId, query: q, ...out });
+  ok(res, { ownerId, query: q, ...out });
 });
 
 router.get('/project', (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
   try {
-    res.json({ success: true, project: getProjectIntelligence(ownerId) });
+    ok(res, { project: getProjectIntelligence(ownerId) });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    fail(res, ErrorCodes.INTERNAL, err.message);
   }
 });
 
@@ -71,9 +72,9 @@ router.get('/health', (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
   try {
-    res.json({ success: true, enabled: picEnabled(), health: getHealth(ownerId) });
+    ok(res, { enabled: picEnabled(), health: getHealth(ownerId) });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    fail(res, ErrorCodes.INTERNAL, err.message);
   }
 });
 
@@ -82,9 +83,9 @@ router.post('/maintain', (req, res) => {
   if (!ownerId) return;
   try {
     const consolidate = req.body?.consolidate !== false;
-    res.json({ success: true, ...maintain(ownerId, { consolidate }) });
+    ok(res, { ...maintain(ownerId, { consolidate }) });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    fail(res, ErrorCodes.INTERNAL, err.message);
   }
 });
 
@@ -94,9 +95,9 @@ router.get('/lifecycle/:kind/:id', (req, res) => {
   if (!ownerId) return;
   const subject = `${req.params.kind}:${req.params.id}`;
   const lifecycle = getLifecycle(ownerId, subject);
-  if (!lifecycle) return res.status(404).json({ success: false, error: 'Unknown subject' });
-  res.json({
-    success: true, subject, lifecycle,
+  if (!lifecycle) return fail(res, ErrorCodes.NOT_FOUND, 'Unknown subject');
+  ok(res, {
+    subject, lifecycle,
     revisions: getHistory(ownerId, subject),
     confidenceTrajectory: confidenceTrajectory(ownerId, subject),
   });
@@ -106,7 +107,7 @@ router.get('/ledger', (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
   const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 25));
-  res.json({ success: true, ledger: getLedger(ownerId, { limit }) });
+  ok(res, { ledger: getLedger(ownerId, { limit }) });
 });
 
 // ── File Intelligence 2.0 (forensics + research + causal) ────────────────────
@@ -118,8 +119,8 @@ router.get('/forensics', (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
   const out = getForensics(ownerId, { ukoId: req.query.file ?? null });
-  if (out == null) return res.status(404).json({ success: false, error: req.query.file ? 'file not found' : 'forensics unavailable' });
-  res.json({ success: true, forensics: out });
+  if (out == null) return fail(res, ErrorCodes.NOT_FOUND, req.query.file ? 'file not found' : 'forensics unavailable');
+  ok(res, { forensics: out });
 });
 
 /** Research intelligence — ?mode=consensus|hypotheses|gaps|overview (default consensus). */
@@ -127,8 +128,8 @@ router.get('/research', (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
   const out = getResearch(ownerId, { mode: String(req.query.mode ?? 'consensus') });
-  if (out == null) return res.status(503).json({ success: false, error: 'research unavailable' });
-  res.json({ success: true, mode: String(req.query.mode ?? 'consensus'), research: out });
+  if (out == null) return fail(res, ErrorCodes.UNAVAILABLE, 'research unavailable');
+  ok(res, { mode: String(req.query.mode ?? 'consensus'), research: out });
 });
 
 /** Paper-vs-paper comparison — ?a=<ukoId>&b=<ukoId>. */
@@ -136,10 +137,10 @@ router.get('/compare', (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
   const { a, b } = req.query;
-  if (!a || !b) return res.status(400).json({ success: false, error: 'a and b (uko ids) are required' });
+  if (!a || !b) return fail(res, ErrorCodes.BAD_REQUEST, 'a and b (uko ids) are required');
   const out = compareKnowledgeFiles(ownerId, a, b);
-  if (out == null) return res.status(404).json({ success: false, error: 'one or both files not found' });
-  res.json({ success: true, comparison: out });
+  if (out == null) return fail(res, ErrorCodes.NOT_FOUND, 'one or both files not found');
+  ok(res, { comparison: out });
 });
 
 /** "Which event caused this?" — ?q=<effect text>. */
@@ -147,10 +148,10 @@ router.get('/cause', (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
   const q = String(req.query.q ?? '').trim();
-  if (!q) return res.status(400).json({ success: false, error: 'q is required' });
+  if (!q) return fail(res, ErrorCodes.BAD_REQUEST, 'q is required');
   const out = whatCaused(ownerId, q);
-  if (out == null) return res.status(503).json({ success: false, error: 'causal query unavailable' });
-  res.json({ success: true, causal: out });
+  if (out == null) return fail(res, ErrorCodes.UNAVAILABLE, 'causal query unavailable');
+  ok(res, { causal: out });
 });
 
 /** Orchestration 2.0 — run a request through the task-graph runtime directly.
@@ -158,12 +159,12 @@ router.get('/cause', (req, res) => {
  *  knowledge (the same lanes chat uses). Kill switch: AQUA_GRAPH=off. */
 router.post('/orchestrate', async (req, res) => {
   if (String(process.env.AQUA_GRAPH ?? 'on').toLowerCase() === 'off') {
-    return res.status(503).json({ success: false, error: 'orchestration disabled (AQUA_GRAPH=off)' });
+    return fail(res, ErrorCodes.UNAVAILABLE, 'orchestration disabled (AQUA_GRAPH=off)');
   }
   const ownerId = resolveOwner({ userId: req.aquaUserId ?? null, conversationId: req.body?.conversationId ?? null });
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No owner (no session and no conversationId)' });
+  if (!ownerId) return fail(res, ErrorCodes.BAD_REQUEST, 'No owner (no session and no conversationId)');
   const message = String(req.body?.message ?? '').trim();
-  if (!message) return res.status(400).json({ success: false, error: 'message is required' });
+  if (!message) return fail(res, ErrorCodes.BAD_REQUEST, 'message is required');
   try {
     const { classifyTask } = await import('../core/classifier.js');
     const { createExecutionPlan } = await import('../core/executionPlanner.js');
@@ -180,13 +181,13 @@ router.post('/orchestrate', async (req, res) => {
       context: { memory, evidence, search: '' },
       ctx: { requestId: `orch-${Date.now()}` },
     });
-    res.json({
-      success: true, answer: result.text, taskType,
+    ok(res, {
+      answer: result.text, taskType,
       orchestration: result.orchestration2, latencyMs: result.latency,
       metrics: getGraphMetrics(),
     });
   } catch (err) {
-    res.status(502).json({ success: false, error: err.message });
+    fail(res, ErrorCodes.UPSTREAM_FAILED, err.message);
   }
 });
 
@@ -198,9 +199,9 @@ router.post('/orchestrate', async (req, res) => {
  *  confidence evolution, retrieval efficiency, plan-cache reuse. */
 router.get('/cognition', (req, res) => {
   try {
-    res.json({ success: true, enabled: cieEnabled(), metrics: getCIEMetrics() });
+    ok(res, { enabled: cieEnabled(), metrics: getCIEMetrics() });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    fail(res, ErrorCodes.INTERNAL, err.message);
   }
 });
 
@@ -208,9 +209,9 @@ router.get('/cognition', (req, res) => {
  *  task type (effectiveness EWMAs, outcomes, better-strategy hints). */
 router.get('/cognition/strategies', (req, res) => {
   try {
-    res.json({ success: true, strategies: getCognitionSnapshot() });
+    ok(res, { strategies: getCognitionSnapshot() });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    fail(res, ErrorCodes.INTERNAL, err.message);
   }
 });
 

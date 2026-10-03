@@ -32,6 +32,11 @@ export const ErrorCodes = Object.freeze({
   UNPROCESSABLE: 'unprocessable',
   UNAVAILABLE:   'unavailable',
   PAYLOAD_TOO_LARGE: 'payload_too_large',
+  // The route worked and something it CALLED did not (502). Added for
+  // POST /intelligence/orchestrate, whose failure has always been a 502:
+  // folding it into `unavailable` (503) or `internal` (500) would change a
+  // status a client may already branch on.
+  UPSTREAM_FAILED: 'upstream_failed',
   INTERNAL:      'internal',
 });
 
@@ -44,6 +49,7 @@ const STATUS_FOR_CODE = Object.freeze({
   [ErrorCodes.UNPROCESSABLE]: 422,
   [ErrorCodes.UNAVAILABLE]:   503,
   [ErrorCodes.PAYLOAD_TOO_LARGE]: 413,
+  [ErrorCodes.UPSTREAM_FAILED]: 502,
   [ErrorCodes.INTERNAL]:      500,
 });
 

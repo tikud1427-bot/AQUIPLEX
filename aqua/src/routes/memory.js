@@ -27,6 +27,7 @@
  *   DELETE /memory/:conversationId[/:key]
  */
 import express from 'express';
+import { ok, fail, ErrorCodes } from './envelope.js';
 import {
   getFacts, getFact, deleteFact, clearFacts, getFactHistory,
 } from '../memory/longTermMemory.js';
@@ -43,6 +44,22 @@ import { peekMind } from '../mind/mindStore.js';
 import { conversationExists, getConversationMeta } from '../memory/conversationStore.js';
 
 const router = express.Router();
+
+/** 400 for every owner-scoped route that cannot resolve who is asking. */
+const noOwner = (res, message = 'No memory owner') => fail(res, ErrorCodes.BAD_REQUEST, message);
+
+/**
+ * The edit endpoints (correct/replace/pin/archive/merge/split) all return the
+ * engine's own `{ ok, ... }` result spread onto the envelope. Failure keeps the
+ * STATUS each endpoint always had — pin's is 404, the rest 400 — passed in
+ * explicitly because they are inconsistent today and a migration is not the
+ * place to quietly change a status a client may branch on.
+ */
+function respondEdit(res, ownerId, result, failCode) {
+  if (result.ok) return ok(res, { ownerId, ...result });
+  const { error, ...rest } = result;
+  return fail(res, failCode, error, { ownerId, ...rest });
+}
 
 function ownerOf(req, conversationId = null) {
   return resolveOwner({
@@ -75,7 +92,7 @@ function assertLegacyConvAccess(req, res, conversationId) {
   if (!conversationExists(conversationId)) return true;         // resolves to caller's own owner
   const owner = getConversationMeta(conversationId)?.userId ?? null;
   if (owner !== scopeUser) {
-    res.status(404).json({ success: false, error: 'Conversation not found' });
+    fail(res, ErrorCodes.NOT_FOUND, 'Conversation not found');
     return false;
   }
   return true;
@@ -83,16 +100,16 @@ function assertLegacyConvAccess(req, res, conversationId) {
 
 function factsPayload(ownerId) {
   const facts = getFacts(ownerId);
-  return { success: true, ownerId, factCount: facts.length, facts };
+  return { ownerId, factCount: facts.length, facts };
 }
 
 // ── Memory Inspector: explainable per-turn trace (Req 14) ────────────────────
 router.get('/inspector/:requestId', (req, res) => {
   const trace = getMemoryTrace(req.params.requestId);
   if (!trace) {
-    return res.status(404).json({ success: false, error: 'No trace for that requestId (ring keeps the last 100 turns)' });
+    return fail(res, ErrorCodes.NOT_FOUND, 'No trace for that requestId (ring keeps the last 100 turns)');
   }
-  res.json({ success: true, requestId: req.params.requestId, trace });
+  ok(res, { requestId: req.params.requestId, trace });
 });
 
 // ── Owner-scoped API ─────────────────────────────────────────────────────────
@@ -107,7 +124,7 @@ router.get('/inspector/:requestId', (req, res) => {
  */
 router.get('/recall', async (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner (no session and no ?conversationId)' });
+  if (!ownerId) return noOwner(res, 'No memory owner (no session and no ?conversationId)');
   const q = String(req.query.q || '').slice(0, 500);
   const limit = Math.min(20, Math.max(1, parseInt(req.query.limit, 10) || 8));
 
@@ -141,35 +158,35 @@ router.get('/recall', async (req, res) => {
     }));
   } catch { /* lane fails open */ }
 
-  res.json({ success: true, ownerId, query: q, facts, episodes, graphPaths, files });
+  ok(res, { ownerId, query: q, facts, episodes, graphPaths, files });
 });
 
 router.get('/', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner (no session and no ?conversationId)' });
-  res.json(factsPayload(ownerId));
+  if (!ownerId) return noOwner(res, 'No memory owner (no session and no ?conversationId)');
+  ok(res, factsPayload(ownerId));
 });
 
 router.get('/fact/:key', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  if (!ownerId) return noOwner(res);
   const fact = getFact(ownerId, req.params.key);
-  if (!fact) return res.status(404).json({ success: false, error: `Fact '${req.params.key}' not found` });
-  res.json({ success: true, ownerId, key: req.params.key, fact, history: getFactHistory(ownerId, req.params.key) });
+  if (!fact) return fail(res, ErrorCodes.NOT_FOUND, `Fact '${req.params.key}' not found`);
+  ok(res, { ownerId, key: req.params.key, fact, history: getFactHistory(ownerId, req.params.key) });
 });
 
 router.delete('/fact/:key', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  if (!ownerId) return noOwner(res);
   deleteFact(ownerId, req.params.key);
-  res.json({ success: true, ownerId, deleted: req.params.key });
+  ok(res, { ownerId, deleted: req.params.key });
 });
 
 router.delete('/', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  if (!ownerId) return noOwner(res);
   clearFacts(ownerId);
-  res.json({ success: true, ownerId, cleared: true });
+  ok(res, { ownerId, cleared: true });
 });
 
 // ── Memory 5.1 — EDITING (spec: correction/replacement/merge/split, versioned,
@@ -179,50 +196,50 @@ router.delete('/', (req, res) => {
 /** POST /memory/fact  { key, value, mode?: 'correct'|'replace', reason? } */
 router.post('/fact', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  if (!ownerId) return noOwner(res);
   const { key, value, mode = 'correct', reason } = req.body || {};
   const result = mode === 'replace'
     ? replaceFact(ownerId, key, value, { reason })
     : correctFact(ownerId, key, value, { reason });
-  res.status(result.ok ? 200 : 400).json({ success: result.ok, ownerId, ...result });
+  respondEdit(res, ownerId, result, ErrorCodes.BAD_REQUEST);
 });
 
 /** POST /memory/fact/:key/pin  { pinned?: boolean } (default true) */
 router.post('/fact/:key/pin', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  if (!ownerId) return noOwner(res);
   const pinned = req.body?.pinned !== false;
   const result = pinFact(ownerId, req.params.key, pinned);
-  res.status(result.ok ? 200 : 404).json({ success: result.ok, ownerId, ...result });
+  respondEdit(res, ownerId, result, ErrorCodes.NOT_FOUND);
 });
 
 /** POST /memory/fact/:key/archive  { restore?: boolean, force?: boolean, reason? } */
 router.post('/fact/:key/archive', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  if (!ownerId) return noOwner(res);
   const { restore = false, force = false, reason } = req.body || {};
   const result = restore
     ? restoreFact(ownerId, req.params.key, { reason })
     : archiveFact(ownerId, req.params.key, { reason, force });
-  res.status(result.ok ? 200 : 400).json({ success: result.ok, ownerId, ...result });
+  respondEdit(res, ownerId, result, ErrorCodes.BAD_REQUEST);
 });
 
 /** POST /memory/merge  { keys: string[], intoKey?, reason? } */
 router.post('/merge', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  if (!ownerId) return noOwner(res);
   const { keys, intoKey, reason } = req.body || {};
   const result = mergeFacts(ownerId, keys, { intoKey, reason });
-  res.status(result.ok ? 200 : 400).json({ success: result.ok, ownerId, ...result });
+  respondEdit(res, ownerId, result, ErrorCodes.BAD_REQUEST);
 });
 
 /** POST /memory/fact/:key/split  { parts: [{key, value, category?, importance?}], reason? } */
 router.post('/fact/:key/split', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  if (!ownerId) return noOwner(res);
   const { parts, reason } = req.body || {};
   const result = splitFact(ownerId, req.params.key, parts, { reason });
-  res.status(result.ok ? 200 : 400).json({ success: result.ok, ownerId, ...result });
+  respondEdit(res, ownerId, result, ErrorCodes.BAD_REQUEST);
 });
 
 // ── Memory 5.1 — REASONING (spec: reason across memories; evidence-backed) ──
@@ -230,28 +247,28 @@ router.post('/fact/:key/split', (req, res) => {
 /** GET /memory/reason?q=<question>[&mode=contradictions|trends|gaps|decisions|changes] */
 router.get('/reason', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  if (!ownerId) return noOwner(res);
   const q = String(req.query.q || '').slice(0, 500);
   const mode = req.query.mode ? String(req.query.mode) : null;
   const result = reasonOverMemory(ownerId, q, mode ? { mode } : {});
-  res.json({ success: true, ownerId, query: q, ...result });
+  ok(res, { ownerId, query: q, ...result });
 });
 
 /** GET /memory/timeline?days=<n>&limit=<n> — "what changed" feed */
 router.get('/timeline', (req, res) => {
   const ownerId = ownerOf(req);
-  if (!ownerId) return res.status(400).json({ success: false, error: 'No memory owner' });
+  if (!ownerId) return noOwner(res);
   const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 7));
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
   const changes = whatChanged(ownerId, { sinceMs: days * 24 * 3600 * 1000, limit });
-  res.json({ success: true, ownerId, days, changes });
+  ok(res, { ownerId, days, changes });
 });
 
 // ── Back-compat: conversation-keyed paths → owner-scoped data ────────────────
 router.get('/:conversationId', (req, res) => {
   if (!assertLegacyConvAccess(req, res, req.params.conversationId)) return;
   const ownerId = ownerForLegacyConversation(req, req.params.conversationId);
-  res.json({ ...factsPayload(ownerId), conversationId: req.params.conversationId });
+  ok(res, { ...factsPayload(ownerId), conversationId: req.params.conversationId });
 });
 
 router.get('/:conversationId/:key', (req, res) => {
@@ -259,8 +276,8 @@ router.get('/:conversationId/:key', (req, res) => {
   if (!assertLegacyConvAccess(req, res, conversationId)) return;
   const ownerId = ownerForLegacyConversation(req, conversationId);
   const fact = getFact(ownerId, key);
-  if (!fact) return res.status(404).json({ success: false, error: `Fact '${key}' not found` });
-  res.json({ success: true, ownerId, conversationId, key, fact, history: getFactHistory(ownerId, key) });
+  if (!fact) return fail(res, ErrorCodes.NOT_FOUND, `Fact '${key}' not found`);
+  ok(res, { ownerId, conversationId, key, fact, history: getFactHistory(ownerId, key) });
 });
 
 router.delete('/:conversationId/:key', (req, res) => {
@@ -268,7 +285,7 @@ router.delete('/:conversationId/:key', (req, res) => {
   if (!assertLegacyConvAccess(req, res, conversationId)) return;
   const ownerId = ownerForLegacyConversation(req, conversationId);
   deleteFact(ownerId, key);
-  res.json({ success: true, ownerId, conversationId, deleted: key });
+  ok(res, { ownerId, conversationId, deleted: key });
 });
 
 router.delete('/:conversationId', (req, res) => {
@@ -276,7 +293,7 @@ router.delete('/:conversationId', (req, res) => {
   if (!assertLegacyConvAccess(req, res, conversationId)) return;
   const ownerId = ownerForLegacyConversation(req, conversationId);
   clearFacts(ownerId);
-  res.json({ success: true, ownerId, conversationId, cleared: true });
+  ok(res, { ownerId, conversationId, cleared: true });
 });
 
 export default router;

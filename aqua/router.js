@@ -45,6 +45,7 @@ import { runStartupValidation } from "./src/core/startupValidation.js";
 import { migrateLegacyMemory }  from "./src/memory/migrate.js";
 import { migrateIdentity }      from "./src/memory/identityMigration.js";
 import { fail, ErrorCodes } from "./src/routes/envelope.js";
+import { errorText } from './src/core/errorText.js';
 
 // ── One-time unification migration ──────────────────────────────────────────
 // Legacy conversation-scoped facts (.aqua-memory.json) → unified owner-scoped
@@ -122,10 +123,10 @@ try {
     if (storeResult.mode === 'shadow') {
       import('./src/core/db/drift.js')
         .then(async ({ checkDrift, driftLine }) => console.log(driftLine(await checkDrift())))
-        .catch(err => console.log(`[DRIFT] check unavailable: ${err.message}`));
+        .catch(err => console.log(`[DRIFT] check unavailable: ${errorText(err)}`));
     }
   } catch (err) {
-    console.log(`[DB] boot line unavailable: ${err.message}`);
+    console.log(`[DB] boot line unavailable: ${errorText(err)}`);
   }
 } catch (err) {
   console.warn(`[UUS] flag report unavailable: ${err?.message ?? err}`);

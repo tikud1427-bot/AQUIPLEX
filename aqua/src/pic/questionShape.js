@@ -154,6 +154,32 @@ const PAST_CUE = /\b(used to|previously|formerly|former|before|earlier|anymore|a
 /** Past-tense auxiliaries provide an explicit temporal frame even without an adverb. */
 const PAST_AUX_CUE = /\b(did|was|were|had)\b/i;
 
+/**
+ * `work` USED AS A VERB — the question is asking about EMPLOYMENT, not about
+ * the word. "Where do I work?", "who do you work for", "people work at X".
+ *
+ * Measured on retrieval-core q001 / q139: `work` was recorded as a typing cue
+ * (so it is not a TOPIC) but it stayed in `shape.terms`, which is what the
+ * lexical score reads. So "I usually do deep work in the mornings" and "Neha
+ * owns the retrieval work" matched "Where do I work?" perfectly (score 1.0) and
+ * ranked above "I run product at Nummo" — the actual answer — on the strength
+ * of a NOUN that shares the verb's spelling. "A word that types the answer is
+ * never also a topic" was true of `topicTerms` and false of the score.
+ *
+ * Narrow on purpose. Only the verb construction is recognised (a pronoun or
+ * auxiliary+pronoun before it, or `at`/`for` after it); "Who owns the retrieval
+ * work?" and "How do I get to work?" are not matched and keep `work` as an
+ * ordinary word. A broader rule — dropping every typing cue from the lexical
+ * score — would also drop "company", "office" and "team" from questions that
+ * genuinely mean them.
+ */
+const WORK_VERB = new RegExp([
+  String.raw`\b(?:do|does|did|will|would|can|could|should|shall|may|might|must)\s+(?:i|we|you|he|she|they|people|everyone|someone)\s+(?:still\s+|currently\s+|now\s+|actually\s+)?work(?:ing)?\b`,
+  String.raw`\b(?:i|we|you|he|she|they|people|who)\s+(?:still\s+|currently\s+|now\s+|actually\s+|really\s+)?(?:work|works|worked|working)\b`,
+  String.raw`\bwork(?:s|ed|ing)?\s+(?:at|for)\b`,
+].join('|'), 'i');
+const WORK_WORD = /^work(?:s|ed|ing)?$/;
+
 /** Words that carry no topic. Kept tight — an over-broad list eats real terms. */
 const STOPWORDS = new Set([
   'the', 'and', 'for', 'with', 'that', 'this', 'you', 'your', 'yours', 'are',
@@ -164,6 +190,11 @@ const STOPWORDS = new Set([
   'their', 'them', 'his', 'her', 'its', 'mine', 'myself', 'ourselves',
   'tell', 'know', 'remind', 'say', 'said', 'give', 'want', 'need', 'please',
   'now', 'currently', 'today', 'still', 'anymore', 'longer', 'ever',
+  // An event-asking verb names no topic, exactly as `did`/`do` do: "What
+  // happened last month?" asks about a TIME, and treating `happened` as a
+  // topic word made the topic unaccountable for, which (correctly) withholds
+  // the past-tense credit from every fact and answers nothing.
+  'happen', 'happens', 'happened', 'happening',
 ]);
 
 /**
@@ -240,6 +271,9 @@ export function analyseQuestion(query) {
     .replace(new RegExp(PAST_CUE.source, 'gi'), ' ')
     .replace(new RegExp(CURRENT_CUE.source, 'gi'), ' ');
   shape.terms = contentTerms(stripped);
+  // See WORK_VERB: the verb sense types the answer; it must not also be matched
+  // as a word, or every NOUN `work` in the store becomes a perfect answer.
+  if (WORK_VERB.test(q)) shape.terms = shape.terms.filter(t => !WORK_WORD.test(t));
 
   // Expectation. A category noun is more specific than the interrogative that
   // introduces it ("what is my company" is an org question, not a thing
@@ -497,9 +531,18 @@ const POLARITY_MISMATCH = 0.3;
  * precision this function exists to protect goes back out.
  */
 function hasTerm(haystack, term) {
+  // A consonant + y stem inflects by REPLACING the y (study → studied/studies,
+  // carry → carried/carries, try → tried). The suffix list below only ever
+  // APPENDS, so "What did I study before this?" could not see "I studied
+  // physics before this" — a direct hit lost to a spelling rule. Handled as a
+  // second form of the same term, not a stemmer: appended suffixes still apply
+  // to the bare term, so `study` still matches `studying`.
+  const ies = term.length >= 4 && /[^aeiou]y$/.test(term)
+    ? `|${escapeRe(term.slice(0, -1))}(?:ie[sd])`
+    : '';
   const t = escapeRe(term);
   const tail = term.length >= 4 ? '(?:e?[sd]|ing|ed|ion|s)?' : '';
-  return new RegExp(`(?:^|[^\\p{L}\\p{N}])${t}${tail}(?:[^\\p{L}\\p{N}]|$)`, 'u').test(haystack);
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])(?:${t}${tail}${ies})(?:[^\\p{L}\\p{N}]|$)`, 'u').test(haystack);
 }
 const escapeRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -621,7 +664,7 @@ export function factAffinity(shape, fact, entityTypes = null, anchored = false, 
   const past = statementIsPast(fact);
   const negatedAsk = shape.polarity === 'negated';
   if (past && shape.currency === 'current' && !negatedAsk) score *= 0.5;
-  else if (past && shape.currency === 'past') score += 0.2;
+  else if (past && shape.currency === 'past' && topicSupported) score += 0.2;
 
   // A DEMOTION IS NOT AN EXCLUSION.
   //

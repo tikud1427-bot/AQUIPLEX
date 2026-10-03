@@ -33,6 +33,7 @@ import crypto from 'node:crypto';
 import { DATA_DIR } from '../dataDir.js';
 import { isConfigured, getPool } from './pool.js';
 import { TABLE } from '../storage/pgBlobAdapter.js';
+import { errorText } from '../errorText.js';
 
 /** The same hash pgBlobAdapter writes into the checksum column. */
 export const checksumOf = data =>
@@ -126,7 +127,7 @@ export async function checkDrift({ dir = DATA_DIR, record = true } = {}) {
     } catch (err) {
       // Losing the history row must not lose the RESULT. The comparison is the
       // point; the record is how the week-of-zero claim stays checkable.
-      console.error(`[DRIFT] could not record run: ${err.message}`);
+      console.error(`[DRIFT] could not record run: ${errorText(err)}`);
     }
   }
   return { configured: true, status: result.clean ? 'clean' : 'drift', durationMs, ...result };
