@@ -10,6 +10,9 @@
  * degraded-mode success left it stuck open and every request re-entered
  * degraded mode. That is now fixed in health.js and asserted here.)
  *
+ * Covers all four providers (gemini, groq, openrouter, nvidia); nvidia also
+ * throws Retry-After 429s, the shape its key pool surfaces when every key cools.
+ *
  * Proves: (a) high completion, (b) transient exhaustion is RETRYABLE not a 500,
  * (c) NO permanent model deprecation, (d) the breaker RECOVERS — degraded mode
  * is a bounded blip, not the steady state.
@@ -31,10 +34,15 @@ const realNow = Date.now;
 let   clock   = realNow();
 Date.now = () => clock;
 
-function flaky(name, { authRate = 0 } = {}) {
+function flaky(name, { authRate = 0, rateLimitRate = 0 } = {}) {
   return async () => {
     const r = Math.random();
     if (r < authRate) throw Object.assign(new Error('invalid api key'), { status: 401 });
+    // A 429 with Retry-After — what an exhausted NVIDIA key pool surfaces to the
+    // router. Must stay retryable and never lock the provider out for good.
+    if (r < authRate + rateLimitRate) {
+      throw Object.assign(new Error('All NVIDIA keys rate limited'), { status: 429, retryAfterMs: 5_000 });
+    }
     if (r < FAIL_RATE) {
       return Math.random() < 0.5
         ? Promise.reject(new Error('TIMEOUT'))
@@ -48,6 +56,7 @@ const deps = {
   gemini:     flaky('gemini'),
   groq:       flaky('groq'),
   openrouter: flaky('openrouter', { authRate: AUTH_RATE }),
+  nvidia:     flaky('nvidia', { rateLimitRate: 0.05 }),
   sleep:      async (ms) => { clock += ms; }, // backoff advances virtual time
   config:     { maxRounds: 5, retryBudgetMs: 60_000, baseBackoffMs: 5, capBackoffMs: 25 },
 };
@@ -108,7 +117,9 @@ console.log  = () => {};
   if (terminalFail > MAX_TERMINAL) failures.push(`terminal(500) failures ${terminalFail} exceed 2% (${MAX_TERMINAL})`);
   if (deprecated.length)           failures.push(`transient failures permanently deprecated models: ${deprecated.join(', ')}`);
   if (degradedPct > MAX_DEGRADED_PCT) failures.push(`degraded-mode on ${degradedPct.toFixed(1)}% of requests (>${MAX_DEGRADED_PCT}%) — breaker not recovering`);
-  if (finalOpen.length === 3)      failures.push('all circuits OPEN at end — breaker not recovering');
+  if (finalOpen.length === Object.keys(report).length) failures.push('all circuits OPEN at end — breaker not recovering');
+  const nv = report.nvidia;
+  if (!nv || nv.totalSuccesses === 0) failures.push('nvidia never answered — it is not participating in routing');
 
   if (failures.length) {
     console.error('FAIL:\n  - ' + failures.join('\n  - '));

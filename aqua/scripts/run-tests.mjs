@@ -38,6 +38,7 @@
 import { readdirSync, statSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import os from 'node:os';
+import { testDatabaseEnv } from '../src/core/db/testDatabaseEnv.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -86,7 +87,7 @@ if (!files.length) {
 }
 
 if (list) {
-  for (const f of files) console.log(path.relative(ROOT, f));
+  for (const f of files) console.log(path.relative(ROOT, f).split(path.sep).join('/'));
   console.log(`\n${files.length} test file(s)`);
   process.exit(0);
 }
@@ -114,16 +115,38 @@ if (list) {
 const explicitDir = process.env.AQUA_DATA_DIR;
 const sandbox = explicitDir ?? mkdtempSync(path.join(os.tmpdir(), 'aqua-test-'));
 
-const res = spawnSync(process.execPath, ['--test', ...files], {
+// THE SAME RULE FOR POSTGRES (2026-10-03). The data dir was sandboxed; the
+// database was not. A developer whose `.env` carries DATABASE_URL (the root
+// `.env` is loaded by dotenv at import) ran the battery against their REAL
+// database: e6TurnPath enqueued `understanding.turn.v1` jobs into it, and a
+// second run then failed with `job=duplicate` because the first run's rows
+// were still there. Tests must never reach a database nobody pointed them at.
+//
+// So: a run talks to Postgres only through AQUA_TEST_DATABASE_URL, which is
+// handed to the children as DATABASE_URL. Without it, DATABASE_URL is set to
+// the empty string — present, so dotenv will not fill it from `.env`, and
+// empty, so `pool.isConfigured()` reads false and live-DB suites skip.
+
+// RELATIVE paths (cwd is ROOT). With 312 files the absolute list passed
+// 32,767 characters — the Windows command-line limit — and spawnSync then
+// failed before Node started: no output, status null, exit 1. A battery that
+// "fails" without running anything is the silent failure this script exists
+// to prevent, so the spawn error is also reported below, never swallowed.
+const res = spawnSync(process.execPath, ['--test', ...files.map(f => path.relative(ROOT, f))], {
   stdio: 'inherit',
   cwd: ROOT,
   env: {
     ...process.env,
     AQUA_DATA_DIR: sandbox,
+    ...testDatabaseEnv(process.env),
     // The mirror would otherwise try to reach a real cluster from a test run.
     AQUA_DISABLE_MONGO_MIRROR: process.env.AQUA_DISABLE_MONGO_MIRROR ?? '1',
   },
 });
+
+if (res.error) {
+  console.error(`run-tests: could not start the test process: ${res.error.message}`);
+}
 
 if (!explicitDir) {
   try { rmSync(sandbox, { recursive: true, force: true }); } catch { /* best effort */ }

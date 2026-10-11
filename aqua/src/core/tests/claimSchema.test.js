@@ -346,6 +346,29 @@ describe('claim schema — writers are declared, not accidental', () => {
       'src/core/worldModel/embeddingRepository.test.js',
       // E7/PR-4 — seeds claims only to satisfy aqua_edges' claim FK.
       'src/core/worldModel/graphLane.test.js',
+      // 2026-10-04 — seeds one claim so a lifecycle transition can be observed
+      // emitting its registered outbox event (claim.contradicted).
+      'src/core/worldModel/outboxEvents.test.js',
+      // E10 (2026-10-04) — the operator-run migration orchestrator. It reads
+      // claims by actor (rollback, parity) and archives through transition();
+      // it never INSERTs a claim itself (backfill.js does).
+      'src/core/worldModel/e10Migration.js',
+      'src/core/worldModel/e10Migration.test.js',
+      // 2026-10-10 — the welcome line READS current claims (owner-scoped,
+      // bounded, no writes); the live test inspects states it asserts on.
+      'src/brain/welcome/repository.js',
+      'src/brain/welcome/welcome.live.test.js',
+      // 2026-10-06 (declared 2026-10-11) — the E10 authoritative read's legacy
+      // veto: ONE bounded, owner-scoped READ of current/retired claims
+      // (Brain.legacyVetoFor). No write statement.
+      'src/brain/index.js',
+      // Phase 4/5 (2026-10-06, declared 2026-10-11) — proactive triggers and the
+      // action executor READ current claims to decide; state changes go through
+      // the canonical transition() API, never a direct write. The live test
+      // seeds/inspects rows to prove that.
+      'src/brain/proactive/repository.js',
+      'src/brain/actions/executor.js',
+      'src/brain/proactive/proactive.live.test.js',
     ];
     const stripComments = (src) => src
       .replace(/\/\*[\s\S]*?\*\//g, '')

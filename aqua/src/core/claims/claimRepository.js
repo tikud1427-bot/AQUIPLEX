@@ -161,6 +161,7 @@ export async function recordClaim(input) {
     const existing = await client.query(
       `SELECT claim_id FROM aqua_claims
         WHERE owner_id = $1 AND subject_entity_id = $2 AND predicate = $3 AND statement_norm = $4
+          AND state NOT IN ('superseded', 'archived')   -- history is not corroborated (0017)
         FOR UPDATE`,
       [input.ownerId, input.subjectEntityId, predicate, norm]);
 

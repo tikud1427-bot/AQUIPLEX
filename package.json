@@ -52,7 +52,10 @@
     "test:android-release": "node scripts/android-release-check.mjs",
     "doctor:production-loop": "node aqua/scripts/production-loop-doctor.mjs",
     "start:production": "node scripts/start-production.mjs",
-    "test:world-model-loop": "node aqua/scripts/production-loop-doctor.mjs && node aqua/src/core/tests/repoHygiene.test.js && node aqua/src/core/worldModel/graphLane.test.js && node aqua/src/core/worldModel/embeddingRepository.test.js && node aqua/src/brain/reflectionV3/reflectionOutbox.test.js"
+    "test:world-model-loop": "node aqua/scripts/production-loop-doctor.mjs && node aqua/src/core/tests/repoHygiene.test.js && node aqua/src/core/worldModel/graphLane.test.js && node aqua/src/core/worldModel/embeddingRepository.test.js && node aqua/src/brain/reflectionV3/reflectionOutbox.test.js",
+    "e10:reconcile": "node aqua/scripts/e10-reconcile.mjs",
+    "e10:migrate": "node aqua/scripts/e10-migrate.mjs",
+    "eval:world-model-lift-live": "node aqua/scripts/world-model-lift-live.mjs"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",

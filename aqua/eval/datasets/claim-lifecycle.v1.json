@@ -1,0 +1,673 @@
+{
+  "id": "claim-lifecycle",
+  "version": 1,
+  "authoredAt": "2026-10-04",
+  "about": "Sequences of canonical claims for one owner, in order. Each case states which claims must be CURRENT, which must be SUPERSEDED (and by what), and which must be DISPUTED after S8 detection and the E9 contradiction worker have run. Written from predicate meaning, not from any benchmark question.",
+  "cases": [
+    {
+      "id": "a-to-b-employer",
+      "cat": "single-change",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Intercom",
+            "entityId": "e-intercom"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Nummo",
+            "entityId": "e-nummo"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "b"
+        ],
+        "superseded": {
+          "a": "b"
+        },
+        "disputed": []
+      }
+    },
+    {
+      "id": "a-b-c-location",
+      "cat": "chain",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Paris",
+            "entityId": "e-paris"
+          }
+        },
+        {
+          "id": "c",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Rome",
+            "entityId": "e-rome"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "c"
+        ],
+        "superseded": {
+          "a": "b",
+          "b": "c"
+        },
+        "disputed": []
+      }
+    },
+    {
+      "id": "deadline-literal-change",
+      "cat": "single-change",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "release",
+          "subjectEntityId": "e-release",
+          "predicate": "deadline_for",
+          "object": {
+            "literal": "March 3"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "release",
+          "subjectEntityId": "e-release",
+          "predicate": "deadline_for",
+          "object": {
+            "literal": "April 9"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "b"
+        ],
+        "superseded": {
+          "a": "b"
+        },
+        "disputed": []
+      }
+    },
+    {
+      "id": "status-change",
+      "cat": "single-change",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "migration",
+          "subjectEntityId": "e-mig",
+          "predicate": "has_status",
+          "object": {
+            "literal": "blocked"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "migration",
+          "subjectEntityId": "e-mig",
+          "predicate": "has_status",
+          "object": {
+            "literal": "done"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "b"
+        ],
+        "superseded": {
+          "a": "b"
+        },
+        "disputed": []
+      }
+    },
+    {
+      "id": "owner-change-one-per-object",
+      "cat": "single-object",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "Lena",
+          "subjectEntityId": "e-lena",
+          "predicate": "owns",
+          "object": {
+            "entity": "billing service",
+            "entityId": "e-billing"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "Omar",
+          "subjectEntityId": "e-omar",
+          "predicate": "owns",
+          "object": {
+            "entity": "billing service",
+            "entityId": "e-billing"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "b"
+        ],
+        "superseded": {
+          "a": "b"
+        },
+        "disputed": []
+      }
+    },
+    {
+      "id": "one-person-owns-many",
+      "cat": "multi-valued",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "Lena",
+          "subjectEntityId": "e-lena",
+          "predicate": "owns",
+          "object": {
+            "entity": "billing service",
+            "entityId": "e-billing"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "Lena",
+          "subjectEntityId": "e-lena",
+          "predicate": "owns",
+          "object": {
+            "entity": "search index",
+            "entityId": "e-search"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "a",
+          "b"
+        ],
+        "superseded": {},
+        "disputed": []
+      }
+    },
+    {
+      "id": "uses-two-tools",
+      "cat": "multi-valued",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Postgres",
+            "entityId": "e-pg"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Redis",
+            "entityId": "e-redis"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "a",
+          "b"
+        ],
+        "superseded": {},
+        "disputed": []
+      }
+    },
+    {
+      "id": "two-preferences",
+      "cat": "multi-valued",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "prefers",
+          "object": {
+            "literal": "dark mode"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "prefers",
+          "object": {
+            "literal": "short answers"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "a",
+          "b"
+        ],
+        "superseded": {},
+        "disputed": []
+      }
+    },
+    {
+      "id": "polarity-flip-is-disputed",
+      "cat": "contradiction",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Postgres",
+            "entityId": "e-pg"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Postgres",
+            "entityId": "e-pg"
+          },
+          "polarity": "negated"
+        }
+      ],
+      "expect": {
+        "current": [],
+        "superseded": {},
+        "disputed": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    {
+      "id": "polarity-flip-single-valued-is-disputed",
+      "cat": "contradiction",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Lisbon",
+            "entityId": "e-lisbon"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Lisbon",
+            "entityId": "e-lisbon"
+          },
+          "polarity": "negated"
+        }
+      ],
+      "expect": {
+        "current": [],
+        "superseded": {},
+        "disputed": [
+          "a",
+          "b"
+        ]
+      }
+    },
+    {
+      "id": "restatement-corroborates",
+      "cat": "idempotency",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Nummo",
+            "entityId": "e-nummo"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Nummo",
+            "entityId": "e-nummo"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "a"
+        ],
+        "superseded": {},
+        "disputed": [],
+        "corroborated": {
+          "a": 1
+        }
+      }
+    },
+    {
+      "id": "explicit-correction-outranks-extraction",
+      "cat": "correction",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Porto",
+            "entityId": "e-porto"
+          },
+          "actor": "user"
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Faro",
+            "entityId": "e-faro"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "a"
+        ],
+        "superseded": {
+          "b": "a"
+        },
+        "disputed": []
+      }
+    },
+    {
+      "id": "intent-does-not-replace-fact",
+      "cat": "modality",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Nummo",
+            "entityId": "e-nummo"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Zeta",
+            "entityId": "e-zeta"
+          },
+          "modality": "intent"
+        }
+      ],
+      "expect": {
+        "current": [
+          "a",
+          "b"
+        ],
+        "superseded": {},
+        "disputed": []
+      }
+    },
+    {
+      "id": "closed-window-is-history-not-conflict",
+      "cat": "temporal",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Intercom",
+            "entityId": "e-intercom"
+          },
+          "validTo": "2024-06-01"
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Nummo",
+            "entityId": "e-nummo"
+          },
+          "validFrom": "2024-07-01"
+        }
+      ],
+      "expect": {
+        "current": [
+          "a",
+          "b"
+        ],
+        "superseded": {},
+        "disputed": []
+      }
+    },
+    {
+      "id": "different-subjects-same-predicate",
+      "cat": "multi-subject",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "Alice",
+          "subjectEntityId": "e-alice",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Paris",
+            "entityId": "e-paris"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "Bob",
+          "subjectEntityId": "e-bob",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Rome",
+            "entityId": "e-rome"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "a",
+          "b"
+        ],
+        "superseded": {},
+        "disputed": []
+      }
+    },
+    {
+      "id": "change-then-unrelated-predicate",
+      "cat": "chain",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "role_is",
+          "object": {
+            "literal": "engineer"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Go",
+            "entityId": "e-go"
+          }
+        },
+        {
+          "id": "c",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "role_is",
+          "object": {
+            "literal": "engineering manager"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "b",
+          "c"
+        ],
+        "superseded": {
+          "a": "c"
+        },
+        "disputed": []
+      }
+    },
+    {
+      "id": "a-b-c-owner-chain",
+      "cat": "chain",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "Lena",
+          "subjectEntityId": "e-lena",
+          "predicate": "owns",
+          "object": {
+            "entity": "billing service",
+            "entityId": "e-billing"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "Omar",
+          "subjectEntityId": "e-omar",
+          "predicate": "owns",
+          "object": {
+            "entity": "billing service",
+            "entityId": "e-billing"
+          }
+        },
+        {
+          "id": "c",
+          "subject": "Ines",
+          "subjectEntityId": "e-ines",
+          "predicate": "owns",
+          "object": {
+            "entity": "billing service",
+            "entityId": "e-billing"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "c"
+        ],
+        "superseded": {
+          "a": "b",
+          "b": "c"
+        },
+        "disputed": []
+      }
+    },
+    {
+      "id": "return-to-old-value",
+      "cat": "chain",
+      "steps": [
+        {
+          "id": "a",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          }
+        },
+        {
+          "id": "b",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Paris",
+            "entityId": "e-paris"
+          }
+        },
+        {
+          "id": "a2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          }
+        }
+      ],
+      "expect": {
+        "current": [
+          "a2"
+        ],
+        "superseded": {
+          "a": "b",
+          "b": "a2"
+        },
+        "disputed": []
+      }
+    }
+  ]
+}

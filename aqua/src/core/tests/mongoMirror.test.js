@@ -25,7 +25,15 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+// The deploy simulation relies on a process delivering SIGTERM to itself and
+// running its shutdown hook (Render/Linux semantics). On Windows,
+// process.kill(pid, 'SIGTERM') terminates without running handlers, so the
+// path under test cannot be exercised there: reported as SKIP, never a pass.
+const SIGTERM_SKIP = process.platform === 'win32'
+  ? 'environment: Windows has no in-process SIGTERM delivery (production runs on Linux)'
+  : false;
 
 const AQUA_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -69,8 +77,8 @@ function runChild(name, body, env) {
   const main = path.join(dir, 'main.mjs');
   fs.writeFileSync(fake, FAKE_COLLECTION_SRC);
   fs.writeFileSync(main, `
-import { fakeCollection } from ${JSON.stringify(fake)};
-import { __setCollectionForTests } from ${JSON.stringify(path.join(AQUA_ROOT, 'src/core/mongoMirror.js'))};
+import { fakeCollection } from ${JSON.stringify(pathToFileURL(fake).href)};
+import { __setCollectionForTests } from ${JSON.stringify(pathToFileURL(path.join(AQUA_ROOT, 'src/core/mongoMirror.js')).href)};
 __setCollectionForTests(fakeCollection);   // BEFORE any store import — hydration must see it
 ${body}
 `);
@@ -86,7 +94,7 @@ ${body}
   return res;
 }
 
-test('conversation + attachment + memory survive a simulated Render deploy', () => {
+test('conversation + attachment + memory survive a simulated Render deploy', { skip: SIGTERM_SKIP }, () => {
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'mirror-life-'));
   const FAKE_DB  = path.join(scratch, 'mongo.json');
   const DATA_1   = path.join(scratch, 'container-1');
@@ -95,11 +103,11 @@ test('conversation + attachment + memory survive a simulated Render deploy', () 
   // ── BOOT 1: old container writes data, then gets the deploy SIGTERM ──
   const boot1 = runChild('boot1', `
 const { getOrCreateConversation, addMessage, getConversation } =
-  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/conversationStore.js'))});
+  await import(${JSON.stringify(pathToFileURL(path.join(AQUA_ROOT, 'src/memory/conversationStore.js')).href)});
 const { attachToConversation } =
-  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/upload/attachmentStore.js'))});
+  await import(${JSON.stringify(pathToFileURL(path.join(AQUA_ROOT, 'src/upload/attachmentStore.js')).href)});
 const { storeFact } =
-  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/longTermMemory.js'))});
+  await import(${JSON.stringify(pathToFileURL(path.join(AQUA_ROOT, 'src/memory/longTermMemory.js')).href)});
 
 getOrCreateConversation(${JSON.stringify(CONV_ID)}, { userId: 'u-test', title: 'Deploy survival' });
 addMessage(${JSON.stringify(CONV_ID)}, 'user', 'What is in the invoice PDF?');
@@ -135,11 +143,11 @@ setTimeout(() => { console.error('SIGTERM hook never exited'); process.exit(1); 
   // ── BOOT 2: new container, empty disk — hydration must restore everything ──
   const boot2 = runChild('boot2', `
 const { getConversation, getConversationMeta } =
-  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/conversationStore.js'))});
+  await import(${JSON.stringify(pathToFileURL(path.join(AQUA_ROOT, 'src/memory/conversationStore.js')).href)});
 const { getAttachments } =
-  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/upload/attachmentStore.js'))});
+  await import(${JSON.stringify(pathToFileURL(path.join(AQUA_ROOT, 'src/upload/attachmentStore.js')).href)});
 const { getFact } =
-  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/longTermMemory.js'))});
+  await import(${JSON.stringify(pathToFileURL(path.join(AQUA_ROOT, 'src/memory/longTermMemory.js')).href)});
 
 const msgs = getConversation(${JSON.stringify(CONV_ID)});
 const meta = getConversationMeta(${JSON.stringify(CONV_ID)});
@@ -181,7 +189,7 @@ test('local file newer than mirror is kept (warm restart, no data loss)', () => 
 
   const res = runChild('warm', `
 const { conversationExists } =
-  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/conversationStore.js'))});
+  await import(${JSON.stringify(pathToFileURL(path.join(AQUA_ROOT, 'src/memory/conversationStore.js')).href)});
 const ok = conversationExists('fresh') && !conversationExists('stale');
 console.log(ok ? 'KEPT_LOCAL' : 'CLOBBERED');
 process.exit(ok ? 0 : 1);
@@ -191,7 +199,7 @@ process.exit(ok ? 0 : 1);
   assert.match(res.stdout, /KEPT_LOCAL/, 'newer-wins: hydration must not clobber a warm instance');
 });
 
-test('a store far over the chunk size round-trips through the mirror intact', () => {
+test('a store far over the chunk size round-trips through the mirror intact', { skip: SIGTERM_SKIP }, () => {
   const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'mirror-chunk-'));
   const FAKE_DB = path.join(scratch, 'mongo.json');
   const DATA_1  = path.join(scratch, 'container-1');
@@ -200,7 +208,7 @@ test('a store far over the chunk size round-trips through the mirror intact', ()
 
   const boot1 = runChild('chunk-boot1', `
 const { getOrCreateConversation, addMessage } =
-  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/conversationStore.js'))});
+  await import(${JSON.stringify(pathToFileURL(path.join(AQUA_ROOT, 'src/memory/conversationStore.js')).href)});
 const big = 'AQUA-'.repeat(80_000) + 'END-OF-BIG-PAYLOAD'; // ~400 KB, unique tail proves byte-exactness
 getOrCreateConversation('big-conv', { userId: 'u-test' });
 addMessage('big-conv', 'user', big);
@@ -221,7 +229,7 @@ setTimeout(() => process.exit(1), 10_000);
 
   const boot2 = runChild('chunk-boot2', `
 const { getConversation } =
-  await import(${JSON.stringify(path.join(AQUA_ROOT, 'src/memory/conversationStore.js'))});
+  await import(${JSON.stringify(pathToFileURL(path.join(AQUA_ROOT, 'src/memory/conversationStore.js')).href)});
 const msgs = getConversation('big-conv');
 const ok = msgs.length === 1 && msgs[0].content.length === ${400_000 + 18} && msgs[0].content.endsWith('END-OF-BIG-PAYLOAD');
 console.log(ok ? 'CHUNK_RESTORED' : 'CHUNK_BROKEN len=' + (msgs[0]?.content?.length ?? 'none'));

@@ -199,11 +199,31 @@ export function memoryObserve(ownerId, {
  * cognitive state + relevant file memory, under ONE token budget. Smallest
  * high-quality context — nothing dumped.
  */
+/** Drop identity entries the canonical World Model contradicts (gap-fill mode). */
+function filterIdentity(identity, vetoed) {
+  if (!identity) return identity;
+  return Object.fromEntries(Object.entries(identity).filter(([, v]) => !vetoed({ key: v.factKey, value: v.value })));
+}
+
 export function memoryRetrieve(ownerId, {
   query = '', taskType = 'conversation',
   budgetTokens = TOTAL_BUDGET_TOKENS, factLimit = 10, requestId = null,
   semanticScores = null, fileChunks = null,
+  // E10 read flip (D5): false when the canonical World Model owns the answer
+  // context. The legacy user-world lanes (identity card, regex facts, Mind
+  // state, Mind graph, episodes) are then skipped — they are never revised by
+  // supersession and outvoted the World Model on changed facts. Uploaded-file
+  // lanes are document content, not user-world state, and stay.
+  legacyUserMemory = true,
+  // E10 authoritative read (2026-10-06): with legacyUserMemory='gapfill' the
+  // legacy identity card and regex facts may only FILL GAPS — every one the
+  // canonical World Model contradicts (it holds a current value for that
+  // attribute, or has retired/negated that exact value) is vetoed. The Mind,
+  // legacy graph and episode lanes stay out, as under a full flip.
+  legacyVeto = null,
 } = {}) {
+  const vetoed = item => (typeof legacyVeto === 'function' ? Boolean(legacyVeto(item)) : false);
+  const mindLanes = legacyUserMemory === true;
   const trace = (requestId && traces.get(requestId)) || makeTrace({ ownerId });
   trace.budgetTokens = budgetTokens;
   if (!ownerId) return { block: '', relevantFacts: [], cognitiveUsed: {}, trace };
@@ -225,8 +245,8 @@ export function memoryRetrieve(ownerId, {
   //    is scoped to what was asked; otherwise the compact full card rides along.
   let identityBlock = '';
   try {
-    const identity = getIdentity(ownerId);
-    if (hasIdentity(identity)) {
+    const identity = legacyUserMemory ? filterIdentity(getIdentity(ownerId), vetoed) : null;
+    if (identity && hasIdentity(identity)) {
       identityBlock = isIdentityQuery(query)
         ? answerIdentityQuery(identity, query)
         : formatIdentityBlock(identity);
@@ -242,7 +262,7 @@ export function memoryRetrieve(ownerId, {
   let factBlock = '';
   let relevantFacts = [];
   try {
-    relevantFacts = retrieveRelevantFacts(ownerId, query, factLimit, { trace, semanticScores });
+    relevantFacts = legacyUserMemory ? retrieveRelevantFacts(ownerId, query, factLimit, { trace, semanticScores }).filter(f => !vetoed(f)) : [];
     factBlock = formatFactsForPrompt(relevantFacts);
     trace.retrieved = relevantFacts.map(f => ({ key: f.key, value: f.value }));
   } catch (err) {
@@ -254,7 +274,9 @@ export function memoryRetrieve(ownerId, {
   const identityTokens = estimateTokens(identityBlock);
   const factTokens = estimateTokens(factBlock);
   const cognitiveBudget = Math.max(MIN_COGNITIVE_BUDGET, budgetTokens - identityTokens - factTokens);
-  const cognitive = mindContext(ownerId, { query, taskType, budgetTokens: cognitiveBudget });
+  const cognitive = mindLanes
+    ? mindContext(ownerId, { query, taskType, budgetTokens: cognitiveBudget })
+    : { block: '', used: {} };
   trace.cognitiveUsed = cognitive.used || {};
 
   // ── Memory 5.0 lanes (Phases B + C) — each budget-gated, each fail-open ─────
@@ -266,7 +288,7 @@ export function memoryRetrieve(ownerId, {
   // Phase B — multi-hop graph recall: connected knowledge the query names.
   let graphBlock = '';
   try {
-    const mindView = peekMind(ownerId);
+    const mindView = mindLanes ? peekMind(ownerId) : null;
     if (mindView) {
       const paths = recallGraphPaths(mindView, query);
       if (paths.length) {
@@ -287,7 +309,7 @@ export function memoryRetrieve(ownerId, {
   // past-tense recall). Answers "what did we do about X" from experience.
   let episodeBlock = '';
   try {
-    const mindView = peekMind(ownerId);
+    const mindView = mindLanes ? peekMind(ownerId) : null;
     if (mindView) {
       let eps = recallEpisodes(mindView, query);
       // Continuation fast-path: no token match, but the user asked to resume —

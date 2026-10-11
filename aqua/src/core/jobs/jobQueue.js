@@ -183,6 +183,20 @@ export async function queueStats() {
   return out;
 }
 
+/**
+ * E12 — retries and dead letters over a window, per kind. Derived from the
+ * queue itself, so it is the same number in the worker and the server (the
+ * in-memory counters of one process never reach the other's /metrics).
+ */
+export async function retryStats({ windowHours = 24 } = {}) {
+  const p = await pool();
+  const { rows } = await p.query(
+    `SELECT kind, state, count(*)::int AS jobs, COALESCE(sum(GREATEST(attempts - 1, 0)), 0)::int AS retries
+       FROM aqua_jobs WHERE updated_at >= now() - make_interval(hours => $1)
+      GROUP BY kind, state`, [Math.max(1, Math.min(24 * 30, Number(windowHours) || 24))]);
+  return rows;
+}
+
 /** The DLQ, newest first. Reasons included — a DLQ without them is a list of regrets. */
 export async function deadLetters(limit = 50) {
   const p = await pool();

@@ -7,6 +7,7 @@ import { useSettingsStore } from './settingsStore';
 import { useUiStore } from './uiStore';
 import { useUploadStore } from './uploadStore';
 import { useWalletStore } from './walletStore';
+import { useWelcomeStore } from './welcomeStore';
 
 /**
  * Every store that holds data belonging to the signed-in account, and must be
@@ -39,6 +40,7 @@ export const RESETTABLE_STORES = {
   useUiStore,
   useUploadStore,
   useWalletStore,
+  useWelcomeStore,
 } as const;
 
 /** The store excluded from the registry above, named so the test can check it. */

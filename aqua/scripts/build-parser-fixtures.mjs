@@ -464,7 +464,7 @@ async function recordGolden() {
   console.log('golden.json  rewritten');
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1]?.endsWith('build-parser-fixtures.mjs')) {
   const check = process.argv.includes('--check');
   const fixtures = buildFixtures();
   const manifest = manifestFor(fixtures);

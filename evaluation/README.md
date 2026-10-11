@@ -29,7 +29,7 @@ python3 evaluation/aqeval.py download mmlu
 python3 evaluation/aqeval.py selftest
 
 # 4. Start AQUA sessionless, on an isolated data dir, with your provider keys
-GROQ_API_KEY=… GEMINI_API_KEY=… OPENROUTER_API_KEY=… \
+GROQ_API_KEY=… GEMINI_API_KEY=… OPENROUTER_API_KEY=… NVIDIA_API_KEY=… \
   node evaluation/runners/aqua-standalone.mjs
 
 # 5. Run a benchmark — one command, all reports

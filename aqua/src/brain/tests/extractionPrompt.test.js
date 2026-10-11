@@ -175,7 +175,18 @@ describe('contract — refuses what the writer would refuse', () => {
   };
 
   test('an unregistered predicate', () => reject({ predicate: 'vibes_with' }, /unregistered-predicate/));
-  test('the wrong object kind', () => reject({ predicate: 'role_is', object: { entity: 'CTO' } }, /object-kind-mismatch/));
+  // 2026-10-06: an ENTITY handed to a literal predicate is coerced to a literal
+  // with the same text (content-preserving, mints nothing; gate ② still checks
+  // the text is in the quote). The reverse — a literal where an entity is
+  // required — is still refused: promoting it would mint a node.
+  test('an entity for a literal predicate is coerced, and the coercion recorded', () => {
+    const r = validateClaim({ ...base, predicate: 'role_is', object: { entity: 'CTO' } });
+    assert.equal(r.ok, true);
+    assert.deepEqual(r.claim.object, { literal: 'CTO' });
+    assert.equal(r.claim.objectKind, 'literal');
+    assert.equal(r.claim.objectCoerced, 'entity→literal');
+  });
+  test('the wrong object kind the other way is still refused', () => reject({ predicate: 'works_at', object: { literal: 'Nummo' } }, /object-kind-mismatch/));
   test('two objects — two objects is two claims', () =>
     reject({ object: { entity: 'Nummo', literal: 'Nummo' } }, /ambiguous-object/));
   test('no object — that is not a claim', () => reject({ object: {} }, /missing-object/));
@@ -200,6 +211,38 @@ describe('contract — refuses what the writer would refuse', () => {
     assert.equal(r.claim.polarity, 'asserted');
     assert.equal(r.claim.modality, 'fact');
     assert.equal(r.claim.timePrecision, 'none');
+  });
+
+  // D6 (rule 11): the revision marker reaches the commit only when it is true;
+  // an ordinary claim keeps its exact shape (no `revises` key at all).
+  test('a revision marker survives validation; anything but true is not a revision', () => {
+    assert.equal(validateClaim({ ...base, revises: true }).claim.revises, true);
+    for (const v of [false, 'true', 1, undefined]) {
+      assert.equal('revises' in validateClaim({ ...base, revises: v }).claim, false, `revises=${v}`);
+    }
+  });
+});
+
+describe('prompt — change and correction language (D6, rule 11)', () => {
+  test('the prompt teaches changes, and the version moved with it', () => {
+    const { system, version } = build();
+    assert.equal(version, 'extract-v6');
+    assert.match(system, /11\. A CHANGE or CORRECTION/);
+    assert.match(system, /"revises": true/);
+  });
+
+  test('the examples teach a change with the old value negated and both marked', () => {
+    const changes = FIXTURES.examples.filter(e => e.claims.some(c => c.revises === true));
+    assert.ok(changes.length >= 3, 'move, correction and reschedule must each be taught');
+    for (const ex of changes) {
+      assert.ok(ex.claims.every(c => c.revises === true), `${ex.id}: every claim of a change is a revision`);
+      assert.ok(ex.claims.some(c => c.polarity === 'asserted'), `${ex.id}: the new value is asserted`);
+      assert.ok(ex.claims.some(c => c.polarity === 'negated'), `${ex.id}: the named old value is negated`);
+      const r = parseExtractionResponse(JSON.stringify({ claims: ex.claims }));
+      assert.ok(r.claims.every(c => c.revises === true), `${ex.id}: the marker survives parsing`);
+    }
+    assert.ok(FIXTURES.examples.some(e => e.claims.length && e.claims.every(c => !c.revises)),
+      'ordinary statements must still be taught without the marker');
   });
 });
 
@@ -260,6 +303,80 @@ describe('contract — reading what models actually return', () => {
   test('extractJsonBlock returns null rather than guessing', () => {
     for (const raw of ['', 'no braces here', null, undefined, 42]) {
       assert.equal(extractJsonBlock(raw), null, `${JSON.stringify(raw)}`);
+    }
+  });
+});
+
+describe('prompt — every predicate is offered WITH its meaning (extract-v2)', () => {
+  // Bare names were the v1 defect: the model read `habit_of` as "recurring
+  // habit" and returned nothing for "never learned X". Completeness is read
+  // from the registry, never from a hand list.
+  test('every seed predicate carries a gloss', () => {
+    const missing = allPredicates().filter(p => p.source === 'seed' && !p.gloss).map(p => p.name);
+    assert.deepEqual(missing, [], `seed predicates with no meaning: ${missing.join(', ')}`);
+  });
+
+  test('each gloss reaches the prompt verbatim, as "name = gloss"', () => {
+    const { system } = build();
+    const absent = allPredicates().filter(p => p.gloss && !system.includes(`  ${p.name} = ${p.gloss}`)).map(p => p.name);
+    assert.deepEqual(absent, [], `glosses that never reach the model: ${absent.join(', ')}`);
+  });
+
+  test('a gloss registered at runtime reaches the prompt without editing the prompt module', () => {
+    const name = `gloss_probe_${Date.now()}`;
+    registerPredicate(name, { class: 'attribute', objectKind: 'literal', gloss: 'a probe meaning for the test' });
+    assert.ok(build().system.includes(`  ${name} = a probe meaning for the test`));
+  });
+
+  test('the prompt version moved off extract-v1, so cached v1 outputs cannot be served', () => {
+    assert.notEqual(PROMPT_VERSION, 'extract-v1');
+  });
+});
+
+// D6 (2026-10-05): rule 12 — references resolve from the owner's own World
+// Model, only when exactly one subject fits; the context is never a source.
+describe('prompt — reference context (D6, rule 12)', () => {
+  const ctx = { conversation: ["Tidepool's backend | uses | Go"], facts: ['Tidepool launch | deadline_for | March 15', 'self | works_at | Initech'] };
+
+  test('rule 12 says when to resolve, when to abstain, and that context is not extracted', () => {
+    const { system } = build();
+    assert.match(system, /12\. A REFERENCE/);
+    assert.match(system, /ONLY when\s+exactly one subject in CONTEXT fits/);
+    assert.match(system, /Never extract a claim from it/);
+  });
+
+  test('context rides in its own fence, after the sentence, labelled as not-to-extract', () => {
+    const { user, nonce } = buildExtractionPrompt('No, it is Rust.', { nonce: 'n1', context: ctx });
+    assert.equal(nonce, 'n1');
+    const s = user.indexOf('No, it is Rust.');
+    const c = user.indexOf("Tidepool's backend | uses | Go");
+    assert.ok(s > 0 && c > s, 'the sentence comes first, the context after');
+    assert.match(user, /do not extract from it/);
+    assert.equal((user.match(/<<<UNTRUSTED-CONTENT n1>>>/g) ?? []).length, 2, 'both the sentence and the context are fenced');
+  });
+
+  test('no context → the user message is exactly the fenced sentence, as before', () => {
+    const a = buildExtractionPrompt('I work at Nummo.', { nonce: 'n2' }).user;
+    const b = buildExtractionPrompt('I work at Nummo.', { nonce: 'n2', context: { conversation: [], facts: [] } }).user;
+    assert.equal(a, b);
+    assert.doesNotMatch(a, /CONTEXT/);
+  });
+});
+
+describe('prompt — role relations (rule 13, extract-v6)', () => {
+  test('the prompt teaches that a person named by their role is the subject of related_to', () => {
+    const { system } = build();
+    assert.match(system, /13\. A ROLE RELATION/);
+    assert.match(system, /never fold the person into a literal on self/);
+  });
+
+  test('the examples teach a role relation and a role change, and they parse', () => {
+    for (const id of ['fx-role-relation', 'fx-role-change']) {
+      const ex = FIXTURES.examples.find(e => e.id === id);
+      assert.ok(ex, id);
+      assert.ok(ex.claims.some(c => c.predicate === 'related_to' && c.subject !== 'self'), `${id}: the person is the subject`);
+      const r = parseExtractionResponse(JSON.stringify({ claims: ex.claims }));
+      assert.equal(r.claims.length, ex.claims.length, `${id}: every example claim parses`);
     }
   });
 });

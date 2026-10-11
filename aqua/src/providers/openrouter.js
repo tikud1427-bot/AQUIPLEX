@@ -40,6 +40,13 @@ import OpenAI from 'openai';
 import {
   getCandidateModels, markModelRateLimited, markModelTempFailed, markModelUnavailable, pinCandidates } from './modelRegistry.js';
 import { classifyProviderError, retryAfterMs } from './providerErrors.js';
+import { recordProviderCall } from '../core/costAccounting.js';
+
+/** E12: every successful call is counted (tokens always; USD only when priced). */
+function countedCall(provider, purpose, res) {
+  try { recordProviderCall({ provider, model: res.model ?? null, usage: res.usage ?? null, purpose: purpose ?? 'other' }); } catch { /* observability never fails a call */ }
+  return res;
+}
 
 // ── Key rotation ───────────────────────────────────────────────────────────────
 
@@ -204,7 +211,7 @@ export async function generateOpenRouter(systemPrompt, messages, signal, maxToke
         continue;
       }
       console.log(`[OPENROUTER] model=${modelId} hit maxTokens=${capTokens} cap — returning partial as successful completion`);
-      return { text, truncated: true, finishReason: 'length', model: modelId, usage: normalizeUsage(result?.usage) };
+      return countedCall('openrouter', opts?.purpose, { text, truncated: true, finishReason: 'length', model: modelId, usage: normalizeUsage(result?.usage) });
     }
 
     if (!text) {
@@ -212,7 +219,7 @@ export async function generateOpenRouter(systemPrompt, messages, signal, maxToke
       continue;
     }
 
-    return { text, truncated: false, finishReason: finishReason ?? 'stop', model: modelId, usage: normalizeUsage(result?.usage) };
+    return countedCall('openrouter', opts?.purpose, { text, truncated: false, finishReason: finishReason ?? 'stop', model: modelId, usage: normalizeUsage(result?.usage) });
   }
 
   throw lastError ?? new Error('All OpenRouter models exhausted for this request');
@@ -301,7 +308,7 @@ export async function streamOpenRouter(systemPrompt, messages, signal, maxTokens
     if (!text.trim()) { lastError = new Error(`OpenRouter: model ${modelId} stream returned empty response`); continue; }
 
     const truncated = capTokens && finishReason === 'length';
-    return { text, truncated: !!truncated, finishReason: truncated ? 'length' : (finishReason ?? 'stop'), streamed: true, model: modelId, usage };
+    return countedCall('openrouter', 'chat', { text, truncated: !!truncated, finishReason: truncated ? 'length' : (finishReason ?? 'stop'), streamed: true, model: modelId, usage });
   }
 
   throw lastError ?? new Error('All OpenRouter stream attempts exhausted');

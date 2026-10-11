@@ -37,6 +37,16 @@
  *    things, and an entity called "it" would absorb every later claim;
  *  · determiner-led descriptions — "my manager", "the project" are roles, not
  *    names. Capitalised tails ("The Hague") pass: that IS a name;
+ *  · EXCEPT a definite article over a MULTI-WORD phrase (2026-10-04): "the
+ *    payment integration", "the iOS launch" name a specific thing, and "the"
+ *    is not part of its identity. The article is stripped and the phrase is
+ *    minted ("payment integration"). Measured on live Postgres with a real
+ *    model, which always keeps the article: every claim about the user's
+ *    projects, blockers and dates ("The payment integration is blocking the
+ *    iOS launch") was refused as a description and never committed — the
+ *    scripted live test passed only because it emitted bare names. Single
+ *    generic nouns ("the project") and possessive roles ("my manager", "our
+ *    office") are still refused: their referent changes over time;
  *  · anything without a letter, URLs, e-mail addresses, absurd lengths;
  *  · AMBIGUOUS ends — two candidates above the merge threshold need adjudication,
  *    and minting a third is exactly the fusion/duplication S6 refused to guess;
@@ -83,10 +93,56 @@ export function isMintableSurface(surface) {
   if (DETERMINERS.has(lower[0]) && tokens.length > 1) {
     const tail = tokens.slice(1);
     const allCapitalised = tail.every(t => /^\p{Lu}/u.test(t));
-    if (!allCapitalised) return { ok: false, reason: 'description' };
+    if (!allCapitalised) {
+      // "the" + a phrase of 2+ words names a specific thing; mint the phrase.
+      if (lower[0] === 'the' && tail.length >= 2 && !PRONOUNS.has(lower[1])) {
+        return { ok: true, name: tail.join(' ') };
+      }
+      return { ok: false, reason: 'description' };
+    }
   }
   if (tokens.length === 1 && DETERMINERS.has(lower[0])) return { ok: false, reason: 'description' };
   return { ok: true };
+}
+
+/**
+ * FIRST MENTION OF THE USER'S OWN THING (2026-10-06).
+ *
+ * "My thesis is on protein folding", "My advisor is Professor Okafor", "I need
+ * to submit my thesis draft by March 3" were refused as descriptions on every
+ * turn of a live Lift persona (s6.refused={"description":1} ×4): the minter
+ * refuses "my X" because a role's referent can change, and S6½ resolves it only
+ * against entities that ALREADY exist — so the first time a user names their
+ * thesis, nothing about it can ever be stored.
+ *
+ * A first-person possessive description ("my"/"our" + noun phrase) that S6½
+ * looked up and found NOTHING for (`reference.outcome === 'unresolved'`) is a
+ * first mention: there is no other referent to confuse it with, and the user's
+ * own "my thesis" names one thing in their world. It is minted under its own
+ * words ("my thesis"), so later "my thesis" / "the thesis" reuse it (exact
+ * label, or S6½'s head-noun lookup). NOT minted: an ambiguous lookup, any "the
+ * X" (not first person — it may refer to something not yet known), and the
+ * roles S6½ owns — "my company/manager/team" (resolved through works_at /
+ * reports_to / member_of) and location roles ("our office") — which stay
+ * refused exactly as before.
+ */
+const FIRST_PERSON_POSSESSIVE = /^(my|our)\s+\S/i;
+// "the migration", "the redesign": a definite single noun S6½ searched for and
+// found NO referent for (2026-10-06, live Lift persona: "The migration is
+// blocked by a missing load-testing environment" lost on every run). Blueprint
+// S6: "no confident match → NEW entity, provisional, merge-reviewable". With
+// two candidates ("Atlas project", "Mercury project" for "the project") S6½
+// reports ambiguous and nothing is minted.
+const DEFINITE_SINGLE_NOUN = /^the\s+[\p{L}][\p{L}'-]*$/iu;
+function isFirstMention(side) {
+  const surface = String(side?.proposedName ?? '').trim();
+  if (!FIRST_PERSON_POSSESSIVE.test(surface) && !DEFINITE_SINGLE_NOUN.test(surface)) return false;
+  const tail = surface.split(/\s+/).slice(1).map(t => t.toLowerCase().replace(/[^\p{L}\p{N}']/gu, ''));
+  if (tail.every(t => PRONOUNS.has(t) || DETERMINERS.has(t))) return false;   // "the one", "my own"
+  const ref = side?.reference;
+  if (!ref || ref.outcome !== 'unresolved') return false;
+  if (ref.method === 'role' || ref.method === 'location-role') return false;
+  return true;
 }
 
 /**
@@ -109,9 +165,13 @@ export function mintProvisionalEntities(claims, { ownerId, mint, max = MAX_MINTS
 
   const settleSide = (side) => {
     if (!side || side.tier !== TIER.PROVISIONAL || side.provisional !== true) return side;
-    const name = side.proposedName;
-    const verdict = isMintableSurface(name);
+    let verdict = isMintableSurface(side.proposedName);
+    if (!verdict.ok && verdict.reason === 'description' && isFirstMention(side)) {
+      verdict = { ok: true, name: String(side.proposedName).trim() };
+      stats.firstMentions = (stats.firstMentions ?? 0) + 1;
+    }
     if (!verdict.ok) { refuse(verdict.reason); return side; }
+    const name = verdict.name ?? side.proposedName;
     if (stats.minted >= max) { refuse('turn-cap'); return side; }
 
     let got = null;

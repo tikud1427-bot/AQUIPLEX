@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-04T12:19:54.132Z",
+  "node": "v24.19.0",
+  "suiteFingerprint": "eeb935e696cb3697",
+  "caseCount": 18,
+  "note": "Committed 2026-10-04: the L14 evaluation for AQUA_REVISION_VOICE over the canonical World Model. 18 cases through the PRODUCTION S8 detector + contradiction worker + revision-voice selection. At recording 18/18, every error count 0. Bite verified by mutation: dropping the echo rule (wrong_raises 1, wrong_content 1), the correction rule (wrong_raises 2), newest-first (wrong_content 2) or the stale-row rule (wrong_raises 1) each fails the gate. Scope: what is raised and its quoted content; whether a model phrases the question well is NOT measured here (needs a provider).\n\nRegenerate with: npm run eval:gate -- revision-voice --update",
+  "coverage": {
+    "total": 18,
+    "executed": 18,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "case_accuracy": 1,
+    "wrong_raises": 0,
+    "missed_raises": 0,
+    "wrong_content": 0,
+    "invented_quotes": 0,
+    "repeat_raises": 0,
+    "accuracy_contradiction": 1,
+    "accuracy_correction": 1,
+    "accuracy_echo": 1,
+    "accuracy_isolation": 1,
+    "accuracy_no_change": 1,
+    "accuracy_suitability": 1,
+    "accuracy_supersession": 1,
+    "accuracy_temporal": 1
+  }
+}

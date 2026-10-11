@@ -32,7 +32,7 @@ import intelligenceRoute  from "./src/routes/intelligence.js";
 import brainRoute         from "./src/routes/brain.js";
 import {
   brainEnabled, ingestEnabled, factIngestEnabled, contextV2Enabled, reflectV2Enabled, twinV2Enabled,
-  revisionVoiceEnabled,
+  revisionVoiceMode,
 } from "./src/brain/index.js";
 import { selfEntityEnabled } from "./src/brain/identity/selfEntity.js";
 import { picEnabled, consolidateEnabled, CONSOLIDATE_EVERY_TURNS } from "./src/pic/core.js";
@@ -46,6 +46,18 @@ import { migrateLegacyMemory }  from "./src/memory/migrate.js";
 import { migrateIdentity }      from "./src/memory/identityMigration.js";
 import { fail, ErrorCodes } from "./src/routes/envelope.js";
 import { errorText } from './src/core/errorText.js';
+import { configureTelemetryFromEnv } from './src/core/telemetryExport.js';
+import { startMetricsPublisher } from './src/core/processMetrics.js';
+
+// E12: OTLP traces / error webhook when the environment asks for them
+// (OTEL_EXPORTER_OTLP_ENDPOINT, AQUA_ERROR_WEBHOOK_URL); local ring otherwise.
+const telemetryBackends = configureTelemetryFromEnv({ role: 'server' });
+console.log(`[TELEMETRY] spans=${telemetryBackends.spans} errors=${telemetryBackends.errors}`);
+
+// Server-side counters (the revision voice runs on the turn path, here) reach
+// every instance's /metrics through aqua_process_metrics, like the workers'.
+// No-op without Postgres.
+startMetricsPublisher({ role: 'server' });
 
 // ── One-time unification migration ──────────────────────────────────────────
 // Legacy conversation-scoped facts (.aqua-memory.json) → unified owner-scoped
@@ -79,7 +91,7 @@ try {
     `ingestFacts=${state(factIngestEnabled())} ` +
     `contextV2=${state(contextV2Enabled())} reflectV2=${state(reflectV2Enabled())} ` +
     `twinV2=${state(twinV2Enabled())} selfEntity=${state(selfEntityEnabled())} ` +
-    `revisionVoice=${state(revisionVoiceEnabled())}`,
+    `revisionVoice=${revisionVoiceMode()}`,
   );
 } catch (err) {
   console.warn(`[BRAIN] flag report unavailable: ${err?.message ?? err}`);

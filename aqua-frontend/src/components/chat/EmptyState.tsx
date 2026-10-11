@@ -5,9 +5,9 @@ import { ArrowRight, FolderGit2, MessageSquare, Plus } from 'lucide-react';
 import { listWorkspaces } from '@/api/project';
 import { useChatStore } from '@/stores/chatStore';
 import { useConversationStore } from '@/stores/conversationStore';
-import { useMindStore } from '@/stores/mindStore';
 import { useUiStore } from '@/stores/uiStore';
 import { useUploadStore } from '@/stores/uploadStore';
+import { useWelcomeStore } from '@/stores/welcomeStore';
 import { AquaLogo } from '@/components/common/AquaLogo';
 import { dateBucket } from '@/lib/format';
 import type { WorkspaceSummary } from '@/types';
@@ -19,12 +19,21 @@ import type { WorkspaceSummary } from '@/types';
    person, every session, forever, all of them code chores. A product whose
    entire claim is that it understands your world cannot open with a menu.
 
-   So it opens with what AQUA actually knows: the goal you're in the middle
-   of, the threads you were last in, the projects it has read. Every line is
-   derived from real state and every one of them disappears when the state
-   isn't there — a new account gets an honest invitation instead of a
-   fabricated welcome.
+   The line under the heading is chosen SERVER-SIDE (GET /brain/welcome,
+   aqua/src/brain/welcome): the most relevant current thing in this person's
+   world — a deadline at risk, a blocker just resolved, the goal they are
+   working toward — read from the World Model with completed, corrected and
+   disputed knowledge excluded, and phrased only from their own words. It
+   used to be assembled here from the highest-priority legacy goal ("You're
+   in the middle of …"), which is how one stale, raw goal title became the
+   greeting on every visit. A new account gets an honest invitation; a
+   failed read gets a neutral line. Nothing here invents a sentence.
    ────────────────────────────────────────────────────────────────────────── */
+
+/** Shown only when the line could not be fetched — about the screen, not the person. */
+const FALLBACK_RETURNING = 'Pick up a thread below, or start something new.';
+const FALLBACK_NEW =
+  'AQUA reads what you give it once, remembers what matters, and carries it into every conversation after.';
 
 function projectName(ws: WorkspaceSummary): string {
   const name = (ws.meta as { name?: unknown } | undefined)?.name;
@@ -39,19 +48,26 @@ export function EmptyState() {
   const setWorkspaceId = useChatStore((s) => s.setWorkspaceId);
   const fetchOverview = useUploadStore((s) => s.fetchOverview);
 
-  const model = useMindStore((s) => s.model);
-  const hasLoadedOnce = useMindStore((s) => s.hasLoadedOnce);
-  const refreshMind = useMindStore((s) => s.refresh);
+  const welcome = useWelcomeStore((s) => s.welcome);
+  const welcomeFailed = useWelcomeStore((s) => s.failed);
+  const refreshWelcome = useWelcomeStore((s) => s.refresh);
 
   const [projects, setProjects] = useState<WorkspaceSummary[]>([]);
 
-  // Both of these are enrichment, not content. The screen renders complete
-  // from stores that are already populated; if either never lands, the
-  // corresponding block simply isn't there.
-  useEffect(() => {
-    if (!hasLoadedOnce) void refreshMind({ silent: true });
-  }, [hasLoadedOnce, refreshMind]);
+  const hasHistory = conversations.length > 0;
 
+  // Re-read on open and on return to the window: the server recomputes from
+  // the current world each time, and the store keeps the shown line unless
+  // the server's line actually changed.
+  useEffect(() => {
+    void refreshWelcome({ history: hasHistory });
+    const onFocus = () => void refreshWelcome({ history: hasHistory });
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [hasHistory, refreshWelcome]);
+
+  // Projects are enrichment, not content. If they never land, the block
+  // simply isn't there.
   useEffect(() => {
     listWorkspaces()
       .then((res) => setProjects([...res.workspaces].sort((a, b) => b.createdAt - a.createdAt).slice(0, 3)))
@@ -63,43 +79,16 @@ export function EmptyState() {
     [conversations],
   );
 
-  /** One sentence of continuity, in strict order of how much it actually
-   *  knows. Returns null when it knows nothing — never a filler line. */
-  const continuity = useMemo(() => {
-    const goals = (model?.goals ?? []).filter((g) => g.status === 'active' || g.status === 'blocked');
-    if (goals.length) {
-      const top = [...goals].sort((a, b) => b.priority - a.priority)[0];
-      const rest = goals.length - 1;
-      return rest > 0
-        ? `You're in the middle of ${top.title}, and ${rest} other ${rest === 1 ? 'thing' : 'things'}.`
-        : `You're in the middle of ${top.title}.`;
-    }
-
-    // `workspace:` focus topics are plumbing, not subject matter — the Mind
-    // page filters them out of attention for the same reason.
-    const focus = (model?.working?.focusRanked ?? [])
-      .filter((f) => !f.topic.startsWith('workspace:'))
-      .slice(0, 2)
-      .map((f) => f.topic);
-    if (focus.length) return `Lately you've been on ${focus.join(' and ')}.`;
-
-    if (recent.length) {
-      const last = recent[0];
-      const when = dateBucket(last.updatedAt).toLowerCase();
-      return when === 'today'
-        ? `Earlier today you were on ${last.title}.`
-        : `Last time you were on ${last.title}.`;
-    }
-    return null;
-  }, [model, recent]);
-
   function openProject(ws: WorkspaceSummary) {
     newConversation();
     setWorkspaceId(ws.id);
     void fetchOverview(ws.id);
   }
 
-  const returning = !!continuity;
+  const returning = hasHistory || !!welcome?.established;
+  // Until the line arrives the paragraph stays empty but keeps its height,
+  // so nothing below it moves when it lands.
+  const line = welcome?.text ?? (welcomeFailed ? (returning ? FALLBACK_RETURNING : FALLBACK_NEW) : null);
 
   return (
     <div className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-10">
@@ -116,9 +105,12 @@ export function EmptyState() {
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {returning ? 'Welcome back.' : 'What are you working on?'}
           </h1>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-foreground-secondary">
-            {continuity ??
-              'AQUA reads what you give it once, remembers what matters, and carries it into every conversation after.'}
+          <p
+            data-testid="welcome-line"
+            aria-busy={line === null}
+            className="mt-2 min-h-[2.875rem] max-w-md text-sm leading-relaxed text-foreground-secondary"
+          >
+            {line}
           </p>
         </div>
 

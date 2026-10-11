@@ -23,7 +23,12 @@ export async function runClaimReflectionJob(job, { loadClaim = claimWithEvidence
     claimId,
   });
   const mind = loadMind(ownerId);
-  if (!mind) return { ok: false, ownerId, claimId, reflected: false, reason: 'mind unavailable' };
+  // A store that cannot produce the owner's Mind is a transient failure: throw
+  // so the durable job retries (backoff → DLQ). Returning ok:false here marked
+  // the job DONE with nothing reflected — the same silent-success defect the
+  // understanding handler had (2026-10-04). A missing CLAIM (below) stays
+  // terminal: it was purged or never existed, and retrying cannot help.
+  if (!mind) throw Object.assign(new Error('claim reflection: mind unavailable'), { code: 'MIND_UNAVAILABLE' });
   if (hasReflectionEffect(mind, effectKey)) {
     return { ok: true, ownerId, claimId, reflected: false, duplicate: true, effectKey };
   }

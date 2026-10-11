@@ -4,7 +4,10 @@ import { getRegistrySnapshot }        from '../providers/modelRegistry.js';
 import { getMetrics, getRecentLogs }  from '../core/observability.js';
 import { renderPrometheus }           from '../core/metricsExposition.js';
 import { getCostMetrics }             from '../core/costAccounting.js';
-import { queueStats, deadLetters, queueConfigured as pgConfigured } from '../core/jobs/jobQueue.js';
+import { queueStats, deadLetters, retryStats, queueConfigured as pgConfigured } from '../core/jobs/jobQueue.js';
+import { getTelemetryMetrics }        from '../core/telemetry.js';
+import { readEvalGateSummary }        from '../core/evalGateSummary.js';
+import { readProcessMetrics }         from '../core/processMetrics.js';
 import { evaluateDlq }                from '../core/jobs/dlqPolicy.js';
 import { getStoreStats }              from '../memory/conversationStore.js';
 import { getMemoryStats }             from '../memory/longTermMemory.js';
@@ -47,18 +50,25 @@ router.get('/', (req, res) => {
 // already returns getMetrics()); adds cost counters and durable-queue / DLQ
 // state. Queue state is fail-open: with no Postgres, or a DB error, the scrape
 // still succeeds with the in-process metrics rather than 500-ing the monitor.
-router.get('/metrics', async (req, res) => {
-  let queue = null, dlq = null;
+router.get('/metrics', (req, res) => sendPrometheus(req, res));
+
+/** The one Prometheus exposition — the session route above and the
+ *  token-authenticated machine scrape (metricsScrape.js) both send this. */
+export async function sendPrometheus(req, res) {
+  let queue = null, dlq = null, workers = null, servers = null;
   if (pgConfigured()) {
+    try { workers = await readProcessMetrics({ role: 'worker' }); } catch { /* fail open */ }
+    try { servers = await readProcessMetrics({ role: 'server' }); } catch { /* fail open */ }
     try {
-      const [stats, dead] = await Promise.all([queueStats(), deadLetters(200)]);
-      queue = stats;
+      const [stats, dead, retries] = await Promise.all([queueStats(), deadLetters(200), retryStats()]);
+      queue = { ...stats, byKind: retries };
       dlq = evaluateDlq({ stats, dead });
     } catch { /* fail open — see above */ }
   }
   res.type('text/plain; version=0.0.4; charset=utf-8')
-     .send(renderPrometheus({ metrics: getMetrics(), cost: getCostMetrics(), queue, dlq }));
-});
+     .send(renderPrometheus({ metrics: getMetrics(), cost: getCostMetrics(), queue, dlq,
+       telemetry: getTelemetryMetrics(), evalGate: readEvalGateSummary(), workers, servers }));
+}
 
 router.get('/uptime', (req, res) => {
   ok(res, getUptime());

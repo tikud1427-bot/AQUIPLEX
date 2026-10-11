@@ -50,7 +50,9 @@ npm start
 Env (.env): `MONGO_URI`, `SESSION_SECRET`, `RAZORPAY_KEY_ID`,
 `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `GOOGLE_CLIENT_ID`,
 `GOOGLE_CLIENT_SECRET`, plus AQUA provider keys: `GROQ_API_KEY`,
-`GEMINI_API_KEY`, `OPENROUTER_API_KEY`.
+`GEMINI_API_KEY`, `OPENROUTER_API_KEY`, `NVIDIA_API_KEY_1..N`
+(NVIDIA is an additional provider/fallback; model via `NVIDIA_DEFAULT_MODEL`,
+default `openai/gpt-oss-20b`).
 
 Web search keys (multi-key, any subset): `SERPER_API_KEY_1..N`,
 `TAVILY_API_KEY_1..N` (bare `SERPER_API_KEY`/`TAVILY_API_KEY` also honored).

@@ -313,3 +313,86 @@ describe('S8 — degenerate input', () => {
     assert.notEqual(subjectPredicateKey(claim({ predicate: 'knows' })), subjectPredicateKey(claim()));
   });
 });
+
+// D6 (2026-10-05): "The backend is Rust now" — a REVISION of a many-valued
+// relation that does not name the old value. Decided by the owner's history,
+// never by guessing: exactly one other current value → it is what changed;
+// two or more → ambiguous, nothing retired.
+describe('sole-value revision (D6)', () => {
+  const stored = (id, object, over = {}) => ({ claimId: id, subject: "Tidepool's backend", predicate: 'uses',
+    object: { entity: object }, objectKind: 'entity', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, ...over });
+  const rust = (over = {}) => ({ claimId: 'rust', subject: "Tidepool's backend", predicate: 'uses',
+    object: { entity: 'Rust' }, objectKind: 'entity', polarity: 'asserted', modality: 'fact', revises: true, ...over });
+
+  test('one current value + a revision → a revision contradiction against it', () => {
+    const r = dedupAndDetect([rust()], [stored('go', 'Go')]);
+    assert.deepEqual(r.contradictions.map(c => [c.kind, c.existing.claimId]), [['revision', 'go']]);
+    assert.deepEqual(r.ambiguousRevisions, []);
+  });
+
+  test('two current values → ambiguous: nothing is offered for retirement', () => {
+    const r = dedupAndDetect([rust()], [stored('go', 'Go'), stored('pg', 'Postgres')]);
+    assert.deepEqual(r.contradictions, []);
+    assert.equal(r.ambiguousRevisions.length, 1);
+    assert.equal(r.ambiguousRevisions[0].candidates, 2);
+  });
+
+  test('an ordinary (unmarked) statement never triggers it — "I use Postgres" + "I use Redis" stays compatible', () => {
+    const r = dedupAndDetect([rust({ revises: undefined })], [stored('go', 'Go')]);
+    assert.deepEqual(r.contradictions, []);
+  });
+
+  test('history and other subjects are not rivals', () => {
+    const r = dedupAndDetect([rust()], [stored('old', 'Java', { state: 'superseded' }), stored('db', 'Go', { subject: 'database' }), stored('go', 'Go')]);
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['go']);
+  });
+
+  test('single-valued relations are left to the snapshot rule', () => {
+    const r = dedupAndDetect(
+      [{ claimId: 'porto', subject: 'You', predicate: 'located_in', object: { entity: 'Porto' }, objectKind: 'entity', polarity: 'asserted', modality: 'fact', revises: true }],
+      [{ claimId: 'lisbon', subject: 'You', predicate: 'located_in', object: { entity: 'Lisbon' }, objectKind: 'entity', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true }],
+      { functionalPredicates: new Set(['located_in']) });
+    assert.deepEqual(r.contradictions.map(c => c.kind), ['object']);
+  });
+
+  test('a negated revision (the old value named) needs no inference', () => {
+    const r = dedupAndDetect([rust({ polarity: 'negated', object: { entity: 'Go' } })], [stored('go', 'Go')]);
+    assert.deepEqual(r.contradictions.map(c => c.kind), ['polarity']);
+  });
+});
+
+// 2026-10-11: "My biggest client is now Sora Studio" (prompt rule 13) is about a
+// DIFFERENT subject than the one it replaces. A role handed over is decided by
+// the owner's history: exactly one other current holder → it is what changed.
+describe('role handover (related_to, rule 13)', () => {
+  const holder = (id, subject, role, over = {}) => ({ claimId: id, subject, predicate: 'related_to',
+    object: { literal: role }, objectKind: 'literal', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, ...over });
+  const sora = (over = {}) => ({ claimId: 'sora', subject: 'Sora Studio', predicate: 'related_to',
+    object: { literal: 'biggest client' }, objectKind: 'literal', polarity: 'asserted', modality: 'fact', revises: true, ...over });
+
+  test('one other current holder + a revision → a revision contradiction against that holder', () => {
+    const r = dedupAndDetect([sora()], [holder('kumo', 'Kumo Games', 'biggest client'), holder('ed', 'Daniel Brooks', 'editor')]);
+    assert.deepEqual(r.contradictions.map(c => [c.kind, c.existing.claimId]), [['revision', 'kumo']]);
+  });
+
+  test('two current holders → ambiguous, nothing retired ("my client is now X" ends no other client)', () => {
+    const r = dedupAndDetect([sora({ object: { literal: 'client' } })], [holder('a', 'Acme', 'client'), holder('b', 'Birch', 'client')]);
+    assert.deepEqual(r.contradictions, []);
+    assert.equal(r.ambiguousRevisions.length, 1);
+  });
+
+  test('an unmarked first statement never retires anyone; history and negations are not holders', () => {
+    assert.deepEqual(dedupAndDetect([sora({ revises: undefined })], [holder('kumo', 'Kumo Games', 'biggest client')]).contradictions, []);
+    const r = dedupAndDetect([sora()], [
+      holder('old', 'Old Co', 'biggest client', { state: 'superseded' }),
+      holder('neg', 'Neg Co', 'biggest client', { polarity: 'negated' }),
+    ]);
+    assert.deepEqual(r.contradictions, []);
+  });
+
+  test('the named old holder (negated, revises) is a plain polarity flip', () => {
+    const r = dedupAndDetect([sora({ claimId: 'db-neg', subject: 'Daniel Brooks', object: { literal: 'editor' }, polarity: 'negated' })],
+      [holder('ed', 'Daniel Brooks', 'editor')]);
+    assert.deepEqual(r.contradictions.map(c => c.kind), ['polarity']);
+  });
+});

@@ -8,7 +8,12 @@
 import crypto from 'node:crypto';
 import { getPool, isConfigured } from '../../core/db/pool.js';
 import { enqueue } from '../../core/jobs/jobQueue.js';
+import { proactiveEnabled, changeJob as proactiveChangeJob } from '../proactive/index.js';
 
+const PROACTIVE_CHANGE_EVENTS = new Set(['claim.created', 'claim.superseded', 'claim.contradicted']);
+
+// The claim events this consumer handles. Must equal the 'dispatch' claim.*
+// lifecycle types in core/worldModel/outboxEvents.js (outboxEvents.test.js).
 const CLAIM_EVENTS = new Set([
   'claim.created',
   'claim.corroborated',
@@ -186,6 +191,13 @@ async function publishClaimedRow(p, row, { jobEnqueue = enqueue } = {}) {
 
   try {
     const result = await jobEnqueue(job);
+    // Phase 4: a World-Model CHANGE is a proactive trigger point. One debounced
+    // evaluation per owner per minute (idempotency key per bucket), scheduled
+    // after the change's own reflection/contradiction work. Same transaction
+    // boundary as the main job: a failure here retries the outbox row.
+    if (PROACTIVE_CHANGE_EVENTS.has(normalized.eventType) && proactiveEnabled()) {
+      await jobEnqueue(proactiveChangeJob(normalized.ownerId, normalized.eventType));
+    }
     await p.query(
       `UPDATE aqua_outbox
           SET state='published', published_at=now(), claimed_by=NULL, claimed_at=NULL, last_error=NULL
@@ -242,3 +254,6 @@ export async function dispatchPendingClaimReflections({ limit = 25, jobEnqueue =
   }
   return { reaped, results };
 }
+
+/** What this consumer handles — must equal the 'dispatch' types in outboxEvents.js. */
+export { OUTBOX_EVENT_TYPES as CONSUMED_EVENT_TYPES };

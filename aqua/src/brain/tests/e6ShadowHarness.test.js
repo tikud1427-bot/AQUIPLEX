@@ -390,7 +390,7 @@ describe('the harness waits out a cooldown instead of scoring silence', () => {
   // whether the developer's root .env contains real Groq credentials.
   // The production harness intentionally loads .env, so relying on the
   // machine's ambient environment would make this unit test nondeterministic.
-  const names = [1, 2, 3, 4].map(i => `GROQ_API_KEY_${i}`);
+  const names = [1, 2, 3, 4, 5].map(i => `GROQ_API_KEY_${i}`);
   const saved = new Map(names.map(name => [name, process.env[name]]));
 
   try {

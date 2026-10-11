@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 
 import {
   validateAgainstSegment, validateBatch, isSensitivePredicate,
-  OUTCOME, SOURCE_CEILING, UNKNOWN_TIER_CEILING,
+  OUTCOME, SOURCE_CEILING, UNKNOWN_TIER_CEILING, resolveSegmentPolarityConflicts, canonText,
 } from '../understanding/claimValidator.js';
 import { predicateNames } from '../../core/claims/predicateRegistry.js';
 
@@ -289,5 +289,105 @@ describe('validateBatch — the per-gate histogram is the point', () => {
     for (const bad of [null, undefined, 'claim', 42, []]) {
       assert.equal(validateAgainstSegment(bad, SEG).outcome, OUTCOME.DISCARD);
     }
+  });
+});
+
+// D6 (2026-10-05) — gate ⑤b: a subject the sentence names BY REFERENCE.
+describe('⑤b subject resolved from context', async () => {
+  const { validateAgainstSegment, contextReference } = await import('../understanding/claimValidator.js');
+  const ctx = new Map([["tidepool's backend", ['Go']], ['harbor', ['Kotlin']]]);
+  const c = (subject, quote, object = { entity: 'Rust' }) => ({
+    subject, predicate: 'uses', object, polarity: 'asserted', modality: 'fact', statementText: quote,
+  });
+  const run = (claim, seg, contextSubjects = ctx) => validateAgainstSegment(claim, seg, { sourceTier: 'chat', contextSubjects });
+
+  test('a pronoun refers to a context subject → admitted, with the resolution recorded', () => {
+    const v = run(c("Tidepool's backend", "It's written in Rust"), "It's written in Rust.");
+    assert.equal(v.outcome, 'admit');
+    assert.deepEqual(v.claim.contextResolved, { subject: "Tidepool's backend", via: 'pronoun' });
+  });
+
+  test('a word of its name refers to it ("the backend")', () => {
+    assert.equal(run(c("Tidepool's backend", 'The backend is Rust now'), 'The backend is Rust now.').claim.contextResolved.via, 'name');
+  });
+
+  test('the value it held refers to it ("Not Go — Rust")', () => {
+    const v = run(c("Tidepool's backend", 'Not Go — Rust'), 'Not Go — Rust.');
+    assert.deepEqual(v.claim.contextResolved, { subject: "Tidepool's backend", via: 'value', value: 'Go' });
+  });
+
+  test('a subject the extractor was NOT given is still refused — no invented names', () => {
+    assert.equal(run(c('Mercury backend', "It's written in Rust"), "It's written in Rust.").reason, 'subject-not-in-segment');
+  });
+
+  test('a context subject the sentence does not refer to at all is refused', () => {
+    assert.equal(run(c('Harbor', 'Rust is great'), 'Rust is great.').reason, 'subject-not-in-segment');
+  });
+
+  test('without context, gate ⑤ behaves exactly as before', () => {
+    assert.equal(run(c("Tidepool's backend", "It's written in Rust"), "It's written in Rust.", null).reason, 'subject-not-in-segment');
+    assert.equal(contextReference('x', 'it is', null), null);
+  });
+});
+
+describe('gate ⑧ — one segment cannot assert and negate the same fact (2026-10-06)', () => {
+  // Measured on E6 extract-v4: "Priya no longer works at Aquiplex" came back as
+  // a negated works_at AND an asserted twin (open validity, present tense).
+  const SEG8 = 'Priya no longer works at Aquiplex.';
+  const claim = polarity => ({
+    subject: 'Priya', predicate: 'works_at', object: { entity: 'Aquiplex' }, objectKind: 'entity',
+    polarity, modality: 'fact', statementText: 'Priya no longer works at Aquiplex',
+  });
+
+  test('the asserted twin is discarded, the negation kept', () => {
+    const r = resolveSegmentPolarityConflicts([claim('negated'), claim('asserted')]);
+    assert.equal(r.kept.length, 1);
+    assert.equal(r.kept[0].polarity, 'negated');
+    assert.equal(r.discarded[0].reason, 'polarity-conflict-in-segment');
+    assert.equal(r.discarded[0].gate, 8);
+  });
+
+  test('order does not matter', () => {
+    const r = resolveSegmentPolarityConflicts([claim('asserted'), claim('negated')]);
+    assert.deepEqual(r.kept.map(c => c.polarity), ['negated']);
+  });
+
+  test('a change with DIFFERENT objects keeps both ("from Lisbon to Porto")', () => {
+    const lisbon = { ...claim('negated'), subject: 'self', predicate: 'located_in', object: { entity: 'Lisbon' } };
+    const porto = { ...claim('asserted'), subject: 'self', predicate: 'located_in', object: { entity: 'Porto' } };
+    assert.equal(resolveSegmentPolarityConflicts([lisbon, porto]).kept.length, 2);
+  });
+
+  test('a different modality is not a conflict (negated fact vs asserted intent)', () => {
+    const intent = { ...claim('asserted'), modality: 'intent' };
+    assert.equal(resolveSegmentPolarityConflicts([claim('negated'), intent]).kept.length, 2);
+  });
+
+  test('subject casing and object casing do not hide a twin', () => {
+    const twin = { ...claim('asserted'), subject: 'priya', object: { entity: 'aquiplex' } };
+    assert.equal(resolveSegmentPolarityConflicts([claim('negated'), twin]).kept.length, 1);
+  });
+
+  test('validateBatch applies ⑧ and reports it in the histogram', () => {
+    const r = validateBatch([claim('negated'), claim('asserted')], SEG8, { sourceTier: 'chat' });
+    assert.equal(r.admitted.length, 1);
+    assert.equal(r.admitted[0].polarity, 'negated');
+    assert.equal(r.stats.byGate[8], 1);
+  });
+});
+
+describe('gate ① compares words, not contraction spellings (2026-10-06)', () => {
+  const neg = quote => ({ subject: 'Dev', predicate: 'member_of', object: { entity: 'platform team' }, objectKind: 'entity',
+    polarity: 'negated', modality: 'fact', statementText: quote });
+  test('"is not" quoted for "isn\'t" is the same words → admitted (production-extractor miss, negation-004)', () => {
+    assert.equal(validateAgainstSegment(neg('Dev is not on the platform team'), "Dev isn't on the platform team.", { sourceTier: 'chat' }).outcome, 'admit');
+  });
+  test('curly apostrophes and can\'t/won\'t canonicalise too', () => {
+    assert.equal(validateAgainstSegment(neg('Dev isn’t on the platform team'), "Dev isn't on the platform team.", { sourceTier: 'chat' }).outcome, 'admit');
+    assert.equal(validateAgainstSegment({ ...neg('I can not join'), subject: 'self', predicate: 'member_of' }, "I can't join the platform team.", { sourceTier: 'chat' }).outcome, 'admit');
+  });
+  test('a paraphrase is STILL refused — only contraction spelling is canonical', () => {
+    assert.equal(validateAgainstSegment(neg('Dev is no longer on the platform team'), "Dev isn't on the platform team.", { sourceTier: 'chat' }).reason, 'quote-not-verbatim');
+    assert.equal(canonText("Don't"), 'do not');
   });
 });

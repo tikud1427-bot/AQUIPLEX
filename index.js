@@ -130,7 +130,12 @@ app.use(helmet({
 // effective limit doubles. That is a degradation, not a hole — and it is the
 // same instance-count question already open from the Mongo multiple-writers
 // alarm. A shared store is the fix when that is resolved.
+const { createRateLimitStore } = require("./utils/rateLimitStore");
+
+// Stores go through utils/rateLimitStore.js: in-memory today (same behaviour as
+// the default), a shared backend (Redis) plugs in there without touching these.
 const authLimiter = rateLimit({
+  store: createRateLimitStore({ prefix: "auth" }),
   windowMs: 15 * 60 * 1000,
   limit: 10,                          // per IP per 15 min — brute force + signup abuse
   standardHeaders: "draft-7",
@@ -139,6 +144,7 @@ const authLimiter = rateLimit({
 });
 
 const engineLimiter = rateLimit({
+  store: createRateLimitStore({ prefix: "engine" }),
   windowMs: 60 * 1000,
   limit: 30,                          // per IP per minute — generous for a human, ruinous for a script
   standardHeaders: "draft-7",
@@ -583,6 +589,16 @@ const aquaAccess = [
 // E11: keep the platform-native /api/aqua surface and expose the same engine
 // at the blueprint's canonical /v1 path. There is still exactly one route
 // implementation and one usage-metering layer.
+// E12 — Prometheus machine scrape. Every /api/aqua route needs a browser
+// session, which a scraper does not have. This one route takes a bearer token
+// instead, and answers 404 unless AQUA_METRICS_TOKEN is set (≥ 32 chars). It
+// serves the same exposition as /api/aqua/provider-health/metrics.
+app.get("/metrics", (req, res, next) => {
+  import("./aqua/src/routes/metricsScrape.js")
+    .then((m) => m.metricsScrape()(req, res))
+    .catch(next);
+});
+
 app.use("/api/aqua", ...aquaAccess);
 app.use("/v1", ...aquaAccess);
 

@@ -127,7 +127,7 @@ describe('health.js — circuit breaker contract (Issues 1, 7, 8, 9)', () => {
   test('getHealthReport returns every provider with well-formed fields', () => {
     __resetForTests();
     const report = getHealthReport();
-    for (const p of ['gemini', 'groq', 'openrouter']) {
+    for (const p of ['gemini', 'groq', 'openrouter', 'nvidia']) {
       assert.ok(p in report);
       assert.equal(typeof report[p].circuitState, 'string');
       assert.equal(typeof report[p].score, 'string');
@@ -141,5 +141,44 @@ describe('health.js — circuit breaker contract (Issues 1, 7, 8, 9)', () => {
     assert.equal(getHealthScore('not_a_real_provider'), 0);
     assert.doesNotThrow(() => markSuccess('not_a_real_provider', 100));
     assert.doesNotThrow(() => markFailure('not_a_real_provider', 'x'));
+  });
+});
+
+describe('health.js — nvidia is a first-class provider (2026-10)', () => {
+  test('nvidia starts healthy and closed — a provider missing from state would be unhealthy forever', () => {
+    __resetForTests();
+    assert.equal(isProviderHealthy('nvidia'), true);
+    assert.ok(getHealthScore('nvidia') > 0);
+  });
+
+  test('breaker opens on 3 consecutive failures, half-opens after cooldown, and a probe success recovers it', () => {
+    __resetForTests();
+    const realNow = Date.now;
+    let clock = realNow();
+    Date.now = () => clock;
+    try {
+      for (let i = 0; i < 3; i++) markFailure('nvidia', 'server_error');
+      assert.equal(getProviderState('nvidia').circuitState, 'open');
+      assert.equal(isProviderHealthy('nvidia'), false);
+      assert.equal(isProviderHealthy('groq'), true, 'one provider opening must not affect another');
+      clock += 61_000;
+      assert.equal(isProviderHealthy('nvidia'), true, 'the single probe is allowed');
+      assert.equal(getProviderState('nvidia').circuitState, 'half_open');
+      markSuccess('nvidia', 400);
+      assert.equal(getProviderState('nvidia').circuitState, 'closed');
+    } finally {
+      Date.now = realNow;
+    }
+  });
+
+  test('the health report carries no key material — only counters and states', () => {
+    __resetForTests();
+    process.env.NVIDIA_API_KEY_1 = 'nv-health-secret';
+    try {
+      const text = JSON.stringify(getHealthReport());
+      assert.doesNotMatch(text, /nv-health-secret/);
+    } finally {
+      delete process.env.NVIDIA_API_KEY_1;
+    }
   });
 });

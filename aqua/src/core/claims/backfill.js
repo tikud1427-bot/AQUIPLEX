@@ -89,7 +89,20 @@ export function assess(fact) {
  * @param {object} [opts]
  * @param {boolean} [opts.dryRun]  assess only, write nothing
  */
-export async function backfillOwner(ownerId, facts, evidenceById, { dryRun = false } = {}) {
+/**
+ * E10 hardening (2026-10-04), each a defect a production migration cannot
+ * carry:
+ *   · ACTOR — writes were attributed to 'system', so one run could not be
+ *     audited or rolled back (L9). `actor` names the run ('import:e10:<id>').
+ *   · IDEMPOTENCY BEFORE WRITES — evidence rows were inserted BEFORE the
+ *     "already backfilled?" check, so every re-run left orphan evidence.
+ *   · ONE TRANSACTION PER FACT — a crash mid-fact left a claim without
+ *     evidence (D2) or evidence without a claim.
+ *   · SELF BY TYPE — the legacy store marks the user with the label "You";
+ *     that marker now maps to the owner's EXISTING type='self' entity, and a
+ *     new self is created only if none exists (one self per owner, L8).
+ */
+export async function backfillOwner(ownerId, facts, evidenceById, { dryRun = false, actor = 'system' } = {}) {
   if (!isConfigured()) throw new BackfillError('DATABASE_URL is not set — claims have nowhere to go');
   const pool = await getPool();
 
@@ -111,10 +124,15 @@ export async function backfillOwner(ownerId, facts, evidenceById, { dryRun = fal
 
   // Entities first: a claim needs a subject that exists.
   const entityIds = new Map();
-  const ensureEntity = async (label) => {
+  const ensureEntity = async (label, client = pool) => {
     const norm = String(label).toLowerCase().trim();
     if (entityIds.has(norm)) return entityIds.get(norm);
-    const found = await pool.query(
+    if (norm === 'you') {
+      const self = await client.query(
+        `SELECT entity_id FROM aqua_entities WHERE owner_id=$1 AND type='self' LIMIT 1`, [ownerId]);
+      if (self.rows.length) { entityIds.set(norm, self.rows[0].entity_id); return self.rows[0].entity_id; }
+    }
+    const found = await client.query(
       `SELECT entity_id FROM aqua_entities WHERE owner_id=$1 AND normalized_label=$2`, [ownerId, norm]);
     if (found.rows.length) { entityIds.set(norm, found.rows[0].entity_id); return found.rows[0].entity_id; }
     const id = crypto.randomUUID();
@@ -122,7 +140,7 @@ export async function backfillOwner(ownerId, facts, evidenceById, { dryRun = fal
     // store used the literal word "You", which needed special-casing in five
     // places; here the label is display-only.
     const type = norm === 'you' ? 'self' : 'concept';
-    await pool.query(
+    await client.query(
       `INSERT INTO aqua_entities (entity_id, owner_id, type, canonical_label, normalized_label, confidence_resolution)
        VALUES ($1,$2,$3,$4,$5,0.5)`, [id, ownerId, type, String(label), norm]);
     entityIds.set(norm, id);
@@ -131,14 +149,14 @@ export async function backfillOwner(ownerId, facts, evidenceById, { dryRun = fal
   };
 
   const sourceIds = new Map();
-  const ensureSource = async (kind) => {
+  const ensureSource = async (kind, client = pool) => {
     if (sourceIds.has(kind)) return sourceIds.get(kind);
     const id = crypto.randomUUID();
     // The legacy trust tiers, preserved: file 0.9 > chat 0.6. L10 — trust
     // flows downhill, and a backfill that flattened it would erase the one
     // piece of ranking information the old store did carry.
     const trust = kind === 'document' ? 0.9 : 0.6;
-    await pool.query(
+    await client.query(
       `INSERT INTO aqua_sources (source_id, owner_id, kind, title, trust_tier)
        VALUES ($1,$2,$3,$4,$5)`, [id, ownerId, kind, `backfill:${kind}`, trust]);
     sourceIds.set(kind, id);
@@ -148,54 +166,67 @@ export async function backfillOwner(ownerId, facts, evidenceById, { dryRun = fal
 
   for (const { fact, verdict } of assessed) {
     if (!verdict.projectable) continue;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const subject = await ensureEntity(fact.entities[0], client);
+      const kind = fact.sourceType === 'document' ? 'document' : 'conversation';
+      const norm = String(fact.statement).toLowerCase().replace(/\s+/g, ' ').replace(/[.!?]+$/, '').trim();
 
-    const subject = await ensureEntity(fact.entities[0]);
-    const kind = fact.sourceType === 'document' ? 'document' : 'conversation';
-    const sourceId = await ensureSource(kind);
+      // Idempotency FIRST — before any row is written for this fact.
+      const existing = await client.query(
+        `SELECT claim_id FROM aqua_claims WHERE owner_id=$1 AND subject_entity_id=$2 AND predicate=$3 AND statement_norm=$4`,
+        [ownerId, subject, UNRESOLVED, norm]);
+      if (existing.rows.length) {
+        await client.query('COMMIT');
+        report.alreadyPresent = (report.alreadyPresent ?? 0) + 1;
+        continue;
+      }
 
-    const evidenceIds = [];
-    for (const evId of fact.evidence) {
-      const legacy = evidenceById.get(evId);
-      // The quote is MANDATORY and must be verbatim. A legacy evidence object
-      // with no quote falls back to the statement — which is the sentence the
-      // fact came from, so it is still the user's own words, not a synthesis.
-      const quote = legacy?.quote ?? fact.statement;
-      const id = crypto.randomUUID();
-      await pool.query(
-        `INSERT INTO aqua_evidence (evidence_id, owner_id, source_id, quote, checksum, locator)
-         VALUES ($1,$2,$3,$4,$5,$6)`,
-        [id, ownerId, sourceId, quote,
-          crypto.createHash('sha256').update(quote).digest('hex').slice(0, 16),
-          JSON.stringify({ backfilledFrom: evId })]);
-      evidenceIds.push(id);
+      const sourceId = await ensureSource(kind, client);
+      const evidenceIds = [];
+      for (const evId of fact.evidence) {
+        const legacy = evidenceById.get(evId);
+        // The quote is MANDATORY and must be verbatim. A legacy evidence object
+        // with no quote falls back to the statement — the user's own words.
+        const quote = legacy?.quote ?? fact.statement;
+        const id = crypto.randomUUID();
+        await client.query(
+          `INSERT INTO aqua_evidence (evidence_id, owner_id, source_id, quote, checksum, locator)
+           VALUES ($1,$2,$3,$4,$5,$6)`,
+          [id, ownerId, sourceId, quote,
+            crypto.createHash('sha256').update(quote).digest('hex').slice(0, 16),
+            JSON.stringify({ backfilledFrom: evId })]);
+        evidenceIds.push(id);
+      }
+
+      const claimId = crypto.randomUUID();
+      await client.query(
+        `INSERT INTO aqua_claims (
+           claim_id, owner_id, subject_entity_id, predicate, object_literal,
+           polarity, modality, asserted_at, state,
+           confidence_extraction, confidence_source, confidence_corroboration,
+           extractor, extractor_version, actor, statement_text, statement_norm)
+         VALUES ($1,$2,$3,$4,$5,'asserted','fact',now(),'extracted',$6,$7,0,'backfill','v1',$10,$8,$9)`,
+        [claimId, ownerId, subject, UNRESOLVED, String(fact.statement),
+          fact.confidence ?? 0.5, kind === 'document' ? 0.9 : 0.6,
+          String(fact.statement), norm, actor]);
+      for (const evId of evidenceIds) {
+        await client.query(
+          `INSERT INTO aqua_claim_evidence (owner_id, claim_id, evidence_id, role) VALUES ($1,$2,$3,'primary')`,
+          [ownerId, claimId, evId]);
+      }
+      await client.query('COMMIT');
+      await linkClaimRetrievalKey({ ownerId, claimId, retrievalKey: String(fact.id) });
+      report.projected++;
+      report.mappings.push({ factId: String(fact.id), claimId });
+    } catch (err) {
+      try { await client.query('ROLLBACK'); } catch { /* connection may be gone */ }
+      report.failed = (report.failed ?? 0) + 1;
+      report.failures = [...(report.failures ?? []), { id: fact?.id ?? null, error: String(err?.message ?? err).slice(0, 200) }].slice(0, 20);
+    } finally {
+      client.release();
     }
-
-    const claimId = crypto.randomUUID();
-    const norm = String(fact.statement).toLowerCase().replace(/\s+/g, ' ').replace(/[.!?]+$/, '').trim();
-    const existing = await pool.query(
-      `SELECT claim_id FROM aqua_claims WHERE owner_id=$1 AND subject_entity_id=$2 AND predicate=$3 AND statement_norm=$4`,
-      [ownerId, subject, UNRESOLVED, norm]);
-    if (existing.rows.length) continue;   // idempotent: re-running backfills nothing twice
-
-    await pool.query(
-      `INSERT INTO aqua_claims (
-         claim_id, owner_id, subject_entity_id, predicate, object_literal,
-         polarity, modality, asserted_at, state,
-         confidence_extraction, confidence_source, confidence_corroboration,
-         extractor, extractor_version, actor, statement_text, statement_norm)
-       VALUES ($1,$2,$3,$4,$5,'asserted','fact',now(),'extracted',$6,$7,0,'backfill','v1','system',$8,$9)`,
-      [claimId, ownerId, subject, UNRESOLVED, String(fact.statement),
-        fact.confidence ?? 0.5, kind === 'document' ? 0.9 : 0.6,
-        String(fact.statement), norm]);
-
-    for (const evId of evidenceIds) {
-      await pool.query(
-        `INSERT INTO aqua_claim_evidence (owner_id, claim_id, evidence_id, role) VALUES ($1,$2,$3,'primary')`,
-        [ownerId, claimId, evId]);
-    }
-    await linkClaimRetrievalKey({ ownerId, claimId, retrievalKey: String(fact.id) });
-    report.projected++;
-    report.mappings.push({ factId: String(fact.id), claimId });
   }
 
   return report;

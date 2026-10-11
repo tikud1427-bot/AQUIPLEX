@@ -73,13 +73,26 @@ export const REQUESTED_TEMPERATURE = 0;
  * quiet reuse — which is exactly what you want the first time a prompt change
  * is measured.
  */
-export function extractionCacheKey({ segment, promptVersion, modelPin }) {
-  return crypto.createHash('sha256')
+export function extractionCacheKey({ segment, promptVersion, modelPin, knownEntities = [], context = null, negationHint = false }) {
+  const h = crypto.createHash('sha256')
     .update(String(promptVersion ?? PROMPT_VERSION)).update('\u0000')
     .update(String(modelPin ?? 'unpinned')).update('\u0000')
-    .update(String(segment ?? ''))
-    .digest('hex');
+    .update(String(segment ?? ''));
+  // Known entities are in the prompt (rule 9), so they can change the answer.
+  // Absent → the key is byte-identical to before.
+  if (knownEntities.length) h.update('\u0000').update(knownEntities.join('\u0001'));
+  // Rule 12's CONTEXT is in the prompt too. Absent or empty → key unchanged.
+  const conv = context?.conversation ?? [], facts = context?.facts ?? [];
+  if (conv.length || facts.length) h.update('\u0000').update([...conv, '\u0002', ...facts].join('\u0001'));
+  // The negation retry's reminder is in the prompt. Absent → key unchanged.
+  if (negationHint) h.update('\u0000negation-hint');
+  return h.digest('hex');
 }
+
+/** Rule 9's names: strings, de-duplicated, bounded — the prompt is not a dump of the graph. */
+const KNOWN_MAX = 40;
+const knownNames = list => [...new Set((Array.isArray(list) ? list : [])
+  .map(s => String(s ?? '').trim()).filter(Boolean))].slice(0, KNOWN_MAX);
 
 /** Process-lifetime cache. Deliberately not persisted — see the header of PR-11. */
 const memoryCache = new Map();
@@ -104,11 +117,14 @@ export function __extractionCacheSize() { return memoryCache.size; }
 export async function extractSegment(segment, opts = {}) {
   const cache = opts.cache ?? memoryCache;
   const modelPin = opts.modelPin ?? null;
-  const key = extractionCacheKey({ segment, promptVersion: PROMPT_VERSION, modelPin });
+  const knownEntities = knownNames(opts.knownEntities);
+  const context = opts.context ?? null;
+  const negationHint = opts.negationHint === true;
+  const key = extractionCacheKey({ segment, promptVersion: PROMPT_VERSION, modelPin, knownEntities, context, negationHint });
 
   if (cache.has(key)) return { ...cache.get(key), cached: true };
 
-  const prompt = buildExtractionPrompt(segment);
+  const prompt = buildExtractionPrompt(segment, { knownEntities, context, negationHint });
   const callModel = opts.callModel;
 
   if (typeof callModel !== 'function') {

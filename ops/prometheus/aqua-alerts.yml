@@ -1,0 +1,97 @@
+# AQUA — Prometheus alert rules (E12, 2026-10-04)
+#
+# Scrape target: GET /api/aqua/provider-health/metrics (text exposition, renderPrometheus).
+# Every metric named here is emitted by aqua/src/core/metricsExposition.js;
+# aqua/src/core/tests/alertRules.test.js fails if a rule references a metric
+# the code does not emit. Thresholds are starting points to tune against real
+# traffic — they are operational settings, not product semantics.
+groups:
+  - name: aqua-learning-loop
+    rules:
+      - alert: AquaDeadLettersAlert
+        expr: aqua_dlq_level >= 2
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: "Dead-lettered jobs above the alert threshold"
+          description: "Turns or reflections are failing permanently. Runbook: docs/RUNBOOK_DLQ.md (requeue after fixing the cause, e.g. provider quota)."
+
+      - alert: AquaUnderstandingRetriesHigh
+        expr: sum(aqua_job_retries_window{kind="understanding.turn.v1"}) > 50
+        for: 15m
+        labels: { severity: warn }
+        annotations:
+          summary: "Understanding jobs are retrying heavily (24h window)"
+          description: "Usually provider rate limits / daily quota. Turns are retried, not lost — but they are delayed."
+
+      - alert: AquaQueueBacklog
+        expr: aqua_jobs{state="queued"} > 500
+        for: 15m
+        labels: { severity: warn }
+        annotations:
+          summary: "Durable queue backlog"
+          description: "The cognition worker is not keeping up, or is not running (start:production runs both server and worker)."
+
+      - alert: AquaNoLiveWorkers
+        expr: aqua_workers_alive == 0
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "No cognition worker has published a metrics snapshot in 2 minutes"
+          description: "Workers publish a counter snapshot every 15s (processMetrics.js). None alive = the product answers but does not learn."
+
+      - alert: AquaWorkerSilent
+        expr: aqua_jobs{state="queued"} > 0 and on() (sum(aqua_jobs_window{state="done"}) == 0)
+        for: 30m
+        labels: { severity: page }
+        annotations:
+          summary: "Jobs queued but none completed in 24h"
+          description: "The product can answer but has stopped learning. Check the worker process."
+
+  - name: aqua-providers-and-cost
+    rules:
+      - alert: AquaUnpricedCalls
+        expr: aqua_cost_unpriced_calls_total > 0
+        for: 1h
+        labels: { severity: info }
+        annotations:
+          summary: "Provider calls with no known price"
+          description: "aqua_cost_usd_total is withheld while any call is unpriced. Load a price table (setPriceTable) to account spend."
+
+      - alert: AquaProviderFailureRate
+        expr: sum(rate(aqua_provider_failures_total[10m])) / clamp_min(sum(rate(aqua_provider_requests_total[10m])), 1) > 0.25
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "More than a quarter of provider calls failing"
+
+      - alert: AquaRequestLatencyP95
+        expr: aqua_request_latency_p95_ms > 20000
+        for: 15m
+        labels: { severity: warn }
+        annotations:
+          summary: "p95 request latency above 20s"
+
+      - alert: AquaReportedErrorsSpike
+        expr: sum(rate(aqua_reported_errors_total[15m])) > 1
+        for: 15m
+        labels: { severity: warn }
+        annotations:
+          summary: "PII-scrubbed error reports spiking"
+          description: "See the error sink (telemetry.js setErrorSink) grouped by the `where` label."
+
+  - name: aqua-quality
+    rules:
+      - alert: AquaEvalGateFailing
+        expr: aqua_eval_gate_passed == 0
+        for: 5m
+        labels: { severity: warn }
+        annotations:
+          summary: "The last recorded eval:gate run regressed"
+          description: "L14: a capability change moved a measured metric the wrong way. aqua_eval_gate_regressions names how many suites."
+
+      - alert: AquaEvalGateStale
+        expr: aqua_eval_gate_age_seconds > 7 * 24 * 3600
+        labels: { severity: info }
+        annotations:
+          summary: "No full eval:gate run recorded in a week"

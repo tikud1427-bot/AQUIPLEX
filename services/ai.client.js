@@ -3,7 +3,7 @@
 /**
  * engine/ai.core.js — AQUIPLEX Unified AI Engine
  *
- * Cascade: Groq (primary) → OpenRouter (fallback/reasoning) → Gemini (last)
+ * Cascade: Groq (primary) → OpenRouter (fallback/reasoning) → Gemini → NVIDIA (last)
  * Images:  Pollinations (primary, no-auth) → HuggingFace (optional fallback)
  * Search:  Serper + generateAI
  *
@@ -328,7 +328,84 @@ async function _callGemini(combined, temperature, maxTokens) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// generateAI  — smart routing: Groq → OpenRouter → Gemini
+// NVIDIA CALLER — final fallback, own key pool
+// ─────────────────────────────────────────────────────────────────────────────
+// Same keys and model as the engine adapter (aqua/src/providers/nvidia.js):
+// NVIDIA_API_KEY_1..N (+ bare NVIDIA_API_KEY), deduped, blanks ignored,
+// round-robin, PER-KEY cooldown (429 → Retry-After or 60s; 401/402/403 → 24h).
+// Deliberately not an import of the ESM engine adapter: this file is CommonJS
+// and the engine module pulls in the whole provider/registry/cost tree. Logs
+// name the slot (key=#2), never the key.
+
+const NVIDIA_URL   = (process.env.NVIDIA_BASE_URL || "https://integrate.api.nvidia.com/v1") + "/chat/completions";
+const NVIDIA_MODEL = process.env.NVIDIA_DEFAULT_MODEL || "openai/gpt-oss-20b";
+const _nvidiaCooldown = new Map(); // slot label → epoch ms usable again
+let   _nvidiaCursor   = 0;
+
+function _nvidiaKeySlots() {
+  const numbered = Object.keys(process.env)
+    .map(k => /^NVIDIA_API_KEY_(\d+)$/.exec(k))
+    .filter(Boolean)
+    .map(m => ({ n: Number(m[1]), key: String(process.env[m[0]] || "").trim() }))
+    .filter(s => s.key)
+    .sort((a, b) => a.n - b.n);
+  const seen = new Set();
+  const out  = [];
+  for (const { n, key } of numbered) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ slot: `#${n}`, key });
+  }
+  const bare = String(process.env.NVIDIA_API_KEY || "").trim();
+  if (bare && !seen.has(bare)) out.push({ slot: "#bare", key: bare });
+  return out;
+}
+
+function _retryAfterMs(err) {
+  const v = err?.response?.headers?.["retry-after"];
+  const s = Number(v);
+  return Number.isFinite(s) && s >= 0 ? s * 1000 : null;
+}
+
+async function _callNvidia(combined, temperature, maxTokens) {
+  const slots = _nvidiaKeySlots();
+  if (!slots.length) return null;
+  for (let i = 0; i < slots.length; i++) {
+    const s = slots[_nvidiaCursor % slots.length];
+    _nvidiaCursor = (_nvidiaCursor + 1) % slots.length;
+    if ((_nvidiaCooldown.get(s.slot) || 0) > Date.now()) continue;
+    try {
+      const res = await axios.post(
+        NVIDIA_URL,
+        { model: NVIDIA_MODEL, messages: combined, temperature, max_tokens: maxTokens },
+        { headers: { Authorization: `Bearer ${s.key}`, "Content-Type": "application/json" }, timeout: 30000 }
+      );
+      const content = res.data?.choices?.[0]?.message?.content;
+      if (content) return content;
+      console.error(`[ai.core] NVIDIA ${NVIDIA_MODEL} key=${s.slot} returned empty content`);
+      return null; // a model-level empty answer: another key will not change it
+    } catch (err) {
+      const code = err?.response?.status;
+      if (code === 429) {
+        _nvidiaCooldown.set(s.slot, Date.now() + (_retryAfterMs(err) ?? 60_000));
+        console.warn(`[ai.core] NVIDIA key=${s.slot} rate limited — trying next key`);
+        continue;
+      }
+      if (code === 401 || code === 402 || code === 403) {
+        _nvidiaCooldown.set(s.slot, Date.now() + 86_400_000);
+        console.warn(`[ai.core] NVIDIA key=${s.slot} rejected (${code}) — key cooled 24h, trying next key`);
+        continue;
+      }
+      // Model/server/network failure — not key-scoped, stop here.
+      console.error(`[ai.core] NVIDIA ${NVIDIA_MODEL} key=${s.slot} failed (${code || err.code || "unknown"})`);
+      return null;
+    }
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// generateAI  — smart routing: Groq → OpenRouter → Gemini → NVIDIA
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -379,6 +456,12 @@ async function _generateAIInner(messages, opts = {}) {
   // ── 3. Gemini — last resort ───────────────────────────────────────────────
   const gemResult = await _callGemini(combined, temperature, maxTokens);
   if (gemResult) return gemResult;
+
+  // ── 4. NVIDIA — additional fallback after every existing provider ─────────
+  // Last, so the existing cascade's behavior is unchanged whenever any of
+  // Groq / OpenRouter / Gemini answers.
+  const nvResult = await _callNvidia(combined, temperature, maxTokens);
+  if (nvResult) return nvResult;
 
   // TASK 1 FIX: THROW — never silently return error string as file content.
   // Agent orchestrator catches this and surfaces real failure to user.

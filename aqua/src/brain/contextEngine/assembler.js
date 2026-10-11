@@ -39,6 +39,7 @@
 import { scoreCandidate, rankedDimensions, tokensOf } from './scorer.js';
 import { round3 } from '../worldModel/schema.js';
 
+const RELATIVE_FLOOR = 0.3;
 const DEFAULTS = {
   limit: 8,
   charBudget: 1600,
@@ -48,6 +49,16 @@ const DEFAULTS = {
   slotOverBudgetPenalty: 0.35,
   requiredSlotBoost: 1.15,
   optionalSlotBudgetShare: 0.25,
+  // RELEVANCE > FILLING (2026-10-04): a candidate scoring below this fraction
+  // of the BEST candidate for the same question is not admitted, however many
+  // seats are free. Relative, so it adapts per question (absolute thresholds
+  // were measured and fail: noisy and answerable scores overlap). Measured on
+  // context-core: 0.25 and 0.4 change nothing, 0.55 loses recall
+  // (recall_selfword 0.75 → 0.625); 0.3 leaves margin and the full eval:gate
+  // unchanged. It does NOT fix the residual noise on unanswerable questions —
+  // that is abstention (no signal separates "found the answer" from "found
+  // something person-shaped"), see eval/tests/contextBaseline.test.js.
+  relativeFloor: RELATIVE_FLOOR,
 };
 
 /**
@@ -85,12 +96,36 @@ export function assembleContext(candidates, ctx, opts = {}) {
   // candidate under its CURRENT diversity penalty, then update the penalty —
   // so once A is well-covered, B's fresh item outranks A's next one.
   const dropped = [];
-  const pool = scored.filter(c => c.score >= cfg.minScore);
-  for (const c of scored) if (c.score < cfg.minScore) dropped.push({ id: c.id, reason: 'below-threshold', score: c.score });
+  const top = scored.reduce((m, c) => Math.max(m, c.score), 0);
+  const floorScore = Math.max(cfg.minScore, (Number(cfg.relativeFloor) || 0) * top);
+  // RELEVANCE-BACKED (2026-10-04): a candidate can clear the score floor on
+  // PRIORS alone — confidence, source reliability, importance, recency — with
+  // no signal that it is about the question ("I had coffee on Monday" scored
+  // 46% of a strong match). When at least one candidate IS backed by a
+  // relevance signal, prior-only candidates are not admitted: an empty seat
+  // beats irrelevant personal information. When none is backed, nothing is
+  // dropped by this rule (the absolute and relative floors still apply).
+  const backed = scored.map(relevanceBacked);
+  const anyBacked = cfg.requireRelevance !== false && backed.some(Boolean);
+  const pool = scored.filter((c, i) => c.score >= floorScore && (!anyBacked || backed[i]));
+  scored.forEach((c, i) => {
+    if (c.score < cfg.minScore) dropped.push({ id: c.id, reason: 'below-threshold', score: c.score });
+    else if (c.score < floorScore) dropped.push({ id: c.id, reason: 'below-relative-floor', score: c.score });
+    else if (anyBacked && !backed[i]) dropped.push({ id: c.id, reason: 'no-relevance-signal', score: c.score });
+  });
 
   const selected = [];
   const perEntityCount = new Map();
   let usedChars = 0;
+  // RENDERED == SELECTED (2026-10-06). Items were budgeted against charBudget
+  // alone, then renderBlock counted its header/footer lines against the SAME
+  // budget and silently cut the trailing items: stats said 8 selected, the
+  // model read fewer. For production-sized budgets the fixed overhead is now
+  // reserved up front, so every selected item is rendered. Tiny budgets (unit
+  // fixtures < 800) keep the old arithmetic.
+  const overhead = blockOverhead(contextEpistemicState(cfg.queryPlan), candidates.some(c => c.understood));
+  const reserve = cfg.charBudget >= 800;
+  const itemBudget = reserve ? cfg.charBudget - overhead : cfg.charBudget;
   const slotBudget = buildSlotBudget(cfg.queryPlan, cfg.charBudget);
   const slotUsed = new Map();
 
@@ -136,11 +171,36 @@ export function assembleContext(candidates, ctx, opts = {}) {
 
     const c = pool.splice(bestIdx, 1)[0];
 
+    // One sentence, one line. A single user sentence often yields several
+    // claims ("I run product at Ledgerly" → works_at + role_is); each arrived
+    // as its own candidate and the model read the same line twice while a
+    // different fact lost its seat to the repeat (live Postgres, 2026-10-04).
+    // The kept line inherits the duplicate's slots; nothing about the claim
+    // itself is lost — only the redundant rendering.
+    const textKey = normText(c.text);
+    const twin = textKey ? selected.find(s => normText(s.text) === textKey && Boolean(s.disputed) === Boolean(c.disputed)) : null;
+    if (twin) {
+      if (Array.isArray(c.slotIds) && c.slotIds.length) {
+        twin.slotIds = [...new Set([...(twin.slotIds ?? []), ...c.slotIds])];
+      }
+      // One line, every READING (2026-10-06): "the launch is now January 15,
+      // not December 10" is two claims; keeping only the first reading lost
+      // the new date. The twin's reading joins the kept line when it fits.
+      if (c.understood && twin.understood) {
+        const before = renderLength(twin);
+        const merged = { ...twin, alsoUnderstood: [...(twin.alsoUnderstood ?? []), c.understood] };
+        const delta = renderLength(merged) - before;
+        if (usedChars + delta <= itemBudget) { twin.alsoUnderstood = merged.alsoUnderstood; usedChars += delta; }
+      }
+      dropped.push({ id: c.id, reason: 'duplicate-text', score: c.score });
+      continue;
+    }
+
     // Budget as selection: value must justify the space. A near-empty budget
     // still admits a short, strong item.
-    const cost = renderLength(c);
-    if (usedChars + cost > cfg.charBudget) {
-      const remaining = cfg.charBudget - usedChars;
+    const cost = renderLength(c) + (reserve ? 1 : 0);   // + the newline that joins it
+    if (usedChars + cost > itemBudget) {
+      const remaining = itemBudget - usedChars;
       if (cost > remaining) { dropped.push({ id: c.id, reason: 'budget', score: c.score }); continue; }
     }
 
@@ -156,7 +216,8 @@ export function assembleContext(candidates, ctx, opts = {}) {
   // 3. Render + structured items (PIC-shaped) + observability stats.
   const items = selected.map(c => toItem(c));
   const epistemic = contextEpistemicState(cfg.queryPlan);
-  const block = renderBlock(selected, cfg.charBudget, epistemic);
+  const retired = cfg.retiredTexts ? new Set([...cfg.retiredTexts].map(normText)) : null;
+  const block = renderBlock(selected, cfg.charBudget, epistemic, retired);
 
   const stats = {
     // PIC-compatible fields (chat.js logs these).
@@ -232,30 +293,151 @@ function renderLength(c) {
   return renderItemLine(c).length;
 }
 
-function renderItemLine(c) {
-  const slots = Array.isArray(c.slotIds) && c.slotIds.length
-    ? ` {slots: ${c.slotIds.join(', ')}}`
-    : '';
+/**
+ * A citation is a formatted string (formatCitation ran) or a raw canonical
+ * evidence row ({ quote, locator, role, extracted_at }). The raw row used to be
+ * interpolated as-is and the model read "[[object Object]]" on every canonical
+ * claim (live Postgres, 2026-10-04) — the same class of defect as "• undefined".
+ * Render what the row actually says about provenance; omit it if nothing.
+ */
+function citationLabel(cit) {
+  if (cit == null) return '';
+  if (typeof cit === 'string') return cit;
+  if (typeof cit !== 'object') return String(cit);
+  const at = cit.extracted_at ?? cit.extractedAt ?? cit.asserted_at ?? null;
+  const when = at ? new Date(at) : null;
+  const day = when && !Number.isNaN(when.getTime()) ? when.toISOString().slice(0, 10) : null;
+  const turn = cit.locator?.turn ?? null;
+  const parts = [
+    day ? `said ${day}` : null,
+    Number.isInteger(turn) ? `turn ${turn}` : null,
+    cit.role && cit.role !== 'primary' ? cit.role : null,
+  ].filter(Boolean);
+  return parts.join(', ');
+}
+
+/**
+ * One line the ANSWER MODEL reads. Only what it needs to answer: the statement,
+ * when it was said, how sure, and its status.
+ *
+ * Retrieval mechanics — the lane (`via dense: 0.58`, `via graph:1:out:…`) and
+ * the QueryPlan slot (`{slots: …}`) — are NOT rendered (2026-10-05). The model
+ * repeated them to users ("reported in a dense-extraction snippet"). They stay
+ * on every item (`provenance.via`, `slotIds`) and in stats for diagnostics.
+ */
+/**
+ * How a canonical relation reads in English. Display only — the predicate on
+ * the item is unchanged. Unlisted predicates read as their name with spaces.
+ */
+const RELATION_PHRASE = Object.freeze({
+  works_at: 'works at', role_is: 'has the role', located_in: 'is based in', member_of: 'is a member of',
+  founded: 'founded', is_a: 'is', knows: 'knows', reports_to: 'reports to', manages: 'manages',
+  related_to: 'is related to', employs: 'employs', has_member: 'has member', founded_by: 'was founded by',
+  builds: 'builds', uses: 'uses', owns: 'owns', owned_by: 'is owned by', blocks: 'blocks',
+  blocked_by: 'is blocked by', depends_on: 'depends on', plans_to: 'plans to', decided: 'decided',
+  rejected: 'rejected', has_status: 'has status', deadline_for: 'has the deadline', prefers: 'prefers',
+  dislikes: 'dislikes', habit_of: 'has the habit', has_property: 'has', task_owner: 'is responsible for',
+});
+const MODALITY_LABEL = Object.freeze({ intent: 'intends', hypothetical: 'hypothetically', question: 'asked whether', quote: 'quoting' });
+// The self entity is labelled "You"; a first-mention entity keeps the user's
+// own words ("my thesis"). Both read from the answer model's side as the user's.
+const subjectLabel = s => {
+  const t = String(s).trim();
+  if (/^you$/i.test(t)) return 'User';
+  return t.replace(/^(my|our)\s+/i, "User's ");
+};
+const dayOf = t => { const d = t ? new Date(t) : null; return d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null; };
+
+/**
+ * A CANONICAL fact line (2026-10-06): the World Model's reading first, then the
+ * user's own words as evidence, then when it was said.
+ *
+ *   • NOT: User decided an Android app — "We decided not to build an Android app this year" [said 2026-10-06]
+ *
+ * WHY: the line used to be the verbatim segment alone ("Rohan took it over",
+ * "he handles engineering"), so everything the World Model resolved — the
+ * subject behind a pronoun, the relation, the polarity — never reached the
+ * answer model, and the context was a re-ranked list of sentences that lost to
+ * plain lexical memory on the World-Model Lift. No numeric confidence: every
+ * chat claim derives ≈0.66 (a constant, not a measurement), and the answer
+ * model hedged on it in 11 of 14 inspected answers (PRODUCTION_VALIDATION Part
+ * 3 §3.6). Meaningful status (disputed / no longer current / stale) stays.
+ */
+function readingOf(u) {
+  const neg = u.polarity === 'negated' ? 'NOT: ' : '';
+  const mod = MODALITY_LABEL[u.modality] ? `(${MODALITY_LABEL[u.modality]}) ` : '';
+  const rel = RELATION_PHRASE[u.predicate] ?? String(u.predicate).replace(/_/g, ' ');
+  // CLOSED VALIDITY IS PAST (2026-10-06, Lift p9: "I lived in Kyoto until 2023"
+  // rendered as "User is based in Kyoto").
+  const end = u.validTo ? new Date(u.validTo) : null;
+  const past = end && !Number.isNaN(end.getTime()) && end.getTime() < Date.now()
+    ? ` (until ${dayOf(end)} — past, not current)` : '';
+  // A ROLE RELATION (prompt rule 13) reads as what it is: "Sam Patel is the
+  // user's mentor", not "Sam Patel is related to mentor".
+  if (u.predicate === 'related_to') return `${neg}${mod}${subjectLabel(u.subject)} is the user's ${String(u.object).replace(/^(?:the\s+)?(?:user'?s|my|our)\s+/i, '')}${past}`;
+  return `${neg}${mod}${subjectLabel(u.subject)} ${rel} ${subjectLabel(u.object)}${past}`;
+}
+
+function renderCanonicalLine(c, { showDates = true, retired = null } = {}) {
+  // Asserted readings first: "deadline January 15; NOT: deadline December 10".
+  const readings = [c.understood, ...(c.alsoUnderstood ?? [])]
+    .sort((a, b) => (a.polarity === 'negated') - (b.polarity === 'negated'))
+    .map(readingOf);
+  const quote = String(c.text ?? '').replace(/\s+/g, ' ').trim().replace(/[.]+$/, '');
+  const day = showDates ? dayOf(c.assertedAt) : null;
+  const flags = [c.disputed && 'disputed — treat as contested', c.stale && 'stale',
+    c.superseded && 'no longer current — past only'].filter(Boolean).join('; ');
+  // A sentence that also carried a now-RETIRED claim ("My biggest client is a
+  // restaurant called Fennel" after the role moved) is not quoted: the quote
+  // would re-assert the retired part. The current reading stands alone.
+  // History shown AS history (superseded, past-tense question) keeps its quote:
+  // it is already labelled "no longer current".
+  const evidence = !c.superseded && retired?.has(normText(c.text)) ? '' : ` — "${quote}"`;
+  return `• ${[...new Set(readings)].join('; ')}${evidence}${day ? ` [told Aqua on ${day}]` : ''}${flags ? ` (${flags})` : ''}`;
+}
+
+/**
+ * WHEN-SAID ONLY WHEN IT INFORMS (2026-10-06, Lift). Every claim of a block
+ * told on one day carries no information in its date, and the answer model
+ * quoted "[said 2026-10-06]" as the date of the EVENT (judged fabrication on
+ * 3 lost questions). Dates render only when the selected claims span ≥ 2 days;
+ * order is conveyed by the oldest → newest listing either way.
+ */
+function renderItemLine(c, opts = {}) {
+  if (c.kind === 'fact' && c.understood) return renderCanonicalLine(c, opts);
   if (c.kind === 'entity') {
     const aka = c.aliases?.length ? ` (a.k.a. ${c.aliases.slice(0, 3).join(', ')})` : '';
     const where = c.files?.length ? ` — appears in ${c.files.slice(0, 3).join(', ')}` : '';
-    return `• Entity: ${c.text}${aka}${where}${slots}`;
+    return `• Entity: ${c.text}${aka}${where}`;
   }
   if (c.kind === 'event') {
-    return `• ${c.timestamp ? `[${c.timestamp}] ` : ''}${String(c.text).slice(0, 120)}${slots}`;
+    return `• ${c.timestamp ? `[${c.timestamp}] ` : ''}${String(c.text).slice(0, 120)}`;
   }
-  const cite = c.citations?.[0] ? ` [${c.citations[0]}]` : '';
+  const label = citationLabel(c.citations?.[0]);
+  const cite = label ? ` [${label}]` : '';
   const flags = [c.trusted && 'trusted', c.disputed && 'disputed — treat as contested', c.stale && 'stale',
+    c.superseded && 'no longer current — past only',
     c.lifecycleLabel && `lifecycle ${c.lifecycleLabel}`]
     .filter(Boolean).join(', ');
-  const via = c.via ? `; via ${c.via}` : '';
-  return `• ${c.text}${cite} (confidence ${fmt(c.confidence)}${flags ? `; ${flags}` : ''}${via})${slots}`;
+  return `• ${c.text}${cite} (confidence ${fmt(c.confidence)}${flags ? `; ${flags}` : ''})`;
 }
 
-function renderBlock(selected, charBudget, epistemic = { state: 'sufficient', missing: [] }) {
-  if (!selected.length && epistemic.state !== 'unknown') return '';
+const ORDER_NOTE = 'Statements below are listed oldest → newest. When two statements about the same thing conflict, the later one is the current state unless it is marked disputed.';
+const BLOCK_FOOTER = 'Use the context above with its provenance and citations; disputed items must be presented as contested, never as settled.';
+
+/** Fixed (non-item) characters a block with this epistemic state will carry. */
+function blockOverhead(epistemic, ordered) {
+  const head = headerLines(epistemic);
+  return [...head, ...(ordered ? [ORDER_NOTE] : []), BLOCK_FOOTER].reduce((n, l) => n + l.length + 1, 0);
+}
+
+function headerLines(epistemic) {
   const lines = ['── CONTEXT AQUA ASSEMBLED FOR THIS QUESTION ──'];
-  if (epistemic.state === 'unknown') {
+  const knownRequired = (epistemic.filled ?? []).length > 0;
+  if (epistemic.state === 'unknown' && knownRequired) {
+    lines.push(`EVIDENCE STATUS: PARTIAL — answer from what is known below.`);
+    lines.push(`Not known: ${epistemic.missing.join(', ') || 'unspecified'}. Say so plainly; do not infer or fabricate it. If it changes the answer, ask about it once.`);
+  } else if (epistemic.state === 'unknown') {
     lines.push(`EVIDENCE STATUS: UNKNOWN — required information is missing after the bounded retrieval policy.`);
     lines.push(`Required slots still unknown: ${epistemic.missing.join(', ') || 'unspecified'}. Do not infer or fabricate them.`);
   } else if (epistemic.state === 'needs_round_two') {
@@ -263,8 +445,33 @@ function renderBlock(selected, charBudget, epistemic = { state: 'sufficient', mi
   } else {
     lines.push('EVIDENCE STATUS: SUFFICIENT for the required QueryPlan slots.');
   }
-  for (const c of selected) lines.push(renderItemLine(c));
-  lines.push('Use the context above with its provenance and citations; disputed items must be presented as contested, never as settled.');
+  return lines;
+}
+
+function renderBlock(selected, charBudget, epistemic = { state: 'sufficient', missing: [] }, retired = null) {
+  if (!selected.length && epistemic.state !== 'unknown') return '';
+  const lines = ['── CONTEXT AQUA ASSEMBLED FOR THIS QUESTION ──'];
+  // PARTIAL vs UNKNOWN (2026-10-07). With predicate-defined slots, "Should I
+  // launch?" routinely knows the goal and the blocker but not the deadline.
+  // Calling that UNKNOWN pushed the model toward refusing to answer — the
+  // interrogator failure Blueprint E8 names. PARTIAL keeps the honesty (the
+  // gap is named, never filled in) while still answering from what is known,
+  // and caps the follow-up at one question. UNKNOWN is kept for the case where
+  // no required slot is known at all. State names and shouldAbstain unchanged.
+  lines.push(...headerLines(epistemic).slice(1));
+  // ORDER IN TIME (2026-10-06). Selection is by relevance; the READING order is
+  // chronological for the World Model's dated claims, so the answer model can
+  // see which of two statements about the same thing came later — the one
+  // thing lexical memory's "[turn N]" lines told it and these lines did not.
+  // Undated items (legacy floor, entities) keep their relevance order, first.
+  const dated = selected.filter(c => c.kind === 'fact' && c.understood && dayOf(c.assertedAt));
+  const undated = selected.filter(c => !dated.includes(c));
+  const ordered = [...undated, ...[...dated].sort((a, b) => new Date(a.assertedAt) - new Date(b.assertedAt))];
+  if (dated.length > 1) lines.push(ORDER_NOTE);
+  // Selection budgeted the LONGER (dated) line, so dropping dates never overflows.
+  const showDates = new Set(dated.map(c => dayOf(c.assertedAt))).size >= 2;
+  for (const c of ordered) lines.push(renderItemLine(c, { showDates, retired }));
+  lines.push(BLOCK_FOOTER);
 
   let out = '';
   for (const l of lines) {
@@ -278,9 +485,10 @@ function contextEpistemicState(plan) {
   const required = Array.isArray(plan?.slots) ? plan.slots.filter(s => s.required) : [];
   const missing = required.filter(s => s.status !== 'filled').map(s => s.id);
   const round = Number(plan?.round ?? 1);
-  if (!missing.length) return { state: 'sufficient', shouldAbstain: false, missing: [] };
-  if (round >= 2) return { state: 'unknown', shouldAbstain: true, missing };
-  return { state: 'needs_round_two', shouldAbstain: false, missing };
+  const filled = required.filter(s => s.status === 'filled').map(s => s.id);
+  if (!missing.length) return { state: 'sufficient', shouldAbstain: false, missing: [], filled };
+  if (round >= 2) return { state: 'unknown', shouldAbstain: true, missing, filled };
+  return { state: 'needs_round_two', shouldAbstain: false, missing, filled };
 }
 
 function toItem(c) {
@@ -310,10 +518,15 @@ function toItem(c) {
   return {
     kind: 'fact', epistemic: c.epistemic ?? 'observed',
     id: c.id, statement: c.text, confidence: c.confidence,
+    // Opaque canonical ids the fact is about (never rendered into the prompt);
+    // conversation focus uses them to resolve "this"/"it" next turn.
+    entityIds: Array.isArray(c.entityIds) ? [...c.entityIds] : [],
     trusted: !!c.trusted, disputed: !!c.disputed, stale: !!c.stale,
     citations: provenance.citations, via: provenance.via,
     slotIds: provenance.slotIds, provenance,
     score: c.score, dimensions: c.dimensions,
+    understood: c.understood ?? null, assertedAt: c.assertedAt ?? null,
+    ...(c.alsoUnderstood?.length ? { alsoUnderstood: [...c.alsoUnderstood] } : {}),
   };
 }
 
@@ -326,6 +539,23 @@ function toItem(c) {
  * past means a later fact superseded this one and it should rank behind it
  * on tied relevance, never ahead of it.
  */
+/** Does anything other than priors say this candidate is about the question? */
+// semantic_similarity counts only from SEMANTIC_BACKING up: every embedded
+// candidate has SOME cosine, and 0.05 means unrelated, not relevant.
+const SEMANTIC_BACKING = 0.3;
+// relationship_distance is 0.5 when graph distance is UNKNOWN (a prior), so it
+// counts only for candidates the graph actually reached (hops known).
+const RELEVANCE_DIMENSIONS = ['user_focus', 'active_project', 'active_goal', 'conversation_continuity'];
+const STRUCTURAL_LANES = new Set(['structured', 'graph']);
+function relevanceBacked(c) {
+  if (Number(c.dimensions?.semantic_similarity ?? 0) >= SEMANTIC_BACKING) return true;
+  if (c.hops != null && Number(c.dimensions?.relationship_distance ?? 0) > 0) return true;
+  if (RELEVANCE_DIMENSIONS.some(d => Number(c.dimensions?.[d] ?? 0) > 0)) return true;
+  if (Array.isArray(c.slotIds) && c.slotIds.length) return true;          // fills a required slot by predicate
+  if ((c.lanes ?? []).some(l => STRUCTURAL_LANES.has(l))) return true;    // selected by anchor / predicate
+  return false;
+}
+
 function lifecycleInfo(c) {
   if (!Object.prototype.hasOwnProperty.call(c, 'validTo')) return null;
   if (c.validTo == null) return { label: 'current', penalty: 1 };
@@ -340,5 +570,7 @@ function tally(arr) {
   return out;
 }
 const fmt = (n) => (n == null ? '?' : Number(n).toFixed(2));
+/** Sentence identity for duplicate suppression: case, spacing and final punctuation ignored. */
+const normText = (t) => String(t ?? '').toLowerCase().replace(/\s+/g, ' ').replace(/[.!?]+$/, '').trim();
 
-export { DEFAULTS as ASSEMBLER_DEFAULTS, tokensOf };
+export { DEFAULTS as ASSEMBLER_DEFAULTS, tokensOf, readingOf };

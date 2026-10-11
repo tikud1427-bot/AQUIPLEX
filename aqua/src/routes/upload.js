@@ -52,7 +52,7 @@ const router = express.Router();
 function assertConversationAccess(req, res, conversationId) {
   if (!conversationExists(conversationId)
       || !canAccessConversation(req.aquaUserId ?? null, conversationId)) {
-    res.status(404).json({ success: false, error: 'Conversation not found' });
+    fail(res, ErrorCodes.NOT_FOUND, 'Conversation not found');
     return false;
   }
   return true;
@@ -83,7 +83,7 @@ router.post('/', async (req, res) => {
   if (requestedConversationId
       && conversationExists(requestedConversationId)
       && !canAccessConversation(req.aquaUserId ?? null, requestedConversationId)) {
-    return res.status(404).json({ success: false, error: 'Conversation not found' });
+    return fail(res, ErrorCodes.NOT_FOUND, 'Conversation not found');
   }
 
   // Attachments bind to a conversation — create one now if the user uploaded
@@ -154,7 +154,7 @@ router.post('/', async (req, res) => {
 // ── GET /upload/formats ───────────────────────────────────────────────────────
 
 router.get('/formats', (_req, res) => {
-  res.json({ success: true, formats: SUPPORTED_FORMATS, parsers: listParsers() });
+  ok(res, { formats: SUPPORTED_FORMATS, parsers: listParsers() });
 });
 
 // ── Attachment management ─────────────────────────────────────────────────────
@@ -162,19 +162,15 @@ router.get('/formats', (_req, res) => {
 router.get('/attachments/:conversationId', (req, res) => {
   // Phase 0 (audit F4): object-level authorization — see assertConversationAccess.
   if (!assertConversationAccess(req, res, req.params.conversationId)) return;
-  res.json({
-    success: true,
-    conversationId: req.params.conversationId,
-    attachments: getAttachments(req.params.conversationId).map(serializeAttachment),
-  });
+  ok(res, { conversationId: req.params.conversationId, attachments: getAttachments(req.params.conversationId).map(serializeAttachment) });
 });
 
 router.delete('/attachments/:conversationId/:attachmentId', (req, res) => {
   // Phase 0 (audit F4): object-level authorization — see assertConversationAccess.
   if (!assertConversationAccess(req, res, req.params.conversationId)) return;
   const removed = removeAttachment(req.params.conversationId, req.params.attachmentId);
-  if (!removed) return res.status(404).json({ success: false, error: 'Attachment not found' });
-  res.json({ success: true, removed: req.params.attachmentId });
+  if (!removed) return fail(res, ErrorCodes.NOT_FOUND, 'Attachment not found');
+  ok(res, { removed: req.params.attachmentId });
 });
 
 export default router;

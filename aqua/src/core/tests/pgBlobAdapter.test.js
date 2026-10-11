@@ -225,22 +225,7 @@ describe('pg blob adapter — round trip against a real database', { skip }, () 
 // process is actually in.
 runAdapterContract('pg-blob', createPgBlobAdapter, () => `/tmp/.aqua-contract-${Date.now()}-${Math.random()}.json`, {
   skip,
-  // 🔴 A REAL DIVERGENCE, FOUND BY RUNNING THE CONTRACT FOR THE FIRST TIME.
-  //
-  // The JSON adapter serialises concurrent writes to one key and the last value
-  // wins. The Postgres adapter refuses them: its optimistic-concurrency guard
-  // fires on the instance's OWN in-flight writes, because each write checks a
-  // version the previous concurrent write has already moved. Reproduced both
-  // hydrated and unhydrated, so it is the adapter and not this invocation.
-  //
-  // Declared as `todo` rather than fixed or loosened. Fixing it is an E3
-  // decision about what optimistic concurrency should mean for a write-behind
-  // cache, and does not belong bolted onto a test repair. Loosening the
-  // assertion so both adapters pass would let "it works" mean two different
-  // things, which is what the shared contract exists to prevent. `todo` keeps
-  // the assertion exactly as written, still executed, and reported.
-  todo: {
-    'concurrent writes to one key all settle, last value wins':
-      'pg-blob rejects concurrent writes to one key (optimistic version guard) — E3, unfixed',
-  },
+  // The divergence once declared here as `todo` (own concurrent writes to one
+  // key refused by the optimistic guard) was fixed on 2026-10-04 by serialising
+  // each instance's writes per key; the shared contract now holds as written.
 });

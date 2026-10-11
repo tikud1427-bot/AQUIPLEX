@@ -132,6 +132,24 @@ describe('isMintableSurface', () => {
     ['x@y.com', 'not-a-name'], ['https://a.b', 'not-a-name'], ['I', 'deixis'], ['my', 'deixis'],
     ['a b c d e f g', 'too-many-tokens'], ['x'.repeat(81), 'too-long']];
   for (const s of ok) test(`mints "${s}"`, () => assert.deepEqual(isMintableSurface(s), { ok: true }));
+
+  // 2026-10-04, live Postgres + a real model: definite multi-word descriptions
+  // were refused, so "The payment integration is blocking the iOS launch" never
+  // reached the World Model. The article is stripped; the phrase is the name.
+  for (const [s, name] of [['The payment integration', 'payment integration'], ['the iOS launch', 'iOS launch'],
+    ['the Portland lease negotiation', 'Portland lease negotiation'], ['the load-testing environment', 'load-testing environment']]) {
+    test(`mints "${s}" as "${name}"`, () => assert.deepEqual(isMintableSurface(s), { ok: true, name }));
+  }
+  for (const s of ['the project', 'the launch', 'our office', 'my cofounder', 'the other one']) {
+    test(`still refuses the role/generic "${s}"`, () => assert.equal(isMintableSurface(s).ok, false));
+  }
+  test('the minted name is the stripped phrase, so "the iOS launch" and "iOS launch" are one entity (L8)', () => {
+    const seen = [];
+    const mint = (_o, spec) => { seen.push(spec.name); return { id: `aq:name:${spec.name.toLowerCase()}`, created: true }; };
+    const out = mintProvisionalEntities([mk('the iOS launch')], { ownerId: 'u', mint });
+    assert.deepEqual(seen, ['iOS launch']);
+    assert.equal(out.readyForS7.length, 1);
+  });
   for (const [s, reason] of no) test(`refuses ${JSON.stringify(s.slice(0, 20))} as ${reason}`, () => {
     const v = isMintableSurface(s);
     assert.equal(v.ok, false);
@@ -211,7 +229,8 @@ describe('understandTurn — minting reaches the canonical commit path', () => {
 
 // ── S8: a changed employer must be EMITTED, not silently doubled ────────────
 import { dedupAndDetect } from '../understanding/claimDedup.js';
-import { singleValuedPredicates, SINGLE_VALUED } from '../index.js';
+import { singleValuedPredicates } from '../index.js';
+import { singleValuedPredicateNames, cardinalityOf } from '../../core/claims/predicateRegistry.js';
 
 describe('single-valued predicates reach S8', () => {
   const claim = (obj, over = {}) => ({ subject: 'aq:self:owner', predicate: 'works_at', objectKind: 'entity',
@@ -220,8 +239,16 @@ describe('single-valued predicates reach S8', () => {
   const was = process.env[KEY];
   afterEach(() => { if (was === undefined) delete process.env[KEY]; else process.env[KEY] = was; });
 
-  test('default OFF: empty set — behaviour identical to before', () => {
+  // 2026-10-04: default flipped to ON after eval/suites/claim-lifecycle
+  // (18/18, 0 false supersessions; 8 cases fail under the old default).
+  test('default ON: exactly the registry-declared single-valued predicates', () => {
     delete process.env[KEY];
+    assert.deepEqual([...singleValuedPredicates()].sort(), singleValuedPredicateNames());
+    assert.equal(dedupAndDetect([claim('Nummo')], [claim('Intercom')], { functionalPredicates: singleValuedPredicates() }).contradictions.length, 1);
+  });
+
+  test('=off is the rollback: empty set, a changed value emits nothing (the old behaviour exactly)', () => {
+    process.env[KEY] = 'off';
     assert.equal(singleValuedPredicates().size, 0);
     assert.equal(dedupAndDetect([claim('Nummo')], [claim('Intercom')], { functionalPredicates: singleValuedPredicates() }).contradictions.length, 0);
   });
@@ -247,8 +274,13 @@ describe('single-valued predicates reach S8', () => {
     assert.equal(out.contradictions.length, 0);
   });
 
-  test('only works_at is declared — an unreviewed predicate is never silently single-valued', () => {
-    assert.deepEqual([...SINGLE_VALUED], ['works_at']);
+  test('only predicates DECLARED single-valued are — multi-valued ones never conflict on a second value', () => {
+    assert.deepEqual(singleValuedPredicateNames(),
+      ['deadline_for', 'has_status', 'located_in', 'owned_by', 'reports_to', 'role_is', 'works_at']);
+    for (const p of ['uses', 'prefers', 'member_of', 'builds', 'blocks', 'blocked_by', 'knows', 'plans_to']) {
+      assert.equal(cardinalityOf(p), 'many', p + ' must stay multi-valued');
+    }
+    assert.equal(cardinalityOf('owns'), 'one-per-object', 'owns is the inverse of owned_by');
   });
 });
 
@@ -272,7 +304,71 @@ describe('S8 compares in the STORED vocabulary', () => {
     const fs = await import('node:fs'); const url = await import('node:url'); const path = await import('node:path');
     const src = fs.readFileSync(path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '../index.js'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
-    assert.match(src, /dedupAndDetect\(forS8,\s*existing,\s*\{\s*functionalPredicates:\s*singleValuedPredicates\(\)/);
+    assert.match(src, /dedupAndDetect\(forS8,\s*existing,\s*\{\s*functionalPredicates:\s*singleValuedPredicates\(\),\s*singleObjectPredicates:\s*singleObjectPredicates\(\)/);
     assert.doesNotMatch(src, /dedupAndDetect\(segment\.claims/);
+  });
+});
+
+describe('first mention of the user\'s own thing (2026-10-06)', () => {
+  // Live Lift persona: "My thesis is on protein folding…", "My advisor is
+  // Professor Hannah Okafor" — refused as descriptions on first mention, so
+  // nothing about the thesis or the advisor could ever be stored.
+  const desc = (surface, reference) => ({
+    predicate: 'is_a', objectKind: 'literal', subject: surface, object: { literal: 'x' },
+    statementText: `${surface} is x`,
+    resolution: { subject: { ...prov(surface), reference }, object: null, ready: false, blockedBy: 'subject:new-provisional' },
+  });
+
+  test('"my thesis" that S6½ looked up and found NOTHING for is minted under the user\'s words', () => {
+    const mint = fakeMint();
+    const out = mintProvisionalEntities([desc('my thesis', { method: 'head-noun', outcome: 'unresolved' })], { ownerId: 'u', mint });
+    assert.equal(out.readyForS7.length, 1);
+    assert.deepEqual(mint.calls, [{ owner: 'u', name: 'my thesis', kind: MINT_KIND }]);
+    assert.equal(out.stats.firstMentions, 1);
+  });
+
+  test('"our pricing page" (multi-word, first person) is a first mention too', () => {
+    const out = mintProvisionalEntities([desc('our pricing page', { method: 'head-noun', outcome: 'unresolved' })], { ownerId: 'u', mint: fakeMint() });
+    assert.equal(out.readyForS7.length, 1);
+  });
+
+  test('an AMBIGUOUS lookup is never minted (two candidates need adjudication)', () => {
+    const out = mintProvisionalEntities([desc('my launch', { method: 'head-noun', outcome: 'ambiguous', candidates: 2 })], { ownerId: 'u', mint: fakeMint() });
+    assert.equal(out.readyForS7.length, 0);
+    assert.equal(out.stats.refused.description, 1);
+  });
+
+  test('roles S6½ owns stay refused: "my company" / "our office"', () => {
+    const mint = fakeMint();
+    const out = mintProvisionalEntities([
+      desc('my company', { method: 'role', outcome: 'unresolved' }),
+      desc('our office', { method: 'location-role', outcome: 'unresolved' }),
+    ], { ownerId: 'u', mint });
+    assert.equal(out.readyForS7.length, 0);
+    assert.equal(mint.calls.length, 0);
+  });
+
+  test('"the migration" with NO referent anywhere in the World Model is a first mention (blueprint S6: new, provisional)', () => {
+    const mint = fakeMint();
+    const out = mintProvisionalEntities([desc('the migration', { method: 'head-noun', outcome: 'unresolved' })], { ownerId: 'u', mint });
+    assert.equal(out.readyForS7.length, 1);
+    assert.deepEqual(mint.calls.map(c => c.name), ['the migration']);
+  });
+
+  test('"the project" with TWO candidate projects is ambiguous → never minted', () => {
+    const out = mintProvisionalEntities([desc('the project', { method: 'head-noun', outcome: 'ambiguous', candidates: 2 })], { ownerId: 'u', mint: fakeMint() });
+    assert.equal(out.readyForS7.length, 0);
+  });
+
+  test('"the" + a pronoun-like word is still refused ("the one", "the same" never become things)', () => {
+    for (const s of ['the one', 'the other']) {
+      const out = mintProvisionalEntities([desc(s, { method: 'head-noun', outcome: 'unresolved' })], { ownerId: 'u', mint: fakeMint() });
+      assert.equal(out.readyForS7.length, 0, s);
+    }
+  });
+
+  test('without an S6½ lookup there is no evidence it is a first mention → refused as before', () => {
+    const out = mintProvisionalEntities([desc('my thesis', undefined)], { ownerId: 'u', mint: fakeMint() });
+    assert.equal(out.readyForS7.length, 0);
   });
 });

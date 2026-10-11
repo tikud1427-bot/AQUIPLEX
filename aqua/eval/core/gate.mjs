@@ -53,6 +53,17 @@ export const LOWER_IS_BETTER = new Set([
   // raises it should have to say so in a baseline update rather than arrive
   // unremarked.
   'n_report_findings',
+  // claim-lifecycle (2026-10-04): every one counts an ERROR. Undeclared, the
+  // gate would have called a rise in false supersessions (data loss) or missed
+  // retirements (stale answers) an improvement.
+  'false_supersessions', 'missed_retirements', 'wrong_successors', 'wrong_disputes',
+  // revision-voice (2026-10-04): each counts a wrong utterance to the user —
+  // nagging/echoing/leaking, silence when it should speak, the wrong change,
+  // a quote the user never said, or the same change twice.
+  'wrong_raises', 'missed_raises', 'wrong_content', 'invented_quotes', 'repeat_raises',
+  // proactive-core (2026-10-06): every one counts an interruption that should
+  // not have happened — noise, the wrong situation, or the same thing twice.
+  'false_interventions', 'wrong_type_interventions', 'duplicate_interventions',
 ]);
 
 /**

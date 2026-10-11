@@ -211,3 +211,90 @@ describe('two instances — the version column', () => {
     assert.match(src, /SELECT checksum, version FROM/);
   });
 });
+
+// ── Restart (2026-10-05) ─────────────────────────────────────────────────────
+// Live: every server restart froze the shadow for the life of the process —
+// the first write per store conflicted ("a row already exists that this
+// instance never read"), no version was ever recorded, and every later write
+// failed the same way (609 rejected writes over 4 restarts). An instance that
+// LOADED exactly what the row holds (its JSON primary at boot) may continue
+// from that row; anything else is still a conflict.
+describe('restart — an instance continues from the row it loaded', () => {
+  const fresh = async () => { await mem.pool.query(`DELETE FROM ${TABLE}`); };
+
+  test('a restarted instance that loaded the same content writes, and KEEPS writing', async () => {
+    await fresh();
+    const before = createPgBlobAdapter();
+    await before.write(KEY, '{"v":1}');                  // the previous process's last write
+    const after = createPgBlobAdapter();                  // restart: no hydrate (shadow mode does not)
+    after.noteRead(KEY, '{"v":1}');                       // the JSON it booted from
+    await after.write(KEY, '{"v":2}');
+    await after.write(KEY, '{"v":3}');
+    assert.deepEqual(await stored(), { data: '{"v":3}', version: 3 });
+  });
+
+  test('a restarted instance whose boot content differs from the row is still REFUSED', async () => {
+    await fresh();
+    const other = createPgBlobAdapter();
+    await other.write(KEY, '{"other":1}');                // written by an instance this one never read
+    const after = createPgBlobAdapter();
+    after.noteRead(KEY, '{"mine":0}');
+    await assert.rejects(() => after.write(KEY, '{"mine":1}'), StoreConflictError);
+    assert.equal((await stored()).data, '{"other":1}');
+  });
+
+  test('only the FIRST read is the baseline — a later read cannot launder a conflict', async () => {
+    await fresh();
+    const other = createPgBlobAdapter();
+    await other.write(KEY, '{"other":1}');
+    const after = createPgBlobAdapter();
+    after.noteRead(KEY, '{"mine":0}');
+    after.noteRead(KEY, '{"other":1}');
+    await assert.rejects(() => after.write(KEY, '{"mine":1}'), StoreConflictError);
+  });
+
+  test('the dual-write adapter feeds the baseline from the JSON primary', async () => {
+    const { createDualWriteAdapter } = await import('../storage/dualWriteAdapter.js');
+    const noted = [];
+    const primary = { id: 'p', syncDurable: true, existsSync: () => true, readSync: () => '{"v":1}', write: async () => {}, writeSync: () => {}, copySync: () => {} };
+    const shadow = { id: 's', syncDurable: false, existsSync: () => false, readSync: () => null, write: async () => {}, writeSync: () => {}, copySync: () => {}, noteRead: (k, d) => noted.push([k, d]) };
+    createDualWriteAdapter(primary, shadow).readSync(KEY);
+    assert.deepEqual(noted, [[KEY, '{"v":1}']]);
+  });
+});
+
+// The REAL boot order (found live after the first fix): stores load at import
+// through the plain JSON adapter; the shadow is installed afterwards, so the
+// dual adapter's noteRead never sees those reads. configureStorageFromEnv
+// therefore seeds the baseline from the files on disk.
+describe('restart — the baseline is seeded at shadow install, from the JSON on disk', () => {
+  test('previous instance wrote X, this one loaded X from disk → it continues writing', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { seedShadowBaseline } = await import('../storage/index.js');
+    await mem.pool.query(`DELETE FROM ${TABLE}`);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-seed-'));
+    fs.writeFileSync(path.join(dir, '.aqua-mind.json'), '{"v":1}');
+    await createPgBlobAdapter().write(KEY, '{"v":1}');       // the previous process
+    const after = createPgBlobAdapter();
+    assert.equal(await seedShadowBaseline(after, { dataDir: dir }), 1);
+    await after.write(KEY, '{"v":2}');
+    await after.write(KEY, '{"v":3}');
+    assert.deepEqual(await stored(), { data: '{"v":3}', version: 3 });
+  });
+
+  test('a row that differs from the file on disk is still refused', async () => {
+    const fs = await import('node:fs');
+    const os = await import('node:os');
+    const path = await import('node:path');
+    const { seedShadowBaseline } = await import('../storage/index.js');
+    await mem.pool.query(`DELETE FROM ${TABLE}`);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-seed-'));
+    fs.writeFileSync(path.join(dir, '.aqua-mind.json'), '{"mine":0}');
+    await createPgBlobAdapter().write(KEY, '{"other":1}');
+    const after = createPgBlobAdapter();
+    await seedShadowBaseline(after, { dataDir: dir });
+    await assert.rejects(() => after.write(KEY, '{"mine":1}'), StoreConflictError);
+  });
+});

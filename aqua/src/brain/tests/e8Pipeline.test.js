@@ -36,14 +36,17 @@ test('E8 integration policy: missing required slots trigger bounded targeted ret
           fact('goal-1', 'Goal: launch the product', { slotIds: ['goal'] }),
         ], block: 'goal', stats: {} };
       }
+      // Round-two hits carry the predicate that defines the slot. Untyped
+      // text hits no longer fill a predicate-defined slot (2026-10-07) — the
+      // test below pins that.
       if (opts.slotId === 'deadline') {
         return { items: [
-          fact('deadline-1', 'Deadline: 2026-10-01'),
+          fact('deadline-1', 'Deadline: 2026-10-01', { predicate: 'deadline_for' }),
         ], block: 'deadline', stats: {} };
       }
       if (opts.slotId === 'blockers') {
         return { items: [
-          fact('blocker-1', 'No known blockers'),
+          fact('blocker-1', 'CI is blocking the launch', { predicate: 'blocks' }),
         ], block: 'blocker', stats: {} };
       }
       return { items: [], block: '', stats: {} };
@@ -92,4 +95,32 @@ test('E8 integration policy: slot provenance is explicit, never inferred from te
   assert.equal(goal.status, 'filled');
   const deadline = out.plan.slots.find(s => s.id === 'deadline');
   assert.equal(deadline.status, 'unfilled');
+});
+
+test('E8 slot honesty: a TEXT hit for "<question> deadline" does not make the deadline known', () => {
+  // Before 2026-10-07 round two stamped the slot id onto whatever a text search
+  // returned, so a sentence merely containing "deadline" or "blocker" turned a
+  // required slot "filled" and the answer was declared SUFFICIENT on nothing.
+  const out = runBoundedRetrievalRounds({
+    query: 'Should we choose the launch plan?',
+    taskType: 'decision',
+    retrieve: (query, opts) => {
+      if (opts.round === 1) return { items: [fact('goal-1', 'Launch the product', { predicate: 'plans_to' })], block: '', stats: {} };
+      return { items: [fact(`t-${opts.slotId}`, `we talked about the ${opts.slotId} once`)], block: '', stats: {} };
+    },
+  });
+  assert.equal(out.sufficiency.outcome, 'unknown');
+  assert.deepEqual(out.sufficiency.missing, ['deadline', 'blockers']);
+  const kept = out.result.items.map(i => i.id);
+  assert.ok(kept.includes('t-deadline'), 'the text hit should still be available as context');
+  assert.ok(!(out.result.items.find(i => i.id === 't-deadline').slotIds ?? []).includes('deadline'));
+});
+
+test('E8 form: decision-shaped questions get the decision scaffold even when the classifier says simple_qa', () => {
+  for (const q of ['Should I launch this week?', 'What should I focus on next?', 'Where should we start?', "What's my next step?"]) {
+    assert.deepEqual(buildQueryPlan(q, { taskType: 'simple_qa' }).requiredSlotIds, ['goal', 'deadline', 'blockers'], q);
+  }
+  // A specific label is never overridden, and a plain question stays plain.
+  assert.equal(buildQueryPlan('Should I refactor this function?', { taskType: 'coding' }).taskType, 'coding');
+  assert.equal(buildQueryPlan('Who owns onboarding?', { taskType: 'simple_qa' }).taskType, 'conversation');
 });

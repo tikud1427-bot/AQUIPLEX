@@ -54,6 +54,7 @@ const PROVIDER_MULTIPLIERS = {
   gemini:     1.00,   // reference — budgets sized for Gemini
   groq:       0.35,   // very fast inference; keep budget tight
   openrouter: 0.65,   // varies; deepseek-v3 can be slow on complex prompts
+  nvidia:     0.65,   // unmeasured — same middle budget as openrouter until latency data exists
 };
 
 /**
@@ -79,7 +80,7 @@ const PLAN_COMPLEXITY_MULTIPLIERS = { low: 1.0, medium: 1.15, high: 1.35 };
  * Compute timeout for a specific provider + task + prompt size combination.
  *
  * @param {string} taskType     - output of classifier
- * @param {string} provider     - 'gemini' | 'groq' | 'openrouter'
+ * @param {string} provider     - 'gemini' | 'groq' | 'openrouter' | 'nvidia'
  * @param {number} promptLength - total char count of systemPrompt + all messages
  * @param {'low'|'medium'|'high'} [complexity] - Phase 4: from executionPlanner.js, defaults to 'low' (no-op)
  * @returns {number} timeout in ms

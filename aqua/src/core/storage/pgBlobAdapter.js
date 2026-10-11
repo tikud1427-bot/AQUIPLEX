@@ -74,6 +74,9 @@ export function createPgBlobAdapter() {
    * still believed their own version.
    */
   const versions = new Map();
+  // storeKey → checksum of what this instance first read from the
+  // authoritative primary (dual-write `readSync`). See upsert's restart case.
+  const baseline = new Map();
   /** Writes rejected because another instance got there first. */
   const conflicts = [];
   /** In-flight writes, so flush() can await them. */
@@ -116,12 +119,31 @@ export function createPgBlobAdapter() {
    * between, the update affects zero rows, and we say so instead of silently
    * winning.
    */
+  /**
+   * One instance's writes to one key run IN ORDER (2026-10-04). Concurrent
+   * writes from the same instance each checked the version the previous
+   * in-flight write was about to move, so the guard fired on the instance's
+   * OWN writes ("a row already exists that this instance never read") — the
+   * `[DB] store write failed: changed underneath this instance` seen under load
+   * on live Postgres. Serialising per key means each write sees its
+   * predecessor's version; a write by ANOTHER instance still conflicts, exactly
+   * as before. A failed write does not block the next one.
+   */
+  const chains = new Map();
+  function serialized(storeKey, fn) {
+    const prev = chains.get(storeKey) ?? Promise.resolve();
+    const next = prev.catch(() => {}).then(fn);
+    chains.set(storeKey, next);
+    next.finally(() => { if (chains.get(storeKey) === next) chains.delete(storeKey); }).catch(() => {});
+    return next;
+  }
+
   async function upsert(storeKey, data) {
     const pool = await getPool();
     if (!pool) throw new Error('pgBlobAdapter: DATABASE_URL is not configured');
     const bytes = Buffer.byteLength(data, 'utf8');
     const sum = checksum(data);
-    const seen = versions.get(storeKey);
+    let seen = versions.get(storeKey);
 
     if (seen === undefined) {
       // First write from this instance. If a row already exists, this is a
@@ -140,7 +162,19 @@ export function createPgBlobAdapter() {
       const { rows } = await pool.query(
         `SELECT checksum, version FROM ${TABLE} WHERE store_key = $1`, [storeKey]);
       if (rows[0]?.checksum === sum) { versions.set(storeKey, rows[0].version); return; }
-      throw new StoreConflictError(storeKey, 'a row already exists that this instance never read');
+      // RESTART (2026-10-05). The row holds exactly what THIS instance loaded
+      // from its authoritative JSON at boot (`noteRead`), so continuing from
+      // its version overwrites nothing this instance has not seen. Without
+      // this, every restart froze the shadow for the life of the process: the
+      // first write conflicted, no version was ever recorded, and every later
+      // write took the same path — 609 rejected writes across 4 live restarts.
+      // A row that differs from the baseline is still a conflict: another
+      // instance wrote it, or a crash lost writes — the drift job's case.
+      if (rows[0] && baseline.get(storeKey) === rows[0].checksum) {
+        seen = rows[0].version;
+      } else {
+        throw new StoreConflictError(storeKey, 'a row already exists that this instance never read');
+      }
     }
 
     const { rows } = await pool.query(
@@ -195,6 +229,24 @@ export function createPgBlobAdapter() {
       return rows[0].data;
     },
 
+    /**
+     * Record what this instance loaded from its AUTHORITATIVE copy (the JSON
+     * primary, via the dual-write adapter). First read per store only — that
+     * is the boot load the in-memory store is built from.
+     */
+    noteRead(key, data) {
+      const storeKey = storeKeyFor(key);
+      if (!baseline.has(storeKey) && typeof data === 'string') baseline.set(storeKey, checksum(data));
+    },
+
+    /** The store keys that already have a row — what a boot must seed a baseline for. */
+    async storeKeys() {
+      const pool = await getPool();
+      if (!pool) return [];
+      const { rows } = await pool.query(`SELECT store_key FROM ${TABLE}`);
+      return rows.map(r => r.store_key);
+    },
+
     conflicts() { return [...conflicts]; },
 
     isHydrated() { return hydrated; },
@@ -218,7 +270,7 @@ export function createPgBlobAdapter() {
     async write(key, data) {
       const storeKey = storeKeyFor(key);
       cache.set(storeKey, data);
-      const pending = upsert(storeKey, data);
+      const pending = serialized(storeKey, () => upsert(storeKey, data));
       enqueue(pending);
       await pending;
     },
@@ -230,7 +282,7 @@ export function createPgBlobAdapter() {
     writeSync(key, data) {
       const storeKey = storeKeyFor(key);
       cache.set(storeKey, data);
-      enqueue(upsert(storeKey, data));
+      enqueue(serialized(storeKey, () => upsert(storeKey, data)));
     },
 
     copySync(from, to) {

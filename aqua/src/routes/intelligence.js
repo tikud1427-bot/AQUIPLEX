@@ -173,8 +173,21 @@ router.post('/orchestrate', async (req, res) => {
 
     const { task: taskType, confidence } = classifyTask(message);
     const plan = createExecutionPlan(taskType, confidence);
-    const memory = memoryRetrieve(ownerId, { query: message })?.block ?? '';
-    const evidence = retrieveKnowledge(ownerId, message)?.block ?? '';
+    // D5 — same E10 read flip as /chat: the canonical World Model owns the
+    // user's world; legacy memory and the PIC store stay out of the answer.
+    const Brain = await import('../brain/index.js');
+    const readMode = Brain.canonicalReadMode();
+    const canonical = readMode !== 'legacy';
+    const memory = memoryRetrieve(ownerId, {
+      query: message,
+      legacyUserMemory: readMode === 'legacy' ? true : readMode === 'authoritative' ? 'gapfill' : false,
+      legacyVeto: readMode === 'authoritative' ? await Brain.legacyVetoFor(ownerId) : null,
+    })?.block ?? '';
+    const evidence = (canonical
+      ? await Brain.assembleContextAsync(ownerId, message, () => ({ items: [], block: '', stats: {} }), {
+          limit: 8, taskType, semanticScores: await Brain.canonicalSemanticScores(ownerId, message),
+        })
+      : retrieveKnowledge(ownerId, message))?.block ?? '';
 
     const result = await runTaskGraph({
       userMessage: message, taskType, plan,

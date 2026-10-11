@@ -38,6 +38,9 @@ import * as P from './worldModel/projection.js';
 import { ingestConversationTurn, ingestMetrics, ingestEnabled, factIngestEnabled } from './knowledgeExtraction/conversationIngest.js';
 import { assembleTurnContext, assembleTurnContextAsync, contextEngineMetrics, contextV2Enabled } from './contextEngine/index.js';
 import { indexCanonicalClaims, canonicalClaimScores } from './contextEngine/canonicalSemantic.js';
+import { selectWorldCore } from './contextEngine/worldCore.js';
+import { understoodOf } from './contextEngine/index.js';
+import { readingOf } from './contextEngine/assembler.js';
 import { reflectWorldModel, reflectionV2Metrics, reflectV2Enabled, forgetOwner as forgetReflectionOwner } from './reflectionV2/index.js';
 import { loadSurfacedAt, markSurfaced } from './reflectionV2/reflectionStore.js';
 import { buildRevisionDirective, isSuitableTurn } from './reflectionV2/revisionVoice.js';
@@ -57,12 +60,18 @@ import * as pic from '../pic/core.js';
 import { ensureSelfEntity, SELF_CANONICAL_ID } from './identity/selfEntity.js';
 import { entityStoreFor } from './identity/entityStoreView.js';
 import { getEntry as getIdEntry } from './identity/idStore.js';
-import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup, claimWithEvidence } from '../core/worldModel/worldModelRepository.js';
+import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup, claimWithEvidence, advanceRevisionVoice } from '../core/worldModel/worldModelRepository.js';
+import { selectCanonicalRevision } from './reflectionV3/canonicalRevisionVoice.js';
+import { recordRevisionVoice } from '../core/observability.js';
 import { resolveRelationships } from './understanding/relationshipResolver.js';
 import { dedupAndDetect, inStoredVocabulary } from './understanding/claimDedup.js';
 import { buildCommitPlan } from './understanding/commitPlan.js';
 import { getPool, isConfigured as dbConfigured } from '../core/db/pool.js';
 import * as canonicalReadModel from '../core/worldModel/canonicalReadModel.js';
+import { singleValuedPredicateNames, singleObjectPredicateNames } from '../core/claims/predicateRegistry.js';
+import { isDeictic, recallFocus, rememberFocus, purgeOwner as purgeFocus } from './contextEngine/conversationFocus.js';
+import { resolveReferences } from './understanding/referenceResolver.js';
+import { startSpan } from '../core/telemetry.js';
 
 /**
  * The owner's self entity id, or null when they do not have one.
@@ -79,8 +88,94 @@ const selfEntityIdFor = ownerId =>
 /** Real dependency set. Tests inject their own via the `deps` option. */
 const REAL_DEPS = { graph, peekMind, evidenceStore, annotations, getMind, observeSignals, canonicalIds, pic, ensureSelfEntity, entityStoreFor, selfEntityIdFor, canonicalClaims: { get: claimWithEvidence } };
 
+/**
+ * E10 READ MODE (2026-10-06 — the cutover, Phase 1).
+ *
+ *   'authoritative'  DEFAULT (AQUA_CANONICAL_READ unset/auto). The canonical
+ *                    World Model is the answer context (canonical lanes only).
+ *                    The legacy identity card / regex facts may only FILL GAPS:
+ *                    any that the canonical model contradicts is vetoed
+ *                    (legacyVetoFor). Mind, legacy graph and episodes stay out.
+ *                    Why not a plain flip: users whose knowledge predates E6 —
+ *                    names above all, which E6 rarely stores as a claim — would
+ *                    lose it until e10:migrate backfilled them; why not legacy:
+ *                    the unrevised legacy store answered changed facts stale
+ *                    (D5, 7/7 live). Canonical wins every conflict either way.
+ *   'canonical'      AQUA_CANONICAL_READ=on: no legacy user memory at all.
+ *   'legacy'         AQUA_CANONICAL_READ=off: the complete rollback. Legacy
+ *                    writes continue in every mode (dual write), so each mode
+ *                    is reversible.
+ * Without Postgres (or with the brain off) there is no canonical model: legacy.
+ */
+export function canonicalReadMode(env = process.env) {
+  if (!brainEnabled() || !dbConfigured()) return 'legacy';
+  const v = String(env.AQUA_CANONICAL_READ ?? '').toLowerCase();
+  if (v === 'off') return 'legacy';
+  if (v === 'on') return 'canonical';
+  return 'authoritative';
+}
+
 export function canonicalWorldModelReadEnabled() {
-  return brainEnabled() && dbConfigured() && String(process.env.AQUA_CANONICAL_READ ?? '').toLowerCase() === 'on';
+  return canonicalReadMode() !== 'legacy';
+}
+
+/** Legacy identity/fact keys → the canonical self predicates that own that attribute. */
+const LEGACY_KEY_PREDICATES = Object.freeze({
+  workplace: ['works_at'], organization: ['works_at', 'member_of'], profession: ['role_is'],
+  city: ['located_in'], country: ['located_in'],
+});
+
+/**
+ * The veto the 'authoritative' read applies to legacy user memory: a legacy
+ * fact is dropped when the canonical World Model (a) holds a CURRENT asserted
+ * value for the same attribute of the user, or (b) has retired that exact value
+ * (superseded) or negated it. One bounded, owner-scoped query per turn.
+ * Fail-CLOSED for legacy: if the canonical read fails, every legacy fact is
+ * vetoed rather than risking a stale override.
+ */
+export async function legacyVetoFor(ownerId) {
+  if (!ownerId || !dbConfigured()) return () => false;
+  try {
+    const p = await getPool();
+    const { rows } = await p.query(`
+      SELECT c.predicate, c.polarity, c.state, c.modality, se.type AS subject_type,
+             lower(COALESCE(oe.canonical_label, c.object_literal, '')) AS val
+        FROM aqua_claims c
+        JOIN aqua_entities se ON se.entity_id=c.subject_entity_id AND se.owner_id=c.owner_id
+        LEFT JOIN aqua_entities oe ON oe.entity_id=c.object_entity_id AND oe.owner_id=c.owner_id
+       WHERE c.owner_id=$1 AND c.state IN ('active','trusted','disputed','superseded')
+       ORDER BY c.asserted_at DESC LIMIT 2000`, [ownerId]);
+    const currentSelf = new Set(rows.filter(r => r.subject_type === 'self' && ['active', 'trusted'].includes(r.state)
+      && r.polarity === 'asserted' && r.modality === 'fact').map(r => r.predicate));
+    const retired = new Set(rows.filter(r => (r.state === 'superseded' || r.polarity === 'negated') && r.val.length >= 2).map(r => r.val));
+    return ({ key, value } = {}) => {
+      if ((LEGACY_KEY_PREDICATES[key] ?? []).some(pr => currentSelf.has(pr))) return true;
+      const vals = (Array.isArray(value) ? value : [value]).map(v => String(v?.name ?? v ?? '').trim().toLowerCase()).filter(Boolean);
+      return vals.some(v => retired.has(v));
+    };
+  } catch (err) {
+    console.warn(`[BRAIN] legacy veto unavailable — legacy memory withheld this turn: ${err?.message ?? err}`);
+    return () => true;
+  }
+}
+
+/**
+ * E10 READ FLIP for the ANSWER CONTEXT (D5, 2026-10-05).
+ *
+ * With AQUA_CANONICAL_READ=on the Context Engine assembles from the canonical
+ * Postgres lanes only (structured, dense, graph over aqua_claims). The legacy
+ * stores — PIC floor, in-memory reasoning graph, evidence store, Mind — are
+ * NOT consulted: they are never revised by supersession, and when they
+ * disagreed with the World Model the model followed them ("I moved to Porto"
+ * → canonical Porto, legacy city=Lisbon, answer "Lisbon", 7/7 live).
+ * Legacy writes continue unchanged, so =off is a complete rollback.
+ */
+const NO_LEGACY_GRAPH = Object.freeze({ nodesByType: () => [], neighbors: () => [] });
+const noLegacyFloor = () => ({ items: [], block: '', stats: {} });
+function contextDeps(deps, floorRetrieve, canonicalOnly) {
+  return canonicalOnly
+    ? { picRetrieve: noLegacyFloor, graph: NO_LEGACY_GRAPH, evidenceStore: null, peekMind: null }
+    : { picRetrieve: floorRetrieve, graph: deps.graph, evidenceStore: deps.evidenceStore, peekMind: deps.peekMind };
 }
 
 async function guardAsync(label, fallback, fn) {
@@ -379,7 +474,21 @@ export function reflectV2Active() { return reflectV2Enabled(); }
  * and nobody should get the second by accident.
  */
 export function revisionVoiceEnabled() {
-  return brainEnabled() && String(process.env.AQUA_REVISION_VOICE ?? '').toLowerCase() === 'on';
+  return revisionVoiceMode() !== 'off';
+}
+
+/**
+ * Which voice runs (2026-10-04). The CANONICAL voice is on by default since it
+ * passed its L14 evaluation (eval/suites/revision-voice.suite.mjs, baseline
+ * revision-voice.v1.json, plus revisionVoice.live.test.js on Postgres). The
+ * LEGACY ledger voice was never evaluated that way, so it stays opt-in:
+ *   unset → 'canonical' · 'on' → 'canonical+legacy' · 'off' → 'off' (rollback)
+ */
+export function revisionVoiceMode() {
+  if (!brainEnabled()) return 'off';
+  const v = String(process.env.AQUA_REVISION_VOICE ?? '').toLowerCase();
+  if (v === 'off') return 'off';
+  return v === 'on' ? 'canonical+legacy' : 'canonical';
 }
 
 /**
@@ -394,7 +503,7 @@ export function revisionVoiceEnabled() {
  * Called exactly once per turn, from the prompt assembly seam.
  */
 export function revisionDirectiveFor(ownerId, { taskType = null, mode = null } = {}) {
-  if (!ownerId || !revisionVoiceEnabled()) return '';
+  if (!ownerId || revisionVoiceMode() !== 'canonical+legacy') return '';
   if (!isSuitableTurn({ taskType, mode })) return '';
   return guard('revisionDirectiveFor', '', () => {
     const since = loadSurfacedAt(ownerId);
@@ -443,6 +552,60 @@ export function revisionDirectiveFor(ownerId, { taskType = null, mode = null } =
   });
 }
 
+/**
+ * The revision voice for THIS turn, canonical World Model first (2026-10-04).
+ *
+ * When the canonical World Model is live (Postgres + E6 commit) the changes
+ * worth raising are claim supersessions / disputes there
+ * (reflectionV3/canonicalRevisionVoice.js); the watermark is a Postgres row
+ * advanced by compare-and-set, so across any number of server processes a
+ * revision is raised at most once and only by the process whose advance
+ * landed. Without Postgres, or when nothing canonical is pending, it falls
+ * back to the legacy ledger voice unchanged. Same flag, same suitability rule.
+ * Fail-open: any error yields '' — never a failed turn.
+ */
+export async function revisionDirectiveForTurn(ownerId, { taskType = null, mode = null, conversationId = null } = {}) {
+  // Counted (aqua_revision_voice_*): skipped = the turn never selected;
+  // considered = candidates examined; suppressed = a candidate decided against
+  // (its exclusion reason, 'newer-chosen', or 'lost-race'); emitted = raised.
+  if (!ownerId) { recordRevisionVoice('skipped', { reason: 'no-owner' }); return ''; }
+  if (!revisionVoiceEnabled()) { recordRevisionVoice('skipped', { reason: 'flag-off' }); return ''; }
+  if (!isSuitableTurn({ taskType, mode })) { recordRevisionVoice('skipped', { reason: 'unsuitable-turn' }); return ''; }
+  if (dbConfigured() && e6CommitEnabled()) {
+    try {
+      const candidates = await canonicalReadModel.revisionVoiceCandidates(ownerId);
+      if (candidates.length) {
+        const pick = selectCanonicalRevision(candidates, { conversationId });
+        recordRevisionVoice('considered', { n: pick.considered.length });
+        const won = await advanceRevisionVoice(ownerId, {
+          at: pick.watermark.at, transitionId: pick.watermark.transitionId,
+          raisedTransitionId: pick.chosen?.transitionId ?? null,
+        });
+        for (const c of pick.considered) {
+          if (c.transitionId === pick.chosen?.transitionId) continue;
+          recordRevisionVoice('suppressed', { reason: c.excluded ?? 'newer-chosen' });
+        }
+        if (pick.chosen && (!won || !pick.directive)) {
+          recordRevisionVoice('suppressed', { reason: won ? 'missing-statement' : 'lost-race' });
+          return '';
+        }
+        if (!pick.directive) return '';
+        recordRevisionVoice('emitted');
+        console.log(`[BRAIN] Canonical revision raised owner=${ownerId} transition=${pick.chosen.transitionId} kind=${pick.chosen.toState}`);
+        return pick.directive;
+      }
+    } catch (err) {
+      recordRevisionVoice('skipped', { reason: 'error' });
+      console.warn(`[BRAIN] canonical revision voice failed (fail-open): ${err?.message ?? err}`);
+      return '';
+    }
+  }
+  const legacy = revisionDirectiveFor(ownerId, { taskType, mode });
+  if (legacy) recordRevisionVoice('emitted');
+  else recordRevisionVoice('skipped', { reason: 'no-candidates' });
+  return legacy;
+}
+
 // ── Context Engine V2 (B4) ───────────────────────────────────────────────────
 
 /**
@@ -472,10 +635,7 @@ export function assembleContext(ownerId, query, floorRetrieve, opts = {}) {
     retrievalV3Lanes = null,
   } = opts;
   const engineDeps = {
-    picRetrieve: floorRetrieve,
-    graph: deps.graph,
-    evidenceStore: deps.evidenceStore,
-    peekMind: deps.peekMind,
+    ...contextDeps(deps, floorRetrieve, opts.canonicalOnly ?? canonicalWorldModelReadEnabled()),
     formatCitation: opts.formatCitation ?? null,
     semanticScores: semanticClaimScores ?? semanticScores,
     canonicalClaimsById: (semanticClaimScores ?? semanticScores)?.canonicalClaimsById ?? null,
@@ -523,10 +683,7 @@ export async function assembleContextAsync(ownerId, query, floorRetrieve, opts =
     crossEncoder = null,
   } = opts;
   const engineDeps = {
-    picRetrieve: floorRetrieve,
-    graph: deps.graph,
-    evidenceStore: deps.evidenceStore,
-    peekMind: deps.peekMind,
+    ...contextDeps(deps, floorRetrieve, opts.canonicalOnly ?? canonicalWorldModelReadEnabled()),
     formatCitation: opts.formatCitation ?? null,
     semanticScores: semanticClaimScores ?? semanticScores,
     canonicalClaimsById: (semanticClaimScores ?? semanticScores)?.canonicalClaimsById ?? null,
@@ -535,9 +692,23 @@ export async function assembleContextAsync(ownerId, query, floorRetrieve, opts =
     enableCanonicalGraph: true,
     activeProjectId,
   };
-  return assembleTurnContextAsync(engineDeps, ownerId, query, {
-    limit, charBudget,
-    priorEntityIds: priorEntityIds ?? undefined,
+  // DEICTIC FOLLOW-UPS (2026-10-04): "who owns this?" anchors on what the
+  // previous turn of THIS conversation was about (conversationFocus.js).
+  const conversationId = opts.conversationId ?? null;
+  const prior = priorEntityIds
+    ?? (conversationId && isDeictic(query) ? recallFocus(ownerId, conversationId) : null);
+  // Sentences behind a retired claim — neither section may quote them whole
+  // (2026-10-11). One bounded read per turn; fail-open to "none known".
+  let retiredTexts = null;
+  if (ownerId && dbConfigured()) {
+    try { retiredTexts = await canonicalReadModel.retiredStatements(ownerId, { limit: 400 }); } catch { retiredTexts = null; }
+  }
+  const span = startSpan('context.assemble', { 'aqua.task_type': String(taskType) });
+  let result;
+  try {
+  result = await assembleTurnContextAsync(engineDeps, ownerId, query, {
+    limit, charBudget, retiredTexts,
+    priorEntityIds: prior?.length ? prior : undefined,
     plan,
     queryPlan,
     taskType,
@@ -546,6 +717,52 @@ export async function assembleContextAsync(ownerId, query, floorRetrieve, opts =
     retrievalV3Lanes: Array.isArray(retrievalV3Lanes) ? retrievalV3Lanes : null,
     crossEncoder,
   });
+  span.setAttribute('aqua.retrieved_count', (result?.items ?? []).length);
+  } catch (err) { span.setStatus('error'); throw err; } finally { span.end(); }
+  result = await withWorldCore(ownerId, result, { semanticScores: semanticClaimScores ?? semanticScores, retiredTexts });
+  if (conversationId) {
+    try { rememberFocus(ownerId, conversationId, (result?.items ?? []).flatMap(i => i.entityIds ?? [])); }
+    catch { /* focus is a convenience; never fail a turn over it (L11) */ }
+  }
+  return result;
+}
+
+/** AQUA_WORLD_CORE gate — ON unless explicitly 'off' (the rollback). */
+export function worldCoreEnabled() {
+  return String(process.env.AQUA_WORLD_CORE ?? 'on').toLowerCase() !== 'off';
+}
+
+/**
+ * Append the owner's CURRENT WORLD (contextEngine/worldCore.js) to an assembled
+ * context: every current claim the relevance section did not already show, as
+ * the user's own statements, within a fixed budget. Fail-open (L11): a read
+ * error leaves the context exactly as assembled.
+ */
+async function withWorldCore(ownerId, result, { semanticScores = null, retiredTexts = null } = {}) {
+  if (!result || !ownerId || !worldCoreEnabled() || !dbConfigured()) return result;
+  try {
+    const claims = await canonicalReadModel.currentWorld(ownerId, { limit: 120 });
+    const facts = (result.items ?? []).filter(i => i.kind === 'fact');
+    const core = selectWorldCore(claims, {
+      excludeIds: facts.map(i => i.id).filter(Boolean),
+      excludeTexts: facts.map(i => i.statement).filter(Boolean),
+      scores: semanticScores instanceof Map ? semanticScores : null,
+      retiredTexts: retiredTexts ?? [],
+      reading: c => { const u = understoodOf(c); return u ? readingOf(u) : null; },
+    });
+    const ce = result.stats?.contextEngine;
+    const coreStats = { considered: core.considered, rendered: core.lines.length, omitted: core.omitted, chars: core.chars };
+    if (!core.block) return { ...result, stats: { ...result.stats, worldCore: coreStats } };
+    return {
+      ...result,
+      block: [result.block, core.block].filter(s => s && String(s).trim()).join('\n\n'),
+      worldCore: { claimIds: core.claimIds, lines: core.lines },
+      stats: { ...result.stats, worldCore: coreStats, ...(ce ? { contextEngine: { ...ce, worldCore: coreStats } } : {}) },
+    };
+  } catch (err) {
+    console.warn(`[BRAIN] world core unavailable (fail-open): ${err?.message ?? err}`);
+    return result;
+  }
 }
 
 export async function canonicalSemanticScores(ownerId, query) {
@@ -633,9 +850,13 @@ export function e6Enabled() {
  * invoke them and nothing here commits.
  */
 export async function understandTurn(
-  { ownerId, conversationId, turn = null, userMessage, callModel = null } = {},
+  { ownerId, conversationId, turn = null, userMessage, callModel = null, source = null } = {},
   { deps = REAL_DEPS } = {},
 ) {
+  // `source` (2026-10-11): an UPLOADED DOCUMENT chunk rather than a chat turn —
+  // { kind: 'document', name, hash, chunk }. Same pipeline, same S8/S9; only the
+  // provenance differs (files/documentUnderstanding.js).
+  const doc = source?.kind === 'document' ? source : null;
   if (!e6Enabled()) return null;
   if (!ownerId || !userMessage) return null;
   const { runUnderstandingPipeline } = await import('./understanding/pipeline.js');
@@ -646,6 +867,16 @@ export async function understandTurn(
   let entityStore = null;
   let selfEntityId = null;
   try {
+    // S6 OWNS ITS SELF PRECONDITION (2026-10-03). The self node used to be
+    // created only as a side effect of conversation ingest — a different
+    // subsystem, and in production a different PROCESS from the durable worker
+    // that runs this function. Measured on live Postgres: with
+    // AQUA_SELF_ENTITY=on, every first-person claim ("I am building X", "I use
+    // Y") came back `blockedBy: subject:self-grammar, reason: no-self-entity`
+    // and never reached the world model. ensureSelfEntity is idempotent and
+    // returns null unless the flag is on, so this changes nothing for owners
+    // with the flag off.
+    try { deps.ensureSelfEntity?.(deps, ownerId); } catch { /* fail-open (L11) */ }
     entityStore = deps.entityStoreFor?.(ownerId) ?? null;
     selfEntityId = deps.selfEntityIdFor?.(ownerId) ?? null;
   } catch (err) {
@@ -654,9 +885,35 @@ export async function understandTurn(
     selfEntityId = null;
   }
 
+  // Prompt rule 9 ("prefer these exact names") was never fed on this path, so
+  // a change about "the backend" or "the launch date" minted a new subject
+  // instead of naming the one the old claim is about — and two subjects never
+  // conflict, so the old value was never retired (D6 live check, 2026-10-05).
+  // The owner's most important canonical entities, never "You". Fail-open.
+  let knownEntities = [];
+  // Rule 12: what was said earlier in THIS conversation and what is currently
+  // known — so "It's written in Rust" / "No, it's Rust" / "the launch date
+  // changed" can name the subject they refer to (D6). Fail-open: no context is
+  // exactly the old behaviour.
+  let context = null;
+  if (dbConfigured()) {
+    try {
+      knownEntities = (await canonicalReadModel.listEntities(ownerId, { limit: 40 }))
+        .filter(e => e.type !== 'self').map(e => e.label).filter(Boolean);
+    } catch { knownEntities = []; }
+    try {
+      context = await canonicalReadModel.extractionContext(ownerId, { conversationId, turn });
+    } catch { context = null; }
+  }
+  // A document line ("Monthly rent: $6,400") names no subject; what it is FROM
+  // is the reference rule 12 resolves against. Context only — never extracted.
+  if (doc?.name) {
+    context = { ...(context ?? {}), conversation: [`(The sentence is from the user's uploaded file "${doc.name}".)`, ...(context?.conversation ?? [])] };
+  }
+
   const result = await runUnderstandingPipeline(userMessage, {
     ownerId, conversationId, callModel: callModel ?? (await e6Transport()),
-    entityStore, selfEntityId,
+    entityStore, selfEntityId, knownEntities, context,
   });
 
   // S6's missing half — see understanding/provisionalMinter.js. A claim about a
@@ -665,6 +922,25 @@ export async function understandTurn(
   // about things it already knew. Minting happens only when the claim would
   // otherwise be COMMITTED: an extractor whose commit is off must not be
   // growing the identity map on the way to being evaluated. Fail-open (L11).
+  // S6½ — references the minter would refuse ("my company", "it", "the
+  // project") resolved against the owner's EXISTING canonical World Model,
+  // only when unambiguous (understanding/referenceResolver.js). Fail-open (L11).
+  if (e6CommitEnabled() && dbConfigured() && result?.entityResolution === 'resolved' && result.claims?.length) {
+    try {
+      const prevSource = Number.isInteger(turn) && turn > 1 && conversationId
+        ? canonicalTurnSourceId(ownerId, conversationId, turn - 1) : null;
+      const refs = await resolveReferences(result.claims, {
+        pronoun: () => canonicalReadModel.referencePreviousTurn(ownerId, prevSource),
+        role: predicates => canonicalReadModel.referenceRoleObjects(ownerId, predicates),
+        headNoun: head => canonicalReadModel.referenceHeadNoun(ownerId, head),
+      });
+      result.claims = refs.claims;
+      result.stats = { ...result.stats, s6: { ...result.stats?.s6, references: refs.stats } };
+    } catch (err) {
+      console.warn(`[E6] reference resolution failed (fail-open): ${err?.message ?? err}`);
+    }
+  }
+
   if (e6CommitEnabled() && e6MintEnabled() && result?.entityResolution === 'resolved' && result.claims?.length) {
     try {
       const minted = mintProvisionalEntities(result.claims, {
@@ -689,7 +965,13 @@ export async function understandTurn(
 
   try {
     const allEntities = entityStore?.all?.() ?? [];
-    const byId = new Map(allEntities.map(e => [e.entityId ?? e.id, e]));
+    // The store view speaks `kind` (idStore's vocabulary); the repository
+    // reads `type`. Passed through as-is, EVERY entity reached Postgres as
+    // 'concept' — the self node included, so `type='self'` (and the schema's
+    // one-self-per-owner index) never matched anything and first-person
+    // questions could not anchor on the user. The repository still owns the
+    // allowed set and maps unknown kinds ('name', ...) to 'concept'.
+    const byId = new Map(allEntities.map(e => [e.entityId ?? e.id, { ...e, type: e.type ?? e.kind ?? undefined }]));
     // One recipe, shared with the E10 reconciliation report — see
     // core/worldModel/turnSourceIdentity.js. A private copy here would let the
     // report's join and the writer's key drift apart without a test noticing.
@@ -736,8 +1018,15 @@ export async function understandTurn(
       // no corroboration across turns, no contradiction, whatever the flags. The
       // incoming side is put into the stored vocabulary before comparing; the
       // mapping below this call is the same one, so it is idempotent.
+      // Claim ids are assigned BEFORE S8 (2026-10-03). S8's contradictions
+      // reference the incoming claim object; ids used to be minted only after
+      // S8, so every `claim.contradiction.detected` event carried
+      // `incomingClaimId: null` and the contradiction worker — which requires
+      // both ids — threw on every one. Contradiction resolution had never run
+      // on a real turn. The same id flows on to S7 and the commit plan.
+      for (const c of segment.claims) c.claimId ??= crypto.randomUUID();
       const forS8 = segment.claims.map(inStoredVocabulary);
-      const s8 = dedupAndDetect(forS8, existing, { functionalPredicates: singleValuedPredicates() });
+      const s8 = dedupAndDetect(forS8, existing, { functionalPredicates: singleValuedPredicates(), singleObjectPredicates: singleObjectPredicates() });
 
       // S7 receives canonical entity labels for deterministic relationship
       // direction. Persistence later maps those endpoints to Postgres ids; S7
@@ -769,11 +1058,19 @@ export async function understandTurn(
       commits.push(await commitCanonicalUnderstanding({
         ownerId, sourceId, actor, extractorVersion,
         segmentRange: { start: segment.start, end: segment.end },
-        sourceKind: 'conversation',
-        externalRef: conversationId
-          ? `${conversationId}:turn:${Number.isInteger(turn) ? turn : 'unknown'}`
-          : null,
-        title: `AQUIPLEX conversation${Number.isInteger(turn) ? ` — turn ${turn}` : ''}`, 
+        ...(doc ? {
+          // L10: an uploaded document is the user's own material — file tier
+          // (worldModelRepository maps trust_tier ≥ 3 to 'file').
+          sourceKind: 'document', trustTier: 3,
+          externalRef: `file:${doc.name}:chunk:${Number.isInteger(doc.chunk) ? doc.chunk : 0}`,
+          title: `Uploaded file — ${doc.name}`,
+        } : {
+          sourceKind: 'conversation',
+          externalRef: conversationId
+            ? `${conversationId}:turn:${Number.isInteger(turn) ? turn : 'unknown'}`
+            : null,
+          title: `AQUIPLEX conversation${Number.isInteger(turn) ? ` — turn ${turn}` : ''}`,
+        }),
         contentHash: crypto.createHash('sha256').update(userMessage).digest('hex'),
         assertedAt: new Date(),
         claims: canonicalClaims,
@@ -817,10 +1114,23 @@ export async function understandTurn(
  * already exempt upstream. There is no eval for this yet; promote it by
  * measuring false fires on real turns, not by flipping it.
  */
-export const SINGLE_VALUED = Object.freeze(['works_at']);
+//
+// 2026-10-04: the set is no longer a hardcoded ['works_at'] — it is DERIVED
+// from the predicate registry's declared cardinality (predicateRegistry.js,
+// SINGLE_PER_SUBJECT), the one place that says which facts hold one value at a
+// time. Default ON, measured by eval/suites/claim-lifecycle.suite.mjs (A→B,
+// A→B→C, polarity flips stay disputed, multi-valued never conflict, explicit
+// correction wins, history kept). AQUA_E6_SINGLE_VALUED=off is the rollback and
+// restores "emit nothing on a changed value" exactly.
 export function singleValuedPredicates() {
-  return String(process.env.AQUA_E6_SINGLE_VALUED ?? 'off').toLowerCase() === 'on'
-    ? new Set(SINGLE_VALUED) : new Set();
+  return String(process.env.AQUA_E6_SINGLE_VALUED ?? 'on').toLowerCase() === 'off'
+    ? new Set() : new Set(singleValuedPredicateNames());
+}
+
+/** One-per-object predicates (inverse of a single-valued one), same gate. */
+export function singleObjectPredicates() {
+  return String(process.env.AQUA_E6_SINGLE_VALUED ?? 'on').toLowerCase() === 'off'
+    ? new Set() : new Set(singleObjectPredicateNames());
 }
 
 /**
@@ -866,16 +1176,55 @@ export function e6CommitEnabled() {
  * for both providers, and an unpinned run cannot attribute a change to the
  * prompt rather than to whichever model answered.
  */
+/**
+ * Which provider/model E6 extraction uses — the ONE resolver, shared by the
+ * transport below and by eval scripts that record it (world-model-lift-live).
+ * Recording a different default than the transport uses would misattribute a
+ * run. Unknown providers keep the historical Groq fallback.
+ *
+ * nvidia (2026-10): AQUA_E6_PROVIDER=nvidia, model defaulting to NVIDIA's
+ * registered model (NVIDIA_DEFAULT_MODEL → openai/gpt-oss-20b). Its token
+ * budget differs from Groq's — see maxTokens in e6Transport.
+ */
+export async function e6TransportConfig(env = process.env) {
+  const requested = String(env.AQUA_E6_PROVIDER ?? 'groq').toLowerCase();
+  const provider = ['gemini', 'nvidia'].includes(requested) ? requested : 'groq';
+  let defaultModel = 'openai/gpt-oss-120b';
+  if (provider === 'nvidia') {
+    const { pickModel } = await import('../providers/modelRegistry.js');
+    defaultModel = pickModel('nvidia')?.modelId ?? 'openai/gpt-oss-20b';
+  }
+  const model = env.AQUA_E6_MODEL ?? defaultModel;
+  return { provider, model };
+}
+
+// Test seam for the extraction MODEL only (same pattern as the embedder's
+// __setEmbedderForTests): live suites drive durable jobs whose handlers call
+// understandTurn without a callModel. Everything around the model stays real.
+let e6TransportOverride = null;
+export function __setE6TransportForTests(fn) { e6TransportOverride = typeof fn === 'function' ? fn : null; }
+
 export async function e6Transport() {
-  const provider = String(process.env.AQUA_E6_PROVIDER ?? 'groq').toLowerCase();
-  const model = process.env.AQUA_E6_MODEL ?? 'openai/gpt-oss-120b';
+  if (e6TransportOverride) return e6TransportOverride;
+  const { provider, model } = await e6TransportConfig();
   const mod = provider === 'gemini'
     ? await import('../providers/gemini.js')
-    : await import('../providers/groq.js');
-  const generate = provider === 'gemini' ? mod.generateGemini : mod.generateGroq;
+    : provider === 'nvidia'
+      ? await import('../providers/nvidia.js')
+      : await import('../providers/groq.js');
+  const generate = provider === 'gemini' ? mod.generateGemini
+    : provider === 'nvidia' ? mod.generateNvidia
+      : mod.generateGroq;
+  // Gemini 2.5+ spends output tokens on hidden reasoning before the answer; at
+  // 1024 the JSON was cut off mid-object ("bad-json") on ordinary sentences
+  // (measured 2026-10-04). NVIDIA's gpt-oss-20b does the same: at 1024 the
+  // budget ran out mid-JSON or before any content; 4096 finished with
+  // 1.2k-2.3k output tokens (measured 2026-10). The Groq budget — the measured
+  // call shape — is unchanged.
+  const maxTokens = provider === 'gemini' ? 8192 : provider === 'nvidia' ? 4096 : 1024;
   return async ({ system, user, temperature, model: perCall }) => {
-    const res = await generate(system, [{ role: 'user', content: user }], undefined, 1024,
-      { model: perCall ?? model, temperature });
+    const res = await generate(system, [{ role: 'user', content: user }], undefined, maxTokens,
+      { model: perCall ?? model, temperature, purpose: 'extraction' });
     return { text: res.text, model: res.model ?? null };
   };
 }
@@ -951,6 +1300,7 @@ export function purgeOwner(ownerId, opts = {}) {
   const out = { annotations: 0, canonicalIds: 0 };
   try {
     forgetReflectionOwner(ownerId);   // drop reflection snapshot state too
+    purgeFocus(ownerId);              // deictic focus memory (conversationFocus.js)
     const ann = deps.annotations.purgeOwner(ownerId);
     out.annotations = typeof ann === 'number' ? ann : (ann?.annotations ?? 0);
   } catch (err) {

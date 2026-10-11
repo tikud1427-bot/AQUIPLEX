@@ -1,0 +1,185 @@
+{
+  "id": "proactive-core",
+  "version": 1,
+  "authoredAt": "2026-10-06",
+  "now": "2026-10-06T10:00:00Z",
+  "note": "Phase 4 anti-noise evaluation. Each case is one owner's World-Model slice (canonical claim shape), the owner's intervention history and preferences, and the label of what SHOULD happen now. Labels: VALID_INTERVENTION / HIGH_VALUE (should fire, expected trigger type given), NO_INTERVENTION, TOO_EARLY, TOO_LATE, REDUNDANT, INSUFFICIENT_EVIDENCE, WRONG_STATE, WRONG_OWNER, UNHELPFUL (should not fire). Authored by the engineer who built the engine, before the suite was first run (independence not met; disclosed). Claim fields: id, s (subject label), sid (subject id), p (predicate), o (object entity label) + oid, or lit (literal), state (default active), pol (default asserted), mod (default fact), said (asserted_at, default 2026-10-01T09:00:00Z), ex (extractor, default e6), owner (default the case owner).",
+  "cases": [
+    { "id": "pc-001", "label": "HIGH_VALUE", "expectType": "deadline_at_risk", "about": "launch in 6 days, blocker owned by a person (scenario 9)",
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" },
+        { "id": "a3", "s": "Rohan", "sid": "R", "p": "owns", "o": "payment integration", "oid": "P" } ] },
+    { "id": "pc-002", "label": "HIGH_VALUE", "expectType": "deadline_at_risk", "about": "rebrand due in 3 days waiting on client feedback",
+      "claims": [
+        { "id": "a1", "s": "Brava rebrand", "sid": "B", "p": "deadline_for", "lit": "October 9" },
+        { "id": "a2", "s": "Brava rebrand", "sid": "B", "p": "has_status", "lit": "waiting on their final logo feedback" } ] },
+    { "id": "pc-003", "label": "HIGH_VALUE", "expectType": "deadline_at_risk", "about": "release depends on a delayed upgrade (2 hops)",
+      "claims": [
+        { "id": "a1", "s": "release 4.2", "sid": "R", "p": "deadline_for", "lit": "October 14" },
+        { "id": "a2", "s": "release 4.2", "sid": "R", "p": "depends_on", "o": "identity service upgrade", "oid": "I" },
+        { "id": "a3", "s": "identity service upgrade", "sid": "I", "p": "has_status", "lit": "delayed because of a security review" } ] },
+    { "id": "pc-004", "label": "VALID_INTERVENTION", "expectType": "deadline_at_risk", "about": "seed round closes in 12 days, data room blocking",
+      "claims": [
+        { "id": "a1", "s": "seed round", "sid": "S", "p": "deadline_for", "lit": "October 18" },
+        { "id": "a2", "s": "data room", "sid": "D", "p": "blocks", "o": "seed round", "oid": "S" } ] },
+    { "id": "pc-005", "label": "VALID_INTERVENTION", "expectType": "deadline_approaching", "about": "paper due tomorrow, nothing blocking",
+      "claims": [ { "id": "a1", "s": "LACEA paper", "sid": "P", "p": "deadline_for", "lit": "October 7" } ] },
+    { "id": "pc-006", "label": "VALID_INTERVENTION", "expectType": "deadline_at_risk", "about": "blocked_by direction",
+      "claims": [
+        { "id": "a1", "s": "Portland opening", "sid": "O", "p": "deadline_for", "lit": "October 16" },
+        { "id": "a2", "s": "Portland opening", "sid": "O", "p": "blocked_by", "o": "lease negotiation", "oid": "N" } ] },
+    { "id": "pc-007", "label": "VALID_INTERVENTION", "expectType": "contradiction_unresolved", "about": "two disputed employers (single-valued)",
+      "claims": [
+        { "id": "a1", "s": "You", "sid": "SELF", "p": "works_at", "o": "Acme", "oid": "A", "state": "disputed", "said": "2026-10-04T09:00:00Z" },
+        { "id": "a2", "s": "You", "sid": "SELF", "p": "works_at", "o": "Globex", "oid": "G", "state": "disputed", "said": "2026-10-05T09:00:00Z" } ] },
+    { "id": "pc-008", "label": "VALID_INTERVENTION", "expectType": "dependent_plan_invalidated", "about": "launch date moved, campaign depends on it",
+      "claims": [
+        { "id": "a1", "s": "launch", "sid": "L", "p": "deadline_for", "lit": "October 20", "state": "superseded", "supersededBy": "a2", "validTo": "2026-10-05T12:00:00Z" },
+        { "id": "a2", "s": "launch", "sid": "L", "p": "deadline_for", "lit": "December 1", "said": "2026-10-05T12:00:00Z" },
+        { "id": "a3", "s": "marketing campaign", "sid": "M", "p": "depends_on", "o": "launch", "oid": "L" } ] },
+    { "id": "pc-009", "label": "HIGH_VALUE", "expectType": "deadline_at_risk", "about": "due today, still blocked",
+      "claims": [
+        { "id": "a1", "s": "grant application", "sid": "G", "p": "deadline_for", "lit": "October 6" },
+        { "id": "a2", "s": "budget sign-off", "sid": "B", "p": "blocks", "o": "grant application", "oid": "G" } ] },
+    { "id": "pc-010", "label": "VALID_INTERVENTION", "expectType": "deadline_at_risk", "about": "quiet hours: still fires, delivery deferred",
+      "prefs": { "quietStartMin": 540, "quietEndMin": 720 },
+      "claims": [
+        { "id": "a1", "s": "tax filing", "sid": "T", "p": "deadline_for", "lit": "October 10" },
+        { "id": "a2", "s": "missing receipts", "sid": "M", "p": "blocks", "o": "tax filing", "oid": "T" } ] },
+
+    { "id": "pc-020", "label": "NO_INTERVENTION", "about": "no deadline, no dispute",
+      "claims": [ { "id": "a1", "s": "You", "sid": "SELF", "p": "works_at", "o": "Acme", "oid": "A" }, { "id": "a2", "s": "You", "sid": "SELF", "p": "prefers", "lit": "short answers" } ] },
+    { "id": "pc-021", "label": "NO_INTERVENTION", "about": "blocker exists but no deadline at all",
+      "claims": [ { "id": "a1", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" } ] },
+    { "id": "pc-022", "label": "NO_INTERVENTION", "about": "only an intent with a vague date",
+      "claims": [ { "id": "a1", "s": "You", "sid": "SELF", "p": "plans_to", "lit": "land a data analyst job by September", "mod": "intent" } ] },
+
+    { "id": "pc-030", "label": "TOO_EARLY", "about": "blocked deadline 40 days away",
+      "claims": [
+        { "id": "a1", "s": "conference talk", "sid": "C", "p": "deadline_for", "lit": "November 15" },
+        { "id": "a2", "s": "slide review", "sid": "S", "p": "blocks", "o": "conference talk", "oid": "C" } ] },
+    { "id": "pc-031", "label": "TOO_EARLY", "about": "unblocked deadline 9 days away (only reminders within 3 days)",
+      "claims": [ { "id": "a1", "s": "lab manual", "sid": "M", "p": "deadline_for", "lit": "October 15" } ] },
+    { "id": "pc-032", "label": "TOO_EARLY", "about": "dispute created 5 minutes ago (let it settle)", "now": "2026-10-06T10:05:00Z",
+      "claims": [
+        { "id": "a1", "s": "budget", "sid": "B", "p": "has_status", "lit": "approved", "state": "disputed", "said": "2026-10-06T10:00:00Z" },
+        { "id": "a2", "s": "budget", "sid": "B", "p": "has_status", "lit": "pending", "state": "disputed", "said": "2026-10-06T10:00:00Z" } ] },
+
+    { "id": "pc-040", "label": "TOO_LATE", "about": "deadline yesterday, still blocked",
+      "claims": [
+        { "id": "a1", "s": "visa form", "sid": "V", "p": "deadline_for", "lit": "October 5" },
+        { "id": "a2", "s": "employer letter", "sid": "E", "p": "blocks", "o": "visa form", "oid": "V" } ] },
+    { "id": "pc-041", "label": "TOO_LATE", "about": "unblocked deadline last week",
+      "claims": [ { "id": "a1", "s": "quarterly report", "sid": "Q", "p": "deadline_for", "lit": "September 30" } ] },
+
+    { "id": "pc-050", "label": "REDUNDANT", "about": "same world state already raised",
+      "historySameState": true,
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" } ] },
+    { "id": "pc-051", "label": "REDUNDANT", "about": "same subject raised 2 hours ago at the same severity (cooldown)",
+      "history": [ { "cooldownKey": "deadline_at_risk:L", "idempotencyKey": "older-state", "severity": "high", "status": "delivered", "hoursAgo": 2, "triggerType": "deadline_at_risk" } ],
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" },
+        { "id": "a3", "s": "QA sign-off", "sid": "Q", "p": "blocks", "o": "iOS launch", "oid": "L" } ] },
+    { "id": "pc-052", "label": "REDUNDANT", "about": "the user dismissed this exact reminder yesterday",
+      "history": [ { "cooldownKey": "deadline_at_risk:L", "idempotencyKey": "older", "severity": "high", "status": "dismissed", "userResponse": "dismissed", "hoursAgo": 100, "respondedHoursAgo": 24, "triggerType": "deadline_at_risk" } ],
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" } ] },
+    { "id": "pc-053", "label": "REDUNDANT", "about": "daily cap of 3 already reached",
+      "history": [
+        { "cooldownKey": "x1", "idempotencyKey": "h1", "severity": "medium", "status": "delivered", "hoursAgo": 1, "triggerType": "deadline_approaching" },
+        { "cooldownKey": "x2", "idempotencyKey": "h2", "severity": "medium", "status": "delivered", "hoursAgo": 3, "triggerType": "deadline_approaching" },
+        { "cooldownKey": "x3", "idempotencyKey": "h3", "severity": "medium", "status": "delivered", "hoursAgo": 5, "triggerType": "deadline_approaching" } ],
+      "claims": [
+        { "id": "a1", "s": "tax filing", "sid": "T", "p": "deadline_for", "lit": "October 10" },
+        { "id": "a2", "s": "missing receipts", "sid": "M", "p": "blocks", "o": "tax filing", "oid": "T" } ] },
+
+    { "id": "pc-060", "label": "INSUFFICIENT_EVIDENCE", "about": "the blocker is an INFERENCE, not something the user said",
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L", "ex": "e9-pattern-inference" } ] },
+    { "id": "pc-061", "label": "INSUFFICIENT_EVIDENCE", "about": "the deadline is only an intent",
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12", "mod": "intent" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" } ] },
+    { "id": "pc-062", "label": "INSUFFICIENT_EVIDENCE", "about": "the blocker is hypothetical",
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L", "mod": "hypothetical" } ] },
+    { "id": "pc-063", "label": "INSUFFICIENT_EVIDENCE", "about": "a deadline with no resolvable day (month only)",
+      "claims": [
+        { "id": "a1", "s": "thesis", "sid": "T", "p": "deadline_for", "lit": "in October" },
+        { "id": "a2", "s": "data cleaning", "sid": "D", "p": "blocks", "o": "thesis", "oid": "T" } ] },
+    { "id": "pc-064", "label": "INSUFFICIENT_EVIDENCE", "about": "a single disputed claim is not a contradiction pair",
+      "claims": [ { "id": "a1", "s": "You", "sid": "SELF", "p": "works_at", "o": "Acme", "oid": "A", "state": "disputed" } ] },
+
+    { "id": "pc-070", "label": "WRONG_STATE", "about": "the blocker was resolved after it was reported",
+      "claims": [
+        { "id": "a1", "s": "Portland opening", "sid": "O", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "health permit", "sid": "H", "p": "blocks", "o": "Portland opening", "oid": "O" },
+        { "id": "a3", "s": "health permit", "sid": "H", "p": "has_status", "lit": "came through", "said": "2026-10-03T09:00:00Z" } ] },
+    { "id": "pc-071", "label": "WRONG_STATE", "about": "the blocking claim was superseded",
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L", "state": "superseded" } ] },
+    { "id": "pc-072", "label": "WRONG_STATE", "about": "the user NEGATED the blocker later",
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" },
+        { "id": "a3", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L", "pol": "negated", "said": "2026-10-04T09:00:00Z" } ] },
+    { "id": "pc-073", "label": "WRONG_STATE", "about": "old deadline superseded by a far-away one; old would have fired",
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 10", "state": "superseded", "supersededBy": "a2", "validTo": "2026-09-01T00:00:00Z" },
+        { "id": "a2", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "January 15", "said": "2026-09-01T00:00:00Z" },
+        { "id": "a3", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" } ] },
+    { "id": "pc-074", "label": "WRONG_STATE", "about": "a newer status replaced the 'waiting on' status",
+      "claims": [
+        { "id": "a1", "s": "Brava rebrand", "sid": "B", "p": "deadline_for", "lit": "October 9" },
+        { "id": "a2", "s": "Brava rebrand", "sid": "B", "p": "has_status", "lit": "waiting on their final logo feedback" },
+        { "id": "a3", "s": "Brava rebrand", "sid": "B", "p": "has_status", "lit": "in final review", "said": "2026-10-04T09:00:00Z" } ] },
+
+    { "id": "pc-080", "label": "WRONG_OWNER", "about": "the blocker claim belongs to ANOTHER owner",
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L", "owner": "someone-else" } ] },
+    { "id": "pc-081", "label": "WRONG_OWNER", "about": "the deadline claim belongs to another owner",
+      "claims": [
+        { "id": "a1", "s": "tax filing", "sid": "T", "p": "deadline_for", "lit": "October 10", "owner": "someone-else" },
+        { "id": "a2", "s": "missing receipts", "sid": "M", "p": "blocks", "o": "tax filing", "oid": "T" } ] },
+
+    { "id": "pc-090", "label": "UNHELPFUL", "about": "user turned interventions off",
+      "prefs": { "enabled": false },
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" } ] },
+    { "id": "pc-091", "label": "UNHELPFUL", "about": "low-severity reminder (3 days, unblocked) below the default minimum",
+      "claims": [ { "id": "a1", "s": "dentist forms", "sid": "D", "p": "deadline_for", "lit": "October 9" } ] },
+    { "id": "pc-092", "label": "UNHELPFUL", "about": "the user dismissed this trigger type 3 times this month and never accepted",
+      "history": [
+        { "cooldownKey": "deadline_at_risk:X1", "idempotencyKey": "d1", "severity": "high", "status": "dismissed", "userResponse": "dismissed", "hoursAgo": 300, "respondedHoursAgo": 290, "triggerType": "deadline_at_risk" },
+        { "cooldownKey": "deadline_at_risk:X2", "idempotencyKey": "d2", "severity": "high", "status": "dismissed", "userResponse": "dismissed", "hoursAgo": 200, "respondedHoursAgo": 190, "triggerType": "deadline_at_risk" },
+        { "cooldownKey": "deadline_at_risk:X3", "idempotencyKey": "d3", "severity": "high", "status": "dismissed", "userResponse": "dismissed", "hoursAgo": 100, "respondedHoursAgo": 90, "triggerType": "deadline_at_risk" } ],
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" } ] },
+    { "id": "pc-093", "label": "UNHELPFUL", "about": "a non-single-valued dispute (preferences) is low severity",
+      "claims": [
+        { "id": "a1", "s": "You", "sid": "SELF", "p": "prefers", "lit": "tea", "state": "disputed", "said": "2026-10-04T09:00:00Z" },
+        { "id": "a2", "s": "You", "sid": "SELF", "p": "prefers", "lit": "coffee", "state": "disputed", "said": "2026-10-04T10:00:00Z" } ] },
+
+    { "id": "pc-100", "label": "VALID_INTERVENTION", "expectType": "deadline_at_risk", "about": "escalation: raised at medium 4 days ago... now high (≤7 days) breaks the cooldown",
+      "history": [ { "cooldownKey": "deadline_at_risk:L", "idempotencyKey": "older-state", "severity": "medium", "status": "delivered", "hoursAgo": 30, "triggerType": "deadline_at_risk" } ],
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" } ] },
+    { "id": "pc-101", "label": "HIGH_VALUE", "expectType": "deadline_at_risk", "about": "two deadlines: only the at-risk one fires, the far one stays quiet",
+      "claims": [
+        { "id": "a1", "s": "iOS launch", "sid": "L", "p": "deadline_for", "lit": "October 12" },
+        { "id": "a2", "s": "payment integration", "sid": "P", "p": "blocks", "o": "iOS launch", "oid": "L" },
+        { "id": "a3", "s": "annual review", "sid": "A", "p": "deadline_for", "lit": "December 20" } ] }
+  ]
+}

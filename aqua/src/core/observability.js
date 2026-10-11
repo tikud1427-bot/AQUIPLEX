@@ -95,6 +95,9 @@ const e6 = {
   emptyTurns: 0,   // completed cleanly and admitted nothing
   segments: 0, gated: 0, called: 0, cached: 0, errors: 0,
   parsed: 0, admitted: 0, proposed: 0, discarded: 0,
+  // S6½ (2026-10-04): references the minter refuses, by outcome. Ambiguous and
+  // unresolved are claims NOT committed — the cost of never guessing.
+  refResolved: 0, refAmbiguous: 0, refUnresolved: 0,
   totalMs: 0,
 };
 
@@ -143,6 +146,12 @@ export function logE6Turn({ ownerId = null, conversationId = null, result = null
       e6[k] += Number(s[k] ?? 0);
     }
     if (!Number(s.admitted ?? 0)) e6.emptyTurns += 1;
+    const refs = s.s6?.references;
+    if (refs) {
+      e6.refResolved += Number(refs.resolved ?? 0);
+      e6.refAmbiguous += Number(refs.ambiguous ?? 0);
+      e6.refUnresolved += Number(refs.unresolved ?? 0);
+    }
 
     const byGate = Object.keys(s.byGate ?? {}).length ? ` byGate=${JSON.stringify(s.byGate)}` : '';
     const models = (s.models ?? []).length ? ` models=${s.models.join(',')}` : '';
@@ -154,6 +163,7 @@ export function logE6Turn({ ownerId = null, conversationId = null, result = null
         + ` s6.byTier=${JSON.stringify(s.s6.byTier ?? {})}`
         + (s.s6.minted !== undefined ? ` s6.minted=${s.s6.minted} s6.reused=${s.s6.reused}` : '')
         + (s.s6.refused && Object.keys(s.s6.refused).length ? ` s6.refused=${JSON.stringify(s.s6.refused)}` : '')
+        + (s.s6.references ? ` s6.refs=${s.s6.references.resolved}/${s.s6.references.ambiguous}/${s.s6.references.unresolved}` : '')
       : '';
     console.log(
       `[E6] ${at} segments=${s.segments ?? 0} gated=${s.gated ?? 0} called=${s.called ?? 0} `
@@ -162,6 +172,56 @@ export function logE6Turn({ ownerId = null, conversationId = null, result = null
       + `stages=${(result.stagesRun ?? []).join(',') || 'none'} `
       + `entities=${result.entityResolution ?? '?'}${s6}${models}${byGate}`);
   } catch { /* observability must never break the stage it observes */ }
+}
+
+// ── Revision voice + J3 consolidation counters (2026-10-04) ─────────────────
+// Labels are fixed internal enumerations (reasons from canonicalRevisionVoice /
+// the facade), never content. Published cross-process via processMetrics.js.
+const revisionVoice = { considered: 0, emitted: 0, suppressed: {}, skipped: {} };
+const j3 = { scheduled: 0, runs: 0, groups: 0, merged: 0, raced: 0, failures: 0, evidenceLinked: 0 };
+const REASON = /^[a-z0-9-]{1,40}$/;
+
+/**
+ * considered(n)       candidate transitions examined on a turn
+ * emitted()           a revision directive was injected
+ * suppressed(reason)  a candidate judged not raisable (echo, correction, stale,
+ *                     missing statement, lost-race) — decided, not deferred
+ * skipped(reason)     the turn never selected (flag-off, unsuitable-turn,
+ *                     no-candidates, error)
+ */
+export function recordRevisionVoice(event, { reason = null, n = 1 } = {}) {
+  try {
+    const k = Math.max(0, Number(n) || 0);
+    if (event === 'considered') revisionVoice.considered += k;
+    else if (event === 'emitted') revisionVoice.emitted += k;
+    else if (event === 'suppressed' || event === 'skipped') {
+      const r = REASON.test(String(reason)) ? String(reason) : 'other';
+      revisionVoice[event][r] = (revisionVoice[event][r] ?? 0) + k;
+    }
+  } catch { /* never break the turn */ }
+}
+
+export function recordJ3(field, n = 1) {
+  try { if (field in j3) j3[field] += Math.max(0, Number(n) || 0); } catch { /* never */ }
+}
+
+// ── Proactive intelligence counters (Phase 4, 2026-10-06) ───────────────────
+// Fixed keys plus `suppressed_<reason>` (reasons are policy.js enumerations).
+const proactive = { evaluations: 0, candidates: 0, fired: 0, suppressed: 0, redundant: 0, delivered: 0,
+  accepted: 0, dismissed: 0, corrected: 0, snoozed: 0, expired: 0, errors: 0, scheduled: 0 };
+export function recordProactive(field, n = 1) {
+  try {
+    const k = String(field);
+    if (!/^[a-z0-9_]{1,48}$/.test(k)) return;
+    if (!(k in proactive) && !k.startsWith('suppressed_')) return;
+    proactive[k] = (proactive[k] ?? 0) + Math.max(0, Number(n) || 0);
+  } catch { /* never */ }
+}
+export function _resetProactiveMetrics() { for (const k of Object.keys(proactive)) proactive[k] = 0; }
+
+export function _resetVoiceAndJ3Metrics() {
+  revisionVoice.considered = 0; revisionVoice.emitted = 0; revisionVoice.suppressed = {}; revisionVoice.skipped = {};
+  for (const k of Object.keys(j3)) j3[k] = 0;
 }
 
 /** Test seam — module-level counters need a reset between assertions. */
@@ -656,6 +716,10 @@ export function getMetrics() {
     // flag is set to. `turns` is the denominator: turns > 0 with admitted = 0
     // is a measured silence; turns = 0 is a stage that never ran.
     e6: { ...e6, avgMs: e6.turns ? +(e6.totalMs / e6.turns).toFixed(2) : 0 },
+    revisionVoice: { considered: revisionVoice.considered, emitted: revisionVoice.emitted,
+      suppressed: { ...revisionVoice.suppressed }, skipped: { ...revisionVoice.skipped } },
+    j3: { ...j3 },
+    proactive: { ...proactive },
     totalRequests:  metrics.totalRequests,
     totalSuccesses: metrics.totalSuccesses,
     totalFailures:  metrics.totalFailures,

@@ -2,7 +2,7 @@
  * AQUA Provider Errors — Shared Error Classification (v5)
  *
  * Single source of truth for "what kind of failure was this", consumed by
- * gemini.js / groq.js / openrouter.js (per-model routing) AND by router.js
+ * gemini.js / groq.js / openrouter.js / nvidia.js (per-model routing) AND by router.js
  * (per-provider routing, health accounting, backoff, and the retryable-vs-
  * terminal decision that keeps a transient blip from becoming an HTTP 500).
  *
@@ -71,6 +71,7 @@ const NOT_FOUND_HINTS = [
 ];
 const DEPRECATED_HINTS = [
   'deprecated', 'decommissioned', 'has been retired', 'no longer available', 'is retired',
+  'end of life', 'end-of-life', // NVIDIA's wording for retired hosted models
 ];
 
 // Rate limit / quota by message (only consulted when there is no explicit status).
@@ -198,7 +199,7 @@ export function classifyProviderError(err) {
 
   if (!err) return base('unknown', null);
   if (err.message === 'TIMEOUT')          return base('timeout', null);
-  if (err.message === 'INVALID_RESPONSE') return base('invalid_response', null);
+  if (err.message === 'INVALID_RESPONSE' || err.code === 'INVALID_RESPONSE') return base('invalid_response', null);
 
   const status = extractStatus(err);
   const msg    = String(err.message ?? '').toLowerCase();
@@ -216,6 +217,7 @@ export function classifyProviderError(err) {
   // 3. Explicit status codes win over message-sniffing (except deprecation above).
   if (status === 429) return base('rate_limit', status);
   if (status === 401 || status === 403) return base('auth', status);
+  if (status === 410) return base('model_not_found', status); // Gone — a retired model id
   if (status === 404) {
     // 404 is ambiguous on OpenRouter free tier: it's returned both for a
     // genuinely-wrong model id AND for "no endpoints" transient capacity.

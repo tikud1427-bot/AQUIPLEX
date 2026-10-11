@@ -22,6 +22,7 @@
  * explicit query param is unambiguous and encodes trivially on the client.
  */
 import express from 'express';
+import { ok, fail, ErrorCodes } from './envelope.js';
 import fs from 'fs';
 import path from 'path';
 import {
@@ -38,15 +39,17 @@ const router = express.Router();
 
 // ── Ownership guard (404-uniform, conversations.js pattern) ───────────────────
 
+const notFound = (res) => fail(res, ErrorCodes.NOT_FOUND, 'Artifact not found');
+
 function assertOwner(req, res, id) {
   const lite = getArtifactLite(id);
   if (!lite) {
-    res.status(404).json({ success: false, error: 'Artifact not found' });
+    notFound(res);
     return null;
   }
   const scopeUser = req.aquaUserId ?? null;
   if (scopeUser && lite.ownerId !== ownerForUser(scopeUser)) {
-    res.status(404).json({ success: false, error: 'Artifact not found' });
+    notFound(res);
     return null;
   }
   return lite;
@@ -67,8 +70,7 @@ router.get('/', (req, res) => {
     conversationId: req.query.conversationId ?? null,
     workspaceId:    req.query.workspaceId ?? null,
   });
-  res.json({
-    success: true,
+  ok(res, {
     artifacts: entries.map(e => ({ ...e, downloadUrl: `/artifacts/${e.id}/download` })),
   });
 });
@@ -78,8 +80,8 @@ router.get('/', (req, res) => {
 router.get('/:id', async (req, res) => {
   if (!assertOwner(req, res, req.params.id)) return;
   const manifest = await getArtifact(req.params.id);
-  if (!manifest) return res.status(404).json({ success: false, error: 'Artifact not found' });
-  res.json({ success: true, artifact: { ...publicManifest(manifest), spec: manifest.spec, summary: manifest.summary } });
+  if (!manifest) return notFound(res);
+  ok(res, { artifact: { ...publicManifest(manifest), spec: manifest.spec, summary: manifest.summary } });
 });
 
 // ── Download (single file raw, multi-file zip) ────────────────────────────────
@@ -87,7 +89,7 @@ router.get('/:id', async (req, res) => {
 router.get('/:id/download', async (req, res) => {
   if (!assertOwner(req, res, req.params.id)) return;
   const manifest = await getArtifact(req.params.id);
-  if (!manifest) return res.status(404).json({ success: false, error: 'Artifact not found' });
+  if (!manifest) return notFound(res);
 
   const version = req.query.version ? Number(req.query.version) : manifest.version;
 
@@ -104,7 +106,7 @@ router.get('/:id/download', async (req, res) => {
       fs.createReadStream(abs)
         .on('error', (err) => {
           console.warn(`[ARTIFACT] download stream failed id=${manifest.id}: ${err.message}`);
-          if (!res.headersSent) res.status(500).json({ success: false, error: 'Download failed' });
+          if (!res.headersSent) fail(res, ErrorCodes.INTERNAL, 'Download failed');
           else res.destroy(err);
         })
         .pipe(res);
@@ -129,7 +131,7 @@ router.get('/:id/download', async (req, res) => {
     res.send(archive);
   } catch (err) {
     console.warn(`[ARTIFACT] download failed id=${req.params.id}: ${err.message}`);
-    if (!res.headersSent) res.status(404).json({ success: false, error: 'Artifact not found' });
+    if (!res.headersSent) notFound(res);
   }
 });
 
@@ -138,10 +140,10 @@ router.get('/:id/download', async (req, res) => {
 router.get('/:id/file', async (req, res) => {
   if (!assertOwner(req, res, req.params.id)) return;
   const relPath = req.query.path;
-  if (!relPath) return res.status(400).json({ success: false, error: 'Query param "path" is required' });
+  if (!relPath) return fail(res, ErrorCodes.BAD_REQUEST, 'Query param "path" is required');
 
   const manifest = await getArtifact(req.params.id);
-  if (!manifest) return res.status(404).json({ success: false, error: 'Artifact not found' });
+  if (!manifest) return notFound(res);
   const version = req.query.version ? Number(req.query.version) : manifest.version;
 
   try {
@@ -151,10 +153,10 @@ router.get('/:id/file', async (req, res) => {
     res.setHeader('Content-Type', meta?.mime || 'application/octet-stream');
     res.setHeader('Content-Disposition', contentDisposition('attachment', path.basename(relPath)));
     fs.createReadStream(abs)
-      .on('error', () => { if (!res.headersSent) res.status(404).json({ success: false, error: 'Artifact not found' }); })
+      .on('error', () => { if (!res.headersSent) notFound(res); })
       .pipe(res);
   } catch {
-    res.status(404).json({ success: false, error: 'Artifact not found' });
+    notFound(res);
   }
 });
 
@@ -166,10 +168,10 @@ const TEXT_MIME_RE = /^(text\/|application\/(json|yaml|xml|sql|javascript))/;
 router.get('/:id/preview', async (req, res) => {
   if (!assertOwner(req, res, req.params.id)) return;
   const relPath = req.query.path;
-  if (!relPath) return res.status(400).json({ success: false, error: 'Query param "path" is required' });
+  if (!relPath) return fail(res, ErrorCodes.BAD_REQUEST, 'Query param "path" is required');
 
   const manifest = await getArtifact(req.params.id);
-  if (!manifest) return res.status(404).json({ success: false, error: 'Artifact not found' });
+  if (!manifest) return notFound(res);
   const version = req.query.version ? Number(req.query.version) : manifest.version;
 
   try {
@@ -177,12 +179,11 @@ router.get('/:id/preview', async (req, res) => {
     // as /download and /file (P6: these three routes now behave identically).
     const meta = getVersionFileMetas(manifest, version).find(f => f.path === relPath);
     if (!meta || !TEXT_MIME_RE.test(meta.mime ?? '')) {
-      return res.json({ success: true, previewable: false });
+      return ok(res, { previewable: false });
     }
     const abs  = getFileAbsolutePath(manifest, relPath, version);
     const text = await fs.promises.readFile(abs, 'utf8');
-    res.json({
-      success: true,
+    ok(res, {
       previewable: true,
       path: relPath,
       version,
@@ -191,7 +192,7 @@ router.get('/:id/preview', async (req, res) => {
       truncated: text.length > PREVIEW_MAX,
     });
   } catch {
-    res.status(404).json({ success: false, error: 'Artifact not found' });
+    notFound(res);
   }
 });
 
@@ -203,8 +204,8 @@ router.get('/:id/preview', async (req, res) => {
 router.post('/:id/edit', async (req, res) => {
   if (!assertOwner(req, res, req.params.id)) return;
   const instruction = typeof req.body?.instruction === 'string' ? req.body.instruction.trim() : '';
-  if (!instruction) return res.status(400).json({ success: false, error: 'Body field "instruction" is required' });
-  if (instruction.length > 4_000) return res.status(400).json({ success: false, error: '"instruction" exceeds 4000 chars' });
+  if (!instruction) return fail(res, ErrorCodes.BAD_REQUEST, 'Body field "instruction" is required');
+  if (instruction.length > 4_000) return fail(res, ErrorCodes.BAD_REQUEST, '"instruction" exceeds 4000 chars');
 
   try {
     const r = await editArtifact({
@@ -213,16 +214,17 @@ router.post('/:id/edit', async (req, res) => {
       requestId: `api-${req.params.id.slice(0, 8)}-${Date.now()}`,
       conversationId: getArtifactLite(req.params.id)?.conversationId,
     });
-    res.json({
-      success: true,
+    ok(res, {
       artifact: publicManifest(r.manifest),
       changed: r.changed,
       summary: composeArtifactEditSummary(publicManifest(r.manifest), r.changed),
     });
   } catch (err) {
     console.warn(`[ARTIFACT] API edit failed id=${req.params.id}: ${err.message}`);
-    res.status(err.code === 'ARTIFACT_NOT_FOUND' ? 404 : 422)
-      .json({ success: false, error: err.message, code: err.code ?? 'ARTIFACT_EDIT_FAILED' });
+    // The STATUS comes from the taxonomy; the `code` stays the engine's own domain
+    // code (ARTIFACT_NOT_FOUND, ...) — see artifactsEnvelope.test.js for why.
+    fail(res, err.code === 'ARTIFACT_NOT_FOUND' ? ErrorCodes.NOT_FOUND : ErrorCodes.UNPROCESSABLE,
+      err.message, { code: err.code ?? 'ARTIFACT_EDIT_FAILED' });
   }
 });
 
@@ -237,11 +239,11 @@ router.post('/:id/regenerate', async (req, res) => {
       requestId: `api-${req.params.id.slice(0, 8)}-${Date.now()}`,
       conversationId: getArtifactLite(req.params.id)?.conversationId,
     });
-    res.json({ success: true, artifact: publicManifest(r.manifest), changed: r.changed });
+    ok(res, { artifact: publicManifest(r.manifest), changed: r.changed });
   } catch (err) {
     console.warn(`[ARTIFACT] API regenerate failed id=${req.params.id}: ${err.message}`);
-    res.status(err.code === 'ARTIFACT_NOT_FOUND' ? 404 : 422)
-      .json({ success: false, error: err.message, code: err.code ?? 'ARTIFACT_REGEN_FAILED' });
+    fail(res, err.code === 'ARTIFACT_NOT_FOUND' ? ErrorCodes.NOT_FOUND : ErrorCodes.UNPROCESSABLE,
+      err.message, { code: err.code ?? 'ARTIFACT_REGEN_FAILED' });
   }
 });
 
@@ -250,10 +252,10 @@ router.post('/:id/regenerate', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   if (!assertOwner(req, res, req.params.id)) return;
   const title = typeof req.body?.title === 'string' ? req.body.title.trim() : '';
-  if (!title) return res.status(400).json({ success: false, error: 'Body field "title" is required' });
+  if (!title) return fail(res, ErrorCodes.BAD_REQUEST, 'Body field "title" is required');
   const manifest = await renameArtifact(req.params.id, title);
-  if (!manifest) return res.status(404).json({ success: false, error: 'Artifact not found' });
-  res.json({ success: true, artifact: publicManifest(manifest) });
+  if (!manifest) return notFound(res);
+  ok(res, { artifact: publicManifest(manifest) });
 });
 
 // ── Delete ────────────────────────────────────────────────────────────────────
@@ -261,7 +263,7 @@ router.patch('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   if (!assertOwner(req, res, req.params.id)) return;
   await deleteArtifact(req.params.id);
-  res.json({ success: true });
+  ok(res);
 });
 
 export default router;

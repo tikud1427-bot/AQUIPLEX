@@ -7,6 +7,13 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
+import { existsSync as tarExists } from 'fs';
+
+// On Windows the first `tar` on PATH is often MSYS GNU tar (Git Bash), which reads
+// `C:...` as `host:path` and fails. Windows ships bsdtar, which understands
+// drive letters; the property under test (a system tar reads our archive) holds.
+const WIN_TAR = 'C:/Windows/System32/tar.exe';
+const SYSTEM_TAR = process.platform === 'win32' && tarExists(WIN_TAR) ? WIN_TAR : 'tar';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -44,12 +51,12 @@ test('tar: system tar lists and extracts our archive byte-for-byte', () => {
   const tarPath = path.join(TMP, 'a.tar');
   fs.writeFileSync(tarPath, buf);
 
-  const listing = execFileSync('tar', ['-tf', tarPath], { encoding: 'utf8' }).trim().split('\n').sort();
+  const listing = execFileSync(SYSTEM_TAR, ['-tf', tarPath], { encoding: 'utf8' }).trim().split(/\r?\n/).sort();
   assert.deepEqual(listing, ['proj/README.md', 'proj/src/index.js', 'proj/src/lib/util.js', 'proj/tiny.txt']);
 
   const out = path.join(TMP, 'x1');
   fs.mkdirSync(out);
-  execFileSync('tar', ['-xf', tarPath, '-C', out]);
+  execFileSync(SYSTEM_TAR, ['-xf', tarPath, '-C', out]);
   for (const f of FILES) {
     assert.deepEqual(fs.readFileSync(path.join(out, 'proj', f.path)), f.buffer, f.path);
   }
@@ -60,7 +67,7 @@ test('tar.gz: gzip magic + system tar -tzf reads it', () => {
   assert.deepEqual([...buf.subarray(0, 2)], [0x1f, 0x8b]);
   const p = path.join(TMP, 'a.tar.gz');
   fs.writeFileSync(p, buf);
-  const listing = execFileSync('tar', ['-tzf', p], { encoding: 'utf8' });
+  const listing = execFileSync(SYSTEM_TAR, ['-tzf', p], { encoding: 'utf8' });
   assert.ok(listing.includes('proj/src/lib/util.js'));
 });
 
@@ -72,7 +79,7 @@ test('tar: >100-char paths split into ustar prefix and survive extraction', () =
   fs.writeFileSync(tp, buf);
   const out = path.join(TMP, 'x2');
   fs.mkdirSync(out);
-  execFileSync('tar', ['-xf', tp, '-C', out]);
+  execFileSync(SYSTEM_TAR, ['-xf', tp, '-C', out]);
   assert.equal(fs.readFileSync(path.join(out, 'p', deep), 'utf8'), 'deep');
 });
 
@@ -182,6 +189,6 @@ test('engine e2e: project turn stores the tree with tar.gz packaging', async () 
   assert.equal(ARCHIVE_META[onDisk.packaging].mime, 'application/gzip');
   const ap = path.join(TMP, 'dl.tar.gz');
   fs.writeFileSync(ap, archive);
-  const listing = execFileSync('tar', ['-tzf', ap], { encoding: 'utf8' });
+  const listing = execFileSync(SYSTEM_TAR, ['-tzf', ap], { encoding: 'utf8' });
   assert.ok(listing.includes('todo-api/src/index.js'));
 });

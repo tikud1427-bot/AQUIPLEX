@@ -14,8 +14,19 @@ import { spawn } from 'node:child_process';
 import path from 'node:path';
 import process from 'node:process';
 
-const AQUA_ROOT = path.resolve(new URL('.', import.meta.url).pathname, '..');
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
+const AQUA_ROOT = path.resolve(fileURLToPath(new URL('.', import.meta.url)), '..');
 const PLATFORM_ROOT = path.resolve(AQUA_ROOT, '..');
+
+// The server loads the platform .env itself (index.js); the worker does not,
+// and runs from aqua/ where there is no .env. Without this the worker of an
+// .env-configured deployment starts with no provider keys: embeddings are
+// silently disabled and every claim.embedding.v1 job dead-letters, while the
+// server looks healthy (found 2026-10-05 validating start:production).
+// Loading it here, without override, gives both children the same config;
+// values already in the process environment (a host dashboard) still win.
+dotenv.config({ path: path.join(PLATFORM_ROOT, '.env'), quiet: true });
 const children = new Map();
 let stopping = false;
 

@@ -64,3 +64,33 @@ test('rerunning an already-applied supersession is idempotent', async () => {
 });
 
 console.log('E9 contradiction worker: 3/3 assertions passed');
+
+// D6: the commit keeps the revision marker in the evidence locator; the worker
+// must read it from there (claimWithEvidence returns evidence rows, not flags).
+test('a revision recorded in the evidence locator supersedes the older claim (polarity flip on a many-valued predicate)', async () => {
+  const claims = new Map([
+    ['go', base('go', { predicate: 'uses', object: { entity: 'Go', entityId: 'e:go' } })],
+    ['not-go', base('not-go', { predicate: 'uses', polarity: 'negated', object: { entity: 'Go', entityId: 'e:go' },
+      assertedAt: '2026-09-18T11:00:00Z', evidence: [{ role: 'primary', locator: { segmentStart: 0, segmentEnd: 30, revision: true } }] })],
+  ]);
+  const transitions = [];
+  const out = await runClaimContradictionJob({ ownerId: 'owner:a', payload: { incomingClaimId: 'not-go', existingClaimId: 'go' } }, {
+    loadClaim: async id => claims.get(id),
+    applyTransition: async input => { transitions.push(input); return input; },
+  });
+  assert.equal(out.action, CONTRADICTION_ACTION.SUPERSEDE_OLDER);
+  assert.deepEqual(transitions.map(x => [x.targetId, x.toState, x.supersededBy]), [['go', 'superseded', 'not-go']]);
+});
+
+test('the same flip WITHOUT a revision marker is still disputed', async () => {
+  const claims = new Map([
+    ['go', base('go', { predicate: 'uses', object: { entity: 'Go', entityId: 'e:go' } })],
+    ['not-go', base('not-go', { predicate: 'uses', polarity: 'negated', object: { entity: 'Go', entityId: 'e:go' }, assertedAt: '2026-09-18T11:00:00Z' })],
+  ]);
+  const transitions = [];
+  const out = await runClaimContradictionJob({ ownerId: 'owner:a', payload: { incomingClaimId: 'not-go', existingClaimId: 'go' } }, {
+    loadClaim: async id => claims.get(id),
+    applyTransition: async input => { transitions.push(input); return input; },
+  });
+  assert.equal(out.action, CONTRADICTION_ACTION.DISPUTED);
+});

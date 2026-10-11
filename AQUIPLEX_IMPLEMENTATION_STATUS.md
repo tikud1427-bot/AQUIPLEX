@@ -1,3 +1,5 @@
+> **Superseded (2026-10-04).** The current, measured status is `PATCH_2026-10-09.md`: E1–E12 verdicts, the live World-Model Lift result, fresh E6 numbers and open decisions. The text below is the 2026-09-28 snapshot and is kept for history.
+
 # AQUIPLEX Blueprint V2 — Implementation Status
 
 Date: 2026-09-28

@@ -63,7 +63,7 @@ import { uusEnabled }             from '../understanding/flags.js';
 import { UNDERSTANDING_TASK, classifyForMode, isInterviewTurn } from '../understanding/interviewMode.js';
 import { directive as interviewSteer } from '../understanding/interview.js';
 import { beliefsForCoverage, goalsForCoverage } from '../understanding/mindView.js';
-import { createContext, logMemoryEvent, logPlanEvent, logIntelligenceEvent, logOrchestratorEvent, logVerificationEvent, logCognitionEvent } from '../core/observability.js';
+import { createContext, logCompletion, logMemoryEvent, logPlanEvent, logIntelligenceEvent, logOrchestratorEvent, logVerificationEvent, logCognitionEvent } from '../core/observability.js';
 import { createExecutionPlan }    from '../core/executionPlanner.js';
 import { getReasoningStrategy }   from '../core/reasoningStrategy.js';
 import { runIntelligencePipeline } from '../intelligence/internalIntelligenceEngine.js';
@@ -92,6 +92,7 @@ import {
 } from '../memory/conversationStore.js';
 import { resolveOwner, memoryObserve, memoryRetrieve, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
 import * as Brain from '../brain/index.js';
+import { proactiveDirectiveForTurn } from '../brain/proactive/index.js';
 import { scorePairs as crossEncoderScorePairs } from '../brain/contextEngine/crossEncoderLocal.js';
 import { runPostTurn } from './turnPostProcess.js';
 import { formatCitation } from '../files/evidence.js';
@@ -508,10 +509,17 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // ── 3. Retrieve — the ONE retrieval pipeline (unified engine) ───────────────
   // Ranked facts + cognitive state + file memory under a single token
   // budget → one memoryBlock for the prompt. Smallest high-quality context.
+  // E10 read mode (Brain.canonicalReadMode): 'authoritative' is the default —
+  // the canonical World Model answers, legacy identity/regex facts only fill
+  // gaps it does not contradict; 'canonical' = no legacy user memory; 'legacy'
+  // = rollback.
+  const readMode = Brain.canonicalReadMode();
   const retrieved = memoryRetrieve(memoryOwner, {
     query: userMessage, taskType, factLimit: 10, requestId,
     semanticScores: await semanticScoresP,   // Phase 2: resolved query embedding (null if unavailable)
     fileChunks: await fileChunksP,           // Phase D: uploaded-content chunks ([] if unavailable)
+    legacyUserMemory: readMode === 'legacy' ? true : readMode === 'authoritative' ? 'gapfill' : false,
+    legacyVeto: readMode === 'authoritative' ? await Brain.legacyVetoFor(memoryOwner) : null,
   });
   const relevantFacts = retrieved.relevantFacts;
   const memoryBlock   = retrieved.block;
@@ -595,7 +603,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     const useCrossEncoder = Brain.contextV2Active() && String(process.env.AQUA_CROSS_ENCODER ?? '').toLowerCase() === 'on';
     const knowledge = Brain.contextV2Active()
       ? await Brain.assembleContextAsync(memoryOwner, userMessage, floorRetrieve, {
-          limit: 8, plan: cognition.plan, taskType, formatCitation,
+          limit: 8, plan: cognition.plan, taskType, formatCitation, conversationId,
           // E7 canonical dense lane: these scores are keyed by the canonical
           // claim retrieval identity and hydrated once at this seam.
           semanticScores: await canonicalSemanticP,
@@ -701,10 +709,18 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // is never worth failing a turn over. See brain/reflectionV2/revisionVoice.js.
   let revisionDirective = '';
   try {
-    revisionDirective = Brain.revisionDirectiveFor(memoryOwner, { taskType, mode });
+    revisionDirective = await Brain.revisionDirectiveForTurn(memoryOwner, { taskType, mode, conversationId });
   } catch { revisionDirective = ''; }
 
-  const reasoningDirective = [reasoning.directive, cognition.directive, interviewDirective, revisionDirective].filter(Boolean).join('\n');
+  // Phase 4 — at most ONE proactive intervention per turn (claimed with CAS,
+  // so it is raised once), never on identity or interview turns. Empty unless
+  // AQUA_PROACTIVE=on and the policy fired something deliverable. Fail-open.
+  let proactiveDirective = '';
+  if (memoryOwner && !identityIntent.isSelf && !isInterviewTurn(mode)) {
+    try { proactiveDirective = await proactiveDirectiveForTurn(memoryOwner); } catch { proactiveDirective = ''; }
+  }
+
+  const reasoningDirective = [reasoning.directive, cognition.directive, interviewDirective, revisionDirective, proactiveDirective].filter(Boolean).join('\n');
   const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoningDirective, combinedContext, intelligence.synthesis.text, identityIntent, searchContext);
 
   // ── 7. Build context window (short-term message history) ─────────────────────
@@ -791,6 +807,22 @@ async function runVerification({ orchestration, userMessage, draftAnswer, taskTy
 }
 
 /** Diagnostics payload — identical shape between /chat JSON and /chat/stream `done`. */
+const CLAIM_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** Canonical claims used for this answer → user-facing correction references. Bounded (G6). */
+export function worldModelClaimRefs(items, max = 12) {
+  return (Array.isArray(items) ? items : [])
+    .filter(i => i?.kind === 'fact' && CLAIM_ID_RE.test(String(i.id ?? '')))
+    .slice(0, max)
+    .map(i => ({
+      claimId: String(i.id),
+      statement: i.statement ?? null,
+      understood: i.understood ?? null,
+      disputed: !!i.disputed,
+      correct: `/brain/claims/${encodeURIComponent(String(i.id))}/correct`,
+      history: `/brain/claims/${encodeURIComponent(String(i.id))}/history`,
+    }));
+}
+
 function buildResponsePayload({
   requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
   promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
@@ -848,6 +880,16 @@ function buildResponsePayload({
     },
 
     mind: prep?.mind ?? { observedSignals: 0, goalsTouched: 0, contextInjected: false, contextUsed: {} },
+
+    // CORRECTION REFERENCES (Phase 3, 2026-10-06). Every canonical World-Model
+    // claim this answer was grounded in, with the endpoint that corrects it
+    // and the one that shows its history — so "that's wrong" can always be
+    // routed to the canonical write path for the exact claim Aqua relied on.
+    // Absent when no canonical claim was used (payload unchanged).
+    ...(() => {
+      const claims = worldModelClaimRefs(prep?.knowledgeItems);
+      return claims.length ? { worldModel: { claims } } : {};
+    })(),
 
     plan: {
       complexity:           plan.complexity,
@@ -1142,9 +1184,12 @@ router.post('/', async (req, res) => {
     });
 
     recordTurnCost(costLedger.summary());
+    logCompletion(ctx, { taskType, classifierConfidence: confidence, promptModules,
+      responseLength: finalAnswer.length, selectedProvider: result.provider, finalLatencyMs: result.latency });
     return res.json(payload);
   } catch (err) {
     console.error('[CHAT] Request failed:', err.message);
+    logCompletion(ctx, { error: err });
     // P1 (freemium trust) — usageGuard deducted credits on entry; a failed
     // generation must give them back. refund() is idempotent-safe upstream.
     req.creditContext?.refund?.().catch?.(() => {});
@@ -1455,6 +1500,8 @@ router.post('/stream', async (req, res) => {
 
     console.log(`[CHAT] STREAM_DONE_SENT req=${requestId} conv=${conversationId} chars=${finalAnswer.length} provider=${result.provider} verificationRan=${!!verification.ran} revised=${!!verification.revised}`);
     send('done', payload);
+    logCompletion(ctx, { taskType, classifierConfidence: confidence, promptModules,
+      responseLength: finalAnswer.length, selectedProvider: result.provider, finalLatencyMs: result.latency });
 
     // ── 10b. Post-response bookkeeping — explicitly detached from the terminal
     // SSE event. The job registry gives the deferred work a shutdown-visible
@@ -1504,6 +1551,7 @@ router.post('/stream', async (req, res) => {
       // P1 (freemium trust) — deduct-on-entry + failed turn = refund.
       req.creditContext?.refund?.().catch?.(() => {});
       ctx.attempts ??= [];
+      logCompletion(ctx, { error: err });
       send('error', {
         error:         err?.message ?? 'Internal server error',
         recoverable:   true,

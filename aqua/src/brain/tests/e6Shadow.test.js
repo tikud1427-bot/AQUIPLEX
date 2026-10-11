@@ -168,6 +168,8 @@ describe('the promotion rule', () => {
     // these were added for, and a fixture that omits them is not the shape
     // `suite.metrics()` actually returns.
     positives: 160, labelled_claims: 167, n_cases_negation: 20,
+    // strict negation (2026-10-06): the suite always emits it now.
+    negation_polarity: 0.97,
   };
 
   test('the gate is the blueprint\'s, not one invented here', () => {
@@ -212,6 +214,22 @@ describe('the promotion rule', () => {
     // precision, not 95% — and the flattering denominator is the easy mistake.
     const v = evaluatePromotion({ ...perfect, false_positives: 10, negatives: 40 }, BASELINE);
     assert.ok(Math.abs(v.checks.find(c => c.name === 'precision').got - 0.75) < 1e-9);
+  });
+
+  test('NEGATION FLATTENING blocks: detected negations with an asserted twin do not promote', () => {
+    // detection_negation counts a case as handled if anything was emitted;
+    // negation_polarity also requires no asserted twin of the negated fact.
+    const v = evaluatePromotion({ ...perfect, detection_negation: 1, negation_polarity: 0.85 }, BASELINE);
+    assert.equal(v.checks.find(c => c.name === 'negation').pass, true);
+    assert.equal(v.checks.find(c => c.name === 'negation_polarity').pass, false);
+    assert.equal(v.promote, false);
+  });
+
+  test('a result file without negation_polarity is unmeasured, not passed', () => {
+    const { negation_polarity: _drop, ...old } = perfect;
+    const c = evaluatePromotion(old, BASELINE).checks.find(x => x.name === 'negation_polarity');
+    assert.equal(c.measured, false);
+    assert.equal(c.pass, false);
   });
 
   test('a missing metric counts as zero, never as a pass', () => {

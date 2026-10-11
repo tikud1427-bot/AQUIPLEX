@@ -69,6 +69,17 @@ export function parseEnvFile(text) {
  * Pure: takes entries, returns findings. The file reading and the exit code
  * live in main() so the judgement can be tested without a fixture on disk.
  */
+/** [gate, needs, why]: gate on + needs off = a silent degradation. */
+export const GATE_DEPENDENCIES = Object.freeze([
+  ['AQUA_E6', 'AQUA_SELF_ENTITY', 'first-person claims cannot resolve and are dropped (no-self-entity)'],
+  ['AQUA_RETRIEVAL_V3', 'AQUA_CONTEXT_V2', 'the canonical retrieval lanes only run inside the Context Engine'],
+  ['AQUA_CROSS_ENCODER', 'AQUA_CONTEXT_V2', 'the reranker only runs inside the Context Engine'],
+  ['AQUA_CANONICAL_READ', 'AQUA_E6', 'nothing writes the canonical store the read would come from'],
+  // Only the LEGACY ledger voice (explicit =on) voices reflection deltas; the
+  // canonical voice (default) reads Postgres lifecycle transitions instead.
+  ['AQUA_REVISION_VOICE', 'AQUA_REFLECT_V2', 'the legacy ledger voice (=on) has no reflection delta to voice', { explicitOnly: true }],
+]);
+
 export function lintEnv(entries) {
   const findings = [];
   const aqua = entries.filter(e => e.key.startsWith('AQUA_'));
@@ -93,6 +104,24 @@ export function lintEnv(entries) {
         level: 'error', key: f.name, line: byKey.get(f.name)?.line ?? 0,
         message: `set to "${f.raw}" but resolves to ${f.value}, the default — the read is \`${g.reads}\``,
         hint: `the value that changes behaviour is ${g.dflt === 'on' ? 'off' : 'on'}`,
+      });
+    }
+  }
+
+  // GATE DEPENDENCIES (2026-10-04): a gate that is on while a gate it needs is
+  // off degrades silently — e.g. E6 without the self entity drops EVERY
+  // first-person claim ("I work at X") as `no-self-entity`, with no error.
+  const resolved = Object.fromEntries(flagReport(Object.fromEntries(aqua.map(e => [e.key, e.value])))
+    .map(f => [f.name, f.value]));
+  for (const [gate, needs, why, opts = {}] of GATE_DEPENDENCIES) {
+    const active = opts.explicitOnly
+      ? String(byKey.get(gate)?.value ?? '').trim().toLowerCase() === 'on'
+      : resolved[gate] === 'on';
+    if (active && resolved[needs] !== 'on') {
+      findings.push({
+        level: 'warn', key: gate, line: byKey.get(gate)?.line ?? 0,
+        message: `${gate}=on but ${needs} is ${resolved[needs] ?? 'off'} — ${why}`,
+        hint: `set ${needs}=on, or turn ${gate} off`,
       });
     }
   }
@@ -168,6 +197,6 @@ async function main() {
   process.exit(errors ? 1 : 0);
 }
 
-if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('env-doctor.mjs')) {
+if (process.argv[1]?.endsWith('env-doctor.mjs')) {
   await main();
 }

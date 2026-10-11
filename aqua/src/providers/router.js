@@ -43,6 +43,7 @@ import { getTimeout }          from '../core/timeoutManager.js';
 import { generateGemini, streamGemini }         from './gemini.js';
 import { generateGroq, streamGroq }             from './groq.js';
 import { generateOpenRouter, streamOpenRouter } from './openrouter.js';
+import { generateNvidia, streamNvidia }         from './nvidia.js';
 import { getProviderPrior } from '../intelligence/learningLedger.js';
 import {
   classifyProviderError, describeError, createProviderError, ProviderError,
@@ -99,6 +100,19 @@ const QUALITY = {
     planning:              72, creative_writing:      72, file_analysis:         72,
     agent_task:            72, memory_recall:         70, memory_update:         68,
   },
+  // PRELIMINARY PRIOR — not measured. NVIDIA (openai/gpt-oss-20b) was added
+  // 2026-10 as an additional provider/fallback. These values sit deliberately
+  // at or below every incumbent's row so it never displaces a measured primary
+  // on static quality alone; it still ranks normally on health. Replace with
+  // benchmark-derived numbers once NVIDIA has been measured.
+  nvidia: {
+    conversation:          62, personal_info:         62, simple_qa:             68,
+    opinion:               64, brainstorming:         64, summarization:         68,
+    debugging:             68, coding:                68, architecture:          66,
+    research:              64, reasoning:             70, analysis:              68,
+    planning:              66, creative_writing:      62, file_analysis:         64,
+    agent_task:            62, memory_recall:         62, memory_update:         60,
+  },
 };
 
 
@@ -120,10 +134,29 @@ export function scoreProvider(provider, taskType) {
   return (quality * 0.55) + (health * 0.45) + getProviderPrior(provider, taskType);
 }
 
-function rankProviders(taskType, complexity) {
+/**
+ * AQUA_PROVIDER_PREFER — controlled rollout / testing only. A comma list of
+ * provider names (e.g. "nvidia" or "nvidia,groq") moved to the FRONT of the
+ * ranked set, in the order given. It reorders healthy providers only: an
+ * unhealthy preferred provider is still skipped, and every other provider
+ * stays behind it as fallback. Unset (the default) = pure score ranking,
+ * byte-identical to before.
+ */
+export function preferredProviders(env = process.env) {
+  return String(env.AQUA_PROVIDER_PREFER ?? '')
+    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+}
+
+export function rankProviders(taskType, complexity) {
   const order  = getProviderStrategy(taskType, complexity);
   const scored = order.map(p => ({ provider: p, score: scoreProvider(p, taskType) }));
   const active = scored.filter(x => x.score > 0).sort((a, b) => b.score - a.score);
+
+  const prefer = preferredProviders();
+  if (prefer.length && active.length) {
+    const rank = p => { const i = prefer.indexOf(p); return i === -1 ? prefer.length : i; };
+    active.sort((a, b) => rank(a.provider) - rank(b.provider)); // stable: score order kept within groups
+  }
 
   if (!active.length) {
     // All providers unhealthy — degraded mode: attempt all anyway
@@ -180,6 +213,7 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
     gemini:     deps.gemini     ?? generateGemini,
     groq:       deps.groq       ?? generateGroq,
     openrouter: deps.openrouter ?? generateOpenRouter,
+    nvidia:     deps.nvidia     ?? generateNvidia,
   };
   const now   = deps.now   ?? Date.now;
   const doNap = deps.sleep ?? backoffSleep;
@@ -349,12 +383,17 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
 
 // ── Streaming entry (Day 3 — Real Streaming) ─────────────────────────────────
 
-async function callProviderStream(provider, systemPrompt, messages, signal, maxTokens, onDelta) {
+const STREAM_FNS = {
+  gemini:     streamGemini,
+  groq:       streamGroq,
+  openrouter: streamOpenRouter,
+  nvidia:     streamNvidia,
+};
+
+async function callProviderStream(provider, systemPrompt, messages, signal, maxTokens, onDelta, streamFns = STREAM_FNS) {
   const start = Date.now();
-  let result;
-  if      (provider === 'gemini')     result = await streamGemini(systemPrompt, messages, signal, maxTokens, onDelta);
-  else if (provider === 'groq')       result = await streamGroq(systemPrompt, messages, signal, maxTokens, onDelta);
-  else                                result = await streamOpenRouter(systemPrompt, messages, signal, maxTokens, onDelta);
+  const fn = streamFns[provider] ?? streamFns.openrouter;
+  const result = await fn(systemPrompt, messages, signal, maxTokens, onDelta);
   return { ...result, latency: Date.now() - start };
 }
 
@@ -390,7 +429,9 @@ export async function generateTextStream({
   userMessage, systemPrompt, messages, ctx = {},
   preTaskType, executionPlan, responseBudget,
   clientSignal, onEvent,
+  deps = {}, // test-only DI: { stream: { <provider>: fn } } — same convention as generateText's deps
 }) {
+  const streamFns = { ...STREAM_FNS, ...(deps.stream ?? {}) };
   const requestId  = ctx.requestId ?? 'unknown';
   const complexity = executionPlan?.complexity;
   const maxTokens  = responseBudget?.maxResponseTokens;
@@ -442,7 +483,7 @@ export async function generateTextStream({
 
     try {
       const { text, truncated, finishReason, latency, model, usage } =
-        await callProviderStream(provider, systemPrompt, messages, ctrl.signal, maxTokens, onDelta);
+        await callProviderStream(provider, systemPrompt, messages, ctrl.signal, maxTokens, onDelta, streamFns);
       clearTimeout(stallTimer);
       clientSignal?.removeEventListener('abort', onClientAbort);
 

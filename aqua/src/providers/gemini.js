@@ -26,6 +26,13 @@ import { GoogleGenAI } from '@google/genai';
 import {
   getCandidateModels, markModelWorking, markModelUnavailable, markModelTempFailed, pinCandidates } from './modelRegistry.js';
 import { classifyProviderError, retryAfterMs } from './providerErrors.js';
+import { recordProviderCall } from '../core/costAccounting.js';
+
+/** E12: every successful call is counted (tokens always; USD only when priced). */
+function countedCall(provider, purpose, res) {
+  try { recordProviderCall({ provider, model: res.model ?? null, usage: res.usage ?? null, purpose: purpose ?? 'other' }); } catch { /* observability never fails a call */ }
+  return res;
+}
 
 
 function normalizeUsage(usage) {
@@ -195,14 +202,14 @@ export async function generateGemini(systemPrompt, messages, signal, maxTokens, 
           if (!text.trim()) throw new Error('INVALID_RESPONSE'); // nothing usable came back — genuine failure
           console.log(`[GEMINI] model=${modelId} hit maxTokens=${capTokens} cap — returning partial as successful completion`);
           markModelWorking('gemini', modelId);
-          return { text, truncated: true, finishReason: 'length', model: modelId, usage: normalizeUsage(result?.usageMetadata) };
+          return countedCall('gemini', opts?.purpose, { text, truncated: true, finishReason: 'length', model: modelId, usage: normalizeUsage(result?.usageMetadata) });
         }
 
         if (!text) throw new Error('INVALID_RESPONSE');
 
         markModelWorking('gemini', modelId);
         console.log(`[GEMINI] model=${modelId} success key=...${key.slice(-4)}`);
-        return { text, truncated: false, finishReason: 'stop', model: modelId, usage: normalizeUsage(result?.usageMetadata) };
+        return countedCall('gemini', opts?.purpose, { text, truncated: false, finishReason: 'stop', model: modelId, usage: normalizeUsage(result?.usageMetadata) });
 
       } catch (err) {
         // TIMEOUT comes from our AbortController — propagate immediately,
@@ -333,7 +340,7 @@ export async function streamGemini(systemPrompt, messages, signal, maxTokens, on
 
       markModelWorking('gemini', modelId);
       const truncated = capTokens && finishReason === 'MAX_TOKENS';
-      return { text, truncated: !!truncated, finishReason: truncated ? 'length' : 'stop', streamed: true, model: modelId, usage };
+      return countedCall('gemini', 'chat', { text, truncated: !!truncated, finishReason: truncated ? 'length' : 'stop', streamed: true, model: modelId, usage });
     }
   }
 
@@ -395,7 +402,7 @@ export async function analyzeMediaWithGemini(parts, { systemPrompt, maxTokens = 
         if (!text.trim()) { lastError = new Error('Gemini returned empty media analysis'); continue; }
 
         markModelWorking('gemini', modelId);
-        return { text: text.trim(), model: modelId };
+        return countedCall('gemini', 'other', { text: text.trim(), model: modelId });
       } catch (err) {
         if (signal?.aborted || err.name === 'AbortError') throw new Error('TIMEOUT');
         lastError = err;

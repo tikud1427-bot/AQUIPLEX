@@ -105,7 +105,12 @@ describe('backfill — everything that IS there is preserved', () => {
   test('the legacy TRUST TIERS survive — file 0.9 beats chat 0.6', async () => {
     // L10. A backfill that flattened them would erase the one piece of ranking
     // information the old store did carry.
-    const facts = [legacy({ sourceType: 'document', evidence: ['d1'] }), legacy({ evidence: ['c1'] })];
+    // Two DISTINCT facts, one per tier. (Until 2026-10-04 both fixtures shared
+    // one statement; the second was a duplicate whose source row was written
+    // BEFORE the duplicate check and then left orphaned — the bug this pinned
+    // by accident. A duplicate now writes nothing at all.)
+    const facts = [legacy({ sourceType: 'document', evidence: ['d1'] }),
+      legacy({ id: 'conv:c7:3:fact:1', statement: 'I moved to Lisbon last year.', evidence: ['c1'] })];
     await backfillOwner(OWNER, facts, evMap(facts));
     const { rows } = await mem.pool.query('SELECT kind, trust_tier FROM aqua_sources ORDER BY kind');
     assert.deepEqual(rows.map(r => [r.kind, Number(r.trust_tier)]),
@@ -242,7 +247,25 @@ describe('backfill — wiring', () => {
       }
     };
     walk(path.join(ROOT, 'src'));
-    assert.deepEqual(offenders, [], 'something now backfills on its own — make that deliberate');
+    // 2026-10-04 — the E10 orchestrator is the ONE deliberate caller. It runs
+    // only when an operator invokes scripts/e10-migrate.mjs (dry-run by
+    // default); the assertion below keeps it that way.
+    const declared = ['src/core/worldModel/e10Migration.js'];
+    const undeclared = offenders.map(f => f.split(path.sep).join('/')).filter(f => !declared.includes(f));
+    assert.deepEqual(undeclared, [], 'something now backfills on its own — make that deliberate');
+
+    const invokers = [];
+    const findCalls = (dir) => {
+      for (const name of fs.readdirSync(dir)) {
+        if (name === 'tests' || name.startsWith('.') || name.endsWith('.test.js')) continue;
+        const full = path.join(dir, name);
+        if (fs.statSync(full).isDirectory()) { findCalls(full); continue; }
+        if (!/\.(m?js|cjs)$/.test(name) || full.endsWith('e10Migration.js')) continue;
+        if (/\bmigrateOwner\s*\(/.test(fs.readFileSync(full, 'utf8'))) invokers.push(path.relative(ROOT, full));
+      }
+    };
+    findCalls(path.join(ROOT, 'src'));
+    assert.deepEqual(invokers, [], 'the E10 migration is invoked from product code — it must stay operator-run');
   });
 
   test('it writes ONLY unresolved claims — it is not a secret extractor', () => {

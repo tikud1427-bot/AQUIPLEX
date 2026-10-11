@@ -10,7 +10,7 @@ import {
 describe('modelRegistry.js — candidate selection', () => {
   test('every provider has at least one candidate model by default', () => {
     __resetForTests();
-    for (const p of ['gemini', 'groq', 'openrouter']) {
+    for (const p of ['gemini', 'groq', 'openrouter', 'nvidia']) {
       assert.ok(getCandidateModels(p).length > 0, `${p} should have candidates`);
     }
   });
@@ -232,7 +232,7 @@ describe('modelRegistry.js — introspection', () => {
   test('getRegistrySnapshot returns every provider with an array of model summaries', () => {
     __resetForTests();
     const snap = getRegistrySnapshot();
-    for (const p of ['gemini', 'groq', 'openrouter']) {
+    for (const p of ['gemini', 'groq', 'openrouter', 'nvidia']) {
       assert.ok(Array.isArray(snap[p]));
       assert.ok(snap[p].length > 0);
       assert.ok('modelId' in snap[p][0]);
@@ -247,5 +247,35 @@ describe('modelRegistry.js — introspection', () => {
     const snap = getRegistrySnapshot();
     const entry = snap.groq.find(m => m.modelId === target);
     assert.equal(entry.status, 'deprecated');
+  });
+});
+describe('modelRegistry.js — nvidia', () => {
+  test('nvidia defaults to openai/gpt-oss-20b — never the deprecated 120b free endpoint', () => {
+    __resetForTests();
+    const snap = getRegistrySnapshot();
+    if (!process.env.NVIDIA_DEFAULT_MODEL) {
+      assert.deepEqual(snap.nvidia.map(m => m.modelId), ['openai/gpt-oss-20b']);
+    }
+    assert.ok(!snap.nvidia.some(m => m.modelId === 'openai/gpt-oss-120b'),
+      'the 120b NVIDIA free endpoint is deprecated and must not be registered');
+  });
+
+  test('nvidia claims only what the adapter exercises: no tools, no JSON mode', () => {
+    __resetForTests();
+    const id = getCandidateModels('nvidia')[0].modelId;
+    const spec = getModelSpec('nvidia', id);
+    assert.equal(spec.supportsTools, false, 'nvidia.js never sends tool definitions');
+    assert.equal(spec.supportsJSON, false, 'nvidia.js never sends response_format');
+    assert.equal(spec.supportsReasoning, true);
+    assert.deepEqual(validateEntry(spec, 'nvidia'), []);
+  });
+
+  test('a dead nvidia model is scoped to nvidia — siblings untouched', () => {
+    __resetForTests();
+    const id = getCandidateModels('nvidia')[0].modelId;
+    markModelUnavailable('nvidia', id, 'test 404');
+    assert.deepEqual(getCandidateModels('nvidia'), []);
+    assert.ok(getCandidateModels('groq').length > 0);
+    __resetForTests();
   });
 });

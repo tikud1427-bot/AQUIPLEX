@@ -89,6 +89,28 @@ export function recordTurnCost(summary) {
   }
 }
 
+/**
+ * Fold ONE provider call into the process-wide counters. Called by every
+ * provider transport on success (groq / gemini / openrouter / nvidia), so the counters
+ * reflect real traffic — before 2026-10-04 nothing in production called
+ * recordTurnCost and /metrics reported 0 calls and $0 forever. Tokens are
+ * always counted; dollars only for priced models (unpriced → unpricedCalls,
+ * and the USD total is withheld). Never sees content or owners (D3).
+ */
+export function recordProviderCall({ provider, model, usage, purpose = 'other' } = {}) {
+  const inputTokens = nonNegInt(usage?.inputTokens);
+  const outputTokens = nonNegInt(usage?.outputTokens);
+  const p = COST_PURPOSES.includes(purpose) ? purpose : 'other';
+  agg.calls++;
+  agg.inputTokens += inputTokens;
+  agg.outputTokens += outputTokens;
+  if (!usage) agg.unreportedUsageCalls = (agg.unreportedUsageCalls ?? 0) + 1;
+  const usd = usage ? priceCall({ provider, model, inputTokens, outputTokens }) : null;
+  if (usd == null) agg.unpricedCalls++; else agg.pricedCostUsd += usd;
+  const t = (agg.byPurpose[p] ??= { calls: 0, inputTokens: 0, outputTokens: 0 });
+  t.calls++; t.inputTokens += inputTokens; t.outputTokens += outputTokens;
+}
+
 export function getCostMetrics() {
   return {
     ...agg,
@@ -101,6 +123,7 @@ export function getCostMetrics() {
 
 export function _resetCostMetrics() {
   agg.turns = agg.calls = agg.inputTokens = agg.outputTokens = agg.unpricedCalls = agg.pricedCostUsd = 0;
+  agg.unreportedUsageCalls = 0;
   agg.byPurpose = {};
   priceTable = Object.freeze({});
 }

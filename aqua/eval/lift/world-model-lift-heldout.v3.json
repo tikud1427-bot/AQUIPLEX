@@ -1,0 +1,462 @@
+{
+  "id": "world-model-lift-heldout",
+  "version": 3,
+  "authoredAt": "2026-10-11",
+  "preregistration": "HELD-OUT set. Authored 2026-10-11 BEFORE any code change of the 2026-10-11 pass and BEFORE any run of any condition on these personas; its hash is frozen in FROZEN.sha256 before the first (baseline) run. The v1/v2 Lift sets were inspected question by question while diagnosing the World Model and are DEV data from this pass on; this set is the one the pass is judged on. Author independence is NOT met (written by the engineer who tunes the system; disclosed). Histories are multi-session (each session is ingested as its own conversation) and each persona uploads one document through the production upload path. Histories, questions and rubrics must not be edited to change a result; a labelling error may be corrected only with a dated entry in `corrections`, and every earlier result must be re-run.",
+  "corrections": [],
+  "rubricSemantics": {
+    "required": "Each item must be stated or clearly used by the answer. Paraphrase counts; a hedge that still commits to the fact counts.",
+    "forbidden": "Each item is VIOLATED if the answer asserts it as currently true. Mentioning it as past, superseded or corrected is NOT a violation.",
+    "expectUnknown": "The user never stated this. A correct answer says it does not know (and may ask once). Asserting a specific value is fabrication."
+  },
+  "personas": [
+    {
+      "id": "h1-ravi",
+      "sessions": [
+        [
+          "Hey, I'm Ravi. I'm a senior product manager at Coinwise, a payments startup in Singapore.",
+          "Can you explain what interchange fees are?",
+          "I report to Mei Tan, our Head of Product.",
+          "My main project is Splitpay, a bill-splitting feature inside the Coinwise app.",
+          "Splitpay is supposed to launch on November 18.",
+          "The engineering lead for Splitpay is Farid.",
+          "What's a good framework for prioritizing a backlog?",
+          "I'm allergic to shellfish, so team dinners are always a bit tricky.",
+          "Splitpay depends on the new ledger service that the platform team is building.",
+          "The platform team is led by Chloe Ng.",
+          "thanks, that's useful",
+          "I prefer answers as a short numbered list.",
+          "I'm also mentoring a junior PM named Ana."
+        ],
+        [
+          "Morning! Quick question: what's the difference between OKRs and KPIs?",
+          "Bad news: the ledger service slipped by three weeks.",
+          "Because of that, Splitpay's launch moved to December 9.",
+          "Farid is going on paternity leave next month, so Imran will be the engineering lead for Splitpay from now on.",
+          "Our regulator, MAS, wants a risk assessment before any new payment feature launches.",
+          "The risk assessment is owned by our compliance lead, Grace Ho.",
+          "Haha, my cat just walked across the keyboard.",
+          "We decided not to support cross-border splits in the first version.",
+          "My goal this half is to get Splitpay to 50,000 monthly active users.",
+          "How do I write a good PRD?",
+          "I don't drink alcohol, by the way, so suggest non-bar venues for team socials."
+        ],
+        [
+          "Hi again.",
+          "Mei Tan left Coinwise; I now report to Daniel Koh, the CPO.",
+          "The MAS risk assessment is done and approved.",
+          "The new blocker for Splitpay is that the ledger service fails load tests above 2,000 transactions per second.",
+          "What's a p99 latency?",
+          "Actually, correction: the launch is December 16, not December 9.",
+          "Ana got promoted, so I'm not mentoring her anymore.",
+          "We're thinking about adding cross-border splits in version 2, but nothing is decided.",
+          "I'm moving from Singapore to Kuala Lumpur in January for a new Coinwise office.",
+          "ok cool"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 2,
+          "name": "Splitpay_launch_plan.md",
+          "text": "Splitpay launch plan (v3)\nOwner: Ravi\nPricing: free for the first 6 months, then a 0.5% fee per split above SGD 100.\nLaunch markets: Singapore only for v1.\nSuccess metric: 50,000 monthly active users within the half.\nMarketing partner: Brightline Agency handles the launch campaign.\nSupport: the customer support runbook is owned by Lena Park."
+        }
+      ],
+      "questions": [
+        { "id": "h1-q01", "cat": "correction", "q": "When is Splitpay launching?", "required": ["December 16"], "forbidden": ["Splitpay launches on November 18", "Splitpay launches on December 9"] },
+        { "id": "h1-q02", "cat": "state_change", "q": "Who do I report to now?", "required": ["Daniel Koh"], "forbidden": ["Mei Tan is currently his manager"] },
+        { "id": "h1-q03", "cat": "state_change", "q": "Who is the engineering lead on Splitpay now?", "required": ["Imran"], "forbidden": ["Farid is currently the engineering lead"] },
+        { "id": "h1-q04", "cat": "multi_hop", "q": "Who should I talk to about the thing that's currently blocking Splitpay?", "required": ["the ledger service failing load tests", "Chloe Ng or the platform team"], "forbidden": ["the MAS risk assessment is currently blocking Splitpay"] },
+        { "id": "h1-q05", "cat": "state_change", "q": "Is the MAS risk assessment still holding up the launch?", "required": ["no, it is done and approved"], "forbidden": ["the risk assessment is still pending"] },
+        { "id": "h1-q06", "cat": "file", "q": "How much will Splitpay cost users?", "required": ["free for the first 6 months", "0.5% fee per split above SGD 100"] },
+        { "id": "h1-q07", "cat": "file", "q": "Who owns the customer support runbook for Splitpay?", "required": ["Lena Park"] },
+        { "id": "h1-q08", "cat": "synthesis", "q": "Draft a short update to my manager on whether we're on track for launch.", "required": ["addressed to Daniel Koh", "the December 16 launch date", "the ledger service load-test failure as the blocker"], "forbidden": ["the update is addressed to Mei Tan"] },
+        { "id": "h1-q09", "cat": "negation", "q": "Should we market Splitpay for splitting bills across countries at launch?", "required": ["cross-border splits are not in the first version"], "forbidden": ["cross-border splits are supported at launch"] },
+        { "id": "h1-q10", "cat": "preference", "q": "Suggest a venue for a team celebration after the launch.", "required": ["not a bar or alcohol-focused venue", "avoids shellfish"] },
+        { "id": "h1-q11", "cat": "state_change", "q": "Am I still mentoring Ana?", "required": ["no, Ana was promoted"], "forbidden": ["he is still mentoring Ana"] },
+        { "id": "h1-q12", "cat": "temporal", "q": "Who did I report to before Daniel Koh?", "required": ["Mei Tan"] },
+        { "id": "h1-q13", "cat": "uncertainty", "q": "Are cross-border splits coming in version 2?", "required": ["being considered but not decided"], "forbidden": ["cross-border splits are confirmed for version 2"] },
+        { "id": "h1-q14", "cat": "temporal", "q": "Which city will I be working from in February?", "required": ["Kuala Lumpur"] },
+        { "id": "h1-q15", "cat": "unknown", "q": "What's Imran's last name?", "expectUnknown": true },
+        { "id": "h1-q16", "cat": "unknown", "q": "What budget do we have for the Splitpay launch campaign?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "h2-nadia",
+      "sessions": [
+        [
+          "Hi! I'm Nadia, a freelance full-stack developer based in Berlin.",
+          "My biggest client is Oakline, a furniture e-commerce company.",
+          "For Oakline I'm rebuilding their checkout in Next.js.",
+          "What is server-side rendering, in simple terms?",
+          "My day rate is 650 euros.",
+          "My accountant is Jonas Weber.",
+          "I'm vegan.",
+          "The Oakline checkout has to go live before their Black Friday sale on November 28.",
+          "Oakline's CTO, Pia Lang, is my main contact there.",
+          "lol my coffee machine just broke",
+          "I'm training for the Berlin Marathon next September.",
+          "I want to keep my working week under 32 hours."
+        ],
+        [
+          "Hey, can you explain how Stripe webhooks work?",
+          "The Oakline checkout is blocked because their payment provider hasn't given us production API keys yet.",
+          "I picked up a second client, Mellow, a meditation app startup.",
+          "For Mellow I'm building their subscription billing in Stripe.",
+          "Mellow's founder is Sam Rivera.",
+          "I don't do any work on weekends.",
+          "Pia Lang left Oakline; my contact there is now Tobias Brandt, the new head of engineering.",
+          "My partner Lukas and I are planning a trip to Lisbon in December.",
+          "what's a good way to estimate a fixed-price project?"
+        ],
+        [
+          "Morning.",
+          "Oakline got the production keys, so the checkout isn't blocked anymore.",
+          "Now Mellow is my biggest client; they doubled my contract.",
+          "I raised my day rate to 720 euros for new clients.",
+          "Hmm, how do I handle a client who keeps adding scope?",
+          "Oakline wants to add Klarna to the checkout, but we haven't agreed on it yet.",
+          "I tore a calf muscle, so I'm pulling out of the Berlin Marathon.",
+          "Jonas Weber retired; my new accountant is Aylin Demir.",
+          "The Lisbon trip is now in January instead of December.",
+          "Mellow's billing launch is set for January 20.",
+          "ok thanks"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 2,
+          "name": "mellow_contract_summary.txt",
+          "text": "Contract summary - Mellow x Nadia (freelance)\nScope: Stripe subscription billing, customer portal, dunning emails.\nRate: 650 EUR per day, invoiced monthly, net 14.\nCap: 12 days per month.\nNotice period: 30 days by either side.\nOut of scope: mobile app changes, analytics dashboards."
+        }
+      ],
+      "questions": [
+        { "id": "h2-q01", "cat": "state_change", "q": "Who is my biggest client?", "required": ["Mellow"], "forbidden": ["Oakline is currently her biggest client"] },
+        { "id": "h2-q02", "cat": "state_change", "q": "Who is my main contact at Oakline?", "required": ["Tobias Brandt"], "forbidden": ["Pia Lang is currently her contact"] },
+        { "id": "h2-q03", "cat": "state_change", "q": "Is anything blocking the Oakline checkout right now?", "required": ["no, the API key blocker is resolved"], "forbidden": ["the checkout is currently blocked waiting for production API keys"] },
+        { "id": "h2-q04", "cat": "correction", "q": "What's my day rate for new clients?", "required": ["720 euros"], "forbidden": ["650 euros is her current rate for new clients"] },
+        { "id": "h2-q05", "cat": "file", "q": "How many days a month can I bill Mellow at most?", "required": ["12 days"] },
+        { "id": "h2-q06", "cat": "file", "q": "Mellow asked me to build an analytics dashboard. Is that covered by our contract?", "required": ["no, analytics dashboards are out of scope"] },
+        { "id": "h2-q07", "cat": "negation", "q": "Can you plan my week so I finish the Mellow work over the weekend?", "required": ["she does not work on weekends"] },
+        { "id": "h2-q08", "cat": "state_change", "q": "Am I still running the Berlin Marathon?", "required": ["no, she tore a calf muscle"], "forbidden": ["she is still running the Berlin Marathon"] },
+        { "id": "h2-q09", "cat": "re_explanation", "q": "Draft an email to my accountant sending my invoices for this quarter.", "required": ["addressed to Aylin Demir"], "forbidden": ["the email is addressed to Jonas Weber"] },
+        { "id": "h2-q10", "cat": "correction", "q": "When is my Lisbon trip?", "required": ["January"], "forbidden": ["the trip is in December"] },
+        { "id": "h2-q11", "cat": "uncertainty", "q": "Are we adding Klarna to the Oakline checkout?", "required": ["not agreed yet"], "forbidden": ["Klarna is confirmed for the checkout"] },
+        { "id": "h2-q12", "cat": "preference", "q": "Suggest a dinner place in Lisbon for me and my partner.", "required": ["vegan-friendly"] },
+        { "id": "h2-q13", "cat": "synthesis", "q": "Oakline wants me four days a week in January on top of Mellow. Should I accept?", "required": ["her goal of keeping the working week under 32 hours", "the Mellow billing launch on January 20"] },
+        { "id": "h2-q14", "cat": "multi_hop", "q": "Who founded my biggest client?", "required": ["Sam Rivera"] },
+        { "id": "h2-q15", "cat": "unknown", "q": "What's Tobias Brandt's email address?", "expectUnknown": true },
+        { "id": "h2-q16", "cat": "unknown", "q": "How much did Oakline pay me last month?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "h3-tunde",
+      "sessions": [
+        [
+          "I'm Tunde, I'm a nurse in the cardiology ward at Manchester Royal Infirmary.",
+          "I work night shifts, usually three nights a week.",
+          "What does a troponin test measure?",
+          "My ward manager is Sister Claire Hughes.",
+          "I'm studying part-time for a master's in advanced clinical practice at the University of Salford.",
+          "My dissertation is about early warning scores for sepsis.",
+          "My dissertation supervisor is Dr. Helen Moss.",
+          "My dissertation proposal is due on February 14.",
+          "I have two kids, Ada who is 7 and Femi who is 4.",
+          "ha, long night",
+          "I'm lactose intolerant."
+        ],
+        [
+          "Can you explain what a confidence interval is?",
+          "My ethics application for the dissertation is stuck because the hospital R&D office hasn't signed the sponsorship form.",
+          "I switched from night shifts to day shifts this month.",
+          "Dr. Helen Moss is on sabbatical, so my supervisor is now Dr. Raj Patel.",
+          "Femi started nursery, so my mornings are freer.",
+          "I want to become an advanced nurse practitioner within two years.",
+          "I don't want any study plan that involves early mornings before 6 am.",
+          "What's the difference between qualitative and quantitative research?"
+        ],
+        [
+          "Hello again",
+          "The R&D office signed the sponsorship form, but now the ethics committee wants me to revise my consent form.",
+          "My proposal deadline was extended to March 7.",
+          "I'm moving to the coronary care unit next month; my new manager there will be Mark Ellis.",
+          "My sister Bisi is visiting from Lagos in April.",
+          "I've decided not to do the optional statistics module this term.",
+          "Great, cheers"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 2,
+          "name": "dissertation_plan.md",
+          "text": "Dissertation plan - Tunde Bakare\nTitle: Validating NEWS2 early warning scores for sepsis detection on a cardiology ward.\nMethod: retrospective audit of 400 patient records from 2023.\nData access: via the hospital's clinical audit team (contact: Priya Shah).\nTimeline: data collection April to May, analysis in June, write-up July to August.\nWord limit: 15,000 words."
+        }
+      ],
+      "questions": [
+        { "id": "h3-q01", "cat": "state_change", "q": "Do I work nights or days now?", "required": ["day shifts"], "forbidden": ["he currently works night shifts"] },
+        { "id": "h3-q02", "cat": "state_change", "q": "Who is my dissertation supervisor?", "required": ["Dr. Raj Patel"], "forbidden": ["Dr. Helen Moss is currently his supervisor"] },
+        { "id": "h3-q03", "cat": "correction", "q": "When is my dissertation proposal due?", "required": ["March 7"], "forbidden": ["the proposal is due February 14"] },
+        { "id": "h3-q04", "cat": "state_change", "q": "What's currently holding up my ethics application?", "required": ["the ethics committee wants a revised consent form"], "forbidden": ["it is waiting on the R&D sponsorship form"] },
+        { "id": "h3-q05", "cat": "file", "q": "How many patient records am I planning to audit?", "required": ["400"] },
+        { "id": "h3-q06", "cat": "file", "q": "Who do I contact to get access to the patient data?", "required": ["Priya Shah"] },
+        { "id": "h3-q07", "cat": "temporal", "q": "Who will my manager be next month?", "required": ["Mark Ellis"] },
+        { "id": "h3-q08", "cat": "temporal", "q": "Who is my ward manager right now?", "required": ["Sister Claire Hughes"], "forbidden": ["Mark Ellis is already his manager"] },
+        { "id": "h3-q09", "cat": "preference", "q": "Suggest a breakfast I can eat before my shift.", "required": ["avoids dairy or lactose"] },
+        { "id": "h3-q10", "cat": "synthesis", "q": "Build me a weekly study schedule for my dissertation.", "required": ["no study sessions before 6 am", "works toward the March 7 proposal deadline"] },
+        { "id": "h3-q11", "cat": "negation", "q": "Should I register for the statistics module this term?", "required": ["he decided not to take it this term"] },
+        { "id": "h3-q12", "cat": "re_explanation", "q": "Write a short email to my supervisor updating them on the ethics application.", "required": ["addressed to Dr. Raj Patel", "the ethics committee asked for a revised consent form"], "forbidden": ["the email is addressed to Dr. Helen Moss"] },
+        { "id": "h3-q13", "cat": "file", "q": "What's my dissertation word limit, and what exactly is it about?", "required": ["15,000 words", "NEWS2 early warning scores for sepsis"] },
+        { "id": "h3-q14", "cat": "current_fact", "q": "What's my career goal?", "required": ["advanced nurse practitioner within two years"] },
+        { "id": "h3-q15", "cat": "unknown", "q": "What's my staff ID number?", "expectUnknown": true },
+        { "id": "h3-q16", "cat": "unknown", "q": "When does Bisi's flight land?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "h4-camila",
+      "sessions": [
+        [
+          "Hi, I'm Camila and I run a bakery called Masa & Miel in Austin.",
+          "We have nine employees.",
+          "How do I price wedding cakes?",
+          "Our head baker is Luis.",
+          "Our flour supplier is Hill Country Mills.",
+          "I'm planning to open a second shop in San Antonio next summer.",
+          "The San Antonio opening depends on getting an SBA loan.",
+          "My bank contact for the loan is Derek Shaw at Lone Star Bank.",
+          "We close on Tuesdays.",
+          "I hate early-morning meetings; anything before 10 am is a no.",
+          "lol the oven alarm again",
+          "I want to keep the menu gluten-free friendly; at least a third of items should be gluten-free."
+        ],
+        [
+          "What's a good way to calculate break-even for a new location?",
+          "We switched flour suppliers from Hill Country Mills to Prairie Gold because of price.",
+          "The SBA loan was approved for $180,000.",
+          "Now the San Antonio opening is blocked by a zoning permit.",
+          "Luis is leaving to open his own place; Marta will be head baker starting next week.",
+          "We started opening on Tuesdays too, so we're open every day now.",
+          "My daughter Sofia is starting college in the fall.",
+          "thx"
+        ],
+        [
+          "Hey!",
+          "The zoning permit came through.",
+          "We decided not to do wholesale to coffee shops this year.",
+          "We hired three more people, so we're at twelve employees.",
+          "The San Antonio opening date is set for July 12.",
+          "Derek Shaw moved to another branch; our new loan officer is Kim Alvarez.",
+          "We might add a delivery service, but we haven't decided.",
+          "How do I train new staff on food safety?"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 3,
+          "name": "san_antonio_lease_terms.txt",
+          "text": "Lease terms - Masa & Miel, 214 Alamo St, San Antonio\nMonthly rent: $6,400, fixed for 3 years.\nDeposit: two months' rent.\nLandlord: Riverwalk Properties (contact: Owen Hart).\nBuild-out allowance: $25,000 from the landlord.\nLease start: May 1."
+        }
+      ],
+      "questions": [
+        { "id": "h4-q01", "cat": "state_change", "q": "Who is our head baker?", "required": ["Marta"], "forbidden": ["Luis is currently the head baker"] },
+        { "id": "h4-q02", "cat": "state_change", "q": "Which flour supplier do we use?", "required": ["Prairie Gold"], "forbidden": ["Hill Country Mills is the current supplier"] },
+        { "id": "h4-q03", "cat": "state_change", "q": "Is anything still blocking the San Antonio opening?", "required": ["no, the zoning permit came through"], "forbidden": ["the zoning permit is still blocking the opening", "the opening is still waiting on the SBA loan"] },
+        { "id": "h4-q04", "cat": "state_change", "q": "Are we closed on Tuesdays?", "required": ["no, open every day now"], "forbidden": ["the bakery is closed on Tuesdays"] },
+        { "id": "h4-q05", "cat": "file", "q": "What's the monthly rent for the San Antonio shop?", "required": ["$6,400"] },
+        { "id": "h4-q06", "cat": "file", "q": "Who's the landlord contact for the new shop?", "required": ["Owen Hart"] },
+        { "id": "h4-q07", "cat": "state_change", "q": "Who should I call about our loan?", "required": ["Kim Alvarez"], "forbidden": ["Derek Shaw is the current loan officer"] },
+        { "id": "h4-q08", "cat": "state_change", "q": "How many employees do we have?", "required": ["twelve"], "forbidden": ["the bakery currently has nine employees"] },
+        { "id": "h4-q09", "cat": "negation", "q": "A coffee shop chain wants to buy our pastries wholesale. Should I say yes?", "required": ["she decided not to do wholesale to coffee shops this year"] },
+        { "id": "h4-q10", "cat": "preference", "q": "Schedule a meeting with my staff about the new shop.", "required": ["not before 10 am"] },
+        { "id": "h4-q11", "cat": "preference", "q": "Suggest five new pastries for the San Antonio menu.", "required": ["includes gluten-free options"] },
+        { "id": "h4-q12", "cat": "uncertainty", "q": "Are we launching delivery?", "required": ["not decided yet"], "forbidden": ["delivery is confirmed"] },
+        { "id": "h4-q13", "cat": "synthesis", "q": "How should I plan hiring for the San Antonio shop?", "required": ["the July 12 opening date"] },
+        { "id": "h4-q14", "cat": "re_explanation", "q": "Write a thank-you note to our landlord for the build-out allowance.", "required": ["addressed to Owen Hart or Riverwalk Properties", "the $25,000 allowance"] },
+        { "id": "h4-q15", "cat": "unknown", "q": "What's Marta's last name?", "expectUnknown": true },
+        { "id": "h4-q16", "cat": "unknown", "q": "What were our sales last month?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "h5-oskar",
+      "sessions": [
+        [
+          "Hej, I'm Oskar, I'm in my last year of a bachelor's in computer science at KTH in Stockholm.",
+          "I work part-time as a teaching assistant for the algorithms course.",
+          "Can you explain dynamic programming with an example?",
+          "I'm applying to master's programs in machine learning.",
+          "My top choice is ETH Zurich.",
+          "My thesis supervisor is Professor Lena Berg.",
+          "My bachelor thesis is about compressing neural networks for phones.",
+          "My thesis is due on May 30.",
+          "I play bass in a band called Northern Static.",
+          "I'm colorblind, so charts with red and green confuse me.",
+          "haha nice"
+        ],
+        [
+          "What's a good structure for a statement of purpose?",
+          "My ETH application is due December 15.",
+          "I need two recommendation letters; Professor Berg agreed to write one.",
+          "My second letter will come from Dr. Ahmed Yusuf, who I worked for as a TA.",
+          "I stopped the TA job to focus on applications.",
+          "The GRE is not required for ETH, so I'm skipping it.",
+          "I prefer explanations with code examples in Python.",
+          "how does a transformer attention head work?"
+        ],
+        [
+          "Hey again.",
+          "Dr. Ahmed Yusuf moved to a company and can't write the letter; Dr. Sara Lind will write my second letter instead.",
+          "I got into ETH Zurich! But I'm waiting to hear from EPFL before deciding.",
+          "The thesis deadline moved to June 13.",
+          "Northern Static broke up, so I'm not in a band anymore.",
+          "I'd like to stay in Europe for the master's; I'm not applying to US programs.",
+          "great thanks"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 2,
+          "name": "eth_application_checklist.md",
+          "text": "ETH Zurich MSc Data Science - application checklist\nDeadline: December 15, 23:59 CET.\nRequired: transcript, CV, statement of purpose (max 2 pages), two recommendation letters.\nApplication fee: 150 CHF.\nLanguage: English C1 certificate or proof of an English-taught bachelor.\nInterviews: selected applicants are interviewed in February."
+        }
+      ],
+      "questions": [
+        { "id": "h5-q01", "cat": "state_change", "q": "Who is writing my second recommendation letter?", "required": ["Dr. Sara Lind"], "forbidden": ["Dr. Ahmed Yusuf is writing the second letter"] },
+        { "id": "h5-q02", "cat": "correction", "q": "When is my thesis due?", "required": ["June 13"], "forbidden": ["the thesis is due May 30"] },
+        { "id": "h5-q03", "cat": "state_change", "q": "Am I still working as a TA?", "required": ["no, he stopped to focus on applications"], "forbidden": ["he is still a TA"] },
+        { "id": "h5-q04", "cat": "file", "q": "How long can my statement of purpose be for ETH?", "required": ["at most 2 pages"] },
+        { "id": "h5-q05", "cat": "file", "q": "What's the ETH application fee?", "required": ["150 CHF"] },
+        { "id": "h5-q06", "cat": "uncertainty", "q": "Have I decided where I'm doing my master's?", "required": ["admitted to ETH but waiting for EPFL before deciding"], "forbidden": ["he has decided on ETH"] },
+        { "id": "h5-q07", "cat": "negation", "q": "Should I start preparing for the GRE?", "required": ["the GRE is not required for ETH and he is skipping it"] },
+        { "id": "h5-q08", "cat": "negation", "q": "Can you list some good US master's programs for me?", "required": ["he is not applying to US programs or wants to stay in Europe"] },
+        { "id": "h5-q09", "cat": "preference", "q": "Make me a chart of my application timeline.", "required": ["avoids red and green because he is colorblind"] },
+        { "id": "h5-q10", "cat": "preference", "q": "Explain how knowledge distillation works.", "required": ["includes a Python code example"] },
+        { "id": "h5-q11", "cat": "state_change", "q": "Am I still playing in Northern Static?", "required": ["no, the band broke up"], "forbidden": ["he still plays in the band"] },
+        { "id": "h5-q12", "cat": "re_explanation", "q": "Write a thank-you email to my thesis supervisor for the recommendation letter.", "required": ["addressed to Professor Lena Berg"] },
+        { "id": "h5-q13", "cat": "current_fact", "q": "What's my thesis about, and who supervises it?", "required": ["compressing neural networks for phones", "Professor Lena Berg"] },
+        { "id": "h5-q14", "cat": "unknown", "q": "What was my GPA last semester?", "expectUnknown": true },
+        { "id": "h5-q15", "cat": "unknown", "q": "When will EPFL send its decisions?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "h6-wanjiru",
+      "sessions": [
+        [
+          "I'm Wanjiru, cofounder and CEO of Shamba Link, an agritech startup in Nairobi.",
+          "Shamba Link connects smallholder farmers to buyers through SMS.",
+          "My cofounder and CTO is Brian Otieno.",
+          "We're raising a $1.5 million seed round.",
+          "What's a SAFE note?",
+          "Our lead investor candidate is Savannah Ventures.",
+          "Our partner at Savannah Ventures is Fatuma Ali.",
+          "We have 12,000 farmers on the platform.",
+          "I'm fasting during the day this month, so no lunch meetings please.",
+          "I prefer concise answers with headings.",
+          "lol network is so slow today"
+        ],
+        [
+          "How do I build a cap table?",
+          "Savannah Ventures passed on the round.",
+          "Our new lead is Acacia Capital, with partner James Mwangi.",
+          "We now have 18,000 farmers on the platform.",
+          "The round is blocked until we finish our financial audit.",
+          "Our auditor is Mwangi & Co.",
+          "We decided not to expand to Uganda this year.",
+          "Brian is leaving at the end of the quarter for family reasons; Esther Kamau will be our new CTO."
+        ],
+        [
+          "Morning!",
+          "The audit is done and clean.",
+          "Acacia Capital sent a term sheet at a $9 million pre-money valuation.",
+          "We increased the round size to $2 million.",
+          "Now the blocker is that Acacia wants a board seat and I'm not sure about that.",
+          "We may expand to Tanzania next year, but it's just an idea for now.",
+          "What's a typical board structure after a seed round?",
+          "thanks!"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 3,
+          "name": "q3_metrics.md",
+          "text": "Shamba Link - Q3 metrics\nActive farmers: 18,000\nMonthly GMV: KES 42 million\nTake rate: 3%\nBuyers on platform: 260\nMonthly burn: $85,000\nRunway: 9 months"
+        }
+      ],
+      "questions": [
+        { "id": "h6-q01", "cat": "state_change", "q": "Who is leading our seed round?", "required": ["Acacia Capital"], "forbidden": ["Savannah Ventures is leading the round"] },
+        { "id": "h6-q02", "cat": "correction", "q": "How much are we raising?", "required": ["$2 million"], "forbidden": ["$1.5 million is the current round size"] },
+        { "id": "h6-q03", "cat": "state_change", "q": "What's blocking the round now?", "required": ["Acacia wants a board seat"], "forbidden": ["the audit is still blocking the round"] },
+        { "id": "h6-q04", "cat": "multi_hop", "q": "Who is our contact at the lead investor?", "required": ["James Mwangi"], "forbidden": ["Fatuma Ali is the current investor contact"] },
+        { "id": "h6-q05", "cat": "file", "q": "What's our monthly burn and runway?", "required": ["$85,000", "9 months"] },
+        { "id": "h6-q06", "cat": "file", "q": "What's our current take rate?", "required": ["3%"] },
+        { "id": "h6-q07", "cat": "state_change", "q": "How many farmers are on the platform?", "required": ["18,000"], "forbidden": ["12,000 farmers currently"] },
+        { "id": "h6-q08", "cat": "negation", "q": "Should we pitch a Uganda launch to investors?", "required": ["they decided not to expand to Uganda this year"] },
+        { "id": "h6-q09", "cat": "uncertainty", "q": "Are we expanding to Tanzania?", "required": ["just an idea, not decided"], "forbidden": ["Tanzania expansion is confirmed"] },
+        { "id": "h6-q10", "cat": "temporal", "q": "Who will be our CTO next quarter?", "required": ["Esther Kamau"] },
+        { "id": "h6-q11", "cat": "preference", "q": "Set up a meeting with James Mwangi to discuss the board seat.", "required": ["not a lunch meeting"] },
+        { "id": "h6-q12", "cat": "synthesis", "q": "Should I accept Acacia's term sheet?", "required": ["the $9 million pre-money valuation", "her concern about the board seat"] },
+        { "id": "h6-q13", "cat": "re_explanation", "q": "Draft a short email to my cofounder about the term sheet.", "required": ["addressed to Brian", "the $9 million pre-money valuation"] },
+        { "id": "h6-q14", "cat": "unknown", "q": "What's our company registration number?", "expectUnknown": true },
+        { "id": "h6-q15", "cat": "unknown", "q": "How many employees do we have?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "h7-helene",
+      "sessions": [
+        [
+          "Bonjour! I'm Hélène, I'm a high school French teacher in Montreal.",
+          "My husband Marc and I are renovating our kitchen.",
+          "Our contractor for the kitchen is Bouchard Rénovation.",
+          "The kitchen is supposed to be finished by March 1.",
+          "What's the difference between quartz and granite countertops?",
+          "Our budget for the kitchen is 40,000 dollars.",
+          "My son Théo has a peanut allergy.",
+          "My daughter Juliette plays hockey on Saturday mornings.",
+          "I'm training to run a 10K in May.",
+          "lol the dog stole my sandwich",
+          "I prefer step-by-step instructions."
+        ],
+        [
+          "How long does tile grout need to cure?",
+          "The kitchen is delayed because the cabinets are back-ordered.",
+          "We chose quartz countertops.",
+          "We increased the kitchen budget to 46,000 dollars because of the cabinets.",
+          "Juliette switched from hockey to swimming; her practices are on Sunday afternoons.",
+          "My principal asked me to coordinate the school trip to Quebec City in April.",
+          "I don't eat red meat."
+        ],
+        [
+          "Allô",
+          "The cabinets arrived, but now the electrician is the bottleneck: the panel needs an upgrade.",
+          "The new finish date for the kitchen is April 5.",
+          "The Quebec City trip got moved to May 14.",
+          "I hurt my ankle, so I'm skipping the 10K.",
+          "We fired Bouchard Rénovation; Lavoie Construction is finishing the kitchen.",
+          "We might add a pantry, but we haven't decided.",
+          "merci!"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 3,
+          "name": "lavoie_quote.txt",
+          "text": "Lavoie Construction - Quote #2291 for the kitchen\nElectrical panel upgrade: $3,200\nFinishing cabinets and countertop install: $5,800\nBacksplash tiling: $2,100\nTotal: $11,100 (taxes extra)\nSite lead: Nicolas Lavoie\nWork starts: March 10"
+        }
+      ],
+      "questions": [
+        { "id": "h7-q01", "cat": "state_change", "q": "Who is doing our kitchen now?", "required": ["Lavoie Construction"], "forbidden": ["Bouchard Rénovation is currently the contractor"] },
+        { "id": "h7-q02", "cat": "correction", "q": "When will the kitchen be done?", "required": ["April 5"], "forbidden": ["the kitchen will be done March 1"] },
+        { "id": "h7-q03", "cat": "state_change", "q": "What's holding up the kitchen right now?", "required": ["the electrical panel upgrade or the electrician"], "forbidden": ["the cabinets are still back-ordered"] },
+        { "id": "h7-q04", "cat": "file", "q": "How much is the electrical panel upgrade going to cost?", "required": ["$3,200"] },
+        { "id": "h7-q05", "cat": "file", "q": "Who's the site lead from our contractor?", "required": ["Nicolas Lavoie"] },
+        { "id": "h7-q06", "cat": "correction", "q": "What's our kitchen budget?", "required": ["46,000 dollars"], "forbidden": ["40,000 dollars is the current budget"] },
+        { "id": "h7-q07", "cat": "preference", "q": "Suggest snacks for Théo's birthday party.", "required": ["peanut-free"] },
+        { "id": "h7-q08", "cat": "state_change", "q": "When does Juliette have practice?", "required": ["Sunday afternoons"], "forbidden": ["Juliette currently has Saturday morning hockey"] },
+        { "id": "h7-q09", "cat": "state_change", "q": "Am I still running the 10K in May?", "required": ["no, she hurt her ankle"], "forbidden": ["she is still running the 10K"] },
+        { "id": "h7-q10", "cat": "correction", "q": "When is the Quebec City school trip?", "required": ["May 14"], "forbidden": ["the trip is in April"] },
+        { "id": "h7-q11", "cat": "preference", "q": "Suggest a dinner recipe for tonight.", "required": ["no red meat"] },
+        { "id": "h7-q12", "cat": "uncertainty", "q": "Are we adding a pantry?", "required": ["not decided"], "forbidden": ["the pantry is confirmed"] },
+        { "id": "h7-q13", "cat": "re_explanation", "q": "Write a message to the contractor's site lead asking when the panel upgrade will start.", "required": ["addressed to Nicolas Lavoie"], "forbidden": ["the message is addressed to Bouchard Rénovation"] },
+        { "id": "h7-q14", "cat": "unknown", "q": "What's the name of the school I teach at?", "expectUnknown": true },
+        { "id": "h7-q15", "cat": "unknown", "q": "How much have we spent on the kitchen so far?", "expectUnknown": true }
+      ]
+    }
+  ]
+}

@@ -103,8 +103,48 @@ export function isSensitivePredicate(name) {
 
 const norm = s => String(s ?? '').toLowerCase();
 
+/**
+ * Gate ① compares WORDS, not spellings of contractions (2026-10-06). Measured
+ * on the production extractor: "Dev isn't on the platform team" quoted as
+ * "Dev is not on the platform team" — the same words, a correct negated claim —
+ * was discarded as not verbatim, and that one discard failed the negation gate.
+ * Both sides are canonicalised the same way (curly apostrophes, n't → not, the
+ * irregular can't/won't/shan't, whitespace); the quote must still be the
+ * segment's own words. Nothing is added, nothing paraphrased is accepted.
+ */
+export function canonText(s) {
+  return norm(s)
+    .replace(/[‘’`´]/g, "'")
+    .replace(/\bcan't\b/g, 'can not').replace(/\bcannot\b/g, 'can not')
+    .replace(/\bwon't\b/g, 'will not').replace(/\bshan't\b/g, 'shall not')
+    .replace(/\b(\w+)n't\b/g, '$1 not')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 /** First person by GRAMMAR, never by surface form (S6's rule, applied early). */
 const FIRST_PERSON_SUBJECT = new Set(['self', 'i', 'me', 'my', 'mine', 'we', 'us', 'our', 'ours']);
+
+/** Third-person references — "it", "that", "they"… — as whole words. */
+const PRONOUN = /\b(it|its|it's|that|this|they|them|their|he|him|his|she|her)\b/;
+const STOP = new Set(['the', 'a', 'an', 'of', 'and', 'for', 'to', 'in', 'on', 's']);
+const words = s => norm(s).replace(/['’]s\b/g, ' ').split(/[^a-z0-9]+/).filter(w => w.length > 1 && !STOP.has(w));
+
+/**
+ * Gate ⑤b. `contextSubjects`: Map(normalised subject → [values the context
+ * gives it]). Returns how the segment refers to the subject, or null.
+ */
+export function contextReference(subject, seg, contextSubjects) {
+  if (!(contextSubjects instanceof Map)) return null;
+  const values = contextSubjects.get(norm(subject).trim());
+  if (!values) return null;                                  // not a subject it was given
+  if (PRONOUN.test(seg)) return { subject, via: 'pronoun' };
+  const segWords = new Set(words(seg));
+  if (words(subject).some(w => segWords.has(w))) return { subject, via: 'name' };
+  const valueHit = values.find(v => words(v).length && words(v).every(w => segWords.has(w)));
+  if (valueHit) return { subject, via: 'value', value: valueHit };
+  return null;
+}
 
 /**
  * Run the seven gates.
@@ -140,7 +180,7 @@ export function validateAgainstSegment(claim, segment, opts = {}) {
   // the model is quoting, not paraphrasing, and case is the one difference a
   // provider routinely introduces.
   if (typeof quote !== 'string' || !quote.trim()) return fail(1, 'no-quote');
-  if (!seg.includes(norm(quote)))                 return fail(1, 'quote-not-verbatim');
+  if (!seg.includes(norm(quote)) && !canonText(segment).includes(canonText(quote))) return fail(1, 'quote-not-verbatim');
 
   // ② THE QUOTE MUST CONTAIN THE OBJECT. A verbatim quote proves the words
   // were said; it does not prove they say what the claim says. Without this,
@@ -181,8 +221,19 @@ export function validateAgainstSegment(claim, segment, opts = {}) {
   // by matching a surface form, so "self" is admitted without the segment
   // containing the word.
   const subject = String(claim.subject ?? '');
+  let contextResolved = null;
   if (!FIRST_PERSON_SUBJECT.has(norm(subject)) && !seg.includes(norm(subject))) {
-    return fail(5, 'subject-not-in-segment');
+    // ⑤b A REFERENCE RESOLVED FROM CONTEXT (D6, 2026-10-05). "It's written in
+    // Rust", "No, it's Rust", "Not Go — Rust", "the backend is Rust now" name
+    // their subject by reference. The subject WAS mentioned — as "it", as part
+    // of its name, or through the value it held — so the gate's purpose (no
+    // claim about someone never mentioned) still holds when, and only when:
+    //   · the subject is literally one the extractor was GIVEN as context
+    //     (the owner's own World Model — never a new name), and
+    //   · the segment contains a reference to it: a third-person pronoun, a
+    //     word of its name, or a value the context attaches to it.
+    contextResolved = contextReference(subject, seg, opts.contextSubjects);
+    if (!contextResolved) return fail(5, 'subject-not-in-segment');
   }
 
   // ⑦ CONFIDENCE CEILING BY SOURCE TIER — "applied here, not by the model".
@@ -200,6 +251,8 @@ export function validateAgainstSegment(claim, segment, opts = {}) {
     reason: null,
     claim: Object.freeze({
       ...claim,
+      // Provenance of a ⑤b resolution — kept in the evidence locator (L4).
+      ...(contextResolved ? { contextResolved } : {}),
       confidence: Object.freeze({
         extraction: confidence,
         sourceTier: tier ?? 'unknown',
@@ -214,6 +267,47 @@ export function validateAgainstSegment(claim, segment, opts = {}) {
 }
 
 /**
+ * Gate ⑧ — ONE SENTENCE CANNOT ASSERT AND NEGATE THE SAME FACT (2026-10-06).
+ *
+ * Measured on the E6 eval (extract-v4, NVIDIA gpt-oss-20b): "Priya no longer
+ * works at Aquiplex", "Sam no longer manages the support team" and "I stopped
+ * commuting by metro" each came back as TWO claims from one segment — the
+ * negation AND an asserted twin with the same subject, predicate and object,
+ * open validity, present tense. The model misapplies rule 11 ("new value
+ * asserted, old value negated") to a single value. Committed, the twin is a
+ * current positive fact the user just denied (blueprint scenario 3), and the
+ * eval's detection metric counted the case as handled.
+ *
+ * Policy, owned by code (L3): within one segment, same subject + predicate +
+ * object + modality with both polarities → keep the NEGATION, discard the
+ * asserted twin. The negation is the marked form in language — a sentence only
+ * says "no longer"/"not"/"never" on purpose — and keeping it is the safe
+ * direction (a wrongly-kept negation retires nothing on its own; a wrongly-kept
+ * assertion is a fabricated current fact). The history the twin gestures at
+ * ("Priya used to work there") is already the PRIOR claim, which the negation
+ * supersedes with its provenance intact.
+ *
+ * Pure; returns { kept, discarded } so the caller records the discard.
+ */
+export function resolveSegmentPolarityConflicts(claims) {
+  const list = Array.isArray(claims) ? claims : [];
+  const keyOf = c => {
+    const kind = c.objectKind ?? null;
+    const obj = kind && c.object ? c.object[kind] : (c.object?.entity ?? c.object?.literal ?? '');
+    return [norm(c.subject).trim(), c.predicate, norm(typeof obj === 'object' ? JSON.stringify(obj) : obj).trim(),
+      c.modality ?? 'fact'].join('|');
+  };
+  const negatedKeys = new Set(list.filter(c => (c.polarity ?? 'asserted') === 'negated').map(keyOf));
+  const kept = [], discarded = [];
+  for (const c of list) {
+    if ((c.polarity ?? 'asserted') === 'asserted' && negatedKeys.has(keyOf(c))) {
+      discarded.push({ gate: 8, reason: 'polarity-conflict-in-segment', claim: c });
+    } else kept.push(c);
+  }
+  return { kept, discarded };
+}
+
+/**
  * Validate a batch, reporting which gate rejected what.
  *
  * The per-gate histogram is the point: an extractor losing 30% of its output
@@ -225,15 +319,20 @@ export function validateBatch(claims, segment, opts = {}) {
   const admitted = [], proposed = [], discarded = [];
   const byGate = {};
 
+  const passed = [];
   for (const c of Array.isArray(claims) ? claims : []) {
     const r = validateAgainstSegment(c, segment, opts);
-    if (r.outcome === OUTCOME.ADMIT) admitted.push(r.claim);
+    if (r.outcome === OUTCOME.ADMIT) passed.push(r.claim);
     else if (r.outcome === OUTCOME.PROPOSE) proposed.push(r.proposal);
     else {
       discarded.push({ gate: r.gate, reason: r.reason, claim: c });
       byGate[r.gate] = (byGate[r.gate] ?? 0) + 1;
     }
   }
+  // ⑧ runs over the segment's admitted set — it is a relation between claims.
+  const g8 = resolveSegmentPolarityConflicts(passed);
+  admitted.push(...g8.kept);
+  for (const d of g8.discarded) { discarded.push(d); byGate[8] = (byGate[8] ?? 0) + 1; }
 
   return {
     admitted, proposed, discarded,

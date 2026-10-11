@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-06T15:50:54.472Z",
+  "node": "v24.19.0",
+  "suiteFingerprint": "5203e45d9537421a",
+  "caseCount": 40,
+  "note": "ENGINEERING TEST, NOT PRODUCT PROOF. 40 owner situations AUTHORED by the engineer who built the engine (2026-10-06), run through the production trigger detector and policy. It proves the deterministic policy behaves as specified (fires on evidenced, timely, unblocked-or-blocked deadlines; silent on too early/late, redundant, inferred/intent/hypothetical evidence, wrong state, wrong owner, user-disabled, learned dismissals). It does NOT measure usefulness to real users — that is GET /brain/interventions stats.product (acceptance, dismissal, false-intervention rate over delivered interventions).\n\nRegenerate with: npm run eval:gate -- proactive-core --update",
+  "coverage": {
+    "total": 40,
+    "executed": 40,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "case_accuracy": 1,
+    "intervention_precision": 1,
+    "intervention_recall": 1,
+    "high_value_recall": 1,
+    "false_interventions": 0,
+    "wrong_type_interventions": 0,
+    "duplicate_interventions": 0,
+    "accuracy_high_value": 1,
+    "accuracy_insufficient_evidence": 1,
+    "accuracy_no_intervention": 1,
+    "accuracy_redundant": 1,
+    "accuracy_too_early": 1,
+    "accuracy_too_late": 1,
+    "accuracy_unhelpful": 1,
+    "accuracy_valid_intervention": 1,
+    "accuracy_wrong_owner": 1,
+    "accuracy_wrong_state": 1,
+    "n_cases_should_fire": 12,
+    "n_cases_should_not_fire": 28
+  }
+}

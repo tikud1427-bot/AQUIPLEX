@@ -126,6 +126,28 @@ describe('db pool — inert by default', () => {
       'src/brain/contextEngine/index.js',
       'src/brain/index.js',
       'src/routes/brain.js',
+      // E10 (2026-10-04) — operator-run migration: audit rows + parity reads.
+      'src/core/worldModel/e10Migration.js',
+      'src/core/worldModel/e10Migration.test.js',
+      // 2026-10-04 — per-process metric snapshots (aqua_process_metrics, 0020):
+      // workers publish, the server /metrics reads. Operational rows, not owner data.
+      'src/core/processMetrics.js',
+      // Inline fixture: proves an outbox transition event lands with the right role.
+      'src/core/worldModel/outboxEvents.test.js',
+      // 2026-10-10 — the home screen's welcome line: one bounded, owner-scoped
+      // READ of current claims (never writes), and its live-Postgres test.
+      'src/brain/welcome/repository.js',
+      'src/brain/welcome/welcome.live.test.js',
+      // Phase 4/5 (2026-10-06, declared 2026-10-11) — proactive interventions
+      // (0023) and action runs (0024) own their tables; their live test.
+      'src/brain/proactive/index.js',
+      'src/brain/proactive/repository.js',
+      'src/brain/proactive/proactive.live.test.js',
+      'src/brain/actions/repository.js',
+      'src/brain/actions/executor.js',
+      // 2026-10-11 — uploaded documents → understanding jobs: reads only
+      // isConfigured() to stay inert without a database (fail-open, L11).
+      'src/files/documentUnderstanding.js',
     ];
     const offenders = [];
     const walk = (dir) => {

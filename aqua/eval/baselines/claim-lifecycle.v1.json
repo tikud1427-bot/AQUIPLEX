@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-04T06:53:54.865Z",
+  "node": "v24.19.0",
+  "suiteFingerprint": "5d6f2b1a94836af8",
+  "caseCount": 18,
+  "note": "Committed 2026-10-04: the evaluation that justifies registry-declared cardinality + the E9 snapshot rule (AQUA_E6_SINGLE_VALUED default on). 18 ordered sequences through the PRODUCTION S8 detector and contradiction worker. At recording: 18/18, 0 false supersessions, 0 missed retirements, 0 wrong disputes. Under the previous default (empty single-valued set) 8 of the change/chain/correction cases fail — the suite has bite. A→B→A (returning to an old value) is case return-to-old-value: the return is a new current claim, not corroboration of the superseded one.\n\nRegenerate with: npm run eval:gate -- claim-lifecycle --update",
+  "coverage": {
+    "total": 18,
+    "executed": 18,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "case_accuracy": 1,
+    "false_supersessions": 0,
+    "missed_retirements": 0,
+    "wrong_successors": 0,
+    "wrong_disputes": 0,
+    "accuracy_chain": 1,
+    "accuracy_contradiction": 1,
+    "accuracy_correction": 1,
+    "accuracy_idempotency": 1,
+    "accuracy_modality": 1,
+    "accuracy_multi_subject": 1,
+    "accuracy_multi_valued": 1,
+    "accuracy_single_change": 1,
+    "accuracy_single_object": 1,
+    "accuracy_temporal": 1
+  }
+}

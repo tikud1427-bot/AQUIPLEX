@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const HERE = new URL('.', import.meta.url).pathname;
+const HERE = fileURLToPath(new URL('.', import.meta.url));
 const migration = readFileSync(join(HERE, '../db/migrations/0010_understanding_commit_ledger.sql'), 'utf8');
 const repo = readFileSync(join(HERE, '../worldModel/worldModelRepository.js'), 'utf8');
 

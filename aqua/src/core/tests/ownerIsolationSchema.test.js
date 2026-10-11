@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const HERE = new URL('.', import.meta.url).pathname;
+const HERE = fileURLToPath(new URL('.', import.meta.url));
 const migration = readFileSync(
   join(HERE, '../db/migrations/0011_owner_structural_fks.sql'), 'utf8'
 );

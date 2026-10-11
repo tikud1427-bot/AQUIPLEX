@@ -107,7 +107,23 @@ export function validateClaim(input) {
   }
 
   const expected = objectKindOf(predicate) ?? 'literal';
-  if (form !== expected) {
+  // ENTITY → LITERAL, CONTENT-PRESERVING (2026-10-06). Measured on the
+  // production extractor: "Nummo is not one of our customers" → related_to
+  // {entity:"customer"}, "I dislike neither option" → dislikes {entity:"option"}
+  // — correct negated claims, refused here because the registry types those
+  // objects as literals; that refusal alone failed the 95% negation gate. A
+  // literal can carry the same text without minting anything, and S4 gate ②
+  // still requires that text to appear in the quote. The reverse (a literal
+  // promoted to an entity) would mint new nodes and is NOT done.
+  let obj = object;
+  let kind = form;
+  let coerced = null;
+  if (form === 'entity' && expected === 'literal' && typeof object.entity === 'string' && object.entity.trim()) {
+    obj = { literal: object.entity.trim() };
+    kind = 'literal';
+    coerced = 'entity→literal';
+  }
+  if (kind !== expected) {
     return { ok: false, reason: `object-kind-mismatch:${predicate} wants ${expected}, got ${form}` };
   }
 
@@ -129,14 +145,19 @@ export function validateClaim(input) {
     claim: {
       subject: subject.trim(),
       predicate,
-      object: { [form]: object[form], ...(form === 'quantity' && object.unit ? { unit: object.unit } : {}) },
-      objectKind: form,
+      object: { [kind]: obj[kind], ...(kind === 'quantity' && obj.unit ? { unit: obj.unit } : {}) },
+      objectKind: kind,
+      ...(coerced ? { objectCoerced: coerced } : {}),
       polarity: pol,
       modality: mod,
       timePrecision: prec,
       validFrom: input.validFrom ?? null,
       validTo: input.validTo ?? null,
       statementText: statementText.trim(),
+      // Prompt rule 11: the user's own words present this as a change or
+      // correction of earlier state. Only `true` counts; absent otherwise, so
+      // ordinary claims keep their exact shape.
+      ...(input.revises === true ? { revises: true } : {}),
     },
   };
 }

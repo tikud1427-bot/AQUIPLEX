@@ -19,6 +19,7 @@ import { validateRegistryOnStartup, getRegistrySnapshot } from '../providers/mod
 import { hasConfiguredKeys as geminiHasKeys }     from '../providers/gemini.js';
 import { hasConfiguredKeys as groqHasKeys }       from '../providers/groq.js';
 import { hasConfiguredKeys as openrouterHasKeys } from '../providers/openrouter.js';
+import { hasConfiguredKeys as nvidiaHasKeys, getKeySlotSummary as nvidiaKeySlots } from '../providers/nvidia.js';
 import { getSearchHealth }                        from '../search/searchManager.js';
 
 export function runStartupValidation() {
@@ -33,10 +34,15 @@ export function runStartupValidation() {
     console.warn(`[STARTUP] ⚠ Model registry validation raised an error (continuing anyway): ${err.message}`);
   }
 
-  const keyChecks = { gemini: false, groq: false, openrouter: false };
+  const keyChecks = { gemini: false, groq: false, openrouter: false, nvidia: false };
   try { keyChecks.gemini     = geminiHasKeys(); }     catch { /* no-op — treated as "no keys" */ }
   try { keyChecks.groq       = groqHasKeys(); }       catch { /* no-op */ }
   try { keyChecks.openrouter = openrouterHasKeys(); } catch { /* no-op */ }
+  try { keyChecks.nvidia     = nvidiaHasKeys(); }     catch { /* no-op */ }
+  // Slot count only — never a key value.
+  if (keyChecks.nvidia) {
+    try { console.log(`[STARTUP] NVIDIA key pool: ${nvidiaKeySlots().count} key slot(s)`); } catch { /* no-op */ }
+  }
 
   for (const [provider, ok] of Object.entries(keyChecks)) {
     if (!ok) {

@@ -32,6 +32,13 @@ process.env.AQUA_DATA_DIR = TMP;
 delete process.env.AQUA_BRAIN;          // default-on master switch
 delete process.env.AQUA_BRAIN_INGEST;   // default-off subordinate flags
 delete process.env.AQUA_TWIN_V2;
+delete process.env.AQUA_REVISION_VOICE;  // default: canonical voice only
+// This suite seeds the LEGACY stores and asserts what the routes federate from
+// them. With a database configured, the default read mode is canonical-
+// authoritative (E10, 2026-10-06) and legacy fixtures are rightly not served —
+// so the suite failed only on live-DB runs. Pinned to the mode it tests; the
+// canonical read is covered by canonicalReadFlip.live.test.js.
+process.env.AQUA_CANONICAL_READ = 'off';
 
 const G = await import('../../reasoning/reasoningGraph.js');
 const A = await import('../../brain/worldModel/annotationStore.js');
@@ -167,9 +174,13 @@ test('METRICS: needs no owner and reports live flag state', async () => {
     assert.equal(body.flags.AQUA_SELF_ENTITY, false, 'self entity is off by default too');
     assert.equal(body.flags.AQUA_BRAIN_INGEST_FACTS, false, 'and so is conversational fact ingest');
     // The eighth switch. Every other flag here changes what AQUA KNOWS or does
-    // silently; this one changes what it SAYS, unprompted — so it is the one
-    // most worth being off until deliberately turned on.
-    assert.equal(body.flags.AQUA_REVISION_VOICE, false, 'the revision voice is off by default');
+    // silently; this one changes what it SAYS, unprompted — so it stayed off
+    // until deliberately turned on. The deliberate act (L14) was its evaluation
+    // (eval/suites/revision-voice.suite.mjs + revisionVoice.live.test.js,
+    // 2026-10-04): the CANONICAL voice is on by default; the unevaluated legacy
+    // voice is still off unless AQUA_REVISION_VOICE=on.
+    assert.equal(body.flags.AQUA_REVISION_VOICE, true, 'the canonical revision voice is on by default');
+    assert.equal(Brain.revisionVoiceMode(), 'canonical', 'the legacy ledger voice is NOT on by default');
     assert.ok('ingest' in body.metrics, 'ingest counters exposed for the rollout');
     assert.ok('contextEngine' in body.metrics);
     assert.ok('twin' in body.metrics);

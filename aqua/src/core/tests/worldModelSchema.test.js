@@ -554,6 +554,13 @@ describe('world model schema — canonical writer only', () => {
       // by readOnlyConsumers.test.js; neither may ever become a second writer.
       'src/core/worldModel/canonicalReadModel.js',
       'src/brain/reflectionV3/revisionFeed.js',
+      // E10 (2026-10-04) — the migration test asserts the rollback's audit
+      // trail in aqua_lifecycle_transitions. Read-only.
+      'src/core/worldModel/e10Migration.test.js',
+      // Phase 5 (2026-10-06, declared 2026-10-11) — the proactive/action live
+      // test READS aqua_lifecycle_transitions to prove an approved action's
+      // transition happened exactly once. Read-only assertions.
+      'src/brain/proactive/proactive.live.test.js',
     ];
     const NEEDLE = /aqua_edges\b|aqua_events\b|aqua_lifecycle_transitions\b|aqua_revisions\b|aqua_corrections\b/;
     const offenders = [];

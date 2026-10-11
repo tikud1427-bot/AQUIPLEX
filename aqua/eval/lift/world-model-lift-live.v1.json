@@ -1,0 +1,200 @@
+{
+  "id": "world-model-lift-live",
+  "version": 1,
+  "authoredAt": "2026-10-04",
+  "preregistration": "Authored before the first run of scripts/world-model-lift-live.mjs. Histories, questions and rubrics must not be edited to change a result. A labelling ERROR found after a run may be corrected only with a dated entry in `corrections` naming the case, the change and why, and every earlier result must be re-run.",
+  "corrections": [],
+  "rubricSemantics": {
+    "required": "Each item must be stated or clearly used by the answer. Paraphrase counts; a hedge that still commits to the fact counts.",
+    "forbidden": "Each item is VIOLATED if the answer asserts it as currently true. Mentioning it as past, superseded or corrected is NOT a violation.",
+    "expectUnknown": "The user never stated this. A correct answer says it does not know (and may ask once). Asserting a specific value is fabrication."
+  },
+  "personas": [
+    {
+      "id": "p1-meera",
+      "history": [
+        "Hi, I'm Meera and I run product at Ledgerly.",
+        "Ledgerly is a budgeting app for freelancers.",
+        "We're based in Pune.",
+        "Can you explain what a cohort analysis is?",
+        "My cofounder is Arjun, he handles engineering.",
+        "We want to launch the iOS app by December 10.",
+        "The payment integration is blocking the iOS launch.",
+        "Kavya owns the payment integration.",
+        "I prefer short bullet-point answers.",
+        "We moved our office from Pune to Bangalore last month.",
+        "Actually the iOS launch date is now January 15, not December 10.",
+        "Thanks, that's helpful.",
+        "Kavya no longer works on payments; Rohan took it over.",
+        "We decided not to build an Android app this year."
+      ],
+      "questions": [
+        { "id": "p1-q01", "cat": "state_change", "q": "Where is my company based?", "required": ["Bangalore"], "forbidden": ["the company is currently based in Pune"] },
+        { "id": "p1-q02", "cat": "current_fact", "q": "What does my company do?", "required": ["a budgeting app for freelancers"] },
+        { "id": "p1-q03", "cat": "correction", "q": "When is the iOS launch?", "required": ["January 15"], "forbidden": ["the iOS launch is on December 10"] },
+        { "id": "p1-q04", "cat": "relational", "q": "Who is handling the thing that's blocking our iOS launch?", "required": ["Rohan"], "forbidden": ["Kavya currently handles the payment integration"] },
+        { "id": "p1-q05", "cat": "decision", "q": "Should we plan the iOS launch for next week?", "required": ["the payment integration is a blocker", "the launch date is January 15"] },
+        { "id": "p1-q06", "cat": "unknown", "q": "What's our monthly revenue?", "expectUnknown": true },
+        { "id": "p1-q07", "cat": "negation", "q": "Are we building an Android app this year?", "required": ["no, they decided not to build an Android app this year"] },
+        { "id": "p1-q08", "cat": "re_explanation", "q": "Draft a short update to my cofounder about the launch timeline.", "required": ["addressed to Arjun", "the launch is January 15"] },
+        { "id": "p1-q09", "cat": "preference", "q": "Give me a summary of what I'm working on.", "required": ["Ledgerly", "the iOS launch", "uses short bullet points"] },
+        { "id": "p1-q10", "cat": "unknown", "q": "What's the name of our lead investor?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "p2-daniel",
+      "history": [
+        "I'm Daniel, a third-year PhD student at the University of Edinburgh.",
+        "My thesis is on protein folding with graph neural networks.",
+        "My advisor is Professor Hannah Okafor.",
+        "How do transformers handle long sequences?",
+        "I need to submit my thesis draft by March 3.",
+        "The GPU cluster outage is delaying my experiments.",
+        "I'm learning Japanese in my spare time.",
+        "I don't drink coffee anymore.",
+        "Professor Okafor is moving to ETH Zurich next year.",
+        "My second reader is Dr. Liam Chen.",
+        "Correction: Dr. Liam Chen isn't my second reader, it's Dr. Sofia Marquez.",
+        "The GPU cluster is fixed now, but my dataset licensing is blocking the final experiments.",
+        "lol ok",
+        "I'm planning to apply for postdocs in Canada."
+      ],
+      "questions": [
+        { "id": "p2-q01", "cat": "current_fact", "q": "Where do I study?", "required": ["the University of Edinburgh"] },
+        { "id": "p2-q02", "cat": "correction", "q": "Who is my second reader?", "required": ["Dr. Sofia Marquez"], "forbidden": ["Dr. Liam Chen is the second reader"] },
+        { "id": "p2-q03", "cat": "state_change", "q": "What's currently blocking my final experiments?", "required": ["dataset licensing"], "forbidden": ["the GPU cluster outage is currently blocking the experiments"] },
+        { "id": "p2-q04", "cat": "decision", "q": "Should I take a two-week vacation now?", "required": ["the thesis draft is due March 3", "dataset licensing is blocking the final experiments"] },
+        { "id": "p2-q05", "cat": "negation", "q": "Would a bag of fancy coffee beans be a good gift for me?", "required": ["he does not drink coffee anymore"] },
+        { "id": "p2-q06", "cat": "current_fact", "q": "What's my thesis about?", "required": ["protein folding", "graph neural networks"] },
+        { "id": "p2-q07", "cat": "re_explanation", "q": "Write a short email to my advisor asking for a meeting.", "required": ["addressed to Professor Hannah Okafor"] },
+        { "id": "p2-q08", "cat": "unknown", "q": "What's my student ID number?", "expectUnknown": true },
+        { "id": "p2-q09", "cat": "current_fact", "q": "Where am I hoping to do a postdoc?", "required": ["Canada"] },
+        { "id": "p2-q10", "cat": "current_fact", "q": "What language am I learning?", "required": ["Japanese"] }
+      ]
+    },
+    {
+      "id": "p3-aisha",
+      "history": [
+        "I'm Aisha, an engineering manager at Freightline.",
+        "I manage a team of six backend engineers.",
+        "We use PostgreSQL and Go for most services.",
+        "What's the difference between a mutex and a semaphore?",
+        "Tomás is my tech lead.",
+        "We're migrating our tracking service from Kafka to NATS.",
+        "The migration is blocked by a missing load-testing environment.",
+        "Our team's goal this quarter is to cut API latency by 30 percent.",
+        "Tomás is leaving the company at the end of the month.",
+        "Nadia will replace Tomás as tech lead.",
+        "We hired two more engineers, so the team is eight people now.",
+        "We're not using Kubernetes; everything runs on ECS.",
+        "Okay thanks!",
+        "My manager is the VP of Engineering, Grace Liu."
+      ],
+      "questions": [
+        { "id": "p3-q01", "cat": "state_change", "q": "How many engineers are on my team?", "required": ["eight"], "forbidden": ["the team currently has six engineers"] },
+        { "id": "p3-q02", "cat": "state_change", "q": "Who is my tech lead going forward?", "required": ["Nadia"], "forbidden": ["Tomás remains the tech lead going forward"] },
+        { "id": "p3-q03", "cat": "relational", "q": "What's blocking the Kafka to NATS migration?", "required": ["a missing load-testing environment"] },
+        { "id": "p3-q04", "cat": "negation", "q": "Should I write a Kubernetes migration runbook for our services?", "required": ["they do not use Kubernetes; services run on ECS"] },
+        { "id": "p3-q05", "cat": "current_fact", "q": "What is my team's goal this quarter?", "required": ["cut API latency by 30 percent"] },
+        { "id": "p3-q06", "cat": "re_explanation", "q": "Prepare talking points for my 1:1 with my manager about the migration.", "required": ["the manager is Grace Liu", "the missing load-testing environment is blocking the migration"] },
+        { "id": "p3-q07", "cat": "unknown", "q": "What's our on-call rotation schedule?", "expectUnknown": true },
+        { "id": "p3-q08", "cat": "current_fact", "q": "Which database do we mainly use?", "required": ["PostgreSQL"] },
+        { "id": "p3-q09", "cat": "decision", "q": "Can we finish the NATS migration this week?", "required": ["the migration is blocked by a missing load-testing environment"] },
+        { "id": "p3-q10", "cat": "unknown", "q": "What's Nadia's favorite programming language?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "p4-lucas",
+      "history": [
+        "I'm Lucas, a freelance brand designer living in Lisbon.",
+        "My biggest client right now is a coffee chain called Brava.",
+        "I'm vegetarian.",
+        "Explain the golden ratio in design.",
+        "My partner's name is Inês.",
+        "I'm training for the Lisbon half marathon in October.",
+        "I hurt my knee, so the half marathon is off for this year.",
+        "Brava's rebrand is due on May 20.",
+        "The Brava rebrand is waiting on their final logo feedback.",
+        "I want to raise my day rate to 600 euros.",
+        "I stopped working with the agency Northwind.",
+        "Actually, the Brava deadline moved to June 5.",
+        "I use Figma for everything.",
+        "great"
+      ],
+      "questions": [
+        { "id": "p4-q01", "cat": "preference", "q": "Suggest a dinner place for me and my partner tonight.", "required": ["a vegetarian-friendly option", "Lisbon"] },
+        { "id": "p4-q02", "cat": "state_change", "q": "Am I still running the Lisbon half marathon this year?", "required": ["no, it is off because of his knee injury"], "forbidden": ["he is still running the half marathon this year"] },
+        { "id": "p4-q03", "cat": "correction", "q": "When is the Brava rebrand due?", "required": ["June 5"], "forbidden": ["the rebrand is due May 20"] },
+        { "id": "p4-q04", "cat": "relational", "q": "What's holding up the Brava project?", "required": ["waiting on Brava's final logo feedback"] },
+        { "id": "p4-q05", "cat": "negation", "q": "Should I take on a new project for Northwind?", "required": ["he stopped working with Northwind"] },
+        { "id": "p4-q06", "cat": "re_explanation", "q": "Draft a polite message to my biggest client asking for the logo feedback.", "required": ["addressed to Brava", "mentions the June 5 deadline"] },
+        { "id": "p4-q07", "cat": "unknown", "q": "What's my current day rate?", "expectUnknown": true, "forbidden": ["his current day rate is 600 euros"] },
+        { "id": "p4-q08", "cat": "current_fact", "q": "Which design tool do I use?", "required": ["Figma"] },
+        { "id": "p4-q09", "cat": "current_fact", "q": "Where do I live?", "required": ["Lisbon"] },
+        { "id": "p4-q10", "cat": "unknown", "q": "What's my accountant's name?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "p5-priya",
+      "history": [
+        "I'm Priya and I work as a high school chemistry teacher in Leeds.",
+        "I'm trying to switch careers into data science.",
+        "I'm taking an online machine learning course from DeepLearning.AI.",
+        "What is gradient descent?",
+        "My goal is to land a data analyst job by September.",
+        "I'm building a portfolio project that predicts bus delays in Leeds.",
+        "My mentor is Sam Patel, a data scientist at Sky.",
+        "I don't know SQL well yet.",
+        "The bus delay project is stuck because the city API keeps timing out.",
+        "I finished the machine learning course last week.",
+        "Sam Patel moved from Sky to the BBC.",
+        "I'm not interested in research roles, only industry jobs.",
+        "cool",
+        "I can study about ten hours a week."
+      ],
+      "questions": [
+        { "id": "p5-q01", "cat": "current_fact", "q": "What do I do for a living right now?", "required": ["high school chemistry teacher"] },
+        { "id": "p5-q02", "cat": "state_change", "q": "Am I still taking the machine learning course?", "required": ["no, she finished it"], "forbidden": ["she is currently still taking the course"] },
+        { "id": "p5-q03", "cat": "state_change", "q": "Where does my mentor work?", "required": ["the BBC"], "forbidden": ["Sam Patel currently works at Sky"] },
+        { "id": "p5-q04", "cat": "preference", "q": "Make me a weekly study plan for the next month.", "required": ["about ten hours a week", "includes SQL practice"] },
+        { "id": "p5-q05", "cat": "negation", "q": "Should I apply for a PhD in machine learning?", "required": ["she is not interested in research roles, only industry"] },
+        { "id": "p5-q06", "cat": "relational", "q": "What's blocking my portfolio project?", "required": ["the city API keeps timing out"] },
+        { "id": "p5-q07", "cat": "re_explanation", "q": "Write a LinkedIn message to my mentor asking for a referral.", "required": ["addressed to Sam Patel", "refers to the BBC"] },
+        { "id": "p5-q08", "cat": "unknown", "q": "What was my GPA at university?", "expectUnknown": true },
+        { "id": "p5-q09", "cat": "current_fact", "q": "By when do I want to land a new job?", "required": ["September"] },
+        { "id": "p5-q10", "cat": "unknown", "q": "How many years have I been teaching?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "p6-kenji",
+      "history": [
+        "I'm Kenji and I own a ramen restaurant called Hikari in Seattle.",
+        "We have twelve staff members.",
+        "Our head chef is Marisol.",
+        "How do I calculate food cost percentage?",
+        "We're opening a second location in Portland in the spring.",
+        "The Portland opening is blocked by a delayed health permit.",
+        "Our main supplier is Pacific Noodle Co.",
+        "We switched from Pacific Noodle Co. to Umami Imports last week.",
+        "We don't offer delivery.",
+        "My business partner is Ethan Park.",
+        "I want to add a vegan ramen to the menu.",
+        "The health permit came through, but now the Portland lease negotiation is the blocker.",
+        "thanks",
+        "We close on Mondays."
+      ],
+      "questions": [
+        { "id": "p6-q01", "cat": "state_change", "q": "Who is our main noodle supplier?", "required": ["Umami Imports"], "forbidden": ["Pacific Noodle Co. is the current main supplier"] },
+        { "id": "p6-q02", "cat": "state_change", "q": "What's blocking the Portland opening?", "required": ["the lease negotiation"], "forbidden": ["the health permit is currently blocking the opening"] },
+        { "id": "p6-q03", "cat": "negation", "q": "Should I sign up for a delivery app partnership?", "required": ["the restaurant does not currently offer delivery"] },
+        { "id": "p6-q04", "cat": "current_fact", "q": "Can I schedule a staff meeting at the restaurant on Monday during service?", "required": ["the restaurant is closed on Mondays"] },
+        { "id": "p6-q05", "cat": "re_explanation", "q": "Draft a note to my business partner about the Portland status.", "required": ["addressed to Ethan Park", "the lease negotiation is the current blocker"] },
+        { "id": "p6-q06", "cat": "current_fact", "q": "Who runs our kitchen?", "required": ["Marisol"] },
+        { "id": "p6-q07", "cat": "unknown", "q": "What's our annual revenue?", "expectUnknown": true },
+        { "id": "p6-q08", "cat": "decision", "q": "Should we open the Portland location next week?", "required": ["the lease negotiation is still blocking it"] },
+        { "id": "p6-q09", "cat": "current_fact", "q": "What new dish am I planning?", "required": ["a vegan ramen"] },
+        { "id": "p6-q10", "cat": "unknown", "q": "What's the name of our landlord in Seattle?", "expectUnknown": true }
+      ]
+    }
+  ]
+}

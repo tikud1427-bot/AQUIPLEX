@@ -260,3 +260,51 @@ describe('extraction client — batching is concurrency, not prompt-stuffing', (
     }
   });
 });
+
+// D6 (2026-10-05): prompt rule 9 ("prefer these exact names") was never fed on
+// the E6 path, so "the backend" became a new subject and the old claim about
+// "Tidepool's backend" was never retired.
+describe('known entities reach the prompt (rule 9)', () => {
+  test('the names are in the system prompt the model receives', async () => {
+    let seen = '';
+    await extractSegment('We switched the backend to Rust.', {
+      cache: new Map(), knownEntities: ["Tidepool's backend", 'Tidepool launch'],
+      callModel: async ({ system }) => { seen = system; return { text: '{"claims":[]}' }; },
+    });
+    assert.match(seen, /Known entities — prefer these exact names when the text refers to them: Tidepool's backend, Tidepool launch/);
+  });
+
+  test('they are part of the cache key; none → the key is unchanged', () => {
+    const base = { segment: 's', promptVersion: 'v', modelPin: 'm' };
+    assert.equal(extractionCacheKey({ ...base }), extractionCacheKey({ ...base, knownEntities: [] }));
+    assert.notEqual(extractionCacheKey({ ...base }), extractionCacheKey({ ...base, knownEntities: ['Tidepool'] }));
+  });
+
+  test('blank, duplicate and excess names are dropped', async () => {
+    let seen = '';
+    const many = ['A', 'A', ' ', null, ...Array.from({ length: 60 }, (_, i) => `E${i}`)];
+    await extractSegment('x y', { cache: new Map(), knownEntities: many,
+      callModel: async ({ system }) => { seen = system; return { text: '{"claims":[]}' }; } });
+    const line = seen.split('\n').find(l => l.includes('Known entities'));
+    const names = line.split(': ')[1].split(', ');
+    assert.equal(names.length, 40);
+    assert.equal(names.filter(n => n === 'A').length, 1);
+  });
+});
+
+describe('reference context (rule 12) reaches the prompt and the cache key', () => {
+  test('context changes the key; empty context does not', () => {
+    const base = { segment: 's', promptVersion: 'v', modelPin: 'm' };
+    assert.equal(extractionCacheKey(base), extractionCacheKey({ ...base, context: { conversation: [], facts: [] } }));
+    assert.notEqual(extractionCacheKey(base), extractionCacheKey({ ...base, context: { conversation: ['a | uses | Go'], facts: [] } }));
+    assert.notEqual(extractionCacheKey({ ...base, context: { conversation: ['x'], facts: [] } }),
+      extractionCacheKey({ ...base, context: { conversation: [], facts: ['x'] } }), 'which list a line is in matters');
+  });
+
+  test('the model receives the context lines', async () => {
+    let user = '';
+    await extractSegment("It's written in Rust.", { cache: new Map(), context: { conversation: ["Tidepool's backend | uses | Go"], facts: [] },
+      callModel: async (p) => { user = p.user; return { text: '{"claims":[]}' }; } });
+    assert.match(user, /Tidepool's backend \| uses \| Go/);
+  });
+});

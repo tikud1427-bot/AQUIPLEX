@@ -8,7 +8,7 @@ cd aqua
 npm run doctor:dlq            # human-readable
 npm run doctor:dlq -- --json
 ```
-Exit code is the alert: `0` ok · `1` warn · `2` alert · `3` could not check (DB unreachable — treat as an incident). Prometheus: `GET /api/aqua/health/metrics` exposes `aqua_dlq_level` (0/1/2), `aqua_jobs{state="dead"}` and `aqua_dlq_oldest_dead_age_seconds`.
+Exit code is the alert: `0` ok · `1` warn · `2` alert · `3` could not check (DB unreachable — treat as an incident). Prometheus: `GET /api/aqua/provider-health/metrics` exposes `aqua_dlq_level` (0/1/2), `aqua_jobs{state="dead"}` and `aqua_dlq_oldest_dead_age_seconds`.
 
 Policy lives in `aqua/src/core/jobs/dlqPolicy.js` (`DLQ_THRESHOLDS`): alert at ≥10 dead, ≥5 dead of one kind, or a dead job older than 6h; warn on any dead job or ≥1000 queued.
 

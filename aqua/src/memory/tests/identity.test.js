@@ -25,6 +25,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-identity-'));
 const repoRoot = process.cwd();
@@ -33,12 +34,12 @@ process.chdir(tmp);
 let engine, ltm, identity, mindStore, idMigrate, extractor;
 
 before(async () => {
-  engine     = await import(path.join(repoRoot, 'src/memory/engine.js'));
-  ltm        = await import(path.join(repoRoot, 'src/memory/longTermMemory.js'));
-  identity   = await import(path.join(repoRoot, 'src/memory/identity.js'));
-  mindStore  = await import(path.join(repoRoot, 'src/mind/mindStore.js'));
-  idMigrate  = await import(path.join(repoRoot, 'src/memory/identityMigration.js'));
-  extractor  = await import(path.join(repoRoot, 'src/memory/memoryExtractor.js'));
+  engine     = await import(pathToFileURL(path.join(repoRoot, 'src/memory/engine.js')).href);
+  ltm        = await import(pathToFileURL(path.join(repoRoot, 'src/memory/longTermMemory.js')).href);
+  identity   = await import(pathToFileURL(path.join(repoRoot, 'src/memory/identity.js')).href);
+  mindStore  = await import(pathToFileURL(path.join(repoRoot, 'src/mind/mindStore.js')).href);
+  idMigrate  = await import(pathToFileURL(path.join(repoRoot, 'src/memory/identityMigration.js')).href);
+  extractor  = await import(pathToFileURL(path.join(repoRoot, 'src/memory/memoryExtractor.js')).href);
 });
 
 const tick = () => new Promise(r => setTimeout(r, 4)); // ensure monotonic ts across observes

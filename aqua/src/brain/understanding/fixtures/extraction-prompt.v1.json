@@ -1,217 +1,346 @@
 {
   "id": "extraction-prompt",
   "version": 1,
-  "about": "Worked examples for the E6 extraction contract. These serve two jobs at once: they are the few-shot examples embedded in the prompt, and they are the parse fixtures the contract is tested against. Keeping one set means a change to the expected shape cannot pass the tests while the prompt still teaches the old shape.",
+  "about": "Worked examples for the E6 extraction contract. These serve two jobs at once: they are the few-shot examples embedded in the prompt, and they are the parse fixtures the contract is tested against. Keeping one set means a change to the expected shape cannot pass the tests while the prompt still teaches the old shape. CONTAMINATION RULE (2026-10-03): no example may reuse or closely paraphrase an extraction-core sentence — six of the previous examples were verbatim eval cases, so every E6 score measured with them was partly a memory test. Enforced by extractionPromptContamination.test.js against the dataset itself.",
   "asOf": "2026-08-23T00:00:00.000Z",
   "examples": [
     {
       "id": "fx-employment",
-      "segment": "I run product at Nummo, a fintech in Bangalore.",
-      "why": "The canonical self-disclosure. Three claims from one sentence — employer, role, and the company's location — which is the point of a semantic extractor over a regex: one sentence is not one claim. The role literal stays as written ('runs product') rather than being normalised to 'head of product': rule 7 in the same prompt forbids adding what is probably also true, and an example that embellishes teaches the model to embellish.",
+      "segment": "I lead design at Corvid, a robotics startup in Pune.",
+      "why": "The canonical self-disclosure. Three claims from one sentence — employer, role, and the company's location — because one sentence is not one claim. The role literal stays as written ('lead design'), not normalised to a title: rule 7 forbids adding what is probably also true.",
       "claims": [
         {
           "subject": "self",
           "predicate": "works_at",
           "object": {
-            "entity": "Nummo"
+            "entity": "Corvid"
           },
           "polarity": "asserted",
           "modality": "fact",
           "timePrecision": "none",
-          "statementText": "I run product at Nummo"
+          "statementText": "I lead design at Corvid"
         },
         {
           "subject": "self",
           "predicate": "role_is",
           "object": {
-            "literal": "runs product"
+            "literal": "lead design"
           },
           "polarity": "asserted",
           "modality": "fact",
           "timePrecision": "none",
-          "statementText": "I run product at Nummo"
+          "statementText": "I lead design at Corvid"
         },
         {
-          "subject": "Nummo",
+          "subject": "Corvid",
           "predicate": "located_in",
           "object": {
-            "entity": "Bangalore"
+            "entity": "Pune"
           },
           "polarity": "asserted",
           "modality": "fact",
           "timePrecision": "none",
-          "statementText": "Nummo, a fintech in Bangalore"
+          "statementText": "Corvid, a robotics startup in Pune"
         }
       ]
     },
     {
       "id": "fx-supersession",
-      "segment": "I stopped working at Intercom last month because I want to focus entirely on Nummo.",
-      "why": "The blueprint's own worked example. A negated employment with a closing boundary, plus an intent — and the intent must NOT be recorded as a fact. `valid_to` is relative because 'last month' is not a date; inventing one would be the exact 'do not convert uncertainty into fact' failure.",
+      "segment": "I left Stripe in March because I want to start my own company.",
+      "why": "A negated employment with a closing boundary, plus an intent that must NOT be recorded as a fact. 'in March' names no year, so the boundary stays relative; inventing a date converts uncertainty into fact.",
       "claims": [
         {
           "subject": "self",
           "predicate": "works_at",
           "object": {
-            "entity": "Intercom"
+            "entity": "Stripe"
           },
           "polarity": "negated",
           "modality": "fact",
-          "validTo": "last month",
           "timePrecision": "relative",
-          "statementText": "I stopped working at Intercom last month"
+          "validTo": "in March",
+          "statementText": "I left Stripe in March"
         },
         {
           "subject": "self",
           "predicate": "plans_to",
           "object": {
-            "literal": "focus entirely on Nummo"
+            "literal": "start my own company"
           },
           "polarity": "asserted",
           "modality": "intent",
           "timePrecision": "none",
-          "statementText": "I want to focus entirely on Nummo"
+          "statementText": "I want to start my own company"
         }
       ]
     },
     {
       "id": "fx-negation",
-      "segment": "Dev isn't on the platform team anymore.",
-      "why": "Polarity is the claim. Dropping the negation would store the opposite of what was said, which is worse than storing nothing at all.",
+      "segment": "Leena is no longer on the analytics guild.",
+      "why": "Polarity is the claim. Dropping the negation would store the opposite of what was said, which is worse than storing nothing. member_of covers teams, guilds, projects and initiatives alike.",
       "claims": [
         {
-          "subject": "Dev",
+          "subject": "Leena",
           "predicate": "member_of",
           "object": {
-            "entity": "platform team"
+            "entity": "analytics guild"
           },
           "polarity": "negated",
           "modality": "fact",
           "timePrecision": "none",
-          "statementText": "Dev isn't on the platform team anymore"
-        }
-      ]
-    },
-    {
-      "id": "fx-negation-project-membership",
-      "segment": "Priya isn't part of the onboarding revamp anymore.",
-      "why": "member_of is not limited to a formal team or org — it covers involvement in a named project or initiative just as much as a team. The only prior example ('platform team') could read as team-membership specifically; without a second example the model has no signal that a project counts too, and tends to fall back to a more generic relation for project involvement. This is the negated case, so the predicate must survive with polarity 'negated', not be dropped or hedged into a different relation.",
-      "claims": [
-        {
-          "subject": "Priya",
-          "predicate": "member_of",
-          "object": {
-            "entity": "onboarding revamp"
-          },
-          "polarity": "negated",
-          "modality": "fact",
-          "timePrecision": "none",
-          "statementText": "Priya isn't part of the onboarding revamp anymore"
+          "statementText": "Leena is no longer on the analytics guild"
         }
       ]
     },
     {
       "id": "fx-negation-first-person-contraction",
-      "segment": "I don't use Postgres anymore.",
-      "why": "A first-person negative declarative is still a claim. The contraction \"don't\" and the word \"anymore\" express negation; do not treat the sentence as silence, a request, or a preference. Preserve the negative polarity and use the predicate/object types exactly as registered — Postgres is a named technology, so `uses` takes an entity object here, the same as every other uses example.",
+      "segment": "We don't track bugs in Jira these days.",
+      "why": "A first-person negative declarative is still a claim; a contraction plus a 'these days' style adverb expresses negation of the current state. Jira is a named tool, so `uses` takes an entity object.",
       "claims": [
         {
           "subject": "self",
           "predicate": "uses",
           "object": {
-            "entity": "Postgres"
+            "entity": "Jira"
           },
           "polarity": "negated",
           "modality": "fact",
           "timePrecision": "none",
-          "statementText": "I don't use Postgres anymore"
+          "statementText": "We don't track bugs in Jira these days"
         }
       ]
     },
     {
       "id": "fx-negation-first-person-perfect",
-      "segment": "We haven't decided on pricing.",
-      "why": "A first-person negative declarative with a contracted auxiliary is a claim about the current state. \"haven't\" expresses negation; emit the negated claim rather than returning an empty list.",
+      "segment": "I haven't settled on a hosting provider yet.",
+      "why": "A negated decision about the current state. 'haven't ... yet' expresses negation; emit the negated claim rather than an empty list.",
       "claims": [
         {
           "subject": "self",
           "predicate": "decided",
           "object": {
-            "literal": "pricing"
+            "literal": "a hosting provider"
           },
           "polarity": "negated",
           "modality": "fact",
           "timePrecision": "none",
-          "statementText": "We haven't decided on pricing"
-        }
-      ]
-    },
-    {
-      "id": "fx-negation-habit",
-      "segment": "I never really picked up French, even after two years of classes.",
-      "why": "habit_of is not limited to an ongoing routine ('works weekends') — it also covers a skill or practice the speaker never acquired, stated as a negated habitual claim rather than a one-off historical event. Before this example habit_of had no worked example at all despite being registered, so the model had nothing to generalise a durative-but-negative claim like this from and tended to decline extraction rather than force a predicate it had never seen demonstrated.",
-      "claims": [
-        {
-          "subject": "self",
-          "predicate": "habit_of",
-          "object": {
-            "literal": "speaking French"
-          },
-          "polarity": "negated",
-          "modality": "fact",
-          "timePrecision": "none",
-          "statementText": "I never really picked up French"
+          "statementText": "I haven't settled on a hosting provider yet"
         }
       ]
     },
     {
       "id": "fx-hypothetical",
-      "segment": "If we hired two more engineers, could we ship sooner?",
-      "why": "A question containing a hypothetical. Nothing here is asserted about the world, and an extractor that records 'we hired two more engineers' has manufactured a fact from a conditional. The correct output is NO CLAIMS.",
+      "segment": "Would the demo land better if we cut the intro video?",
+      "why": "A question wrapped around a conditional. Nothing is asserted about the world; recording 'we cut the intro video' would manufacture a fact. The correct output is NO CLAIMS.",
       "claims": []
     },
     {
       "id": "fx-quote",
-      "segment": "Priya said she wants to own onboarding.",
-      "why": "Reported speech. The user is not claiming Priya owns onboarding, nor that the user intends it — modality `quote` keeps the attribution honest and stops the claim being read as the user's own intent.",
+      "segment": "Omar mentioned he wants to rewrite the scheduler.",
+      "why": "Reported speech. The user is not claiming the intent as their own, nor that the rewrite happened — modality `quote` keeps attribution honest.",
       "claims": [
         {
-          "subject": "Priya",
+          "subject": "Omar",
           "predicate": "plans_to",
           "object": {
-            "literal": "own onboarding"
+            "literal": "rewrite the scheduler"
           },
           "polarity": "asserted",
           "modality": "quote",
           "timePrecision": "none",
-          "statementText": "Priya said she wants to own onboarding"
+          "statementText": "Omar mentioned he wants to rewrite the scheduler"
         }
       ]
     },
     {
       "id": "fx-temporal",
-      "segment": "The migration starts next Monday.",
-      "why": "A dated event with no named person. `relative` precision because 'next Monday' resolves only against the turn's timestamp, and resolution is PR-7's job, not the model's — asking the model to compute a date invites it to guess one.",
+      "segment": "The security audit begins the week after next.",
+      "why": "A dated event with no named person. `relative` precision because the phrase resolves only against the turn timestamp; date resolution is the normaliser's job, not the model's.",
       "claims": [
         {
-          "subject": "the migration",
+          "subject": "the security audit",
           "predicate": "has_status",
           "object": {
-            "literal": "starts next Monday"
+            "literal": "begins the week after next"
           },
           "polarity": "asserted",
           "modality": "fact",
-          "validFrom": "next Monday",
           "timePrecision": "relative",
-          "statementText": "The migration starts next Monday"
+          "validFrom": "the week after next",
+          "statementText": "The security audit begins the week after next"
         }
       ]
     },
     {
       "id": "fx-request",
-      "segment": "Can you write me a python script?",
-      "why": "A request to AQUA is not information about the user's world. The gate should never have sent this, and if it does the extractor must still return nothing rather than inventing a preference for Python.",
+      "segment": "Draft a polite reply declining the vendor call.",
+      "why": "A request to AQUA is not information about the user's world. Return nothing rather than inventing a preference.",
       "claims": []
+    },
+    {
+      "id": "fx-change-move",
+      "segment": "I moved from Leeds to Bristol last spring.",
+      "why": "A CHANGE (rule 11). The new value is an asserted fact; the old value is named, so the old relation is emitted too, negated — the user said it no longer holds. Both carry revises:true so the World Model retires the earlier claim instead of holding two places at once.",
+      "claims": [
+        {
+          "subject": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Bristol"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "timePrecision": "relative",
+          "validFrom": "last spring",
+          "statementText": "I moved from Leeds to Bristol last spring",
+          "revises": true
+        },
+        {
+          "subject": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Leeds"
+          },
+          "polarity": "negated",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "I moved from Leeds to Bristol",
+          "revises": true
+        }
+      ]
+    },
+    {
+      "id": "fx-change-correction",
+      "segment": "Not Kotlin — Harbor's mobile app is written in Swift.",
+      "why": "A CORRECTION of a many-valued relation (rule 11). \"uses\" can hold several values, so only the NAMED old value is retired: Kotlin negated, Swift asserted, both revises:true. Nothing else Harbor uses is touched.",
+      "claims": [
+        {
+          "subject": "Harbor",
+          "predicate": "uses",
+          "object": {
+            "entity": "Swift"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "Harbor's mobile app is written in Swift",
+          "revises": true
+        },
+        {
+          "subject": "Harbor",
+          "predicate": "uses",
+          "object": {
+            "entity": "Kotlin"
+          },
+          "polarity": "negated",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "Not Kotlin — Harbor's mobile app is written in Swift",
+          "revises": true
+        }
+      ]
+    },
+    {
+      "id": "fx-change-date",
+      "segment": "Update: the Harbor beta now ships on June 9 instead of May 20.",
+      "why": "A rescheduled date (rule 11). The new date is the asserted deadline, copied as written (rule 6, rule 10); \"instead of May 20\" names the old one, which is negated. Both revises:true.",
+      "claims": [
+        {
+          "subject": "Harbor beta",
+          "predicate": "deadline_for",
+          "object": {
+            "literal": "June 9"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "timePrecision": "day",
+          "statementText": "the Harbor beta now ships on June 9",
+          "revises": true
+        },
+        {
+          "subject": "Harbor beta",
+          "predicate": "deadline_for",
+          "object": {
+            "literal": "May 20"
+          },
+          "polarity": "negated",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "instead of May 20",
+          "revises": true
+        }
+      ]
+    },
+    {
+      "id": "fx-role-relation",
+      "segment": "My physiotherapist is Ines Duarte, a former rower in Coimbra.",
+      "why": "A ROLE RELATION (rule 13). The person is named by how they relate to the speaker; that relation is the main fact, so it is emitted as related_to with the role word(s) as written. What else the sentence says about her is emitted too. Never fold the person into a literal on self (\"has_property: physiotherapist is Ines Duarte\").",
+      "claims": [
+        {
+          "subject": "Ines Duarte",
+          "predicate": "related_to",
+          "object": {
+            "literal": "physiotherapist"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "My physiotherapist is Ines Duarte"
+        },
+        {
+          "subject": "Ines Duarte",
+          "predicate": "role_is",
+          "object": {
+            "literal": "former rower"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "Ines Duarte, a former rower in Coimbra"
+        },
+        {
+          "subject": "Ines Duarte",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Coimbra"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "Ines Duarte, a former rower in Coimbra"
+        }
+      ]
+    },
+    {
+      "id": "fx-role-change",
+      "segment": "My piano teacher is now Oleg Petrov instead of Mrs. Hale.",
+      "why": "A ROLE CHANGE (rules 11 and 13). The new holder of the role is asserted; the named old holder is negated; both revises:true so the World Model retires the old holder.",
+      "claims": [
+        {
+          "subject": "Oleg Petrov",
+          "predicate": "related_to",
+          "object": {
+            "literal": "piano teacher"
+          },
+          "polarity": "asserted",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "My piano teacher is now Oleg Petrov",
+          "revises": true
+        },
+        {
+          "subject": "Mrs. Hale",
+          "predicate": "related_to",
+          "object": {
+            "literal": "piano teacher"
+          },
+          "polarity": "negated",
+          "modality": "fact",
+          "timePrecision": "none",
+          "statementText": "My piano teacher is now Oleg Petrov instead of Mrs. Hale",
+          "revises": true
+        }
+      ]
     }
   ]
 }

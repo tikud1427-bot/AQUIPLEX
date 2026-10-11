@@ -53,11 +53,11 @@ function fresh() {
   };
 }
 
-const state = {
-  gemini:     fresh(),
-  groq:       fresh(),
-  openrouter: fresh(),
-};
+// One entry per provider the router can rank. A provider missing here is
+// reported unhealthy forever (isProviderHealthy → false), so a new adapter
+// must be added here as well as to router.js.
+const PROVIDERS = ['gemini', 'groq', 'openrouter', 'nvidia'];
+const state = Object.fromEntries(PROVIDERS.map(p => [p, fresh()]));
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
@@ -257,9 +257,7 @@ export function markFailure(provider, reason = 'unknown', opts = {}) {
  * instead of depending on test execution order across a shared singleton.
  */
 export function __resetForTests() {
-  state.gemini     = fresh();
-  state.groq       = fresh();
-  state.openrouter = fresh();
+  for (const p of PROVIDERS) state[p] = fresh();
 }
 
 export function getUptime() {

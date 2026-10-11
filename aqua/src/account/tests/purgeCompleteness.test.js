@@ -26,6 +26,7 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync, writeFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -117,7 +118,7 @@ function purgedFrom(entry) {
   return covered;
 }
 
-const rel = f => path.relative(SRC, f);
+const rel = f => path.relative(SRC, f).split(path.sep).join('/');
 
 describe('every owner-purgeable store is reachable from account deletion (G4)', () => {
   test('the scan finds the stores it is supposed to find', () => {
@@ -156,7 +157,7 @@ describe('every owner-purgeable store is reachable from account deletion (G4)', 
     // The property the first version of this file got wrong. Coverage is the
     // invocation; a module imported for unrelated reasons is not purged by
     // being imported.
-    const fake = '/tmp/__purge_probe__.js';
+    const fake = path.join(tmpdir(), '__purge_probe__.js');
     writeFileSync(fake, "import { purgeOwner as p } from '../home/claude/nonexistent.js';\n");
     try {
       assert.deepEqual(purgesPerformedBy(fake), [], 'an unresolvable import was counted as a purge');

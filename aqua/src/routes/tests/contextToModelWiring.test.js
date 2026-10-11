@@ -64,6 +64,13 @@ process.env.AQUA_CONTEXT_V2           = 'on';
 process.env.AQUA_BRAIN_INGEST         = 'on';
 process.env.AQUA_BRAIN_INGEST_FACTS   = 'on';
 process.env.AQUA_SELF_ENTITY          = 'on';
+// The fixture's personal context comes from LEGACY ingest (no extraction model
+// runs in a unit test). With a database configured the shipping read mode is
+// canonical-authoritative and correctly ignores legacy facts, so the
+// precondition failed on every live-DB run. Pinned to the lane whose seam this
+// suite proves; the canonical lane reaches the same seam (knowledgeContext →
+// buildSystemPrompt) and is exercised by the live suites.
+process.env.AQUA_CANONICAL_READ       = 'off';
 
 const { prepareTurn }   = await import('../chat.js');
 const { createContext } = await import('../../core/observability.js');
