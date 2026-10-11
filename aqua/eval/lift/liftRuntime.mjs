@@ -105,9 +105,14 @@ export async function drainOwner(ownerId, { runId, log = console.log, label = ow
   while (Date.now() < deadline) {
     const d = await drainUntilIdle({ workerId: `lift-${runId}` });
     if (d.ran) drains.push(d);
+    // Pending = due within 5 minutes (retry backoff). A job SCHEDULED for a
+    // future date (Pass 2: a supersession that takes effect at valid_from,
+    // possibly months away) is not ingest work — waiting for it hung the drain,
+    // and its millisecond distance overflowed int4 and crashed the run.
     const { rows: [p] } = await pool.query(
-      `SELECT count(*)::int AS n, GREATEST(0, EXTRACT(EPOCH FROM (min(run_after) - now())) * 1000)::int AS wait
-         FROM aqua_jobs WHERE owner_id=$1 AND state IN ('queued','running')`, [ownerId]);
+      `SELECT count(*)::int AS n, GREATEST(0, EXTRACT(EPOCH FROM (min(run_after) - now())) * 1000)::bigint AS wait
+         FROM aqua_jobs WHERE owner_id=$1 AND state IN ('queued','running') AND run_after <= now() + interval '5 minutes'`, [ownerId]);
+    p.wait = Number(p.wait ?? 0);
     if (p.n) { if (!d.ran) await sleep(Math.min(Math.max(p.wait ?? 0, 250), 30_000)); continue; }
     const dead = (await pool.query(
       `SELECT job_id FROM aqua_jobs WHERE owner_id=$1 AND state='dead' AND kind='understanding.turn.v1'`, [ownerId])).rows;
