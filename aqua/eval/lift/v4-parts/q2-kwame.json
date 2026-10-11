@@ -1,0 +1,203 @@
+{
+  "id": "q2-kwame",
+  "length": "short",
+  "sessions": [
+    [
+      "hi. civil engineer, Accra. keep answers short pls, bullets. no essays",
+      "q: difference between post-tensioned and pre-tensioned concrete in 3 lines",
+      "ok",
+      "context for later. i work at Sankofa Structures. current job = rehab of the Kasoa bridge, we call it KBR-2 internally. client is Ghana Highway Authority, their rep is Mr. Owusu",
+      "deck concrete pour for spans 1 and 2 planned Oct 14",
+      "problem: rebar shipment stuck at Tema port. customs. 46 tonnes. been 3 weeks",
+      "what docs usually needed to clear construction steel at Tema? we have the bill of lading + invoice",
+      "ok will check the ECOWAS cert thing with the clearing agent",
+      "also building my own house. Oyarifa. contractor is Yaw Boateng. walls done, roof next",
+      "quote says aluminium roofing sheets. thinking stone-coated instead. more expensive but quieter in rain. not decided",
+      "pros/cons table. short",
+      "thanks",
+      "oh. no meetings or site visits on sundays for me. church, family. remember that when planning stuff"
+    ],
+    [
+      "correction: deck pour is Oct 24 not 14. typo in my notes",
+      "twins (Kofi and Ama, 6) at Little Stars Academy now. moving them to Morning Star School in East Legon from January term. wife Efua found it",
+      "how to prep 6 year olds for a school change? quick tips",
+      "ok good",
+      "q: how to compute dead load of a 200mm RC slab per m2",
+      "4.8 kN/m2 yes. ok i remembered right",
+      "uploading Yaw's contract for the house"
+    ],
+    [
+      "update. steel finally out of Tema. cleared monday, on site wednesday. so that's done",
+      "new problem though. pier 3 foundation. need geotech report before we design the repair. GeoLab is doing it, Dr. Mensah. he says 3 more weeks minimum. now that's the hold-up on the bridge",
+      "also client rep changed. Mr. Owusu retired end of Sept. new rep is Mrs. Lydia Adjei. sharp, asks lots of questions",
+      "GHA site inspection for the bridge on Oct 22. she'll lead it",
+      "what should a contractor have ready for a client inspection on a rehab job? checklist",
+      "good. add traffic management plan",
+      "also paid Yaw tranche 2 last week. blockwork done. tranche 1 was in May",
+      "q: average cost per m2 for stone-coated roof in Ghana now? rough",
+      "ok expensive. still undecided"
+    ],
+    [
+      "bank sending a valuer to the house on Oct 28 for the mortgage top-up. so the house inspection is 28th. bridge one is 22nd. busy week",
+      "what does a bank valuer look at? short",
+      "ok",
+      "q: formula for flexural strength from 3-point bend test",
+      "thanks",
+      "need to email Dr. Mensah to push for the report. polite but firm. draft later",
+      "good night"
+    ]
+  ],
+  "documents": [
+    {
+      "afterSession": 2,
+      "name": "oyarifa_house_contract_yaw_boateng.txt",
+      "text": "CONSTRUCTION AGREEMENT - RESIDENTIAL BUILDING\nPlot 14, Oyarifa Hills Estate, Accra\n\nBetween: Kwame Asante (Client)\nAnd: Boateng & Sons Building Works, represented by Yaw Boateng (Contractor)\n\n1. SCOPE OF WORKS\nCompletion of a 4-bedroom single-storey residence from substructure (already completed by Client) to handover, including blockwork, lintels, ring beam, roofing, plastering, electrical and plumbing first and second fix, tiling, doors and windows, and external painting. Roofing: 0.55mm long-span aluminium roofing sheets on treated timber trusses, as per drawing A-07.\n\n2. CONTRACT SUM\nThe total contract sum is GHS 412,000 (Four Hundred and Twelve Thousand Ghana Cedis), inclusive of labour and materials listed in the Bill of Quantities. Any change of materials requested by the Client (including roofing type) will be priced separately as a variation.\n\n3. PAYMENT SCHEDULE\nTranche 1 - 25% on signing (mobilisation).\nTranche 2 - 25% on completion of blockwork to ring beam level.\nTranche 3 - 30% on completion of roofing.\nTranche 4 - 20% on practical completion and handover.\nPayments to be made by bank transfer within 7 days of the Client's site verification.\n\n4. DURATION\nThe works shall be completed within nine (9) months from the commencement date of 1 June 2026.\n\n5. DELAY\nIf the Contractor fails to complete the works within the agreed duration, for reasons not attributable to the Client or to force majeure, the Contractor shall pay liquidated damages of GHS 1,500 per week of delay, up to a maximum of GHS 20,000.\n\n6. DEFECTS\nThe Contractor shall make good any defects notified within six (6) months after handover at no cost to the Client.\n\n7. SITE\nThe Contractor is responsible for site security and for keeping the site clean. Working hours Monday to Saturday, 7:00 to 17:30. No work on Sundays.\n\n8. DISPUTES\nDisputes shall first be referred to mediation by a member of the Ghana Institution of Engineering acceptable to both parties.\n\nSigned: Kwame Asante ________   Yaw Boateng ________\nDate: 24 May 2026"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q2-kwame-q01",
+      "cat": "current_fact",
+      "q": "who's the client rep on the bridge job now?",
+      "required": [
+        "Mrs. Lydia Adjei"
+      ],
+      "forbidden": [
+        "Mr. Owusu is currently the client rep"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q02",
+      "cat": "correction",
+      "q": "when's the deck pour for spans 1-2?",
+      "required": [
+        "24 October"
+      ],
+      "forbidden": [
+        "The deck pour is on 14 October"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q03",
+      "cat": "resolved_blocker",
+      "q": "what's blocking KBR-2 at the moment?",
+      "required": [
+        "waiting for the pier 3 geotechnical report from GeoLab"
+      ],
+      "forbidden": [
+        "The rebar is currently stuck at Tema port customs"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q04",
+      "cat": "future_vs_now",
+      "q": "which school are the twins in?",
+      "required": [
+        "Little Stars Academy now",
+        "Morning Star School from January"
+      ],
+      "forbidden": [
+        "The twins are currently at Morning Star School"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q05",
+      "cat": "same_name_distinct",
+      "q": "what date is the inspection at the house?",
+      "required": [
+        "28 October (bank valuer for the mortgage top-up)"
+      ],
+      "forbidden": [
+        "The house inspection is on 22 October"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q06",
+      "cat": "file",
+      "q": "what does Yaw owe me per week if the house runs late?",
+      "required": [
+        "GHS 1,500 per week",
+        "capped at GHS 20,000"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q07",
+      "cat": "file_plus_chat",
+      "q": "how much do I still have to pay Yaw in total?",
+      "required": [
+        "GHS 206,000 (tranches 3 and 4: 123,600 + 82,400)"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q08",
+      "cat": "multi_hop",
+      "q": "who do i need to push to unblock the bridge?",
+      "required": [
+        "Dr. Mensah at GeoLab"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q09",
+      "cat": "uncertainty",
+      "q": "what roof are we putting on the house?",
+      "required": [
+        "not decided: aluminium (in the contract) vs stone-coated"
+      ],
+      "forbidden": [
+        "Stone-coated roofing has been chosen for the house"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q10",
+      "cat": "preference",
+      "q": "plan my week: geolab follow-up meeting, a site walk at kasoa, and checking the roof at oyarifa. one per day starting saturday",
+      "required": [
+        "nothing scheduled on Sunday"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q11",
+      "cat": "draft",
+      "q": "draft a short email to the client rep confirming the inspection on the bridge",
+      "required": [
+        "addressed to Mrs. Lydia Adjei",
+        "inspection on 22 October"
+      ],
+      "forbidden": [
+        "Mr. Owusu is the current client rep"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q12",
+      "cat": "temporal_history",
+      "q": "who was the GHA rep before the current one?",
+      "required": [
+        "Mr. Owusu"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q2-kwame-q13",
+      "cat": "unknown",
+      "q": "what does Efua do for work again?",
+      "expectUnknown": true
+    },
+    {
+      "id": "q2-kwame-q14",
+      "cat": "unknown",
+      "q": "what's Yaw's phone number?",
+      "expectUnknown": true
+    }
+  ]
+}

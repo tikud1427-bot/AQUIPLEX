@@ -92,7 +92,15 @@ const INGEST_CONCURRENCY = Math.max(1, Math.min(8, Number(flag('--ingest-concurr
 const DATASETS = (flag('--datasets', 'eval/lift/world-model-lift-live.v1.json')).split(',').map(s => s.trim()).filter(Boolean);
 
 const L = await import('../eval/lift/liftCore.mjs');
-const CONDS = [...L.CONDITIONS, ...(ABLATE ? ['worldModelSentences'] : [])];
+// --conditions (Pass 2, 2026-10-11): pick the compared conditions. Beyond the
+// original four: `history` = the PRODUCTION conversation window over the
+// persona's history (full history when it fits in --history-tokens, else the
+// newest turns that do — tokenManager.buildContextWindow), and
+// `memoryMatched` = BM25 at the World Model's context size for that question.
+const CONDS = flag('--conditions')
+  ? flag('--conditions').split(',').map(s => s.trim()).filter(Boolean)
+  : [...L.CONDITIONS, ...(ABLATE ? ['worldModelSentences'] : [])];
+const HISTORY_TOKENS = Number(flag('--history-tokens', 12_000));
 const R = await import('../eval/lift/liftRuntime.mjs');
 const { getPool, closePool, isConfigured } = await import('../src/core/db/pool.js');
 const Brain = await import('../src/brain/index.js');
@@ -149,8 +157,9 @@ const answer = (system, user) => withRetry(async () => {
   // gpt-oss-20b exhausted 1024 on E6 prompts, measured 2026-10), so they get
   // the larger budget; Groq keeps its measured 900.
   const budget = ANSWER_PROVIDER === 'gemini' || ANSWER_PROVIDER === 'nvidia' ? 4000 : 900;
+  const t0 = Date.now();
   const r = await gen(system, [{ role: 'user', content: user }], undefined, budget, { model: ANSWER_MODEL, temperature: 0 });
-  return { text: r.text, model: r.model ?? ANSWER_MODEL };
+  return { text: r.text, model: r.model ?? ANSWER_MODEL, ms: Date.now() - t0, usage: r.usage ?? null };
 }, 'answer');
 
 // The JUDGE is measurement instrumentation, not a product path (liftJudge.mjs):
@@ -244,7 +253,11 @@ async function main() {
       worldModel: wm.block,
       worldModelSentences: wm.sentenceBlock,
     };
-    const row = { persona: persona.id, id: question.id, cat: question.cat, q: question.q, rep,
+    const win = L.historyWindow(persona.history, HISTORY_TOKENS);
+    contexts.history = L.formatTurns(win.turns);
+    contexts.memoryMatched = L.formatTurns(L.bm25WithinChars(persona.history, question.q, Math.max(300, wm.block.length)));
+    const row = { persona: persona.id, length: persona.length ?? 'short', historyTokens: win.totalTokens, historyTruncated: win.truncated,
+      id: question.id, cat: question.cat, q: question.q, rep,
       expectUnknown: Boolean(question.expectUnknown), hasForbidden: (question.forbidden ?? []).length > 0,
       worldModelDiag: wm, conditions: {} };
     for (const cond of CONDS) {
@@ -252,7 +265,9 @@ async function main() {
       const a = await answer(p.system, p.user);
       const j = await judge(persona, question, a.text);
       row.conditions[cond] = {
-        context: contexts[cond], answer: a.text, answerModel: a.model, judgement: j,
+        context: contexts[cond], contextTokens: L.estimateTokens(contexts[cond]), answerMs: a.ms ?? null, usage: a.usage ?? null,
+        ...(cond === 'worldModel' ? { contextMs: wm.ms ?? null } : {}),
+        answer: a.text, answerModel: a.model, judgement: j,
         grade: j.error ? null : L.gradeAnswer(question, j),
       };
     }
@@ -278,27 +293,38 @@ async function main() {
       hasForbidden: r.hasForbidden, grade: r.conditions[c].grade })));
   }
   const vec = c => graded.map(r => r.conditions[c].grade.correct);
-  const paired = {
-    worldModel_vs_memory: L.pairedComparison(vec('worldModel'), vec('memory')),
-    worldModel_vs_stateless: L.pairedComparison(vec('worldModel'), vec('stateless')),
-    worldModel_vs_fullHistory: L.pairedComparison(vec('worldModel'), vec('fullHistory')),
-    memory_vs_stateless: L.pairedComparison(vec('memory'), vec('stateless')),
-  };
+  const others = CONDS.filter(c => c !== 'worldModel');
+  const paired = Object.fromEntries(others.map(c => [`worldModel_vs_${c}`, L.pairedComparison(vec('worldModel'), vec(c))]));
   // PRIMARY STATISTIC (question-clustered): repeats of one question are not
   // independent, so the unit of inference is the QUESTION — per-question mean
   // correctness, paired across conditions, sign test over questions that
-  // differ, and a seeded bootstrap CI over questions.
-  const clustered = {
-    worldModel_vs_memory: L.clusteredComparison(graded, 'worldModel', 'memory'),
-    worldModel_vs_memory_answerable: L.clusteredComparison(graded.filter(r => !r.expectUnknown), 'worldModel', 'memory'),
-    worldModel_vs_stateless: L.clusteredComparison(graded, 'worldModel', 'stateless'),
-    worldModel_vs_fullHistory: L.clusteredComparison(graded, 'worldModel', 'fullHistory'),
-    fabrication_worldModel_vs_memory: L.clusteredComparison(graded, 'worldModel', 'memory', g => g.fabricated),
-    ...(ABLATE ? {
-      worldModel_vs_sentenceRendering: L.clusteredComparison(graded, 'worldModel', 'worldModelSentences'),
-      sentenceRendering_vs_memory: L.clusteredComparison(graded, 'worldModelSentences', 'memory'),
-    } : {}),
-  };
+  // differ, and a seeded bootstrap CI over questions. Pass 2: per history
+  // length group (short / long) as well as overall, and for fabrication and
+  // stale answers, not only correctness.
+  const groups = { all: graded, short: graded.filter(r => (r.length ?? 'short') === 'short'), long: graded.filter(r => r.length === 'long') };
+  const clustered = {};
+  for (const [g, rows] of Object.entries(groups)) {
+    if (!rows.length) continue;
+    for (const c of others) {
+      clustered[`${g}:worldModel_vs_${c}`] = L.clusteredComparison(rows, 'worldModel', c);
+      clustered[`${g}:fabrication_worldModel_vs_${c}`] = L.clusteredComparison(rows, 'worldModel', c, x => x.fabricated);
+      const stale = rows.filter(r => r.hasForbidden);
+      if (stale.length) clustered[`${g}:stale_worldModel_vs_${c}`] = L.clusteredComparison(stale, 'worldModel', c, x => x.stale);
+    }
+  }
+  const metricsByLength = {};
+  for (const [g, rows] of Object.entries(groups)) {
+    if (!rows.length || g === 'all') continue;
+    metricsByLength[g] = Object.fromEntries(CONDS.map(c => [c, L.conditionMetrics(rows.map(r => ({ cat: r.cat, expectUnknown: r.expectUnknown,
+      hasForbidden: r.hasForbidden, grade: r.conditions[c].grade })))]));
+  }
+  const cost = Object.fromEntries(CONDS.map(c => {
+    const xs = graded.map(r => r.conditions[c]);
+    const mean = f => Number((xs.reduce((n, x) => n + (Number(f(x)) || 0), 0) / (xs.length || 1)).toFixed(1));
+    return [c, { contextTokens: mean(x => x.contextTokens), answerMs: mean(x => x.answerMs),
+      promptTokens: mean(x => x.usage?.inputTokens ?? x.usage?.prompt_tokens), outputTokens: mean(x => x.usage?.outputTokens ?? x.usage?.completion_tokens),
+      ...(c === 'worldModel' ? { contextAssemblyMs: mean(x => x.contextMs) } : {}) }];
+  }));
   const wmDiag = {
     contextsWithUndefinedLine: results.filter(r => r.worldModelDiag.undefinedLine).length,
     emptyContexts: results.filter(r => !r.worldModelDiag.block.trim()).length,
@@ -316,7 +342,8 @@ async function main() {
     gates: Object.fromEntries(['AQUA_E6', 'AQUA_CONTEXT_V2', 'AQUA_RETRIEVAL_V3', 'AQUA_SELF_ENTITY', 'AQUA_CROSS_ENCODER',
       'AQUA_E6_SINGLE_VALUED'].map(k => [k, process.env[k] ?? null])),
     questions: results.length, graded: graded.length, judgeErrors,
-    metrics, paired, clustered, worldModelDiagnostics: wmDiag, pipeline, results,
+    historyTokensBudget: HISTORY_TOKENS, conditions: CONDS,
+    metrics, metricsByLength, paired, clustered, cost, worldModelDiagnostics: wmDiag, pipeline, results,
   };
   const file = flag('--json', path.join('eval', 'out', `world-model-lift-live.${RUN}.json`));
   mkdirSync(path.dirname(path.resolve(ROOT, file)), { recursive: true });
@@ -334,6 +361,12 @@ async function main() {
   console.log('\nPAIRED (strict correctness): wins/losses/ties, two-sided sign test');
   for (const [k, v] of Object.entries(paired)) console.log(`  ${k.padEnd(28)} ${v.wins}/${v.losses}/${v.ties}  p=${v.sign_test_p}`);
   console.log('\nQUESTION-CLUSTERED (primary): questions, mean diff [95% bootstrap CI], question wins/losses/ties, sign test');
+  for (const [g, m] of Object.entries(metricsByLength)) {
+    console.log(`  ${`[${g}] correctness`.padEnd(28)} ${CONDS.map(c => fmt(m[c].correctness).padStart(12)).join(' ')}`);
+    console.log(`  ${`[${g}] fabrication`.padEnd(28)} ${CONDS.map(c => fmt(m[c].fabrication_rate).padStart(12)).join(' ')}`);
+    console.log(`  ${`[${g}] stale`.padEnd(28)} ${CONDS.map(c => fmt(m[c].stale_rate).padStart(12)).join(' ')}`);
+  }
+  console.log(`cost: ${JSON.stringify(cost)}`);
   for (const [k, v] of Object.entries(clustered)) {
     console.log(`  ${k.padEnd(36)} n=${v.questions} Δ=${v.meanDiff} [${v.ci95.join(', ')}] ${v.wins}/${v.losses}/${v.ties} p=${v.sign_test_p}`);
   }

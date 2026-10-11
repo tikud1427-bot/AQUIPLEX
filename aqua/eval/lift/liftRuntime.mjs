@@ -132,6 +132,7 @@ export async function drainOwner(ownerId, { runId, log = console.log, label = ow
  * block plus the full diagnostic record the failure taxonomy is built from.
  */
 export async function worldModelContext(ownerId, q, { canonicalOnly = true } = {}) {
+  const t0 = Date.now();
   const { task: taskType } = classifyTask(q);
   let semanticScores = null;
   try { semanticScores = await Brain.canonicalSemanticScores(ownerId, q); } catch { semanticScores = null; }
@@ -149,6 +150,7 @@ export async function worldModelContext(ownerId, q, { canonicalOnly = true } = {
        'Use the context above with its provenance and citations; disputed items must be presented as contested, never as settled.'].join('\n')
     : '';
   return {
+    ms: Date.now() - t0,   // context assembly latency incl. the dense-score hydration
     block: ctx.block ?? '',
     sentenceBlock,
     taskType,

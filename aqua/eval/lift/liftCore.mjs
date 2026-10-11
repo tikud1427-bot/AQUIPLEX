@@ -65,6 +65,49 @@ export function bm25Retrieve(history, query, k = 8) {
     .map(d => ({ turn: d.i + 1, text: d.text, score: Number(d.score.toFixed(4)) }));
 }
 
+/**
+ * TOKEN-BUDGET-MATCHED memory (2026-10-11, Pass 2): the same BM25 ranking, but
+ * instead of a fixed k it takes ranked turns until the formatted context
+ * reaches `chars` — the size of the World Model context for the SAME question.
+ * The fair "same prompt budget" comparison. Chronological in the prompt.
+ */
+export function bm25WithinChars(history, query, chars) {
+  const ranked = bm25Retrieve(history, query, history.length);
+  const ranks = [...ranked].sort((a, b) => b.score - a.score || b.turn - a.turn);
+  const kept = [];
+  let used = 0;
+  for (const t of ranks) {
+    const cost = `[turn ${t.turn}] ${t.text}`.length + 1;
+    if (used + cost > chars) { if (kept.length) break; }
+    kept.push(t);
+    used += cost;
+  }
+  return kept.sort((a, b) => a.turn - b.turn);
+}
+
+/** Production's estimator (src/core/tokenManager.js): ceil(chars / 4). */
+export const estimateTokens = text => Math.ceil(String(text ?? '').length / 4);
+
+/**
+ * The production CONVERSATION WINDOW applied to the persona's history
+ * (src/core/tokenManager.js buildContextWindow: newest first until
+ * `maxTokens`, then chronological). Equal to full history when it fits.
+ * Default 12,000 = maxContextTokens of the 'standard' execution profile.
+ */
+export function historyWindow(history, maxTokens = 12_000) {
+  const turns = history.map((text, i) => ({ turn: i + 1, text }));
+  const kept = [];
+  let used = 0;
+  for (let i = turns.length - 1; i >= 0; i--) {
+    const t = estimateTokens(turns[i].text);
+    if (used + t > maxTokens) break;
+    kept.unshift(turns[i]);
+    used += t;
+  }
+  return { turns: kept, truncated: kept.length < turns.length, tokens: used,
+    totalTokens: turns.reduce((n, t) => n + estimateTokens(t.text), 0) };
+}
+
 export function formatTurns(turns) {
   return turns.map(t => `[turn ${t.turn}] ${t.text}`).join('\n');
 }
