@@ -435,7 +435,12 @@ function renderItemLine(c, opts = {}) {
 
 const HEDGE_RE = /\b(?:might|maybe|perhaps|possibly|thinking\s+about|considering|not\s+(?:yet\s+)?decided|undecided|haven['’]t\s+decided|nothing\s+(?:is\s+)?decided|not\s+sure|just\s+an\s+idea|we['’]ll\s+see)\b/i;
 const ORDER_NOTE = 'Statements below are listed oldest → newest. When two statements about the same thing conflict, the later one is the current state unless it is marked disputed.';
-const BLOCK_FOOTER = 'Use the context above with its provenance and citations; disputed items must be presented as contested, never as settled.';
+// NOT LISTED = NOT KNOWN (2026-10-11, Pass 2). Fabrication was the largest
+// World-Model failure class on Lift v3 (39 judged answers): invented dates,
+// statuses, day rates and "on track" claims next to a correct context. The
+// context now says what its absence means.
+const BLOCK_FOOTER = 'Use the context above with its provenance and citations; disputed items must be presented as contested, never as settled. '
+  + 'Anything about the user not stated in this context is unknown: never invent their names, dates, numbers, plans or statuses — say it is not known.';
 
 /** Fixed (non-item) characters a block with this epistemic state will carry. */
 function blockOverhead(epistemic, ordered) {
