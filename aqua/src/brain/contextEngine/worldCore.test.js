@@ -98,3 +98,14 @@ describe('canonical lines never assert more than their source (Pass 2)', () => {
     assert.match(out.block, /User reports to Mark \(scheduled from 2099-01-01 — not yet current\)/);
   });
 });
+
+describe('unknown stays unknown (Pass 2)', () => {
+  test('every rendered context states that what is not listed is not known', () => {
+    const ctx = { queryTokens: new Set(), activeProjectTokens: new Set(), activeGoalTokens: new Set(), focusEntityIds: new Set(), now: Date.now() };
+    const out = assembleContext([{ kind: 'fact', id: 'x', text: 'I live in Toronto', confidence: 0.6, citations: [], entityIds: [], lanes: ['structured'],
+      slotIds: [], understood: { subject: 'You', predicate: 'located_in', object: 'Toronto', polarity: 'asserted', modality: 'fact' },
+      assertedAt: '2026-10-01T10:00:00Z', selectionScore: 0.9 }], ctx, { limit: 8, charBudget: 1600, minScore: 0, relativeFloor: 0, requireRelevance: false });
+    assert.match(out.block, /not stated in this context is unknown: never invent/);
+    assert.match(out.block, /User is based in Toronto/, 'the instruction does not cost the item its seat');
+  });
+});
