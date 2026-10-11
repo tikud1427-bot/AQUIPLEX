@@ -399,7 +399,12 @@ function renderCanonicalLine(c, { showDates = true, retired = null } = {}) {
   // History shown AS history (superseded, past-tense question) keeps its quote:
   // it is already labelled "no longer current".
   const evidence = !c.superseded && retired?.has(normText(c.text)) ? '' : ` — "${quote}"`;
-  return `• ${[...new Set(readings)].join('; ')}${evidence}${day ? ` [told Aqua on ${day}]` : ''}${flags ? ` (${flags})` : ''}`;
+  // NO STRONGER THAN THE EVIDENCE (2026-10-11, Pass 2): "we're thinking about
+  // cross-border splits in v2, nothing is decided" read as "(intends) User
+  // plans to add cross-border splits", and the answer asserted the plan. A
+  // hedged source is labelled so the reading cannot outrank its own words.
+  const hedge = HEDGE_RE.test(quote) && !readings.some(r => /^\(?(?:hypothetically|undecided)/.test(r)) ? '(undecided — not decided by the user) ' : '';
+  return `• ${hedge}${[...new Set(readings)].join('; ')}${evidence}${day ? ` [told Aqua on ${day}]` : ''}${flags ? ` (${flags})` : ''}`;
 }
 
 /**
@@ -428,6 +433,7 @@ function renderItemLine(c, opts = {}) {
   return `• ${c.text}${cite} (confidence ${fmt(c.confidence)}${flags ? `; ${flags}` : ''})`;
 }
 
+const HEDGE_RE = /\b(?:might|maybe|perhaps|possibly|thinking\s+about|considering|not\s+(?:yet\s+)?decided|undecided|haven['’]t\s+decided|nothing\s+(?:is\s+)?decided|not\s+sure|just\s+an\s+idea|we['’]ll\s+see)\b/i;
 const ORDER_NOTE = 'Statements below are listed oldest → newest. When two statements about the same thing conflict, the later one is the current state unless it is marked disputed.';
 const BLOCK_FOOTER = 'Use the context above with its provenance and citations; disputed items must be presented as contested, never as settled.';
 

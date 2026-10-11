@@ -64,7 +64,7 @@ import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup
 import { selectCanonicalRevision } from './reflectionV3/canonicalRevisionVoice.js';
 import { recordRevisionVoice } from '../core/observability.js';
 import { resolveRelationships } from './understanding/relationshipResolver.js';
-import { dedupAndDetect, inStoredVocabulary } from './understanding/claimDedup.js';
+import { dedupAndDetect, inStoredVocabulary, isResolutionStatus, RESOLUTION_HISTORY_PREDICATES } from './understanding/claimDedup.js';
 import { buildCommitPlan } from './understanding/commitPlan.js';
 import { getPool, isConfigured as dbConfigured } from '../core/db/pool.js';
 import * as canonicalReadModel from '../core/worldModel/canonicalReadModel.js';
@@ -919,6 +919,7 @@ export async function understandTurn(
   const result = await runUnderstandingPipeline(userMessage, {
     ownerId, conversationId, callModel: callModel ?? (await e6Transport()),
     entityStore, selfEntityId, knownEntities, context, assertedAt: saidAt.toISOString(),
+    documentFallback: Boolean(doc),   // key/value lines of an uploaded file are never silently lost
   });
 
   // S6's missing half — see understanding/provisionalMinter.js. A claim about a
@@ -1016,7 +1017,8 @@ export async function understandTurn(
       // S8 compares the incoming structured claims with persisted owner-scoped
       // history before S9. The repository supplies history only; it never
       // decides deduplication or contradiction.
-      const existing = await findClaimsForDedup({ ownerId, claims: segment.claims });
+      const existing = await findClaimsForDedup({ ownerId, claims: segment.claims,
+        extraPredicates: segment.claims.some(isResolutionStatus) ? RESOLUTION_HISTORY_PREDICATES : [] });
       // S8 compares by KEY, and stored claims carry the entity's canonical label
       // ("You") while incoming claims carry the surface text ("I"). Measured on
       // real Postgres: the keys never matched, so history was never consulted —

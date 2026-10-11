@@ -320,3 +320,23 @@ describe('S5 — future, month-only and content-time (Pass 2)', () => {
     }
   });
 });
+
+describe('S5 — the model\'s as-written phrases (Pass 2, real-extraction finding)', () => {
+  const SAID = '2026-10-11T10:00:00Z';
+  test('a span without time words takes the model\'s validFrom phrase; the phrase is resolved, not trusted as a date', () => {
+    const c = applyTemporal({ predicate: 'related_to', statementText: 'my team lead will be Dalia Mor', validFrom: 'next month' }, SAID);
+    assert.equal(c.validFrom, '2026-11-01T00:00:00.000Z');
+    assert.equal(c.validTo, null, 'future state stays open');
+    assert.equal(c.temporal.source, 'model-phrase');
+  });
+  test('the span wins when it has its own time expression; a model ISO date is never taken as-is', () => {
+    const c = applyTemporal({ predicate: 'located_in', statementText: 'I lived in Kyoto until 2023', validFrom: 'next month' }, SAID);
+    assert.equal(c.temporal.source, 'statement');
+    const iso = applyTemporal({ predicate: 'located_in', statementText: 'I live in Osaka', validFrom: '2030-01-01T00:00:00Z' }, SAID);
+    assert.equal(iso.validFrom, null, 'a computed date from the model is ignored (rule 6: never compute a date)');
+  });
+  test('a validTo phrase closes the range', () => {
+    const c = applyTemporal({ predicate: 'located_in', statementText: 'I lived in Kyoto', validTo: '2023' }, SAID);
+    assert.equal(c.validTo, '2023-12-31T23:59:59.999Z');
+  });
+});

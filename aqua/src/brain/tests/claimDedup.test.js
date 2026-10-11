@@ -396,3 +396,82 @@ describe('role handover (related_to, rule 13)', () => {
     assert.deepEqual(r.contradictions.map(c => c.kind), ['polarity']);
   });
 });
+
+// Pass 2 (2026-10-11): an explicit RESOLUTION status retires only the blocker
+// claims LINKED to the resolved thing; a generic positive update retires nothing.
+describe('blocker resolution (Pass 2)', () => {
+  const stored = (id, subject, predicate, object, over = {}) => ({ claimId: id, subject, predicate, object,
+    objectKind: object.entity ? 'entity' : 'literal', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, ...over });
+  const status = (subject, literal, over = {}) => ({ claimId: 'new', subject, predicate: 'has_status', object: { literal }, objectKind: 'literal',
+    polarity: 'asserted', modality: 'fact', ...over });
+  const history = () => [
+    stored('b1', 'visa application', 'blocked_by', { entity: 'the embassy' }),
+    stored('b2', 'the embassy', 'has_property', { literal: "hasn't returned my passport" }),
+    stored('b3', 'antenna supplier', 'blocks', { entity: 'drone project' }),
+    stored('b4', 'the embassy', 'has_property', { literal: 'is in the city centre' }),
+  ];
+
+  test('"the embassy returned my passport" retires the blocker relation and the embassy\'s pending state — only those', () => {
+    const r = dedupAndDetect([status('The Embassy', 'returned my passport')], history());
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId).sort(), ['b1', 'b2']);
+    assert.ok(r.contradictions.every(c => c.kind === 'revision'));
+    assert.equal(r.claims.find(c => c.claimId === 'new').revises, true, 'marked as a revision so rule 2 retires the older claims');
+  });
+
+  test('resolving the blocked TASK itself retires its blockers', () => {
+    const r = dedupAndDetect([status('the drone project', 'completed')], history());
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['b3']);
+  });
+
+  test('a positive update that is not a resolution, or a still-pending status, retires nothing', () => {
+    for (const lit of ['going well', 'still not signed', "hasn't arrived yet", 'waiting to be approved']) {
+      const r = dedupAndDetect([status('the embassy', lit)], history());
+      assert.deepEqual(r.contradictions.filter(c => c.kind === 'revision'), [], lit);
+    }
+  });
+
+  test('an unrelated thing being resolved does not touch other blockers', () => {
+    const r = dedupAndDetect([status('the printer', 'fixed')], history());
+    assert.deepEqual(r.contradictions, []);
+  });
+});
+
+// Pass 2 (2026-10-11): a renamed mention of the same event, linked conservatively.
+describe('renamed subject revision (Pass 2)', () => {
+  const FUNC = { functionalPredicates: new Set(['deadline_for']) };
+  const old = (id, subject, date, statementText, over = {}) => ({ claimId: id, subject, predicate: 'deadline_for', object: { literal: date },
+    objectKind: 'literal', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, statementText, ...over });
+  const moved = (subject, over = {}) => ({ claimId: 'new', subject, predicate: 'deadline_for', object: { literal: 'May 18' }, objectKind: 'literal',
+    polarity: 'asserted', modality: 'fact', revises: true, statementText: `Actually the ${subject} moved to May 18`, ...over });
+
+  test('"the planter launch moved" retires the date stated as "launching the ceramic planter line" — even under a mis-attributed subject', () => {
+    const r = dedupAndDetect([moved('planter launch')], [old('p', 'You', 'May 4', "We're launching the ceramic planter line on May 4")], FUNC);
+    assert.deepEqual(r.contradictions.map(c => [c.kind, c.existing.claimId]), [['revision', 'p']]);
+  });
+
+  test('a generic mention ("the launch moved") links nothing — any launch could be meant', () => {
+    const r = dedupAndDetect([moved('launch')], [old('p', 'planter line', 'May 4', 'The planter line launches on May 4')], FUNC);
+    assert.deepEqual(r.contradictions, []);
+  });
+
+  test('two candidates (same-name things in two projects) → ambiguous, nothing retired', () => {
+    const r = dedupAndDetect([moved('planter launch')], [
+      old('a', 'ceramic planter launch', 'May 4', 'The ceramic planter launch is May 4'),
+      old('b', 'concrete planter launch', 'June 2', 'The concrete planter launch is June 2'),
+    ], FUNC);
+    assert.deepEqual(r.contradictions, []);
+    assert.equal(r.ambiguousRevisions.at(-1).reason, 'renamed-subject');
+  });
+
+  test('a different distinctive word does not link ("website launch" vs "planter launch"); no revision marker → no link', () => {
+    const hist = [old('p', 'planter launch', 'May 4', 'The planter launch is May 4')];
+    assert.deepEqual(dedupAndDetect([moved('website launch')], hist, FUNC).contradictions, []);
+    assert.deepEqual(dedupAndDetect([moved('planter line', { revises: undefined })], hist, FUNC).contradictions, []);
+  });
+
+  test('when the new subject already holds its own value, the ordinary snapshot rule decides — no rename inference', () => {
+    const r = dedupAndDetect([moved('planter launch')], [old('own', 'planter launch', 'May 9', 'The planter launch is May 9'),
+      old('p', 'You', 'May 4', "We're launching the ceramic planter line on May 4")], FUNC);
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['own']);
+  });
+});

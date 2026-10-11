@@ -328,10 +328,12 @@ export async function claimWithEvidence(ownerId, claimId) {
   };
 }
 
-export async function findClaimsForDedup({ ownerId, claims = [] } = {}) {
+export async function findClaimsForDedup({ ownerId, claims = [], extraPredicates = [] } = {}) {
   const owner = required(ownerId, 'ownerId');
-  const predicates = [...new Set((Array.isArray(claims) ? claims : [])
-    .map(c => c?.predicate).filter(Boolean))];
+  // extraPredicates (2026-10-11): relations S8 must see although no incoming
+  // claim carries them — a resolution status needs the blockers it resolves.
+  const predicates = [...new Set([...(Array.isArray(claims) ? claims : [])
+    .map(c => c?.predicate), ...extraPredicates].filter(Boolean))];
   if (!predicates.length) return [];
   const p = await getPool();
   const { rows } = await p.query(`

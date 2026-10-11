@@ -29,6 +29,10 @@
  */
 
 export const WORLD_CORE_CHAR_BUDGET = 2000;
+export const RELEVANT_SCORE = 0.3;
+export const BACKGROUND_CAP = 6;
+const PERSONAL_PREDICATES = new Set(['prefers', 'dislikes', 'habit_of', 'located_in', 'works_at', 'role_is',
+  'reports_to', 'related_to', 'plans_to', 'member_of', 'manages']);
 export const WORLD_CORE_HEADER = '── ALSO KNOWN ABOUT THE USER — current unless marked scheduled, disputed or stale (their own words, oldest → newest; superseded statements left out) ──';
 
 const norm = s => String(s ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
@@ -80,6 +84,7 @@ function lineFor(group, now) {
 export function selectWorldCore(claims, opts = {}) {
   const now = opts.now ?? Date.now();
   const budget = Number.isFinite(opts.charBudget) ? opts.charBudget : WORLD_CORE_CHAR_BUDGET;
+  const backgroundCap = Number.isFinite(opts.backgroundCap) ? opts.backgroundCap : BACKGROUND_CAP;
   const excludeIds = new Set([...(opts.excludeIds ?? [])].map(String));
   const excludeTexts = new Set([...(opts.excludeTexts ?? [])].map(norm).filter(Boolean));
   const scores = opts.scores instanceof Map ? opts.scores : null;
@@ -107,15 +112,25 @@ export function selectWorldCore(claims, opts = {}) {
   // A sentence already rendered for ANY of its claims is not repeated.
   for (const [key, g] of groups) if (g.claims.some(c => excludeIds.has(String(c.claimId)))) groups.delete(key);
 
-  // Budget: relevance first, then recency — only matters once the world is big.
-  const ranked = [...groups.values()].sort((a, b) => b.score - a.score || b.at - a.at);
+  // PRECISION, NOT A DUMP (2026-10-11, Pass 2). Three tiers compete for the
+  // budget: (1) RELEVANT to this question (dense score ≥ RELEVANT_SCORE, the
+  // assembler's own semantic-backing threshold); (2) PERSONAL — the facts that
+  // shape any answer (preferences, where the user is, their role, the people
+  // in their roles, their goals); (3) everything else, at most BACKGROUND_CAP
+  // lines. Within a tier: relevance, then recency.
+  const tierOf = g => (g.score >= RELEVANT_SCORE ? 1 : g.claims.some(c => PERSONAL_PREDICATES.has(c.predicate)) ? 2 : 3);
+  const ranked = [...groups.values()].map(g => ({ ...g, tier: tierOf(g) }))
+    .sort((a, b) => a.tier - b.tier || b.score - a.score || b.at - a.at);
   const kept = [];
   let chars = WORLD_CORE_HEADER.length + 1;
+  let background = 0;
   for (const g of ranked) {
+    if (g.tier === 3 && background >= backgroundCap) continue;
     const line = lineFor(g, now);
     if (!line || chars + line.length + 1 > budget) continue;
     kept.push({ ...g, line });
     chars += line.length + 1;
+    if (g.tier === 3) background++;
   }
   kept.sort((a, b) => a.at - b.at);
   const lines = kept.map(g => g.line);

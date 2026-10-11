@@ -221,6 +221,42 @@ export function inStoredVocabulary(c) {
   };
 }
 
+// ── Blocker resolution vocabulary (Pass 2) ──────────────────────────────────
+const PENDING_PREDICATES = new Set(['has_status', 'has_property']);
+const RESOLVED_RE = /\b(?:fixed|resolved|solved|done|complete(?:d)?|finished|signed|approved|granted|arrived|delivered|received|returned|came\s+through|cleared|sorted(?:\s+out)?|unblocked|repaired|working\s+again|back\s+online|passed|accepted|issued|no\s+longer\s+(?:an?\s+)?(?:issue|problem|blocking|blocker))\b/i;
+const UNRESOLVED_RE = /\b(?:not|n['’]t|never|still|yet|pending|waiting|awaiting|delayed|late|stuck)\b/i;
+const PENDING_RE = /\b(?:hasn['’]t|has\s+not|haven['’]t|have\s+not|isn['’]t|not\s+yet|still|pending|waiting|awaiting|late|delayed|stuck|missing|broken|down|blocked|blocking|overdue|timing\s+out|failing|fails|keeps)\b/i;
+
+/** "the embassy" / "The Embassy" / "my visa application" → one comparable key. */
+function labelKey(s) {
+  return String(s ?? '').toLowerCase().normalize('NFKC').replace(/^(?:the|a|an|my|our|your)\s+/, '').replace(/\s+/g, ' ').trim();
+}
+/** An asserted factual STATUS that reports something as resolved — and not "still not signed". */
+export function isResolutionStatus(c) {
+  if (!c || !PENDING_PREDICATES.has(c.predicate)) return false;
+  if ((c.polarity ?? 'asserted') !== 'asserted' || (c.modality ?? 'fact') !== 'fact') return false;
+  const v = String(c.object?.literal ?? c.object?.value ?? '');
+  return RESOLVED_RE.test(v) && !UNRESOLVED_RE.test(v);
+}
+function isPendingStatus(c) {
+  return PENDING_RE.test(String(c.object?.literal ?? c.object?.value ?? ''));
+}
+// Words that name a KIND of thing, not WHICH thing: never enough to link two
+// mentions on their own ("the launch moved" could be any launch).
+const GENERIC_WORDS = new Set(['launch', 'project', 'deadline', 'date', 'event', 'meeting', 'thing', 'plan', 'release',
+  'line', 'deal', 'trip', 'work', 'task', 'job', 'new', 'next', 'big', 'final', 'first', 'call', 'review', 'report',
+  'application', 'app', 'product', 'feature', 'version', 'phase', 'stage', 'one', 'user', 'you', 'self']);
+const WORD_STOP = new Set(['the', 'a', 'an', 'my', 'our', 'your', 'of', 'for', 'to', 'on', 'in', 'at', 'and', 'is', 'are',
+  "we're", 'we', 'i', "i'm", 'by', 'with', 'from', 'actually', 'now', 'moved', 'move']);
+const stemWord = w => w.replace(/(?:ing|ed|es|s)$/, '');
+function subjectWords(s) {
+  return [...new Set(String(s ?? '').toLowerCase().normalize('NFKC').split(/[^\p{L}\p{N}']+/u)
+    .filter(w => w.length > 2 && !WORD_STOP.has(w)).map(stemWord).filter(w => w.length > 2))];
+}
+
+/** Predicates S8 needs in history when a batch carries a resolution status. */
+export const RESOLUTION_HISTORY_PREDICATES = Object.freeze(['blocks', 'blocked_by', 'has_status', 'has_property']);
+
 export function dedupAndDetect(incoming, existing = [], opts = {}) {
   const kept = new Map();
   const corroborations = [];
@@ -332,6 +368,69 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
       } else if (holders.length > 1) {
         ambiguousRevisions.push({ claim, candidates: holders.length });
       }
+    }
+
+    // RENAMED SUBJECT (2026-10-11, Pass 2, real-extraction finding). "We're
+    // launching the ceramic planter line on May 4" … "Actually the planter
+    // launch moved to May 18": the second mention minted a NEW subject, so two
+    // current launch dates competed forever. Linked only on supported evidence:
+    // the user framed it as a CHANGE (`revises`) of a SINGLE-valued relation,
+    // the new subject holds no current value of its own, and EVERY word of the
+    // new subject (stemmed) appears in exactly one existing current claim of
+    // that relation — its subject or its own source sentence — with at least
+    // one DISTINCTIVE word ("planter", not "launch"). Two candidates → nothing
+    // retired, recorded as ambiguous. Never a merge by similarity alone.
+    if (claim.revises === true && functional.has(claim.predicate)
+        && (claim.polarity ?? 'asserted') === 'asserted' && (claim.modality ?? 'fact') === 'fact'
+        && !contradictions.some(c => c.incoming === claim)) {
+      const words = subjectWords(claim.subject);
+      const hasOwn = [...kept.values()].some(k => k.claim !== claim && k.claim._persisted
+        && subjectPredicateKey(k.claim) === subjectPredicateKey(claim) && k.claim.state !== 'superseded' && k.claim.state !== 'archived');
+      if (!hasOwn && words.some(w => !GENERIC_WORDS.has(w))) {
+        const cands = [...kept.values()].map(k => k.claim).filter(o => o !== claim && o._persisted
+          && o.predicate === claim.predicate && labelKey(o.subject) !== labelKey(claim.subject)
+          && o.state !== 'superseded' && o.state !== 'archived'
+          && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact'
+          && (() => { const have = new Set([...subjectWords(o.subject), ...subjectWords(o.statementText ?? o.statement ?? '')]); return words.every(w => have.has(w)); })());
+        if (cands.length === 1) {
+          contradictions.push({
+            kind: 'revision', reason: `"${claim.subject}" refers to the subject of "${cands[0].statementText ?? cands[0].subject}" (renamed mention of the same ${claim.predicate})`,
+            incoming: claim, existing: cands[0], subject: claim.subject, predicate: claim.predicate,
+          });
+        } else if (cands.length > 1) {
+          ambiguousRevisions.push({ claim, candidates: cands.length, reason: 'renamed-subject' });
+        }
+      }
+    }
+
+    // BLOCKER RESOLUTION (2026-10-11, Pass 2). "The embassy returned my
+    // passport" / "the firmware bug is fixed now" arrive as a STATUS of the
+    // thing that was blocking, and nothing compared them with the blocker
+    // relation — so the old blocker stayed current and was answered as the
+    // present (Lift v3 failure class). Only an explicit RESOLUTION status
+    // counts (not any positive update), and only claims LINKED to the
+    // resolved thing are retired: X blocks …, … blocked_by X, X's own pending
+    // state, and — when the resolved thing is the blocked TASK itself — its
+    // blockers. Emitted as revisions (rule 2 retires the older claim, kept
+    // as history); nothing else is touched.
+    if (isResolutionStatus(claim)) {
+      const who = labelKey(claim.subject);
+      const linked = [...kept.values()].map(k => k.claim).filter(o => o !== claim && o._persisted
+        && o.state !== 'superseded' && o.state !== 'archived'
+        && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact'
+        && ((o.predicate === 'blocks' && labelKey(o.subject) === who)
+          || (o.predicate === 'blocked_by' && labelKey(o.object?.entity) === who)
+          || (o.predicate === 'blocked_by' && labelKey(o.subject) === who)
+          || (o.predicate === 'blocks' && labelKey(o.object?.entity) === who)
+          || (PENDING_PREDICATES.has(o.predicate) && labelKey(o.subject) === who && isPendingStatus(o))));
+      for (const o of linked) {
+        if (contradictions.some(c => c.incoming === claim && c.existing === o)) continue;
+        contradictions.push({
+          kind: 'revision', reason: `${claim.subject} resolved ("${objectSig(claim).value}") — ${o.predicate} no longer current`,
+          incoming: claim, existing: o, subject: claim.subject, predicate: claim.predicate,
+        });
+      }
+      if (linked.length) claim.revises = true;
     }
 
     kept.set(key, { claim, evidence: [...(claim.evidence ?? [])], corroborationCount: 1 });

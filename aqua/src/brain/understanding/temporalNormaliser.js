@@ -268,7 +268,26 @@ export function normaliseTemporal(text, assertedAt = null, opts = {}) {
 export function applyTemporal(claim, assertedAt, opts = {}) {
   const text = opts.text ?? claim?.statementText ?? claim?.statement_text ?? '';
   const tense = tenseOf(text);
-  const t = normaliseTemporal(text, assertedAt, { tense });
+  let t = normaliseTemporal(text, assertedAt, { tense });
+  // MODEL PHRASE FALLBACK (2026-10-11, real-extraction check): the model often
+  // quotes a SPAN without the time words ("my team lead will be Dalia Mor")
+  // and puts them in validFrom/validTo AS WRITTEN ("next month"), per the
+  // prompt. Those phrases were dropped, so the change applied immediately.
+  // The span stays the primary evidence; the phrases are resolved by the same
+  // rules (never computed by the model, never invented here).
+  let source = 'statement';
+  const phrase = s => (typeof s === 'string' && s.trim() && !/^\d{4}-\d{2}-\d{2}T/.test(s) ? s : null);
+  if (!t.validFrom && !t.validTo) {
+    const pf = phrase(claim?.validFrom), pt = phrase(claim?.validTo);
+    if (pf) {
+      const f = normaliseTemporal(pf, assertedAt, { tense });
+      if (f.validFrom) { t = f; source = 'model-phrase'; }
+    }
+    if (pt) {
+      const e = normaliseTemporal(pt, assertedAt, { tense });
+      if (e.validTo) { t = { ...t, validTo: e.validTo, precision: t.validFrom ? t.precision : e.precision, anchor: t.anchor ?? e.anchor }; source = 'model-phrase'; }
+    }
+  }
 
   // The date of a deadline/plan/decision is its VALUE (see CONTENT_TIME_PREDICATES):
   // the claim holds now, so no validity window is written. The anchor is kept.
@@ -280,7 +299,7 @@ export function applyTemporal(claim, assertedAt, opts = {}) {
   }
 
   let validTo = t.validTo;
-  if (t.validFrom && tense === 'present') {
+  if (t.validFrom && tense === 'present' && source === 'statement') {
     // Present tense: the state is still true, so the range is open even though
     // the expression named a start.
     validTo = null;
@@ -299,7 +318,7 @@ export function applyTemporal(claim, assertedAt, opts = {}) {
     validTo,
     timePrecision: t.precision,
     temporal: Object.freeze({
-      anchor: t.anchor, reason: t.reason, tense, future,
+      anchor: t.anchor, reason: t.reason, tense, future, source,
       // Kept so a later reader can tell an open range meant "still true" from
       // one that meant "we never knew when it ended".
       openedByTense: Boolean(t.validFrom && tense === 'present' && t.validTo),

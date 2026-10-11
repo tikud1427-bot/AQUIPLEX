@@ -65,6 +65,20 @@ import { resolveClaimEntities } from './entityResolution.js';
 export const MAX_MESSAGE_CHARS = 20_000;
 
 /**
+ * A document's `Key: value` line as a claim (key has_property value), or null.
+ * Short keys only (≤ 5 words, starts with a letter); the value is copied
+ * verbatim without a trailing full stop. Used only for document sources.
+ */
+export function keyValueClaim(text) {
+  const m = String(text ?? '').trim().match(/^([A-Za-z][\w&'/().\- ]{0,48}?)\s*:\s*(\S.{0,298}?)\s*\.?$/);
+  if (!m) return null;
+  const key = m[1].trim(), value = m[2].trim();
+  if (key.split(/\s+/).length > 5 || /^https?$/i.test(key) || value.length < 2) return null;
+  return { subject: key, predicate: 'has_property', object: { literal: value }, polarity: 'asserted', modality: 'fact',
+    timePrecision: 'none', statementText: String(text).trim().replace(/\.$/, '') };
+}
+
+/**
  * Stages this module runs, in blueprint order. S6 joins only when the caller
  * supplies an entity store — resolution against no store would mark every
  * subject provisional and report a resolution rate of zero as if it were a
@@ -166,12 +180,25 @@ export async function runUnderstandingPipeline(text, opts = {}) {
 
   for (const seg of segments) {
     // ── S2 CANDIDATE GATING ────────────────────────────────────────────────
-    if (!gateSegment(seg.text).admit) continue;
+    // DOCUMENT KEY/VALUE FALLBACK (2026-10-11, Pass 2): "Cap: 12 days per
+    // month." in an uploaded contract was gated out or came back [] — the
+    // constraint never reached the World Model and the answer ignored it.
+    // For DOCUMENT sources only, a `key: value` line that yields nothing
+    // becomes key has_property value — verbatim, and still through every
+    // validation gate below (subject and literal must be in the line).
+    const kv = opts.documentFallback ? keyValueClaim(seg.text) : null;
+    const admitted = gateSegment(seg.text).admit;
+    if (!admitted && !kv) continue;
     stats.gated++;
 
     // ── S3 LLM EXTRACTION ──────────────────────────────────────────────────
-    let out = await extractSegment(seg.text, opts);
-    if (out.cached) stats.cached++; else stats.called++;
+    let out = admitted ? await extractSegment(seg.text, opts) : { claims: [kv], rejected: [], cached: true, model: 'document-key-value' };
+    if (!admitted) stats.documentFallbacks = (stats.documentFallbacks ?? 0) + 1;
+    else if (out.cached) stats.cached++; else stats.called++;
+    if (admitted && kv && !out.error && !out.claims.length && !(out.rejected ?? []).length) {
+      out = { ...out, claims: [kv] };
+      stats.documentFallbacks = (stats.documentFallbacks ?? 0) + 1;
+    }
     // NEGATION RETRY (2026-10-06). Measured on the production extractor: an
     // explicitly negated sentence sometimes comes back as [] ("Nummo is not
     // one of our customers": extracted in pass 1, [] in pass 2), and one such
@@ -336,12 +363,29 @@ export async function runUnderstandingPipeline(text, opts = {}) {
         });
       }
     }
+    const segClaims = [];
     for (const admitted of g8.kept) {
       stats.admitted++;
       // ── S5 TEMPORAL NORMALISATION ────────────────────────────────────────
       const dated = applyTemporal(admitted, opts.assertedAt ?? null);
-      claims.push({ ...dated, segment: { start: seg.start, end: seg.end, index: seg.index } });
+      segClaims.push({ ...dated, segment: { start: seg.start, end: seg.end, index: seg.index } });
     }
+    // ONE CHANGE, ONE START (2026-10-11): "from next month my lead will be
+    // Dalia, not Oren" yields Dalia (dated) and NOT Oren (often undated). The
+    // old value's retirement belongs to the SAME future moment — undated, it
+    // retired Oren today. Within one segment, an undated revision of the same
+    // predicate inherits the future start of the dated one.
+    const futureRev = segClaims.find(c => c.revises === true && c.temporal?.future && c.validFrom);
+    if (futureRev) {
+      for (const c of segClaims) {
+        if (c !== futureRev && c.revises === true && c.predicate === futureRev.predicate && !c.validFrom && !c.validTo) {
+          c.validFrom = futureRev.validFrom;
+          c.timePrecision = futureRev.timePrecision;
+          c.temporal = Object.freeze({ ...c.temporal, future: true, inheritedFrom: 'segment-revision' });
+        }
+      }
+    }
+    claims.push(...segClaims);
   }
 
   stats.models = [...models];

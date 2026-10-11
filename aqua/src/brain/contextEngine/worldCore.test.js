@@ -57,6 +57,17 @@ describe('worldCore — the current-world section', () => {
     assert.deepEqual(none.lines, [], 'no reading → left out, never re-quoted');
   });
 
+  test('precision, not a dump: relevant and personal facts first, unrelated background capped', () => {
+    const bg = Array.from({ length: 10 }, (_, i) => c(`Background fact number ${i}`, { predicate: 'has_property' }));
+    const pref = c('I am vegan', { predicate: 'prefers' });
+    const rel = c('The kiln repair is booked', { predicate: 'has_status' });
+    const r = selectWorldCore([...bg, pref, rel], { now: NOW, scores: new Map([[rel.claimId, 0.71]]) });
+    assert.ok(r.lines.includes('• "The kiln repair is booked"'), 'the question-relevant fact is kept');
+    assert.ok(r.lines.includes('• "I am vegan"'), 'the personal fact is kept');
+    assert.equal(r.lines.filter(l => l.includes('Background fact')).length, 6, 'unrelated background is capped');
+    assert.equal(r.omitted, 4);
+  });
+
   test('disputed is labelled; file provenance is shown; nothing current → empty block', () => {
     const r = selectWorldCore([
       c('The launch is January 15', { state: 'disputed' }),
@@ -68,5 +79,22 @@ describe('worldCore — the current-world section', () => {
     ]);
     assert.equal(selectWorldCore([c('x', { state: 'superseded' })], { now: NOW }).block, '');
     assert.equal(selectWorldCore(null).block, '');
+  });
+});
+
+import { assembleContext } from './assembler.js';
+describe('canonical lines never assert more than their source (Pass 2)', () => {
+  const fact = (id, text, understood) => ({ kind: 'fact', id, text, confidence: 0.6, citations: [], entityIds: [], lanes: ['structured'],
+    slotIds: [], understood, assertedAt: '2026-10-01T10:00:00Z', selectionScore: 0.9 });
+  const ctx = { queryTokens: new Set(), activeProjectTokens: new Set(), activeGoalTokens: new Set(), focusEntityIds: new Set(), now: Date.now() };
+  test('a hedged statement is labelled undecided; a future state is labelled scheduled', () => {
+    const out = assembleContext([
+      fact('a', "We're thinking about cross-border splits in version 2, nothing is decided",
+        { subject: 'You', predicate: 'plans_to', object: 'cross-border splits in version 2', polarity: 'asserted', modality: 'intent' }),
+      fact('b', 'From next month my manager will be Mark',
+        { subject: 'You', predicate: 'reports_to', object: 'Mark', polarity: 'asserted', modality: 'fact', validFrom: '2099-01-01T00:00:00Z' }),
+    ], ctx, { limit: 8, charBudget: 1600, minScore: 0, relativeFloor: 0, requireRelevance: false });
+    assert.match(out.block, /• \(undecided — not decided by the user\) \(intends\) User plans to/);
+    assert.match(out.block, /User reports to Mark \(scheduled from 2099-01-01 — not yet current\)/);
   });
 });

@@ -44,6 +44,8 @@
  */
 import crypto from 'node:crypto';
 import { blockersOf, detectTriggers, isEvidence, HORIZON_DAYS } from '../proactive/triggers.js';
+/** A claim that WAS true and is now history (superseded asserted fact) — for "was it…?" questions only. */
+const wasTrue = c => Boolean(c) && c.state === 'superseded' && (c.polarity ?? 'asserted') === 'asserted' && (c.modality ?? 'fact') === 'fact';
 
 export const SELECTOR_VERSION = 'welcome-v1';
 
@@ -334,7 +336,9 @@ function blockerCandidates(claims, now, mine) {
     const resolution = claims
       .filter(c => isEvidence(c) && !c.subjectIsSelf && c.predicate === 'has_status' && DONE_STATUS.test(objectText(c)) && ts(c) >= windowStart)
       .map(res => {
-        const was = claims.find(c => isEvidence(c) && ts(c) <= ts(res) && (
+        // "Was it blocked?" reads HISTORY: since 2026-10-11 S8 retires a
+        // resolved blocker (superseded), which is exactly the evidence here.
+        const was = claims.find(c => (isEvidence(c) || wasTrue(c)) && ts(c) <= ts(res) && (
           (c.predicate === 'blocks' && c.subjectEntityId === res.subjectEntityId && objectId(c) === eid)
           || (c.predicate === 'blocked_by' && c.subjectEntityId === eid && objectId(c) === res.subjectEntityId)));
         return was ? { res, was } : null;
