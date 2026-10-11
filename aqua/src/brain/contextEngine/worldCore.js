@@ -29,7 +29,7 @@
  */
 
 export const WORLD_CORE_CHAR_BUDGET = 2000;
-export const WORLD_CORE_HEADER = '── ALSO CURRENTLY TRUE ABOUT THE USER (their own words, oldest → newest; superseded statements left out) ──';
+export const WORLD_CORE_HEADER = '── ALSO KNOWN ABOUT THE USER — current unless marked scheduled, disputed or stale (their own words, oldest → newest; superseded statements left out) ──';
 
 const norm = s => String(s ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 const ms = v => {
@@ -48,7 +48,7 @@ function lineFor(group, now) {
   if (group.claims.some(c => c.state === 'disputed')) flags.push('disputed — treat as contested');
   if (group.claims.some(c => c.state === 'stale')) flags.push('stale');
   const starts = group.claims.map(c => ms(c.validFrom)).filter(n => n != null && n > now);
-  if (starts.length && starts.length === group.claims.length) flags.push(`from ${dayOf(Math.min(...starts))}`);
+  if (starts.length && starts.length === group.claims.length) flags.push(`scheduled from ${dayOf(Math.min(...starts))} — not yet current`);
   const fromFile = group.claims.find(c => c.sourceKind === 'document');
   const fileName = fromFile ? String(fromFile.sourceExternalRef ?? '').match(/^file:(.+):chunk:\d+$/)?.[1] : null;
   const file = fromFile ? `[from uploaded file${fileName ? ` ${fileName}` : ''}] ` : '';

@@ -164,7 +164,7 @@ describe('2026-10-11 loops — live Postgres', { skip }, () => {
     const mentor = await ask(OWNER, 'Where does my mentor work?');
     // The holder's facts are in the RELEVANCE section (structured lane, via the
     // role anchor) — not only in the current-world section.
-    const relevance = mentor.block.split('── ALSO CURRENTLY TRUE')[0];
+    const relevance = mentor.block.split('── ALSO KNOWN ABOUT THE USER')[0];
     assert.match(relevance, /Sam Patel works at BBC/, `the mentor's current employer was not retrieved:\n${mentor.block}`);
     assert.doesNotMatch(relevance, /(?<!NOT: )Sam Patel works at Sky/, 'a superseded employer reached the answer as current');
 
@@ -173,7 +173,7 @@ describe('2026-10-11 loops — live Postgres', { skip }, () => {
     assert.doesNotMatch(client.block, /My biggest client is a studio called Kumo Games/, 'the retired role was re-asserted through its sentence');
 
     const plan = await ask(OWNER, 'Help me plan my week.');
-    assert.match(plan.block, /ALSO CURRENTLY TRUE ABOUT THE USER/);
+    assert.match(plan.block, /ALSO KNOWN ABOUT THE USER/);
     assert.match(plan.block, /\[from uploaded file lease_terms\.txt\] "Monthly rent: \$6,400, fixed for 3 years"/);
     assert.match(plan.block, /I prefer short bullet answers/);
     assert.doesNotMatch(plan.block, /I lived in Kyoto until 2023/, 'closed-past validity is history, not the current world');
@@ -191,7 +191,7 @@ describe('2026-10-11 loops — live Postgres', { skip }, () => {
     process.env.AQUA_WORLD_CORE = 'off';
     try {
       const off = await ask(OWNER, 'Help me plan my week.');
-      assert.doesNotMatch(off.block, /ALSO CURRENTLY TRUE ABOUT THE USER/);
+      assert.doesNotMatch(off.block, /ALSO KNOWN ABOUT THE USER/);
     } finally { delete process.env.AQUA_WORLD_CORE; }
     const other = await ask(OTHER, 'Help me plan my week.');
     assert.doesNotMatch(other.block, /Sora Studio|Monthly rent|Osaka/);

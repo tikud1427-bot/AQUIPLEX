@@ -850,13 +850,18 @@ export function e6Enabled() {
  * invoke them and nothing here commits.
  */
 export async function understandTurn(
-  { ownerId, conversationId, turn = null, userMessage, callModel = null, source = null } = {},
+  { ownerId, conversationId, turn = null, userMessage, callModel = null, source = null, assertedAt = null } = {},
   { deps = REAL_DEPS } = {},
 ) {
   // `source` (2026-10-11): an UPLOADED DOCUMENT chunk rather than a chat turn —
   // { kind: 'document', name, hash, chunk }. Same pipeline, same S8/S9; only the
   // provenance differs (files/documentUnderstanding.js).
   const doc = source?.kind === 'document' ? source : null;
+  // WHEN IT WAS SAID (2026-10-11): the S5 anchor for "next month" / "in March".
+  // It was never passed, so every relative date stayed unanchored and a future
+  // change read as a timeless — i.e. current — fact. Durable jobs carry the
+  // enqueue time, so a retry resolves against the turn, not the retry.
+  const saidAt = (() => { const d = assertedAt ? new Date(assertedAt) : new Date(); return Number.isNaN(d.getTime()) ? new Date() : d; })();
   if (!e6Enabled()) return null;
   if (!ownerId || !userMessage) return null;
   const { runUnderstandingPipeline } = await import('./understanding/pipeline.js');
@@ -913,7 +918,7 @@ export async function understandTurn(
 
   const result = await runUnderstandingPipeline(userMessage, {
     ownerId, conversationId, callModel: callModel ?? (await e6Transport()),
-    entityStore, selfEntityId, knownEntities, context,
+    entityStore, selfEntityId, knownEntities, context, assertedAt: saidAt.toISOString(),
   });
 
   // S6's missing half — see understanding/provisionalMinter.js. A claim about a
@@ -1072,7 +1077,7 @@ export async function understandTurn(
           title: `AQUIPLEX conversation${Number.isInteger(turn) ? ` — turn ${turn}` : ''}`,
         }),
         contentHash: crypto.createHash('sha256').update(userMessage).digest('hex'),
-        assertedAt: new Date(),
+        assertedAt: saidAt,
         claims: canonicalClaims,
         evidenceAttachments: s8.evidenceAttachments,
         contradictions: s8.contradictions,

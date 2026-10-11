@@ -18,7 +18,7 @@ describe('worldCore — the current-world section', () => {
       c('I now report to Daniel Koh'),
       c("I'm moving to Kuala Lumpur in January", { validFrom: '2027-01-01T00:00:00Z' }),
     ], { now: NOW });
-    assert.deepEqual(r.lines, ['• "I now report to Daniel Koh"', `• "I'm moving to Kuala Lumpur in January" (from 2027-01-01)`]);
+    assert.deepEqual(r.lines, ['• "I now report to Daniel Koh"', `• "I'm moving to Kuala Lumpur in January" (scheduled from 2027-01-01 — not yet current)`]);
     assert.equal(r.considered, 2);
     assert.ok(r.block.startsWith(WORLD_CORE_HEADER));
   });

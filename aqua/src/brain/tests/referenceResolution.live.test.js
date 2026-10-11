@@ -94,7 +94,7 @@ describe('natural references on live Postgres', { skip }, () => {
     // The invariant is about what "that" RESOLVES to — the relevance section.
     // The current-world section (worldCore, 2026-10-11) shows the owner's
     // current facts in every conversation by design; that is not focus.
-    const relevance = block.split('── ALSO CURRENTLY TRUE')[0];
+    const relevance = block.split('── ALSO KNOWN ABOUT THE USER')[0];
     assert.doesNotMatch(relevance, /SSO rewrite is blocking/, 'a different conversation inherited the focus');
   });
 });

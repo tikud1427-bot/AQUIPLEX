@@ -53,6 +53,9 @@ export const HANDLERS = Object.freeze({
       conversationId: payload.conversationId ?? null,
       turn: Number.isInteger(payload.turn) ? payload.turn : null,
       userMessage: payload.userMessage ?? '',
+      // When the user SAID it (enqueue time), the anchor for relative dates.
+      // Older payloads lack it: the job's own creation time is the closest truth.
+      assertedAt: payload.assertedAt ?? job.createdAt ?? null,
     });
     logE6Turn({
       ownerId: job.ownerId,

@@ -370,8 +370,14 @@ function readingOf(u) {
   // CLOSED VALIDITY IS PAST (2026-10-06, Lift p9: "I lived in Kyoto until 2023"
   // rendered as "User is based in Kyoto").
   const end = u.validTo ? new Date(u.validTo) : null;
-  const past = end && !Number.isNaN(end.getTime()) && end.getTime() < Date.now()
-    ? ` (until ${dayOf(end)} — past, not current)` : '';
+  // SCHEDULED IS NOT CURRENT (2026-10-11, Pass 2): a state that starts later
+  // ("from next month my manager will be Priya") is rendered as scheduled, so
+  // the answer model can answer "next month" without asserting it as "now".
+  const start = u.validFrom ? new Date(u.validFrom) : null;
+  const scheduled = start && !Number.isNaN(start.getTime()) && start.getTime() > Date.now()
+    ? ` (scheduled from ${dayOf(start)} — not yet current)` : '';
+  const past = (end && !Number.isNaN(end.getTime()) && end.getTime() < Date.now()
+    ? ` (until ${dayOf(end)} — past, not current)` : '') + scheduled;
   // A ROLE RELATION (prompt rule 13) reads as what it is: "Sam Patel is the
   // user's mentor", not "Sam Patel is related to mentor".
   if (u.predicate === 'related_to') return `${neg}${mod}${subjectLabel(u.subject)} is the user's ${String(u.object).replace(/^(?:the\s+)?(?:user'?s|my|our)\s+/i, '')}${past}`;

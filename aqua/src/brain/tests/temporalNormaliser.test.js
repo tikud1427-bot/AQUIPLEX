@@ -277,3 +277,46 @@ describe('S5 — determinism', () => {
     assert.deepEqual(c, normaliseTemporal('I work at Nummo', null));
   });
 });
+
+// ── Pass 2 (2026-10-11): future states, month-only dates, content-time ──────
+describe('S5 — future, month-only and content-time (Pass 2)', () => {
+  const SAID = '2026-10-11T10:00:00Z';
+
+  test('a future state starts later and stays open; it is never closed at the end of the named month', () => {
+    const c = applyTemporal({ predicate: 'reports_to', statementText: 'From next month my manager will be Priya Raman' }, SAID);
+    assert.equal(c.validFrom, '2026-11-01T00:00:00.000Z');
+    assert.equal(c.validTo, null);
+    assert.equal(c.temporal.future, true);
+    assert.equal(c.temporal.tense, 'future');
+  });
+
+  test('month without a year resolves by tense against when it was said — and only then', () => {
+    const fut = applyTemporal({ predicate: 'located_in', statementText: "We're moving the office to Rotterdam in March" }, SAID);
+    assert.equal(fut.validFrom, '2027-03-01T00:00:00.000Z', 'future March is NEXT March');
+    assert.equal(fut.validTo, null);
+    const past = normaliseTemporal('I was in Lisbon in March', SAID);
+    assert.equal(past.validFrom, '2026-03-01T00:00:00.000Z', 'past March is THIS year\'s March');
+    const day = normaliseTemporal('I will start the job on March 14', SAID);
+    assert.equal(day.validFrom, '2027-03-14T00:00:00.000Z');
+    const present = normaliseTemporal('The office is in Rotterdam in March', SAID);
+    assert.equal(present.precision, 'relative', 'present tense cannot pick a year — unanchored, never invented');
+    assert.equal(present.validFrom, null);
+    assert.equal(normaliseTemporal('We will move in March').precision, 'relative', 'no asserted_at → unanchored');
+  });
+
+  test('"may" the verb is not May the month; a later real month still resolves', () => {
+    assert.equal(normaliseTemporal('We may expand to Tanzania, nothing decided', SAID).precision, 'none');
+    const june = normaliseTemporal('We may move in June', SAID);
+    assert.equal(june.quote, 'june', 'June found, May skipped');
+    assert.equal(june.precision, 'relative', 'no future marker → year undecided → unanchored');
+  });
+
+  test('a deadline, plan or decision keeps its date as CONTENT: no validity window, still current now', () => {
+    for (const predicate of ['deadline_for', 'plans_to', 'decided']) {
+      const c = applyTemporal({ predicate, statementText: 'The launch moved to 2026-12-16' }, SAID);
+      assert.equal(c.validFrom, null, predicate);
+      assert.equal(c.validTo, null, predicate);
+      assert.match(c.temporal.reason, /^content-time:/);
+    }
+  });
+});

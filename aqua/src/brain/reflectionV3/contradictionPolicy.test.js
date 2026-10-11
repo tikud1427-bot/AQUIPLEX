@@ -140,3 +140,17 @@ test('HISTORY vs PRESENT: a claim closed in the past never retires a current ope
   const porto = { ...kyoto, claimId: 'porto', validTo: null };
   assert.equal(resolveContradiction(osaka, porto, { snapshotPair: true }).action, 'supersede_older');
 });
+
+// Pass 2 (2026-10-11): temporal succession for declared snapshots.
+test('a later-STARTING snapshot succeeds the current one even when both were said at once', () => {
+  const now = '2026-10-11T10:00:00Z';
+  const claire = { claimId: 'claire', predicate: 'reports_to', subjectEntityId: 's', createdAt: now, validFrom: null, evidence: [{}] };
+  const mark = { claimId: 'mark', predicate: 'reports_to', subjectEntityId: 's', createdAt: now, validFrom: '2026-11-01T00:00:00Z', evidence: [{}] };
+  const d = resolveContradiction(claire, mark, { snapshotPair: true, allowHeuristicResolution: false, allowRecencyResolution: false });
+  assert.equal(d.action, 'supersede_older');
+  assert.equal(d.winner.claimId, 'mark');
+  // A PAST-dated statement does not win by its date: recency decides.
+  const berlin = { claimId: 'berlin', predicate: 'located_in', subjectEntityId: 's', createdAt: '2026-10-11T11:00:00Z', validFrom: '2024-01-01T00:00:00Z', evidence: [{}] };
+  const paris = { claimId: 'paris', predicate: 'located_in', subjectEntityId: 's', createdAt: '2026-10-01T10:00:00Z', validFrom: null, evidence: [{}] };
+  assert.equal(resolveContradiction(paris, berlin, { snapshotPair: true }).winner.claimId, 'berlin', 'newer assertion wins by recency');
+});

@@ -274,7 +274,7 @@ export function runPostTurn({
         .then(() => d.enqueueUnderstanding({
           ownerId,
           kind: 'understanding.turn.v1',
-          payload: { conversationId, turn, userMessage },
+          payload: { conversationId, turn, userMessage, assertedAt: new Date().toISOString() },  // when it was SAID (S5 anchor)
           idempotencyKey: `understanding.turn.v1:${conversationId}:${turn}`,
         }))
         .then(

@@ -94,3 +94,32 @@ test('the same flip WITHOUT a revision marker is still disputed', async () => {
   });
   assert.equal(out.action, CONTRADICTION_ACTION.DISPUTED);
 });
+
+// Pass 2 (2026-10-11): a future value wins, but only from its start date.
+test('a FUTURE winner is scheduled, not applied: the current value stays current until valid_from', async () => {
+  const claims = new Map([
+    ['claire', base('claire', { predicate: 'reports_to', object: { entityId: 'e:claire' } })],
+    ['priya', base('priya', { predicate: 'reports_to', object: { entityId: 'e:priya' }, validFrom: '2026-11-01T00:00:00Z',
+      sourceKind: 'user_correction', assertedAt: '2026-10-11T10:00:00Z' })],
+  ]);
+  const transitions = [];
+  const scheduled = [];
+  const job = { ownerId: 'owner:a', payload: { incomingClaimId: 'priya', existingClaimId: 'claire' } };
+  const deps = {
+    loadClaim: async id => claims.get(id),
+    applyTransition: async input => { transitions.push(input); return input; },
+    scheduleAt: async s => { scheduled.push(s); },
+  };
+  const before = await runClaimContradictionJob(job, { ...deps, now: () => Date.parse('2026-10-11T12:00:00Z') });
+  assert.equal(before.resolved, false);
+  assert.equal(before.scheduled, '2026-11-01T00:00:00.000Z');
+  assert.deepEqual(transitions, [], 'nothing retired before the change takes effect');
+  assert.equal(scheduled.length, 1);
+  assert.equal(scheduled[0].runAfter, '2026-11-01T00:00:00.000Z');
+  assert.deepEqual(scheduled[0].payload, job.payload, 'the SAME job re-runs on the date');
+
+  // On the date the scheduled job re-runs and the supersession applies.
+  const after = await runClaimContradictionJob(job, { ...deps, now: () => Date.parse('2026-11-01T00:00:05Z') });
+  assert.equal(after.resolved, true);
+  assert.deepEqual(transitions.map(x => [x.targetId, x.toState, x.supersededBy]), [['claire', 'superseded', 'priya']]);
+});

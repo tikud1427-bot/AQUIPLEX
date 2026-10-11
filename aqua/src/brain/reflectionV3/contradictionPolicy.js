@@ -199,6 +199,29 @@ export function resolveContradiction(a, b, opts = {}) {
   // still never resolves anything.
   const declaredSnapshots = opts.snapshotPair === true && samePredicate;
   if ((opts.allowRecencyResolution === true && samePredicate && sameSubject) || declaredSnapshots) {
+    // TEMPORAL SUCCESSION (2026-10-11, Pass 2): "from next month my manager
+    // will be Mark" starts AFTER "my manager is Claire" was said — it is the
+    // successor whatever the order of assertion (both can be said in one
+    // breath). Only a START LATER than the other claim's assertion and its
+    // own start counts; a past-dated statement ("moved to Berlin in 2024")
+    // falls through to recency. The worker applies a future successor only
+    // once its valid_from has come (scheduled supersession).
+    const startsAfter = (x, y) => {
+      const s = ms(x?.validFrom);
+      if (s == null || !Number.isFinite(s)) return false;
+      const yStart = ms(y?.validFrom);
+      return s > createdAt(y) && (yStart == null || s > yStart);
+    };
+    const lLater = startsAfter(left, right), rLater = startsAfter(right, left);
+    if (lLater !== rLater) {
+      const winner = lLater ? left : right;
+      const loser = winner === left ? right : left;
+      return {
+        action: ACTION.SUPERSEDE_OLDER, winner, loser,
+        reason: 'a later-starting snapshot succeeds the earlier one (temporal succession)',
+        rule: 5, confidenceCeiling: 0.8,
+      };
+    }
     const lc = createdAt(left);
     const rc = createdAt(right);
     if (lc !== rc) {

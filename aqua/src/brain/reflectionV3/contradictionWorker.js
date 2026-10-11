@@ -64,6 +64,11 @@ export async function runClaimContradictionJob(
     loadClaim = async (claimId, ownerId) => claimWithEvidence(ownerId, claimId),
     applyTransition = transition,
     policy = resolveContradiction,
+    now = () => Date.now(),
+    scheduleAt = async ({ ownerId: o, runAfter, payload, idempotencyKey }) => {
+      const { enqueue } = await import('../../core/jobs/jobQueue.js');
+      return enqueue({ ownerId: o, kind: 'claim.contradiction.v1', payload, idempotencyKey, runAfter });
+    },
   } = {},
 ) {
   const ownerId = job?.ownerId;
@@ -113,6 +118,19 @@ export async function runClaimContradictionJob(
     const loserRow = loserId === (existingRaw.claimId ?? existingRaw.id) ? existingRaw : incomingRaw;
     if (loserRow.state === 'superseded' || loserRow.state === 'archived') {
       return { ok: true, ownerId, resolved: true, alreadyRetired: true, action: decision.action, winnerId, loserId, rule: decision.rule };
+    }
+    // SCHEDULED SUPERSESSION (2026-10-11, Pass 2). "From next month my manager
+    // will be Priya" wins over "my manager is Claire" — but not until next
+    // month. Retiring Claire today made the World Model assert the future as
+    // the present. The SAME job is re-enqueued for the winner's valid_from;
+    // until then both claims stay, the winner rendered as scheduled.
+    const winnerRow = winnerId === (incomingRaw.claimId ?? incomingRaw.id) ? incomingRaw : existingRaw;
+    const startsAt = winnerRow.validFrom ? new Date(winnerRow.validFrom) : null;
+    if (startsAt && !Number.isNaN(startsAt.getTime()) && startsAt.getTime() > now()) {
+      const runAfter = startsAt.toISOString();
+      await scheduleAt({ ownerId, runAfter, payload: job.payload,
+        idempotencyKey: `claim.contradiction.v1:${incomingClaimId}:${existingClaimId}:at:${runAfter}` });
+      return { ok: true, ownerId, resolved: false, scheduled: runAfter, action: decision.action, winnerId, loserId, rule: decision.rule };
     }
     await applyTransition({
       ownerId,
