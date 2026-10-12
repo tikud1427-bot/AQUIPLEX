@@ -127,6 +127,8 @@ export const SETTINGS = Object.freeze([
   { name: 'AQUA_MIRROR_RETRY_CAP_MS', subsystem: 'store' },
   { name: 'AQUA_MIRROR_STALE_FAILS', subsystem: 'store' },
   { name: 'AQUA_MIRROR_STALE_MS', subsystem: 'store' },
+  { name: 'AQUA_MIRROR_ROLE', subsystem: 'store', note: 'writer|reader; unset = writer on Render (RENDER=true), reader elsewhere — only the deployment writes the shared Mongo mirror (P0 2026-10-12)' },
+  { name: 'AQUA_MIRROR_LEASE_MS', subsystem: 'store', note: 'writer-lease TTL for the Mongo mirror (default 3 heartbeats = 90000)' },
   { name: 'AQUA_PROVIDER_BACKOFF_CAP_MS', subsystem: 'providers' },
   { name: 'AQUA_PROVIDER_BACKOFF_MS', subsystem: 'providers' },
   { name: 'AQUA_PROVIDER_MAX_ROUNDS', subsystem: 'providers' },

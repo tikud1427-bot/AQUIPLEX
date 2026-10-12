@@ -17,6 +17,7 @@
  * rest of AQUA persistence currently uses. All access goes through this
  * module's API, so swapping to SQLite/Postgres later touches ONE file.
  */
+import fs from 'node:fs';
 import { createEmptyMind } from './mindSchema.js';
 import { createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore } from '../core/atomicStore.js';
 import { migrateLegacyFile } from '../core/dataDir.js';
@@ -32,6 +33,77 @@ const STORE_SCHEMA = 1; // envelope version (mind objects carry their own `versi
 const store = new Map();
 let loaded = false;
 
+// ── TWO PROCESSES, ONE FILE (P0 2026-10-12) ──────────────────────────────────
+// The launcher runs server + worker on one DATA_DIR and both persist this
+// store. Each used to write its WHOLE in-memory map: measured on the real
+// product, the worker (loaded before a user existed) overwrote the server's
+// copy and the user's 4 facts went to 0 — on disk and in the Mongo mirror.
+// Now a flush writes only what THIS process changed, merged into what is on
+// disk right now:
+//   · owners this process did not change are taken from disk (and refreshed
+//     in memory, in place — references other modules hold stay valid);
+//   · owners changed by both processes are merged field by field (facts per
+//     key, newer wins; beliefs/goals/episodes/files union);
+//   · owners deleted here stay deleted.
+// The read→rename window that remains is covered by the mirror's generation
+// CAS, which preserves anything overwritten (core/mongoMirror.js).
+const dirty = new Set();          // owners this process changed since its last flush
+const deleted = new Set();        // owners this process deleted (never resurrected from disk)
+const baseUpdatedAt = new Map();  // owner → updatedAt this process last loaded or wrote
+
+function readDiskData() {
+  try {
+    if (!fs.existsSync(STORE_FILE)) return null;
+    const { data } = unwrapStore(JSON.parse(fs.readFileSync(STORE_FILE, 'utf8')), { expected: STORE_SCHEMA, file: STORE_FILE, label: 'mind' });
+    return data && typeof data === 'object' ? data : null;
+  } catch {
+    return null;   // unreadable mid-rename or corrupt: write ours (the previous behaviour), never block a flush
+  }
+}
+
+const tsOf = x => Number(x?.ts ?? x?.updatedAt ?? 0);
+/** Replace `target`'s contents with `source`'s, keeping the object identity. */
+function replaceInPlace(target, source) {
+  for (const k of Object.keys(target)) if (!(k in source)) delete target[k];
+  Object.assign(target, source);
+}
+/** Both processes changed this owner: fold the disk version into ours, in place. */
+function mergeConcurrent(ours, disk) {
+  for (const [key, f] of Object.entries(disk.facts ?? {})) {
+    const mine = ours.facts[key];
+    if (!mine || tsOf(f) > tsOf(mine)) ours.facts[key] = f;
+  }
+  for (const bag of ['beliefs', 'goals', 'episodes', 'files']) {
+    ours[bag] ??= {};
+    for (const [id, item] of Object.entries(disk[bag] ?? {})) {
+      const mine = ours[bag][id];
+      if (!mine || tsOf(item) > tsOf(mine)) ours[bag][id] = item;
+    }
+  }
+  for (const part of ['nodes', 'edges']) {
+    ours.graph ??= { nodes: {}, edges: {} };
+    for (const [k, v] of Object.entries(disk.graph?.[part] ?? {})) if (!ours.graph[part][k]) ours.graph[part][k] = v;
+  }
+  ours.turnCount = Math.max(ours.turnCount ?? 0, disk.turnCount ?? 0);
+  ours.updatedAt = Math.max(tsOf(ours), tsOf(disk));
+}
+
+/** Pure merge step of a flush — exported for tests. Mutates `memory` in place. */
+export function mergeForFlush(memory, disk, { dirtyOwners, deletedOwners, base }) {
+  let merged = 0, adopted = 0;
+  for (const [ownerId, d] of Object.entries(disk ?? {})) {
+    if (deletedOwners.has(ownerId)) continue;
+    const mine = memory.get(ownerId);
+    if (!mine) { memory.set(ownerId, upgradeMind(d)); base.set(ownerId, tsOf(d)); adopted++; continue; }
+    const siblingChanged = tsOf(d) > (base.get(ownerId) ?? 0);
+    if (!siblingChanged) continue;
+    if (dirtyOwners.has(ownerId)) { mergeConcurrent(mine, upgradeMind(d)); merged++; }
+    else { replaceInPlace(mine, upgradeMind(d)); adopted++; }
+    base.set(ownerId, tsOf(mine));
+  }
+  return { merged, adopted };
+}
+
 function loadFromDisk() {
   if (loaded) return;
   loaded = true;
@@ -41,7 +113,7 @@ function loadFromDisk() {
   if (parsed == null) return;
   const { data } = unwrapStore(parsed, { expected: STORE_SCHEMA, file: STORE_FILE, label: 'mind' });
   if (!data || typeof data !== 'object') return;
-  for (const [ownerId, mind] of Object.entries(data)) store.set(ownerId, upgradeMind(mind));
+  for (const [ownerId, mind] of Object.entries(data)) { store.set(ownerId, upgradeMind(mind)); baseUpdatedAt.set(ownerId, tsOf(mind)); }
   console.log(`[MIND] Loaded ${store.size} cognitive models from ${STORE_FILE}`);
 }
 
@@ -49,10 +121,14 @@ function loadFromDisk() {
 // (temp+rename) and non-blocking; serialize snapshots at flush time. The
 // writer also takes a `.bak` boot backup before this process's first flush.
 const _writer = createDebouncedWriter(STORE_FILE);
-function scheduleSave() {
+function scheduleSave(ownerId = null) {
+  if (ownerId) dirty.add(ownerId);
   _writer.schedule(() => {
+    const r = mergeForFlush(store, readDiskData(), { dirtyOwners: dirty, deletedOwners: deleted, base: baseUpdatedAt });
+    if (r.merged) console.log(`[MIND] merged ${r.merged} owner(s) changed concurrently by another process`);
     const data = {};
-    for (const [ownerId, mind] of store.entries()) data[ownerId] = mind;
+    for (const [owner, mind] of store.entries()) { data[owner] = mind; baseUpdatedAt.set(owner, tsOf(mind)); }
+    dirty.clear();
     return JSON.stringify(wrapStore(STORE_SCHEMA, data));
   });
 }
@@ -135,8 +211,9 @@ export function adoptMind(fromOwner, toOwner) {
   dst.turnCount += src.turnCount || 0;
   src.adoptedInto = toOwner;
   src.adoptedAt = Date.now();
+  src.updatedAt = Date.now();
+  dirty.add(fromOwner);
   touchMind(dst);
-  scheduleSave();
   console.log(`[MIND] ADOPTED ${fromOwner} → ${toOwner} facts=${Object.keys(src.facts || {}).length} beliefs=${Object.keys(src.beliefs || {}).length}`);
   return true;
 }
@@ -166,11 +243,16 @@ export function peekMind(ownerId) {
 export function touchMind(mind) {
   if (!mind) return;
   mind.updatedAt = Date.now();
-  scheduleSave();
+  // Minds from older files may lack ownerId; find the key so the change is
+  // still marked as THIS process's (or the merge would take the disk copy).
+  let owner = mind.ownerId ?? null;
+  if (!owner) for (const [k, v] of store) if (v === mind) { owner = k; break; }
+  scheduleSave(owner);
 }
 
 export function deleteMind(ownerId) {
   const existed = store.delete(ownerId);
+  deleted.add(ownerId);
   if (existed) scheduleSave();
   // Phase D — GDPR cascade: deleting a mind also purges every vector the
   // owner accumulated (fact vectors live in ns `<ownerId>`, uploaded-file
@@ -207,4 +289,5 @@ export function _iterateMindsForStats() {
 /** Test-only: reset in-memory state (does not touch disk). */
 export function _clearAllForTests() {
   store.clear();
+  dirty.clear(); deleted.clear(); baseUpdatedAt.clear();
 }

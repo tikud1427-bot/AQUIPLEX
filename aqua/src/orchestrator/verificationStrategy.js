@@ -82,3 +82,44 @@ export function shouldVerify({ taskType, complexity, tags = [], userMessage = ''
       : 'No high-complexity/high-risk signal present — verification skipped to avoid unnecessary second-pass reasoning.',
   };
 }
+
+/**
+ * The ONE truthful verdict on a verification/debate result (P0 2026-10-12).
+ *
+ * `ran`/`passed` alone could not say what happened: a pass-2 timeout after a
+ * clean-looking pass 1 came back `ran:true, passed:false`; a panel cut off by
+ * its budget surfaced as "unparseable"; and the UI badged a turn "verified"
+ * whenever verification was merely WARRANTED. A delivered answer is
+ * `verified` only when a review pass completed and confirmed it.
+ *
+ *   not_requested        no review was warranted
+ *   unavailable          warranted, but no reviewer ran (none registered)
+ *   failed               attempted, no pass completed (timeout, provider error,
+ *                        truncated or unparseable reviewer output)
+ *   incomplete           ≥1 pass completed but the review did not finish
+ *                        (later pass errored; reviewer output malformed,
+ *                        truncated, or a revision discarded by a guard)
+ *   verified             a completed pass confirmed the delivered answer
+ *   revised_unconfirmed  the answer was revised; no pass confirmed the revision
+ *   issues_unresolved    the review found issues that were not fixed
+ *   disputed             a panel minority objected; not escalated, not confirmed
+ *   inconclusive         part of the panel went silent; nobody objected
+ */
+export const VERIFICATION_STATUSES = Object.freeze([
+  'not_requested', 'unavailable', 'failed', 'incomplete', 'verified',
+  'revised_unconfirmed', 'issues_unresolved', 'disputed', 'inconclusive',
+]);
+
+export function verificationStatus(v = {}, { warranted = false } = {}) {
+  if (!v || !v.ran) {
+    if (v?.error) return 'failed';
+    return warranted ? 'unavailable' : 'not_requested';
+  }
+  if (v.passed) return 'verified';
+  if (v.error) return v.revised ? 'revised_unconfirmed' : 'incomplete';
+  if (v.inconclusive) return 'inconclusive';
+  if (v.revised) return 'revised_unconfirmed';
+  if (v.suppressedMalformed || v.suppressedRefusals || v.suppressedTruncated) return 'incomplete';
+  if (v.agent === 'debate' && v.converged && (v.disagreements?.length ?? 0) > 0) return 'disputed';
+  return 'issues_unresolved';
+}

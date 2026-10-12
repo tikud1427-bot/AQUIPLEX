@@ -294,7 +294,11 @@ describe('wired is not the same as working', () => {
     // branches — whose hidden reasoning truncated the JSON at 1024 — get a
     // larger budget. The final fallthrough (Groq) must still be 1024.
     assert.match(fn, /const maxTokens = provider === 'gemini' \? \d+ : provider === 'nvidia' \? \d+ : 1024;/, 'the Groq token budget changed');
-    assert.match(fn, /undefined, maxTokens,/, 'the token budget is no longer the pinned one');
+    // The first (and, for any call that completes, only) call runs at
+    // maxTokens; withTruncationHeadroom retries once with headroom ONLY when
+    // the provider truncated (P0 2026-10-12, e6TruncationHeadroom.test.js).
+    assert.match(fn, /withTruncationHeadroom\(generate, \{ maxTokens,/, 'the token budget is no longer the pinned one');
+    assert.match(fn, /res = await call\(maxTokens\);/, 'the first call no longer uses the pinned budget');
     assert.match(fn, /generateGroq/);
   });
 

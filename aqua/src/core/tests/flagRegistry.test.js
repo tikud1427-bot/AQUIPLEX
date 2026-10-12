@@ -98,7 +98,7 @@ describe('the flag registry matches the source, in both directions', () => {
     assert.equal(new Set(names).size, names.length, 'a flag is registered twice');
   });
 
-  test('the census is what it is — 32 gates, 39 settings, 71 read', () => {
+  test('the census is what it is — 32 gates, 41 settings, 73 read', () => {
     // Pinned as a NUMBER because the audit's figure was wrong and the wrong
     // figure survived into two reports. If this changes, someone added a flag
     // and should say so; if it changes without a registry edit, the tests above
@@ -123,8 +123,10 @@ describe('the flag registry matches the source, in both directions', () => {
     // Prometheus machine scrape (routes/metricsScrape.js).
     // +1 setting (2026-10-06): AQUA_PROACTIVE_INTERVAL_MS, the worker's periodic
     // proactive scan interval.
-    assert.equal(SETTINGS.length, 39);
-    assert.equal(readFromEnv().size, 71);
+    // +2 settings (2026-10-12, P0): AQUA_MIRROR_ROLE and AQUA_MIRROR_LEASE_MS —
+    // the single-writer lease of the Mongo mirror.
+    assert.equal(SETTINGS.length, 41);
+    assert.equal(readFromEnv().size, 73);
   });
 });
 
@@ -168,7 +170,7 @@ describe('the registry records how each gate actually reads its variable', () =>
 describe('the boot line is worth printing', () => {
   test('it names the overridden gates, not all 29', () => {
     const line = flagBootLine({ AQUA_E6: 'on' });
-    assert.match(line, /32 gates · 39 settings/);
+    assert.match(line, /32 gates · 41 settings/);
     assert.match(line, /AQUA_E6=on/);
     assert.ok(!line.includes('AQUA_TWIN_V2'), 'a default gate was listed — the line is noise');
   });

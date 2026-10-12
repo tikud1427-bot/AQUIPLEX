@@ -435,7 +435,13 @@ export function logOrchestratorEvent(ctx, decision, formattedBlock) {
  */
 export function logVerificationEvent(ctx, result) {
   if (!result?.ran) {
-    if (result?.error) metrics.verificationFailed++;
+    if (result?.error) {
+      metrics.verificationFailed++;
+      // A review that was attempted and produced nothing must be visible —
+      // the answer shipped UNVERIFIED, and the log has to say so.
+      console.warn('[VERIFICATION]', JSON.stringify({ type: 'AQUA_VERIFICATION', ts: new Date().toISOString(), requestId: ctx.requestId,
+        conversationId: ctx.conversationId, agent: result.agent ?? 'verification', status: result.status ?? 'failed', verified: false, error: result.error }));
+    }
     return;
   }
 
@@ -449,6 +455,9 @@ export function logVerificationEvent(ctx, result) {
     requestId:      ctx.requestId,
     conversationId: ctx.conversationId,
     agent:          result.agent ?? 'verification',
+    status:         result.status ?? null,
+    verified:       result.status === 'verified',
+    error:          result.error ?? null,
     panel:          result.panel ?? null,
     passed:         result.passed,
     revised:        result.revised,

@@ -71,7 +71,7 @@ import { assessConfidence, isGroundingExpected } from '../intelligence/confidenc
 import { composeEvidenceContext } from '../intelligence/evidenceContext.js';
 import { recordReasoningOutcome } from '../pic/core.js';   // Persistent Intelligence Core (Phase 4)
 import { cognitivePrepare, cognitiveKnowledgeRetrieve, observeDraft, concludeTurn } from '../cognition/index.js';   // Cognitive Intelligence Engine (CIE)
-import { LOW_CONFIDENCE_THRESHOLD } from '../orchestrator/verificationStrategy.js';
+import { LOW_CONFIDENCE_THRESHOLD, verificationStatus } from '../orchestrator/verificationStrategy.js';
 import { recordOutcome, getTaskStats } from '../intelligence/learningLedger.js';
 import { orchestrate, formatOrchestratorLog } from '../orchestrator/toolOrchestrator.js';
 import { getAgent } from '../intelligence/agentRegistry.js';
@@ -201,7 +201,8 @@ function buildEditResponsePayload({ requestId, conversationId, isNew, proposal, 
     memory:  { extracted: 0, injected: 0, facts: [] },
     plan:    { complexity: 'complex', multiStep: true, reasoningMode: 'edit', contextTokensBefore: 0, contextTokensAfter: 0 },
     intelligence: { active: false, pipeline: [], strategy: 'patch-first-editing', criticFocus: [] },
-    verification: { warranted: true, reason: 'patch static verification', ran: v.ran, passed: v.passed, revised: false },
+    verification: { warranted: true, reason: 'patch static verification', ran: v.ran, passed: v.passed, revised: false,
+      status: v.ran ? (v.passed ? 'verified' : 'issues_unresolved') : 'unavailable', verified: !!(v.ran && v.passed) },
     orchestration: {
       profile: 'edit', profileLabel: 'Patch-first editing',
       capabilitiesEnabled: ['edit_locate', 'edit_generate', 'edit_diff', 'edit_verify'],
@@ -513,7 +514,14 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // the canonical World Model answers, legacy identity/regex facts only fill
   // gaps it does not contradict; 'canonical' = no legacy user memory; 'legacy'
   // = rollback.
-  const readMode = Brain.canonicalReadMode();
+  // The mode this turn can SERVE, not just the configured one: a configured but
+  // unreachable database degrades to the legacy read, logged, instead of
+  // vetoing every legacy fact against a World Model that is not there.
+  const readState = await Brain.resolveReadMode();
+  const readMode = readState.mode;
+  if (readState.degraded) {
+    console.warn(`[MEMORY] read mode ${readState.configured} → legacy (${readState.reason}) owner=${memoryOwner} req=${requestId}`);
+  }
   const retrieved = memoryRetrieve(memoryOwner, {
     query: userMessage, taskType, factLimit: 10, requestId,
     semanticScores: await semanticScoresP,   // Phase 2: resolved query embedding (null if unavailable)
@@ -604,6 +612,9 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     const knowledge = Brain.contextV2Active()
       ? await Brain.assembleContextAsync(memoryOwner, userMessage, floorRetrieve, {
           limit: 8, plan: cognition.plan, taskType, formatCitation, conversationId,
+          // The served mode, not the configured one: degraded ⇒ the PIC floor
+          // answers instead of canonical lanes that cannot be reached.
+          canonicalOnly: readMode !== 'legacy',
           // E7 canonical dense lane: these scores are keyed by the canonical
           // claim retrieval identity and hydrated once at this seam.
           semanticScores: await canonicalSemanticP,
@@ -622,7 +633,11 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     knowledgeStats   = knowledge.stats ?? {};
     if (knowledgeContext) {
       const ce = knowledge.stats?.contextEngine;
-      console.log(`[PIC] Knowledge injected owner=${memoryOwner} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}${knowledge.stats.broadened ? ` broadened=+${knowledge.stats.broadenGained}` : ''}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
+      // In a canonical read the PIC floor is deliberately empty, so its
+      // facts/entities/timeline counters are 0 even when the World Model
+      // supplied the whole block — print what was actually selected beside them.
+      const byKind = (knowledge.items ?? []).reduce((m, i) => (m[i.kind ?? 'item'] = (m[i.kind ?? 'item'] ?? 0) + 1, m), {});
+      console.log(`[PIC] Knowledge injected owner=${memoryOwner} read=${readMode}${readState.degraded ? '(degraded)' : ''} items=${(knowledge.items ?? []).length} kinds=${JSON.stringify(byKind)} worldCore=${knowledge.stats?.worldCore?.rendered ?? 0} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}${knowledge.stats.broadened ? ` broadened=+${knowledge.stats.broadenGained}` : ''}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
     } else {
       // OBSERVABILITY ONLY — no behaviour change, and the line above is
       // untouched so anything grepping it keeps working.
@@ -639,7 +654,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
       // countable, which is the only way to tell whether the fixture's pool
       // density resembles a real owner's.
       const ce = knowledge.stats?.contextEngine;
-      console.log(`[PIC] Knowledge empty owner=${memoryOwner} floor=${knowledge.stats?.facts ?? 0}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
+      console.log(`[PIC] Knowledge empty owner=${memoryOwner} read=${readMode}${readState.degraded ? '(degraded)' : ''} floor=${knowledge.stats?.facts ?? 0}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
     }
   }
 
@@ -739,6 +754,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!memoryBlock, contextUsed: cognitive.used },
     projectContext, projectFiles,
     knowledgeContext, knowledgeItems, knowledgeStats,
+    readState,
     cognition: { plan: cognition.plan, directiveApplied: !!cognition.directive },
     search,
     evidenceContext,
@@ -787,6 +803,9 @@ async function runVerification({ orchestration, userMessage, draftAnswer, taskTy
   // True only when the monitor's escalation actually produced a review the
   // orchestrator had skipped — payload diagnostics + reflection read this.
   verification.escalatedByCognition = escalatedByCognition && verification.ran;
+  // The single truthful verdict (orchestrator/verificationStrategy.js):
+  // `verified` only when a completed pass confirmed the delivered answer.
+  verification.status = verificationStatus(verification, { warranted: orchestration.verification.enabled || escalatedByCognition });
 
   // ── PIC reasoning feedback (Phase 4) — the verdict trains retrieval ────────
   // The knowledge this turn injected was just judged: a clean pass ⇒ those
@@ -794,11 +813,15 @@ async function runVerification({ orchestration, userMessage, draftAnswer, taskTy
   // failed, unrevised pass ⇒ 'unsupported'. recordReasoningOutcome is
   // fail-open internally and a no-op when nothing was injected — turns
   // without PIC knowledge are byte-identical to pre-Phase-4 behavior.
-  if (verification.ran && memoryOwner && knowledgeItems.length) {
+  // Only a review that FINISHED is evidence about the facts: a timeout,
+  // truncated or unparseable reviewer says nothing about them, and booking it
+  // as 'unsupported' taught retrieval to distrust facts a provider failed on.
+  const FEEDBACK = { verified: 'verified', revised_unconfirmed: 'corrected', issues_unresolved: 'unsupported' };
+  if (FEEDBACK[verification.status] && memoryOwner && knowledgeItems.length) {
     recordReasoningOutcome(memoryOwner, {
       requestId,
       query: userMessage,
-      outcome: verification.revised ? 'corrected' : (verification.passed ? 'verified' : 'unsupported'),
+      outcome: FEEDBACK[verification.status],
       usedFacts:    knowledgeItems.filter(i => i.kind === 'fact').map(i => i.id),
       usedEntities: knowledgeItems.filter(i => i.kind === 'entity').map(i => i.entity),
     });
@@ -877,6 +900,10 @@ function buildResponsePayload({
       extracted:  extractedFacts.length,
       injected:   relevantFacts.length,
       facts:      relevantFacts.map(f => ({ key: f.key, value: f.value })),
+      // Which store answered: 'authoritative'/'canonical' = World Model;
+      // 'legacy' with degraded=true = the canonical store was unreachable.
+      readMode:   prep?.readState?.mode ?? null,
+      degraded:   prep?.readState?.degraded ?? false,
     },
 
     mind: prep?.mind ?? { observedSignals: 0, goalsTouched: 0, contextInjected: false, contextUsed: {} },
@@ -912,6 +939,11 @@ function buildResponsePayload({
     verification: {
       warranted:  orchestration.verification.enabled,
       reason:     orchestration.verification.reason,
+      // status/verified are the fields to read; ran/passed are kept for
+      // existing consumers. verified ⇔ a completed pass confirmed this answer.
+      status:     verification.status,
+      verified:   verification.status === 'verified',
+      error:      verification.error ?? null,
       ran:        verification.ran,
       passed:     verification.passed,
       revised:    verification.revised,
@@ -1448,7 +1480,8 @@ router.post('/stream', async (req, res) => {
 
     // ── 8b. Verification — runs AFTER the stream; revision replaces the draft ──
     let finalAnswer = result.text;
-    let verification = { ran: false, passed: null, revised: false };
+    // Warranted but never run (client aborted) is 'unavailable', not silence.
+    let verification = { ran: false, passed: null, revised: false, status: orchestration.verification.enabled ? 'unavailable' : 'not_requested' };
     if ((orchestration.verification.enabled || draftObservation.escalate.escalate) && !clientAbort.signal.aborted) {
       send('stage', { id: 'verify', label: 'Verifying answer…' });
       verification = await runVerification({

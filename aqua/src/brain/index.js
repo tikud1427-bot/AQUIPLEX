@@ -66,7 +66,7 @@ import { recordRevisionVoice } from '../core/observability.js';
 import { resolveRelationships } from './understanding/relationshipResolver.js';
 import { dedupAndDetect, inStoredVocabulary, isResolutionStatus, RESOLUTION_HISTORY_PREDICATES } from './understanding/claimDedup.js';
 import { buildCommitPlan } from './understanding/commitPlan.js';
-import { getPool, isConfigured as dbConfigured } from '../core/db/pool.js';
+import { getPool, isConfigured as dbConfigured, isReachable as isDbReachable } from '../core/db/pool.js';
 import * as canonicalReadModel from '../core/worldModel/canonicalReadModel.js';
 import { singleValuedPredicateNames, singleObjectPredicateNames } from '../core/claims/predicateRegistry.js';
 import { isDeictic, recallFocus, rememberFocus, purgeOwner as purgeFocus } from './contextEngine/conversationFocus.js';
@@ -117,6 +117,28 @@ export function canonicalReadMode(env = process.env) {
 
 export function canonicalWorldModelReadEnabled() {
   return canonicalReadMode() !== 'legacy';
+}
+
+/**
+ * The read mode THIS TURN can actually serve. `canonicalReadMode()` is the
+ * configured intent; it only knows whether DATABASE_URL is set. When the
+ * database is configured but not answering there is no canonical model to be
+ * authoritative, and the old behaviour was the worst of both: the canonical
+ * lanes returned nothing AND the veto failed closed, withholding every legacy
+ * fact — retrieval ranked 13 candidates and the prompt got none (P0
+ * 2026-10-12). Degrading to the legacy read is what the mode table above
+ * already says for "without Postgres"; `degraded` makes it visible instead of
+ * pretending the World Model answered.
+ *
+ * @returns {Promise<{ mode: 'authoritative'|'canonical'|'legacy', configured: string, degraded: boolean, reason: string|null }>}
+ */
+export async function resolveReadMode({ reachable = isDbReachable } = {}) {
+  const configured = canonicalReadMode();
+  if (configured === 'legacy') return { mode: 'legacy', configured, degraded: false, reason: null };
+  let ok = false;
+  try { ok = await reachable(); } catch { ok = false; }
+  if (ok) return { mode: configured, configured, degraded: false, reason: null };
+  return { mode: 'legacy', configured, degraded: true, reason: 'canonical-store-unreachable' };
 }
 
 /** Legacy identity/fact keys → the canonical self predicates that own that attribute. */
@@ -1229,10 +1251,42 @@ export async function e6Transport() {
   // 1.2k-2.3k output tokens (measured 2026-10). The Groq budget — the measured
   // call shape — is unchanged.
   const maxTokens = provider === 'gemini' ? 8192 : provider === 'nvidia' ? 4096 : 1024;
+  // TRUNCATION HEADROOM (P0 2026-10-12). gpt-oss-120b on Groq is a reasoning
+  // model too: on a multi-clause turn ("My biggest client is now Juniper Hotel;
+  // Fennel stopped ordering.") hidden reasoning used the whole 1024 and Groq
+  // returned an empty truncated response, every retry, so the World Model never
+  // learned the change and kept serving the old client. A call that completes
+  // inside the budget is untouched (the measured call shape); only a TRUNCATED
+  // one is retried once with headroom — previously it failed and dead-lettered.
+  const callWithHeadroom = withTruncationHeadroom(generate, { maxTokens, headroomTokens: Math.max(maxTokens, 4096), label: provider });
   return async ({ system, user, temperature, model: perCall }) => {
-    const res = await generate(system, [{ role: 'user', content: user }], undefined, maxTokens,
+    const res = await callWithHeadroom(system, [{ role: 'user', content: user }],
       { model: perCall ?? model, temperature, purpose: 'extraction' });
     return { text: res.text, model: res.model ?? null };
+  };
+}
+
+/**
+ * One extraction call at `maxTokens`; retried ONCE at `headroomTokens` only if
+ * the provider truncated it (threw "…truncated…" or returned truncated:true).
+ * Completed calls are exactly one call at the original budget.
+ */
+export function withTruncationHeadroom(generate, { maxTokens, headroomTokens, label = 'provider' }) {
+  return async (system, messages, opts) => {
+    const call = budget => generate(system, messages, undefined, budget, opts);
+    let res;
+    try {
+      res = await call(maxTokens);
+    } catch (err) {
+      if (headroomTokens <= maxTokens || !/truncated/i.test(String(err?.message ?? ''))) throw err;
+      console.warn(`[E6] ${label} extraction truncated at ${maxTokens} tokens (${err.message}) — retrying once at ${headroomTokens}`);
+      return call(headroomTokens);
+    }
+    if (res?.truncated && headroomTokens > maxTokens) {
+      console.warn(`[E6] ${label} extraction cut off at ${maxTokens} tokens — retrying once at ${headroomTokens}`);
+      return call(headroomTokens);
+    }
+    return res;
   };
 }
 

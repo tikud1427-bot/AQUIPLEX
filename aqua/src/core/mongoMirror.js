@@ -107,6 +107,43 @@ const CHUNK_CHARS = Math.max(1, Math.floor(CHUNK_BYTES / 4));
 
 const INSTANCE_ID = `${os.hostname()}:${process.pid}:${crypto.randomBytes(3).toString('hex')}`;
 
+// ── Single authoritative writer (P0 2026-10-12) ──────────────────────────────
+// The heartbeat used to DETECT a second writer and alarm; both kept writing.
+// The incident's second writer was a laptop running the app with the
+// production MONGO_URI next to Render. Three layers now:
+//   1. ROLE — only the deployment writes. On Render (RENDER=true) the role is
+//      'writer'; anywhere else it is 'reader' (hydrates, never writes) unless
+//      AQUA_MIRROR_ROLE=writer says otherwise, explicitly.
+//   2. LEASE — among writers, the lock doc is a lease (TTL below). A writer
+//      defers to another instance's live lease and takes over only once it
+//      expires or is released (SIGTERM drain releases it). Locks written by
+//      pre-lease code carry no `lease` flag; such a writer honours nothing, so
+//      it is not deferred to — the multi-writer alarm below still covers it.
+//   3. GENERATION CAS — every data write is conditional on the generation this
+//      instance last saw. If another writer moved the doc, its version is
+//      PRESERVED under `conflict/<file>/<gen>` before ours lands, and the
+//      conflict is logged and counted. Nothing is overwritten silently.
+const LEASE_TTL_MS = Number(process.env.AQUA_MIRROR_LEASE_MS) || HEARTBEAT_MS * 3;
+const ON_RENDER = String(process.env.RENDER ?? '').toLowerCase() === 'true';
+function configuredRole() {
+  const v = String(process.env.AQUA_MIRROR_ROLE ?? '').toLowerCase();
+  if (v === 'writer' || v === 'reader') return v;
+  return ON_RENDER ? 'writer' : 'reader';
+}
+const HOST = os.hostname();
+/**
+ * Host of the instance that last stamped the lock — ALWAYS from its
+ * instanceId (`hostname:pid:hex`). Never from `lock.host`: pre-lease code
+ * stamps only instanceId+ts with $set, so a `host` left by our own last stamp
+ * would survive a foreign writer's beat and make it look like our sibling.
+ */
+const hostOf = lock => String(lock?.instanceId ?? '').split(':')[0];
+const CONFLICT_PREFIX = 'conflict/';   // contains '/', so pre-lease hydration skips it as "suspicious"
+const isDuplicateKey = err => err?.code === 11000 || /E11000/.test(String(err?.message ?? ''));
+let genSeq = 0;
+/** Strictly increasing within a process, and practically unique across instances. */
+function nextGen() { genSeq = (genSeq + 1) % 1000; return Date.now() * 1000 + genSeq; }
+
 const state = {
   enabled:     false,
   collection:  null,        // mongodb Collection (native driver via mongoose)
@@ -133,6 +170,14 @@ const state = {
   warnAt:        0,
   warnSuppressed: 0,
   retryDelayOverride: null, // test seam
+  // single writer + CAS (P0 2026-10-12)
+  role:          configuredRole(),
+  leader:        false,     // this instance holds the writer lease
+  leaseHolder:   null,      // who does, when it is not us
+  knownGen:      new Map(), // filename → generation this instance last saw/wrote
+  writeConflicts: 0,        // CAS conflicts (another writer moved a doc under us)
+  lastConflict:  null,
+  standbyWarned: false,
 };
 
 function log(msg)  { console.log(`[MIRROR] ${msg}`); }
@@ -210,9 +255,9 @@ async function connect() {
       }).asPromise();
       state.collection = conn.db.collection(COLLECTION);
       state.enabled    = true;
-      log(`connected — durable store: MongoDB collection "${COLLECTION}" instance=${INSTANCE_ID}`);
-      await verifyRoundTrip();     // canary: prove THIS cluster round-trips, every boot
-      startHeartbeat();            // multi-writer detection
+      log(`connected — durable store: MongoDB collection "${COLLECTION}" instance=${INSTANCE_ID} role=${state.role}${state.role === 'reader' ? ' (hydrate only — this host never writes the shared mirror; AQUA_MIRROR_ROLE=writer to change)' : ''}`);
+      if (state.role === 'writer') await verifyRoundTrip();   // canary: prove THIS cluster round-trips, every boot
+      await startHeartbeat();      // lease claim (writers) — known before the first write
       return state.collection;
     } catch (err) {
       if (!state.failedOnce) {
@@ -258,13 +303,64 @@ async function verifyRoundTrip() {
  *  whole-file last-writer-wins is now lossy → alarm loudly and persistently
  *  (logs + /provider-health). Deploy overlap (old instance finishing up)
  *  produces 1–2 foreign beats and stays under the strike threshold. */
+/**
+ * Try to hold the writer lease. Atomic via the same conditional-upsert idiom
+ * as the data CAS: the filter pins the lock state we decided on; if anyone
+ * changed it in between, the upsert collides on _id (E11000) and we lost.
+ * Returns whether this instance is now the leader.
+ */
+async function claimLease(col, lock, now) {
+  // The lease belongs to a HOST (one container / one disk), not a process:
+  // the launcher runs server + worker side by side, both mirroring the same
+  // DATA_DIR. Siblings share the lease and renew it for each other.
+  const mine     = !!lock?.instanceId && hostOf(lock) === HOST;
+  const vacant   = !lock || !lock.instanceId || Number(lock.ts) === 0;
+  const expired  = !vacant && now - Number(lock.ts) > LEASE_TTL_MS;
+  // Written by lease-aware code only if `leaseOf` names the SAME instance that
+  // stamped instanceId: pre-lease code $sets instanceId+ts and leaves our
+  // older fields behind, so a bare `lease: true` proves nothing.
+  const honoured = !!lock?.instanceId && lock.leaseOf === lock.instanceId;
+  if (!mine && !vacant && !expired && honoured) {
+    state.leaseHolder = lock.instanceId;
+    return false;                                   // a live leader that honours the lease: defer
+  }
+  // Exact CAS on the lock as read — renewal included.
+  const filter = !lock ? { _id: LOCK_ID, instanceId: { $exists: false } }
+    : { _id: LOCK_ID, instanceId: lock.instanceId ?? null, ts: lock.ts ?? null };
+  try {
+    await col.updateOne(filter,
+      { $set: { instanceId: INSTANCE_ID, leaseOf: INSTANCE_ID, ts: now, host: HOST, render: ON_RENDER } },
+      { upsert: true });
+  } catch (err) {
+    if (!isDuplicateKey(err)) throw err;
+    // Lost the race. If the winner is a sibling on this host, the lease is
+    // still ours (shared); otherwise someone else holds it.
+    const now2 = await col.findOne({ _id: LOCK_ID });
+    state.leaseHolder = now2?.instanceId ?? '(raced)';
+    return !!now2?.instanceId && hostOf(now2) === HOST;
+  }
+  // Taking over from a live PRE-LEASE writer is deliberate: it writes whatever
+  // we do, the multi-writer alarm counts it, and the generation CAS preserves
+  // what it wrote before ours lands.
+  state.leaseHolder = INSTANCE_ID;
+  return true;
+}
+
 async function heartbeatOnce() {
   const col = state.collection;
   if (!col) return;
   try {
     const now  = Date.now();
     const lock = await col.findOne({ _id: LOCK_ID });
-    if (lock && lock.instanceId && lock.instanceId !== INSTANCE_ID && Number(lock.ts) > state.lastBeatAt) {
+    if (state.role !== 'writer') {
+      // Readers never stamp the lock and never write data.
+      state.leader = false;
+      state.leaseHolder = lock?.instanceId ?? null;
+      state.lastBeatAt = now;
+      noteOk();
+      return;
+    }
+    if (lock && lock.instanceId && lock.instanceId !== INSTANCE_ID && hostOf(lock) !== HOST && Number(lock.ts) > state.lastBeatAt) {
       state.foreignBeats++;
       if (state.foreignBeats === CONFLICT_STRIKES) {
         state.conflict     = true;
@@ -274,26 +370,44 @@ async function heartbeatOnce() {
     } else if (state.foreignBeats > 0 && state.foreignBeats < CONFLICT_STRIKES) {
       state.foreignBeats = 0; // the other writer went away (deploy overlap ended)
     }
-    await col.updateOne(
-      { _id: LOCK_ID },
-      { $set: { instanceId: INSTANCE_ID, ts: now } },
-      { upsert: true },
-    );
+    const wasLeader = state.leader;
+    state.leader = await claimLease(col, lock, now);
     state.lastBeatAt = now;
     noteOk();
+    if (!state.leader) {
+      if (wasLeader || !state.standbyWarned) {
+        state.standbyWarned = true;
+        warn(`STANDBY — writer lease held by ${state.leaseHolder}; this instance's writes stay queued (not mirrored) until the lease is free.`);
+      }
+      return;
+    }
+    if (!wasLeader) log(`writer lease held — instance=${INSTANCE_ID}`);
     // The cluster answered. Anything the write path parked during the outage
-    // can go now, without waiting out its own backoff timer.
+    // (or while standing by) can go now, without waiting out its own backoff.
     flushQueued();
   } catch (err) {
     noteFailure('heartbeat failed', err);
   }
 }
 
-function startHeartbeat() {
+async function startHeartbeat() {
   if (state.heartbeatTimer) return;
-  heartbeatOnce();                                        // immediate claim
   state.heartbeatTimer = setInterval(heartbeatOnce, HEARTBEAT_MS);
   state.heartbeatTimer.unref();                           // never holds the process open
+  await heartbeatOnce();                                  // immediate claim
+}
+
+/** Give the lease up (SIGTERM drain) so a successor takes over at once, not after the TTL. */
+async function releaseLease() {
+  const col = state.collection;
+  if (!col || !state.leader) return;
+  try {
+    // state.leader stays true: drainJobs/flushStorage run alongside this drain
+    // and their last flushes must still land. A successor that claims the
+    // freed lease meanwhile is covered by the generation CAS (preserve, never
+    // overwrite silently).
+    await col.updateOne({ _id: LOCK_ID, host: HOST }, { $set: { ts: 0 } });
+  } catch { /* the TTL releases it anyway */ }
 }
 
 // ── Boot hydration ────────────────────────────────────────────────────────────
@@ -325,6 +439,7 @@ export async function hydrateFromMongo(dataDir) {
         continue;
       }
       if (doc._id === CANARY_ID || doc._id === LOCK_ID) continue;
+      if (doc.conflict || String(doc._id ?? '').startsWith(CONFLICT_PREFIX)) continue;   // preserved generations are not live stores
       mains.push(doc);
     }
 
@@ -337,6 +452,9 @@ export async function hydrateFromMongo(dataDir) {
         warn(`skipping suspicious doc _id=${JSON.stringify(filename)}`);
         continue;
       }
+      // The generation our first write of this file must find, whatever the
+      // newer-wins decision below — anything else means another writer moved it.
+      if (doc.gen !== undefined) state.knownGen.set(filename, doc.gen);
 
       let json;
       if (doc.chunked) {
@@ -381,21 +499,80 @@ export async function hydrateFromMongo(dataDir) {
 
 // ── Write mirroring ───────────────────────────────────────────────────────────
 
+/** The filter that only matches the generation this instance last saw. */
+function casFilter(filename) {
+  return state.knownGen.has(filename)
+    ? { _id: filename, gen: state.knownGen.get(filename) }
+    : { _id: filename, gen: { $exists: false } };
+}
+
+/**
+ * Another writer moved `filename` under us. Copy ITS current generation to
+ * `conflict/<file>/<gen>` (chunked: the manifest; its parts are kept out of
+ * GC), adopt that generation as the new CAS base, and let the caller retry.
+ * Our write then lands over a version that is preserved, never silently lost.
+ */
+async function preserveForeignGeneration(col, filename) {
+  const cur = await col.findOne({ _id: filename });
+  if (!cur) { state.knownGen.delete(filename); return; }
+  const preservedId = `${CONFLICT_PREFIX}${filename}/${cur.gen ?? 'nogen'}`;
+  await col.updateOne({ _id: preservedId }, { $set: {
+    conflict: true, of: filename, gen: cur.gen ?? null, chunked: !!cur.chunked, parts: cur.parts ?? 0,
+    bytes: cur.bytes ?? null, json: cur.json ?? null, writer: cur.writer ?? null, updatedAt: cur.updatedAt ?? null,
+    preservedAt: Date.now(), preservedBy: INSTANCE_ID,
+  } }, { upsert: true });
+  await prunePreserved(col, filename);
+  state.writeConflicts += 1;
+  state.lastConflict ={ filename, foreignGen: cur.gen ?? null, foreignWriter: cur.writer ?? null, preservedAs: preservedId, at: Date.now() };
+  warn(`WRITE CONFLICT on ${filename} — another writer (${cur.writer ?? 'pre-lease instance'}) moved it to gen=${cur.gen}; its version is preserved as "${preservedId}" before this instance's lands. Reconcile from there if both held changes.`);
+  if (cur.gen === undefined) state.knownGen.delete(filename); else state.knownGen.set(filename, cur.gen);
+}
+
+/**
+ * Keep only the newest PRESERVE_PER_FILE preserved generations of a file.
+ * Measured on the real launcher: server + worker share whole-file stores, so
+ * one short session produced 40 conflicts — unbounded copies of multi-MB
+ * stores would grow the cluster without limit. Best-effort.
+ */
+const PRESERVE_PER_FILE = 3;
+async function prunePreserved(col, filename) {
+  try {
+    const docs = (await col.find({ conflict: true, of: filename }).toArray())
+      .sort((a, b) => Number(b.preservedAt ?? 0) - Number(a.preservedAt ?? 0));
+    for (const d of docs.slice(PRESERVE_PER_FILE)) {
+      if (typeof col.deleteMany !== 'function') break;
+      await col.deleteMany({ _id: d._id });
+      if (d.chunked && d.gen != null) await col.deleteMany({ part: true, of: filename, gen: d.gen });
+    }
+  } catch { /* pruning is housekeeping; never fail a write over it */ }
+}
+
+/** Conditional upsert; on a generation conflict preserve the foreign version and retry (bounded). */
+async function casUpdate(col, filename, $set) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await col.updateOne(casFilter(filename), { $set }, { upsert: true });
+      state.knownGen.set(filename, $set.gen);
+      return;
+    } catch (err) {
+      if (!isDuplicateKey(err)) throw err;
+      await preserveForeignGeneration(col, filename);
+    }
+  }
+  throw new Error(`generation conflict on ${filename} persisted across 3 attempts`);
+}
+
 async function writeOne(col, filename, json) {
   const bytes = Buffer.byteLength(json, 'utf8');
 
   if (bytes <= CHUNK_BYTES) {
-    await col.updateOne(
-      { _id: filename },
-      { $set: { json, updatedAt: Date.now(), chunked: false, parts: 0, gen: Date.now() } },
-      { upsert: true },
-    );
+    await casUpdate(col, filename, { json, updatedAt: Date.now(), chunked: false, parts: 0, gen: nextGen(), writer: INSTANCE_ID });
     return;
   }
 
   // Chunked: parts first, generation-stamped; manifest LAST so a concurrent
   // hydration can only ever assemble a COMPLETE generation.
-  const gen = Date.now();
+  const gen = nextGen();
   const n   = Math.ceil(json.length / CHUNK_CHARS);
   for (let i = 0; i < n; i++) {
     await col.updateOne(
@@ -404,14 +581,14 @@ async function writeOne(col, filename, json) {
       { upsert: true },
     );
   }
-  await col.updateOne(
-    { _id: filename },
-    { $set: { chunked: true, parts: n, gen, updatedAt: Date.now(), bytes, json: null } },
-    { upsert: true },
-  );
+  await casUpdate(col, filename, { chunked: true, parts: n, gen, updatedAt: Date.now(), bytes, json: null, writer: INSTANCE_ID });
   // GC superseded generations (best-effort; harmless if unsupported/failed —
   // hydration matches parts by gen, so stale parts are inert, just storage).
-  if (typeof col.deleteMany === 'function') {
+  // Never while a preserved (conflict) generation of this file exists: its
+  // parts are the only copy of what the other writer held.
+  let preservedChunked = false;
+  try { preservedChunked = (await col.find({ conflict: true, of: filename }).toArray()).some(d => d.chunked); } catch { preservedChunked = true; }
+  if (!preservedChunked && typeof col.deleteMany === 'function') {
     try { await col.deleteMany({ part: true, of: filename, gen: { $lt: gen } }); } catch { /* best effort */ }
   }
   log(`${filename}: ${(bytes / 1e6).toFixed(1)} MB mirrored in ${n} chunk(s) gen=${gen}`);
@@ -426,6 +603,12 @@ async function upsertLoop(filename) {
       if (!col) {
         // Not configured/reachable yet. Keep the payload — it is the newest
         // state of that store and nothing else is holding a copy.
+        requeue(filename, json);
+        return;
+      }
+      if (!state.leader) {
+        // Standing by: another instance holds the writer lease. Keep the
+        // newest payload; the heartbeat flushes it the moment we hold it.
         requeue(filename, json);
         return;
       }
@@ -494,6 +677,7 @@ function flushQueued() {
 export function mirrorWrite(filePath, json) {
   const configured = state.collection || (process.env.MONGO_URI && process.env.AQUA_DISABLE_MONGO_MIRROR !== '1');
   if (!configured) return;
+  if (state.role !== 'writer') return;   // readers never write the shared mirror
   if (typeof json !== 'string') return;
 
   const filename = path.basename(filePath);
@@ -506,13 +690,18 @@ export function mirrorWrite(filePath, json) {
  * Called by atomicStore's SIGTERM hook so a deploy's final messages land.
  */
 export async function drainMirror(ms = 5_000) {
-  if (!state.inflight.size && !state.pending.size) return;
-  // A payload parked behind a backoff timer is NOT in flight, so the old
-  // race resolved instantly and the deploy took it to the grave. Cancel the
-  // timers and drive everything now — this is the last chance before SIGTERM.
-  flushQueued();
-  const all = Promise.all([...state.inflight.values()]);
-  await Promise.race([all, new Promise(r => setTimeout(r, ms))]);
+  if (state.inflight.size || state.pending.size) {
+    // A standby with queued writes gets one last chance at the lease.
+    if (!state.leader && state.role === 'writer' && state.collection) await heartbeatOnce();
+    // A payload parked behind a backoff timer is NOT in flight, so the old
+    // race resolved instantly and the deploy took it to the grave. Cancel the
+    // timers and drive everything now — this is the last chance before SIGTERM.
+    flushQueued();
+    const all = Promise.all([...state.inflight.values()]);
+    await Promise.race([all, new Promise(r => setTimeout(r, ms))]);
+  }
+  // Hand the lease to the successor now rather than after the TTL.
+  await releaseLease();
 }
 
 /**
@@ -549,9 +738,15 @@ export function getMirrorStatus() {
     verdict = `DEGRADED — ${state.consecutiveFailures} consecutive failures, no successful write for ${Math.round((staleFor ?? 0) / 1000)}s; data will NOT survive a redeploy`;
   } else if (state.consecutiveFailures > 0) {
     verdict = `retrying — ${state.consecutiveFailures} consecutive failure(s), ${state.pending.size} file(s) queued`;
+  } else if (state.role !== 'writer') {
+    durable = false;
+    verdict = 'READ-ONLY — this host hydrates from the mirror but never writes it (not on Render; AQUA_MIRROR_ROLE=writer to change); local writes stay on this disk';
+  } else if (!state.leader) {
+    durable = false;
+    verdict = `STANDBY — writer lease held by ${state.leaseHolder ?? 'another instance'}; ${state.pending.size} file(s) queued until it is free`;
   } else if (state.conflict) {
     durable = false;
-    verdict = 'MULTIPLE LIVE WRITERS — last-writer-wins is eating data; scale to ONE instance';
+    verdict = 'MULTIPLE LIVE WRITERS — a pre-lease instance is writing too; overwritten generations are preserved (see writeConflicts) but scale to ONE instance';
   }
 
   return {
@@ -572,16 +767,26 @@ export function getMirrorStatus() {
     retrying:     state.retryTimers.size,
     multiWriterConflict: state.conflict, // true = scale to 1 instance NOW
     conflictWith: state.conflictWith,
+    role:         state.role,
+    leader:       state.leader,
+    leaseHolder:  state.leaseHolder,
+    writeConflicts: state.writeConflicts,   // generation CAS hits; each preserved, never silently overwritten
+    lastConflict: state.lastConflict,
     chunkBytes:   CHUNK_BYTES,
   };
 }
 
 // ── Test seams ────────────────────────────────────────────────────────────────
-export function __setCollectionForTests(fakeCollection) {
+/** Install a fake cluster. Default: this instance is a writer holding the lease (the pre-lease contract). */
+export function __setCollectionForTests(fakeCollection, { role = 'writer', leader = role === 'writer' } = {}) {
   state.collection = fakeCollection;
   state.enabled    = !!fakeCollection;
   state.failedOnce = false;
+  state.role       = role;
+  state.leader     = leader;
 }
+export function __instanceIdForTests() { return INSTANCE_ID; }
+export function __leaseTtlForTests() { return LEASE_TTL_MS; }
 export function __heartbeatOnceForTests() { return heartbeatOnce(); }
 /** Make retry backoff deterministic in tests (null restores real backoff). */
 export function __setRetryDelayForTests(ms) { state.retryDelayOverride = ms; }
@@ -597,7 +802,9 @@ export function __resetForTests() {
     heartbeatTimer: null,
     lastOkAt: null, lastFailureAt: null, consecutiveFailures: 0,
     warnKey: null, warnAt: 0, warnSuppressed: 0, retryDelayOverride: null,
+    role: configuredRole(), leader: false, leaseHolder: null, writeConflicts: 0, lastConflict: null, standbyWarned: false,
   });
+  state.knownGen.clear();
   state.pending.clear();
   state.inflight.clear();
   state.retryTimers.clear();
