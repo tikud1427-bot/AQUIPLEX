@@ -60,7 +60,8 @@ import * as pic from '../pic/core.js';
 import { ensureSelfEntity, SELF_CANONICAL_ID } from './identity/selfEntity.js';
 import { entityStoreFor } from './identity/entityStoreView.js';
 import { getEntry as getIdEntry } from './identity/idStore.js';
-import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup, claimWithEvidence, advanceRevisionVoice } from '../core/worldModel/worldModelRepository.js';
+import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup, claimWithEvidence, advanceRevisionVoice,
+  transition as transitionWorldModel, correctClaim as correctWorldModelClaim } from '../core/worldModel/worldModelRepository.js';
 import { selectCanonicalRevision } from './reflectionV3/canonicalRevisionVoice.js';
 import { recordRevisionVoice } from '../core/observability.js';
 import { resolveRelationships } from './understanding/relationshipResolver.js';
@@ -179,6 +180,213 @@ export async function legacyVetoFor(ownerId) {
     console.warn(`[BRAIN] legacy veto unavailable — legacy memory withheld this turn: ${err?.message ?? err}`);
     return () => true;
   }
+}
+
+// ── USER FORGET / CORRECT REACHES THE WORLD MODEL (audit 2026-10-12) ─────────
+// What the user sees and edits on the Memory page is the legacy fact store.
+// What answers is (a) the canonical World Model by default, and (b) the
+// conversation evidence lane (PIC floor) on a legacy or degraded read. One
+// sentence lives in all three, so deleting the legacy copy left the answer
+// unchanged: reproduced on a legacy read ("I live in Lisbon." still quoted
+// after DELETE /memory/fact/city). These helpers apply the user's decision to
+// the World Model side; memory/forget.js applies it everywhere in one call.
+//
+// Matching is deliberately narrow — only what the deleted memory states about
+// the USER:
+//   · canonical: claims whose subject is the self entity, and either the
+//     predicate is the one that owns that legacy attribute (the same map the
+//     veto uses) with a matching value, or the claim's value / sentence names
+//     the deleted value;
+//   · evidence lane: conversation-sourced sentences in the first person that
+//     name the deleted value.
+// "My sister lives in Lisbon" survives "forget my city: Lisbon".
+// Retired by `archived` — the state every canonical read already excludes
+// (current lanes, graph walks, world core, and retiredStatements blocks the
+// sentence from being re-quoted through another claim). Nothing is
+// hard-deleted here; account deletion (account/accountPurge.js) erases.
+
+const FORGETTABLE_CLAIM_STATES = Object.freeze(['extracted', 'active', 'trusted', 'disputed', 'stale']);
+/** The user as grammatical subject/object: "I live…", "…told me…". */
+const FIRST_PERSON_SUBJECT = /(^|[^\p{L}])(i|i'm|i've|i'd|i'll|me|myself)([^\p{L}']|$)/iu;
+/** "my sister / my boss / my client …" — a sentence about SOMEONE ELSE the user knows. */
+const MY_OTHER_PERSON = /(^|[^\p{L}])my\s+(?:\w+\s+)?(sister|brother|mother|mom|mum|father|dad|parents?|wife|husband|partner|girlfriend|boyfriend|son|daughter|kids?|children|child|friend|boss|manager|colleague|coworker|co-founder|cofounder|client|customer|neighbou?r|cousin|aunt|uncle|grandma|grandpa|grandmother|grandfather|assistant|mentor|team(?:mate)?)\b/iu;
+
+/**
+ * Is this conversation sentence a statement about the user themself, naming
+ * `value`? "I live in Lisbon" / "My dog is called Biscuit" — yes. "My sister
+ * Ana lives in Lisbon" — no: it is about Ana, and forgetting the user's city
+ * must not retire it.
+ */
+function statesAboutUser(sentence, value) {
+  const s = String(sentence ?? '');
+  if (!mentions(s, value)) return false;
+  if (MY_OTHER_PERSON.test(s) && !FIRST_PERSON_SUBJECT.test(s.replace(MY_OTHER_PERSON, ' '))) return false;
+  if (FIRST_PERSON_SUBJECT.test(s)) return true;
+  return /(^|[^\p{L}])my\s/iu.test(s);   // "my dog is called Biscuit", "my city is Lisbon"
+}
+
+const normValue = v => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+/** The comparable strings a legacy fact value states (string, list, or {name|value|label}). */
+export function legacyValueStrings(value) {
+  const out = [];
+  const add = v => { const n = normValue(v); if (n.length >= 2) out.push(n); };
+  for (const v of (Array.isArray(value) ? value : [value])) {
+    if (v && typeof v === 'object') { add(v.name); add(v.value); add(v.label); }
+    else add(v);
+  }
+  return [...new Set(out)];
+}
+const escapeRe = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** Whole-word (letter/digit boundary) mention of `value` in `text`. */
+function mentions(text, value) {
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escapeRe(value)}([^\\p{L}\\p{N}]|$)`, 'iu').test(String(text ?? ''));
+}
+function sameValue(a, b) {
+  const x = normValue(a), y = normValue(b);
+  return x.length >= 2 && y.length >= 2 && (x === y || mentions(x, y) || mentions(y, x));
+}
+
+/** Current self claims the legacy fact {key, value} states. Read-only. */
+async function canonicalClaimsForLegacyFact(ownerId, { key, value }) {
+  const values = legacyValueStrings(value);
+  if (!values.length) return [];
+  const owned = LEGACY_KEY_PREDICATES[key] ?? [];
+  const p = await getPool();
+  const { rows } = await p.query(`
+    SELECT c.claim_id, c.predicate, c.state, c.statement_text,
+           COALESCE(oe.canonical_label, c.object_literal, '') AS val
+      FROM aqua_claims c
+      JOIN aqua_entities se ON se.entity_id=c.subject_entity_id AND se.owner_id=c.owner_id
+      LEFT JOIN aqua_entities oe ON oe.entity_id=c.object_entity_id AND oe.owner_id=c.owner_id
+     WHERE c.owner_id=$1 AND se.type='self' AND c.state = ANY($2::text[])
+     LIMIT 5000`, [ownerId, FORGETTABLE_CLAIM_STATES]);
+  return rows.filter(r => values.some(v =>
+    (owned.includes(r.predicate) && sameValue(r.val, v)) || sameValue(r.val, v) || mentions(r.statement_text, v)));
+}
+
+/** Conversation-sourced, first-person evidence-lane facts that state one of `values`. */
+function conversationFactsStating(ownerId, values) {
+  if (!values.length) return [];
+  return evidenceStore.listFacts(ownerId, { limit: 100_000 }).filter(f => !f.archived
+    && values.some(v => statesAboutUser(f.statement, v))
+    && evidenceStore.evidenceForFact(ownerId, f.id).some(ev => ev.sourceType === 'conversation'));
+}
+
+function archiveConversationFacts(ownerId, facts, reason) {
+  for (const f of facts) {
+    evidenceStore.updateFact(ownerId, f.id, { archived: true, archivedReason: reason, archivedAt: Date.now() });
+    transition(ownerId, `fact:${f.id}`, 'archived', { reason });
+  }
+  return facts.map(f => f.id);
+}
+
+async function archiveClaims(ownerId, claimIds, reason) {
+  const archived = [];
+  for (const claimId of claimIds) {
+    try {
+      await transitionWorldModel({ ownerId, actor: 'user', targetKind: 'claim', targetId: claimId, toState: 'archived', reason, source: 'user-memory-control' });
+      archived.push(claimId);
+    } catch (err) {
+      if (!/changes nothing/i.test(String(err?.message ?? ''))) throw err;   // already archived: idempotent retry
+    }
+  }
+  return archived;
+}
+
+/** Can the World Model take a user's memory change now? (no canonical store configured = nothing to reach) */
+export async function worldModelWritable() {
+  return !dbConfigured() || await isDbReachable();
+}
+
+/**
+ * A legacy fact's value was replaced in conversation ("Actually, my city is
+ * now Porto"). The canonical model supersedes through E6; the conversation
+ * lane never did, so a legacy or degraded read kept quoting "I live in
+ * Lisbon." beside "City: Porto". Retire exactly the sentence that stated the
+ * old value — the lane sentence that came from the old fact's source message
+ * and names that value — nothing broader. Synchronous, evidence lane only.
+ */
+export function retireSupersededStatement(ownerId, { oldValue, sourceText }, { reason = 'superseded-by-user' } = {}) {
+  const values = legacyValueStrings(oldValue);
+  const source = normValue(sourceText);
+  if (!values.length || source.length < 4) return [];
+  const facts = evidenceStore.listFacts(ownerId, { limit: 100_000 }).filter(f => !f.archived
+    && f.statement && source.includes(normValue(f.statement).replace(/[.!?]+$/, ''))
+    && values.some(v => mentions(f.statement, v))
+    && evidenceStore.evidenceForFact(ownerId, f.id).some(ev => ev.sourceType === 'conversation'));
+  return archiveConversationFacts(ownerId, facts, reason);
+}
+
+/**
+ * Forget one legacy fact {key, value} in the World Model. Throws when the
+ * canonical store is configured but cannot be reached — the caller must not
+ * report a forget that only half happened.
+ */
+export async function forgetWorldModelFact(ownerId, { key, value }, { reason = 'user-forget' } = {}) {
+  const values = legacyValueStrings(value);
+  let claims = [];
+  if (dbConfigured()) {
+    if (!(await isDbReachable())) throw Object.assign(new Error('canonical world model unreachable'), { code: 'WORLD_MODEL_UNAVAILABLE' });
+    claims = await archiveClaims(ownerId, (await canonicalClaimsForLegacyFact(ownerId, { key, value })).map(r => r.claim_id), `${reason}:${key}`);
+  }
+  const facts = archiveConversationFacts(ownerId, conversationFactsStating(ownerId, values), `${reason}:${key}`);
+  return { claims, conversationFacts: facts };
+}
+
+/** "Forget everything I told you": every claim the user's conversations or corrections produced, and the conversation lane. */
+export async function forgetWorldModelAll(ownerId, { reason = 'user-forget-all' } = {}) {
+  let claims = [];
+  if (dbConfigured()) {
+    if (!(await isDbReachable())) throw Object.assign(new Error('canonical world model unreachable'), { code: 'WORLD_MODEL_UNAVAILABLE' });
+    const p = await getPool();
+    const { rows } = await p.query(`
+      SELECT DISTINCT c.claim_id
+        FROM aqua_claims c
+        JOIN aqua_claim_evidence ce ON ce.owner_id=c.owner_id AND ce.claim_id=c.claim_id
+        JOIN aqua_evidence ev ON ev.owner_id=ce.owner_id AND ev.evidence_id=ce.evidence_id
+        JOIN aqua_sources s ON s.source_id=ev.source_id
+       WHERE c.owner_id=$1 AND c.state = ANY($2::text[]) AND s.kind IN ('conversation','user_correction')`,
+      [ownerId, FORGETTABLE_CLAIM_STATES]);
+    claims = await archiveClaims(ownerId, rows.map(r => r.claim_id), reason);
+  }
+  const lane = evidenceStore.listFacts(ownerId, { limit: 100_000 }).filter(f => !f.archived
+    && evidenceStore.evidenceForFact(ownerId, f.id).some(ev => ev.sourceType === 'conversation'));
+  return { claims, conversationFacts: archiveConversationFacts(ownerId, lane, reason) };
+}
+
+/**
+ * The user corrected legacy fact {key} from oldValue to newValue. The claims
+ * that stated the old value are corrected (an attribute the canonical model
+ * owns: a user-correction successor with the new value) or archived (nothing
+ * to carry the new value — the corrected legacy fact then fills the gap,
+ * because the veto no longer sees a current canonical value). The old
+ * sentence leaves the conversation lane.
+ */
+export async function correctWorldModelFact(ownerId, { key, oldValue, newValue }, { reason = 'user-correction' } = {}) {
+  const corrected = [];
+  let archived = [];
+  if (dbConfigured()) {
+    if (!(await isDbReachable())) throw Object.assign(new Error('canonical world model unreachable'), { code: 'WORLD_MODEL_UNAVAILABLE' });
+    const owned = LEGACY_KEY_PREDICATES[key] ?? [];
+    const stale = (await canonicalClaimsForLegacyFact(ownerId, { key, value: oldValue }))
+      .filter(r => !legacyValueStrings(newValue).some(v => sameValue(r.val, v)));
+    const label = String(key).replace(/_/g, ' ');
+    for (const r of stale) {
+      if (owned.includes(r.predicate) && ['active', 'trusted', 'disputed', 'stale'].includes(r.state)) {
+        const out = await correctWorldModelClaim({
+          ownerId, actor: 'user', claimId: r.claim_id,
+          statementText: `My ${label} is ${legacyValueStrings(newValue)[0] ?? String(newValue)}.`,
+          object: { literal: String(newValue) }, reason: `${reason}:${key}`,
+        });
+        corrected.push({ from: r.claim_id, to: out.claimId });
+      } else {
+        archived.push(r.claim_id);
+      }
+    }
+    archived = await archiveClaims(ownerId, archived, `${reason}:${key}`);
+  }
+  const facts = archiveConversationFacts(ownerId, conversationFactsStating(ownerId, legacyValueStrings(oldValue)), `${reason}:${key}`);
+  return { corrected, claims: archived, conversationFacts: facts };
 }
 
 /**

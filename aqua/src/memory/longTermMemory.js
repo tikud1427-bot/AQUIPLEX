@@ -16,7 +16,7 @@
  * API shape unchanged (first param was always a string key) → every caller
  * and existing test keeps working; the key is now an ownerId.
  */
-import { getMind, peekMind, touchMind } from '../mind/mindStore.js';
+import { getMind, peekMind, touchMind, deleteItem } from '../mind/mindStore.js';
 import { resolveMemoryConflict } from './memoryConflictResolver.js';
 import { RESOLUTION_ACTIONS } from './memoryResolver.js';
 import { CAPS } from '../mind/mindSchema.js';
@@ -295,7 +295,9 @@ export function getFact(ownerId, key) {
 export function clearFacts(ownerId) {
   const mind = factsOf(ownerId, { create: false });
   if (!mind) return;
-  mind.facts = {};
+  // Each key leaves a tombstone: a bare reset is undone by the other process's
+  // next flush (mind/mindStore.js — DELETIONS THAT HOLD ACROSS PROCESSES).
+  for (const key of Object.keys(mind.facts)) deleteItem(mind, 'facts', key);
   touchMind(mind);
 }
 
@@ -309,7 +311,7 @@ export function storeFacts(ownerId, facts = [], { trace = null } = {}) {
 export function deleteFact(ownerId, key) {
   const mind = factsOf(ownerId, { create: false });
   if (!mind || !(key in mind.facts)) return false;
-  delete mind.facts[key];
+  deleteItem(mind, 'facts', key);
   touchMind(mind);
   return true;
 }

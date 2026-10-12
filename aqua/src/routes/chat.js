@@ -110,8 +110,24 @@ import '../artifacts/engine.js';               // side-effect: registers the 'ar
 import { ErrorCodes } from './envelope.js';
 import { createTurnLedger, recordTurnCost } from '../core/costAccounting.js';
 import { defer } from '../core/jobs/jobRegistry.js';
+import { authorizedWorkspaceId } from '../project/workspaceAccess.js';
 
 const router = express.Router();
+
+/**
+ * The workspace this turn may use. Everything downstream — project retrieval,
+ * semantic file scores, the edit branch, artifact turns, the graph runtime —
+ * reads only this value, never the raw request body. An id the session may not
+ * use is dropped (the turn runs as one without a workspace), and said so in
+ * the log; see project/workspaceAccess.js for why it is not an error.
+ */
+function turnWorkspaceId(req, requested, requestId) {
+  const workspaceId = authorizedWorkspaceId(req.aquaUserId ?? null, requested);
+  if (requested && !workspaceId) {
+    console.warn(`[CHAT] workspace ignored — not accessible to this session ws=${String(requested).slice(0, 64)} req=${requestId}`);
+  }
+  return workspaceId;
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Day 4 — Conversational patch-first editing
@@ -1044,7 +1060,8 @@ router.post('/', async (req, res) => {
   ctx.costPurpose = 'chat';
 
   try {
-    const { message, workspaceId, mode = null } = req.body ?? {};
+    const { message, workspaceId: requestedWorkspaceId = null, mode = null } = req.body ?? {};
+    const workspaceId = turnWorkspaceId(req, requestedWorkspaceId, requestId);
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({
         success: false,
@@ -1275,7 +1292,8 @@ router.post('/stream', async (req, res) => {
   ctx.costLedger = costLedger;
   ctx.costPurpose = 'chat';
 
-  const { message, workspaceId, mode = null } = req.body ?? {};
+  const { message, workspaceId: requestedWorkspaceId = null, mode = null } = req.body ?? {};
+  const workspaceId = turnWorkspaceId(req, requestedWorkspaceId, requestId);
   if (!message || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({
       success: false,

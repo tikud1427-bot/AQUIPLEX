@@ -28,7 +28,8 @@ import { storeFacts, storeFact, deleteFact, getFacts } from './longTermMemory.js
 import { retrieveRelevantFacts, formatFactsForPrompt } from './memoryRetriever.js';
 import { getIdentity, hasIdentity, formatIdentityBlock, isIdentityQuery, answerIdentityQuery } from './identity.js';
 import { mindObserve, mindContext, mindAfterTurn } from '../mind/index.js';
-import { getMind, peekMind, touchMind } from '../mind/mindStore.js';
+import { getMind, peekMind, touchMind, deleteItem } from '../mind/mindStore.js';
+import { forgetInBackground, retireSupersededInBackground } from './forget.js';
 import { upsertNode, upsertEdge, SELF_KEY } from '../mind/relationshipGraph.js';
 import { recallGraphPaths, formatGraphRecall } from '../mind/graphRecall.js';
 import { recallEpisodes, formatEpisodeRecall, isPastRecallQuery, latestEpisode } from '../mind/episodeRecall.js';
@@ -138,6 +139,9 @@ export function memoryObserve(ownerId, {
   }
 
   let extractedFacts = [];
+  // What each fact said before this turn — a value this turn REPLACES has its
+  // old sentence retired from the conversation lane below (step 4b).
+  const previous = new Map(getFacts(ownerId).map(f => [f.key, { value: f.value, sourceText: f.sourceText }]));
   try {
     // 1. Extract (parser → candidates → normalize → dedupe → resolve-vs-stored)
     const { facts, report } = extractFactsWithReport(userMessage, ownerId);
@@ -156,7 +160,11 @@ export function memoryObserve(ownerId, {
     const forgetResult = detectForget(userMessage);
     if (forgetResult.isForget && forgetResult.hint) {
       const hintKey = resolveCanonicalKey(forgetResult.hint.replace(/my\s+/i, '').trim());
+      const forgotten = getFacts(ownerId).find(f => f.key === hintKey) ?? null;
       const deleted = deleteFact(ownerId, hintKey);
+      // The same statement also lives in the World Model — forget it there too
+      // (background: a chat turn never waits on, or fails for, this).
+      if (deleted && forgotten) forgetInBackground(ownerId, hintKey, forgotten.value);
       trace.forget = { hint: forgetResult.hint, key: hintKey, deleted };
     }
 
@@ -169,6 +177,14 @@ export function memoryObserve(ownerId, {
         sourceText: userMessage, ts: Date.now(), isCorrection: true,
       }, { trace });
       trace.correction = { key: updateResult.key, value: updateResult.value };
+    }
+
+    // 4b. A replaced value must stop answering on a legacy/degraded read too:
+    //     the sentence that stated it still sits in the conversation lane,
+    //     which nothing else revises. Background — never on the turn's path.
+    for (const f of getFacts(ownerId)) {
+      const before = previous.get(f.key);
+      if (before && JSON.stringify(before.value) !== JSON.stringify(f.value)) retireSupersededInBackground(ownerId, f.key, before);
     }
   } catch (err) {
     console.warn('[MEMORY] fact observation failed (non-fatal):', err.message);
@@ -467,7 +483,7 @@ function enforceFileCap(mind) {
     .sort((a, b) => (a[1].lastReferencedAt || 0) - (b[1].lastReferencedAt || 0));
   while (sorted.length > FILE_MEMORY_CAP) {
     const [k] = sorted.shift();
-    delete mind.files[k];
+    deleteItem(mind, 'files', k);
     // Phase D — evicting the file entry also drops its content chunks; a
     // file the owner no longer "remembers" must not keep matching queries.
     removeFileChunks(mind.ownerId, k);

@@ -37,6 +37,7 @@ import { serializeCallGraph, getCallGraphStats, whoCalls, whatCalls, impactOf, t
 
 import { resolveOwner, rememberWorkspace } from '../memory/engine.js';
 import { ownerForUser }                     from '../memory/ownerResolver.js';
+import { canAccessWorkspace }               from '../project/workspaceAccess.js';
 
 import { ok, fail, ErrorCodes } from './envelope.js';
 
@@ -74,13 +75,8 @@ const codeForStatus = status => CODE_FOR_STATUS[status] ?? ErrorCodes.INTERNAL;
 // matching the rule conversations.js already set.
 
 function assertWorkspaceOwner(req, res, id) {
-  const workspace = getWorkspace(id);
-  if (!workspace) {
-    fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
-    return false;
-  }
-  const scopeUser = req.aquaUserId ?? null;
-  if (scopeUser && workspace.ownerId !== ownerForUser(scopeUser)) {
+  // The same rule chat applies (project/workspaceAccess.js) — one definition.
+  if (!canAccessWorkspace(req.aquaUserId ?? null, id)) {
     fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
     return false;
   }

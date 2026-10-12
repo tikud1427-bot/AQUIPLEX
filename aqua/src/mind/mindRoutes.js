@@ -32,7 +32,7 @@ import { neighborhood } from './relationshipGraph.js';
 import { recentTimeline } from './timeline.js';
 import { currentFocus } from './workingMemory.js';
 import { beliefKey, GOAL_STATUS } from './mindSchema.js';
-import { touchMind } from './mindStore.js';
+import { touchMind, deleteItem } from './mindStore.js';
 
 const router = express.Router();
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -197,7 +197,7 @@ router.delete('/goals/:id', (req, res) => {
   const mind = requireMind(req, res);
   if (!mind) return;
   if (!mind.goals[req.params.id]) return res.status(404).json({ success: false, error: 'Goal not found' });
-  delete mind.goals[req.params.id];
+  deleteItem(mind, 'goals', req.params.id);
   touchMind(mind);
   res.json({ success: true, deleted: req.params.id });
 });
