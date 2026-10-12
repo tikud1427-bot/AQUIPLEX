@@ -112,6 +112,22 @@ export function formatTurns(turns) {
   return turns.map(t => `[turn ${t.turn}] ${t.text}`).join('\n');
 }
 
+/**
+ * Condition `hybrid` (pre-registered 2026-10-12, eval/lift/PREREG-v4-2026-10-12.md):
+ * the World Model block for the question, UNCHANGED, plus the same BM25 turns
+ * `memoryMatched` uses (ranked turns up to the World Model block's size).
+ * Total context is therefore about twice the World Model's — stated, not hidden;
+ * the decision compares it against the production history window (12k tokens),
+ * which is larger still. Either part empty → the other alone.
+ */
+export function hybridContext(worldModelBlock, matchedTurnsBlock) {
+  const wm = String(worldModelBlock ?? '').trim();
+  const turns = String(matchedTurnsBlock ?? '').trim();
+  if (!wm) return turns;
+  if (!turns) return wm;
+  return `CURRENT UNDERSTANDING (structured):\n${wm}\n\nRELEVANT PAST MESSAGES (verbatim):\n${turns}`;
+}
+
 // ── the answer prompt: ONE template for every condition ─────────────────────
 
 export const ANSWER_SYSTEM = [

@@ -145,3 +145,25 @@ describe('question-clustered comparison (primary Lift statistic, 2026-10-06)', (
     assert.equal(L.clusteredComparison(rows, 'worldModel', 'memory', g => g.fabricated).meanDiff, 1);
   });
 });
+
+describe('hybrid condition (pre-registered 2026-10-12)', () => {
+  const history = ['I live in Lisbon.', 'My dog is called Biscuit.', 'I moved to Porto in May.'];
+  test('the World Model block is kept verbatim and the BM25 part is exactly memoryMatched', () => {
+    const wm = '• You live in Porto (since May).';
+    const matched = L.formatTurns(L.bm25WithinChars(history, 'Where do I live?', Math.max(300, wm.length)));
+    const h = L.hybridContext(wm, matched);
+    assert.ok(h.includes(wm), 'World Model block altered');
+    assert.ok(h.endsWith(matched), 'BM25 part differs from memoryMatched');
+    assert.ok(h.indexOf(wm) < h.indexOf(matched), 'structured understanding first');
+  });
+  test('either part empty → the other alone (no empty section headers)', () => {
+    assert.equal(L.hybridContext('', '[turn 1] x'), '[turn 1] x');
+    assert.equal(L.hybridContext('• y', ''), '• y');
+    assert.equal(L.hybridContext('', ''), '');
+  });
+  test('one prompt template: the hybrid context goes through buildAnswerPrompt like every condition', () => {
+    const p = L.buildAnswerPrompt('Where do I live?', L.hybridContext('• Porto', '[turn 3] I moved to Porto in May.'));
+    assert.match(p.system, /WHAT YOU KNOW ABOUT THE USER/);
+    assert.equal(p.user, 'Where do I live?');
+  });
+});

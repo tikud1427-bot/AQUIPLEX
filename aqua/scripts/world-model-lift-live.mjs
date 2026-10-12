@@ -32,6 +32,7 @@ import '../eval/core/isolateDataDir.mjs';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -101,6 +102,11 @@ const CONDS = flag('--conditions')
   ? flag('--conditions').split(',').map(s => s.trim()).filter(Boolean)
   : [...L.CONDITIONS, ...(ABLATE ? ['worldModelSentences'] : [])];
 const HISTORY_TOKENS = Number(flag('--history-tokens', 12_000));
+// --prereg <file>: the pre-registration this run answers to; its hash is
+// recorded in the output, and the run refuses to start if the file is absent.
+const PREREG = flag('--prereg', null);
+if (PREREG && !existsSync(path.resolve(ROOT, PREREG))) { console.error(`✗ --prereg ${PREREG} not found`); process.exit(2); }
+const sha256File = f => createHash('sha256').update(readFileSync(f)).digest('hex');
 const R = await import('../eval/lift/liftRuntime.mjs');
 const { getPool, closePool, isConfigured } = await import('../src/core/db/pool.js');
 const Brain = await import('../src/brain/index.js');
@@ -256,6 +262,7 @@ async function main() {
     const win = L.historyWindow(persona.history, HISTORY_TOKENS);
     contexts.history = L.formatTurns(win.turns);
     contexts.memoryMatched = L.formatTurns(L.bm25WithinChars(persona.history, question.q, Math.max(300, wm.block.length)));
+    contexts.hybrid = L.hybridContext(wm.block, contexts.memoryMatched);
     const row = { persona: persona.id, length: persona.length ?? 'short', historyTokens: win.totalTokens, historyTruncated: win.truncated,
       id: question.id, cat: question.cat, q: question.q, rep,
       expectUnknown: Boolean(question.expectUnknown), hasForbidden: (question.forbidden ?? []).length > 0,
@@ -273,8 +280,9 @@ async function main() {
     }
     results.push(row);
     checkpoint();   // a crash or quota exhaustion never loses completed answers
-    const g = c => (row.conditions[c].grade?.correct ? '✓' : row.conditions[c].grade ? '✗' : '?');
-    console.log(`  ${question.id}#${rep} [${question.cat}] A${g('stateless')} B${g('memory')} B'${g('fullHistory')} C${g('worldModel')}  ${question.q}`);
+    // Progress line over the conditions actually run (--conditions may omit any of them).
+    const g = c => (row.conditions[c]?.grade?.correct ? '✓' : row.conditions[c]?.grade ? '✗' : '?');
+    console.log(`  ${question.id}#${rep} [${question.cat}] ${CONDS.map(c => `${c}${g(c)}`).join(' ')}  ${question.q}`);
   }
   await Promise.all(Array.from({ length: CONCURRENCY }, async () => {
     while (nextUnit < units.length) {
@@ -293,8 +301,11 @@ async function main() {
       hasForbidden: r.hasForbidden, grade: r.conditions[c].grade })));
   }
   const vec = c => graded.map(r => r.conditions[c].grade.correct);
-  const others = CONDS.filter(c => c !== 'worldModel');
-  const paired = Object.fromEntries(others.map(c => [`worldModel_vs_${c}`, L.pairedComparison(vec('worldModel'), vec(c))]));
+  // Conditions under test: the World Model, and (when run) the pre-registered
+  // hybrid. Each is compared with every other condition.
+  const SUBJECTS = ['worldModel', 'hybrid'].filter(s => CONDS.includes(s));
+  const othersOf = s => CONDS.filter(c => c !== s);
+  const paired = Object.fromEntries(SUBJECTS.flatMap(s => othersOf(s).map(c => [`${s}_vs_${c}`, L.pairedComparison(vec(s), vec(c))])));
   // PRIMARY STATISTIC (question-clustered): repeats of one question are not
   // independent, so the unit of inference is the QUESTION — per-question mean
   // correctness, paired across conditions, sign test over questions that
@@ -305,11 +316,13 @@ async function main() {
   const clustered = {};
   for (const [g, rows] of Object.entries(groups)) {
     if (!rows.length) continue;
-    for (const c of others) {
-      clustered[`${g}:worldModel_vs_${c}`] = L.clusteredComparison(rows, 'worldModel', c);
-      clustered[`${g}:fabrication_worldModel_vs_${c}`] = L.clusteredComparison(rows, 'worldModel', c, x => x.fabricated);
-      const stale = rows.filter(r => r.hasForbidden);
-      if (stale.length) clustered[`${g}:stale_worldModel_vs_${c}`] = L.clusteredComparison(stale, 'worldModel', c, x => x.stale);
+    for (const s of SUBJECTS) {
+      for (const c of othersOf(s)) {
+        clustered[`${g}:${s}_vs_${c}`] = L.clusteredComparison(rows, s, c);
+        clustered[`${g}:fabrication_${s}_vs_${c}`] = L.clusteredComparison(rows, s, c, x => x.fabricated);
+        const stale = rows.filter(r => r.hasForbidden);
+        if (stale.length) clustered[`${g}:stale_${s}_vs_${c}`] = L.clusteredComparison(stale, s, c, x => x.stale);
+      }
     }
   }
   const metricsByLength = {};
@@ -343,6 +356,9 @@ async function main() {
       'AQUA_E6_SINGLE_VALUED'].map(k => [k, process.env[k] ?? null])),
     questions: results.length, graded: graded.length, judgeErrors,
     historyTokensBudget: HISTORY_TOKENS, conditions: CONDS,
+    // Provenance: exactly which frozen data and which pre-registered plan this run answers to.
+    datasetSha256: Object.fromEntries(DATASETS.map(f => [f, sha256File(path.resolve(ROOT, f))])),
+    preregistration: PREREG ? { file: PREREG, sha256: sha256File(path.resolve(ROOT, PREREG)) } : null,
     metrics, metricsByLength, paired, clustered, cost, worldModelDiagnostics: wmDiag, pipeline, results,
   };
   const file = flag('--json', path.join('eval', 'out', `world-model-lift-live.${RUN}.json`));
@@ -385,7 +401,8 @@ async function main() {
       const rep = await purgeOwnerData({ userId: p.userId });
       if (rep.errors?.length) residue[`${p.ownerId}:errors`] = rep.errors;
       for (const t of tables) {
-        const n = (await pool.query(`SELECT count(*)::int AS n FROM ${t} WHERE owner_id=$1`, [p.ownerId])).rows[0].n;
+        // Quoted: migration 0013 names hash partitions "aqua_embeddings_p 0".."p 9" (with a space).
+        const n = (await pool.query(`SELECT count(*)::int AS n FROM "${t.replace(/"/g, '""')}" WHERE owner_id=$1`, [p.ownerId])).rows[0].n;
         if (n) residue[`${p.ownerId}:${t}`] = n;
       }
     }
