@@ -48,6 +48,7 @@
  *   GET /brain/timeline           unified events + chains + stats
  *   GET /brain/chains             lifecycle chains alone
  *   GET /brain/twin               inferred patterns w/ confidence + evidence
+ *   GET /brain/welcome            the home screen's one-line reading of your world
  *
  * Mounted at /api/aqua/brain by aqua/router.js.
  */
@@ -60,6 +61,12 @@ import { flagReport } from '../core/flags.js';
 import { ErrorCodes } from './envelope.js';
 import { getRevisionFeed } from '../brain/reflectionV3/revisionFeed.js';
 import { claimWithEvidence, correctClaim, readHistory } from '../core/worldModel/worldModelRepository.js';
+import * as Proactive from '../brain/proactive/index.js';
+import * as Welcome from '../brain/welcome/index.js';
+import { selectWelcome } from '../brain/welcome/selector.js';
+import * as ActionRuns from '../brain/actions/repository.js';
+import * as ActionExecutor from '../brain/actions/executor.js';
+import { reexplanationStats, learningStats } from '../core/worldModel/canonicalReadModel.js';
 import { isConfigured as dbConfigured } from '../core/db/pool.js';
 
 const router = express.Router();
@@ -340,6 +347,25 @@ router.get('/claims/:id', guarded(async (req, res) => {
   ok(res, ownerId, { claim: claimApi(claim) });
 }));
 
+// Re-explanation rate (Blueprint §2.10) for THIS owner, derived from the
+// canonical World Model. The product promise is a falling weekly series.
+router.get('/reexplanation', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  if (!dbConfigured()) return res.status(503).json({ success: false, code: 'WORLD_MODEL_UNAVAILABLE', error: 'Canonical world model is not configured' });
+  const sinceDays = clampInt(req.query.days, 90, 1, 366);
+  ok(res, ownerId, { reexplanation: await reexplanationStats(ownerId, { sinceDays }) });
+}));
+
+// Phase 3 learning metrics: corrections, correction latency, repeated errors,
+// re-explanation — derived from the canonical tables for THIS owner.
+router.get('/learning', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  if (!dbConfigured()) return res.status(503).json({ success: false, code: 'WORLD_MODEL_UNAVAILABLE', error: 'Canonical world model is not configured' });
+  ok(res, ownerId, { learning: await learningStats(ownerId, { sinceDays: clampInt(req.query.days, 90, 1, 366) }) });
+}));
+
 router.get('/claims/:id/history', guarded(async (req, res) => {
   const ownerId = requireOwner(req, res);
   if (!ownerId) return;
@@ -348,6 +374,9 @@ router.get('/claims/:id/history', guarded(async (req, res) => {
   const history = await readHistory({ ownerId, targetKind: 'claim', targetId: id });
   ok(res, ownerId, { ref: `/brain/claims/${encodeURIComponent(id)}`, history });
 }));
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const validUuid = v => (typeof v === 'string' && UUID_RE.test(v.trim()) ? v.trim() : null);
 
 router.post('/claims/:id/correct', guarded(async (req, res) => {
   const ownerId = requireOwner(req, res);
@@ -370,6 +399,8 @@ router.post('/claims/:id/correct', guarded(async (req, res) => {
       oldValidTo: req.body?.oldValidTo,
       timePrecision: req.body?.timePrecision,
       reason: String(req.body?.reason ?? 'user-correction').slice(0, 500),
+      // Client retry/double-submit key (header or body) → idempotent replay.
+      correctionId: validUuid(req.get?.('Idempotency-Key') ?? req.body?.correctionId) ?? undefined,
     });
     const claim = await claimWithEvidence(ownerId, result.claimId);
     ok(res, ownerId, {
@@ -378,9 +409,123 @@ router.post('/claims/:id/correct', guarded(async (req, res) => {
       replaced: `/brain/claims/${encodeURIComponent(id)}`,
     });
   } catch (error) {
+    if (/already superseded/i.test(String(error?.message ?? ''))) {
+      return res.status(409).json({ success: false, code: 'CLAIM_ALREADY_SUPERSEDED', error: error.message, flags: flagState() });
+    }
     const status = /not found|cannot be corrected|object must contain|not belong/i.test(String(error?.message ?? '')) ? 400 : 500;
     return res.status(status).json({ success: false, code: status === 400 ? ErrorCodes.BAD_REQUEST : ErrorCodes.INTERNAL, error: error?.message ?? 'Correction failed', flags: flagState() });
   }
+}));
+
+// ── The home screen's welcome line ───────────────────────────────────────────
+// The SESSION identity only: no ?conversationId fallback, because the line is
+// a statement about a person and an anonymous conversation id is not one.
+// Fail-open by contract — the home screen must render whatever happens here —
+// so an error is a 200 carrying the neutral line, never a 500.
+router.get('/welcome', async (req, res) => {
+  if (!req.aquaUserId) {
+    return res.status(401).json({ success: false, code: ErrorCodes.UNAUTHORIZED, error: 'Sign in to see your welcome' });
+  }
+  const ownerId = resolveOwner({ userId: req.aquaUserId });
+  const history = req.query.history === '1';
+  try {
+    res.set('Cache-Control', 'private, no-store');
+    res.json({ success: true, welcome: await Welcome.welcomeFor(ownerId, { history }) });
+  } catch (err) {
+    console.error(`[BRAIN_API] GET /welcome failed (neutral line served): ${err?.message ?? err}`);
+    if (!res.headersSent) res.json({ success: true, welcome: selectWelcome({ unavailable: true, history }) });
+  }
+});
+
+// ── Proactive interventions (Phase 4) + bounded actions (Phase 5) ────────────
+// Every route is owner-scoped through requireOwner; ids from another owner are
+// indistinguishable from missing ones (404).
+const needDb = res => (dbConfigured() ? false : (res.status(503).json({ success: false, code: 'WORLD_MODEL_UNAVAILABLE', error: 'Canonical world model is not configured' }), true));
+
+router.get('/interventions', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId || needDb(res)) return;
+  const status = typeof req.query.status === 'string' ? req.query.status.slice(0, 20) : null;
+  ok(res, ownerId, {
+    enabled: Proactive.proactiveEnabled(),
+    interventions: await Proactive.proactiveRepository.listInterventions(ownerId, { status, includeSuppressed: req.query.all === '1', limit: clampInt(req.query.limit, 50, 1, 200) }),
+    stats: await Proactive.proactiveRepository.interventionStats(ownerId),
+  });
+}));
+
+router.post('/interventions/evaluate', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId || needDb(res)) return;
+  if (!Proactive.proactiveEnabled()) return res.status(409).json({ success: false, code: 'PROACTIVE_DISABLED', error: 'AQUA_PROACTIVE is off', flags: flagState() });
+  ok(res, ownerId, { evaluation: await Proactive.evaluateOwner(ownerId) });
+}));
+
+router.get('/interventions/preferences', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId || needDb(res)) return;
+  ok(res, ownerId, { preferences: await Proactive.proactiveRepository.loadPrefs(ownerId) });
+}));
+
+router.put('/interventions/preferences', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId || needDb(res)) return;
+  const b = req.body ?? {};
+  const sev = ['low', 'medium', 'high'].includes(b.minSeverity) ? b.minSeverity : undefined;
+  const mins = v => (v === null ? null : Number.isInteger(v) && v >= 0 && v < 1440 ? v : undefined);
+  try {
+    ok(res, ownerId, { preferences: await Proactive.proactiveRepository.savePrefs(ownerId, {
+      enabled: typeof b.enabled === 'boolean' ? b.enabled : undefined, minSeverity: sev,
+      maxPerDay: Number.isInteger(b.maxPerDay) ? Math.max(0, Math.min(20, b.maxPerDay)) : undefined,
+      quietStartMin: mins(b.quietStartMin), quietEndMin: mins(b.quietEndMin),
+      tzOffsetMin: Number.isInteger(b.tzOffsetMin) ? Math.max(-840, Math.min(840, b.tzOffsetMin)) : undefined,
+    }) });
+  } catch (error) {
+    res.status(400).json({ success: false, code: ErrorCodes.BAD_REQUEST, error: String(error?.message ?? error).slice(0, 200), flags: flagState() });
+  }
+}));
+
+router.post('/interventions/:id/respond', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId || needDb(res)) return;
+  const id = validUuid(String(req.params.id ?? ''));
+  const response = String(req.body?.response ?? '');
+  if (!id) return res.status(404).json({ success: false, code: ErrorCodes.NOT_FOUND, error: 'Intervention not found', flags: flagState() });
+  if (!['accepted', 'dismissed', 'corrected', 'snoozed'].includes(response)) {
+    return res.status(400).json({ success: false, code: ErrorCodes.BAD_REQUEST, error: 'response must be accepted|dismissed|corrected|snoozed', flags: flagState() });
+  }
+  const r = await Proactive.respondToIntervention(ownerId, id, response, {
+    note: typeof req.body?.note === 'string' ? req.body.note.slice(0, 500) : null,
+    snoozeHours: clampInt(req.body?.snoozeHours, 24, 1, 24 * 14),
+  });
+  if (!r) return res.status(404).json({ success: false, code: ErrorCodes.NOT_FOUND, error: 'Intervention not found', flags: flagState() });
+  ok(res, ownerId, { intervention: r });
+}));
+
+router.get('/actions', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId || needDb(res)) return;
+  const status = typeof req.query.status === 'string' ? req.query.status.slice(0, 20) : null;
+  ok(res, ownerId, { actions: await ActionRuns.listRuns(ownerId, { status, limit: clampInt(req.query.limit, 50, 1, 200) }) });
+}));
+
+router.post('/actions/:id/approve', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId || needDb(res)) return;
+  const id = validUuid(String(req.params.id ?? ''));
+  if (!id) return res.status(404).json({ success: false, code: ErrorCodes.NOT_FOUND, error: 'Action not found', flags: flagState() });
+  const r = await ActionExecutor.approve(ownerId, id, { choice: validUuid(req.body?.choice) });
+  if (r.code === 'NOT_FOUND') return res.status(404).json({ success: false, code: ErrorCodes.NOT_FOUND, error: 'Action not found', flags: flagState() });
+  if (!r.ok) return res.status(409).json({ success: false, code: r.code, options: r.options ?? null, run: r.run ?? null, flags: flagState() });
+  ok(res, ownerId, { action: r.run, jobId: r.jobId });
+}));
+
+router.post('/actions/:id/reject', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId || needDb(res)) return;
+  const id = validUuid(String(req.params.id ?? ''));
+  const r = id ? await ActionExecutor.reject(ownerId, id) : { ok: false };
+  if (!r.ok) return res.status(409).json({ success: false, code: 'NOT_PROPOSED', flags: flagState() });
+  ok(res, ownerId, { action: r.run });
 }));
 
 // ── Timeline (B7) ────────────────────────────────────────────────────────────

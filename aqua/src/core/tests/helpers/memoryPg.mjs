@@ -32,6 +32,9 @@
  *                                 two-instances-can't-both-migrate property
  *                                 is NOT tested. That needs two processes and
  *                                 a real server.
+ *   · pg_advisory_xact_lock       stubbed the same way (2026-10-04): entity
+ *                                 find-or-create serialisation is proven only
+ *                                 on real Postgres (consolidation.live.test.js).
  *   · CREATE TABLE IF NOT EXISTS  unimplemented for an existing table
  *   · ON CONFLICT DO NOTHING      unimplemented for an existing row
  *   · real concurrency, connection loss, transaction isolation, SSL,
@@ -58,8 +61,8 @@ export function createMemoryPg() {
 
   // Locking is stubbed, not implemented. Registered for both argument types
   // because the driver may infer either from a bigint literal.
-  for (const type of [DataType.text, DataType.integer]) {
-    for (const name of ['pg_advisory_lock', 'pg_advisory_unlock']) {
+  for (const type of [DataType.text, DataType.integer, DataType.bigint]) {
+    for (const name of ['pg_advisory_lock', 'pg_advisory_unlock', 'pg_advisory_xact_lock']) {
       db.public.registerFunction({
         name, args: [type], returns: DataType.bool, implementation: () => true,
       });

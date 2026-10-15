@@ -155,6 +155,15 @@ export async function configureStorageFromEnv() {
       }
     }
 
+    // BOOT ORDER (2026-10-05). The stores load at module import — BEFORE this
+    // runs — through the plain JSON adapter, so the shadow never saw what they
+    // loaded and its restart baseline was always empty: every existing row was
+    // "never read" and every write was refused for the life of the process
+    // (481 rejections on one live boot). The JSON files on disk ARE what the
+    // stores just loaded; seed the baseline from them.
+    const seeded = await seedShadowBaseline(shadow);
+    if (seeded) notes.push(`restart baseline seeded for ${seeded} store(s)`);
+
     setAdapter(createDualWriteAdapter(createJsonFileAdapter(), shadow, { readFrom }));
     return { mode: 'shadow', adapter: getAdapter().id, readFrom, requested, notes };
   } catch (err) {
@@ -165,6 +174,30 @@ export async function configureStorageFromEnv() {
 }
 
 export const storeMode = () => mode;
+
+/**
+ * Tell the shadow what this instance's authoritative JSON holds for every store
+ * that already has a row. Exported for tests; `dataDir` is injectable.
+ * Returns how many stores were seeded. Never throws — a missing baseline only
+ * means those stores keep the old (refusing) behaviour.
+ */
+export async function seedShadowBaseline(shadow, { dataDir = null, primary = createJsonFileAdapter() } = {}) {
+  if (typeof shadow?.storeKeys !== 'function' || typeof shadow?.noteRead !== 'function') return 0;
+  try {
+    const dir = dataDir ?? (await import('../dataDir.js')).DATA_DIR;
+    const { join } = await import('node:path');
+    let seeded = 0;
+    for (const key of await shadow.storeKeys()) {
+      const file = join(dir, key);
+      if (!primary.existsSync(file)) continue;
+      const data = primary.readSync(file);
+      if (typeof data === 'string') { shadow.noteRead(file, data); seeded++; }
+    }
+    return seeded;
+  } catch {
+    return 0;
+  }
+}
 
 /**
  * Await any deferred writes. The SIGTERM drain calls this because the Postgres

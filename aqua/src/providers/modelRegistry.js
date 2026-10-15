@@ -1,8 +1,8 @@
 /**
  * AQUA Model Registry (Issue 5)
  *
- * Single source of truth for every model ID AQUA can call, across all three
- * providers. Before this module, model IDs were hardcoded inline in
+ * Single source of truth for every model ID AQUA can call, across every
+ * provider (gemini, groq, openrouter, nvidia). Before this module, model IDs were hardcoded inline in
  * gemini.js/groq.js (one literal string each) and duplicated as a bare
  * array in openrouter.js — three different places to update, three
  * different ad-hoc "is this model still alive" mechanisms.
@@ -71,15 +71,15 @@ const PROVIDER_LISTS = {
         contextWindow: 1_048_576, maxOutputTokens: 65_536,
         supportsVision: true, supportsTools: true, supportsReasoning: true,
         costTier: 'free',
-        note: 'Primary. GA, confirmed current as of 2026-06-30. Google\'s stated shutdown horizon is 2026-10-16 — gemini-3.5-flash is registered below as the pre-vetted fallback for when it starts 404ing.',
+        note: 'Primary. Legacy stable Flash model retained for compatibility; Google currently lists no shutdown date but limits access to users who have actively used 2.5 models. Keep a current 3.x Flash fallback.',
       }),
       model({
-        provider: 'gemini', modelId: 'gemini-3.5-flash',
+        provider: 'gemini', modelId: 'gemini-3.6-flash',
         capabilities: ['chat', 'reasoning', 'vision', 'tools'],
         contextWindow: 1_048_576, maxOutputTokens: 65_536,
         supportsVision: true, supportsTools: true, supportsReasoning: true,
         costTier: 'free',
-        note: 'Fallback. GA since 2026-05-19, no announced shutdown date at time of writing.',
+        note: 'Fallback. Direct replacement for deprecated gemini-3.5-flash; Google automatically routes legacy 3.5 requests to this model, but this registry should use the current ID explicitly.',
       }),
     ],
   },
@@ -139,6 +139,27 @@ const PROVIDER_LISTS = {
       model({
         provider: 'openrouter', modelId: 'nvidia/nemotron-nano-9b-v2:free',
         capabilities: ['chat'], contextWindow: 131_072, maxOutputTokens: 8_192,
+      }),
+    ],
+  },
+  // NVIDIA hosted API (integrate.api.nvidia.com, OpenAI-compatible). One model,
+  // chosen by NVIDIA_DEFAULT_MODEL so a catalog change is an env edit, not a
+  // code change. openai/gpt-oss-20b by default: the 120b sibling's free NVIDIA
+  // endpoint is deprecated, so it is deliberately NOT registered here.
+  // Capabilities are only what this adapter actually exercises: no `tools`
+  // (nvidia.js never sends tool definitions) and no supportsJSON (no
+  // response_format is sent; JSON output is prompt-level only). maxOutputTokens
+  // is a conservative cap, not the model's ceiling — raise it from measurement.
+  nvidia: {
+    rotate: false,
+    models: [
+      model({
+        provider: 'nvidia', modelId: process.env.NVIDIA_DEFAULT_MODEL || 'openai/gpt-oss-20b',
+        capabilities: ['chat', 'reasoning'],
+        contextWindow: 131_072, maxOutputTokens: 8_192,
+        supportsJSON: false, supportsReasoning: true,
+        costTier: 'free',
+        note: 'Additional provider/fallback (2026-10). Reasoning model: hidden reasoning tokens count against max_tokens.',
       }),
     ],
   },

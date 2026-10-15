@@ -17,10 +17,11 @@
  *
  * MIGRATION, NOT A REWRITE
  * ------------------------
- * This file only adds `ok()`/`fail()`. The router's terminal 404/error path
- * and parser failures already use it; individual high-traffic route files
- * (chat.js, project.js, etc.) remain on the legacy-compatible success shape
- * until their dedicated migrations land.
+ * This file only adds `ok()`/`fail()`. As of 2026-10-04 every AQUA route
+ * answers through it (project.js and the last upload.js failures were the
+ * final migrations); chat.js and brain.js hand-build a few envelopes around
+ * pre-built payloads and still carry a taxonomy code on every failure. The
+ * deliberate domain-code exceptions are pinned in tests/e11Residuals.test.js.
  */
 
 export const ErrorCodes = Object.freeze({

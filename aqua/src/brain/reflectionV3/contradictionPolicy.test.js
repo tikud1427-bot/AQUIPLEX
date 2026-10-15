@@ -87,3 +87,70 @@ test('user correction remains authoritative even if machine claim is newer', () 
   assert.equal(r.rule, 1);
   assert.equal(r.winner.claimId, 'user');
 });
+
+// D6 (2026-10-05): a claim the user stated AS a change/correction (E6 rule 11,
+// `revises`) is an explicit successor of the OLDER claim it conflicts with.
+// Live: "not Go, it's Rust" left Go current; "I don't live in Lisbon anymore"
+// left Lisbon disputed — both answered stale.
+test('rule 2: a newer explicit revision supersedes the older claim, even a polarity flip on a many-valued predicate', () => {
+  const r = resolveContradiction(
+    base('go', { predicate: 'uses', polarity: 'asserted', createdAt: 1000 }),
+    base('not-go', { predicate: 'uses', polarity: 'negated', createdAt: 2000, revises: true }),
+  );
+  assert.equal(r.action, A.SUPERSEDE_OLDER);
+  assert.equal(r.winner.claimId, 'not-go');
+  assert.equal(r.loser.claimId, 'go');
+  assert.equal(r.rule, 2);
+});
+
+test('rule 2: an OLDER revision never undoes a newer statement', () => {
+  const r = resolveContradiction(
+    base('moved-earlier', { polarity: 'asserted', createdAt: 1000, revises: true }),
+    base('denied-later', { polarity: 'negated', createdAt: 2000 }),
+  );
+  assert.equal(r.action, A.DISPUTED, 'the older side may not claim succession');
+});
+
+test('negative control: an UNMARKED polarity flip still stays disputed', () => {
+  const r = resolveContradiction(
+    base('redis', { predicate: 'uses', polarity: 'asserted', createdAt: 1000 }),
+    base('no-redis', { predicate: 'uses', polarity: 'negated', createdAt: 2000 }),
+  );
+  assert.equal(r.action, A.DISPUTED);
+});
+
+test('rule 2: two revisions — the newer one succeeds', () => {
+  const r = resolveContradiction(
+    base('lisbon', { createdAt: 1000, revises: true }),
+    base('porto', { createdAt: 2000, revises: true }),
+  );
+  assert.equal(r.winner.claimId, 'porto');
+  assert.equal(r.rule, 2);
+});
+
+test('HISTORY vs PRESENT: a claim closed in the past never retires a current open claim, even as a declared snapshot', () => {
+  const osaka = { claimId: 'osaka', predicate: 'located_in', subjectEntityId: 'me', validFrom: null, validTo: null,
+    assertedAt: '2026-10-06T10:00:00.000Z', createdAt: '2026-10-06T10:00:00.000Z' };
+  const kyoto = { claimId: 'kyoto', predicate: 'located_in', subjectEntityId: 'me', validFrom: null, validTo: '2023-12-31T23:59:59.999Z',
+    assertedAt: '2026-10-06T10:05:00.000Z', createdAt: '2026-10-06T10:05:00.000Z' };
+  const r = resolveContradiction(osaka, kyoto, { snapshotPair: true });
+  assert.equal(r.action, 'not_contradictory');
+  assert.equal(r.rule, 3);
+  // …while two OPEN snapshots still resolve by recency.
+  const porto = { ...kyoto, claimId: 'porto', validTo: null };
+  assert.equal(resolveContradiction(osaka, porto, { snapshotPair: true }).action, 'supersede_older');
+});
+
+// Pass 2 (2026-10-11): temporal succession for declared snapshots.
+test('a later-STARTING snapshot succeeds the current one even when both were said at once', () => {
+  const now = '2026-10-11T10:00:00Z';
+  const claire = { claimId: 'claire', predicate: 'reports_to', subjectEntityId: 's', createdAt: now, validFrom: null, evidence: [{}] };
+  const mark = { claimId: 'mark', predicate: 'reports_to', subjectEntityId: 's', createdAt: now, validFrom: '2026-11-01T00:00:00Z', evidence: [{}] };
+  const d = resolveContradiction(claire, mark, { snapshotPair: true, allowHeuristicResolution: false, allowRecencyResolution: false });
+  assert.equal(d.action, 'supersede_older');
+  assert.equal(d.winner.claimId, 'mark');
+  // A PAST-dated statement does not win by its date: recency decides.
+  const berlin = { claimId: 'berlin', predicate: 'located_in', subjectEntityId: 's', createdAt: '2026-10-11T11:00:00Z', validFrom: '2024-01-01T00:00:00Z', evidence: [{}] };
+  const paris = { claimId: 'paris', predicate: 'located_in', subjectEntityId: 's', createdAt: '2026-10-01T10:00:00Z', validFrom: null, evidence: [{}] };
+  assert.equal(resolveContradiction(paris, berlin, { snapshotPair: true }).winner.claimId, 'berlin', 'newer assertion wins by recency');
+});

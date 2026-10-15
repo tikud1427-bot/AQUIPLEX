@@ -166,6 +166,89 @@ const SEED = [
   ['deadline_for', { class: C.TEMPORAL, objectKind: 'literal' }],
 ];
 
+/**
+ * What each seed predicate MEANS, in the sense the claim contract and the
+ * extraction-core labels use it.
+ *
+ * Until 2026-10-03 the prompt offered bare names grouped by object kind, so the
+ * model read `habit_of` as "a recurring habit" while the contract uses it for
+ * any activity or practice of the subject — learning, studying, teaching,
+ * routines. Measured consequence: "I never learned Rust properly" produced no
+ * claim on every recorded run, across two model families. A vocabulary the
+ * model cannot interpret is not a vocabulary. These glosses are rendered into
+ * the prompt from here, so prompt and registry cannot disagree, and a test
+ * fails if any seed predicate lacks one.
+ */
+const GLOSSES = Object.freeze({
+  // 2026-10-05: "My company changed from Initech to Hooli" became has_property
+  // (the catch-all) — the gloss never said that "my company"/"my employer"
+  // usually names where the speaker works.
+  works_at:       'the subject is employed by, or works at, an organisation ("my company" or "my employer" when it means where the speaker works)',
+  role_is:        "the subject's job, role or title, as written",
+  located_in:     'the place the subject is based, lives or is situated',
+  member_of:      'a team, group, project or initiative the subject belongs to or is involved in',
+  founded:        'an organisation the subject founded or co-founded',
+  is_a:           'what kind of thing the subject is',
+  knows:          'the subject knows, has met, or is familiar with a person or a body of work',
+  reports_to:     'the person the subject reports to',
+  manages:        'a person, team or effort the subject leads, manages or hired',
+  related_to:     "the role the subject plays for the speaker, as written (mentor, editor, biggest client, sister, co-founder, investor ...)",
+  employs:        'a person the subject organisation employs',
+  has_member:     'a person or unit that belongs to the subject group',
+  founded_by:     'the person who founded the subject organisation',
+  builds:         'a product, feature or artefact the subject builds, writes or ships',
+  uses:           'a tool, technology, product or service the subject uses',
+  prefers:        'something the subject prefers or cares about',
+  dislikes:       'something the subject dislikes',
+  habit_of:       'an activity or practice the subject does, did, or is doing — routines, schedules, learning, studying, teaching; object is the activity as a phrase',
+  has_property:   'a state or attribute asserted about the subject that no other predicate covers',
+  owns:           'a thing the subject owns, maintains or is responsible for',
+  owned_by:       'the entity that owns or is responsible for the subject',
+  depends_on:     'something the subject depends on',
+  depended_on_by: 'something that depends on the subject',
+  blocks:         'something the subject is blocking',
+  blocked_by:     'something blocking the subject',
+  plans_to:       'something the subject wants, plans or hopes to do',
+  decided:        'a decision the subject made (or, negated, has not made)',
+  rejected:       'an option the subject decided against',
+  task_owner:     'a task the subject is doing, finished or will pick up',
+  // 2026-10-05: "or scheduled state" invited dates — "the launch is on April
+  // 15" became has_status while "the launch moved to May 2" became
+  // deadline_for, and two predicates never conflict, so the old date was never
+  // retired (D6 live check). A date always belongs to deadline_for.
+  has_status:     'the current status or stage of the subject (e.g. "in beta", "on hold"); never a date',
+  deadline_for:   'a date or deadline attached to the subject, including when it launches, ships or is due',
+});
+
+/**
+ * CARDINALITY — which predicates describe a CURRENT STATE that holds one value
+ * at a time (2026-10-04).
+ *
+ * The World-Model Lift run showed the cost of not knowing: "We moved from Pune
+ * to Bangalore", "the deadline is now January 15", "Rohan took it over" left
+ * the old value active beside the new one and the answer cited the stale one.
+ * S8 can detect a changed value and the E9 policy can retire the older
+ * snapshot (rule 5) — but only when something DECLARES that the two claims are
+ * competing snapshots of one fact. This is that declaration, and the only one.
+ *
+ *   'one'   one current value PER SUBJECT. A new asserted value for the same
+ *           subject replaces the old one (superseded, history kept — L5).
+ *   'many'  values legitimately coexist (uses, prefers, member_of, builds,
+ *           blocks…): two values are never a conflict, only a polarity flip is.
+ *
+ * Chosen per predicate on meaning, not on any benchmark:
+ *   works_at     current employer (already single-valued in S8 before this)
+ *   role_is      current role
+ *   located_in   where the subject is based now
+ *   reports_to   one direct manager
+ *   has_status   the status of the subject now
+ *   deadline_for the deadline attached to the subject
+ *   owned_by     who is responsible for a thing now — so `owns`, its inverse,
+ *                is one-per-OBJECT (derived, see cardinalityOf)
+ */
+const SINGLE_PER_SUBJECT = new Set(['works_at', 'role_is', 'located_in', 'reports_to',
+  'has_status', 'deadline_for', 'owned_by']);
+
 const predicates = new Map();
 
 function define(name, meta) {
@@ -175,7 +258,9 @@ function define(name, meta) {
     objectKind: meta.objectKind ?? 'literal',
     inverse: meta.inverse ?? null,
     symmetric: meta.symmetric === true,
+    cardinality: meta.cardinality ?? (SINGLE_PER_SUBJECT.has(name) ? 'one' : 'many'),
     source: meta.source ?? 'seed',
+    gloss: meta.gloss ?? GLOSSES[name] ?? null,
   }));
 }
 
@@ -198,6 +283,28 @@ export const isRegistered = name => predicates.has(name);
 export const getPredicate = name => predicates.get(name) ?? null;
 export const allPredicates = () => [...predicates.values()];
 export const predicateNames = () => [...predicates.keys()].sort();
+
+/**
+ * 'one-per-subject' | 'one-per-object' | 'many'. A predicate whose INVERSE is
+ * one-per-subject is one-per-object: "Kavya owns X" and "Rohan owns X" compete
+ * because X has one owner, though Kavya may own many things.
+ */
+export function cardinalityOf(name) {
+  const p = predicates.get(name);
+  if (!p) return 'many';
+  if (p.cardinality === 'one') return 'one-per-subject';
+  const inv = p.inverse ? predicates.get(p.inverse) : null;
+  if (inv?.cardinality === 'one') return 'one-per-object';
+  return 'many';
+}
+
+/** Names S8 should treat as single-valued per subject. */
+export const singleValuedPredicateNames = () =>
+  [...predicates.values()].filter(p => p.cardinality === 'one').map(p => p.name).sort();
+
+/** Names that are single-valued per OBJECT (inverse of a single-valued one). */
+export const singleObjectPredicateNames = () =>
+  [...predicates.keys()].filter(n => cardinalityOf(n) === 'one-per-object').sort();
 
 /** Explicit registration. Used by seeds, migrations and deliberate additions. */
 export function registerPredicate(name, meta = {}) {

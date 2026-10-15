@@ -37,6 +37,7 @@ import { resolveParser, claimBatch, recordParserOutcome } from './parserRegistry
 import { registerBuiltinParsers } from './parsers.js';
 import { runEnrichment } from './enrichmentPipeline.js';
 import { saveUKO, cacheKnowledge, getCachedKnowledge } from './ukoStore.js';
+import { enqueueDocumentUnderstanding } from './documentUnderstanding.js';
 
 registerBuiltinParsers();
 
@@ -107,11 +108,22 @@ export async function ingestFiles({ files, ownerId = null, conversationId = null
   const claimed = claim?.claimed ?? new Set();
   const individual = classified.filter(c => !claimed.has(c.name));
 
+  const documents = [];
   await promisePool(individual, PARALLELISM, async (item) => {
     const r = await ingestOne({ item, ownerId, conversationId, traceId, deps });
     results.push(r.result);
     if (r.ukoId) ukoIds.push(r.ukoId);
+    if (r.document) documents.push(r.document);
   });
+
+  // ── Canonical World Model (2026-10-11) ──
+  // Each document's text through the same understanding pipeline as a chat
+  // turn, as durable jobs (files/documentUnderstanding.js). Fail-open; opt-out
+  // via deps.skipUnderstanding (unit tests of the parse lifecycle).
+  let understanding = null;
+  if (ownerId && documents.length && !deps.skipUnderstanding) {
+    understanding = await enqueueDocumentUnderstanding({ ownerId, documents, deps: deps.documentUnderstanding ?? {} });
+  }
 
   // ── Cross-file reasoning graph (Phase 3) ──
   // Built ONCE per batch, after every file is enriched, so entity
@@ -152,7 +164,7 @@ export async function ingestFiles({ files, ownerId = null, conversationId = null
   }
 
   return {
-    results, workspace, ukoIds, graph,
+    results, workspace, ukoIds, graph, understanding,
     processing: { traceId, durationMs: Date.now() - startedAt, files: files.length, cacheHits: results.filter(r => r.cacheHit).length },
   };
 }
@@ -216,7 +228,8 @@ async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
       attachmentId = attach(conversationId, toLegacyAttachment(uko)).id;
     }
 
-    return { ukoId: uko.id, result: legacyResult(uko, attachmentId) };
+    return { ukoId: uko.id, result: legacyResult(uko, attachmentId),
+      document: { ukoId: uko.id, name, kind: cls.kind, text: uko.rawContent, hash } };
   } catch (err) {
     recordParserOutcome(parser.id, false, err.message);
     console.error(`[FILES] Ingest failed file=${name} parser=${parser.id}:`, err.message);

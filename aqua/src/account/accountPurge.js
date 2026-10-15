@@ -65,6 +65,10 @@ import { purgeOwner as purgeEmbeddings } from '../core/worldModel/embeddingRepos
 // of exactly this: aqua_jobs has had a working purge function with nothing
 // wiring it in.
 import { purgeOwner as purgeJobs } from '../core/jobs/jobQueue.js';
+import { purgeOwner as purgeInterventions } from '../brain/proactive/repository.js';
+import { purgeOwner as purgeActionRuns } from '../brain/actions/repository.js';
+// E10 migration audit rows (aqua_migration_runs) are owner data too.
+import { purgeOwner as purgeMigrationRuns } from '../core/worldModel/e10Migration.js';
 import { listArtifacts, deleteArtifact } from '../artifacts/artifactStore.js';
 import { listWorkspaces, deleteWorkspace } from '../project/workspaceManager.js';
 import { clearIndex } from '../project/projectIndex.js';
@@ -180,6 +184,10 @@ export async function purgeOwnerData({ userId } = {}) {
   // aqua_claims hits a FK RESTRICT and the whole engine purge reports a
   // failure instead of quietly leaving orphans. This step, then claims, then
   // entities (below) — that order is load-bearing, see worldModelRepository.js.
+  // Phase 4/5: action runs reference interventions; interventions reference
+  // entities and (through their evidence links) claims — so both go first.
+  report.actionRuns = (await stepAsync(report, 'actionRuns', () => purgeActionRuns(ownerId)))?.runs ?? 0;
+  report.interventions = (await stepAsync(report, 'interventions', () => purgeInterventions(ownerId)))?.interventions ?? 0;
   report.worldModel = (await stepAsync(report, 'worldModelPreClaims',
     () => purgeWorldModelPreClaims(ownerId))) ?? null;
   report.claims = (await stepAsync(report, 'claims', () => purgeClaims(ownerId)))?.claims ?? 0;
@@ -189,6 +197,7 @@ export async function purgeOwnerData({ userId } = {}) {
   report.embeddings = (await stepAsync(report, 'embeddings',
     () => purgeEmbeddings(ownerId)))?.embeddings ?? 0;
   report.jobs = (await stepAsync(report, 'jobs', () => purgeJobs(ownerId)))?.jobs ?? 0;
+  report.migrationRuns = (await stepAsync(report, 'migrationRuns', () => purgeMigrationRuns(ownerId))) ?? 0;
 
   // ── 5. Generated artifacts (manifest index + files on disk) ───────────────
   const artifacts = step(report, 'artifacts:list', () => listArtifacts({ ownerId })) ?? [];

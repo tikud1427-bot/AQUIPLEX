@@ -29,8 +29,11 @@
 import express from 'express';
 import { ok, fail, ErrorCodes } from './envelope.js';
 import {
-  getFacts, getFact, deleteFact, clearFacts, getFactHistory,
+  getFacts, getFact, getFactHistory,
 } from '../memory/longTermMemory.js';
+import {
+  forgetFact, forgetAllFacts, correctFactEverywhere, worldModelWritable, MemoryControlUnavailable,
+} from '../memory/forget.js';
 import {
   resolveOwner, getMemoryTrace, semanticFileChunks,
   correctFact, replaceFact, mergeFacts, splitFact,
@@ -96,6 +99,25 @@ function assertLegacyConvAccess(req, res, conversationId) {
     return false;
   }
   return true;
+}
+
+/** 503 — the World Model could not take the change, and nothing was changed. */
+function unavailable(res) {
+  return fail(res, ErrorCodes.UNAVAILABLE, new MemoryControlUnavailable().message);
+}
+
+/**
+ * Run a user memory change (memory/forget.js). Returns false after answering
+ * 503 when the World Model was unreachable — nothing was changed then.
+ */
+async function forgetOrRespond(res, fn) {
+  try {
+    await fn();
+    return true;
+  } catch (err) {
+    if (err instanceof MemoryControlUnavailable) { unavailable(res); return false; }
+    throw err;
+  }
 }
 
 function factsPayload(ownerId) {
@@ -175,17 +197,17 @@ router.get('/fact/:key', (req, res) => {
   ok(res, { ownerId, key: req.params.key, fact, history: getFactHistory(ownerId, req.params.key) });
 });
 
-router.delete('/fact/:key', (req, res) => {
+router.delete('/fact/:key', async (req, res) => {
   const ownerId = ownerOf(req);
   if (!ownerId) return noOwner(res);
-  deleteFact(ownerId, req.params.key);
+  if (!(await forgetOrRespond(res, () => forgetFact(ownerId, req.params.key)))) return;
   ok(res, { ownerId, deleted: req.params.key });
 });
 
-router.delete('/', (req, res) => {
+router.delete('/', async (req, res) => {
   const ownerId = ownerOf(req);
   if (!ownerId) return noOwner(res);
-  clearFacts(ownerId);
+  if (!(await forgetOrRespond(res, () => forgetAllFacts(ownerId)))) return;
   ok(res, { ownerId, cleared: true });
 });
 
@@ -194,13 +216,18 @@ router.delete('/', (req, res) => {
 // fact(s) with a revision count so the caller sees the trail grew. ──────────
 
 /** POST /memory/fact  { key, value, mode?: 'correct'|'replace', reason? } */
-router.post('/fact', (req, res) => {
+router.post('/fact', async (req, res) => {
   const ownerId = ownerOf(req);
   if (!ownerId) return noOwner(res);
   const { key, value, mode = 'correct', reason } = req.body || {};
+  // The correction must reach the World Model too, or its old value keeps
+  // answering; refuse up front rather than apply half of it.
+  if (!(await worldModelWritable())) return unavailable(res);
+  const oldValue = key ? getFact(ownerId, key)?.value : undefined;
   const result = mode === 'replace'
     ? replaceFact(ownerId, key, value, { reason })
     : correctFact(ownerId, key, value, { reason });
+  if (result.ok && !(await forgetOrRespond(res, () => correctFactEverywhere(ownerId, key, oldValue, value)))) return;
   respondEdit(res, ownerId, result, ErrorCodes.BAD_REQUEST);
 });
 
@@ -280,19 +307,19 @@ router.get('/:conversationId/:key', (req, res) => {
   ok(res, { ownerId, conversationId, key, fact, history: getFactHistory(ownerId, key) });
 });
 
-router.delete('/:conversationId/:key', (req, res) => {
+router.delete('/:conversationId/:key', async (req, res) => {
   const { conversationId, key } = req.params;
   if (!assertLegacyConvAccess(req, res, conversationId)) return;
   const ownerId = ownerForLegacyConversation(req, conversationId);
-  deleteFact(ownerId, key);
+  if (!(await forgetOrRespond(res, () => forgetFact(ownerId, key)))) return;
   ok(res, { ownerId, conversationId, deleted: key });
 });
 
-router.delete('/:conversationId', (req, res) => {
+router.delete('/:conversationId', async (req, res) => {
   const { conversationId } = req.params;
   if (!assertLegacyConvAccess(req, res, conversationId)) return;
   const ownerId = ownerForLegacyConversation(req, conversationId);
-  clearFacts(ownerId);
+  if (!(await forgetOrRespond(res, () => forgetAllFacts(ownerId)))) return;
   ok(res, { ownerId, conversationId, cleared: true });
 });
 

@@ -186,7 +186,9 @@ describe('all three adapters got the SAME treatment', () => {
         `${name}: temperature is missing, or guarded by truthiness which would swallow 0`);
       // E12 added `usage` after `model`; the contract is that the return STILL
       // names the model, not that `model` is the last key.
-      assert.ok(/return \{ text[^}]*model: modelId(?:, usage: [^}]*?)? \}/.test(src),
+      // E12 (2026-10-04) wraps the return in countedCall(provider, purpose, {...})
+      // so the call is counted; the returned object must still name the model.
+      assert.ok(/return (?:countedCall\('\w+', [^,]+, )?\{ text[^}]*model: modelId(?:, usage: [^}]*?)? \}/.test(src),
         `${name}: a non-streaming return does not name the model`);
     });
   }

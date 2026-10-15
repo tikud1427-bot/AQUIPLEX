@@ -42,18 +42,41 @@ function isUserCorrection(claim) {
     claim?.modality === 'user_correction';
 }
 
+/**
+ * An explicit successor relation. Either a stored link (`supersedes`), or the
+ * user's own words: a claim they stated AS a change or correction ("I moved
+ * to Porto", "not Go — Rust", "the launch is now May 2"; `revises`, E6 rule
+ * 11) succeeds the OLDER claim it conflicts with. Only the newer side can be
+ * the successor, so an old revision never undoes a newer statement. An
+ * unmarked polarity flip ("I use Redis" … "I don't use Redis") is NOT
+ * explicit and still falls through to DISPUTED.
+ */
 function explicitSupersession(a, b) {
-  const successorOfA = a?.supersedes === b?.claimId || a?.supersededClaimId === b?.claimId;
-  const successorOfB = b?.supersedes === a?.claimId || b?.supersededClaimId === a?.claimId;
+  const revisesOlder = (x, y) => x?.revises === true && createdAt(x) > createdAt(y);
+  const successorOfA = a?.supersedes === b?.claimId || a?.supersededClaimId === b?.claimId || revisesOlder(a, b);
+  const successorOfB = b?.supersedes === a?.claimId || b?.supersededClaimId === a?.claimId || revisesOlder(b, a);
   return { successorOfA, successorOfB };
 }
 
+const ms = v => (v == null ? null : (v instanceof Date ? v.getTime() : typeof v === 'number' ? v : Date.parse(v)));
+
 function temporalNonOverlap(a, b) {
-  const aFrom = a?.validFrom ?? null;
-  const aTo = a?.validTo ?? null;
-  const bFrom = b?.validFrom ?? null;
-  const bTo = b?.validTo ?? null;
-  if (aFrom == null || bFrom == null) return false;
+  const aFrom = ms(a?.validFrom), aTo = ms(a?.validTo);
+  const bFrom = ms(b?.validFrom), bTo = ms(b?.validTo);
+  // HISTORY vs PRESENT (2026-10-06, World-Model Lift p9): "I lived in Kyoto
+  // until 2023" (validity closed 2023-12-31) RETIRED the current "based in
+  // Osaka" — both lacked validFrom, so this rule abstained and rule 5 let the
+  // newer statement win by recency. A claim whose validity ENDED before the
+  // other was even asserted, while the other is still open, describes the past:
+  // the two do not compete.
+  const closedBefore = (closed, open) => {
+    const end = ms(closed?.validTo);
+    const openNow = open?.validTo == null;
+    const since = ms(open?.validFrom) ?? ms(open?.assertedAt ?? open?.createdAt);
+    return end != null && openNow && since != null && Number.isFinite(end) && end < since;
+  };
+  if (closedBefore(a, b) || closedBefore(b, a)) return true;
+  if (aFrom == null || bFrom == null || !Number.isFinite(aFrom) || !Number.isFinite(bFrom)) return false;
   const endA = aTo == null ? Infinity : aTo;
   const endB = bTo == null ? Infinity : bTo;
   return endA < bFrom || endB < aFrom;
@@ -65,7 +88,10 @@ function evidenceCount(claim) {
 
 function createdAt(claim) {
   const raw = claim?.createdAt ?? claim?.assertedAt ?? 0;
-  const n = typeof raw === 'number' ? raw : Date.parse(raw);
+  // A Date from Postgres must keep its milliseconds: Date.parse(date) goes
+  // through toString() and drops them, so two turns in the same second tied
+  // and rule 5 left a real change DISPUTED (live Postgres, 2026-10-04).
+  const n = raw instanceof Date ? raw.getTime() : typeof raw === 'number' ? raw : Date.parse(raw);
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -165,7 +191,37 @@ export function resolveContradiction(a, b, opts = {}) {
   const samePredicate = left.predicate && right.predicate && left.predicate === right.predicate;
   const sameSubject = left.subjectEntityId && right.subjectEntityId &&
     left.subjectEntityId === right.subjectEntityId;
-  if (opts.allowRecencyResolution === true && samePredicate && sameSubject) {
+  // `snapshotPair`: the CALLER has established from declared semantics (the
+  // predicate registry's cardinality) that these are competing snapshots of
+  // one single-valued fact — same predicate, same subject (one-per-subject) or
+  // same object (one-per-object), both asserted facts, different values. That
+  // is exactly the condition this rule's header requires; without it recency
+  // still never resolves anything.
+  const declaredSnapshots = opts.snapshotPair === true && samePredicate;
+  if ((opts.allowRecencyResolution === true && samePredicate && sameSubject) || declaredSnapshots) {
+    // TEMPORAL SUCCESSION (2026-10-11, Pass 2): "from next month my manager
+    // will be Mark" starts AFTER "my manager is Claire" was said — it is the
+    // successor whatever the order of assertion (both can be said in one
+    // breath). Only a START LATER than the other claim's assertion and its
+    // own start counts; a past-dated statement ("moved to Berlin in 2024")
+    // falls through to recency. The worker applies a future successor only
+    // once its valid_from has come (scheduled supersession).
+    const startsAfter = (x, y) => {
+      const s = ms(x?.validFrom);
+      if (s == null || !Number.isFinite(s)) return false;
+      const yStart = ms(y?.validFrom);
+      return s > createdAt(y) && (yStart == null || s > yStart);
+    };
+    const lLater = startsAfter(left, right), rLater = startsAfter(right, left);
+    if (lLater !== rLater) {
+      const winner = lLater ? left : right;
+      const loser = winner === left ? right : left;
+      return {
+        action: ACTION.SUPERSEDE_OLDER, winner, loser,
+        reason: 'a later-starting snapshot succeeds the earlier one (temporal succession)',
+        rule: 5, confidenceCeiling: 0.8,
+      };
+    }
     const lc = createdAt(left);
     const rc = createdAt(right);
     if (lc !== rc) {

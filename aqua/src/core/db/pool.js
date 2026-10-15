@@ -162,6 +162,40 @@ export async function dbHealth({ timeoutMs = 3_000 } = {}) {
   }
 }
 
+/**
+ * Is the configured database answering RIGHT NOW? Cached so the turn path pays
+ * at most one probe per window: `isConfigured()` only says a URL is set, and
+ * the P0 of 2026-10-12 was exactly that gap — DATABASE_URL set, the server down
+ * for five days, every read treated as if the canonical store existed.
+ * Never throws. `false` when nothing is configured.
+ */
+const REACH_OK_TTL_MS = 10_000;
+const REACH_DOWN_TTL_MS = 3_000;
+let reach = { at: 0, ok: false, error: null, inflight: null };
+export async function isReachable({ timeoutMs = 1_500, now = Date.now() } = {}) {
+  if (!isConfigured()) return false;
+  const ttl = reach.ok ? REACH_OK_TTL_MS : REACH_DOWN_TTL_MS;
+  if (reach.at && now - reach.at < ttl) return reach.ok;
+  if (!reach.inflight) {
+    reach.inflight = dbHealth({ timeoutMs }).then(h => {
+      const ok = h.status === 'ok';
+      if (ok !== reach.ok || !reach.at) {
+        console[ok ? 'log' : 'error'](ok
+          ? '[DB] postgres reachable — canonical World Model serving'
+          : `[DB] postgres UNREACHABLE (${h.error ?? h.status}) — canonical reads degraded to legacy memory until it answers`);
+      }
+      reach = { at: Date.now(), ok, error: ok ? null : (h.error ?? h.status), inflight: null };
+      return ok;
+    });
+  }
+  return reach.inflight;
+}
+
+/** Last reachability verdict without probing (for status endpoints). */
+export function reachability() {
+  return { configured: isConfigured(), checkedAt: reach.at || null, reachable: reach.at ? reach.ok : null, error: reach.error };
+}
+
 /** Close the pool. Idempotent; safe on SIGTERM. */
 export async function closePool() {
   if (!pool) return false;
@@ -190,12 +224,14 @@ export function bootLine() {
 export function _setPoolForTests(replacement) {
   const previous = pool;
   pool = replacement;
-  return () => { pool = previous; };
+  reach = { at: 0, ok: false, error: null, inflight: null };
+  return () => { pool = previous; reach = { at: 0, ok: false, error: null, inflight: null }; };
 }
 
 /** Tests only — clears the memoised config so env changes take effect. */
 export function _resetForTests() {
   cachedConfig = null;
+  reach = { at: 0, ok: false, error: null, inflight: null };
   const had = Boolean(pool);
   pool = null;
   return had;

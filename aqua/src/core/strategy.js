@@ -10,20 +10,26 @@
  * reasoning   → Gemini first (chain-of-thought strength)
  * creative    → Gemini first (creative quality)
  * file/agent  → Gemini first (multimodal + context)
+ *
+ * nvidia is LAST in every list: an additional provider/fallback (2026-10), not
+ * a primary. Order here only decides the candidate set — router.js ranks by
+ * score (quality prior × health), and its NVIDIA quality row is a preliminary,
+ * unmeasured prior. AQUA_PROVIDER_PREFER (router.js) can put it first for a
+ * controlled rollout.
  */
 
 const STRATEGIES = {
-  fast_chat:        ['groq',   'gemini', 'openrouter'],
-  coding:           ['gemini', 'groq',   'openrouter'],
-  architecture:     ['gemini', 'openrouter', 'groq'],
-  research:         ['gemini', 'openrouter', 'groq'],
-  reasoning:        ['gemini', 'groq',   'openrouter'],
-  creative_writing: ['gemini', 'groq',   'openrouter'],
-  file_analysis:    ['gemini', 'openrouter', 'groq'],
-  agent_task:       ['gemini', 'openrouter', 'groq'],
+  fast_chat:        ['groq',   'gemini', 'openrouter', 'nvidia'],
+  coding:           ['gemini', 'groq',   'openrouter', 'nvidia'],
+  architecture:     ['gemini', 'openrouter', 'groq', 'nvidia'],
+  research:         ['gemini', 'openrouter', 'groq', 'nvidia'],
+  reasoning:        ['gemini', 'groq',   'openrouter', 'nvidia'],
+  creative_writing: ['gemini', 'groq',   'openrouter', 'nvidia'],
+  file_analysis:    ['gemini', 'openrouter', 'groq', 'nvidia'],
+  agent_task:       ['gemini', 'openrouter', 'groq', 'nvidia'],
 };
 
-const DEFAULT = ['groq', 'gemini', 'openrouter'];
+const DEFAULT = ['groq', 'gemini', 'openrouter', 'nvidia'];
 
 /**
  * @param {string} taskType

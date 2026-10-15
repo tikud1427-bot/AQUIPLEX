@@ -16,7 +16,7 @@
  */
 import { createBelief, beliefKey, CAPS, DIMENSION_DYNAMICS, STATUS } from './mindSchema.js';
 import { reinforce, contradict, fromExplicit, clamp01 } from './confidence.js';
-import { touchMind } from './mindStore.js';
+import { touchMind, deleteItem } from './mindStore.js';
 
 function valuesEqual(a, b) {
   if (a === b) return true;
@@ -202,7 +202,7 @@ export function markTemporary(mind, dimension, key, temporary = true) {
 export function deleteBelief(mind, dimension, key) {
   const bk = beliefKey(dimension, key);
   if (!mind.beliefs[bk]) return false;
-  delete mind.beliefs[bk];
+  deleteItem(mind, 'beliefs', bk);
   touchMind(mind);
   return true;
 }

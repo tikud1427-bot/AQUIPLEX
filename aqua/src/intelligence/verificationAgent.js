@@ -180,6 +180,7 @@ export async function runVerification({
   // therefore never lose an accepted revision, let alone the original draft.
   let suppressedRefusals  = 0;  // Phase 0 (F2 interplay): guarded revisions never count as `revised`
   let suppressedMalformed = 0;  // forensic pass (Bug 1): empty/whitespace "revisions" never count as `revised`
+  let suppressedTruncated = 0;  // P0 2026-10-12: a budget-truncated critique is never a revision
 
   while (passes < cap) {
     const critiqueMessages = [{
@@ -212,6 +213,7 @@ export async function runVerification({
         grounded,
         suppressedRefusals,
         suppressedMalformed,
+        suppressedTruncated,
         provider,
         latencyMs: Date.now() - start,
         error: err.message,
@@ -226,6 +228,15 @@ export async function runVerification({
     if (text.startsWith('VERIFICATION_PASSED')) {
       passed = true;
       break;                 // converged — current draft confirmed clean
+    }
+
+    // A critique cut off by its token budget is neither the PASS sentinel nor
+    // a complete replacement answer — same rule debateAgent applies to a
+    // truncated revision. Keep `current`; the review did not finish.
+    if (result.truncated) {
+      suppressedTruncated += 1;
+      console.warn(`[VERIFICATION] truncated critique SUPPRESSED (pass ${passes}/${cap}) — keeping ${revised ? 'latest revision' : 'draft'}`);
+      break;
     }
 
     // ── Forensic pass (Bug 1) — malformed/empty-revision guard ────────────────
@@ -272,6 +283,7 @@ export async function runVerification({
     grounded,
     suppressedRefusals,
     suppressedMalformed,
+    suppressedTruncated,
     provider,
     latencyMs: Date.now() - start,
     attemptCount: verifyCtx.attempts.length,

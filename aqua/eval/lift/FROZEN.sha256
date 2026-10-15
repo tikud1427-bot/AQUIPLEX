@@ -1,0 +1,11 @@
+d2e460026fc25c1e296aca691640f563b7f3aaceb9abc5652336ce2e1ac94578 *world-model-lift-live.v1.json
+ef10d84585448ed9adaa9c662d7c02cd81e275005bb1aabfb08ada354e82a313 *world-model-lift-live.v2-extension.json
+2026-10-06T15:11:12Z frozen before any run on the extension
+bc603546d61a672494b82e6323c9471d662ad4776aff84915fee72f0bcf4de6b *world-model-lift-heldout.v3.json
+2026-10-11T07:44:47Z heldout v3 frozen before any code change of the 2026-10-11 pass and before any run
+86c4f7ba5e04152d92987b38aa53f89c149cc79e7f6e79e07b11e071ed8d18e9 *world-model-lift-heldout.v4.json
+2026-10-11T13:02:25Z heldout v4 (isolated-agent authored) frozen before any Pass-2 product change and before any run
+cbb5369faedf6f93458f22294c1c733fe325b12d52c9c66af2c194c3c28e0705 *PREREG-v4-2026-10-12.md
+2026-10-12T15:05:17Z pre-registration of the v4 decision rule, registered before any v4 answer existed (code tree d46dc2c8)
+bb1deca2d1de9be24792670a3d761ae17377451ff095994de5652dd6df8671e1 *PREREG-v4-2026-10-12.addendum-1.md
+2026-10-12T15:31:43Z addendum 1: code tree aadda450 (harness logging/cleanup fixes only), before any v4 answer

@@ -15,7 +15,7 @@
  * failing. The self-test suite has no baseline by design — it grades the
  * harness, and a harness self-check is not a quality metric to gate on.
  */
-import { readdirSync, readFileSync, writeFileSync, existsSync, mkdtempSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, existsSync, mkdtempSync, mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -77,6 +77,7 @@ if (update && named.length === 0) {
 
 let failed = false;
 let compared = 0;
+const regressedSuites = [];
 
 for (const file of readdirSync(SUITES).filter(f => f.endsWith('.suite.mjs')).sort()) {
   const suite = (await import(pathToFileURL(path.join(SUITES, file)).href)).default;
@@ -134,13 +135,26 @@ for (const file of readdirSync(SUITES).filter(f => f.endsWith('.suite.mjs')).sor
   const baseline = JSON.parse(readFileSync(baselinePath, 'utf8'));
   const result = compareToBaseline(baseline, report);
   console.log(`\n${gateReport(suite.id, result)}`);
-  if (!result.ok) failed = true;
+  if (!result.ok) { failed = true; regressedSuites.push(suite.id); }
   compared++;
 }
 
 if (compared === 0) {
   console.error('\neval:gate — no suites had baselines. Nothing was checked.');
   process.exit(1);
+}
+
+// E12: the outcome as a scrapeable record (src/core/evalGateSummary.js →
+// /metrics aqua_eval_gate_*). Only a full, non-update run is recorded; a write
+// failure never changes the gate's verdict or exit code.
+if (!update && !named.length) {
+  try {
+    const out = path.join(HERE, 'out');
+    mkdirSync(out, { recursive: true });
+    writeFileSync(path.join(out, 'gate-summary.json'), `${JSON.stringify({
+      ranAt: new Date().toISOString(), passed: !failed, compared, regressions: regressedSuites,
+    }, null, 2)}\n`);
+  } catch { /* the record is best-effort */ }
 }
 
 console.log(failed

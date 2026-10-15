@@ -164,7 +164,9 @@ export function detectMemoryUpdate(message) {
 export function detectForget(message) {
   for (const p of FORGET_PATTERNS) {
     const m = message.match(p);
-    if (m) return { isForget: true, hint: m[1]?.trim() };
+    // "Forget my city." — the sentence's own punctuation is not part of the
+    // key; kept, it resolved to `city.` and nothing was ever forgotten.
+    if (m) return { isForget: true, hint: m[1]?.trim().replace(/[\s.!?,;:]+$/, '') };
   }
   return { isForget: false };
 }

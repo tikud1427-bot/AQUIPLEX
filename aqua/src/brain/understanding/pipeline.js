@@ -53,13 +53,30 @@ import { redactSecrets } from '../../project/secretGuard.js';
 import { segmentMessage } from './segmentation.js';
 import { gateSegment } from './candidateGate.js';
 import { extractSegment } from './extractionClient.js';
-import { validateAgainstSegment, OUTCOME } from './claimValidator.js';
+
+/** Explicit negation cues (rule 2's list). Contractions in either apostrophe. */
+const NEGATION_CUE = /\b(not|never|no longer|neither|nor|none|nobody|nothing)\b|n['’]t\b|\banymore\b|\bstopped\b/i;
+import { validateAgainstSegment, resolveSegmentPolarityConflicts, OUTCOME } from './claimValidator.js';
 import { applyTemporal } from './temporalNormaliser.js';
 import { resolveClaimEntities } from './entityResolution.js';
 
 /** S0 size bound. Beyond this a single message is a document, and documents
  *  have their own ingest path with its own budget. */
 export const MAX_MESSAGE_CHARS = 20_000;
+
+/**
+ * A document's `Key: value` line as a claim (key has_property value), or null.
+ * Short keys only (≤ 5 words, starts with a letter); the value is copied
+ * verbatim without a trailing full stop. Used only for document sources.
+ */
+export function keyValueClaim(text) {
+  const m = String(text ?? '').trim().match(/^([A-Za-z][\w&'/().\- ]{0,48}?)\s*:\s*(\S.{0,298}?)\s*\.?$/);
+  if (!m) return null;
+  const key = m[1].trim(), value = m[2].trim();
+  if (key.split(/\s+/).length > 5 || /^https?$/i.test(key) || value.length < 2) return null;
+  return { subject: key, predicate: 'has_property', object: { literal: value }, polarity: 'asserted', modality: 'fact',
+    timePrecision: 'none', statementText: String(text).trim().replace(/\.$/, '') };
+}
 
 /**
  * Stages this module runs, in blueprint order. S6 joins only when the caller
@@ -95,7 +112,7 @@ export const NOT_IMPLEMENTED = Object.freeze({
 export async function runUnderstandingPipeline(text, opts = {}) {
   const stats = {
     s0: { admitted: false, reason: null, redactions: 0, tags: [], chars: 0 },
-    segments: 0, gated: 0, called: 0, cached: 0, errors: 0,
+    segments: 0, gated: 0, called: 0, cached: 0, errors: 0, errorReasons: [],
     parsed: 0, admitted: 0, proposed: 0, discarded: 0,
     byGate: {}, models: [],
   };
@@ -141,6 +158,19 @@ export async function runUnderstandingPipeline(text, opts = {}) {
 
   const models = new Set();
 
+  // Gate ⑤b's list: the subjects rule 12's CONTEXT gave the extractor, with
+  // the values it attached to each ("subject | relation | value"). Only these
+  // may be a subject the sentence names by reference. The user ("self") is
+  // first person already.
+  const contextSubjects = new Map();
+  for (const line of [...(opts.context?.conversation ?? []), ...(opts.context?.facts ?? [])]) {
+    const [subject, , value] = String(line).split(' | ');
+    if (!subject || subject === 'self') continue;
+    const k = subject.toLowerCase().trim();
+    if (!contextSubjects.has(k)) contextSubjects.set(k, []);
+    if (value) contextSubjects.get(k).push(value.replace(/ \(NOT\)$/, ''));
+  }
+
   // ── S1 SEGMENTATION ──────────────────────────────────────────────────────
   const segments = segmentMessage(clean);
   stats.segments = segments.length;
@@ -150,13 +180,47 @@ export async function runUnderstandingPipeline(text, opts = {}) {
 
   for (const seg of segments) {
     // ── S2 CANDIDATE GATING ────────────────────────────────────────────────
-    if (!gateSegment(seg.text).admit) continue;
+    // DOCUMENT KEY/VALUE FALLBACK (2026-10-11, Pass 2): "Cap: 12 days per
+    // month." in an uploaded contract was gated out or came back [] — the
+    // constraint never reached the World Model and the answer ignored it.
+    // For DOCUMENT sources only, a `key: value` line that yields nothing
+    // becomes key has_property value — verbatim, and still through every
+    // validation gate below (subject and literal must be in the line).
+    const kv = opts.documentFallback ? keyValueClaim(seg.text) : null;
+    const admitted = gateSegment(seg.text).admit;
+    if (!admitted && !kv) continue;
     stats.gated++;
 
     // ── S3 LLM EXTRACTION ──────────────────────────────────────────────────
-    const out = await extractSegment(seg.text, opts);
-    if (out.cached) stats.cached++; else stats.called++;
-    if (out.error) { stats.errors++; continue; }
+    let out = admitted ? await extractSegment(seg.text, opts) : { claims: [kv], rejected: [], cached: true, model: 'document-key-value' };
+    if (!admitted) stats.documentFallbacks = (stats.documentFallbacks ?? 0) + 1;
+    else if (out.cached) stats.cached++; else stats.called++;
+    if (admitted && kv && !out.error && !out.claims.length && !(out.rejected ?? []).length) {
+      out = { ...out, claims: [kv] };
+      stats.documentFallbacks = (stats.documentFallbacks ?? 0) + 1;
+    }
+    // NEGATION RETRY (2026-10-06). Measured on the production extractor: an
+    // explicitly negated sentence sometimes comes back as [] ("Nummo is not
+    // one of our customers": extracted in pass 1, [] in pass 2), and one such
+    // miss in ~19 negation cases fails the 95% gate. CODE decides to ask once
+    // more — only when the reading was empty AND error-free, the sentence has
+    // an explicit negation cue and is not a question. The model still decides
+    // what (if anything) to extract; every gate below still applies. Bounded:
+    // at most one extra call per such segment.
+    if (!out.error && !out.claims.length && !(out.rejected ?? []).length
+        && NEGATION_CUE.test(seg.text) && !/\?\s*$/.test(seg.text.trim())) {
+      const again = await extractSegment(seg.text, { ...opts, negationHint: true });
+      stats.negationRetries = (stats.negationRetries ?? 0) + 1;
+      if (again.cached) stats.cached++; else stats.called++;
+      if (!again.error) out = again;
+    }
+    if (out.error) {
+      stats.errors++;
+      // Kept (bounded) so a durable caller can tell a transport failure — which
+      // must be retried — from a segment that simply holds no claim.
+      if (stats.errorReasons.length < 5) stats.errorReasons.push(String(out.error).slice(0, 160));
+      continue;
+    }
     if (out.model) models.add(out.model);
     stats.parsed += out.claims.length;
 
@@ -239,11 +303,13 @@ export async function runUnderstandingPipeline(text, opts = {}) {
       }
     }
 
+    const segAdmitted = [];
     for (const raw of out.claims) {
       // ── S4 CLAIM VALIDATION ──────────────────────────────────────────────
       const v = validateAgainstSegment(raw, seg.text, {
         sourceTier: opts.sourceTier ?? 'chat',
         modelConfidence: raw.confidenceExtraction ?? raw.confidence_extraction ?? 0.5,
+        contextSubjects,
       });
       if (v.outcome === OUTCOME.PROPOSE) {
         stats.proposed++;
@@ -279,12 +345,47 @@ export async function runUnderstandingPipeline(text, opts = {}) {
         }
         continue;
       }
-      stats.admitted++;
-
-      // ── S5 TEMPORAL NORMALISATION ────────────────────────────────────────
-      const dated = applyTemporal(v.claim, opts.assertedAt ?? null);
-      claims.push({ ...dated, segment: { start: seg.start, end: seg.end, index: seg.index } });
+      segAdmitted.push(v.claim);
     }
+
+    // ── S4 gate ⑧: a segment cannot assert and negate the same fact ────────
+    const g8 = resolveSegmentPolarityConflicts(segAdmitted);
+    for (const d of g8.discarded) {
+      stats.discarded++;
+      const key = `8:${d.reason}`;
+      stats.byGate[key] = (stats.byGate[key] ?? 0) + 1;
+      if (stats.discards) {
+        const c = d.claim;
+        stats.discards.push({
+          stage: 'S4-validator', gate: 8, reason: d.reason, segment: seg.text,
+          subject: c.subject ?? null, predicate: c.predicate ?? null, object: c.object ?? null,
+          polarity: c.polarity ?? null, modality: c.modality ?? null, statementText: c.statementText ?? null,
+        });
+      }
+    }
+    const segClaims = [];
+    for (const admitted of g8.kept) {
+      stats.admitted++;
+      // ── S5 TEMPORAL NORMALISATION ────────────────────────────────────────
+      const dated = applyTemporal(admitted, opts.assertedAt ?? null);
+      segClaims.push({ ...dated, segment: { start: seg.start, end: seg.end, index: seg.index } });
+    }
+    // ONE CHANGE, ONE START (2026-10-11): "from next month my lead will be
+    // Dalia, not Oren" yields Dalia (dated) and NOT Oren (often undated). The
+    // old value's retirement belongs to the SAME future moment — undated, it
+    // retired Oren today. Within one segment, an undated revision of the same
+    // predicate inherits the future start of the dated one.
+    const futureRev = segClaims.find(c => c.revises === true && c.temporal?.future && c.validFrom);
+    if (futureRev) {
+      for (const c of segClaims) {
+        if (c !== futureRev && c.revises === true && c.predicate === futureRev.predicate && !c.validFrom && !c.validTo) {
+          c.validFrom = futureRev.validFrom;
+          c.timePrecision = futureRev.timePrecision;
+          c.temporal = Object.freeze({ ...c.temporal, future: true, inheritedFrom: 'segment-revision' });
+        }
+      }
+    }
+    claims.push(...segClaims);
   }
 
   stats.models = [...models];

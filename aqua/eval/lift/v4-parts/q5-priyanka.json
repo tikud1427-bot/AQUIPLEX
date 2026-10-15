@@ -1,0 +1,628 @@
+{
+  "id": "q5-priyanka",
+  "length": "long",
+  "sessions": [
+    [
+      "Hi! Trying this out properly for the first time. I'm Priyanka, I'm a senior product manager at a fintech in Bengaluru called Kosha Pay. We do payments for small and mid-size merchants: UPI collections, payment links, a bit of lending through partners. I have way too many things in my head at any given point, so the idea is that you help me keep track and also help with random stuff.",
+      "Let's start with something easy though. My daughter asked me yesterday why the money in her piggy bank doesn't \"grow\" like the money in the bank does, and I gave her a very bad answer. Can you explain compound interest in a way that an 8 year old would get, and then a slightly more grown-up version for me so I can sanity check myself?",
+      "Ha, the \"your money has babies and then the babies have babies\" line is going to go down very well with Diya. She's 8, very literal, she will ask what the babies eat.",
+      "Okay and for the grown-up version: if I put 2 lakh in an FD at 7.1% compounded quarterly for 5 years, what do I get? Show me the formula so I can do it in a sheet.",
+      "Got it, roughly 2.84 lakh. And if it were compounded annually it'd be a bit less, right? Makes sense.",
+      "Okay, work stuff, because this is the main reason I'm here. My biggest project right now is the UPI Autopay revamp. Internally it's codenamed Project Saffron because our CTO names everything after spices, don't ask. Basically our recurring payments / mandate flow is terrible, merchants set up subscriptions with customers and something like 29% of mandate creations fail or get abandoned. We're redoing the whole flow: mandate creation, pre-debit notifications, the merchant side, failure handling.",
+      "The engineering lead on Saffron is Farhan Siddiqui. He's brilliant but very quiet, you have to ask him directly or he will not tell you there's a problem until it's on fire. Design is shared with another project. Target launch date is 15 September, which honestly is aggressive.",
+      "And my manager is Rakesh Menon, he's the VP of Product. Good manager, gives me a lot of room, slightly allergic to long documents.",
+      "The thing blocking us right now is NPCI. We need access to their UAT sandbox for the new mandate APIs, the certification environment, and our application has been \"under review\" for almost 3 weeks. Without the sandbox we can't really test end to end, we're mocking everything.",
+      "Can you help me write a short escalation note to our partner bank's relationship manager asking them to nudge NPCI? We go through them for this. Polite but it should be clear that this is now on our critical path. The RM's name is Sunil.",
+      "This is good. Can you cut the second paragraph by half? Rakesh will see it in CC and he hates long emails, I told you, allergic.",
+      "Perfect, sending.",
+      "One more thing while I'm here, a SQL question. I'm trying to compute the mandate success rate by merchant category for the last 30 days. Our analyst is on leave and I don't want to bother the data team for something this small. Here's what I have, but the numbers look wrong, the rates are coming above 100% for some categories:\n\nSELECT m.category,\n       COUNT(DISTINCT md.mandate_id) AS attempted,\n       COUNT(DISTINCT CASE WHEN md.status = 'ACTIVE' THEN md.mandate_id END) AS success,\n       COUNT(DISTINCT CASE WHEN md.status = 'ACTIVE' THEN md.mandate_id END) * 100.0 / COUNT(md.mandate_id) AS success_rate\nFROM mandates md\nJOIN merchants m ON m.id = md.merchant_id\nLEFT JOIN mandate_events e ON e.mandate_id = md.mandate_id\nWHERE md.created_at >= CURRENT_DATE - INTERVAL '30 days'\nGROUP BY m.category\nORDER BY success_rate DESC;\n\nThe mandate_events table has multiple rows per mandate (created, auth_pending, active, paused etc).",
+      "Ahh, of course. The join with events is multiplying rows and I'm dividing by the non-distinct count. I don't even need the events table for this. Thank you, that was embarrassing.",
+      "And if I want to exclude test merchants? They have is_test = true on the merchants table.",
+      "Cool. Also one practical thing you should know about me: I don't take meetings before 10am. I do school drop for Diya every day and then I need the first hour for focus work. If you ever help me plan my calendar, nothing before 10.",
+      "Also I'm vegetarian (my husband Arjun eats eggs, Diya eats whatever is on her plate if it has cheese on it). Just in case recipes come up, which they will.",
+      "Okay that's enough for today. Thank you!"
+    ],
+    [
+      "Hi again. Personal stuff today, I need to think out loud.",
+      "My father, Appa, he's 71 and lives in Mysuru with my mother. His right knee has been bad for years and the orthopaedic surgeon finally said it's time for a total knee replacement. The surgeon is Dr. Hegde at Kaveri Ortho Hospital in Mysuru, very well regarded, my uncle had his hip done there. The tentative date he gave is 20 October.",
+      "Appa is, of course, pretending it's no big deal and is more worried about missing his morning walk group than about the surgery.",
+      "Can you explain what the recovery timeline for a total knee replacement typically looks like for someone his age? Week by week roughly. I want to know when I need to be physically there versus when I can be remote.",
+      "That's really helpful. So the first 2 weeks are the heavy part. My brother Kiran lives in Pune, he says he'll try to come too but his work is unpredictable.",
+      "The insurance part is what worries me. He has a Star Health senior citizen policy, and the hospital says we need pre-authorization before they confirm the surgery date. My mother has all the papers but she gets overwhelmed with the forms. What does pre-auth usually need? I'll be the one doing it from here.",
+      "Okay, so the doctor's recommendation letter, estimate from the hospital, the KYC, policy copy, and previous medical records. I'll ask Amma to scan everything and WhatsApp me.",
+      "Unrelated, can you help Diya with her fractions homework? She has to compare 3/4 and 5/8 and explain \"in words\" why one is bigger. Her teacher wants a drawing too.",
+      "Love the pizza explanation. She will want actual pizza now, which is a problem for future Priyanka.",
+      "Can you give me a ragi dosa recipe that doesn't taste like cardboard? Arjun's been told by his doctor to eat more millets and he's being very dramatic about it.",
+      "Okay the trick with a bit of rice flour and curd makes sense. I'll try tomorrow. Vegetarian obviously, he can add an egg on the side if he wants to suffer less.",
+      "Also, I need to write a LinkedIn post about our team winning an internal hackathon. I hate writing LinkedIn posts, they all sound like \"I am humbled and honoured\". The project was a voice-based payment reminder for kirana stores in Kannada and Hindi. The team was 4 people: Neha (design), Arvind (backend), Pooja (data) and me. Can you draft something that doesn't sound cringe?",
+      "Hmm, still a bit too polished. Make it shorter, more casual, and mention that the demo crashed once and we restarted it on stage, that was the best part.",
+      "Yes! That's me. Posting it.",
+      "Thanks, logging off. Long day."
+    ],
+    [
+      "Morning. Work update, and I need help with a doc.",
+      "First, Saffron. We had the planning review yesterday and the September date is dead, there's no way with the sandbox delay. New target launch is 17 October. Rakesh was fine with it as long as we don't slip again.",
+      "Second, I'm also now officially running the second project, which is the merchant dashboard v2. The codename is Lighthouse (not a spice, the CTO lost that battle). It's the web dashboard merchants use to see settlements, refunds, disputes. Current one is ugly and slow. Neha is the designer on it, Arvind is the eng lead. Lighthouse is shared design with Saffron, so Neha is split between both, which is a whole other headache.",
+      "Lighthouse beta launch is planned for 10 November with 50 merchants from our top tier. After that, gradual rollout.",
+      "So now I have two \"launches\" in my head. Saffron launch in October, Lighthouse beta in November. I keep mixing them up in standups, Arvind laughed at me yesterday.",
+      "Can you help me give structured feedback on a PRD section a junior PM wrote for Lighthouse? I want to be kind but honest. Here's the section:\n\n\"3. Settlements View\nThe settlements view will show all settlements to the merchant. It will be faster than the current one. Merchants will be able to filter settlements. There will be a download button. The design will be modern and clean. We will also show the UTR number. Success metric: merchants like it more.\nEdge cases: if there are no settlements we will show a message. If the API fails we will show an error.\nOpen questions: should we show pending settlements? what about refunds?\"\n\nShe's new, it's her second PRD. I don't want to crush her.",
+      "This is great feedback. I especially like that you didn't just say \"be more specific\" but showed what specific looks like, with the \"p95 page load under 2 seconds for merchants with up to 10k settlements\" example.",
+      "Can you also give me a 3-line summary I can say to her in person before she reads the written comments? I like starting with the positive.",
+      "Okay. Also uploading the Saffron PRD excerpt, the part with the rules. I want you to have it handy because I keep forgetting the exact numbers when people ask me in meetings.",
+      "Quick check: what's the difference between a mandate \"pause\" and a \"revoke\" from the customer's point of view? I want to make sure our copy explains it correctly.",
+      "Right. Pause is temporary and they can resume, revoke kills it and the merchant has to ask for a new mandate. Good.",
+      "Other random question, my friend asked me and I didn't know: is it true that you can't set up a UPI autopay for more than one lakh? Or was that changed?",
+      "Okay thanks, I'll tell her to check with her bank for the specific category, there are exceptions for some categories apparently.",
+      "I'm going to go eat lunch. Bye."
+    ],
+    [
+      "Hey. Home stuff today, plus one work vent.",
+      "We are finally redoing our kitchen. We've been in this flat in HSR Layout for 6 years and the kitchen was clearly designed by someone who has never cooked. The cabinets are falling apart, the counter is that cheap green granite, and there's exactly one plug point.",
+      "We got three quotes and we're going with Manju Interiors. The owner is Manjunath, everyone calls him Manju, he did my colleague's flat and it looks fantastic. His quote was not the cheapest but the material spec is much better. I'll upload the quote once I find the final PDF, he sent like four versions on WhatsApp.",
+      "Question: BWP plywood vs HDHMR for kitchen cabinets? Manju is recommending BWP for the sink area and HDHMR for the overhead cabinets to save cost. Is that sensible or is he upselling me?",
+      "Okay, that's reassuring, it's actually a pretty standard split. I'll go with his suggestion.",
+      "And a chimney, should I get a filterless one? Arjun read something online and now he's an expert.",
+      "Ha, okay. Filterless with auto-clean it is, but we're buying it ourselves, not through Manju, he marks it up.",
+      "Second thing, nanny situation. Our nanny Lakshmi has been with us since Diya was 3, she picks Diya up from school at 3:30 and stays till 7. She's family at this point. She told us yesterday she might go back to her village near Hassan in a couple of months because her son is getting married and her husband isn't well. Nothing final yet, but I'm already panicking a little.",
+      "Okay, not panicking. Planning. What should we look for if we need to hire someone new? Diya is 8 so it's less about babysitting and more about homework, snacks, keeping her off the iPad.",
+      "Good list. The \"trial week with overlap\" idea is really good if Lakshmi agrees.",
+      "Now the work vent. Big news, which I'm still processing: Rakesh, my manager, is moving to our Singapore entity to lead the regional product team. It's a great move for him. He told me in our 1:1 and then it was announced to the team this morning.",
+      "From 1 December my manager will be Deepa Kulkarni. She's joining from a big bank's digital team, I've never met her, everyone says she's very process-heavy. Rakesh stays in his role until the end of November and will do the handover.",
+      "I'm honestly a bit anxious. Rakesh let me run things my way. What questions should I ask a new manager in the first 1:1 so we start on the right foot? Even though it's still months away I want to be prepared.",
+      "These are great. Especially \"how do you like to receive bad news\". Saving this list.",
+      "Can you also explain how a home loan EMI is calculated? We might top up our home loan to pay for the kitchen instead of breaking an FD. 10 lakh, 9.2%, 10 years.",
+      "Around 12,770 a month. Hmm. And the total interest over 10 years would be around 5.3 lakh. That's painful. We'll probably just break the FD.",
+      "Okay one last thing, a long one, sorry. A merchant escalation came in and our support lead wants me to reply personally because it's a big account. Can you help me write a reply? Here's the thread:\n\n\"From: Ravi Shankar, Finance Head, BrightMinds Learning\nTo: support@koshapay\nSubject: URGENT - repeated failures on student fee subscriptions\n\nHi team,\nThis is the third time this month I am writing. Over 400 of our parents who set up monthly fee autopay in June have had their July debit fail. Your dashboard shows 'failed - reason code U30' with no explanation. Our parents are calling our centres and our centre managers are calling me. We were told during onboarding that Kosha Pay had the best autopay success rates in the market. We are now considering moving to another provider for the new academic term.\nI need: 1) an explanation of what happened, 2) what you are doing to fix it, 3) a point of contact who will actually respond.\nRegards,\nRavi\"\n\n\"From: Kosha Support\nTo: Ravi Shankar\nHi Ravi, Sorry for the inconvenience. We have escalated your issue to the concerned team. We will get back to you within 48 hours.\nRegards, Team Kosha\"\n\n\"From: Ravi Shankar\nIt has been 72 hours.\"\n\nWhat we know: U30 in this case was mostly debit-time failures because the pre-debit notifications didn't go out for a batch on 3 July due to a bug in our notification scheduler, so the debits were rejected. It's fixed now and we have re-presentation planned for the affected mandates, which is allowed because it was a technical decline. Saffron will fix the root cause properly with the new notification service.",
+      "This is excellent. Can you make it a bit warmer at the start and add that I will personally be his point of contact until this is closed? And give him my number, it's fine, I'll put it in myself.",
+      "Perfect. Thank you, really. Sending now."
+    ],
+    [
+      "Hi. Lots of Saffron news this week, some good some annoying.",
+      "First, a correction I need to make, because I said it wrong to you and also to half the company: the new Saffron launch date is 27 October, not the 17th. When we re-planned, the date in the slide was 27th, I just had 17 stuck in my head from an earlier draft. Rakesh noticed in the leadership sync and gently corrected me. So: 27 October.",
+      "The GOOD news: NPCI sandbox access finally came through on Monday! The partner bank pushed, Sunil really came through. Farhan's team already ran the first end to end mandate in UAT yesterday. I could have cried.",
+      "The ANNOYING news: now the thing holding us up is Legal. Per the PRD, the consent screen text has to be approved by Legal before production, and our legal counsel, Shalini Iyer, has had the draft for 10 days. She's the only person in legal who knows payments regulation properly, so she's swamped with everything. Without her sign-off we can't go to the pilot merchants.",
+      "Can you help me simplify the consent text before I nudge her? Maybe if it's cleaner she'll approve faster. Current draft:\n\n\"By proceeding, you hereby authorise [Merchant Name] ('the Merchant') and its payment service provider Kosha Pay Technologies Private Limited ('Kosha') to initiate recurring debits from your UPI-linked bank account in accordance with the frequency, amount and validity period specified herein and as per the applicable guidelines issued by the National Payments Corporation of India from time to time. You acknowledge that you will receive a notification prior to each debit and that you may pause or revoke this mandate at any time through your UPI application, subject to the terms and conditions of your bank and UPI application provider. Kosha shall not be liable for any debit failures arising out of insufficient funds, technical issues at the bank or UPI application provider, or any other reason beyond Kosha's reasonable control.\"",
+      "Much better. I like that you kept the legal meaning but split it into three short points. I'll send her both versions and ask her which one she prefers, so it's not like I'm rewriting her job.",
+      "Also the second big change: Farhan is going on paternity leave from 25 August, his wife is due early September. He'll be off for about 3 months, so effectively he's out for the Saffron launch. Vikram Rao is taking over as engineering lead on Saffron. Vikram was the tech lead on our payment links product, he's more vocal than Farhan, which honestly will make my life easier.",
+      "Not related to me, Vikram's surname is the same as mine (I'm Priyanka Rao, married name), we are not related, people keep asking.",
+      "Can you write a short handover checklist for an eng lead change mid-project? Farhan's going to do a week of overlap with Vikram.",
+      "Good. Add \"open security review items\" and \"list of people at the partner bank and their responsiveness\". Sunil is great, the API team at the bank is slow.",
+      "Okay, unrelated, I need to write the mid-year review for one of my direct reports, Pooja (the data analyst who was on the hackathon team). She's fantastic. Here are my rough notes, help me turn them into something structured:\n\n- owns the mandate analytics dashboard end to end, built it in 3 weeks\n- found the notification scheduler bug that caused the BrightMinds failures, she noticed the drop in the data before support even escalated\n- sometimes goes too deep into analysis when we need a quick answer, needs to time-box\n- great at explaining data to non-technical people, the sales team loves her\n- wants to move towards product management eventually\n- should present more in leadership forums, she's shy",
+      "This is really good. Can you add a line about her goal of moving into PM and what I'll do to support it? Like she can shadow me on Lighthouse discovery calls.",
+      "Perfect.",
+      "Okay, random brain question. Why do I always remember work stuff at 2am? Is that a real thing?",
+      "Ha, the \"Zeigarnik effect\". Unfinished tasks. That explains a lot about my life.",
+      "Thanks. Bye for now."
+    ],
+    [
+      "Hi, it's been a crazy couple of weeks. Mostly family stuff.",
+      "Appa's surgery date: Dr. Hegde's office called. It's on 23 October, not 20th. The OT on the 20th got taken by an emergency list or something, so they moved him to Friday the 23rd. Admission on the 22nd evening.",
+      "And the Star Health pre-authorisation is APPROVED. Took two rounds of queries, they wanted his old X-rays from 2023, Amma found them in a steel trunk under the bed of all places. But it's done. So the insurance part is sorted, the hospital confirmed.",
+      "Kiran (my brother) can only come from 30 October, his project has a release that week. So for the surgery itself and the first week it's me and Amma. I'll go to Mysuru on the 22nd and stay through to around the 31st, working remotely after the first few days.",
+      "Which is... right around the Saffron launch on the 27th. I know. I know. Vikram will run the launch day war room and I'll be online from the hospital. Not ideal but family first.",
+      "Can you help me make a packing list for a 10 day hospital-plus-home stay? Including stuff for Appa, like what he'll need in hospital after a knee replacement.",
+      "Oh good point about loose shorts and the walker height. Also a long phone charging cable, hospital sockets are always 3 metres from the bed.",
+      "Nanny update: Lakshmi did decide to go back to her village. Her last day was 29 August, we had a little farewell, Diya made her a card with 40 stickers on it. We've hired Roopa, she started on 1 September. She's younger, did a B.Com, very good with homework, and Diya already likes her because she knows all the K-pop songs. Same timings as Lakshmi, 3:30 to 7.",
+      "I asked Roopa if she can do longer hours during the week of Appa's surgery since I'll be away and Arjun has parent-teacher meetings at his school that week. She said probably yes, need to confirm.",
+      "Arjun teaches physics in a high school in Koramangala, in case that comes up. He's the calm one in our family. Mostly.",
+      "Can you recommend a few books for me for the hospital stay? I like literary fiction, I liked \"The God of Small Things\", \"A Fine Balance\", and recently \"Demon Copperhead\". Nothing too depressing please, it'll be a hospital, I need something warm.",
+      "Okay, \"Tomorrow, and Tomorrow, and Tomorrow\" and \"Remarkably Bright Creatures\" sound good. I'll get them on Kindle.",
+      "Here's something I've been chewing on, warning it's long. A friend sent me this article and I want your take on whether it's right:\n\n\"The myth of the balanced working parent. Every few months a new think piece tells working mothers that balance is achievable with the right systems: batch cooking, shared calendars, outsourcing, saying no. The reality for most of us in Indian cities is different. Systems depend on support structures, house help, grandparents, flexible employers, that are unevenly distributed and fragile. When one piece fails - the nanny leaves, a parent falls ill, a big project lands - the whole thing collapses and the burden falls disproportionately on the mother. Rather than balance, we should talk about seasons: there are seasons where work takes more, seasons where family takes more, and the goal is not to be perfectly balanced every week but to be fair over the year. Employers can help not by offering wellness webinars but by making it normal for senior people to visibly take time for family, by building teams where no one person is a single point of failure, and by measuring outcomes rather than hours online. Partners can help by owning entire domains, not 'helping'.\"\n\nI feel seen and also slightly attacked.",
+      "Yes, the \"single point of failure\" thing is literally my work life too. Saffron has single points of failure: Shalini in legal, Neha in design. I should think about that.",
+      "Speaking of which, Shalini is still sitting on the consent text. I sent her both versions. She replied \"will look this week\" which was last week. Still the main blocker for Saffron.",
+      "Thanks for listening. I'm going to make chai and stare at a wall for 10 minutes."
+    ],
+    [
+      "Hello. Quick-ish session, then a coding thing.",
+      "Holiday planning. We always do a family trip in the Christmas week because Arjun's school is closed. This year it's between Coorg and Goa. Arjun wants Goa (beach, seafood for him, he says he'll \"only look at the prawns\"), I want Coorg (cool weather, homestay, quiet, coffee estates). Diya wants \"wherever there's a pool\". We haven't decided. Also depends a bit on how Appa is recovering by then.",
+      "Can you do a quick comparison for late December: weather, crowds, prices, travel time from Bengaluru by car?",
+      "Coorg is so much easier by road. Goa in Christmas week sounds like chaos and triple prices. I'll present this \"neutrally\" to Arjun. Ha.",
+      "Kitchen update. I paid Manju 1,00,000 so far as the first part of the advance, the rest of the advance I'll transfer after we break the FD next week. He said he'll start procurement only once the full advance is in, which is fair.",
+      "Also, Diya. We're thinking, maybe, of moving her to a different school for next academic year, from June. Her current school is very exam-heavy, she's 8 and already has weekly tests, and she comes home stressed. There's a smaller school in Sarjapur area with a more project-based approach. But it's further, and her friends are all at the current one. Arjun and I are going back and forth. Nothing decided at all, we're just going to visit a couple of schools in November.",
+      "What questions should we ask when we visit a school? Not the brochure stuff, the real stuff.",
+      "\"Ask to see a random notebook from a student in the class\" is genius. And asking teachers how long they've been there. Good.",
+      "Okay, coding thing. Our ops team runs a small Python script to reconcile settlements and it breaks every month-end. The engineer who wrote it left. I can read Python a bit. Can you tell me what's wrong? Here it is:\n\nimport csv\nfrom datetime import datetime\nfrom collections import defaultdict\n\ndef load_settlements(path):\n    rows = []\n    with open(path) as f:\n        reader = csv.DictReader(f)\n        for r in reader:\n            r['amount'] = float(r['amount'])\n            r['settled_on'] = datetime.strptime(r['settled_on'], '%d/%m/%Y')\n            rows.append(r)\n    return rows\n\ndef load_bank(path):\n    rows = []\n    with open(path) as f:\n        reader = csv.DictReader(f)\n        for r in reader:\n            r['credit'] = float(r['credit'].replace(',', ''))\n            r['value_date'] = datetime.strptime(r['value_date'], '%Y-%m-%d')\n            rows.append(r)\n    return rows\n\ndef reconcile(settlements, bank):\n    by_utr = defaultdict(list)\n    for b in bank:\n        by_utr[b['utr']].append(b)\n    unmatched = []\n    for s in settlements:\n        matches = by_utr.get(s['utr'])\n        if not matches:\n            unmatched.append(s)\n            continue\n        total = sum(m['credit'] for m in matches)\n        if total != s['amount']:\n            unmatched.append(s)\n    return unmatched\n\nif __name__ == '__main__':\n    s = load_settlements('settlements.csv')\n    b = load_bank('bank.csv')\n    out = reconcile(s, b)\n    print(f\"Unmatched: {len(out)}\")\n    for u in out:\n        print(u['utr'], u['amount'])\n\nThe ops person says month-end files sometimes have amounts like \"1,25,000.50\" in the settlements file and some UTRs have trailing spaces. Also it reports mismatches for amounts that look identical.",
+      "Okay so three issues: commas in settlement amounts (only handled for bank), whitespace in UTRs, and comparing floats with != . Can you give me the fixed version with the Decimal approach you mentioned? I'll pass it to the ops engineer.",
+      "Thank you. This will save someone a very bad month-end.",
+      "Also what's the difference between Decimal and just rounding to 2 places? The ops guy will ask me and I want to sound smart.",
+      "Okay, makes sense. Floats can't represent 0.1 exactly so errors accumulate; Decimal is exact for base-10 money. Got it.",
+      "Last thing. Neha (designer) told me today she's overloaded with both Saffron and Lighthouse and she's thinking of asking for one of them to get a second designer. She's right. How do I make the case to Rakesh for a contract designer for 3 months?",
+      "Good, I'll frame it as risk to the October launch, not as \"Neha is tired\", even though Neha is tired.",
+      "Okay bye!"
+    ],
+    [
+      "Hi! Decisions were made this week.",
+      "We're doing Coorg for Christmas. Arjun caved when I showed him the Goa hotel prices for the 24th. We found a lovely homestay near Madikeri, a family cottage with a view of the hills, and I already booked it and paid an advance. 22nd to 25th December. I'll upload the confirmation so I don't lose it in my email.",
+      "Diya asked if there will be a pool. There will not be a pool. There will be a stream. We're selling it as a \"nature pool\".",
+      "Lighthouse update. We decided to expand the beta from 50 to 80 merchants, because sales wants to include some of the mid-tier merchants who complain the most about the old dashboard. Date stays the same, beta launch 10 November.",
+      "But Lighthouse now has its own blocker, separate from Saffron's mess. The new settlements view needs a data feed from the finance data team, and their pipeline is being migrated to a new warehouse. The person who owns that is Mohan Krishnan in finance engineering. He says the feed will be ready \"end of October\", which leaves Arvind about a week to integrate before the beta. Tight.",
+      "Can you help me write the beta invite email to the merchants? Here's my rough version, it's too long and too boring:\n\n\"Dear Merchant Partner,\n\nWe at Kosha Pay are excited to inform you that we have been working on a brand new version of our merchant dashboard, which we have internally been calling Lighthouse. The new dashboard has been redesigned from the ground up based on extensive feedback from merchants like you. It includes a completely new settlements view which will allow you to see all of your settlements in one place, with the ability to filter by date, status, and payment method, and download reports in multiple formats including CSV and PDF. We have also improved the refunds and disputes sections so that you can track the status of each refund and dispute in real time and respond to disputes directly from the dashboard with supporting documents. Performance has also been significantly improved, and pages now load much faster even for merchants with large numbers of transactions.\n\nAs one of our valued merchant partners, you have been selected to participate in the beta programme for the new dashboard, which will begin on 10 November 2026. During the beta programme, you will have access to both the old dashboard and the new dashboard, and you can switch between them at any time. We would be very grateful if you could share your feedback with us through the feedback button in the new dashboard or by scheduling a call with our product team.\n\nPlease note that as this is a beta version, there may be some bugs or issues, and some features may change before the final release. If you encounter any issues, please contact our support team.\n\nTo confirm your participation in the beta programme, please reply to this email by 25 October 2026.\n\nThank you for being a valued partner of Kosha Pay.\n\nWarm regards,\nPriyanka Rao\nSenior Product Manager, Kosha Pay\"",
+      "So much better. Love the three bullets. But don't mention \"Lighthouse\" to merchants, that's internal. Just \"the new dashboard\".",
+      "Good. And add a P.S. that they can book a 20 minute call with me directly, I'll add a Calendly link. And remember my Calendly only shows slots after 10am.",
+      "Perfect. Thanks.",
+      "Unrelated, Diya has a school project on \"Indian scientists\" and she picked C.V. Raman because \"his name sounds like a superhero\". Can you give me 5 facts about him that an 8 year old would find cool?",
+      "The \"why is the sea blue\" story on the ship is perfect. She'll love that he was annoyed at the explanation everyone believed.",
+      "Also, I need a quick dinner idea for tonight. Vegetarian, something with paneer, under 30 minutes, Diya friendly (not spicy).",
+      "Paneer butter masala \"lite\", fine. Arjun will add chilli flakes on his plate as always.",
+      "Okay uploading the homestay thing now. Bye."
+    ],
+    [
+      "Hi, nothing work related today, promise. I'm in a book club with five friends from college and it's my turn to host next month. I need help.",
+      "We're reading \"Kafka on the Shore\" by Murakami. Half the group loved it, half the group thinks it's pretentious nonsense. I'm somewhere in the middle. Can you give me 8 discussion questions that will get both camps talking, not fighting?",
+      "These are good. Number 5 about the \"two stories that never quite meet\" will get a big argument going, in a good way.",
+      "For food: it'll be six of us on a Saturday evening at my place, around 7. I'm vegetarian, two friends are vegan, one doesn't eat onion and garlic. Everything should be finger food, nobody wants to eat a full meal while arguing about talking cats. Suggestions?",
+      "Wow okay, the mini masala corn cups and the jain-friendly dhokla is a nice touch for Shruti. I'll do that.",
+      "Also, the kitchen will be a construction site by then probably! Manju should start after I clear the advance. Hmm, I might have to host at my friend's place. Let's see.",
+      "Can you also help me with something a bit personal. I've been writing short stories for Diya at bedtime, she likes when the main character is a girl who fixes things. I started writing one down and I'm stuck. Here's what I have:\n\n\"Once upon a time, in a city full of honking cars and very tall buildings, there lived a girl named Mira who could fix anything. She fixed her grandmother's radio when it only played static. She fixed the neighbour's bicycle chain with a hairclip. She even fixed the lift in her building, which had been stuck between the fourth and fifth floor for three whole days, while the watchman was still looking for the phone number of the lift company.\n\nOne morning Mira woke up and something was wrong. The city was silent. No honking. No pressure cooker whistles. No crows. She ran to the balcony and looked down. All the cars had stopped in the middle of the road. People were standing next to them, scratching their heads. The traffic signals were blinking yellow, yellow, yellow, like they had forgotten the other colours.\n\n'What happened?' Mira asked the vegetable vendor downstairs.\n\n'Nobody knows,' he said. 'Everything stopped at exactly 6 o'clock. The buses, the scooters, even the clocks.'\n\nMira looked at her watch. It said 6:00. It still said 6:00. The second hand was frozen, trembling, like it wanted to move but couldn't.\n\nMira took her toolkit - a small red pouch with a screwdriver, a roll of tape, three hairclips and a magnifying glass that once belonged to her grandfather - and she went out into the silent city.\"\n\nAnd then I don't know what happens. Diya wants to know \"what broke the city\" and I don't have an answer that isn't too scary.",
+      "I love the idea that the city's \"heart\" is the old clock tower and the problem is that it got lonely because nobody looks at it anymore since everyone has phones. And Mira fixes it by getting everyone to look up at the same time. That's beautiful and not scary at all.",
+      "Can you write the next part in the same style? Around the same length. Keep the language simple, she reads along with me sometimes.",
+      "She's going to love this. Thank you. I might actually finish one of these for once.",
+      "Okay, last thing, totally random: is it true that octopuses have three hearts? Diya asked and I said yes confidently, and now I'm doubting myself.",
+      "Phew. Three hearts, blue blood. I'm still the cool mom.",
+      "Goodnight!"
+    ],
+    [
+      "Hi, tax question and some meal planning, boring adult stuff.",
+      "I sold some equity mutual fund units in August that I'd held for about 3 years, the gain was about 1.6 lakh. How is that taxed now? I know the rules changed last year and I'm confused.",
+      "Okay so long term capital gains on equity funds, 12.5% above the 1.25 lakh exemption. So tax only on about 35,000 of the gain, roughly 4,375 plus cess. That's not bad at all.",
+      "And for debt funds bought after April 2023 it's just added to income at slab rate, regardless of holding period? Ugh. Okay.",
+      "Arjun wants to start investing more seriously. He's 39, teacher salary, we have a home loan, Diya's education to think about. Without recommending specific funds, how should he think about splitting between equity and debt? He's quite risk averse.",
+      "Good, the \"age-based rule as a starting point, then adjust for risk comfort\" framing will work for him. And the emergency fund first point, he'll like that.",
+      "Now meal planning. I want to plan the week's dinners so I'm not deciding at 7pm every day. Constraints: vegetarian for me and Diya, Arjun is fine with veg but likes eggs 2-3 times a week, Diya won't eat bitter gourd or brinjal, we're trying to have millets at least 3 times because of Arjun's doctor, and weekdays need to be under 40 minutes. Monday to Saturday, Sunday we eat out.",
+      "This is really great. The foxtail millet pulao on Wednesday with the egg bhurji side for Arjun is smart.",
+      "Can you also give me the shopping list for this, grouped by section (vegetables, dairy, grains, etc.)?",
+      "Thank you, this saves me so much.",
+      "Oh, and the school thing, Arjun and I talked again last night about whether to move Diya next year. Still undecided. He's more for moving, I'm worried about her friends. We'll see after the visits.",
+      "Random: can you explain what a credit score actually measures? Arjun's is apparently 810 and mine is 762 and he won't stop bragging.",
+      "Ha, mine is lower because of utilisation, I put all the household spends on my card for the points. Makes sense. I'm still annoyed.",
+      "Okay bye!"
+    ],
+    [
+      "Hi. Launch prep mode. I need help with a runbook and a bit of moral support.",
+      "Status check for my own sanity: pilot with the 5 merchants is ready technically, Vikram's team has done the load tests, notification service is solid in UAT. And we're STILL waiting for Shalini to sign off the consent text. She said she had \"two small comments\" on Monday and then disappeared into some RBI audit thing. So legal is still the one thing stopping us.",
+      "Rakesh said if it's not signed by mid-October he'll call the General Counsel himself. I don't want it to come to that, Shalini is lovely, just drowning.",
+      "Here's my draft launch-day runbook. Can you review it and tell me what's missing? Vikram will run the war room on the day because I'll be in Mysuru with Appa, so it needs to work without me:\n\nSAFFRON LAUNCH DAY RUNBOOK (DRAFT)\n\nT-7 days\n- Freeze scope. No new features after this point.\n- Confirm pilot merchant list and their tech contacts.\n- Confirm on-call rota for launch week (backend, mobile, notification service, SRE).\n- Share comms plan with support team, including FAQ and macros.\n\nT-2 days\n- Final regression run on staging.\n- Verify feature flags: saffron_mandate_v2, saffron_predebit_service, saffron_represent.\n- Dry run of rollback procedure.\n\nLaunch day (T)\n- 10:00 War room opens (Google Meet link + Slack channel #saffron-launch).\n- 10:30 Enable flags for merchant 1 (OTT-A) at 10% of traffic.\n- 11:30 If success rate >= 80% and no P1, increase to 50%.\n- 13:00 Enable for merchants 2 and 3.\n- 15:00 Enable for merchants 4 and 5.\n- 17:00 Status update to leadership.\n- 20:00 War room closes, on-call takes over.\n\nMetrics to watch\n- Mandate creation success rate (per merchant, per PSP app)\n- Pre-debit notification send rate\n- API error rates (4xx/5xx)\n- Latency p95 on mandate create\n\nRollback criteria\n- Success rate drops below 65% for 30 minutes for any merchant\n- Any P1 incident\n- Notification send rate below 90%\n\nContacts\n- War room lead: Vikram\n- Product: Priyanka (remote)\n- SRE: Dinesh\n- Support lead: Farzana\n- Partner bank: Sunil",
+      "Okay, really good catches. I didn't have a \"who decides to roll back\" line, that's a big one. Vikram decides, no need to wait for me. And merchant-side comms if we roll back, yes.",
+      "Also the bit about checking pre-debit notifications for debits scheduled in the first 24 hours after mandate creation, because the first debit could happen before the notification window is respected. That's a real bug risk actually. I'll flag it to Vikram.",
+      "Can you write the updated runbook with your changes? Keep my structure.",
+      "Thank you. This is going straight into Confluence.",
+      "Separate question: I need to send a polite nudge to Shalini, third one. How do I say \"please, I'm begging you\" professionally? Maybe offer to walk her through it in 15 minutes so she doesn't have to read anything long?",
+      "Yes, the \"I'll come to you, 15 minutes, any slot this week\" approach. Perfect. She can't really say no to that.",
+      "And how do I explain to the pilot merchants that the date depends on legal without making us look disorganised? Two of them are asking already.",
+      "\"Final compliance review\" is nicely vague. Good.",
+      "Okay, completely different, I'm exhausted. Can you suggest a 10 minute stretching routine for someone who sits all day and has a stiff neck? No equipment.",
+      "Doing it right now. The chin tucks hurt in a good way.",
+      "Thanks. Signing off."
+    ],
+    [
+      "Hi! Fun stuff today. Diya's birthday party.",
+      "She turns 9 on 14 November. She wants a party with her class friends, around 15 kids. Our flat is out of question because the kitchen will be half-demolished by then (Manju starts as soon as I clear the advance, I keep postponing because the FD breaking needs a branch visit, ugh). So we need a venue.",
+      "Here are the options I've found, can you compare them? I want something not too expensive, max 20,000 all-in for food and venue, she wants \"science\" or \"art\" theme:\n\nOption 1: \"Little Einsteins Lab\", Koramangala. Science-themed birthday package. 2 hours. Up to 15 kids. Includes 3 experiments (slime, volcano, rocket launch), a host, decorations. Rs 14,500. Food not included, outside food allowed, no cake cutting fee. Parking limited. Available 14 Nov 4-6 pm.\n\nOption 2: \"Colour Burst Studio\", HSR Layout. Art party, kids paint a canvas tote bag each and take it home. 2.5 hours. Rs 650 per child, minimum 12 kids. Includes snacks (veg sandwiches, juice, chips). Cake can be brought in. Available 15 Nov 11 am - 1:30 pm (not 14th).\n\nOption 3: \"Green Thumb Farm\", Sarjapur Road. Outdoor farm party, kids plant a sapling, pottery wheel demo, small animals (rabbits, ducks). 3 hours. Rs 18,000 flat for up to 20 kids, includes veg lunch. Travel ~45 min from HSR. Available 14 Nov 10 am - 1 pm.\n\nOption 4: Our apartment clubhouse, free, but we'd organise everything ourselves and hire an entertainer (magician ~Rs 6,000) and order food (~Rs 5,000 for 15 kids + parents snacks).",
+      "Hmm. The Little Einsteins one is on her actual birthday and it's science and within budget even after food. But the farm one has lunch included and animals. Diya will choose science, I know her. Rocket launch! The day of the Lighthouse beta is the 10th so the 14th is free-ish for me.",
+      "Okay, we'll go with Little Einsteins, 14 Nov 4-6pm. Food: I'll order from the place near us. Vegetarian obviously, for kids. What should I order for 15 kids plus maybe 10 parents in the afternoon?",
+      "Mini idlis with podi is such a good idea, kids love them. And the pav bhaji sliders. Fine.",
+      "Return gifts. Under 250 per kid. Science-themed but not junk that gets thrown away in two days.",
+      "The seed paper pencils and the mini magnifying glass, together. Good. She'll want to give her best friends something \"extra\" and I will say no.",
+      "Can you help me write the invitation message for the class WhatsApp group? Short, fun, mention it's a science party and to RSVP by 7 Nov. Please no \"your presence is requested\" stuff.",
+      "Ha, \"Lab coats optional, curiosity mandatory.\" Perfect.",
+      "One more: should 8-9 year olds be allowed to have their own phones? Diya says \"everyone in my class has one\". I suspect two people in her class have one.",
+      "Yes, I'll hold the line. Maybe a basic watch phone at 10 or 11 for safety. Thank you.",
+      "Okay going to sleep. Bye!"
+    ],
+    [
+      "Hello. Today is a \"me\" day, I took leave to recharge before the chaos of late October.",
+      "I used to play the veena as a kid, I learned for about 8 years in Mysuru from a teacher called Vidushi Saraswathi Narayan. I stopped when I moved to Bengaluru for college. I'm thinking of starting again. Is it realistic to pick it back up at 36 after almost 18 years?",
+      "That's encouraging. Muscle memory for the fingering, and the ragas coming back as I listen. I still remember Mohanam and Hamsadhwani varnams, roughly.",
+      "I want to write to my old teacher. She must be in her late seventies now. My mother still sees her at the temple sometimes. Here's my draft, it feels too formal, can you help make it warmer, but still respectful, she was strict:\n\n\"Respected Madam,\n\nI hope this letter finds you in good health. I am Priyanka, daughter of Venkatesh and Sharada of Saraswathipuram. I was your student from 1997 to 2005. You may remember me as the girl who always came late on Sundays because of my father's scooter.\n\nI am writing to inform you that after many years, I am considering resuming my study of the veena. I have been living in Bengaluru for many years and working in the field of technology. Due to various responsibilities, I was unable to continue my practice, which I have always regretted.\n\nI would be grateful for your guidance on how to resume my practice. If possible, I would also like to visit you when I am next in Mysuru, which will be in the month of October, as my father is undergoing surgery.\n\nI remain grateful for everything you taught me.\n\nYours sincerely,\nPriyanka\"",
+      "Oh this is lovely. I like that you kept the scooter line, she'll laugh. And \"the sound of your veena on Sunday mornings is something I still carry with me\" is true actually.",
+      "Should I write it in Kannada instead? She'd appreciate it but my written Kannada is rusty.",
+      "I'll ask Amma to help me translate it then, that's a nice thing to do together. Good idea.",
+      "Unrelated, history question. I'm taking Diya to Mysuru for Dasara one day. Can you tell me the history of Mysuru Dasara in a way that's interesting? The jamboo savari, the palace lights, why the Wodeyars started it.",
+      "I didn't know it goes back to the Vijayanagara empire's Mahanavami celebrations. That's a great story for Diya.",
+      "What's the best day to go during Dasara with a kid who hates crowds? Is there a way to see the palace lights without being crushed?",
+      "Ha, okay, the palace lights are on most evenings during Dasara, not only the last day. We'll go on a weekday. Noted for next year.",
+      "Can you recommend some veena recordings I should listen to, to get my ears back in shape? Classical, not fusion.",
+      "Thank you. I'll start with the Doreswamy Iyengar ones, he's from Mysuru too.",
+      "Okay, I also want to plan my practice. If I can do 20 minutes a day, how should I structure it? Assume I'm a rusty intermediate.",
+      "Good. Sruti and basic exercises first, then a varnam, then something fun. I like it.",
+      "Bye, going to dig out my old veena from my parents' place next time I'm in Mysuru. It's probably in the same steel trunk as Appa's X-rays."
+    ],
+    [
+      "Hi. I agreed to give a 15 minute talk at a product management meetup in December, at a co-working space in Indiranagar. Why do I agree to these things.",
+      "Topic is \"What payments taught me about designing for trust\". I wrote a rough script, it's way too long and rambly. Can you help me tighten it? Here it is:\n\n\"Hi everyone, I'm Priyanka, I work on payments products. Today I want to talk about trust, and what I've learned about it from building payments, which is a domain where trust is literally the product.\n\nLet me start with a story. A few years ago, I was working on a payment link feature for small merchants. A woman who runs a tailoring shop in Jayanagar was one of our early users. She used to send payment links to her customers on WhatsApp. One day she called our support line, very upset, because a customer told her that the link 'looked like a scam'. The link was legitimate. The problem was that our link preview showed a long random URL, no logo, no merchant name, and the payment page had our brand, not hers. Her customer had never heard of us. So from the customer's point of view, a random company was asking for money on behalf of their tailor.\n\nThat was the day I understood that in payments, every screen is a trust decision. The user is constantly asking: is this real, is this safe, what happens if something goes wrong, who do I call.\n\nSo I want to share three lessons.\n\nLesson one: show the human, not the platform. People trust people, not payment companies. When we changed the payment page to show the merchant's name and logo prominently, and our brand only small at the bottom, conversion on payment links went up by 11 percent. Nothing else changed. Same flow, same number of steps.\n\nLesson two: tell people what will happen before it happens. In recurring payments, the scariest thing for a user is an unexpected debit. Regulation actually requires pre-debit notifications for this reason, but even beyond regulation, we found that the clearer the notification, the fewer people revoked their mandates. When we added the exact amount, date and a one-tap pause option to the notification, revocations went down, even though we made it easier to cancel. That surprises people. Making it easier to leave makes people stay.\n\nLesson three: design for the failure, not just the happy path. Payments fail all the time. Network issues, bank downtime, insufficient funds. Most teams design the success screen beautifully and the failure screen is an afterthought, 'something went wrong, please try again'. But the failure moment is exactly when trust is at risk. Did my money go? Will I be charged twice? We redesigned our failure screens to answer three questions: was money deducted, what should I do now, and when will I know more. Support tickets for failed payments dropped by about a third.\n\nTo sum up, trust is not a feature you add at the end. It's in every small decision: what you show, what you say before you act, and how you behave when things go wrong.\n\nI want to end with something my father said when I explained my job to him. He said, so your job is to make sure people are not cheated. And I said, well, it's more complicated than that. And he said, no, it isn't. And honestly, he was right.\n\nThank you.\"",
+      "I like the cuts. Keeping the tailor story and the Appa ending is right, those are the human bits. The \"making it easier to leave makes people stay\" line is the one people will remember, so moving it to be the title of lesson two is clever.",
+      "Is 15 minutes enough for this or will it run short now? I speak fast when nervous.",
+      "Okay, I'll add one slide with the before/after payment page. Visuals will slow me down.",
+      "Can you suggest 5 questions the audience might ask so I can prepare answers? PMs at these things love asking \"how did you measure that\".",
+      "Good list. The \"how do you balance regulation with UX\" one is definitely coming. I'll prepare that.",
+      "Also what do I wear to a meetup where everyone will be in hoodies but I want to look like I didn't try too hard but also tried? Asking for myself.",
+      "Kurta with jeans and sneakers. You get me.",
+      "Thanks!"
+    ],
+    [
+      "Hi. Family WhatsApp group drama. I need a fact check.",
+      "My aunt forwarded this to the family group after hearing about Appa's surgery, and now my mother is worried. Can you tell me what's true and what isn't:\n\n\"*VERY IMPORTANT FOR ALL ELDERS - PLEASE READ AND FORWARD*\nDoctors are hiding this from you!! Knee replacement surgery is NOT necessary in 90% of cases. A famous doctor from AIIMS has said that knee pain can be cured completely by drinking warm water with turmeric and black pepper every morning and applying castor oil mixed with camphor at night for 40 days. Surgery has many side effects including permanent bleeding, the metal causing cancer after 10 years, and patients never being able to sit on the floor again or do namaskara in the temple. Hospitals are doing these surgeries only for money because each surgery gives them 5 lakh profit. In foreign countries they have banned knee replacement for people above 65!!! Also never do surgery during the dark moon (amavasya) as wounds will not heal. Share this with 10 groups to save your loved ones.\"\n\nAppa laughed but Amma is now asking if the 23rd is amavasya.",
+      "Thank you. That's very clear. I'll write a calm reply to the family group. Can you draft something that doesn't embarrass my aunt? She means well.",
+      "Perfect, the line \"Dr. Hegde has explained all the risks to Appa and he's comfortable\" is good, and not attacking anyone.",
+      "And just to settle Amma: is there any medical reason the surgery shouldn't happen on a particular day of the lunar calendar? I know the answer but I want something I can tell her gently.",
+      "Okay. I'll tell her the hospital has done thousands of surgeries on every day of the month and the doctor wouldn't schedule it if there was a reason. And if it makes her feel better she can do a small pooja the day before.",
+      "The hospital sent pre-op instructions too, can you summarise them in simple points for Amma? Here:\n\n\"PRE-OPERATIVE INSTRUCTIONS - TOTAL KNEE ARTHROPLASTY\nKaveri Ortho Hospital, Mysuru\n\n1. Report to the admission desk on the evening before surgery between 5:00 pm and 7:00 pm with the admission slip, insurance pre-authorisation letter, photo ID, and all previous reports and X-rays.\n2. Continue all regular medications unless instructed otherwise. STOP blood thinners (aspirin, clopidogrel, warfarin) 5 days before surgery ONLY after confirming with your physician. Diabetic patients: do not take oral diabetes medication on the morning of surgery; insulin dose will be advised by the anaesthetist.\n3. Nil by mouth from midnight before surgery. Small sips of water allowed up to 2 hours before surgery only if advised.\n4. Bathe with the antiseptic soap provided on the night before and the morning of surgery. Do not apply oil, lotion or powder on the leg.\n5. Remove all jewellery, including toe rings and sacred threads if requested by the surgical team; these will be returned after surgery.\n6. Bring loose clothing, a walker (if purchased in advance), non-slip footwear with back support, and personal toiletries.\n7. One attendant is allowed to stay with the patient. Visitors are allowed from 4:00 pm to 6:00 pm only.\n8. Physiotherapy will begin on the day after surgery. Most patients walk with support within 24 to 48 hours.\n9. Expected hospital stay: 4 to 5 days. Discharge planning will be done by the nursing team.\n10. Please inform the ward nurse of any allergies, recent fever, cough or dental infection, as these may require postponement of surgery.\"",
+      "That's perfect for her. The sacred thread one, Appa will negotiate with the surgeon, I can already see it.",
+      "Okay. One more practical thing. He's diabetic, well controlled. Anything I should ask Dr. Hegde about diabetes and healing that I haven't thought of?",
+      "Good questions. Blood sugar targets during hospital stay and who manages the insulin. I'll write these down.",
+      "Thanks. This helped a lot."
+    ],
+    [
+      "Hi. Rakesh approved the contract designer for 3 months! I need to write the job description today so HR can post it.",
+      "Here's an old JD from our design team that HR gave me as a template, it's for a full-time role. Can you adapt it into a 3 month contract role focused on payments flows and dashboard work? Make it shorter, nobody reads long JDs:\n\n\"Senior Product Designer - Kosha Pay\nAbout us: Kosha Pay is a Bengaluru-based fintech company building payments infrastructure for India's small and mid-size businesses. We process over 40 million transactions a month for more than 60,000 merchants across retail, education, healthcare, and services. Our mission is to make digital payments simple, reliable and accessible for every business in India.\n\nAbout the role: We are looking for a Senior Product Designer to join our growing design team. You will work closely with product managers, engineers, and researchers to design end-to-end experiences across our merchant and customer-facing products. You will be responsible for the full design process from discovery and research to wireframing, prototyping, visual design and handoff. You will also contribute to our design system and help raise the bar for design quality across the company.\n\nResponsibilities:\n- Lead design for one or more product areas, from concept to launch\n- Conduct user research and usability testing with merchants and customers\n- Create wireframes, user flows, prototypes and high-fidelity designs\n- Collaborate with engineering to ensure high quality implementation\n- Contribute to and maintain the Kosha design system\n- Mentor junior designers and participate in design critiques\n- Advocate for the user in product decisions\n\nRequirements:\n- 5+ years of experience in product design, preferably in fintech or B2B SaaS\n- Strong portfolio demonstrating end-to-end product design work\n- Proficiency in Figma and prototyping tools\n- Experience working with design systems\n- Excellent communication and collaboration skills\n- Ability to work in a fast-paced, ambiguous environment\n- Experience designing for mobile and web\n- Bonus: experience with payments, banking or regulated products\n\nWhat we offer:\n- Competitive salary and ESOPs\n- Comprehensive health insurance for you and your family\n- Flexible working hours and hybrid work policy\n- Learning and development budget\n- A team that cares about craft and impact\"",
+      "This is so much tighter. I like \"you'll pick up Lighthouse dashboard screens from week one\" because that's the honest truth. Neha will hand over the dashboard work and stay on Saffron.",
+      "Should the contract rate be monthly or hourly? What's typical for a senior freelance product designer in Bengaluru right now, roughly?",
+      "Okay, I'll ask HR to post it as a monthly retainer with a range. Thanks.",
+      "Can you also give me 6 interview questions for this role that test whether someone can actually handle messy fintech flows and not just make pretty screens?",
+      "Love the \"walk me through what the user sees when a payment fails halfway\" question. That'll filter people fast.",
+      "And a small take-home exercise that takes under 2 hours? I don't want to make people work for free for days.",
+      "Good, the \"redesign this settlement failure screen, here are 3 constraints\" exercise is fair and short.",
+      "Okay. Also, unrelated, I got a parking ticket in Indiranagar. Rs 500. Can I contest it online? I was parked in a spot with no sign.",
+      "Fine, I'll just pay it, not worth the effort. Bengaluru traffic police 1, Priyanka 0.",
+      "Okay bye."
+    ],
+    [
+      "Hi. I've decided I'm going to start running. Don't laugh. My doctor said my vitamin D is low and my back is complaining, and my friend Shruti did a 10K last month and won't stop posting about it.",
+      "I've never run in my life, apart from running after the school bus in 1998. Where do I start?",
+      "Okay, Couch to 5K style, walk-run intervals, three times a week. I can do that. Mornings are school drop, so it would have to be 6 am before everyone wakes up, or evenings after 7:30.",
+      "6 am it is. Arjun will be thrilled to hear my alarm.",
+      "What shoes? I don't want to spend 15,000 on shoes for a hobby I might quit in three weeks.",
+      "Ha, okay, a decent entry-level neutral shoe from a proper running brand, around 4-6k, and get my gait checked at the store. Fine.",
+      "Shruti sent me this article about running form and I'm now scared I'll do everything wrong. Can you tell me which parts actually matter for a beginner:\n\n\"The Seven Deadly Sins of Running Form\n1. Overstriding. Landing with your foot far in front of your body, heel first, acts like a brake with every step and sends impact up through your knees and hips. Aim for your foot to land closer to under your centre of mass. A slightly higher cadence (steps per minute) naturally shortens your stride. Many coaches suggest around 170-180 steps per minute, but this varies with height and speed.\n2. Looking down. Staring at your feet rounds your upper back and closes your chest, making breathing harder. Look ahead about 10-20 metres.\n3. Tense shoulders. Shoulders creeping up to your ears waste energy. Shake out your arms every few minutes and imagine carrying a crisp in each hand without breaking it.\n4. Arms crossing your body. Arms should swing forward and back, not across your chest, which creates rotation. Elbows at roughly 90 degrees.\n5. Bouncing too much. Excessive vertical oscillation means energy goes up instead of forward. Think 'run tall and light', like running on hot coals.\n6. Heel striking versus forefoot striking. This is the most debated topic in running. Research shows that most recreational runners heel strike and that changing your foot strike does not necessarily reduce injury risk. What matters more is where your foot lands relative to your body (see sin #1), not which part touches first. Don't try to force a forefoot strike if it isn't natural; it can overload the calves and Achilles.\n7. Ignoring your breathing. Many beginners hold their breath or breathe shallowly. Try rhythmic breathing, such as inhaling for three steps and exhaling for two, and breathe from the belly. If you can't speak a full sentence, slow down.\nBonus sin: doing too much too soon. The most common cause of running injury is increasing distance or intensity too quickly. A common rule of thumb is not to increase weekly volume by more than about 10 percent.\"",
+      "That's a relief. So for me: don't overstride, look ahead, relax shoulders, go slow enough to talk, and don't do too much too soon. Ignore the heel versus forefoot debate. Great.",
+      "Can you make me a simple 8 week plan, 3 days a week, starting with mostly walking? Monday, Wednesday, Saturday. And in the week of Appa's surgery I'll be in Mysuru, so mark that week as \"walk only, whenever possible\".",
+      "Perfect. I printed it and stuck it on the fridge. Well, the fridge is currently in the living room because of the kitchen plans, but still.",
+      "Also what should I eat before a 6 am run? I can't eat a full meal that early.",
+      "Half a banana and water. Easy. Thanks!",
+      "Okay, I'll report back in a week, probably complaining."
+    ],
+    [
+      "Hi! I survived week 1 of running. My calves hate me. Anyway that's not why I'm here.",
+      "I want to set up a proper household budget sheet. Right now Arjun and I just \"feel\" whether we're overspending, which is not a system. Here's a rough list of our monthly expenses I made from bank statements, can you help me structure it into categories and tell me what looks off?\n\nHome loan EMI - 38,500\nSociety maintenance - 4,200\nElectricity - 2,100 (avg)\nWater - 600\nInternet - 999\nMobile x2 - 1,300\nGroceries (BigBasket + local) - 16,500\nVegetables and fruits (local vendor) - 4,000\nMilk - 2,200\nEating out / Swiggy / Zomato - 11,800\nDiya school fees (monthly equivalent) - 14,500\nDiya tuition (maths) - 3,000\nDiya dance class - 2,000\nNanny (Roopa) - 16,000\nCook (part time, 3 days a week) - 5,000\nCar loan EMI - 11,200\nPetrol - 5,500\nOla/Uber/auto - 2,800\nParents support (Mysuru) - 10,000\nHealth insurance (monthly equivalent) - 3,900\nTerm insurance (monthly equivalent) - 2,100\nOTT subscriptions (Netflix, Hotstar, Prime, Spotify) - 1,650\nGym (Arjun, unused) - 2,500\nClothes / shopping (avg) - 7,000\nGifts / functions (avg) - 3,000\nPersonal care / salon - 2,500\nSIPs - 30,000\nMisc / no idea - 8,000",
+      "Ha, yes, the gym that Arjun hasn't been to since March is the first thing to go. And 11,800 on Swiggy is... a lot. Most of that is weeknights when I'm too tired. The meal plan should help.",
+      "The \"misc / no idea\" 8,000 is also embarrassing. That's probably UPI payments to random shops that I never categorise. Is there an easy way to track those without manually logging every transaction?",
+      "Okay, a weekly 10 minute review of the bank app's auto categories, and a single \"small spends\" category. Fine. Low effort is the only kind that will work for me.",
+      "Can you give me the formula for a Google Sheet that shows each category as a percentage of total monthly income? Income is around 3.4 lakh combined after tax.",
+      "Thanks. Also, should the kitchen renovation and the Coorg trip go in this sheet or separately? They're one-time.",
+      "Makes sense, a separate \"one-time / sinking fund\" tab. I'll add the kitchen and the trip and Diya's birthday party there.",
+      "Okay, also a fun question: what's the 50/30/20 rule and does it make any sense in Bengaluru with a home loan and a kid?",
+      "Yeah, our \"needs\" are way more than 50% with the loan and school fees. Okay, I'll use it as a direction not a rule.",
+      "Thanks, that was oddly satisfying."
+    ],
+    [
+      "Hi. School drama. Diya's school sent a long email about the annual day and I need help understanding what they actually want from parents, because it's written like a government circular:\n\n\"Dear Parents,\nGreetings from the school! We are delighted to inform you that our Annual Day celebrations for the academic year 2026-27 will be held on Saturday, 12 December 2026 at the school auditorium, with the theme 'Rhythms of India'. All students of Grades 1 to 5 will be participating in the cultural programme. Rehearsals will be conducted during school hours from 16 November onwards. In addition, students of Grades 3 and 4 will have special rehearsals on Saturdays, 21 November, 28 November and 5 December, from 9:00 am to 12:00 noon. Parents are requested to ensure punctuality and regular attendance of their wards for the same.\nCostumes: Costumes for all participating students will be arranged by the school through an external vendor. A nominal costume contribution of Rs 1,200 per student is to be paid via the school fee portal under the head 'Annual Day 2026' on or before 10 November 2026. Parents are requested not to purchase costumes separately. Accessories such as bindis, bangles and hair accessories, if required, will be communicated by the class teacher closer to the date.\nSeating: Due to limited seating capacity, each family will be issued two entry passes per participating student. Additional passes, if available, will be issued on a first-come-first-served basis. Grandparents are encouraged to attend the dress rehearsal on 10 December at 10:00 am, for which separate seating will be arranged.\nPhotography: Professional photography and videography will be arranged by the school. Parents are requested not to use flash photography during the performances. Video recordings of the programme will be available for purchase.\nTransport: School buses will not operate on the day of the event. Parents are requested to make their own arrangements for drop and pick-up. Reporting time for students is 3:00 pm and the programme will commence at 5:00 pm.\nWe look forward to your wholehearted participation and cooperation.\nWarm regards,\nThe Principal\"",
+      "Okay so the actual actions: pay 1,200 by 10 Nov, Saturday rehearsals for grade 3 on 21 Nov, 28 Nov, 5 Dec mornings, only two passes, drop at 3 pm on 12 December. And grandparents can come to the dress rehearsal on the 10th. Amma and Appa won't make it this year with his knee, sadly.",
+      "21 November rehearsal clashes with my Saturday long run, I'll survive. Can you add these to a little list I can paste into our family calendar?",
+      "Great. Thank you.",
+      "Different thing: Arjun's birthday is coming up later in the year and I'm already out of ideas. He likes physics (obviously), old Hindi film music, cricket, and he's been wanting to learn to make filter coffee \"properly\". Budget around 5,000. Ideas?",
+      "The brass filter coffee set with a bag of beans from a Chikmagalur estate is perfect. And maybe a vinyl of old RD Burman songs, does he even have a record player? He does not. Okay, the coffee set.",
+      "Unrelated: why does my phone battery drain so fast after the latest update? It's a 2-year-old Android.",
+      "Okay, I'll check which app is eating battery and turn off the always-on display. Thanks.",
+      "Can you explain what the RBI repo rate is and why everyone at work was talking about it this week? I work in fintech and I'm embarrassed to ask colleagues.",
+      "Okay. Repo rate is what RBI charges banks for short-term loans, so when it goes down, loan rates eventually go down, and when it goes up, EMIs go up. And it affects our lending partners. Got it. That explains our CFO's mood.",
+      "And a floating home loan, like ours, would follow it with a lag? So if they cut, our EMI might come down in a few months?",
+      "Nice. Small good news. I'll take it.",
+      "Okay bye!"
+    ],
+    [
+      "Hi. Amma called. She wants to rent out the ground floor portion of their house in Mysuru, it's been empty since my grandmother passed. A young couple, both teachers, want it. Amma has written down \"terms\" with the help of a neighbour and wants me to check it. It's a mix of reasonable and very Amma. Here:\n\n\"RENTAL TERMS FOR GROUND FLOOR PORTION - Saraswathipuram house\n1. Rent Rs 14,000 per month, to be paid before the 5th of every month in cash or GPay to Sharada.\n2. Advance (deposit) Rs 1,40,000, ten months rent, refundable when they vacate, minus any damages.\n3. Agreement for 11 months. Can be renewed with 5% increase.\n4. Tenants to pay electricity as per separate meter. Water charges Rs 300 per month fixed.\n5. Non-vegetarian cooking is not allowed inside the house.\n6. No pets.\n7. Guests staying overnight more than 3 days should be informed.\n8. Tenants should not make holes in the walls. For photos use the existing nails only.\n9. The front garden is common. Tenants can use it but should not pluck flowers from the jasmine plant as it is used for pooja.\n10. Two-wheeler parking only, inside the gate on the left side. Car parking not available.\n11. Tenants should switch off the motor after the tank is full. If the motor burns because they forget, they have to pay.\n12. One month notice from either side.\n13. Painting charges at the time of vacating will be deducted from advance.\n14. Gate to be locked by 10:30 pm.\"",
+      "Ha, the jasmine plant clause. That's 100% Amma. Okay, so most of it is normal for Mysuru. The ten month deposit is standard in Karnataka even if it's a lot. The painting deduction should be fixed amount or \"normal wear and tear excluded\", otherwise disputes.",
+      "Is the vegetarian-only clause legal? I know it's very common but I'd rather she doesn't get into trouble.",
+      "Okay, so it's a private agreement, people do put it, but it's better to discuss it openly with the tenants before signing so there's no surprise. They're vegetarian anyway, she checked, apparently first question she asked.",
+      "Should they register the agreement? It's 11 months, I've heard that's the whole reason people do 11 months.",
+      "Right, 11 months avoids compulsory registration, but a notarised agreement on stamp paper is still a good idea. I'll tell her to get it done on stamp paper with both signatures and the tenants' ID copies.",
+      "Can you turn her points into a cleaner one page agreement draft that a notary would accept? Keep all her clauses, even the jasmine, just phrased properly. \"Flowers of the jasmine plant in the common garden are reserved for the Owner's use.\"",
+      "This is perfect. She'll be so proud that her jasmine clause is in \"legal language\". Sending it to her.",
+      "Also, who should keep the original? Amma or the tenant?",
+      "Two originals, each party keeps one. Makes sense.",
+      "Thanks. Amma says thank you too, she just saw it. She says you are \"very polite for a computer\"."
+    ],
+    [
+      "Hi. Podcast summarising request. I listened to half of this episode on product strategy on my drive and someone posted the transcript of the second half. Can you summarise the key points in 6 bullets? I don't have the energy to read it:\n\n\"HOST: So you've said before that most product roadmaps are just wish lists with dates. What do you mean by that?\nGUEST: I mean that a lot of teams treat the roadmap as a commitment device for stakeholders rather than a thinking tool. Somebody asks for a feature, it goes on the roadmap with a quarter next to it, and now it's a promise. Nobody has asked whether it's the most important problem, whether it's even the right solution, or what we'd have to stop doing to make room for it. So the roadmap becomes a list of things people wished for, with dates attached to make them feel real.\nHOST: What's the alternative?\nGUEST: Start from outcomes, not outputs. Instead of 'build feature X in Q3', say 'reduce failed payments for small merchants by 20% by the end of the year'. Then the team owns the problem and can figure out the best way to get there, which may or may not be feature X. The date attaches to the outcome, and the solution stays flexible.\nHOST: But stakeholders want to know what's coming. Sales wants to tell customers.\nGUEST: Absolutely, and that's legitimate. What I recommend is a now, next, later format. Now is what we're actively building and we're confident about, with dates. Next is what we're likely to do soon, with rough timing. Later is what we think is important but haven't committed to. Sales can promise 'now', can hint at 'next', and should never promise 'later'. And you have to be disciplined about it, which is the hard part.\nHOST: How do you handle the senior executive who just wants their thing built?\nGUEST: Ask them about the problem behind the thing. Nine times out of ten the executive has seen a real problem, maybe a customer complained, maybe a competitor launched something, and their proposed feature is one possible solution. If you engage with the problem seriously, they usually relax about the specific solution. The tenth time, honestly, sometimes you just build it, because organisational trust matters too. But you build it explicitly as a bet and you measure it.\nHOST: You've also talked about the danger of too many parallel projects.\nGUEST: Yes. Teams love to start things. Starting feels like progress. But every parallel project has a cost: context switching, shared people stretched thin, decisions waiting on the one person who knows everything. I've seen teams with six designers working on fourteen projects. Nothing ships. I'd rather do three things well than ten things badly. The single most useful question a leader can ask is: what are we going to stop doing?\nHOST: How do you know when to kill a project?\nGUEST: Set kill criteria at the start, when you're still objective. Something like 'if we don't see at least a 5% improvement in activation after 6 weeks of the pilot, we stop or rethink'. Because once you've invested months, sunk cost bias makes it almost impossible to stop. Writing down the criteria in advance gives you permission to stop later.\nHOST: Last question. What separates great product managers from good ones?\nGUEST: Great PMs are relentless about clarity. Clarity of the problem, clarity of who decides, clarity of what done looks like. And they're comfortable saying 'I don't know yet, here's how we'll find out'. Good PMs have answers. Great PMs have good questions and a plan to answer them.\"",
+      "Very good summary. The \"what are we going to stop doing\" point hits home, I'm literally running two projects with one shared designer. At least the contract designer is coming.",
+      "I want to use the now/next/later format for Lighthouse when I present the roadmap after beta. Can you sketch what that would look like for a merchant dashboard? Generic is fine.",
+      "Nice. Now: beta with settlements, refunds, disputes. Next: mandate health widgets (that's the Saffron link). Later: custom reports, multi-user roles. That's pretty much our real plan.",
+      "And kill criteria for the beta, what would be sensible? I don't want to set something we'll miss by accident.",
+      "Okay, I like \"weekly active usage of the new dashboard among beta merchants below 40% after 4 weeks means we pause rollout and investigate\". Realistic.",
+      "Thanks. That was a good use of 20 minutes.",
+      "Also unrelated, can you remind me how to convert a Google Doc to PDF on the phone? I always forget and end up taking screenshots like an animal.",
+      "Share, then \"send a copy\", choose PDF. Okay. I feel like my father now.",
+      "Bye!"
+    ],
+    [
+      "Hi! Diya wrote an essay for her English class called \"My Hero\" and she chose her Thatha, my father. I'm melting. She wants me to \"check the spellings but not change my words\". Can you list the spelling and grammar fixes only, without rewriting it? Here's exactly what she wrote:\n\n\"My Hero by Diya Rao, Grade 3 B\n\nMy hero is my Thatha. His name is Venkatesh and he lives in Mysuru with my Ajji. He is 71 years old but he walks every morning with his freinds in the park even when his knee is paining. He says walking is like brushing your teeth for your body.\n\nMy Thatha was a bank manager before he retired. He knows all the maths. When I go to Mysuru he teaches me tricks to multiply big numbers in my head. He can multiply 25 times anything very fast. He says the secret is dividing by four but I dont understand it yet.\n\nMy Thatha also grows tomatos and chillies on the terrace. Last summer he let me plant a seed and it became a real tomato. I ate it and it was the best tomato in the hole world.\n\nSoon my Thatha is going to have an operation on his knee. The doctor will put a new knee made of metal. My mother says he will be like a robot for some weeks. I am a little scared but my Thatha said he is not scared because the doctor is very good and also because he wants to walk with me to the big palace when I come for Dasara.\n\nMy Thatha is my hero because he is kind, he is funny and he never gets angry when I ask too many questions. When I grow up I want to be like him, but I want to be a scientist not a bank manager.\n\nThe End.\"",
+      "\"Freinds\", \"dont\", \"tomatos\", \"hole world\" (I'm keeping that one in my heart forever), \"paining\" - right, okay. I'll tell her about these four and let her fix them herself. The \"dividing by four\" thing is literally true, 25 times anything is that number divided by 4 times 100. I didn't know he'd taught her that.",
+      "Can you tell me how to explain the 25 times trick to her so it clicks? Use 25 x 36 as an example.",
+      "36 divided by 4 is 9, add two zeros, 900. She'll get that. Thank you!",
+      "Also, she read the word \"robot\" in her own essay out loud and then asked if Thatha will beep. I said no. She seemed disappointed.",
+      "Okay, now a parenting article, my friend sent this and I want the actual takeaways because I won't read it all again:\n\n\"Screen Time for Primary School Children: What the Evidence Actually Says\nParents of young children are bombarded with conflicting advice about screens. Some experts warn of addiction and developmental harm; others argue that the type of content matters more than the number of hours. What does the research say?\nFirst, the quantity question. Large observational studies have found associations between very high recreational screen use (more than 3-4 hours a day) and poorer sleep, lower physical activity and, in some studies, more emotional difficulties. However, the effects of moderate use (up to 1-2 hours a day) appear small, and many studies cannot separate cause from effect: children who are already struggling may turn to screens more.\nSecond, sleep. The most consistent finding across studies is that screens in the hour before bed, and screens in the bedroom, are linked to shorter and poorer sleep. This is partly due to the stimulating content and partly due to displacement: time on screens is time not spent winding down. Of all the rules a family can make, 'no screens in the bedroom and none in the hour before bed' has the strongest evidence behind it.\nThird, content and context. Watching a nature documentary with a parent and talking about it is different from scrolling short videos alone. Co-viewing, educational content, and creative uses (making videos, coding games, video calling grandparents) are generally considered more positive than passive consumption of algorithmically selected content. Short-form autoplay video is a particular concern because it is designed to be hard to stop.\nFourth, displacement. The main harm of excessive screen time may simply be what it replaces: outdoor play, reading, sleep, family meals, boredom (which is important for creativity). A useful question for parents is not 'how many minutes?' but 'what is my child not doing because of screens?'\nFifth, modelling. Children copy what adults do. Parents who are constantly on their phones at the dinner table will find it hard to enforce rules for their children.\nPractical suggestions: keep screens out of bedrooms; set a family 'screen curfew'; prefer content you can watch together; turn off autoplay; create screen-free zones like the dinner table; and give children some say in the rules, which increases buy-in.\"",
+      "Yeah, the modelling point stings. I check Slack at the dinner table. Okay: no screens in bedrooms, none an hour before bed, autoplay off, no phones at dinner (including me), and let Diya help make the rules. I'll do a little family \"screen rules\" poster with her this weekend.",
+      "Can you suggest five fun things to put on the poster as \"instead of screens\" ideas for her? She likes drawing, science, and bossing her dad around.",
+      "\"Be the teacher and give Appa a science test\" is going to be her favourite. Arjun will deserve it after the quiz I made for him.",
+      "Thanks. Bye!"
+    ],
+    [
+      "Quick one. Diya asked me at breakfast why we have leap years and I said \"so February doesn't feel left out\", which is not an answer. Can you give me the real explanation in a way an 8 year old understands?",
+      "Oh that's nice: the Earth takes about 365 and a quarter days to go around the sun, so every four years the four quarters add up to one whole extra day, and we give it to February because February is the shortest month. And the bit about people born on 29 February only having a \"real\" birthday every four years, she'll find that hilarious.",
+      "And why is it 365 and a quarter and not a nice round number? She will ask, she always asks one more \"why\".",
+      "Fair, \"because the universe didn't plan it with calendars in mind\" is honestly the best answer. Thanks, breakfast crisis averted."
+    ],
+    [
+      "Hi. Arjun roped me into helping with his work for once. He wants a 10 question quiz for his class 9 students on the chapter on motion, and he's busy with parent-teacher meetings. He said \"you're good with structure\". Flattered and annoyed.",
+      "Here's the summary of the chapter he gave me, from the textbook. Can you make 10 questions, mix of MCQ and short answer, increasing difficulty:\n\n\"MOTION\nAn object is said to be in motion when its position changes with time with respect to a reference point. Motion is relative: a passenger sitting in a moving bus is at rest with respect to the other passengers but in motion with respect to a person standing on the road.\n\nDistance is the total length of the path travelled by an object. It is a scalar quantity, which means it has only magnitude. Displacement is the shortest distance between the initial and final positions of an object, in a particular direction. It is a vector quantity, which has both magnitude and direction. Displacement can be zero even when distance is not zero, for example when an athlete runs one full round of a circular track and returns to the starting point.\n\nUniform motion: when an object covers equal distances in equal intervals of time, however small these intervals may be, it is said to be in uniform motion. Non-uniform motion: when an object covers unequal distances in equal intervals of time.\n\nSpeed is the distance travelled by an object per unit time. Speed = distance / time. The SI unit of speed is metre per second (m/s). Average speed = total distance travelled / total time taken. Velocity is the speed of an object in a definite direction. Velocity = displacement / time. For an object moving in a straight line with uniformly changing velocity, average velocity = (initial velocity + final velocity) / 2.\n\nAcceleration is the rate of change of velocity. Acceleration a = (v - u) / t, where u is the initial velocity, v is the final velocity and t is the time taken. The SI unit of acceleration is m/s2. If velocity increases, acceleration is positive; if velocity decreases, acceleration is negative and is called retardation or deceleration.\n\nEquations of motion for uniformly accelerated motion in a straight line:\nv = u + at\ns = ut + (1/2)at2\nv2 = u2 + 2as\nwhere s is the distance travelled in time t.\n\nGraphical representation: the distance-time graph of an object in uniform motion is a straight line. The slope of the distance-time graph gives speed. In a velocity-time graph, the slope gives acceleration and the area under the graph gives the displacement.\n\nUniform circular motion: when an object moves in a circular path with uniform speed, its motion is called uniform circular motion. Even though the speed is constant, the velocity changes continuously because the direction changes at every point. Hence uniform circular motion is accelerated motion. The speed of an object in circular motion is v = 2 pi r / t, where r is the radius and t is the time taken for one revolution.\"",
+      "These are good. Question 8 with the car braking from 72 km/h is a nice one, it forces them to convert units, Arjun always complains they forget that.",
+      "Can you add the answer key with short working? He'll want to just print it.",
+      "Thanks. He owes me a dinner. Not at home, obviously, kitchen's about to be gone.",
+      "Okay, work. Mohan from finance engineering sent a status update on the Lighthouse data feed and I can't tell if it's good news or bad news. Can you decode it:\n\n\"Hi Priyanka, quick update on the settlements feed for the new dashboard. The warehouse migration is ~70% complete. We've moved the settlement and refund tables; the disputes tables are scheduled for next sprint. For the settlements feed specifically, we have a working version in the new warehouse but it's running about 6 hours behind real time due to a batch dependency on the reconciliation job, which runs at 2 am. We're evaluating moving to an incremental model which would bring latency under 30 mins, but that's not committed for this quarter. We're still targeting end of October for the feed to be available for Arvind's team to integrate, with the 6 hour lag. Let me know if the lag is a blocker for beta. Thanks, Mohan\"",
+      "So: feed on track for end of October but with a 6 hour lag, real-time not promised. For a beta with 80 merchants, a 6 hour lag on settlements is probably okay if we label it clearly. I'll check with Arvind. Thanks, that's a clear read.",
+      "Can you write a reply to Mohan that says the lag is acceptable for beta if we show \"last updated at\" on the screen, but we'll need the incremental model before general availability? And thank him, he's been helpful.",
+      "Sent. Okay bye."
+    ],
+    [
+      "Hi! Planning the Coorg trip details now that it's booked. Yes it's October, yes I'm that person.",
+      "I found this long blog post about Coorg with kids, can you pull out the useful bits for a family with an 8 year old in late December, staying near Madikeri, 3 nights:\n\n\"Coorg with kids: our complete guide (updated)\nWe've visited Coorg four times now, twice with our two children (ages 6 and 10), and every visit has been a little different. Coorg, or Kodagu as it is officially called, sits in the Western Ghats of Karnataka and is famous for its coffee, its misty hills, and the warm hospitality of the Kodava people. Here's everything we've learned.\n\nWhen to go: October to March is the best time. December and January are cool, with mornings around 12-14 degrees and afternoons around 25. Pack layers. The Christmas and New Year week is busy, especially around Madikeri town and Abbey Falls, so start early.\n\nGetting there: From Bengaluru, it's about 250 km and 5.5 to 6 hours by car via Mysuru. Stop at the Kamat or Maddur for breakfast. The road after Kushalnagar is winding, so if your kids get carsick, give them something light to eat and sit them in the front if possible.\n\nThings to do with kids:\n1. Dubare Elephant Camp - kids can watch elephants being bathed in the morning (go before 9 am). There's a short coracle ride across the river. It gets very crowded by 10.\n2. Abbey Falls - short walk down steps to a viewpoint. In December the water is less dramatic than after monsoon but still pretty. Slippery steps; hold little hands.\n3. Raja's Seat - a garden with a viewpoint in Madikeri, famous for sunsets. There's a small toy train that young kids love. Gets crowded at sunset.\n4. Namdroling Monastery (Golden Temple) in Bylakuppe - on the way in or out, about 1.5 hours from Madikeri. The golden statues fascinate kids. Be respectful, keep voices low.\n5. Coffee plantation walks - most homestays offer these. Kids enjoy seeing the coffee berries and pepper vines. December is harvest season so you may see berries being picked.\n6. Mandalpatti viewpoint - requires a jeep ride on a rough road, very bumpy. Spectacular views but not great for kids prone to motion sickness.\n7. Harangi dam and the tree park nearby - good for an hour of running around.\n\nFood: Kodava cuisine is famous for pandi curry (pork) and kadambuttu (rice dumplings). Vegetarians can enjoy kadambuttu with vegetable curry, akki otti (rice rotis), bamboo shoot curry in season, and lots of fresh fruit. Homestay food is usually the best food you'll eat in Coorg; tell your hosts your preferences in advance.\n\nPractical tips: Mobile network can be patchy in estates. Carry cash for small shops and entry tickets. Leeches are rare in December but possible near streams; carry salt. Evenings get cold, carry sweaters for kids.\n\nOur favourite memory: sitting by a bonfire at our homestay, the kids roasting corn, our host telling stories about the old Kodava traditions. No screens, just stars.\"",
+      "Very useful. Dubare elephants early morning on the 23rd, plantation walk at the homestay, Raja's Seat maybe on the 24th not at sunset. Skip Mandalpatti because Diya gets carsick. And Golden Temple on the way back on the 25th.",
+      "And for food, I'll tell the homestay we're vegetarian except Arjun who's fine with veg too. The kadambuttu with vegetable curry sounds great.",
+      "What should I pack for Diya for cold mornings and possible stream play? She will absolutely go into the stream.",
+      "Got it. Extra pair of shoes, quick dry clothes, and a towel just for the stream.",
+      "Also, Appa, he should be around 8-9 weeks post-surgery by then. Is that enough to be okay on his own with Amma while we're away for 3 days? Kiran will have gone back to Pune by then.",
+      "Okay, most people are fairly independent by then for daily activities. I'll check with Dr. Hegde at the follow-up and arrange for the neighbour's son to be on call.",
+      "Thanks. Bye!"
+    ],
+    [
+      "Hi. My college alumni magazine asked me to write a short piece for their \"where are they now\" section. 400 words max. Here's my draft, it's 640 words and sounds like a LinkedIn post. Help!\n\n\"When I graduated from BMS College of Engineering in 2011 with a degree in Information Science, I had no idea that I would end up in product management, let alone in payments. I had dreams of becoming a researcher, maybe doing a PhD abroad. Life had other plans.\n\nMy first job was as a software engineer at a large IT services company, where I spent three years writing code for a bank's internal systems. It was there that I first got interested in how money moves. I was fascinated by how something as simple as transferring money from one account to another involved so many systems, rules and people behind the scenes.\n\nIn 2014 I moved to a startup that was building mobile wallets, back when everyone thought wallets were the future of payments in India. I started as an engineer and slowly moved into product, mostly because I kept asking 'why are we building this?' in meetings, and eventually someone told me to go and figure it out myself. That's how I became a product manager.\n\nThen came demonetisation in 2016 and UPI, and the whole industry changed overnight. Our wallet business shrank and I learnt more in those two years about pivoting, failing and starting again than I had in my whole career until then.\n\nI joined Kosha Pay in 2019 and I've been here since, now as a senior product manager. I work on recurring payments and merchant tools. The best part of my job is talking to small business owners, the tailors, the tuition teachers, the kirana store owners, and understanding how they actually use our products. They teach me something every week.\n\nOutside work, I'm a mother to an eight year old daughter who asks more questions than any stakeholder I've ever worked with. My husband is a physics teacher, so our dinner table conversations range from Newton's laws to UPI mandates. I recently started learning the veena again after almost two decades, which has been humbling.\n\nIf I could tell my 21 year old self one thing, it would be: you don't need to have a plan. You need to be curious and say yes to things that scare you a little. And you need to keep asking why.\n\nTo current students, I would say: learn to write well. Clear writing is clear thinking, and it will help you no matter what you end up doing. Also, talk to people outside your field. Some of the best ideas I've had came from conversations with people who knew nothing about technology.\n\nI'm always happy to talk to students who are interested in product management or fintech. Feel free to reach out to me on LinkedIn.\n\nI am grateful to my teachers at BMSCE, especially Prof. Ramachandra in the Information Science department, who once told me that I asked too many questions. I hope he knows I took that as a compliment.\"",
+      "This is really good. 390 words. I love the ending with Prof. Ramachandra, glad you kept it. And starting with the \"kept asking why\" story instead of the chronological bit is much better.",
+      "Hmm, should I remove the part about my husband and daughter? Some people say keep personal stuff out.",
+      "Okay, keeping one line, it's an alumni magazine, not a resume. Thanks!",
+      "Unrelated, my cousin Anika asked me to look at her resume, she's applying for her first PM role. I'll paste the summary section only:\n\n\"Highly motivated and results-driven professional with 3 years of experience in business analysis and a passion for building products that users love. Proven track record of collaborating with cross-functional teams to deliver impactful solutions. Skilled in data analysis, stakeholder management, agile methodologies, and user research. Seeking to leverage my analytical skills and customer empathy in a challenging Product Manager role at an innovative company.\"\n\nWhat do I tell her?",
+      "Yes, every single phrase is a cliché. \"Results-driven\", \"passion\", \"proven track record\". The rewritten version with one concrete achievement (the onboarding funnel she fixed that cut drop-offs by 18%) is so much stronger. I'll send her this with a note to replace the number with her real one.",
+      "Thank you. Bye!"
+    ],
+    [
+      "Hey, quick one. Home logistics for the week of the surgery.",
+      "Roopa confirmed she can do longer hours that week, 8:30 am to 7 pm, from 21 to 31 October, so she can do school drop too. Arjun will handle mornings when he can. Big relief.",
+      "And Kiran confirmed he's coming on the 30th and staying a week with Appa and Amma, so I can come back on the 31st as planned.",
+      "Saffron, no change. Still waiting on Shalini. Two weeks to launch. My blood pressure is fine, thank you for asking.",
+      "Can you give me a quick checklist for Roopa for those 11 days? Diya's school timings, snacks, homework, bedtime. Short.",
+      "Great. Add \"no iPad on school nights\" in bold. She's too nice and Diya knows it.",
+      "Thanks. Okay that's all."
+    ]
+  ],
+  "documents": [
+    {
+      "afterSession": 3,
+      "name": "saffron_prd_excerpt_v3.md",
+      "text": "# Project Saffron - UPI Autopay Revamp\n## PRD excerpt v3 (rules and constraints section)\nOwner: Priyanka Rao (Product)  |  Eng: Saffron squad  |  Status: In review\n\n### 1. Goal\nIncrease the mandate creation success rate for merchant-initiated recurring payments from the current 71% (trailing 90 days) to at least 85% within 60 days of full rollout, and reduce the involuntary churn caused by failed debits by 30%.\n\n### 2. Scope (v1)\n- New mandate creation flow on hosted checkout and SDK (Android, iOS, web).\n- Pre-debit notification service.\n- Merchant dashboard widgets for mandate health (shipped later through Lighthouse; v1 exposes API only).\n- Failure handling and re-presentation logic.\nOut of scope for v1: e-NACH, card mandates, international payments.\n\n### 3. Hard rules (non-negotiable)\n3.1 Mandate amount cap: mandates up to INR 15,000 per debit can be executed without additional factor authentication (AFA) for each debit. Any mandate above INR 15,000 per debit must trigger AFA for each debit, which will lower success rates. The default max amount suggested in the merchant SDK must therefore be INR 15,000.\n3.2 Pre-debit notification: the customer must be notified at least 24 hours before each debit, with amount, merchant name, debit date and a link to pause or revoke.\n3.3 Notification channels: in-app push (via PSP app) is mandatory; SMS is a fallback only when push delivery fails within 2 hours.\n3.4 Re-presentation: a failed debit may be re-presented at most once, no earlier than 24 hours after the failure and only if the original failure reason is \"insufficient funds\" or \"technical decline\". All other failure reasons must not be retried.\n3.5 Consent text: the mandate consent screen copy must be approved by Legal before production release. The current draft (Annex B) is pending review.\n3.6 Data retention: mandate event logs retained for 7 years; customer phone numbers masked in all merchant-facing views.\n\n### 4. Pilot\nPilot with 5 merchants (2 OTT, 2 edtech, 1 insurance) for 2 weeks before general availability. Pilot exit criteria: success rate >= 80% and zero P1 incidents.\n\n### 5. Metrics\nPrimary: mandate creation success rate. Secondary: pre-debit notification delivery rate (target 98%), debit success rate, merchant support tickets per 1,000 mandates.\n\n### 6. Dependencies\n- NPCI UAT certification environment access (via sponsor bank).\n- Sponsor bank API changes for re-presentation.\n- Legal approval of consent text (3.5).\n- Design support (shared with Lighthouse).\n\n### 7. Open questions\n- Should we let merchants customise the pre-debit notification text? (Leaning no for v1.)\n- Do we show a \"mandate health score\" to merchants in v1 or wait for Lighthouse?\n- Minimum gap between mandate creation and first debit (currently proposing 2 hours)."
+    },
+    {
+      "afterSession": 4,
+      "name": "manju_interiors_kitchen_quote_final.txt",
+      "text": "MANJU INTERIORS\n#42, 2nd Cross, Agara Main Road, HSR Layout, Bengaluru 560102\nProprietor: Manjunath K. | Ph: +91 98450 61827 | manjuinteriors.blr@gmail.com\n\nQUOTATION No. MI/2026/118 (FINAL - supersedes all earlier versions)\nClient: Mrs. Priyanka Rao & Mr. Arjun Rao, Flat 3B, Sowparnika Residency, HSR Layout Sector 2\nDate: 28 July 2026\nWork: Modular kitchen renovation (L-shaped, approx. 11 ft x 8 ft)\n\nA. CIVIL AND DEMOLITION\n1. Removal of existing cabinets, granite counter, sink and wall tiles; debris disposal ......... Rs 18,000\n2. Electrical: 4 new 16A/6A plug points, dedicated line for chimney and oven, LED under-cabinet strip lighting ......... Rs 22,500\n3. Plumbing: new sink inlet/outlet, water purifier point ......... Rs 9,500\n\nB. CABINETRY\n4. Base cabinets in BWP marine plywood (IS 710), 18mm, with acrylic laminate shutters (matt finish, colour: sage green) ......... Rs 1,24,000\n5. Overhead cabinets in HDHMR board, 18mm, laminate shutters (colour: off-white) ......... Rs 58,000\n6. Tall pantry unit with 4 internal drawers ......... Rs 32,000\n7. Hardware: Hettich soft-close hinges and tandem drawer channels, profile handles ......... Rs 26,500\n\nC. COUNTER AND WALL\n8. Black Galaxy granite counter, 20mm, with double edge polish and 4 inch skirting ......... Rs 41,000\n9. Wall dado: matt ceramic tiles 300x600 up to 2 ft above counter ......... Rs 16,500\n10. Stainless steel single-bowl sink with drainboard (Carysil or equivalent) ......... Rs 14,000\n\nD. MISCELLANEOUS\n11. Site supervision, cleaning and handover ......... Rs 9,000\n\nTOTAL (inclusive of GST): Rs 3,85,000 (Rupees Three Lakh Eighty-Five Thousand only)\n\nEXCLUSIONS: Chimney, hob, built-in oven and any other appliances; painting of kitchen walls and ceiling; gas pipeline work.\n\nPAYMENT TERMS:\n- 50% advance to confirm the order and begin material procurement.\n- 40% on completion of cabinet installation.\n- 10% on final handover after snag list is cleared.\n\nTIMELINE: 6 (six) weeks from the date the full advance is received. Kitchen will be unusable for approx. 4 weeks of this period.\n\nWARRANTY: 5 years on cabinet carcass and hardware against manufacturing defects. 1 year on workmanship. Granite and tiles not covered for breakage after handover.\n\nVALIDITY: This quotation is valid for 30 days from the date above.\n\nFor Manju Interiors,\nManjunath K."
+    },
+    {
+      "afterSession": 8,
+      "name": "coorg_homestay_booking_confirmation.txt",
+      "text": "MIST VALLEY HOMESTAY\nKaggodlu Road, near Madikeri, Kodagu District, Karnataka 571201\nHost: Mr. K. C. Poovaiah | +91 94481 20735 | mistvalley.coorg@gmail.com\n\nBOOKING CONFIRMATION - Ref. MVH-DEC-2614\n\nGuest name: Priyanka Rao\nContact: (as provided at booking)\nNumber of guests: 2 adults + 1 child (8 years)\nAccommodation: \"Hill View\" family cottage (1 double bed + 1 single bed, private sit-out, attached bathroom with geyser)\n\nCheck-in: Tuesday, 22 December 2026, from 1:00 pm\nCheck-out: Friday, 25 December 2026, by 11:00 am\nNumber of nights: 3\n\nTariff: Rs 7,800 per night for the cottage, inclusive of breakfast and evening tea/coffee with snacks for all guests.\nRoom total: Rs 23,400\nGST (12%): Rs 2,808\nGrand total: Rs 26,208\n\nAdvance received: Rs 8,000 (via UPI on 24 September 2026)\nBalance payable at check-in: Rs 18,208 (cash or UPI)\n\nMeals: Lunch and dinner available on request with 4 hours notice. Traditional Kodava home food, vegetarian and non-vegetarian options. Vegetarian meals Rs 350 per adult, Rs 200 per child. Please inform us of any dietary needs.\n\nActivities (optional, pay at site): guided coffee plantation walk (Rs 300 per person, children free), stream-side picnic, bonfire on request (Rs 500).\n\nCancellation policy:\n- Free cancellation (full refund of advance) if cancelled on or before 8 December 2026.\n- Cancellation between 9 and 18 December 2026: 50% of advance retained.\n- Cancellation after 18 December 2026 or no-show: full advance retained.\n- Date changes subject to availability, no charge if requested before 8 December 2026.\n\nHouse rules: Quiet hours after 10:00 pm. No loud music. Pets not allowed. Please do not feed the estate dogs chocolate.\n\nDirections: From Madikeri town take the Kaggodlu road for 6 km; look for our green signboard after the temple. Mobile network is weak inside the estate; Wi-Fi available in the main house.\n\nFrequently asked questions:\n- Is there hot water? Yes, solar geyser with electric backup. Hot water is best in the afternoon and evening; please inform us if you need it early in the morning.\n- Is the cottage safe for small children? The sit-out has a railing, but the path to the stream has uneven steps. Children should be accompanied by an adult at the stream at all times.\n- Do you accept card payments? We accept UPI and cash. No card machine on the estate.\n- Is there parking? Yes, covered parking for one car next to the main house. The last 800 metres of the road are unpaved; any normal car can manage it if driven slowly.\n- Are there shops nearby? The nearest grocery and pharmacy are in Madikeri town, approximately 15 minutes by car. We can arrange basic items if informed in advance.\n- What about power cuts? Short power cuts are common in the hills. The main house has an inverter for lights and Wi-Fi.\n\nWe look forward to hosting you!"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q5-priyanka-q01",
+      "cat": "current_fact",
+      "q": "Who's the engineering lead on the autopay revamp these days?",
+      "required": [
+        "Vikram Rao"
+      ],
+      "forbidden": [
+        "Farhan Siddiqui is currently the engineering lead on Saffron"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q02",
+      "cat": "correction",
+      "q": "Remind me of the go-live date for Saffron, I need it for a slide.",
+      "required": [
+        "27 October"
+      ],
+      "forbidden": [
+        "Saffron launches on 17 October",
+        "Saffron launches on 15 September"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q03",
+      "cat": "future_vs_now",
+      "q": "Who do I report to at the moment, and is that changing?",
+      "required": [
+        "Rakesh Menon now",
+        "Deepa Kulkarni from 1 December"
+      ],
+      "forbidden": [
+        "Deepa Kulkarni is currently my manager"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q04",
+      "cat": "resolved_blocker",
+      "q": "What exactly is Saffron stuck on right now?",
+      "required": [
+        "Legal sign-off on the consent screen text (Shalini Iyer)"
+      ],
+      "forbidden": [
+        "Saffron is currently waiting on NPCI sandbox access"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q05",
+      "cat": "alias",
+      "q": "What's the date of my dad's knee operation again?",
+      "required": [
+        "23 October",
+        "admission the evening of the 22nd"
+      ],
+      "forbidden": [
+        "Appa's surgery is on 20 October"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q06",
+      "cat": "same_name_distinct",
+      "q": "When is the Lighthouse launch?",
+      "required": [
+        "beta launch on 10 November"
+      ],
+      "forbidden": [
+        "Lighthouse launches on 27 October"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q07",
+      "cat": "file",
+      "q": "According to our Saffron spec, what's the per-debit amount above which extra authentication kicks in, and how early must customers be notified before a debit?",
+      "required": [
+        "INR 15,000",
+        "at least 24 hours before each debit"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q08",
+      "cat": "file_plus_chat",
+      "q": "How much more do I need to transfer to Manju before he starts the kitchen work?",
+      "required": [
+        "advance is 50% of Rs 3,85,000 = Rs 1,92,500",
+        "Rs 1,00,000 already paid, so Rs 92,500 remaining"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q09",
+      "cat": "file",
+      "q": "Until what date can I cancel the December homestay and get the advance back, and who do I contact?",
+      "required": [
+        "8 December",
+        "Mr. K. C. Poovaiah"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q10",
+      "cat": "multi_hop",
+      "q": "Who's the person I need to chase to unblock my October launch?",
+      "required": [
+        "Shalini Iyer (legal counsel)"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q11",
+      "cat": "uncertainty",
+      "q": "Are we moving Diya to a new school next year?",
+      "required": [
+        "undecided; school visits planned in November"
+      ],
+      "forbidden": [
+        "We have decided to move Diya to the Sarjapur school"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q12",
+      "cat": "preference",
+      "q": "Set up a Monday plan for me: a 1:1 with Vikram, a sync with Neha, and a 30 min call with Mohan.",
+      "required": [
+        "no meetings before 10am"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q13",
+      "cat": "draft",
+      "q": "Write a WhatsApp to our nanny about the extra hours while I'm in Mysuru.",
+      "required": [
+        "addressed to Roopa",
+        "21 to 31 October",
+        "8:30 am to 7 pm"
+      ],
+      "forbidden": [
+        "Lakshmi is currently our nanny"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q14",
+      "cat": "temporal_history",
+      "q": "What was the very first launch date we had planned for Saffron?",
+      "required": [
+        "15 September"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q15",
+      "cat": "state_change",
+      "q": "Where are we going for the Christmas break?",
+      "required": [
+        "Coorg (Mist Valley Homestay near Madikeri)",
+        "22 to 25 December"
+      ],
+      "forbidden": [
+        "The Christmas trip is still undecided between Coorg and Goa"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q16",
+      "cat": "state_change",
+      "q": "How many merchants are in the dashboard beta?",
+      "required": [
+        "80 merchants"
+      ],
+      "forbidden": [
+        "The Lighthouse beta has 50 merchants"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q17",
+      "cat": "preference",
+      "q": "Suggest a dinner for the three of us tonight, something quick.",
+      "required": [
+        "vegetarian"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q18",
+      "cat": "multi_hop",
+      "q": "Who's responsible for the thing Lighthouse is waiting on?",
+      "required": [
+        "Mohan Krishnan (finance engineering settlements data feed)"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q5-priyanka-q19",
+      "cat": "unknown",
+      "q": "What's my brother's wife's name? I keep blanking.",
+      "expectUnknown": true
+    },
+    {
+      "id": "q5-priyanka-q20",
+      "cat": "unknown",
+      "q": "What's my employee ID at Kosha?",
+      "expectUnknown": true
+    }
+  ]
+}

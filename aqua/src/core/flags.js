@@ -45,6 +45,8 @@
 /** How a gate reads its variable. Recorded because they are NOT uniform. */
 const ON = "=== 'on'";
 const ONE = "=== '1'";
+/** Three-way: 'on' | 'off' | anything else (unset) = 'auto'. */
+const AUTO = "on|off|auto";
 
 /**
  * Behaviour gates — these decide which code path runs.
@@ -60,7 +62,8 @@ export const GATES = Object.freeze([
   { name: 'AQUA_BRAIN_INGEST', subsystem: 'brain', dflt: 'off', reads: ON },
   { name: 'AQUA_BRAIN_INGEST_FACTS', subsystem: 'brain', dflt: 'off', reads: ON },
   { name: 'AQUA_CANONICAL_IDS', subsystem: 'identity', dflt: 'off', reads: ON },
-  { name: 'AQUA_CANONICAL_READ', subsystem: 'world-model', dflt: 'off', reads: ON, note: 'E10 — canonical Postgres read surface; legacy projection remains fail-open' },
+  { name: 'AQUA_CANONICAL_READ', subsystem: 'world-model', dflt: 'auto', reads: AUTO,
+    note: 'E10 read mode (brain/index.js canonicalReadMode): unset/auto = canonical-authoritative (canonical World Model answers; legacy identity/regex facts only fill gaps it does not contradict); on = canonical only; off = legacy rollback' },
   { name: 'AQUA_CIE', subsystem: 'cognition', dflt: 'off', reads: ON },
   { name: 'AQUA_CLAIM_STRICT_PREDICATES', subsystem: 'claims', dflt: 'off', reads: ONE },
   { name: 'AQUA_CLAIMS_SHADOW', subsystem: 'claims', dflt: 'off', reads: ON,
@@ -73,7 +76,7 @@ export const GATES = Object.freeze([
   { name: 'AQUA_DISABLE_MONGO_MIRROR', subsystem: 'store', dflt: 'off', reads: ONE, inverted: true,
     note: 'set to 1 to DISABLE the mirror — the variable turns something off' },
   { name: 'AQUA_E6', subsystem: 'brain', dflt: 'off', reads: ON,
-    note: 'understanding pipeline; fails its own negation gate at 85/95' },
+    note: 'understanding pipeline. extract-v3: negation 0.95-1.00 on 5 fresh runs; full 200-case precision/recall pending provider quota (scripts/e6-shadow.mjs)' },
   { name: 'AQUA_EMBEDDINGS', subsystem: 'embeddings', dflt: 'on', reads: "=== 'off'", inverted: true,
     note: 'ON by default — set to off to disable' },
   { name: 'AQUA_GRAPH', subsystem: 'orchestrator', dflt: 'off', reads: ON,
@@ -83,16 +86,21 @@ export const GATES = Object.freeze([
   { name: 'AQUA_PARSE_WORKER', subsystem: 'upload', dflt: 'on', reads: "!== 'off'", inverted: true,
     note: 'ON by default' },
   { name: 'AQUA_PIC', subsystem: 'pic', dflt: 'on', reads: "!== 'off'", inverted: true, note: 'ON by default' },
+  { name: 'AQUA_PROACTIVE', subsystem: 'proactive', dflt: 'on', reads: "!== 'off'", inverted: true,
+    note: 'Phase 4 proactive interventions + Phase 5 action proposals. ON by default since eval/suites/proactive-core passed (baseline recorded); =off is the rollback' },
   { name: 'AQUA_PROVIDER_LOG', subsystem: 'providers', dflt: 'off', reads: "=== 'debug'" },
   { name: 'AQUA_REFLECT_V2', subsystem: 'brain', dflt: 'off', reads: ON },
   { name: 'AQUA_REL_EVOLVE', subsystem: 'reasoning', dflt: 'off', reads: ON },
-  { name: 'AQUA_REVISION_VOICE', subsystem: 'brain', dflt: 'off', reads: ON },
+  { name: 'AQUA_REVISION_VOICE', subsystem: 'brain', dflt: 'on', reads: "!== 'off'", inverted: true,
+    note: 'canonical revision voice ON by default (eval: revision-voice); =on also enables the unevaluated legacy-ledger voice; =off = rollback' },
   { name: 'AQUA_SELF_ENTITY', subsystem: 'identity', dflt: 'off', reads: ON,
     note: 'decides whether E6/S6 can resolve first person at all' },
   { name: 'AQUA_STORE_PG', subsystem: 'store', dflt: 'off', reads: "=== 'shadow'" },
   { name: 'AQUA_STORE_PG_READ', subsystem: 'store', dflt: 'off', reads: ON },
   { name: 'AQUA_TWIN_V2', subsystem: 'brain', dflt: 'off', reads: ON },
   { name: 'AQUA_UUS', subsystem: 'uus', dflt: 'off', reads: ON },
+  { name: 'AQUA_WORLD_CORE', subsystem: 'brain', dflt: 'on', reads: "!== 'off'", inverted: true,
+    note: 'current-world section of the answer context (brain/contextEngine/worldCore.js): every current canonical claim the relevance section did not show, as the user\'s own statements, budgeted. ON by default; =off = rollback' },
 ]);
 
 /** Settings — values that tune a path which runs either way. */
@@ -103,20 +111,35 @@ export const SETTINGS = Object.freeze([
   { name: 'AQUA_E6_MODEL', subsystem: 'brain' },
   { name: 'AQUA_E6_PROVIDER', subsystem: 'brain' },
   { name: 'AQUA_E6_COMMIT', subsystem: 'brain' },
-  { name: 'AQUA_E6_SINGLE_VALUED', subsystem: 'brain', note: 'S8 single-valued predicates (works_at) emit contradictions on a changed object; default off, no eval yet' },
+  { name: 'AQUA_E6_SINGLE_VALUED', subsystem: 'brain', note: 'registry-declared single-valued predicates: S8 emits changed values, E9 retires the older snapshot. Default ON (eval: claim-lifecycle); off = rollback' },
   { name: 'AQUA_E6_MINT', subsystem: 'brain', note: 'S6 provisional-entity minting; follows AQUA_E6_COMMIT, =off is the rollback' },
   { name: 'AQUA_E6_EXTRACTOR_VERSION', subsystem: 'brain' },
   { name: 'AQUA_EMBED_DIM', subsystem: 'embeddings' },
   { name: 'AQUA_EMBED_MODEL', subsystem: 'embeddings' },
   { name: 'AQUA_MIRROR_CHUNK_BYTES', subsystem: 'store' },
+  { name: 'AQUA_ERROR_WEBHOOK_URL', subsystem: 'observability', note: 'POST scrubbed error records here (core/telemetryExport.js); unset = local ring' },
+  { name: 'AQUA_ERROR_WEBHOOK_TOKEN', subsystem: 'observability', note: 'optional Bearer token for AQUA_ERROR_WEBHOOK_URL' },
+  { name: 'AQUA_METRICS_TOKEN', subsystem: 'observability', note: 'Bearer token for the Prometheus machine scrape GET /metrics (routes/metricsScrape.js); unset or < 32 chars = 404' },
+  { name: 'AQUA_RATE_LIMIT_REDIS_URL', subsystem: 'platform', note: 'shared rate-limit window across processes (utils/rateLimitStore.js); unset = per-process memory' },
+  { name: 'AQUA_CONSOLIDATION_INTERVAL_MS', subsystem: 'jobs', note: 'E9 J3 consolidation scheduling interval in the worker (default 600000; 0 = never schedule)' },
+  { name: 'AQUA_TEST_DATABASE_URL', subsystem: 'tests', note: 'the ONLY database a test run may touch (scripts/run-tests.mjs); never .env DATABASE_URL' },
   { name: 'AQUA_MIRROR_RETRY_BASE_MS', subsystem: 'store' },
   { name: 'AQUA_MIRROR_RETRY_CAP_MS', subsystem: 'store' },
   { name: 'AQUA_MIRROR_STALE_FAILS', subsystem: 'store' },
   { name: 'AQUA_MIRROR_STALE_MS', subsystem: 'store' },
+  { name: 'AQUA_MIRROR_ROLE', subsystem: 'store', note: 'writer|reader; unset = writer on Render (RENDER=true), reader elsewhere — only the deployment writes the shared Mongo mirror (P0 2026-10-12)' },
+  { name: 'AQUA_MIRROR_LEASE_MS', subsystem: 'store', note: 'writer-lease TTL for the Mongo mirror (default 3 heartbeats = 90000)' },
   { name: 'AQUA_PROVIDER_BACKOFF_CAP_MS', subsystem: 'providers' },
   { name: 'AQUA_PROVIDER_BACKOFF_MS', subsystem: 'providers' },
   { name: 'AQUA_PROVIDER_MAX_ROUNDS', subsystem: 'providers' },
+  { name: 'AQUA_PROVIDER_PREFER', subsystem: 'providers', note: 'comma list moved to the front of the ranked healthy providers (controlled rollout, e.g. nvidia); unset = pure score ranking' },
+  { name: 'AQUA_LIFT_LLM', subsystem: 'eval', note: 'eval-only (eval/adapters/pairedAnswerLift.mjs): =on runs the provider-backed paired-answer World-Model Lift' },
+  { name: 'AQUA_LIFT_PROVIDER', subsystem: 'eval', note: 'eval-only: pins BOTH lift lanes to one provider (groq|gemini|openrouter|nvidia); unset = production router' },
+  { name: 'AQUA_LIFT_MODEL', subsystem: 'eval', note: 'eval-only: model pin for AQUA_LIFT_PROVIDER; unset = that provider\'s first registered model' },
   { name: 'AQUA_PROVIDER_RETRY_BUDGET_MS', subsystem: 'providers' },
+  { name: 'AQUA_PROVIDER_MAX_KEYS_PER_MODEL', subsystem: 'providers', note: 'non-rejected key attempts per model per request (default 3; NVIDIA tries every key once)' },
+  { name: 'AQUA_PROVIDER_MAX_KEY_ATTEMPTS', subsystem: 'providers', note: 'non-rejected key attempts per provider call across all models (default 8)' },
+  { name: 'AQUA_PROVIDER_KEY_REJECT_TTL_MS', subsystem: 'providers', note: 'read in keyPool.cjs; unset/0 = a 401/403-rejected key stays quarantined until restart or explicit reset (default)' },
   { name: 'AQUA_CROSS_ENCODER_BLEND', subsystem: 'brain' },
   { name: 'AQUA_CROSS_ENCODER_CACHE_SIZE', subsystem: 'brain' },
   { name: 'AQUA_CROSS_ENCODER_CACHE_TTL_MS', subsystem: 'brain' },
@@ -125,6 +148,7 @@ export const SETTINGS = Object.freeze([
   { name: 'AQUA_CROSS_ENCODER_POOL', subsystem: 'brain' },
   { name: 'AQUA_CROSS_ENCODER_TIMEOUT_MS', subsystem: 'brain' },
   { name: 'AQUA_OUTBOX_CLAIM_TTL_MS', subsystem: 'jobs' },
+  { name: 'AQUA_PROACTIVE_INTERVAL_MS', subsystem: 'proactive', note: 'worker periodic proactive scan interval (default 3600000; 0 = never); change-triggered evaluation runs regardless' },
 ]);
 
 /** Every registered name, gates and settings alike. */
@@ -174,6 +198,7 @@ function resolveGate(g, raw) {
     case "=== 'shadow'": return v === 'shadow' ? 'shadow' : 'off';
     case "=== 'off'": return v === 'off' ? 'off' : 'on';   // inverted, on by default
     case "!== 'off'": return v === 'off' ? 'off' : 'on';   // inverted, on by default
+    case AUTO: return v === 'on' ? 'on' : v === 'off' ? 'off' : 'auto';
     default: return 'off';
   }
 }

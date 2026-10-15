@@ -30,7 +30,7 @@ import * as Brain from '../index.js';
 import { runPostTurn, _internals } from '../../routes/turnPostProcess.js';
 import { getMetrics, logE6Turn, _resetE6Metrics } from '../../core/observability.js';
 import * as canonicalIds from '../identity/canonicalId.js';
-import { putEntry as putIdEntry, _resetIdsForTests } from '../identity/idStore.js';
+import { putEntry as putIdEntry, getEntry as getIdEntry, _resetIdsForTests } from '../identity/idStore.js';
 import { SELF_CANONICAL_ID, SELF_KIND, SELF_LABEL } from '../identity/selfEntity.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -55,6 +55,12 @@ function stubDeps(over = {}) {
     consolidate: () => {},
     consolidateEnabled: () => false,
     defer: fn => fn(),
+    // The durable queue is a production default that reaches Postgres when
+    // DATABASE_URL is set. Unstubbed, every seam test below enqueued a REAL
+    // `understanding.turn.v1` job into whatever database the developer's .env
+    // named — and the next run failed with `job=duplicate`. These tests are
+    // about the in-process seam; the durable branch has its own test below.
+    durableQueueAvailable: () => false,
     ...over,
   };
 }
@@ -93,7 +99,11 @@ async function captureReal(args) {
   console.log = (...a) => lines.push(a.join(' '));
   console.warn = (...a) => lines.push(a.join(' '));
   try {
-    runPostTurn(args, { defer: fn => jobs.push(fn) });
+    // `durableQueueAvailable` pinned off: these wiring tests prove the REAL
+    // understandTurn → pipeline → reporter chain in-process. With a database
+    // configured the production default would enqueue instead (a different,
+    // separately tested branch) and the chain under test would never run.
+    runPostTurn(args, { defer: fn => jobs.push(fn), durableQueueAvailable: () => false });
     for (const j of jobs) await j();
     await new Promise(r => setImmediate(r));
   } finally { console.log = log; console.warn = warn; }
@@ -280,7 +290,15 @@ describe('wired is not the same as working', () => {
     // differs in any of those is not the thing that was measured.
     const fn = FACADE.slice(FACADE.indexOf('export async function e6Transport'));
     assert.match(fn, /openai\/gpt-oss-120b/, 'the pinned model changed — the shadow result no longer transfers');
-    assert.match(fn, /undefined, 1024,/, 'the token budget changed');
+    // Groq (the measured provider) keeps 1024; only the Gemini and NVIDIA
+    // branches — whose hidden reasoning truncated the JSON at 1024 — get a
+    // larger budget. The final fallthrough (Groq) must still be 1024.
+    assert.match(fn, /const maxTokens = provider === 'gemini' \? \d+ : provider === 'nvidia' \? \d+ : 1024;/, 'the Groq token budget changed');
+    // The first (and, for any call that completes, only) call runs at
+    // maxTokens; withTruncationHeadroom retries once with headroom ONLY when
+    // the provider truncated (P0 2026-10-12, e6TruncationHeadroom.test.js).
+    assert.match(fn, /withTruncationHeadroom\(generate, \{ maxTokens,/, 'the token budget is no longer the pinned one');
+    assert.match(fn, /res = await call\(maxTokens\);/, 'the first call no longer uses the pinned budget');
     assert.match(fn, /generateGroq/);
   });
 
@@ -555,6 +573,7 @@ describe('S6 is reachable from the production path', () => {
     // S6 unconditionally would assert an identity for owners who have none —
     // AQUA_SELF_ENTITY is off by default and nothing has created it.
     process.env.AQUA_E6 = 'on';
+    delete process.env.AQUA_SELF_ENTITY;
     canonicalIds.resolve('u-s6-noself', { name: 'Nummo', kind: 'org' });
 
     const r = await Brain.understandTurn({
@@ -565,6 +584,36 @@ describe('S6 is reachable from the production path', () => {
     assert.equal(r.claims[0].subjectEntityId, null);
     assert.equal(r.claims[0].resolution.subject.reason, 'no-self-entity');
     assert.equal(r.readyForS7.length, 0, 'an unresolved subject reached S7-ready');
+  });
+
+  test('SELF FLAG ON, NO PRIOR INGEST: first person resolves to the self entity', async () => {
+    // The production worker runs understandTurn in its own process, where no
+    // conversation ingest has ever run for this owner. Before 2026-10-03 the
+    // self node existed only as ingest's side effect, so this exact shape
+    // returned `no-self-entity` and every "I ..." claim was dropped from the
+    // world model on live Postgres. S6 now creates its own precondition.
+    process.env.AQUA_E6 = 'on';
+    process.env.AQUA_SELF_ENTITY = 'on';
+    const owner = `u-s6-selfon-${Date.now()}`;
+    canonicalIds.resolve(owner, { name: 'Nummo', kind: 'org' });
+
+    const r = await Brain.understandTurn({
+      ownerId: owner, conversationId: 'c', userMessage: 'I work at Nummo.', callModel: worksAtNummo,
+    });
+
+    assert.notEqual(r.claims[0].resolution.subject.reason, 'no-self-entity',
+      'first person still blocked: the self entity was never created on the understanding path');
+    assert.equal(r.claims[0].resolution.subject.entityId, 'aq:self:owner');
+    assert.equal(r.readyForS7.length, 1, 'a first-person claim did not become S7-ready');
+  });
+
+  test('SELF FLAG ON: the self entity is per-owner — another owner is not given one by this call', async () => {
+    process.env.AQUA_E6 = 'on';
+    process.env.AQUA_SELF_ENTITY = 'on';
+    const a = `u-s6-selfA-${Date.now()}`; const b = `u-s6-selfB-${Date.now()}`;
+    await Brain.understandTurn({ ownerId: a, conversationId: 'c', userMessage: 'I work at Nummo.', callModel: worksAtNummo });
+    assert.ok(getIdEntry(a, 'aq:self:owner'), 'owner A has no self entry');
+    assert.equal(getIdEntry(b, 'aq:self:owner') ?? null, null, 'owner B was given a self entity by owner A\'s turn');
   });
 
   test('E6 DISABLED: S6 does not execute', async () => {
@@ -626,5 +675,45 @@ describe('S6 is reachable from the production path', () => {
       understandTurn: () => ({ stagesRun: ['S0'], entityResolution: 'unresolved', stats: { segments: 1 } }),
     });
     assert.ok(!e6Lines(lines)[0].includes('s6.'), 'an unrun stage reported zeros as if it had run');
+  });
+});
+
+describe('durable branch — exactly one path runs per turn', () => {
+  test('queue available: the turn is ENQUEUED with an owner-scoped idempotent key, and not run in-process', async () => {
+    const enqueued = []; let inProcess = 0;
+    runPostTurn(
+      { ownerId: 'u-dur', conversationId: 'c-dur', userMessage: 'I work at Nummo.', assistantMessage: 'ok' },
+      stubDeps({
+        e6Enabled: () => true,
+        getConversation: () => [1, 2, 3],
+        durableQueueAvailable: () => true,
+        enqueueUnderstanding: job => { enqueued.push(job); return Promise.resolve({ created: true }); },
+        understandTurn: () => { inProcess++; return Promise.resolve({}); },
+        reportE6: () => {},
+      }),
+    );
+    await new Promise(r => setImmediate(r));
+    assert.equal(enqueued.length, 1, 'turn was not enqueued');
+    assert.equal(enqueued[0].ownerId, 'u-dur');
+    assert.equal(enqueued[0].kind, 'understanding.turn.v1');
+    assert.equal(enqueued[0].idempotencyKey, 'understanding.turn.v1:c-dur:3');
+    assert.equal(inProcess, 0, 'the turn ran twice: queued AND in-process');
+  });
+
+  test('queue throws: the turn degrades to in-process, never to silence', async () => {
+    let inProcess = 0;
+    runPostTurn(
+      { ownerId: 'u-dur2', conversationId: 'c-dur2', userMessage: 'I work at Nummo.', assistantMessage: 'ok' },
+      stubDeps({
+        e6Enabled: () => true,
+        durableQueueAvailable: () => true,
+        enqueueUnderstanding: () => Promise.reject(new Error('pg down')),
+        understandTurn: () => { inProcess++; return Promise.resolve({}); },
+        reportE6: () => {},
+      }),
+    );
+    await new Promise(r => setImmediate(r));
+    await new Promise(r => setImmediate(r));
+    assert.equal(inProcess, 1, 'a queue outage lost the turn instead of falling back');
   });
 });

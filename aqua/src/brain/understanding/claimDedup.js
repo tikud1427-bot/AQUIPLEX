@@ -128,6 +128,34 @@ export function contradictionBetween(a, b, opts = {}) {
   const no = (reason) => ({ contradicts: false, kind: null, reason });
 
   if (!a || !b) return no('missing-claim');
+
+  // HISTORY IS NOT CONTRADICTED (2026-10-04). A superseded or archived claim
+  // describes the past; a new value disagrees with the CURRENT one, not with
+  // every value the subject ever had. Without this, A→B→C flagged C against A
+  // as well as B, and the worker's attempt to supersede an already-superseded
+  // claim threw "lifecycle transition changes nothing" until it dead-lettered.
+  const historical = st => st === 'superseded' || st === 'archived';
+  if (historical(a.state) || historical(b.state)) return no('historical');
+
+  // ONE-PER-OBJECT (2026-10-04): "Kavya owns the payment integration" and
+  // "Rohan owns the payment integration" share no subject, yet compete — the
+  // registry declares `owns` one-per-object (its inverse `owned_by` holds one
+  // value). Same predicate, same entity object, different subjects, both
+  // asserted facts with overlapping validity → an object contradiction.
+  const singleObject = opts.singleObjectPredicates instanceof Set
+    ? opts.singleObjectPredicates : new Set(opts.singleObjectPredicates ?? []);
+  if (singleObject.has(a.predicate) && a.predicate === b.predicate
+      && norm(a.subject) !== norm(b.subject)) {
+    const oa = objectSig(a), ob = objectSig(b);
+    const facts = (a.modality ?? 'fact') === 'fact' && (b.modality ?? 'fact') === 'fact';
+    const asserted = (a.polarity ?? 'asserted') === 'asserted' && (b.polarity ?? 'asserted') === 'asserted';
+    if (facts && asserted && oa.kind === 'entity' && oa.kind === ob.kind && oa.value === ob.value
+        && validityOverlaps(a, b)) {
+      return { contradicts: true, kind: 'object',
+        reason: `${a.predicate} is one-per-object but ${oa.value} has ${a.subject} and ${b.subject}` };
+    }
+    return no('different-subject-predicate');
+  }
   if (subjectPredicateKey(a) !== subjectPredicateKey(b)) return no('different-subject-predicate');
 
   // Only factual assertions can contradict. An intent and a fact about the
@@ -193,11 +221,48 @@ export function inStoredVocabulary(c) {
   };
 }
 
+// ── Blocker resolution vocabulary (Pass 2) ──────────────────────────────────
+const PENDING_PREDICATES = new Set(['has_status', 'has_property']);
+const RESOLVED_RE = /\b(?:fixed|resolved|solved|done|complete(?:d)?|finished|signed|approved|granted|arrived|delivered|received|returned|came\s+through|cleared|sorted(?:\s+out)?|unblocked|repaired|working\s+again|back\s+online|passed|accepted|issued|no\s+longer\s+(?:an?\s+)?(?:issue|problem|blocking|blocker))\b/i;
+const UNRESOLVED_RE = /\b(?:not|n['’]t|never|still|yet|pending|waiting|awaiting|delayed|late|stuck)\b/i;
+const PENDING_RE = /\b(?:hasn['’]t|has\s+not|haven['’]t|have\s+not|isn['’]t|not\s+yet|still|pending|waiting|awaiting|late|delayed|stuck|missing|broken|down|blocked|blocking|overdue|timing\s+out|failing|fails|keeps)\b/i;
+
+/** "the embassy" / "The Embassy" / "my visa application" → one comparable key. */
+function labelKey(s) {
+  return String(s ?? '').toLowerCase().normalize('NFKC').replace(/^(?:the|a|an|my|our|your)\s+/, '').replace(/\s+/g, ' ').trim();
+}
+/** An asserted factual STATUS that reports something as resolved — and not "still not signed". */
+export function isResolutionStatus(c) {
+  if (!c || !PENDING_PREDICATES.has(c.predicate)) return false;
+  if ((c.polarity ?? 'asserted') !== 'asserted' || (c.modality ?? 'fact') !== 'fact') return false;
+  const v = String(c.object?.literal ?? c.object?.value ?? '');
+  return RESOLVED_RE.test(v) && !UNRESOLVED_RE.test(v);
+}
+function isPendingStatus(c) {
+  return PENDING_RE.test(String(c.object?.literal ?? c.object?.value ?? ''));
+}
+// Words that name a KIND of thing, not WHICH thing: never enough to link two
+// mentions on their own ("the launch moved" could be any launch).
+const GENERIC_WORDS = new Set(['launch', 'project', 'deadline', 'date', 'event', 'meeting', 'thing', 'plan', 'release',
+  'line', 'deal', 'trip', 'work', 'task', 'job', 'new', 'next', 'big', 'final', 'first', 'call', 'review', 'report',
+  'application', 'app', 'product', 'feature', 'version', 'phase', 'stage', 'one', 'user', 'you', 'self']);
+const WORD_STOP = new Set(['the', 'a', 'an', 'my', 'our', 'your', 'of', 'for', 'to', 'on', 'in', 'at', 'and', 'is', 'are',
+  "we're", 'we', 'i', "i'm", 'by', 'with', 'from', 'actually', 'now', 'moved', 'move']);
+const stemWord = w => w.replace(/(?:ing|ed|es|s)$/, '');
+function subjectWords(s) {
+  return [...new Set(String(s ?? '').toLowerCase().normalize('NFKC').split(/[^\p{L}\p{N}']+/u)
+    .filter(w => w.length > 2 && !WORD_STOP.has(w)).map(stemWord).filter(w => w.length > 2))];
+}
+
+/** Predicates S8 needs in history when a batch carries a resolution status. */
+export const RESOLUTION_HISTORY_PREDICATES = Object.freeze(['blocks', 'blocked_by', 'has_status', 'has_property']);
+
 export function dedupAndDetect(incoming, existing = [], opts = {}) {
   const kept = new Map();
   const corroborations = [];
   const contradictions = [];
   const evidenceAttachments = [];
+  const ambiguousRevisions = [];
 
   // Seed with what is already stored so incoming claims corroborate and
   // contradict against history, not only against each other in this batch.
@@ -210,7 +275,12 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
     const key = exactKey(claim);
     const hit = kept.get(key);
 
-    if (hit && sameClaim(hit.claim, claim)) {
+    // A match on a SUPERSEDED/ARCHIVED claim is a RETURN to an old value
+    // ("Berlin → Paris → back in Berlin"), not corroboration of history:
+    // attaching evidence there left the intermediate value current. It goes
+    // on as a new claim, and contradicts whatever is current now.
+    const hitIsHistory = hit && (hit.claim.state === 'superseded' || hit.claim.state === 'archived');
+    if (hit && !hitIsHistory && sameClaim(hit.claim, claim)) {
       // EXACT MATCH → attach evidence. Not a second row: the same fact said
       // twice is one claim with two sources, and storing it twice would make
       // repetition look like independent corroboration while also inflating
@@ -244,6 +314,125 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
       }
     }
 
+    // SOLE-VALUE REVISION (D6, 2026-10-05). The user presented this claim as a
+    // CHANGE (`revises`, prompt rule 11) of a MANY-valued relation without
+    // naming the old value — "the backend is Rust now". Cardinality cannot say
+    // what it replaces (a project uses Go AND Postgres), so it is decided by the
+    // owner's own history: if the subject holds exactly ONE other current value
+    // for this relation, that is what changed — emitted as a contradiction for
+    // the policy (rule 2) to retire. Two or more → ambiguous: nothing is
+    // retired, the ambiguity is recorded. Single-valued relations never need
+    // this (the snapshot rule already covers them).
+    const functional = opts.functionalPredicates instanceof Set
+      ? opts.functionalPredicates : new Set(opts.functionalPredicates ?? []);
+    if (claim.revises === true && (claim.polarity ?? 'asserted') === 'asserted'
+        && (claim.modality ?? 'fact') === 'fact' && !functional.has(claim.predicate)) {
+      const sig = objectSig(claim);
+      const rivals = [...kept.values()].map(k => k.claim).filter(o => o !== claim && o._persisted
+        && subjectPredicateKey(o) === subjectPredicateKey(claim)
+        && o.state !== 'superseded' && o.state !== 'archived'
+        && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact'
+        && objectSig(o).value !== sig.value);
+      if (rivals.length === 1 && !contradictions.some(c => c.incoming === claim && c.existing === rivals[0])) {
+        contradictions.push({
+          kind: 'revision', reason: `${claim.predicate} revised; ${rivals[0].subject} held one other current value`,
+          incoming: claim, existing: rivals[0], subject: claim.subject, predicate: claim.predicate,
+        });
+      } else if (rivals.length > 1) {
+        ambiguousRevisions.push({ claim, candidates: rivals.length });
+      }
+    }
+
+    // ROLE HANDOVER (2026-10-11). "My biggest client is NOW Sora Studio" is a
+    // related_to claim (prompt rule 13) about a DIFFERENT subject than the one
+    // it replaces, so the subject-keyed rules above never compare the two and
+    // "Kumo Games — biggest client" stayed current forever. The user framed it
+    // as a change (`revises`), so the role moved: decided by the owner's own
+    // history, exactly like a sole-value revision — if exactly ONE other
+    // subject currently holds the same role, that holder is what changed
+    // (emitted for the policy, rule 2, to retire). Two or more → ambiguous,
+    // nothing retired: "my client is now X" does not end every other client.
+    if (claim.revises === true && claim.predicate === 'related_to' && (claim.polarity ?? 'asserted') === 'asserted'
+        && (claim.modality ?? 'fact') === 'fact') {
+      const role = objectSig(claim).value;
+      const holders = [...kept.values()].map(k => k.claim).filter(o => o !== claim && o._persisted
+        && o.predicate === 'related_to' && objectSig(o).value === role
+        && String(o.subject ?? '').toLowerCase() !== String(claim.subject ?? '').toLowerCase()
+        && o.state !== 'superseded' && o.state !== 'archived'
+        && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact');
+      if (holders.length === 1 && !contradictions.some(c => c.incoming === claim && c.existing === holders[0])) {
+        contradictions.push({
+          kind: 'revision', reason: `role "${role}" handed over from ${holders[0].subject} to ${claim.subject}`,
+          incoming: claim, existing: holders[0], subject: claim.subject, predicate: claim.predicate,
+        });
+      } else if (holders.length > 1) {
+        ambiguousRevisions.push({ claim, candidates: holders.length });
+      }
+    }
+
+    // RENAMED SUBJECT (2026-10-11, Pass 2, real-extraction finding). "We're
+    // launching the ceramic planter line on May 4" … "Actually the planter
+    // launch moved to May 18": the second mention minted a NEW subject, so two
+    // current launch dates competed forever. Linked only on supported evidence:
+    // the user framed it as a CHANGE (`revises`) of a SINGLE-valued relation,
+    // the new subject holds no current value of its own, and EVERY word of the
+    // new subject (stemmed) appears in exactly one existing current claim of
+    // that relation — its subject or its own source sentence — with at least
+    // one DISTINCTIVE word ("planter", not "launch"). Two candidates → nothing
+    // retired, recorded as ambiguous. Never a merge by similarity alone.
+    if (claim.revises === true && functional.has(claim.predicate)
+        && (claim.polarity ?? 'asserted') === 'asserted' && (claim.modality ?? 'fact') === 'fact'
+        && !contradictions.some(c => c.incoming === claim)) {
+      const words = subjectWords(claim.subject);
+      const hasOwn = [...kept.values()].some(k => k.claim !== claim && k.claim._persisted
+        && subjectPredicateKey(k.claim) === subjectPredicateKey(claim) && k.claim.state !== 'superseded' && k.claim.state !== 'archived');
+      if (!hasOwn && words.some(w => !GENERIC_WORDS.has(w))) {
+        const cands = [...kept.values()].map(k => k.claim).filter(o => o !== claim && o._persisted
+          && o.predicate === claim.predicate && labelKey(o.subject) !== labelKey(claim.subject)
+          && o.state !== 'superseded' && o.state !== 'archived'
+          && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact'
+          && (() => { const have = new Set([...subjectWords(o.subject), ...subjectWords(o.statementText ?? o.statement ?? '')]); return words.every(w => have.has(w)); })());
+        if (cands.length === 1) {
+          contradictions.push({
+            kind: 'revision', reason: `"${claim.subject}" refers to the subject of "${cands[0].statementText ?? cands[0].subject}" (renamed mention of the same ${claim.predicate})`,
+            incoming: claim, existing: cands[0], subject: claim.subject, predicate: claim.predicate,
+          });
+        } else if (cands.length > 1) {
+          ambiguousRevisions.push({ claim, candidates: cands.length, reason: 'renamed-subject' });
+        }
+      }
+    }
+
+    // BLOCKER RESOLUTION (2026-10-11, Pass 2). "The embassy returned my
+    // passport" / "the firmware bug is fixed now" arrive as a STATUS of the
+    // thing that was blocking, and nothing compared them with the blocker
+    // relation — so the old blocker stayed current and was answered as the
+    // present (Lift v3 failure class). Only an explicit RESOLUTION status
+    // counts (not any positive update), and only claims LINKED to the
+    // resolved thing are retired: X blocks …, … blocked_by X, X's own pending
+    // state, and — when the resolved thing is the blocked TASK itself — its
+    // blockers. Emitted as revisions (rule 2 retires the older claim, kept
+    // as history); nothing else is touched.
+    if (isResolutionStatus(claim)) {
+      const who = labelKey(claim.subject);
+      const linked = [...kept.values()].map(k => k.claim).filter(o => o !== claim && o._persisted
+        && o.state !== 'superseded' && o.state !== 'archived'
+        && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact'
+        && ((o.predicate === 'blocks' && labelKey(o.subject) === who)
+          || (o.predicate === 'blocked_by' && labelKey(o.object?.entity) === who)
+          || (o.predicate === 'blocked_by' && labelKey(o.subject) === who)
+          || (o.predicate === 'blocks' && labelKey(o.object?.entity) === who)
+          || (PENDING_PREDICATES.has(o.predicate) && labelKey(o.subject) === who && isPendingStatus(o))));
+      for (const o of linked) {
+        if (contradictions.some(c => c.incoming === claim && c.existing === o)) continue;
+        contradictions.push({
+          kind: 'revision', reason: `${claim.subject} resolved ("${objectSig(claim).value}") — ${o.predicate} no longer current`,
+          incoming: claim, existing: o, subject: claim.subject, predicate: claim.predicate,
+        });
+      }
+      if (linked.length) claim.revises = true;
+    }
+
     kept.set(key, { claim, evidence: [...(claim.evidence ?? [])], corroborationCount: 1 });
   }
 
@@ -252,6 +441,9 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
     corroborations,
     evidenceAttachments,
     contradictions,
+    // Revisions S8 refused to resolve because more than one current value could
+    // be the one replaced. Nothing was retired for them.
+    ambiguousRevisions,
     stats: {
       incoming: Array.isArray(incoming) ? incoming.length : 0,
       existing: Array.isArray(existing) ? existing.length : 0,

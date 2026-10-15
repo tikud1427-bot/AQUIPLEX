@@ -17,6 +17,9 @@ services:
   db:
     image: pgvector/pgvector:pg16
     container_name: aqua-dev-db
+    # Without this a host or Docker Desktop crash leaves the database down
+    # until someone notices (2026-10-05 → 10-12: five days of ECONNREFUSED).
+    restart: unless-stopped
     environment:
       POSTGRES_USER: aqua
       POSTGRES_PASSWORD: aqua        # local only — production uses DATABASE_URL

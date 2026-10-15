@@ -148,6 +148,15 @@ function Opening() {
       <p className="text-[length:var(--text-lead)] leading-relaxed text-[var(--text)]">
         So — what are you working on at the moment?
       </p>
+      <p className="text-[length:var(--text-body)] leading-relaxed text-[var(--text-secondary)]">
+        {/* Says what to bring and what Aqua cannot see. A new user otherwise
+            guesses — and an assistant that "remembers your work" invites the
+            assumption that it reads your email or repos. It does not. */}
+        The most useful things to tell me: what the project is, who it's for, where it
+        stands, and what you've already decided. You can attach a document too — a
+        deck, a spec, notes. I only know what you tell me or upload here; I don't read
+        your email, chat tools or code hosts.
+      </p>
       <p className="text-[length:var(--text-caption)] text-[var(--text-secondary)]">
         {/* States the cost honestly and up front. "Takes about two minutes" is a
             promise the pipeline now keeps: interview turns skip the

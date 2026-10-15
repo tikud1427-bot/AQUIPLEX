@@ -14,6 +14,7 @@
 
 import { observeSignal, observeSignals } from '../../mind/beliefEngine.js';
 import { getMind } from '../../mind/mindStore.js';
+import { planBridgeSignals } from './claimBeliefBridge.js';
 import { beliefsForClaim, linkBeliefClaim } from '../../core/mind/beliefClaimRepository.js';
 
 const clamp01 = n => Math.max(0, Math.min(1, Number(n) || 0));
@@ -129,7 +130,21 @@ export async function reflectClaimsToBeliefs({
     ? (await import('./reflectionDelta.js')).planReflectionDelta({ claims: affectedClaims, events: reflectionEvents, relationships, beliefValues })
     : planClaimReflection({ claims: affectedClaims, relationships, beliefValues });
 
-  const signals = planned.map(s => ({ ...s, conversationId }));
+  // E9 (2026-10-04): claims with no belief link yet may SEED one through the
+  // curated canonical bridge (claimBeliefBridge.js) — only for their creation
+  // or restatement, never for a lifecycle change (a superseded or contradicted
+  // claim revises an EXISTING linked belief through planReflectionDelta above).
+  const seeding = !reflectionEvents.length
+    || reflectionEvents.every(e => ['created', 'corroborated', 'reasserted'].includes(String(e.eventType)));
+  const bridge = seeding
+    ? planBridgeSignals({
+        claims: affectedClaims,
+        linkedClaimIds: new Set(relationships.map(r => r.claimId)),
+        beliefs: mind.beliefs ?? {},
+      })
+    : { apply: [], linkOnly: [] };
+
+  const signals = [...planned, ...bridge.apply].map(s => ({ ...s, conversationId }));
 
   const touched = signals.length ? apply(mind, signals) : [];
 
@@ -160,9 +175,26 @@ export async function reflectClaimsToBeliefs({
     }
   }
 
+  // Provenance-only links: the belief already holds this claim's value.
+  for (const { signal, belief } of bridge.linkOnly) {
+    if (!belief?.id) continue;
+    try {
+      await writeRelationship({
+        ownerId, beliefId: belief.id, dimension: belief.dimension, beliefKey: belief.key,
+        claimId: signal.claimId, relation: 'supporting', weight: clamp01(signal.strength),
+      });
+      linksWritten += 1;
+    } catch (err) {
+      linksFailed += 1;
+      console.warn(`[REFLECTION] belief-claim link unavailable: ${err?.message ?? err}`);
+    }
+  }
+
   return {
     ok: true,
     ownerId,
+    seeded: bridge.apply.length,
+    linkedExisting: bridge.linkOnly.length,
     claims: affectedClaims.length,
     relationships: relationships.length,
     signals: signals.length,

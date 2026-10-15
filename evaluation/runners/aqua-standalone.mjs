@@ -15,9 +15,10 @@
  *      real shell exports always win; .env only fills the gaps). dotenv is
  *      resolved from the engine's own dependency tree — no new deps.
  *   2. Bare provider keys are aliased into the numbered slots the frozen
- *      engine reads (groq.js: GROQ_API_KEY_1..4, gemini.js: GEMINI_KEY_1..8,
- *      openrouter.js: OPENROUTER_API_KEY_1..4). The root .env carries the
- *      bare spellings (GROQ_API_KEY, GEMINI_API_KEY, OPENROUTER_API_KEY);
+ *      engine reads (groq.js: GROQ_API_KEY_1..5, gemini.js: GEMINI_KEY_1..8,
+ *      openrouter.js: OPENROUTER_API_KEY_1..4, nvidia.js: NVIDIA_API_KEY_1..N).
+ *      The root .env may carry the bare spellings (GROQ_API_KEY,
+ *      GEMINI_API_KEY, OPENROUTER_API_KEY, NVIDIA_API_KEY);
  *      production sets the numbered ones directly. Aliasing is additive and
  *      never overwrites a slot that is already set, so both worlds work.
  *      This mirrors the engine's own KeyPool convention (search/keyPool.js
@@ -65,6 +66,7 @@ const KEY_ALIASES = [
   ["OPENROUTER_API_KEY", "OPENROUTER_API_KEY_1"], // aqua/src/providers/openrouter.js
   ["GEMINI_API_KEY",     "GEMINI_KEY_1"],         // aqua/src/providers/gemini.js (base name differs)
   ["GEMINI_KEY",         "GEMINI_KEY_1"],         // bare engine-style spelling, if ever used
+  ["NVIDIA_API_KEY",     "NVIDIA_API_KEY_1"],     // aqua/src/providers/nvidia.js (also reads the bare name; aliased for a uniform count)
 ];
 for (const [from, to] of KEY_ALIASES) {
   if (process.env[from] && !process.env[to]) process.env[to] = process.env[from];
@@ -105,6 +107,9 @@ const countSlots = (base, n) => {
   for (let i = 1; i <= n; i++) if (process.env[`${base}_${i}`]) c++;
   return c;
 };
+// NVIDIA's pool is open-ended (NVIDIA_API_KEY_1..N): count every non-blank slot.
+const countOpenSlots = (base) =>
+  Object.keys(process.env).filter(k => new RegExp(`^${base}_\\d+$`).test(k) && String(process.env[k]).trim()).length;
 
 const port = Number(process.env.AQEVAL_AQUA_PORT ?? 8877);
 app.listen(port, "127.0.0.1", () => {
@@ -112,9 +117,10 @@ app.listen(port, "127.0.0.1", () => {
   console.log(`  data dir: ${dataDir} (isolated)`);
   console.log(`  env: ${existsSync(envPath) ? envPath : "(shell only)"}`);
   console.log(
-    `  provider keys visible: groq=${countSlots("GROQ_API_KEY", 4)} ` +
+    `  provider keys visible: groq=${countSlots("GROQ_API_KEY", 5)} ` +
     `gemini=${countSlots("GEMINI_KEY", 8)} ` +
-    `openrouter=${countSlots("OPENROUTER_API_KEY", 4)}`
+    `openrouter=${countSlots("OPENROUTER_API_KEY", 4)} ` +
+    `nvidia=${countOpenSlots("NVIDIA_API_KEY")}`
   );
   console.log(
     `  web search: ${allowWeb ? "ALLOWED (AQEVAL_ALLOW_WEB_SEARCH=1)" : "stripped (closed-book)"}` +

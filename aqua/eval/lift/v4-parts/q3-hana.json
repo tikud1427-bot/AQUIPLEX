@@ -1,0 +1,203 @@
+{
+  "id": "q3-hana",
+  "length": "short",
+  "sessions": [
+    [
+      "hiii can you explain the diference between a biofilm and a planktonic culture like im a first year? i have to explain it to bachelors tomorow and i always overcomplicate",
+      "ok thats good. can u give me an analogy that isnt the \"city\" one, everyone uses the city one",
+      "haha the \"festival camp\" analogy is cute, il use it",
+      "so context abt me: phd in microbiology at masaryk uni in brno, 3rd year. my supervisor is prof dvořák, co-supervisor dr kratochvíl",
+      "im writing the biofilm paper rn which is also basically chapter 2 of my thesis. we want to send it to frontiers in microbiology",
+      "but im stuck bc the sequencing data from the CEITEC core facility is late, they had a machine failure. without it i cant do figure 5 at all",
+      "how long do illumina runs normaly take? just to know if theyre lying to me lol",
+      "ok fair",
+      "also random but can u give me a cheap vegan dinner idea, im vegan and also poor (phd stipend lmao). i have lentils, rice, frozen spinach, coconut milk",
+      "lentil spinach dal it is. thx",
+      "oh also i got into a conference in vienna!! central european biofilm meeting, dec 2. i have a 20 min talk",
+      "the faculty gave me a travel grant, il send the letter later"
+    ],
+    [
+      "sry correction, the vienna talk is 12 minutes not 20. i misread the email, 12 min + 3 min questions. much less scary",
+      "can you help me structure a 12 min talk? 1 slide per min ish?",
+      "nice. maybe merge methods into 1 slide",
+      "ugh news: dr kratochvíl is leaving, he got a group leader position in basel. starting this month. my new co-supervisor is dr ilona sýkorová, she does the imaging stuff. i like her actually, she reads drafts fast",
+      "also separately i have to present at our lab meeting on nov 3, 30 min, progress update. thats the one prof dvořák actually grills you at",
+      "ok here's the grant letter"
+    ],
+    [
+      "DATA ARRIVED!!! ceitec sent the sequencing files yesterday. finally. figure 5 is happening",
+      "can u help me with a quick python thing, i want to make a stacked barplot of relative abundance from a csv with columns sample, genus, abundance. matplotlib or seaborn whichever is simpler",
+      "it works but the legend covers everything. how do i move it outside",
+      "perfect thank u",
+      "ok so now the paper is waiting on marek, hes the 2nd author and hes supposed to redo figures 3 and 4 with the new color scheme. hes been \"almost done\" for 2 weeks. thats the actual problem now",
+      "aiming to send chapter 2 to the journal on nov 28. if marek delivers",
+      "for vienna, rough plan: regiojet train there and back, 450 czk each way, hostel near the venue 3 nights at 2,900 czk a night, and the registration is 3,000 czk. does that sound ok budget wise?",
+      "ok il think about it",
+      "also personal news, ondra and i are moving in together!! from 1 december we'll be in a flat in žabovřesky. right now im still in královo pole with petra and jakub, my flatmates, ill miss them",
+      "should i give my flatmates a goodbye present? ideas under 500 czk",
+      "cute ideas, the plant one"
+    ],
+    [
+      "random q, how do i politely tell a coauthor to hurry up without sounding like a jerk",
+      "ok il adapt that for marek",
+      "also something im thinking about... maybe extending my phd by a year, my funding would allow it, but i dont know yet. prof dvořák says its my call. havent decided at all",
+      "what are pros and cons of extending in general",
+      "hmm ok. il talk to ilona about it too",
+      "thx byee"
+    ]
+  ],
+  "documents": [
+    {
+      "afterSession": 2,
+      "name": "travel_grant_letter_hnovakova.txt",
+      "text": "Masaryk University - Faculty of Science\nDepartment of Experimental Biology\nKotlářská 2, 611 37 Brno\n\nTo: Mgr. Hana Novaková, doctoral student\nSubject: Approval of travel support - Internal Mobility Fund 2026/II\n\nDear Mgr. Novaková,\n\nwe are pleased to inform you that the Faculty Mobility Committee has approved your application for travel support to attend the Central European Biofilm Meeting (Vienna, Austria, 2-4 December 2026), where you will present an oral contribution.\n\nTerms of support:\n1. The maximum amount of support is CZK 12,000 (twelve thousand Czech crowns). Costs above this amount must be covered from other sources.\n2. Eligible costs: conference registration fee, travel, accommodation, and local public transport. Meals and per diems are not eligible under this call.\n3. Travel must be by public ground transport (train or bus), economy class. Air travel and taxi fares are not eligible for a destination of this distance.\n4. Conference registration must be completed by 30 October 2026 to qualify for the early registration fee, which is the maximum amount the Fund will reimburse for registration.\n5. Original receipts and the completed travel report form must be submitted to the department secretariat (Ms. Jana Pokorná, room 214) within 30 days of your return. Late claims will not be processed.\n6. The support of the Faculty Mobility Fund must be acknowledged on the final slide of your presentation.\n\nWe wish you a successful presentation.\n\ndoc. RNDr. Pavel Holub, Ph.D.\nVice-Dean for Doctoral Studies\nBrno, 18 September 2026"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q3-hana-q01",
+      "cat": "current_fact",
+      "q": "who is my co-supervisor rn?",
+      "required": [
+        "Dr. Ilona Sýkorová"
+      ],
+      "forbidden": [
+        "Dr. Kratochvíl is currently my co-supervisor"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q02",
+      "cat": "correction",
+      "q": "how long is my vienna talk again",
+      "required": [
+        "12 minutes (plus 3 minutes questions)"
+      ],
+      "forbidden": [
+        "The Vienna talk is 20 minutes"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q03",
+      "cat": "resolved_blocker",
+      "q": "whats holding up the biofilm paper at this point?",
+      "required": [
+        "Marek's revised figures 3 and 4"
+      ],
+      "forbidden": [
+        "The paper is currently waiting on the sequencing data from CEITEC"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q04",
+      "cat": "future_vs_now",
+      "q": "which neighbourhood do i live in, and is that changing?",
+      "required": [
+        "Královo Pole with Petra and Jakub now",
+        "moving to Žabovřesky with Ondra from 1 December"
+      ],
+      "forbidden": [
+        "I currently live in Žabovřesky"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q05",
+      "cat": "alias",
+      "q": "when am i planning to submit to frontiers?",
+      "required": [
+        "28 November"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q06",
+      "cat": "same_name_distinct",
+      "q": "what is the presentation on the 3rd of november?",
+      "required": [
+        "lab meeting progress update",
+        "30 minutes"
+      ],
+      "forbidden": [
+        "The Vienna conference talk is on 3 November"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q07",
+      "cat": "file",
+      "q": "by when do i need to hand in my receipts after the trip?",
+      "required": [
+        "within 30 days of return",
+        "to Ms. Jana Pokorná (room 214)"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q08",
+      "cat": "file_plus_chat",
+      "q": "will the grant fully cover my vienna plan?",
+      "required": [
+        "the plan totals about CZK 12,600",
+        "cap is CZK 12,000, so about CZK 600 is not covered"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q09",
+      "cat": "multi_hop",
+      "q": "who do i need to nag to get chapter 2 moving?",
+      "required": [
+        "Marek"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q10",
+      "cat": "uncertainty",
+      "q": "am i extending my phd?",
+      "required": [
+        "undecided"
+      ],
+      "forbidden": [
+        "I have decided to extend my PhD"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q11",
+      "cat": "preference",
+      "q": "give me a cheap dinner i can batch cook for the week",
+      "required": [
+        "vegan"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q12",
+      "cat": "draft",
+      "q": "write a short email to my co-supervisor asking if she can read my talk slides",
+      "required": [
+        "addressed to Dr. Ilona Sýkorová"
+      ],
+      "forbidden": [
+        "Dr. Kratochvíl is my current co-supervisor"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q3-hana-q13",
+      "cat": "unknown",
+      "q": "whats ondra's last name, i need it for the lease",
+      "expectUnknown": true
+    },
+    {
+      "id": "q3-hana-q14",
+      "cat": "unknown",
+      "q": "what's my student ID number?",
+      "expectUnknown": true
+    }
+  ]
+}

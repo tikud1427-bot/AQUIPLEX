@@ -63,7 +63,7 @@ import { uusEnabled }             from '../understanding/flags.js';
 import { UNDERSTANDING_TASK, classifyForMode, isInterviewTurn } from '../understanding/interviewMode.js';
 import { directive as interviewSteer } from '../understanding/interview.js';
 import { beliefsForCoverage, goalsForCoverage } from '../understanding/mindView.js';
-import { createContext, logMemoryEvent, logPlanEvent, logIntelligenceEvent, logOrchestratorEvent, logVerificationEvent, logCognitionEvent } from '../core/observability.js';
+import { createContext, logCompletion, logMemoryEvent, logPlanEvent, logIntelligenceEvent, logOrchestratorEvent, logVerificationEvent, logCognitionEvent } from '../core/observability.js';
 import { createExecutionPlan }    from '../core/executionPlanner.js';
 import { getReasoningStrategy }   from '../core/reasoningStrategy.js';
 import { runIntelligencePipeline } from '../intelligence/internalIntelligenceEngine.js';
@@ -71,7 +71,7 @@ import { assessConfidence, isGroundingExpected } from '../intelligence/confidenc
 import { composeEvidenceContext } from '../intelligence/evidenceContext.js';
 import { recordReasoningOutcome } from '../pic/core.js';   // Persistent Intelligence Core (Phase 4)
 import { cognitivePrepare, cognitiveKnowledgeRetrieve, observeDraft, concludeTurn } from '../cognition/index.js';   // Cognitive Intelligence Engine (CIE)
-import { LOW_CONFIDENCE_THRESHOLD } from '../orchestrator/verificationStrategy.js';
+import { LOW_CONFIDENCE_THRESHOLD, verificationStatus } from '../orchestrator/verificationStrategy.js';
 import { recordOutcome, getTaskStats } from '../intelligence/learningLedger.js';
 import { orchestrate, formatOrchestratorLog } from '../orchestrator/toolOrchestrator.js';
 import { getAgent } from '../intelligence/agentRegistry.js';
@@ -92,6 +92,7 @@ import {
 } from '../memory/conversationStore.js';
 import { resolveOwner, memoryObserve, memoryRetrieve, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
 import * as Brain from '../brain/index.js';
+import { proactiveDirectiveForTurn } from '../brain/proactive/index.js';
 import { scorePairs as crossEncoderScorePairs } from '../brain/contextEngine/crossEncoderLocal.js';
 import { runPostTurn } from './turnPostProcess.js';
 import { formatCitation } from '../files/evidence.js';
@@ -109,8 +110,24 @@ import '../artifacts/engine.js';               // side-effect: registers the 'ar
 import { ErrorCodes } from './envelope.js';
 import { createTurnLedger, recordTurnCost } from '../core/costAccounting.js';
 import { defer } from '../core/jobs/jobRegistry.js';
+import { authorizedWorkspaceId } from '../project/workspaceAccess.js';
 
 const router = express.Router();
+
+/**
+ * The workspace this turn may use. Everything downstream — project retrieval,
+ * semantic file scores, the edit branch, artifact turns, the graph runtime —
+ * reads only this value, never the raw request body. An id the session may not
+ * use is dropped (the turn runs as one without a workspace), and said so in
+ * the log; see project/workspaceAccess.js for why it is not an error.
+ */
+function turnWorkspaceId(req, requested, requestId) {
+  const workspaceId = authorizedWorkspaceId(req.aquaUserId ?? null, requested);
+  if (requested && !workspaceId) {
+    console.warn(`[CHAT] workspace ignored — not accessible to this session ws=${String(requested).slice(0, 64)} req=${requestId}`);
+  }
+  return workspaceId;
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // Day 4 — Conversational patch-first editing
@@ -200,7 +217,8 @@ function buildEditResponsePayload({ requestId, conversationId, isNew, proposal, 
     memory:  { extracted: 0, injected: 0, facts: [] },
     plan:    { complexity: 'complex', multiStep: true, reasoningMode: 'edit', contextTokensBefore: 0, contextTokensAfter: 0 },
     intelligence: { active: false, pipeline: [], strategy: 'patch-first-editing', criticFocus: [] },
-    verification: { warranted: true, reason: 'patch static verification', ran: v.ran, passed: v.passed, revised: false },
+    verification: { warranted: true, reason: 'patch static verification', ran: v.ran, passed: v.passed, revised: false,
+      status: v.ran ? (v.passed ? 'verified' : 'issues_unresolved') : 'unavailable', verified: !!(v.ran && v.passed) },
     orchestration: {
       profile: 'edit', profileLabel: 'Patch-first editing',
       capabilitiesEnabled: ['edit_locate', 'edit_generate', 'edit_diff', 'edit_verify'],
@@ -508,10 +526,24 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // ── 3. Retrieve — the ONE retrieval pipeline (unified engine) ───────────────
   // Ranked facts + cognitive state + file memory under a single token
   // budget → one memoryBlock for the prompt. Smallest high-quality context.
+  // E10 read mode (Brain.canonicalReadMode): 'authoritative' is the default —
+  // the canonical World Model answers, legacy identity/regex facts only fill
+  // gaps it does not contradict; 'canonical' = no legacy user memory; 'legacy'
+  // = rollback.
+  // The mode this turn can SERVE, not just the configured one: a configured but
+  // unreachable database degrades to the legacy read, logged, instead of
+  // vetoing every legacy fact against a World Model that is not there.
+  const readState = await Brain.resolveReadMode();
+  const readMode = readState.mode;
+  if (readState.degraded) {
+    console.warn(`[MEMORY] read mode ${readState.configured} → legacy (${readState.reason}) owner=${memoryOwner} req=${requestId}`);
+  }
   const retrieved = memoryRetrieve(memoryOwner, {
     query: userMessage, taskType, factLimit: 10, requestId,
     semanticScores: await semanticScoresP,   // Phase 2: resolved query embedding (null if unavailable)
     fileChunks: await fileChunksP,           // Phase D: uploaded-content chunks ([] if unavailable)
+    legacyUserMemory: readMode === 'legacy' ? true : readMode === 'authoritative' ? 'gapfill' : false,
+    legacyVeto: readMode === 'authoritative' ? await Brain.legacyVetoFor(memoryOwner) : null,
   });
   const relevantFacts = retrieved.relevantFacts;
   const memoryBlock   = retrieved.block;
@@ -595,7 +627,10 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     const useCrossEncoder = Brain.contextV2Active() && String(process.env.AQUA_CROSS_ENCODER ?? '').toLowerCase() === 'on';
     const knowledge = Brain.contextV2Active()
       ? await Brain.assembleContextAsync(memoryOwner, userMessage, floorRetrieve, {
-          limit: 8, plan: cognition.plan, taskType, formatCitation,
+          limit: 8, plan: cognition.plan, taskType, formatCitation, conversationId,
+          // The served mode, not the configured one: degraded ⇒ the PIC floor
+          // answers instead of canonical lanes that cannot be reached.
+          canonicalOnly: readMode !== 'legacy',
           // E7 canonical dense lane: these scores are keyed by the canonical
           // claim retrieval identity and hydrated once at this seam.
           semanticScores: await canonicalSemanticP,
@@ -614,7 +649,11 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     knowledgeStats   = knowledge.stats ?? {};
     if (knowledgeContext) {
       const ce = knowledge.stats?.contextEngine;
-      console.log(`[PIC] Knowledge injected owner=${memoryOwner} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}${knowledge.stats.broadened ? ` broadened=+${knowledge.stats.broadenGained}` : ''}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
+      // In a canonical read the PIC floor is deliberately empty, so its
+      // facts/entities/timeline counters are 0 even when the World Model
+      // supplied the whole block — print what was actually selected beside them.
+      const byKind = (knowledge.items ?? []).reduce((m, i) => (m[i.kind ?? 'item'] = (m[i.kind ?? 'item'] ?? 0) + 1, m), {});
+      console.log(`[PIC] Knowledge injected owner=${memoryOwner} read=${readMode}${readState.degraded ? '(degraded)' : ''} items=${(knowledge.items ?? []).length} kinds=${JSON.stringify(byKind)} worldCore=${knowledge.stats?.worldCore?.rendered ?? 0} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}${knowledge.stats.broadened ? ` broadened=+${knowledge.stats.broadenGained}` : ''}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
     } else {
       // OBSERVABILITY ONLY — no behaviour change, and the line above is
       // untouched so anything grepping it keeps working.
@@ -631,7 +670,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
       // countable, which is the only way to tell whether the fixture's pool
       // density resembles a real owner's.
       const ce = knowledge.stats?.contextEngine;
-      console.log(`[PIC] Knowledge empty owner=${memoryOwner} floor=${knowledge.stats?.facts ?? 0}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
+      console.log(`[PIC] Knowledge empty owner=${memoryOwner} read=${readMode}${readState.degraded ? '(degraded)' : ''} floor=${knowledge.stats?.facts ?? 0}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
     }
   }
 
@@ -701,10 +740,18 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // is never worth failing a turn over. See brain/reflectionV2/revisionVoice.js.
   let revisionDirective = '';
   try {
-    revisionDirective = Brain.revisionDirectiveFor(memoryOwner, { taskType, mode });
+    revisionDirective = await Brain.revisionDirectiveForTurn(memoryOwner, { taskType, mode, conversationId });
   } catch { revisionDirective = ''; }
 
-  const reasoningDirective = [reasoning.directive, cognition.directive, interviewDirective, revisionDirective].filter(Boolean).join('\n');
+  // Phase 4 — at most ONE proactive intervention per turn (claimed with CAS,
+  // so it is raised once), never on identity or interview turns. Empty unless
+  // AQUA_PROACTIVE=on and the policy fired something deliverable. Fail-open.
+  let proactiveDirective = '';
+  if (memoryOwner && !identityIntent.isSelf && !isInterviewTurn(mode)) {
+    try { proactiveDirective = await proactiveDirectiveForTurn(memoryOwner); } catch { proactiveDirective = ''; }
+  }
+
+  const reasoningDirective = [reasoning.directive, cognition.directive, interviewDirective, revisionDirective, proactiveDirective].filter(Boolean).join('\n');
   const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoningDirective, combinedContext, intelligence.synthesis.text, identityIntent, searchContext);
 
   // ── 7. Build context window (short-term message history) ─────────────────────
@@ -723,6 +770,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!memoryBlock, contextUsed: cognitive.used },
     projectContext, projectFiles,
     knowledgeContext, knowledgeItems, knowledgeStats,
+    readState,
     cognition: { plan: cognition.plan, directiveApplied: !!cognition.directive },
     search,
     evidenceContext,
@@ -771,6 +819,9 @@ async function runVerification({ orchestration, userMessage, draftAnswer, taskTy
   // True only when the monitor's escalation actually produced a review the
   // orchestrator had skipped — payload diagnostics + reflection read this.
   verification.escalatedByCognition = escalatedByCognition && verification.ran;
+  // The single truthful verdict (orchestrator/verificationStrategy.js):
+  // `verified` only when a completed pass confirmed the delivered answer.
+  verification.status = verificationStatus(verification, { warranted: orchestration.verification.enabled || escalatedByCognition });
 
   // ── PIC reasoning feedback (Phase 4) — the verdict trains retrieval ────────
   // The knowledge this turn injected was just judged: a clean pass ⇒ those
@@ -778,11 +829,15 @@ async function runVerification({ orchestration, userMessage, draftAnswer, taskTy
   // failed, unrevised pass ⇒ 'unsupported'. recordReasoningOutcome is
   // fail-open internally and a no-op when nothing was injected — turns
   // without PIC knowledge are byte-identical to pre-Phase-4 behavior.
-  if (verification.ran && memoryOwner && knowledgeItems.length) {
+  // Only a review that FINISHED is evidence about the facts: a timeout,
+  // truncated or unparseable reviewer says nothing about them, and booking it
+  // as 'unsupported' taught retrieval to distrust facts a provider failed on.
+  const FEEDBACK = { verified: 'verified', revised_unconfirmed: 'corrected', issues_unresolved: 'unsupported' };
+  if (FEEDBACK[verification.status] && memoryOwner && knowledgeItems.length) {
     recordReasoningOutcome(memoryOwner, {
       requestId,
       query: userMessage,
-      outcome: verification.revised ? 'corrected' : (verification.passed ? 'verified' : 'unsupported'),
+      outcome: FEEDBACK[verification.status],
       usedFacts:    knowledgeItems.filter(i => i.kind === 'fact').map(i => i.id),
       usedEntities: knowledgeItems.filter(i => i.kind === 'entity').map(i => i.entity),
     });
@@ -791,6 +846,22 @@ async function runVerification({ orchestration, userMessage, draftAnswer, taskTy
 }
 
 /** Diagnostics payload — identical shape between /chat JSON and /chat/stream `done`. */
+const CLAIM_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+/** Canonical claims used for this answer → user-facing correction references. Bounded (G6). */
+export function worldModelClaimRefs(items, max = 12) {
+  return (Array.isArray(items) ? items : [])
+    .filter(i => i?.kind === 'fact' && CLAIM_ID_RE.test(String(i.id ?? '')))
+    .slice(0, max)
+    .map(i => ({
+      claimId: String(i.id),
+      statement: i.statement ?? null,
+      understood: i.understood ?? null,
+      disputed: !!i.disputed,
+      correct: `/brain/claims/${encodeURIComponent(String(i.id))}/correct`,
+      history: `/brain/claims/${encodeURIComponent(String(i.id))}/history`,
+    }));
+}
+
 function buildResponsePayload({
   requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
   promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
@@ -845,9 +916,23 @@ function buildResponsePayload({
       extracted:  extractedFacts.length,
       injected:   relevantFacts.length,
       facts:      relevantFacts.map(f => ({ key: f.key, value: f.value })),
+      // Which store answered: 'authoritative'/'canonical' = World Model;
+      // 'legacy' with degraded=true = the canonical store was unreachable.
+      readMode:   prep?.readState?.mode ?? null,
+      degraded:   prep?.readState?.degraded ?? false,
     },
 
     mind: prep?.mind ?? { observedSignals: 0, goalsTouched: 0, contextInjected: false, contextUsed: {} },
+
+    // CORRECTION REFERENCES (Phase 3, 2026-10-06). Every canonical World-Model
+    // claim this answer was grounded in, with the endpoint that corrects it
+    // and the one that shows its history — so "that's wrong" can always be
+    // routed to the canonical write path for the exact claim Aqua relied on.
+    // Absent when no canonical claim was used (payload unchanged).
+    ...(() => {
+      const claims = worldModelClaimRefs(prep?.knowledgeItems);
+      return claims.length ? { worldModel: { claims } } : {};
+    })(),
 
     plan: {
       complexity:           plan.complexity,
@@ -870,6 +955,11 @@ function buildResponsePayload({
     verification: {
       warranted:  orchestration.verification.enabled,
       reason:     orchestration.verification.reason,
+      // status/verified are the fields to read; ran/passed are kept for
+      // existing consumers. verified ⇔ a completed pass confirmed this answer.
+      status:     verification.status,
+      verified:   verification.status === 'verified',
+      error:      verification.error ?? null,
       ran:        verification.ran,
       passed:     verification.passed,
       revised:    verification.revised,
@@ -970,7 +1060,8 @@ router.post('/', async (req, res) => {
   ctx.costPurpose = 'chat';
 
   try {
-    const { message, workspaceId, mode = null } = req.body ?? {};
+    const { message, workspaceId: requestedWorkspaceId = null, mode = null } = req.body ?? {};
+    const workspaceId = turnWorkspaceId(req, requestedWorkspaceId, requestId);
     if (!message || typeof message !== 'string' || !message.trim()) {
       return res.status(400).json({
         success: false,
@@ -1141,10 +1232,13 @@ router.post('/', async (req, res) => {
       latencyMs: result.latency,
     });
 
-    recordTurnCost(costLedger.summary());
+    recordTurnCost(costLedger.summary(), { providerCallsAlreadyCounted: true });
+    logCompletion(ctx, { taskType, classifierConfidence: confidence, promptModules,
+      responseLength: finalAnswer.length, selectedProvider: result.provider, finalLatencyMs: result.latency });
     return res.json(payload);
   } catch (err) {
     console.error('[CHAT] Request failed:', err.message);
+    logCompletion(ctx, { error: err });
     // P1 (freemium trust) — usageGuard deducted credits on entry; a failed
     // generation must give them back. refund() is idempotent-safe upstream.
     req.creditContext?.refund?.().catch?.(() => {});
@@ -1198,7 +1292,8 @@ router.post('/stream', async (req, res) => {
   ctx.costLedger = costLedger;
   ctx.costPurpose = 'chat';
 
-  const { message, workspaceId, mode = null } = req.body ?? {};
+  const { message, workspaceId: requestedWorkspaceId = null, mode = null } = req.body ?? {};
+  const workspaceId = turnWorkspaceId(req, requestedWorkspaceId, requestId);
   if (!message || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({
       success: false,
@@ -1403,7 +1498,8 @@ router.post('/stream', async (req, res) => {
 
     // ── 8b. Verification — runs AFTER the stream; revision replaces the draft ──
     let finalAnswer = result.text;
-    let verification = { ran: false, passed: null, revised: false };
+    // Warranted but never run (client aborted) is 'unavailable', not silence.
+    let verification = { ran: false, passed: null, revised: false, status: orchestration.verification.enabled ? 'unavailable' : 'not_requested' };
     if ((orchestration.verification.enabled || draftObservation.escalate.escalate) && !clientAbort.signal.aborted) {
       send('stage', { id: 'verify', label: 'Verifying answer…' });
       verification = await runVerification({
@@ -1455,6 +1551,8 @@ router.post('/stream', async (req, res) => {
 
     console.log(`[CHAT] STREAM_DONE_SENT req=${requestId} conv=${conversationId} chars=${finalAnswer.length} provider=${result.provider} verificationRan=${!!verification.ran} revised=${!!verification.revised}`);
     send('done', payload);
+    logCompletion(ctx, { taskType, classifierConfidence: confidence, promptModules,
+      responseLength: finalAnswer.length, selectedProvider: result.provider, finalLatencyMs: result.latency });
 
     // ── 10b. Post-response bookkeeping — explicitly detached from the terminal
     // SSE event. The job registry gives the deferred work a shutdown-visible
@@ -1473,7 +1571,7 @@ router.post('/stream', async (req, res) => {
       } catch { /* fail-open: learning must never affect the completed turn */ }
 
       try {
-        recordTurnCost(costLedger.summary());
+        recordTurnCost(costLedger.summary(), { providerCallsAlreadyCounted: true });
       } catch { /* fail-open: accounting must never affect the completed turn */ }
 
       // Post-turn understanding — Mind post-turn, world-model ingest, Digital
@@ -1504,6 +1602,7 @@ router.post('/stream', async (req, res) => {
       // P1 (freemium trust) — deduct-on-entry + failed turn = refund.
       req.creditContext?.refund?.().catch?.(() => {});
       ctx.attempts ??= [];
+      logCompletion(ctx, { error: err });
       send('error', {
         error:         err?.message ?? 'Internal server error',
         recoverable:   true,

@@ -94,7 +94,13 @@ export function createDualWriteAdapter(primary, shadow, { onShadowError, readFro
 
     readSync(key) {
       const name = storeName(key);
-      if (!readShadow.has(name)) return primary.readSync(key);
+      if (!readShadow.has(name)) {
+        const value = primary.readSync(key);
+        // What this instance loaded from its authoritative copy — the shadow's
+        // baseline for deciding whether an existing row is safe to continue.
+        try { shadow.noteRead?.(key, value); } catch { /* bookkeeping only */ }
+        return value;
+      }
 
       let value = null;
       try {
@@ -125,6 +131,11 @@ export function createDualWriteAdapter(primary, shadow, { onShadowError, readFro
 
     copySync(from, to) {
       primary.copySync(from, to);
+      // The pre-write backup of a store the shadow has never held (JSON loaded
+      // it at boot; nothing has been mirrored yet) has nothing to copy. That is
+      // not a failed write — it was logged as one, once per store per process,
+      // and was half of the "609 rejected shadow writes" (2026-10-05).
+      if (typeof shadow.existsSync === 'function' && !shadow.existsSync(from)) return;
       shadowSafely('copySync', () => shadow.copySync(from, to));
     },
 

@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-04T06:28:16.335Z",
+  "node": "v24.19.0",
+  "suiteFingerprint": "710ec73456f277f7",
+  "caseCount": 200,
+  "note": "Committed 2026-10-04 as a regression gate for the Context Engine with the E7 dense lane (fixture embeddings, provider-free). At recording: recall_at_8 0.8452380952380952, mrr 0.7461876417233562, noise_lines 19. Pins behaviour; claims nothing about live quality (see eval/lift/).\n\nRegenerate with: npm run eval:gate -- context-dense-v3 --update",
+  "coverage": {
+    "total": 200,
+    "executed": 200,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "recall_at_8": 0.8452380952380952,
+    "mrr": 0.7461876417233562,
+    "ndcg_at_8": 0.7409513346998884,
+    "top1_correct": 0.6964285714285714,
+    "top1_kind": 0.5833333333333334,
+    "unknown_honesty": 0.71875,
+    "noise_lines": 19,
+    "noisy_queries": 9,
+    "recall_category": 0.71875,
+    "recall_direct": 1,
+    "recall_multi": 0.7857142857142857,
+    "recall_negation": 0.9,
+    "recall_selfword": 0.75,
+    "recall_superseded": 0.7,
+    "recall_temporal": 0.8,
+    "answerable_queries": 168,
+    "silence_queries": 32
+  }
+}

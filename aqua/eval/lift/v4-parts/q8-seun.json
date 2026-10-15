@@ -1,0 +1,668 @@
+{
+  "id": "q8-seun",
+  "length": "long",
+  "sessions": [
+    [
+      "hiya. ok let's see if this actually helps. I'm Seun (Oluwaseun but nobody calls me that except my mum when I'm in trouble). Ward sister on a respiratory ward, Ward 12, at Northgate General in Manchester. Also doing a part time MSc in Healthcare Leadership at Pennine Uni because apparently I hate free time",
+      "quick one to start. can you explain the difference between type 1 and type 2 respiratory failure in a way i can use to teach new starters? i always end up drawing the same messy diagram",
+      "yes the \"oxygen problem vs ventilation problem\" framing is good. and the bit about why you don't just blast high flow O2 at a CO2 retainer, the newbies always panic about that. good",
+      "bit about me so you're not lost later. live in Levenshulme with my partner Chidi and our son Tobi who's 4. Tobi has a severe peanut allergy, epipen and everything, so if i ever ask for recipes or snack ideas, NO peanuts, and careful with \"may contain\". that's non negotiable",
+      "also my shifts. i do nights tuesday, wednesday and thursday most weeks. so wednesday, thursday and friday daytime i'm asleep or a zombie. don't ever plan anything for me those mornings. mondays are my best day for anything important",
+      "dissertation stuff later, that's a whole saga. tonight i just need to vent a bit about staffing. we were 3 nurses down last night with 28 beds and two on NIV. how do people do this job for 40 years",
+      "thanks. i know it's not normal, and yeah I'll do the incident report for the staffing. it's just tiring writing the same datix every week",
+      "ok one more teaching thing. what are the main things to check on a patient on NIV in the first hour? i want a little checklist card for the bay",
+      "perfect, the mask fit and leak, sync, ABG at 1 hour, and the \"is the patient actually improving or are we delaying intubation\" question. printing this",
+      "night x"
+    ],
+    [
+      "morning (for me it's evening lol). dissertation time",
+      "so MSc dissertation. my topic is nurse retention in the first two years after qualifying. why newly qualified nurses leave, and what actually makes them stay. we lose so many in year 1-2 on our ward it's heartbreaking. calling it my retention study in my head",
+      "my supervisor is Dr Helen Marsh. she's brilliant but she told me yesterday she's going on sabbatical from October for a year, so someone else will take over supervising me. she doesn't know who yet. typical",
+      "the plan is a mixed methods thing: an online survey for newly qualified nurses in our trust, and then maybe 8-10 interviews. but first i need university ethics approval. i submitted the application 3 weeks ago and it's still with the committee. can't recruit anyone without it",
+      "submission deadline for the dissertation is 15 January. it feels far but it really isn't with nights",
+      "can you explain the difference between a convergent and an explanatory sequential mixed methods design? my methods module was 2 years ago and i've slept since",
+      "ok so explanatory sequential is survey first, then interviews to explain the survey results. that's what i'm doing. good, now i can name it properly",
+      "what's a realistic sample size for the survey? our trust has maybe 300 nurses qualified in the last 2 years",
+      "ok, so aim for a response rate of around 30-40% if i'm lucky, so 90-120 responses would be decent. that's honest. thanks",
+      "right, going to bed. well, getting tobi from nursery first, then bed. the glamour"
+    ],
+    [
+      "hey. work politics today. sorry",
+      "our matron Linda Brooks is retiring at the end of August. she's been matron for the medical division for ever, she's tough but fair, she hired me. the new matron is Femi Balogun, coming from another trust, starts in September. nobody knows anything about him except that he \"loves a spreadsheet\"",
+      "how do i make a good impression on a new matron without being a suck up? i'm hoping to go for band 7 next year",
+      "yeah the \"be the person who brings solutions not just problems\" thing. and i'll invite him to the ward huddle in his first week. that's sensible",
+      "different thing. i'm writing a reflective account for my NMC revalidation and i'm stuck. it's due next month. here's my draft, can you tell me if it's too descriptive and not reflective enough?\n\n\"Reflective account 3. Category: Feedback from a colleague.\nDuring a night shift in April, a newly qualified nurse on my ward, who I will call Nurse A, came to me after a difficult shift and told me that she felt unsupported when she was asked to take a patient with a tracheostomy, which she had never cared for before. She said she did not feel able to say no because the ward was busy and she did not want to look incompetent. I had allocated the patients that night. I apologised and we talked about what had happened. I had assumed she had experience with tracheostomies because she had done a placement on a respiratory ward as a student. I did not check with her. The patient was safe and nothing went wrong, but Nurse A was very anxious all night.\nAfter this conversation I changed how I do allocations. I now ask newly qualified staff what they feel confident with at the start of the shift. I also organised a tracheostomy teaching session for the ward. Five staff attended.\nThis relates to the Code: prioritise people, practise effectively, and promote professionalism and trust.\"",
+      "yeah that makes sense, it's mostly \"what happened\" and not enough \"what did i learn about myself\". the assumption bit is the real learning. i assumed because of a placement. and the fact she didn't feel able to say no, that's about culture, and it's literally my dissertation topic. ok i'll rewrite with that",
+      "can you give me some prompts to get me thinking more reflectively? like questions to answer",
+      "\"what did i feel when she told me\" - honestly, embarrassed and a bit defensive at first. ok, i'll be honest in it. thanks",
+      "ok, quick life question. tobi wants a \"dinosaur party\" for his 5th birthday in january. is it too early to plan in august lol",
+      "yes it is too early. ok. but writing it down anyway. dinosaur party, january, no peanuts, obviously",
+      "night!"
+    ],
+    [
+      "hiya. house stuff. we're doing a loft conversion!! finally. we've got a 3 bed terrace in levenshulme and tobi's room is basically a cupboard, and chidi works from home so he needs an office that isn't the kitchen table",
+      "we're going with Hartley Builds. the owner is Gary Hartley, everyone calls him Gaz. he did our neighbour's loft two doors down and it's lovely. quote is a bit more than the others but he answered every question properly. i'll upload it",
+      "the big hold up right now is the party wall agreement. we share a wall with Mr Kowalski at number 43, lovely old polish man, but he's a bit worried about noise and cracks. we've sent him the party wall notice and he hasn't signed yet. can't start without it",
+      "can you explain in plain english what a party wall agreement actually is and what happens if he doesn't agree? i don't want to fall out with him, he gives tobi sweets (peanut free, i checked lol)",
+      "oh so if he doesn't consent we have to appoint a surveyor, or two, and it costs more. ok. so best to just talk to him nicely and answer his worries. i'll take chidi and some cake round",
+      "gaz said start date would be early november if everything's sorted. he does a 10 week build",
+      "what should we ask gaz before signing? anything people often forget?",
+      "good list. the \"where will the stairs go and how much headroom\" one is important, our neighbour has a weird low bit she bangs her head on. and who handles building control. ok",
+      "we paid the deposit to secure the slot, 10%. i'll upload the quote now so you have the numbers",
+      "thanks. so excited and so scared"
+    ],
+    [
+      "hey. big work news, and it's a bit scary",
+      "Bev, my ward manager, has been offered a 6 month secondment to the trust's patient flow team. she starts it on 1 December. and she asked me to be acting ward manager while she's gone! from 1 december to end of may. obviously Bev's still my manager until then, she's here till the end of november doing handover",
+      "i said yes before my brain caught up. acting band 7. while doing a dissertation and a loft conversion. and my mum is coming from lagos in november. what have i done",
+      "ok you're right, it's good for my band 7 application and it's temporary. and it's an opportunity. breathing",
+      "what does an acting ward manager actually need to sort out in the first few weeks? Bev's going to do a handover but i want my own list",
+      "rotas and annual leave, the budget meeting with finance, the staffing escalation process, safeguarding leads, and who signs what. and get the new matron (Femi) on side early. good list",
+      "and also my dissertation is literally about retention and now i'll be the one responsible for retaining people on my ward. that's either really good or really awkward lol",
+      "ok, also a question about my rota while i'm acting. would i still do nights? probably not, managers mostly do days. hmm. i'll ask bev. my whole life is planned around tue-thu nights",
+      "night xx"
+    ],
+    [
+      "hiya. school applications. tobi starts reception next september (how?? he was a baby 5 minutes ago). applications for manchester close on 15 january. we have to rank schools",
+      "the two we're torn between are Crossacres Primary (10 min walk, good vibes, friends from nursery are going) and St Bridget's CE Primary (15 min drive, better results, smaller classes, but we're not churchgoers enough for their priority criteria probably). chidi likes St Bridget's, i like Crossacres. we have NOT decided",
+      "here's the summary from Crossacres' last inspection report, can you tell me what actually matters in it?\n\n\"Crossacres Primary School - Inspection summary\nWhat is it like to attend this school? Pupils are happy and safe at this school. They are proud of their school and describe it as 'like a big family'. Leaders have high expectations for pupils' behaviour and pupils meet these expectations. Pupils are polite and welcoming to visitors. Bullying is rare, and when it happens, staff deal with it quickly and effectively.\nLeaders have designed an ambitious curriculum that is well sequenced from the early years to Year 6. In most subjects, teachers know what pupils should learn and when. However, in a small number of foundation subjects, such as geography and music, the curriculum is less well developed, and pupils do not build their knowledge as securely as they could.\nReading is a priority. Children in the early years begin learning phonics as soon as they start school. Staff are well trained and deliver the phonics programme consistently. Pupils who fall behind are quickly identified and given effective support to catch up.\nThe early years provision is a strength. Children settle quickly and develop strong relationships with staff. The environment is stimulating and well organised. Children develop their communication and language skills through a rich range of activities and stories.\nPupils with special educational needs and/or disabilities are well supported. Staff adapt their teaching to meet pupils' needs.\nWhat does the school need to do to improve? Leaders should ensure that the curriculum in all foundation subjects is as well developed as it is in English and mathematics, so that pupils build their knowledge securely over time.\"",
+      "ok so for a 4 year old, the early years being a strength and the phonics being solid is what matters most. geography and music being a bit weak is not exactly a dealbreaker for reception lol. good. that's an argument for my side",
+      "what about allergy management? how do i find out how good a school is with severe allergies? that's honestly my biggest worry",
+      "yes, ask to meet the senco or the head, ask about their allergy policy, whether they're nut-free, who's trained on epipens, what happens at lunch and on trips. i'll do that at the open days in november",
+      "still undecided though. chidi and i will argue about this until january probably",
+      "night x"
+    ],
+    [
+      "ETHICS APPROVED!!!! the university committee approved my dissertation ethics application this afternoon. i literally screamed in the car park. i'll upload the letter",
+      "but of course. next hurdle. because i'm recruiting NHS staff, i also need the trust's R&D department to give \"capacity and capability\" confirmation before i can recruit anyone. the R&D contact is Karen Doyle. i sent her everything today. she says it can take \"a few weeks\". so now that's what's holding me up",
+      "honestly i didn't even know this was a separate step until today. is that normal?",
+      "ok so ethics approves the research is ethical, and R&D confirms the trust can host it and has the capacity. two separate things. annoying but makes sense",
+      "my plan for recruitment once R&D says yes: send the survey link through the practice education team's mailing list for newly qualified nurses, and also ask the NQNs on my own ward, Ward 12, we have 6 of them and they're keen, they'd do it straight away",
+      "can you help me draft the invitation email for the survey? short, friendly, explains it's anonymous, takes 10 minutes, and has the link",
+      "good. i'll keep it until R&D confirm. can't send anything yet",
+      "ok bed. i'm so happy. one hurdle down"
+    ],
+    [
+      "hey. the new matron started. Femi Balogun. Linda's officially gone, we did a leaving do with a cake shaped like a stethoscope. Femi sent an intro email to all the ward sisters, here it is, what do you reckon:\n\n\"Dear colleagues,\nI am delighted to be joining Northgate General as Matron for the Medical Division and I wanted to say hello before I start visiting your wards. I have worked in the NHS for 19 years, most recently as Matron for Acute Medicine at a neighbouring trust, and before that as a ward manager on a respiratory unit, so I have a soft spot for chest wards!\nLinda has left very big shoes to fill and I know many of you worked with her for a long time. I will not pretend to be Linda. What I can promise is that I will be visible, I will listen, and I will be honest with you even when the news is not good.\nOver the next month I would like to spend at least one full shift on each ward, including a night shift where possible, so that I can see how things really work rather than how they look in the reports. I would also like to meet each ward sister and ward manager individually for 30 minutes. Please send me two or three things that you are proud of on your ward, and two or three things that keep you awake at night.\nI do love data (I have been warned that my reputation has preceded me), but I believe data is only useful if it helps us ask better questions. I am particularly interested in staffing, retention and patient flow, which I know are on everyone's minds.\nI look forward to meeting you all.\nBest wishes,\nFemi\"",
+      "ok so he's doing a night shift on each ward. i like that. and he's ex-respiratory. and he's interested in retention. that's literally my dissertation. should i mention it in our 1:1?",
+      "yes, briefly, as a \"this is what i'm working on and could be useful for the ward\" not as a sales pitch. good",
+      "the things that keep me awake at night: staffing on nights, the NIV bay being too big for the staff we have, and losing newly qualified nurses in their first year. proud of: our tracheostomy training, our low pressure ulcer rates, and the ward's team spirit. can you help me turn that into a short email reply to him?",
+      "lovely. sent. he replied \"Great list. Looking forward to the night shift on Ward 12.\" eek",
+      "also random but tobi has started saying \"actually\" at the start of every sentence. \"actually mummy, dinosaurs didn't have toothbrushes\". where does he get it from. (chidi. it's chidi)",
+      "night x"
+    ],
+    [
+      "GOOD NEWS. Mr Kowalski signed the party wall agreement! chidi and i went round with a lemon drizzle and spent an hour answering his questions. his main worry was cracks in his kitchen, so gaz agreed to do a photo schedule of his walls before work starts, so if anything happens it's documented. he signed on the spot. so that's sorted",
+      "should we also do the photo schedule of our own house? just in case?",
+      "yeah makes sense, it protects everyone. i'll ask gaz",
+      "now loft decisions. gaz asked if we want the en-suite in the loft. it's an extra £6,500. chidi says yes because \"resale value\", i say we don't have £6,500 lying around after the kitchen fridge died. we haven't decided. gaz needs to know before the plumbing first fix",
+      "can you help me think it through? the loft will be tobi's new room, and chidi's office will be tobi's old room. so the en-suite would be... for a 4 year old? hmm",
+      "ha yes, exactly. a 4 year old with his own en-suite. but in 10 years he'll be 14 and we'll be fighting over the bathroom every morning. ugh. still undecided. i'll sleep on it (during the day, after nights, like a vampire)",
+      "also what blinds go on velux windows? they're on the front slope and get the morning sun, tobi wakes at 5.45 as it is",
+      "blackout blinds from velux themselves, measured for the exact window. ok noted.",
+      "night!"
+    ],
+    [
+      "mum's visit is booked! she's coming from lagos for 3 months to help when i start acting manager. she lands on the 15th of november. chidi's going to pick her up from the airport",
+      "she's already making a list of foodstuff to bring. here's what she sent me, can she bring all of this through UK customs?\n\n\"Things I am bringing for you:\n- 2 bags of garri (white and yellow)\n- 4 tins of palm oil (the big ones)\n- dried crayfish (1 kilo)\n- stockfish (2 big ones)\n- egusi seeds (1 kilo)\n- ogbono (half kilo)\n- suya pepper (yaji) 3 packs\n- dried pepper\n- plantain chips\n- 6 packets of indomie (they have the chicken one in Lagos that you like)\n- bitter leaf (dried)\n- kola nut\n- 2 bottles of zobo concentrate\n- smoked fish (catfish) 4\n- agbalumo (if in season)\n- ankara fabric for you and Tobi\n- herbal tea from Iya Basira\"",
+      "ok so the dried stuff is mostly fine, fish products have rules but dried/smoked fish in reasonable amounts for personal use is usually ok, and she should declare anything she's unsure about. meat and dairy products are the big no. and fresh fruit like agbalumo can be restricted. i'll tell her to skip the agbalumo and declare the fish",
+      "IMPORTANT: the suya pepper. yaji has groundnut (peanut) in it!! it can't come into the house with tobi. i'll tell her no yaji. omg good thing i asked",
+      "she'll be offended. she thinks \"a little bit of yaji never killed anybody\". mum, it literally could",
+      "can you help me write her a message explaining no yaji and no groundnut anything, gently but firmly? she reads english fine but she likes warm messages, a bit of yoruba is nice",
+      "\"Mummy mi\" at the start is perfect lol. and \"e jowo\" (please). she'll still argue but she'll do it",
+      "night x"
+    ],
+    [
+      "two updates on the dissertation. one good, one... a correction on my part",
+      "first. Dr Marsh has started her sabbatical and my new supervisor is Dr Rajiv Patel. he's a health economist, so a bit different, but he's done loads of workforce research. we had our first meeting on teams yesterday, he's very structured, sent me a \"plan to submission\" spreadsheet within an hour",
+      "second, correction: the submission deadline is 25 January, not the 15th like i told you. i'd confused it with tobi's school application deadline (that one IS 15 jan). Dr Patel pointed it out. so dissertation due 25 january 2027",
+      "honestly that 10 days is a gift with everything happening",
+      "he asked me to send him my draft survey questions. can you look at them first? here:\n\n\"Section A - About you\n1. How many months ago did you first register with the NMC? (dropdown 0-24)\n2. What is your current band? (5 / 6 / other)\n3. Which division do you work in? (Medicine / Surgery / Women's & Children's / Critical Care / Other)\n4. Are you considering leaving your current role in the next 12 months? (Yes / No / Not sure)\n\nSection B - Your experience (strongly disagree to strongly agree)\n5. I received a good induction when I started on my ward.\n6. I have a named preceptor who I meet with regularly.\n7. I feel able to say no when I am asked to do something I'm not confident in.\n8. My workload is manageable most of the time.\n9. I feel valued by my ward manager.\n10. I have opportunities for training and development.\n11. I am able to take my breaks on most shifts.\n12. I feel part of a team.\n13. My shift pattern allows me a good work-life balance.\n14. I have been bullied or treated unfairly at work.\n\nSection C - Open questions\n15. What is the main thing that would make you leave?\n16. What is the main thing that makes you stay?\n17. If you could change one thing about your first year as a nurse, what would it be?\"",
+      "good points. Q14 is a double barrelled question, \"bullied OR treated unfairly\", should be split. and Q4 is the main outcome so it should maybe be more detailed, like \"leaving the ward / leaving the trust / leaving nursing\". and add something about pay and cost of living, because that comes up constantly. ok",
+      "and Q7 is my favourite, that's the tracheostomy story from my revalidation. glad it stays",
+      "sending the revised version to Dr Patel tomorrow. well, monday. tomorrow i'm asleep"
+    ],
+    [
+      "ugh. loft problem. the structural engineer, Priya Shah from Shah Structures, came on the 2nd of october and did the survey of the loft and the walls, measured everything, checked the joists. that bit went fine. she sent the calcs to building control",
+      "but building control came back saying the steel beam calculations don't account for the extra load from the dormer on the party wall side, and they want them revised before they'll approve. here's the email gaz forwarded:\n\n\"Dear Mr Hartley,\nRe: 41 Rushford Grove, M19 - Building Notice ref. BN/26/4471 - Loft conversion\nThank you for submitting the structural calculations prepared by Shah Structures (ref. SS-2610-02). Having reviewed the calculations, I am unable to accept them in their current form for the following reasons:\n1. The calculations for steel beam B1 do not appear to include the additional point load from the dormer cheek wall bearing onto the beam at the party wall end. Please provide revised calculations including this load, or confirm the load path if it is carried elsewhere.\n2. The bearing details at the party wall (padstone size and the condition of the existing masonry) are not specified. Please provide details, noting that the party wall is a 9-inch solid brick wall.\n3. Please confirm the fire protection to the steel beams (e.g. intumescent paint or plasterboard encasement) to achieve 30 minutes' fire resistance.\nOnce revised calculations and details are received, I will be happy to review them promptly. Please note that work on the structural elements should not commence until the calculations have been accepted.\nKind regards,\nD. Fletcher\nBuilding Control Surveyor\"",
+      "so basically the beam calc missed a load, and they want padstone details and fire protection. gaz says Priya will revise them \"this week or next\" and it's normal, building control often send things back. but until she revises and they accept, gaz can't start. so the early november start is wobbly now",
+      "is this a big deal or normal? i'm panicking that the beam is \"wrong\"",
+      "ok, normal back and forth, and better they catch it on paper than in my ceiling. breathing. at least the party wall is sorted",
+      "can you help me write a message to gaz asking for a realistic new start date, and whether any of this changes the price? friendly, he's been great",
+      "good. \"no rush on the answer, just want to plan around my mum arriving and my new job in december\". he'll get it",
+      "night"
+    ],
+    [
+      "correction about mum, i'm so disorganised. she lands on the 14th of november, NOT the 15th. the flight leaves lagos on the evening of the 13th and arrives early on the 14th. i was reading the departure date wrong. thank god chidi checked the ticket. it's a saturday so he can pick her up, no problem. i'll upload the itinerary so we have it",
+      "she's flying via amsterdam. is the transfer time enough? she's 67 and she hates rushing",
+      "ok, 2 hours 10 minutes in schiphol is fine if the first flight's on time. and i can book the airport assistance for her, she'd like that even though she'll say she doesn't need it. good idea",
+      "she's staying 3 months. so she'll be here for christmas, tobi's birthday in january, everything. tobi is so excited. he's been telling everyone at nursery \"my grandma is coming on an aeroplane from Nigeria\"",
+      "what should we do to get the house ready for her? the loft work might be starting around then too, which... is going to be loud. she'll love that lol",
+      "yeah, earplugs, a proper comfy room (she'll have tobi's room and tobi will go in with us for a bit, or the sofa bed), and a heater because she'll be freezing in a manchester november. she'll be wearing three wrappers and a coat indoors.",
+      "also she'll need a GP? or can she use ours? she has blood pressure tablets",
+      "ok so as a visitor she can register as a temporary patient for some things, but she should bring enough of her medication for the whole 3 months plus extra, and get travel insurance with medical cover. i'll tell her",
+      "thanks x"
+    ],
+    [
+      "R&D update. still no confirmation from Karen Doyle. she emailed today asking for more stuff. here's her email:\n\n\"Hi Oluwaseun,\nThank you for submitting your documents for the study 'Why do they stay?'. I have now completed the initial review. Before I can issue confirmation of capacity and capability, I need the following:\n1. A copy of the final, approved version of the survey questionnaire (the version in your submission is marked 'draft v1').\n2. Confirmation from the Practice Education team that they agree to circulate the invitation via their mailing list, as described in your recruitment plan.\n3. A signed Organisation Information Document (template attached).\n4. Confirmation that no study activities will take place during your working hours, or, if they will, written agreement from your line manager.\n5. Your GCP (Good Clinical Practice) training certificate, dated within the last 3 years.\nOnce I receive these I will aim to complete the review within 10 working days.\nKind regards,\nKaren Doyle\nResearch Governance Officer, R&D Department\"",
+      "so five things. the survey final version: dr patel needs to approve my revised version first. practice education: i'll email them today. the organisation doc: template, ok. working hours: i'll do it all in my own time, but i'll get Bev to sign something anyway. GCP certificate: i did it in 2022 so it's still in date. phew",
+      "can you help me make a checklist with who i need to chase for each thing? i'm doing nights this week so i need it in one place",
+      "perfect. so the main chase list: dr patel (survey sign off), the practice education lead (mailing list), Bev (working hours letter). and then back to Karen. i'll do the emails on monday",
+      "honestly the R&D thing is now the actual blocker. ethics took 6 weeks and now this. at this rate i'll be collecting data in december. while acting manager. with my mum here. and a builder in my loft",
+      "thank you for the pep talk. ok. one email at a time",
+      "night x"
+    ],
+    [
+      "work thing. our patient leaflet for COPD patients going home is terrible. 8 pages, tiny writing, nobody reads it. i want to rewrite the \"when to get help\" page. here's the current text, can you rewrite it at a reading age of about 9-11 and make it scannable?\n\n\"WHEN TO SEEK MEDICAL ASSISTANCE\nChronic obstructive pulmonary disease (COPD) is a long-term condition characterised by persistent respiratory symptoms and airflow limitation. Patients with COPD may experience exacerbations, which are episodes of acute worsening of respiratory symptoms beyond normal day-to-day variation, requiring a change in medication. It is important that patients are able to recognise the early signs of an exacerbation so that treatment can be commenced promptly, which may reduce the severity of the exacerbation and the likelihood of hospital admission.\nSigns of an exacerbation may include: increased breathlessness compared to your usual level; increased cough; increased production of sputum or a change in the colour of sputum (for example, from white or clear to yellow, green or brown); increased wheeze or chest tightness; fever; reduced exercise tolerance; and increased fatigue.\nIf you experience these symptoms, you should commence your rescue pack medication (if you have been provided with one) in accordance with the instructions given to you by your healthcare professional, and inform your GP or COPD nurse within 24 hours. If you do not have a rescue pack, contact your GP surgery for an urgent appointment.\nYou should call 999 or attend the Emergency Department immediately if you experience any of the following: severe breathlessness that is not relieved by your inhaler and prevents you from speaking in full sentences; chest pain; confusion or drowsiness; blue colouring of the lips or fingertips; or if your oxygen saturation (if you monitor it at home) falls below the level advised by your healthcare professional.\"",
+      "oh that's so much better. the traffic light idea, green = your normal, amber = start rescue pack and call GP/COPD nurse within 24h, red = 999. our patients will actually get that. and \"can't finish a sentence\" instead of \"prevents you from speaking in full sentences\" lol",
+      "can you also make a version for the bit about inhaler technique? just a short \"5 common mistakes\" box",
+      "good. \"breathing out INTO the inhaler\" is the one i see every single day.",
+      "i'll take it to our patient information group. they'll want it in the trust template. but at least the words are right. thank you",
+      "also random - do you know why it's called a \"rescue pack\"? patients always think it's a first aid kit",
+      "lol ok. maybe we call it \"your emergency COPD tablets\" on the leaflet. less confusing",
+      "night!"
+    ],
+    [
+      "parenting help pls. tobi has started having massive meltdowns when it's time to leave nursery. like full floor, screaming, other parents looking. chidi says it's a phase. i'm the one who picks him up on my days off and i'm exhausted",
+      "ok, the transition warnings (\"5 more minutes, then shoes\"), a little job at pickup (carrying the key fob), and not taking it personally. and a snack in the car because a hungry 4 year old is a feral 4 year old. that last one is so true",
+      "snack ideas that are peanut free, not too sugary, easy to keep in the car?",
+      "good list. oatcakes, raisins, cheese cubes (in the cool bag), rice cakes, the little apple pots. and checking labels on the cereal bars, a lot of them \"may contain nuts\". yes i always check",
+      "the nursery (Little Acorns) sent a newsletter today, can you tell me what i actually need to do? i never read these properly:\n\n\"Little Acorns Newsletter - Autumn Term\nDear Parents and Carers, what a busy start to the term! Our Pre-School room (Oak Room) has been learning all about autumn, collecting leaves and conkers on our walks and making beautiful leaf prints.\nDates for your diary:\n- Friday 23 October: Autumn Dress-Up Day. Children are invited to come dressed as anything to do with autumn (leaves, hedgehogs, squirrels, pumpkins...). Voluntary donation of £1 to our chosen charity.\n- Monday 26 - Friday 30 October: Half-term. The nursery remains OPEN for all-year-round places. Term-time-only places do not attend.\n- Thursday 5 November: Bonfire safety week begins. No sparklers or fireworks will be used at nursery.\n- Wednesday 18 November: Parent consultations for Oak Room. Please book a 10-minute slot with your child's key person using the sign-up sheet in the entrance.\n- Friday 11 December: Christmas Nativity (Oak Room) at 10:00am. Costumes provided.\n- Wednesday 16 December: Christmas party. Children may bring a shared snack. PLEASE remember we are a NUT-FREE setting.\nReminders: Please label all clothing, especially coats and wellies. Please make sure your child has a spare set of clothes in their bag. Sun cream season is over but hats and gloves season has begun!\nFunded hours: If your child turns 3 or 4 this term, please check you have reapplied for your funded hours code before the deadline.\nThank you for your continued support,\nThe Little Acorns Team\"",
+      "ok so: dress-up day 23 oct (hedgehog costume, fine), parent consultation on 18 nov - that's a wednesday, after a night shift, ugh, i'll ask chidi to do it or book an afternoon slot, nativity 11 dec at 10am - that's a friday morning, after my thursday night... but that's december, i'll be acting manager on days by then probably. and christmas party nut free, good",
+      "thank you. i'd have missed the consultation sign up",
+      "night x"
+    ],
+    [
+      "dissertation again. dr patel signed off the revised survey (with the split question and the \"leaving nursing vs leaving the trust\" options). so that's one of karen's five things done",
+      "now the interview guide. i'll do 8-10 interviews after the survey. here's my draft, is it too leading?\n\n\"Interview guide - 'Why do they stay?'\nIntroduction: Thank you for agreeing to take part. This interview will take about 45 minutes. There are no right or wrong answers. You can stop at any time. Everything you say will be anonymised.\n1. Can you tell me a bit about your journey into nursing and how you came to work at this trust?\n2. Think back to your first few weeks on your ward. What was that like?\n3. Was there a moment in your first year when you thought about leaving? Can you tell me about it?\n4. Don't you think the staffing levels are the main reason newly qualified nurses leave?\n5. What has made you stay so far?\n6. How supported have you felt by your preceptor and your ward manager?\n7. How do you feel about your workload?\n8. Some people say that the culture on wards makes it hard to speak up. Would you agree?\n9. If you were in charge of the trust, what would you change to help new nurses stay?\n10. Is there anything else you'd like to tell me?\nClosing: Thank you. Remind participant about withdrawal rights and support services.\"",
+      "yep. Q4 is terrible, it's literally putting words in their mouth. and Q8 too, \"would you agree\" is leading. rewrite as open questions. \"what do you think influences whether new nurses stay or leave?\" and \"how easy or difficult is it to speak up on your ward?\" much better",
+      "should i add prompts under each question? dr patel mentioned \"probes\"",
+      "yes, probes like \"can you give me an example?\", \"how did that make you feel?\", \"what happened next?\". ok, i'll add a couple under each",
+      "also: should i interview people i know? the hospital isn't that big, i probably know half of them by sight",
+      "hmm ok, the ethics conditions are strict about my own ward and people i manage, so not them at all. people from other wards that i just know by sight are probably ok, as long as it's through the neutral recruitment. i'll double check with dr patel",
+      "night!"
+    ],
+    [
+      "loft update, sort of. gaz sent a long whatsapp, here it is:\n\n\"Hiya Seun, quick update on yours. Priya's revising the calcs for the beam, she's added the dormer cheek load and she's doing the padstone detail this week, she reckons she'll have it back to building control by end of next week. Fire protection we'll do with 2 layers of fireline board, standard, no extra cost to you. Once Fletcher at building control accepts it we're good to go. Realistically I'm pencilling you in for scaffolding on Monday 16th Nov, but that's only if the calcs are accepted in time, if not it'll be the week after. Price stays the same, this is on us not you. I know your mum's arriving that weekend so we'll keep the noise down the first couple of days while she settles in, no angle grinders before 9 promise. Also need your decision on the en-suite before first fix, so no rush but in the next few weeks ideally. Any questions just shout. Gaz\"",
+      "so: still waiting on priya's revised calcs and building control. scaffolding maybe 16 november, maybe the week after. price doesn't change. he's a good one, gaz",
+      "mum arrives the 14th and scaffolding goes up the 16th. welcome to england mummy, here's some scaffolding lol",
+      "and the en-suite. still haven't decided. chidi made a spreadsheet. i made a face. we'll decide this month",
+      "should i give the builders tea? is that still a thing? my neighbour says you have to",
+      "lol yes it's still a thing. tea, biscuits, and a loo they can use. ok. i'll buy a big tin of biscuits. peanut free ones, obviously, in case tobi gets into them",
+      "thanks x"
+    ],
+    [
+      "band 7 application prep. there will probably be a permanent band 7 post on our division next spring and i want to be ready. i've drafted a personal statement. it's too long and a bit boring, can you help?\n\n\"I am a Band 6 Ward Sister with 11 years of nursing experience, the last 5 of which have been on Ward 12, a 28-bed respiratory ward at Northgate General Hospital. I qualified in 2015 from the University of Salford and started my career on an acute medical unit before moving to respiratory in 2018. I was promoted to Band 6 in 2021.\nIn my current role I am responsible for the day-to-day management of the ward in the absence of the ward manager, including staffing, bed management and patient safety. I regularly take charge of the ward on day and night shifts. I lead on tracheostomy care for the ward and have developed a teaching programme which has trained 24 members of staff over the past two years. I am also the ward's link nurse for non-invasive ventilation.\nI am passionate about supporting newly qualified nurses. I have been a preceptor for 9 newly qualified nurses and I am currently undertaking an MSc in Healthcare Leadership at Pennine University, with a dissertation focusing on the retention of newly qualified nurses. I have changed the way allocations are done on my ward so that newly qualified nurses are asked about their confidence at the start of each shift.\nI have experience of managing complaints, investigating incidents and implementing learning. I led the investigation into a pressure ulcer incident in 2024 and introduced a new skin bundle which has contributed to a reduction of pressure ulcers on the ward by 40% over 12 months.\nI am a good communicator and I work well in a team. I am organised and I am able to prioritise. I am calm under pressure.\nI believe I have the skills and experience to be a successful Band 7 ward manager and I would welcome the opportunity to lead the team on a permanent basis.\"",
+      "yes, that \"i am a good communicator, i work well in a team\" paragraph is pure filler, cut it. and lead with impact, the 40% pressure ulcer reduction and the 24 trained in trach care, not my qualification year. and from december i'll have acting ward manager experience, i should add that later when it's real",
+      "can you rewrite it in about 300 words? keep it in first person, confident but not arrogant",
+      "oh that's good. \"I lead from the bay, not the office\" - that's actually true and it's me. keeping that line",
+      "interview questions they'll probably ask for band 7?",
+      "good list. \"tell us about a time you managed poor performance\" - i have an example but it's sensitive, i'll anonymise it. and \"how would you manage a budget overspend\" - that's my weak spot. i'll ask bev to show me the ward budget before she goes",
+      "night x"
+    ],
+    [
+      "cooking!! tobi's nursery christmas party is a shared snack thing and i want to bring jollof rice in little cups. my aunty's recipe is legendary. here it is as she texted it to me (she doesn't do measurements):\n\n\"Jollof the way your grandma did it:\nBlend 6 big red bell pepper (tatashe), 4 tomatoes, 2 onions, 2 scotch bonnet (ata rodo) - reduce the scotch bonnet if you are cooking for oyinbo or children!\nFry the blended pepper in plenty vegetable oil, not small oil, until it is fried well and the oil is coming on top, maybe 30 min, don't rush it or the jollof will taste sour.\nAdd tomato paste (one small tin) fry it with the pepper well.\nAdd curry powder, thyme, 2 maggi, salt, bay leaves (3 or 4), a little white pepper.\nAdd chicken stock, the stock from when you boiled your chicken.\nWash your rice (long grain parboiled, not basmati, don't let me catch you using basmati) and put it in, the stock should just cover the rice.\nCover with foil and then the pot cover, low heat, let it steam. Don't stir too much.\nWhen it is almost done, increase the heat small so it burns small at the bottom - that is the party jollof smoke flavour.\nAdd butter and sliced onion at the end and cover again for 5 minutes.\"",
+      "lol \"don't let me catch you using basmati\". ok so for nursery kids, reduce the scotch bonnet to basically half of one, or none. and is there anything in here that could have nuts? maggi cubes, curry powder?",
+      "ok so stock cubes and curry powders usually don't have peanuts but some spice blends are made in factories with nuts, so check the labels. and the vegetable oil - make sure it's not groundnut oil! a lot of nigerian cooking uses groundnut oil. i use sunflower anyway. good shout",
+      "quantities for about 20 small cups?",
+      "perfect, 3 cups of rice is enough. i'll make it the night before. it's even better the next day anyway",
+      "also, for my mum's arrival, i want to make her a proper meal on the saturday she lands. she'll be tired and cold. pepper soup? efo riro? what's comforting after a long flight?",
+      "yes, pepper soup with goat meat, she'll cry. and some white rice. done. and absolutely no groundnut soup this visit, she'll have to survive lol",
+      "thanks!"
+    ],
+    [
+      "teaching session request. i'm doing a 20 minute teaching session for our new HCAs and newly qualified nurses on oxygen prescribing and target saturations. here's the bit from our trust policy, can you turn it into 5 key messages for a slide?\n\n\"Oxygen is a drug and must be prescribed on the drug chart or electronic prescribing system, with a target saturation range, except in emergency situations where oxygen should be started immediately and prescribed as soon as possible afterwards. For most acutely ill patients, the target saturation range is 94-98%. For patients at risk of hypercapnic respiratory failure, including those with moderate or severe COPD, morbid obesity, chest wall deformities, neuromuscular disorders, or a history of previous hypercapnic respiratory failure, the target range is 88-92% unless otherwise specified by a senior clinician following blood gas analysis. Patients should not receive oxygen if their saturations are within or above their target range. Oxygen saturation should be monitored and documented at least four-hourly for all patients receiving oxygen, and more frequently in acutely unwell patients or following any change to oxygen therapy. Any patient whose oxygen requirement increases, or who requires an FiO2 of 40% or more (or flow rates above 6 litres per minute via nasal cannulae or above 15 litres via non-rebreathe mask) to maintain target saturations, must be reviewed urgently by a doctor. Staff should be aware that high oxygen saturations can mask deterioration, and a rising oxygen requirement is a sign of clinical deterioration even if saturations are maintained. When weaning oxygen, it should be reduced in steps, and discontinued once the patient has been stable within the target range on room air or minimal oxygen. Humidification should be considered for patients requiring high flow rates for more than 24 hours or those with tracheostomies.\"",
+      "yes! \"oxygen is a drug\", \"know your patient's target - 94-98 or 88-92\", \"rising oxygen need = deterioration even if sats look fine\", \"escalate at 40% or more\", \"don't give oxygen if sats are already in range\". those are the 5. perfect",
+      "can you give me a quick quiz scenario at the end? like 3 patients, and they say which target range",
+      "love it. the morbidly obese patient with no COPD trips everyone up. good",
+      "and a little \"myth or fact\" game? new starters love that",
+      "\"oxygen is harmless so more is better - MYTH\". \"a patient with sats of 99% on 4 litres is stable - MYTH, they may be over-oxygenated and masking deterioration\". great",
+      "thanks, session sorted!"
+    ],
+    [
+      "money talk, sorry. i need to sort a rough budget for the next 3 months. mum's visit, christmas, the loft payments. here's what i've got:\n\n- loft: deposit already paid. next payment when the steels are in (whenever that is now...). then others later\n- mum's visit: extra food maybe £60/week, heating up (she will crank it), trips out (the lakes? blackpool lights?), maybe £600 total extra\n- christmas: presents for tobi, chidi, mum, chidi's family in london, maybe £500\n- tobi's birthday party in january (dinosaur!): venue + food, maybe £250\n- school uniform etc next year, not yet\n- my MSc fees: final instalment £1,150 due in january\n- car MOT and service due december, maybe £300\n- the en-suite if we say yes: £6,500 (!!!)\n- council tax and bills as normal",
+      "ok so without the en-suite it's tight but doable. with the en-suite we'd need to dip into savings or put it on a 0% card. hmm. that's actually a useful way to look at it for the en-suite decision. still not decided though",
+      "i didn't put the actual loft stage amounts in, they're on gaz's quote. remind me later",
+      "how do people do christmas cheaper? we always overspend",
+      "\"secret santa for the adults on chidi's side\" is a great idea, his family is huge. and a budget per child. ok. chidi's mum will protest but she'll come round",
+      "thanks x"
+    ],
+    [
+      "stats help. i'm doing a little pilot of my survey with 10 colleagues from another hospital (not my trust, so it doesn't need R&D, dr patel said that's fine as long as it's just testing the questions, no data used in the dissertation). here's the pilot data for 3 questions, just to practice how i'll analyse it:\n\nQ: \"I feel able to say no when asked to do something I'm not confident in\" (1=strongly disagree, 5=strongly agree)\nResponses: 2, 1, 3, 2, 4, 2, 1, 3, 2, 5\nQ: \"My workload is manageable most of the time\"\nResponses: 2, 2, 1, 3, 2, 1, 2, 3, 1, 2\nQ: \"I feel part of a team\"\nResponses: 4, 5, 4, 3, 5, 4, 4, 5, 3, 4\n\nand the \"considering leaving\" question: yes 4, no 3, not sure 3",
+      "ok so for likert data i should report median and the distribution (like % agree) rather than mean, because it's ordinal. medians: 2, 2, 4. so people feel part of a team but can't say no and the workload isn't manageable. that's... exactly what i expected, and also sad",
+      "for the real survey, how would i test if \"feeling able to say no\" is related to \"considering leaving\"?",
+      "chi-square if i group the answers into agree/neutral/disagree, or a mann-whitney u / kruskal-wallis comparing the likert scores across the leaving groups. and with my sample size, keep it simple. dr patel will love this, he's a numbers person",
+      "what software? the uni has spss. i've never used it",
+      "ok, spss is fine and there are loads of youtube tutorials. or jamovi which is free and easier. i'll try jamovi first",
+      "pilot also showed people found question 3 confusing (the division one, because some wards are in two divisions). i'll add a \"not sure\" option",
+      "night!"
+    ],
+    [
+      "need advice for a colleague, not me. one of my band 5s (i'll call her J) wants to raise a formal grievance about a doctor who keeps speaking to her rudely in front of patients. she asked me to look at her letter before she sends it. i'm her ward sister so i want to support her but also stay fair. here it is:\n\n\"To whom it may concern,\nI am writing to raise a formal grievance about the behaviour of Dr X, a registrar in the respiratory team, towards me over the past three months.\nOn 14 July, during the morning ward round, I raised a concern about a patient's rising oxygen requirement. Dr X said loudly in front of the patient and his family, 'Can you let me do my job? I don't need a nurse telling me how to read a chart.' The patient's daughter later asked me if I was alright.\nOn 2 August, I bleeped Dr X at 03:00 about a patient with a NEWS score of 7. When he arrived he said, 'This had better be worth waking me up for,' and later, 'You lot panic about everything.' The patient was transferred to HDU later that night.\nOn 29 August, in the nurses' station, Dr X rolled his eyes and walked away while I was handing over a patient, and said to the F1 'Don't bother listening to her.'\nThese incidents have made me anxious about escalating concerns to Dr X, which I believe is a patient safety issue. I have spoken to my ward sister informally about the first two incidents. I would like the trust to investigate Dr X's behaviour and to take appropriate action so that I and other nurses can escalate concerns without fear.\nYours sincerely,\nJ\"",
+      "ok so it's actually a strong letter. dates, specific quotes, impact on her, and the patient safety angle. you suggest she adds what outcome she wants more specifically (an apology? mediation? a formal investigation?) and that she keeps a copy of any datix she submitted. good",
+      "should i be involved? as her line manager i might have to be part of the process",
+      "right. i support her, i give a statement about what she told me informally, but i don't investigate it myself. and i point her to the freedom to speak up guardian and her union rep. ok. that's clear",
+      "it's so sad that this is literally one of the reasons new nurses leave. it's in my dissertation lit review. \"incivility from medical colleagues\".",
+      "also what's the difference between a grievance and a datix? she asked",
+      "ok, datix is an incident report about an event (for learning and safety), grievance is a formal HR complaint about how you've been treated. she can do both. thanks",
+      "night x"
+    ],
+    [
+      "tobi's dinosaur party!! ok i know it's january but places book up. he turns 5 on the 23rd of january (a saturday, perfect). options i found:\n\n1. Dino Discovery soft play, Stockport - party package £14 per child, min 10 kids, 1h play + 30 min food room, food included (sandwiches, crisps, fruit), they say they can do allergy-friendly but \"can't guarantee nut-free kitchen\".\n2. Manchester Museum - they have a dinosaur gallery but no party packages; we'd just visit with family.\n3. Church hall in Levenshulme - £60 for 3 hours, we bring everything. Hire a \"dinosaur entertainer\" (someone in a T-rex costume with games) for £180.\n4. Trampoline park - £16 per child, no dinosaurs at all, tobi will cry.",
+      "the soft play \"can't guarantee nut-free kitchen\" is a no for me. not with tobi's allergy. the church hall + T-rex entertainer is perfect actually because i control the food. and mum will be here to help cook!",
+      "dino food ideas, peanut free, for 15 kids?",
+      "\"dino eggs\" (boiled eggs), \"volcano\" jollof (lol yes), \"fossil\" cookies with plastic dinosaurs pressed in, veggie \"swamp\" with dip, fruit \"dino teeth\". and i'll make everything myself so i know what's in it",
+      "and party bags. not plastic junk. ideas under £3 each?",
+      "dinosaur colouring book + crayons + a dino sticker sheet. and a homemade \"fossil\" from salt dough. mum can help with that. she'll love making salt dough fossils with tobi, she's a primary teacher, retired",
+      "oh wait, i should check, mum's still here on the 23rd of jan right? she goes back in february. yes.",
+      "thanks!! booking the church hall tomorrow"
+    ],
+    [
+      "sleep question. i've been doing nights for years and i still sleep terribly on my days. 4 hours if i'm lucky. my friend sent this article, is any of it useful?\n\n\"Surviving the Night Shift: Evidence-Based Sleep Strategies for Shift Workers\nShift work disrupts the body's circadian rhythm, the internal clock that regulates sleep, alertness, hormone release and body temperature. Night workers are often trying to sleep at a time when their body is primed to be awake, which leads to shorter, lighter sleep.\nLight management is one of the most powerful tools. Bright light exposure during the first half of the night shift can increase alertness. Conversely, avoiding bright light on the commute home - by wearing sunglasses, for example - can help the body prepare for sleep. The bedroom should be completely dark, using blackout blinds or an eye mask.\nAnchor sleep: some research suggests that keeping a consistent 'anchor' period of sleep (for example, from 9am to 1pm) on both work days and days off can help stabilise the circadian rhythm.\nPre-shift nap: a nap of 60-90 minutes before a night shift can reduce sleepiness during the shift. Short naps of 20 minutes during breaks can also help, if permitted.\nCaffeine: caffeine can improve alertness, but should be avoided in the last 4-6 hours before planned sleep. Many night workers drink coffee late in their shift, which then impairs daytime sleep.\nFood: large, heavy meals during the night can cause indigestion and drowsiness. Smaller meals and snacks are recommended, with a light meal before daytime sleep.\nNoise: use earplugs or white noise, inform household members of sleep times, and put the phone on 'do not disturb'.\nTransitioning back: after a run of nights, a short sleep in the morning (2-3 hours) followed by staying awake until a normal bedtime can help reset to a day schedule.\nLong-term health: chronic shift work is associated with increased risk of cardiovascular disease, metabolic problems and mood disorders. Regular health checks, physical activity and social support are important.\"",
+      "ok, the useful bits for me: sunglasses on the drive home (i do NOT do this, the sun blasts me at 8am), caffeine cut off at 3am not 6am (i drink a coffee at 6am, oops), and the \"anchor sleep\" thing. and the short morning sleep after my last night instead of sleeping all day friday. that's actually what ruins my friday nights",
+      "the noise one... soon there will be builders in my loft. while i sleep. after nights. this is going to be a disaster",
+      "yeah, earplugs + white noise + sleeping in the back bedroom furthest from the loft stairs. and tell gaz my night pattern so the noisy stuff (steels!!) happens on mon/tue if possible. good idea, i'll message him",
+      "and from december i'll probably be on days as acting manager so that solves it, kind of. the irony",
+      "thanks x"
+    ],
+    [
+      "planning things to do with mum while she's here. she's never been to the UK in winter. she wants to see \"the christmas lights\" and \"snow\" (no promises in manchester). ideas within 2 hours of manchester, easy for a 67 year old who doesn't like long walks?",
+      "ooh the blackpool illuminations - they run until early january usually? and chester for the christmas market and the old streets. and the lake district maybe a gentle boat trip on windermere if the weather's ok. york is a bit far but doable by train",
+      "here are two coach tour options i found for the lakes, which is better for her?\n\n\"Option A: 'Lakes & Christmas Lights' day trip. Depart Manchester Piccadilly 08:00. Visit Bowness-on-Windermere with 1 hour free time, 45-minute lake cruise on Windermere (included), lunch stop in Grasmere (own expense, visit the famous gingerbread shop), photo stop at Ambleside. Return via Kendal for the Christmas lights. Arrive back 19:30. £49 per person. Walking: minimal, mostly flat. Coach has toilet.\nOption B: 'Wordsworth Country Explorer'. Depart Manchester 07:30. Guided walk (2.5 miles, some uneven paths and hills) around Rydal Water and Grasmere, visit Dove Cottage (entry included), afternoon at Keswick with optional walk to Castlerigg Stone Circle (1.5 miles uphill). Return 20:00. £65 per person. Moderate fitness required.\"",
+      "option A obviously. boat, gingerbread, christmas lights, flat walking, toilet on the coach. mum will be in heaven. B would kill her lol",
+      "should we do it on a weekday or weekend? and i need to think about my shifts. hmm. after december i'm on days mon-fri probably. so a saturday",
+      "saturday 5th december maybe? or 12th. i'll check with chidi. tobi can come too, he's free on coaches under 5? he'll be 4 still, so yes",
+      "thank you!"
+    ],
+    [
+      "lit review help. here's a paragraph from my dissertation lit review, dr patel says it's \"descriptive rather than critical\". what does he mean, and how do i fix it?\n\n\"Many studies have examined the reasons why newly qualified nurses leave their jobs. Smith et al. (2019) conducted a survey of 450 newly qualified nurses in England and found that 38% were considering leaving within the first year, with the main reasons being workload, lack of support and poor staffing. Jones and Ahmed (2021) carried out interviews with 22 nurses and found that a lack of preceptorship and feeling unable to speak up were important factors. Brown (2020) found that newly qualified nurses who had a structured preceptorship programme were more likely to stay. Williams et al. (2022) conducted a systematic review of 31 studies and found that the most common factors associated with leaving were workload, ward culture, and the gap between expectations and reality, sometimes called 'reality shock'. Patel and O'Connor (2023) found that pay was a less important factor than expected in their study of 300 nurses in Scotland, but this was before the cost of living crisis. Overall, these studies show that newly qualified nurses leave because of workload, lack of support, culture and reality shock.\"",
+      "ok so it's a list: \"X found this, Y found that\". critical means comparing and evaluating: where do studies agree, where do they disagree, what are the strengths and weaknesses of the methods, and what's missing. like \"Smith's large survey shows the scale but can't explain why; Jones and Ahmed's interviews add depth but with 22 participants from one trust...\". and the Patel and O'Connor point about pay before the cost of living crisis is actually a gap i can use!",
+      "can you rewrite it in a critical way as an example? i'll then write mine in my own words, i'm not copying, promise",
+      "oh that's so much better. \"Taken together, these studies converge on workload and support, but differ in the weight they give to pay, a discrepancy that may reflect the timing of data collection relative to the cost-of-living crisis.\" that's the kind of sentence dr patel wants",
+      "and the gap: few studies look at what makes nurses STAY rather than leave. that's literally my title. \"why do they stay?\". ok i feel smarter",
+      "night!"
+    ],
+    [
+      "quick R&D update. practice education agreed to circulate the survey on their mailing list. Bev signed the letter saying i'll do all study activities outside my working hours. dr patel's sign-off on the survey went to Karen too. so all 5 things are with her. now just waiting for her review, \"up to 10 working days\". so still waiting on R&D. can't send the survey yet",
+      "also Femi did his night shift on Ward 12 last night! he was great, actually rolled his sleeves up, helped with turns at 4am, and asked loads of questions about the NIV bay. at 6am he said \"you need another nurse on nights for that bay, I'll take it to the staffing review\". i nearly cried",
+      "and he asked about my dissertation and said to send him the results when i have them. that's a good sign for band 7 right?",
+      "yes ok, don't get ahead of myself. but nice",
+      "going to sleep for 4 hours and then nativity costume shopping (no, tobi is a sheep, apparently the most important role)"
+    ],
+    [
+      "acting manager prep. Bev sent me the trust's e-rostering rules so i can do the rota from december. it's dense, can you pull out the rules i actually need to remember?\n\n\"E-ROSTERING POLICY - KEY RULES FOR ROSTER CREATORS\n1. Rosters must be approved and published at least 6 weeks before the first shift of the roster period. Late publication must be reported to the Matron.\n2. Each roster must meet the agreed establishment and skill mix for each shift, including a nurse in charge (Band 6 or above, or a Band 5 with completed nurse-in-charge competencies) on every shift.\n3. Staff requests: each member of staff may submit up to 4 requests per 4-week roster period. Requests are not guaranteed. Requests should be distributed fairly, and the roster creator should keep a record of requests granted and declined.\n4. Annual leave: no more than 15% of the ward's whole-time-equivalent staff should be on annual leave at the same time, except in agreed circumstances. Leave over Christmas and New Year must be allocated fairly, normally on a rotating basis year to year.\n5. Working Time: staff must not be rostered for more than 48 hours per week averaged over 17 weeks unless they have signed an opt-out. There must be at least 11 hours' rest between shifts. Staff must not be rostered for more than 3 consecutive 12.5-hour night shifts without prior agreement.\n6. Night shifts: rostered nights should be distributed fairly among staff who work nights. Staff with flexible working agreements that exclude nights must not be rostered nights.\n7. Bank and agency: unfilled shifts must be sent to the bank at least 2 weeks in advance. Agency use requires Matron approval and, outside hours, approval from the site manager.\n8. Changes: after publication, changes require the agreement of the staff member affected and must be recorded in the system with a reason.\n9. Unused hours: the roster creator must monitor unused contracted hours and ensure they are used within the roster period where possible.\n10. Audit: roster KPIs (publication timeliness, requests granted, unused hours, bank/agency use) are reported monthly to the divisional management team.\"",
+      "ok so the big ones for me: publish 6 weeks ahead (so the december rota... Bev's doing it, phew, but january's is mine and it has to be out by mid-november, while mum's arriving and scaffolding goes up lol), max 4 requests each, christmas fairly rotated, 11 hours rest, max 3 nights in a row, and send gaps to bank 2 weeks ahead",
+      "the christmas rota is going to be my first big fight isn't it",
+      "yeah, check last year's record of who worked christmas day and new year, and rotate. and be transparent about it. ok. Bev kept a spreadsheet, thank god",
+      "can you make me a one page \"rota rules\" cheat sheet from this?",
+      "perfect. laminating it",
+      "night x"
+    ],
+    [
+      "car stuff. took the car for its MOT early because a warning light came on. passed but they gave advisories. here's what they wrote, are any of these urgent?\n\n\"MOT result: PASS\nAdvisories (monitor and repair if necessary):\n- Nearside front tyre worn close to legal limit (2.0mm)\n- Offside rear brake disc worn, pitted and scored, not seriously weakening\n- Front suspension arm lower ball joint has slight play\n- Exhaust has a minor leak of exhaust gases (rear silencer)\n- Oil leak, but not excessive (engine)\nGarage notes: Recommend replacing NSF tyre soon (approx. £85 fitted). Rear brake discs and pads recommended within 3 months (approx. £210). Ball joint to be monitored, recheck at next service. Exhaust repair approx. £140 when convenient. Oil leak - sump gasket suspected, monitor oil level weekly.\"",
+      "ok so the tyre is the most urgent, 2mm is close to the 1.6 legal limit and winter is coming. then brakes within 3 months. the rest monitor. i'll do the tyre this week",
+      "mum's going to be in this car with tobi a lot. i'll do the brakes before christmas too then. so that's about £300 total. lucky i put £300 for car stuff in the budget lol",
+      "how do i check the oil level? embarrassing to ask but chidi always does it",
+      "ok, engine cold, car on flat ground, pull dipstick, wipe, put back in, pull again, should be between min and max. i can do that. independent woman",
+      "thanks!"
+    ],
+    [
+      "chidi asked me to proofread his abstract for a tech conference. i don't understand half of it lol but i can check the english. here:\n\n\"Title: Graceful Degradation: Designing Healthcare Scheduling Systems That Fail Safely\nAbstract: Healthcare scheduling systems, from outpatient booking to staff rostering, are increasingly critical infrastructure, yet they are often designed with the assumption of constant availability. When these systems fail, as all systems eventually do, the consequences range from inconvenience to genuine clinical risk. In this talk, I will draw on three years of experience building a rostering platform used by NHS trusts to explore how to design for graceful degradation. Topics will include offline-first architectures that allow ward staff to view and amend rotas during outages, conflict-free replicated data types (CRDTs) for reconciling changes made offline, and the human factors of failure modes - how do you communicate to an exhausted nurse at 3am that the system she relies on is running in a degraded state? I will share lessons learned from two major incidents, including what we got wrong, and propose a set of design principles for safety-critical scheduling software. Attendees will leave with practical patterns they can apply to any system where failure has real-world consequences.\"",
+      "lol \"an exhausted nurse at 3am\". i wonder where he got that. it's good though! only tiny fixes: \"as all systems eventually do\" maybe in commas is fine. and \"Attendees will leave with\" is a bit cliche but it's normal for abstracts. ok, i'll tell him it's good",
+      "wait, he builds rostering software for NHS trusts? and i'm about to do the rota with the trust's e-rostering system. i should ask him how to use it lol. he'll be unbearable",
+      "yeah. i'll ask him. quietly.",
+      "also what's a CRDT in one sentence, so i can pretend to understand at dinner",
+      "\"a way for two people to edit the same thing offline and have the changes merge automatically without conflicts.\" ok i can say that. he'll be impressed for 3 seconds",
+      "night x"
+    ],
+    [
+      "random one. i want to teach tobi some yoruba proverbs, simple ones, with the meaning. mum will be here and she'd love that we're doing it. can you check my english meanings for these? i know them but i'm not sure i'm explaining them right for a 4 year old:\n\n1. \"Igi kan kì í dá igbó ṣe\" - one tree doesn't make a forest. (we need each other)\n2. \"Ọmọ tí kò gbọ́ ti ìyá, á gbọ́ ti ayé\" - the child who doesn't listen to mother will listen to the world. (listen to mummy lol)\n3. \"Bí a bá ń gun ẹṣin, a ó máa gbàdúrà\" - hmm i'm not sure about this one\n4. \"Àgbà kì í wà lọ́jà kí orí ọmọ títún wọ́\" - an elder doesn't stay in the market and let the baby's head be badly tied (adults are responsible for children)\n5. \"Ìṣẹ́ kì í tán, ẹní bá rẹ̀ á sinmi\" - work never ends, whoever is tired should rest",
+      "yes, i'll skip number 3, i don't remember it properly and mum will correct me anyway. and number 5 is honestly for me, not tobi lol",
+      "for a 4 year old, number 1 is the best. i'll make a little drawing of trees with him. \"we're a forest: mummy, daddy, tobi, grandma\"",
+      "mum will cry. she cries at everything. it's genetic, i cry at adverts",
+      "thank you x"
+    ],
+    [
+      "NHS pension question. i got my annual benefit statement and i don't understand it. here's the summary:\n\n\"NHS Pension Scheme - Annual Benefit Statement (2015 Scheme / 2015 CARE)\nMember: Ms O. Adeyemi\nMembership start: 01/09/2015\nPensionable pay this year: £44,962\nPension built up this year: £2,437.83 (1/54th of pensionable pay)\nTotal pension built up to 31 March (revalued): £21,904.12 per year\nNormal Pension Age: 68 (linked to State Pension Age)\nEstimated pension at Normal Pension Age if you remain in the scheme at current pay: £49,800 per year (in today's money)\nLump sum: You can choose to exchange part of your pension for a tax-free lump sum at retirement at a rate of £12 lump sum for every £1 of annual pension given up.\nDeath in service benefit: 2 x pensionable pay.\nYour employee contribution rate this year: 9.8%\nEmployer contribution: 23.7% (of pensionable pay)\nAdditional pension purchase: none\"",
+      "oh. so i've already built up nearly £22k a year of pension? and it'll be around £50k a year if i stay. that's... a lot better than i thought. and the employer puts in 23.7%?? why did no one tell me this. that's actually a big reason to stay in the NHS. that's literally a retention factor for my dissertation lol",
+      "should i ever opt out to save money now? my sister in law says she did",
+      "yeah, no. opting out means losing the employer contribution, which is basically free money, and the death in service benefit. i'm staying in. i'll tell my sister in law gently",
+      "can i retire earlier than 68?",
+      "ok, i can take it earlier with a reduction, or buy \"early retirement reduction buy out\". something to think about in 10 years. not now",
+      "thanks! adulting"
+    ],
+    [
+      "christmas rota prep, even though december's is Bev's, january starts on the 1st so new year's day is mine. here are the requests i've got so far for the new year period:\n\n- Kemi (band 5): requests off 31 Dec and 1 Jan - worked both last year\n- Tom (band 5): requests off 1 Jan - worked christmas day last year\n- Grace (band 6): requests off 31 Dec night - worked 31 dec night last year AND the year before\n- Aisha (band 5, NQN): requests off 1 Jan - first christmas period as a nurse, worked nothing last year (wasn't here)\n- Daniel (band 5): no requests, happy to work new year \"for the enhanced pay\"\n- Sophie (HCA): requests off 31 Dec - family wedding\n- Mo (band 6): requests off 1 Jan day - flexible working agreement, no nights",
+      "ok so Grace has worked NYE night two years running, she definitely gets it off. Kemi worked both last year, she gets priority. Aisha's never worked it, so she's likely to work 1 jan, but she's newly qualified so maybe i pair her with a band 6 and make sure she's supported (retention!!). Daniel wants the money, perfect. Sophie's family wedding, fair to grant.",
+      "and i need a nurse in charge on every shift. Mo can do 1 jan day? no, he requested it off. hmm. so who's in charge on 1 jan day... Grace isn't requesting 1 jan day, only NYE night. so Grace could be in charge 1 jan day? but that's after her night off, fine. ok i think this works",
+      "can you help me write a message to the team explaining how i decided, so it's transparent?",
+      "good. \"based on who worked last year and the year before, plus any exceptional circumstances\". no names in the group message, i'll tell individuals personally",
+      "my first management decision. kind of. terrifying"
+    ],
+    [
+      "dissertation background reading. dr patel wants me to put my study in the \"policy context\". here's a summary article i found about NHS workforce policy, can you help me pull out what's relevant to newly qualified nurse retention?\n\n\"NHS Workforce Policy and the Retention Challenge: An Overview\nOver the past decade, NHS workforce policy in England has increasingly shifted its emphasis from recruitment towards retention. While international recruitment and expanded training places have increased the number of nurses joining the register, the number leaving the profession or the NHS remains a significant concern. Analysis of NMC and NHS data suggests that leaver rates are highest among nurses in the early years of their careers and among those approaching retirement.\nSeveral national initiatives have targeted retention. The NHS People Plan placed emphasis on flexible working, health and wellbeing support, and creating a more inclusive culture. A national preceptorship framework was introduced to standardise support for newly registered nurses, setting out minimum expectations for protected learning time, a named preceptor, and structured reviews during the first 12 months. Trusts have been encouraged to appoint preceptorship leads and to monitor completion rates.\nLong-term workforce planning documents have set ambitious targets to reduce leaver rates, alongside expanding apprenticeships and alternative routes into nursing. Critics have argued that targets are not matched by investment in the conditions that drive retention, such as safe staffing levels, pay, and the physical working environment, including access to rest areas and hot food on night shifts.\nThe cost-of-living crisis has added new pressures. Surveys by professional bodies have reported that significant proportions of nurses are struggling financially, with some taking second jobs or bank shifts to make ends meet, which may increase burnout. Industrial action in 2022-2023 highlighted dissatisfaction with pay and conditions.\nResearch on retention identifies a combination of 'push' factors (workload, staffing, incivility, lack of support, moral distress) and 'pull' factors (career development opportunities, flexible working, supportive leadership, team belonging). For newly qualified nurses specifically, the transition from student to registrant - often described as 'transition shock' or 'reality shock' - is a critical period, and the quality of preceptorship and ward culture during this period appears to be particularly influential.\nLocal leadership is repeatedly highlighted as a key lever. Ward managers and ward sisters shape the day-to-day experience of staff, including allocation of work, access to development, and whether staff feel able to raise concerns. However, these leaders often report having little protected time for staff support, as they are drawn into operational pressures.\"",
+      "ok, so for my policy context: the shift from recruitment to retention, the national preceptorship framework (that's directly relevant, my survey asks about preceptors!), the push/pull factors framing, the cost of living stuff, and local leadership as a lever. that last bit is basically \"ward sisters matter\" which i will absolutely be quoting lol",
+      "the \"access to rest areas and hot food on night shifts\" made me laugh-cry. we have a vending machine and a microwave that's been broken since june",
+      "can you suggest a structure for the policy context section? about 800 words",
+      "good: national picture (numbers), policy response (people plan, preceptorship framework), critiques (investment gap, cost of living), and then \"the local leadership gap\" leading into my research question. that flows nicely into \"why do they stay\"",
+      "and push/pull factors, is that a proper theoretical framework i can cite, or just a description?",
+      "ok, it comes from migration theory originally and has been applied to workforce studies, so it's citable but i should present it as a lens, not a full theory. and maybe pair it with something like job embeddedness theory for the \"stay\" side. ooh. dr patel will like that",
+      "what is job embeddedness in one paragraph?",
+      "\"links, fit and sacrifice\": how connected you are to people at work, how well the job fits you, and what you'd give up by leaving. that's literally what my open questions are getting at. ok i'm actually excited about this now",
+      "night x"
+    ],
+    [
+      "i wrote a post for a nurses' facebook group about being a ward sister, someone asked \"what's it actually like\" and i got carried away. can you tidy it without making it sound corporate? it's meant to be honest:\n\n\"what's it like being a ward sister? honestly? it's being the person everyone looks at when the bleep goes, the phone rings, the relative is angry, the patient is deteriorating, the student is crying in the sluice and the porter has gone missing, all at the same time. it's doing the drugs round because you're a nurse down, while also answering bed management who want to know why you haven't discharged bed 14 (because his transport is coming at 4pm, Karen, like i told you at 9am). it's knowing which HCA needs a hug and which one needs a kick up the bum, kindly. it's eating a cold piece of toast at 5am standing up and calling it lunch. it's filling in the staffing incident report for the fourth time this month knowing nothing will change. but then it's also the patient you nursed for 3 weeks on NIV walking out of the ward with his grandchildren. it's the newly qualified nurse who was terrified in september running the bay like a pro in march. it's the family who bring in a tin of quality street and a card that says you made the worst week of their life a bit more bearable. it's the team, the 3am laughter, the gallows humour, the way everyone just steps up when it all kicks off. it's the hardest job i've ever done and i'm not sure i'd do anything else. but please, someone fix the microwave.\"",
+      "oh no, i accidentally named \"Karen\" from bed management in it. that's not Karen from R&D, it's a different Karen, there are a million Karens in the NHS. but still, better take the name out completely",
+      "you barely changed it, good. you just broke it into paragraphs and removed the name. \"please, someone fix the microwave\" stays as the ending, that's the best line",
+      "should i post it under my real name? it's a closed group but still",
+      "yeah, nothing confidential in it, no patient details, no names now, and it's positive overall. but i'll check the trust social media policy quickly. ok",
+      "can you also make a shorter version for linkedin? i've been told i should \"build my profile\" before the band 7 interview. i hate linkedin",
+      "lol the linkedin version is so much more polite. \"Leadership on a ward is about being present in the moments that matter.\" ok, that's very linkedin but it's true. posting it. cringe but fine",
+      "thank you x"
+    ],
+    [
+      "complaint response help. Bev asked me to draft the response to a complaint as practice for when i'm acting manager. it's anonymised. here's the complaint:\n\n\"I am writing to complain about the care my father received on Ward 12 during his admission last month. My father is 82 and has COPD and mild dementia. On the evening he was admitted, he was left in a chair for over four hours because there was no bed available on the ward, and nobody explained to us why. When he was eventually moved to a bed, his hearing aids were left behind in the assessment unit and it took two days for them to be found, during which time he became very confused and distressed because he could not hear what was being said to him. On the second night, he was found on the floor next to his bed at 3am. We were not informed until the next morning when we visited, and we only found out because my father told us. The nurse we spoke to was very kind but said she was not on duty that night. I understand the NHS is under pressure, but I feel my father's basic needs were not met and that we as a family were not kept informed. I would like to know what happened on the night of the fall, why we were not told, and what will be done to make sure this does not happen to other patients.\"",
+      "oof. ok so the facts from our side: no bed due to the ward being full, he was in the chair in the assessment unit not on our ward actually, hearing aids lost in transfer, the fall was reported on datix and he had no injuries, but the family should have been called that night or at least first thing in the morning by the nurse in charge and it didn't happen. that's on us",
+      "here's my draft response, it's too defensive, i can feel it:\n\n\"Dear Mrs X,\nThank you for your letter regarding your father's recent admission to Ward 12. I am sorry that you were unhappy with aspects of his care.\nI would like to explain that on the evening of your father's admission, the hospital was experiencing extremely high demand and there were no beds available on Ward 12. Your father was cared for in the Acute Assessment Unit until a bed became available. This was outside the control of the ward staff.\nRegarding your father's hearing aids, these were unfortunately mislaid during his transfer between departments. The hearing aids were located two days later.\nOn the night of [date], your father was found on the floor next to his bed. Staff assessed him immediately and he was found to have no injuries. A full review was carried out, and an incident report was completed in line with trust policy. Unfortunately, the family were not contacted at the time.\nWe take all complaints seriously and your feedback will be shared with the ward team.\nYours sincerely,\nWard Sister, Ward 12\"",
+      "yes. \"i am sorry that you were unhappy\" is the classic non-apology. and \"outside the control of the ward staff\" sounds like passing the blame. and \"unfortunately the family were not contacted\" is passive, it hides that we got it wrong",
+      "can you rewrite it so it's a genuine apology, explains what happened, owns the bits we got wrong, and says specifically what we're changing? the changes are: hearing aids and glasses go in a labelled bag that travels WITH the patient and is checked at handover, and the nurse in charge must contact the family after any fall within the shift (or document why not), and we're adding it to the night handover checklist",
+      "oh that's so much better. \"I am sorry that your father was distressed and that you were not told about his fall. You should have been informed that night, and I apologise that this did not happen.\" clear and honest. and the duty of candour bit, saying we'd like to meet them to talk it through. yes",
+      "should i offer a meeting in person? bev says it often helps",
+      "yes, offer it, with me and maybe Femi, and let them choose phone or face to face. people mostly just want to be heard. ok",
+      "i'll send this to Bev tomorrow. thank you. this is the side of the manager job that scares me more than the rota",
+      "night x"
+    ],
+    [
+      "flu jab season. i'm the ward's flu champion this year (another thing i said yes to). half my HCAs say they won't have it. the trust sent this FAQ, can you turn it into something people will actually read on the staffroom wall?\n\n\"Staff Seasonal Influenza Vaccination Programme - Frequently Asked Questions\nWhy should I have the flu vaccine? Influenza is a serious illness that can lead to hospitalisation and death, particularly in older people, those with long-term conditions and pregnant women. Healthcare workers are at increased risk of exposure to influenza and can transmit the virus to vulnerable patients, colleagues and family members, even if they have mild or no symptoms. Vaccination of healthcare workers reduces the risk of transmission and helps maintain safe staffing levels during the winter period.\nCan the vaccine give me flu? No. The injectable flu vaccines used in adults do not contain live virus and cannot cause influenza. Some people experience mild side effects such as a sore arm, mild fever or aching muscles for a day or two, which is a sign that the immune system is responding.\nI had the vaccine last year. Do I need it again? Yes. Flu viruses change each year and the vaccine is updated to match the strains expected to circulate. Protection from the vaccine also wanes over time.\nI am pregnant. Is it safe? Yes. The flu vaccine is recommended for pregnant women at any stage of pregnancy and also provides some protection to the baby in the first months of life.\nI have an egg allergy. Can I have it? Most people with egg allergy can safely receive the vaccine. Please discuss with the occupational health team if you have had a severe reaction in the past.\nWhere can I get it? Peer vaccinators are available on most wards, and drop-in clinics are held in the staff restaurant on weekdays from 11:00 to 14:00 throughout October and November. Night staff can request a visit from a peer vaccinator during their shift.\"",
+      "yes! short myth busting, big font. \"it can't give you flu - there's no live virus\", \"your immunity from last year has gone\", \"you can pass it on even if you feel fine\", and \"night staff - we'll come to you\". the night staff bit is important, they always feel forgotten",
+      "and how do i talk to the ones who are really against it without lecturing? one of them says \"i never get ill\"",
+      "lol \"you might not get ill but mrs jones in bed 6 might, from you\". but said nicely. and ask what their worry actually is, sometimes it's needles, sometimes it's something they read. listen first. ok",
+      "i'm going to bribe them with biscuits. it's the NHS way",
+      "thanks x",
+      "oh one more. can you give me 3 short catchy lines for the poster headline? something that'll make tired night staff actually stop and read it, not the usual \"protect yourself, protect your patients\" that everyone ignores",
+      "\"No live virus. No excuses. Free biscuits.\" lol that's the one. bev will laugh, femi will pretend not to. printing it in massive letters and sticking it on the broken microwave, where everyone looks at 3am",
+      "night xx"
+    ],
+    [
+      "tiny question while i'm waiting for the kettle. tobi asked me today why it gets dark so early now, \"is the sun tired, mummy?\". how do i explain it to a 4 year old without getting into axial tilt lol",
+      "aww, \"the earth is like a spinning top that leans a little bit, and in winter our bit of the earth leans away from the sun, so the sun visits us for less time\". and doing it with an orange and a torch! he'll love that. chidi can be the sun, he's always saying he's the centre of the universe anyway",
+      "ok kettle's boiled. thanks x"
+    ],
+    [
+      "random one. a patient's daughter asked me today what \"DNACPR\" actually means because the doctor rushed the explanation. how do i explain it simply and kindly? i do it all the time but i want better words",
+      "\"it means that if your dad's heart stops, the team won't try to restart it with chest compressions and shocks, because it wouldn't work and could cause him harm, but it does NOT mean we stop caring for him or stop treating anything else\". that last part is the bit families miss every time. thank you",
+      "and i'll offer to get the doctor back to talk it through properly. that's the right thing"
+    ],
+    [
+      "loft check in. priya sent the revised calcs to building control on tuesday. now we wait for Mr Fletcher to accept them. gaz says \"should be fine, she's added everything they asked\". so still waiting on that before anything structural can start",
+      "gaz sent a list of choices he needs from us before first fix. here it is:\n\n\"Hi both, few decisions needed before first fix, no rush but within the next 3 weeks please:\n1. Velux windows: standard white painted finish or white polyurethane (better for moisture, +£90 each)?\n2. Velux blinds: blackout (Velux own brand, approx £95 each) - do you want us to order with the windows?\n3. Sockets: standard white plastic or brushed steel (+£12 per socket)? You've got 8 doubles.\n4. USB sockets: any of the 8 to be USB combo? (+£18 each)\n5. Light switches: same as sockets?\n6. Ceiling lights: standard pendant points, or downlights (+£45 per downlight, recommend 6)?\n7. Internal doors: 4-panel white primed (included) or oak veneer (+£160 each)?\n8. Staircase: painted softwood (included) or oak handrail and newel caps (+£380)?\n9. En-suite: yes or no?? (affects plumbing first fix - we need to know!)\n10. Radiator: standard single panel, or a vertical designer one (+£220)?\nCheers, Gaz\"",
+      "ok so: white polyurethane for the velux (moisture, tobi's room), blackout blinds yes (he wakes at 5:45 already), standard white sockets but 2 USB ones (one by the bed, one by the desk), standard switches, pendant lights (downlights are too expensive), standard doors, painted staircase, standard radiator. boring but sensible",
+      "and number 9. the en-suite. we still haven't decided. chidi and i had a proper argument about it on sunday. he says it adds value. i say it adds debt.",
+      "can you help me write the reply to gaz with all the answers except the en-suite, and say we'll confirm that by the end of the month?",
+      "perfect, sent",
+      "how much does the polyurethane + blinds + usb add up to roughly?",
+      "3 x £90 = £270, 3 x £95 = £285, 2 x £18 = £36, so about £591 extra. ok, that's fine, i'll put it in the budget",
+      "night x"
+    ],
+    [
+      "tobi is a sheep in the nativity and he is taking it VERY seriously. he asked me to write him a story about \"the sheep who saw baby jesus\". so i did, at 4am on my break. is it ok for a 4 year old? be honest:\n\n\"Once upon a time, on a cold, starry night, there was a little sheep called Tobi. Tobi was the smallest sheep on the hill, and the other sheep always said, 'You're too small to see anything, Tobi!'\nThat night, the sky was very dark and very quiet. All the sheep were sleeping, and the shepherds were sitting by the fire, yawning.\nSuddenly, the sky was full of light! Bright, golden light, brighter than a hundred torches. The shepherds jumped up. The sheep woke up. 'Baaa!' they said. 'What is it?'\nAn angel appeared, shining and kind. 'Don't be afraid,' said the angel. 'A special baby has been born in Bethlehem. Go and see!'\nThe shepherds started walking down the hill, and all the big sheep followed. But Tobi was so small that he got left behind. 'Wait for me!' he called. But nobody heard.\nTobi walked and walked. His little legs were tired. Then he looked up, and he saw a big, bright star in the sky. 'I'll follow the star,' said Tobi.\nThe star led Tobi all the way to a little stable. Inside, there was a mummy, a daddy, and a tiny baby sleeping in a manger full of hay. The big sheep were all standing at the back, but they were so big they couldn't see over the shepherds.\nBut Tobi was small. He walked right between the shepherds' legs, all the way to the front, and he saw the baby. The baby opened his eyes and looked at Tobi and smiled.\n'See,' said the mummy softly, 'sometimes the smallest ones see the most.'\nAnd Tobi the sheep curled up next to the manger, warm and happy, and went to sleep.\nThe End.\"",
+      "aww thank you. you think the \"smallest ones see the most\" line is lovely and the length is right for bedtime. tobi made me read it 4 times. he says \"i'm the sheep and i see the baby first\". yes darling",
+      "should i make it into a little book? with photos of him in his sheep costume?",
+      "yes! print it at the supermarket photo place, one page per paragraph with a photo. it can be a christmas present for mum. she'll cry (she cries at everything, i've said this)",
+      "thanks x. going back to work now, break's over"
+    ],
+    [
+      "my sister-in-law Ngozi (chidi's sister) is applying for an HCA job at our hospital. she asked me to look at her CV. i can't help her in the recruitment process obviously, but i can help with the CV. here's her profile and experience section:\n\n\"PROFILE\nI am a hard working and caring person who wants to work in the NHS. I have experience in care work and I am good with people. I am looking for a job as a Healthcare Assistant.\n\nEXPERIENCE\nCare Assistant - Sunnyside Care Home, Salford (2022 - present)\n- Helping residents with washing, dressing and eating\n- Giving out drinks and snacks\n- Talking to residents and their families\n- Doing observations sometimes\n- Writing in the care notes\n- Working with the nurses\n\nRetail Assistant - Supermarket, Manchester (2019 - 2022)\n- Working on the tills\n- Stacking shelves\n- Helping customers\n\nEDUCATION\nCare Certificate (2022)\nGCSEs: English (5), Maths (4), Science (4)\"",
+      "ok, the main thing is she's underselling herself. \"doing observations sometimes\" - she does obs on residents and recognises deterioration, that's huge for an HCA job. and the profile is generic, she should say something specific about why hospital care. and use the NHS values words a bit (compassion, respect, working together). but not too much",
+      "can you rewrite the profile and the care home bullets? keep it honest, don't invent stuff",
+      "much better. \"Recognising and reporting changes in residents' condition to nursing staff, including recording observations (BP, pulse, temperature, oxygen saturation)\" - that's exactly what she does, she just didn't say it. and \"Supporting residents living with dementia\" - she does that every day",
+      "the retail part - should she keep it?",
+      "yes, shortened to one line, it shows customer service and reliability. ok. sending to her",
+      "she'll owe me. i'll collect in the form of babysitting when mum goes back to lagos lol",
+      "night x"
+    ],
+    [
+      "quick catch up before i disappear into nights for 3 days",
+      "R&D: still waiting for Karen. day 8 of \"up to 10 working days\". i check my email like it's a lottery. so the survey still can't go out",
+      "loft: still waiting for building control to accept priya's revised calcs. scaffolding still pencilled for the 16th",
+      "school: open day at crossacres next week. st bridget's the week after. still no idea which one goes first on the form. chidi is still team st bridget's",
+      "en-suite: still arguing. lol",
+      "mum: she's packed already. 5 weeks early. she says \"i like to be ready\". she's sent me a photo of 2 suitcases and asked if she's allowed more. i'll check the ticket",
+      "ok, so 2 bags at 23kg each, plus a 12kg cabin bag. she's going to try to sneak a third suitcase in, i know her",
+      "and the yaji is OUT, she promised. she sent a voice note saying \"I have heard you, Oluwaseun\". full name. she's annoyed but she's listening",
+      "thank you for keeping track of my chaos. honestly",
+      "night xx"
+    ]
+  ],
+  "documents": [
+    {
+      "afterSession": 4,
+      "name": "hartley_builds_loft_quote_adeyemi.txt",
+      "text": "HARTLEY BUILDS LTD\nLoft Conversions | Extensions | Renovations\nUnit 3, Crossley Park, Stockport SK4 | gaz@hartleybuilds.co.uk | 07700 900 412\nContact: Gary (Gaz) Hartley, Director\n\nQUOTATION Ref. HB-2026-117\nClient: Ms Oluwaseun Adeyemi & Mr Chidi Okafor\nProperty: 41 Rushford Grove, Levenshulme, Manchester M19\nDate: 4 August 2026\n\nSCOPE: Rear dormer loft conversion to create one double bedroom and a small study area.\n1. Scaffolding to rear and front elevations for duration of works.\n2. Structural works: new steel beams (2 no.) and floor joists as per structural engineer's calculations (engineer's fees included, see note 3). Strengthening of existing ceiling joists where required.\n3. Rear flat-roof dormer, timber frame, clad in tile-hung finish to match existing, with GRP fibreglass roof.\n4. 3 no. Velux roof windows (front slope), 1 no. dormer window (rear), uPVC, white.\n5. New staircase from first floor landing, softwood, with handrail and balustrade, to building regulations headroom.\n6. Insulation to current building regulations (walls, roof and floor).\n7. Electrics: 8 double sockets, ceiling lights, smoke and heat detectors interlinked with existing.\n8. Plastering, skirting, architraves, internal doors (2 no.: bedroom and eaves storage).\n9. Fire safety: fire doors to all habitable rooms off the escape route as required by building regulations.\n10. Decoration: mist coat only. Final decoration by client.\n\nEXCLUSIONS: En-suite bathroom (available as an option: see below), carpets and flooring finishes, final decoration, moving of existing boiler, any works to the party wall beyond the scope of the party wall award.\n\nOPTIONAL: En-suite shower room in loft (shower, WC, basin, extractor, tiling): add GBP 6,500 inc. VAT.\n\nPRICE: GBP 41,800 inclusive of VAT, for the scope above.\n\nPAYMENT SCHEDULE:\n- Stage 1: 10% deposit to secure start date (GBP 4,180).\n- Stage 2: 25% when steels are installed and signed off by building control (GBP 10,450).\n- Stage 3: 25% at first fix (electrics and joinery) (GBP 10,450).\n- Stage 4: 25% on completion of plastering (GBP 10,450).\n- Stage 5: 15% on completion and building control final certificate (GBP 6,270).\n\nTIMESCALE: Approximately 10 weeks from start on site. Start date subject to party wall agreement being in place and building control approval of structural calculations.\n\nBUILDING CONTROL: Hartley Builds will submit a building notice to the local authority and arrange inspections. Structural calculations will be prepared by our engineer, Shah Structures (Priya Shah, CEng).\n\nCONTINGENCY: We recommend the client holds a contingency of 10% for unforeseen issues (e.g. rotten timbers, wiring faults). Any extra work will be agreed in writing before it is carried out.\n\nINDICATIVE PROGRAMME (from start on site):\nWeek 1: Scaffolding erected, site set up, skip on drive (council permit arranged by us), roof opened at rear.\nWeeks 2-3: Steel beams installed and checked by building control; new floor joists; dormer frame constructed.\nWeeks 3-4: Dormer roof (GRP) and tile-hanging; roof windows fitted; building watertight.\nWeeks 5-6: Staircase installed; first fix electrics and joinery; insulation.\nWeeks 7-8: Plasterboard and plastering; second fix electrics; doors and skirting.\nWeeks 9-10: Snagging, mist coat, final building control inspection, scaffolding removed.\nDuring weeks 1-2 there will be periods of significant noise (cutting, steel installation). We will agree quieter days with the client where possible. Working hours: Monday to Friday 8:00-17:00; no weekend working unless agreed.\n\nSITE RULES: The client agrees to provide access to a toilet and water supply. Children and pets must be kept away from work areas. We will protect stairs and landing carpets with dust sheets and clean up daily.\n\nGUARANTEE: 10-year guarantee on structural works; 2-year guarantee on workmanship.\n\nValid for 60 days."
+    },
+    {
+      "afterSession": 7,
+      "name": "pennine_ethics_approval_adeyemi.txt",
+      "text": "PENNINE UNIVERSITY\nFaculty of Health and Social Care - Research Ethics Committee\n\nTo: Oluwaseun Adeyemi, MSc Healthcare Leadership (part-time), Student ID on file\nSupervisor: Dr Helen Marsh\nDate: 19 August 2026\nReference: FHSC-REC-2026-0388\n\nStudy title: \"Why do they stay? A mixed-methods study of retention among newly qualified nurses in an NHS acute trust\"\n\nDear Oluwaseun,\n\nI am pleased to inform you that the Faculty Research Ethics Committee has reviewed your application and has granted a FAVOURABLE OPINION, subject to the following conditions:\n\n1. Approval period: This approval is valid until 31 August 2027. If data collection or analysis is not completed by this date, you must apply for an extension.\n\n2. Participants: Registered nurses employed by the host trust who qualified (first NMC registration) no more than 24 months before the date of participation. The maximum sample is 120 participants for the survey and 12 participants for the interviews.\n\n3. Conflict of interest: Because of the researcher's role as a ward sister, the Committee requires that NO participants be recruited from the researcher's own ward or from any staff the researcher line-manages or supervises. Recruitment must be through a neutral channel (e.g. the practice education team mailing list), and invitations must not be sent by the researcher personally to individual colleagues.\n\n4. Consent: Survey participants must confirm consent electronically before accessing the questionnaire. Interview participants must sign the approved consent form (version 2, dated 12 August 2026) and must be given at least 48 hours between receiving the information sheet and the interview.\n\n5. Data management: All data must be stored on the university's secure OneDrive account only. Data must not be stored on personal devices, personal cloud accounts or NHS shared drives. Interview recordings must be deleted after transcription and anonymisation, and no later than 3 months after the interview.\n\n6. NHS permissions: This favourable opinion does not constitute permission to conduct research in the NHS. You must obtain confirmation of capacity and capability from the host trust's Research and Development (R&D) department before any recruitment begins.\n\n7. Amendments: Any changes to the study design, recruitment strategy, participant materials or data management must be submitted to the Committee as an amendment and approved before implementation.\n\n8. Reporting: A brief end-of-study report must be submitted within 3 months of completion.\n\n9. Withdrawal: Survey participants may withdraw by closing the browser before submitting; once submitted, anonymous survey responses cannot be withdrawn, and this must be stated in the information sheet. Interview participants may withdraw up to 2 weeks after their interview, after which data will have been anonymised and incorporated into the analysis.\n\n10. Participant support: The information sheet must include signposting to the trust's staff wellbeing service and the Freedom to Speak Up Guardian, given that participants may discuss distressing experiences. If a participant discloses a serious patient safety concern or risk of harm, the researcher must follow the trust's escalation procedures and should discuss this with the supervisor.\n\n11. Monitoring: The Committee may audit approved studies at any time. You must retain the signed consent forms and a copy of all participant materials for the duration of the approval and for 5 years thereafter, in line with university policy.\n\nPlease keep this letter for your records and include a copy in your dissertation appendices.\n\nYours sincerely,\nProfessor Anne Whitaker\nChair, Faculty Research Ethics Committee"
+    },
+    {
+      "afterSession": 13,
+      "name": "mum_flight_itinerary_adeyemi.txt",
+      "text": "E-TICKET ITINERARY / RECEIPT\nEquator Airways & partner carrier\nBooking reference: K7QXRM\nPassenger: MRS FOLAKE ADEYEMI\nTicket number: 389-2241186027\nFrequent flyer: none\n\nOUTBOUND - Lagos to Manchester\nFlight 1: EQ 0571 - Lagos (LOS) Murtala Muhammed Intl, Terminal 2 -> Amsterdam (AMS) Schiphol\nDeparture: Friday 13 November 2026, 22:35 (local time)\nArrival: Saturday 14 November 2026, 05:25 (local time)\nCabin: Economy (class Q) | Seat: 31C (aisle, requested)\n\nConnection in Amsterdam: 2 h 10 min\n\nFlight 2: EQ 1187 operated by partner carrier - Amsterdam (AMS) -> Manchester (MAN), Terminal 2\nDeparture: Saturday 14 November 2026, 07:35\nArrival: Saturday 14 November 2026, 07:55 (local time)\nCabin: Economy | Seat: 14D\n\nRETURN - Manchester to Lagos\nFlight 3: EQ 1190 operated by partner carrier - Manchester (MAN) Terminal 2 -> Amsterdam (AMS)\nDeparture: Saturday 13 February 2027, 10:40\nArrival: Saturday 13 February 2027, 13:00\n\nFlight 4: EQ 0572 - Amsterdam (AMS) -> Lagos (LOS) Terminal 2\nDeparture: Saturday 13 February 2027, 15:20\nArrival: Saturday 13 February 2027, 21:05 (local time)\n\nBAGGAGE ALLOWANCE (per passenger, all flights):\n- Checked baggage: 2 pieces, max 23 kg each\n- Cabin baggage: 1 piece, max 12 kg, plus 1 personal item (handbag)\nExcess baggage must be paid at the airport and is charged per piece.\n\nSPECIAL SERVICES:\n- Passenger assistance (wheelchair to/from aircraft) can be requested up to 48 hours before departure by contacting the airline.\n- Special meals: none requested. Can be requested up to 24 hours before departure.\n\nFARE CONDITIONS:\n- Date changes permitted with a fee of USD 150 plus any fare difference.\n- Refund: non-refundable, except taxes.\n- No-show on any segment cancels the remaining segments.\n\nTravel documents: Passenger is responsible for holding a valid passport and UK Standard Visitor visa. Please arrive at the airport at least 3 hours before international departures.\n\nIMPORTANT INFORMATION:\n- Online check-in opens 30 hours before departure and closes 90 minutes before departure. Boarding passes for the connecting flight will be issued at the first check-in.\n- Transit in Amsterdam: passengers remain airside; no Schengen visa is required for a direct airside transfer. Follow the signs for Transfers. Allow time for security screening at the transfer point.\n- Liquids in cabin baggage: maximum 100 ml per container in a single transparent bag.\n- Restricted items: meat, milk and dairy products may not be brought into the UK from outside the EU for personal use. Other food items may be subject to restrictions; passengers are advised to declare any food items on arrival if unsure.\n- Medication: carry prescription medication in the original packaging in cabin baggage, with a copy of the prescription or a doctor's letter.\n- Delays: in case of a missed connection due to a delay of the first flight, the airline will rebook the passenger on the next available flight at no extra cost."
+    }
+  ],
+  "questions": [
+    {
+      "id": "q8-seun-q01",
+      "cat": "current_fact",
+      "q": "who's supervising my dissertation at the moment?",
+      "required": [
+        "Dr Rajiv Patel"
+      ],
+      "forbidden": [
+        "Dr Helen Marsh is currently my supervisor"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q02",
+      "cat": "correction",
+      "q": "when's my dissertation due in?",
+      "required": [
+        "25 January 2027"
+      ],
+      "forbidden": [
+        "The dissertation is due on 15 January"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q03",
+      "cat": "future_vs_now",
+      "q": "who's running ward 12 right now, and what changes in december?",
+      "required": [
+        "Bev is the ward manager now",
+        "I become acting ward manager from 1 December (while Bev is on secondment)"
+      ],
+      "forbidden": [
+        "I am currently the acting ward manager"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q04",
+      "cat": "resolved_blocker",
+      "q": "what's stopping me starting recruitment for the retention study?",
+      "required": [
+        "waiting for NHS R&D capacity and capability confirmation (Karen Doyle)"
+      ],
+      "forbidden": [
+        "I am still waiting for university ethics approval"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q05",
+      "cat": "resolved_blocker",
+      "q": "what's holding up the loft now?",
+      "required": [
+        "building control has to accept the revised steel beam calculations (Priya Shah / Shah Structures)"
+      ],
+      "forbidden": [
+        "The loft is waiting on Mr Kowalski's party wall agreement"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q06",
+      "cat": "alias",
+      "q": "what time does mummy's flight get into manchester, and which day?",
+      "required": [
+        "Saturday 14 November",
+        "07:55 at Terminal 2"
+      ],
+      "forbidden": [
+        "Mum arrives on 15 November"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q07",
+      "cat": "same_name_distinct",
+      "q": "can i send out my survey yet?",
+      "required": [
+        "no, the dissertation survey can't go out until R&D confirms"
+      ],
+      "forbidden": [
+        "The survey was completed on 2 October"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q08",
+      "cat": "file",
+      "q": "what's the max number of people i can have in my dissertation survey, and who's eligible?",
+      "required": [
+        "maximum 120 survey participants",
+        "nurses first registered no more than 24 months ago"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q09",
+      "cat": "file_plus_chat",
+      "q": "is it ok if i get the newly qualified nurses on ward 12 to fill in my survey?",
+      "required": [
+        "no: the ethics approval forbids recruiting from my own ward or staff I manage",
+        "recruit through the practice education mailing list instead"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q10",
+      "cat": "file_plus_chat",
+      "q": "what's the next payment i owe gaz, and what triggers it?",
+      "required": [
+        "GBP 10,450 (stage 2, 25%)",
+        "when the steels are installed and signed off by building control"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q11",
+      "cat": "file",
+      "q": "when does mum fly home, and how much luggage can she bring?",
+      "required": [
+        "13 February 2027",
+        "2 checked bags of 23 kg each plus a 12 kg cabin bag"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q12",
+      "cat": "multi_hop",
+      "q": "who do i need to chase to get my dissertation unstuck?",
+      "required": [
+        "Karen Doyle, R&D"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q13",
+      "cat": "uncertainty",
+      "q": "are we doing the en-suite in the loft?",
+      "required": [
+        "not decided yet (extra GBP 6,500)"
+      ],
+      "forbidden": [
+        "We have decided to add the en-suite"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q14",
+      "cat": "uncertainty",
+      "q": "which school are we putting first for tobi?",
+      "required": [
+        "undecided between Crossacres Primary and St Bridget's CE Primary"
+      ],
+      "forbidden": [
+        "We chose St Bridget's as first choice"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q15",
+      "cat": "preference",
+      "q": "give me a snack idea i can make with tobi this weekend",
+      "required": [
+        "no peanuts / nut-free"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q16",
+      "cat": "preference",
+      "q": "find me three slots next week for a supervision meeting",
+      "required": [
+        "avoid Wednesday, Thursday and Friday mornings (after night shifts)"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q17",
+      "cat": "draft",
+      "q": "draft an email to my supervisor with an update on R&D and my submission timeline",
+      "required": [
+        "addressed to Dr Rajiv Patel",
+        "submission 25 January"
+      ],
+      "forbidden": [
+        "Dr Helen Marsh is my current supervisor"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q18",
+      "cat": "temporal_history",
+      "q": "who was matron for the medical division before femi?",
+      "required": [
+        "Linda Brooks"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q8-seun-q19",
+      "cat": "unknown",
+      "q": "when's chidi's birthday? i need to book something",
+      "expectUnknown": true
+    },
+    {
+      "id": "q8-seun-q20",
+      "cat": "unknown",
+      "q": "what's my NMC PIN again?",
+      "expectUnknown": true
+    }
+  ]
+}

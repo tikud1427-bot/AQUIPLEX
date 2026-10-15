@@ -9,4 +9,4 @@
 Behaviour changes (both invisible while AQUA_E6=off, today's prod state):
 - With AQUA_E6=on AND Postgres configured, turn understanding is queued (`understanding.turn.v1`) instead of run in-process; falls back to in-process if the queue is down. Run the worker (`npm run start:production`).
 - With AQUA_E6=on, `AQUA_E6_COMMIT` now defaults on. Rollback: `AQUA_E6_COMMIT=off`.
-New endpoint: GET /api/aqua/health/metrics (Prometheus text).
+New endpoint: GET /api/aqua/provider-health/metrics (Prometheus text).

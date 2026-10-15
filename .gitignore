@@ -45,3 +45,6 @@ Thumbs.db
 
 #generated repository tree
 /codebase-tree.txt
+
+# Raw evaluation outputs (run logs, per-answer transcripts, partial checkpoints) — never committed.
+aqua/eval/out/

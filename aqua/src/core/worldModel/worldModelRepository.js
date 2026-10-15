@@ -13,6 +13,7 @@
  *   a normal state/revision mutation, never by rewriting history.
  */
 import crypto from 'node:crypto';
+import { outboxRole, claimTransitionEvent } from './outboxEvents.js';
 import { getPool, isConfigured } from '../db/pool.js';
 
 export class WorldModelError extends Error {
@@ -81,14 +82,18 @@ async function lifecycle(client, input) {
 }
 
 async function outbox(client, input) {
+  // Every type is classified (outboxEvents.js). 'record' rows are the L1 delta
+  // log and are written already published; 'dispatch' rows wait for their
+  // consumer. An unregistered type throws — that is how orphans used to appear.
+  const role = outboxRole(required(input.eventType, 'eventType'));
   const { rows } = await client.query(
     `INSERT INTO aqua_outbox
-      (owner_id, event_type, aggregate_kind, aggregate_id, payload, actor)
-     VALUES ($1,$2,$3,$4,$5::jsonb,$6)
+      (owner_id, event_type, aggregate_kind, aggregate_id, payload, actor, state, published_at)
+     VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7, CASE WHEN $7='published' THEN now() END)
      RETURNING outbox_id`,
-    [required(input.ownerId, 'ownerId'), required(input.eventType, 'eventType'),
+    [required(input.ownerId, 'ownerId'), input.eventType,
       required(input.aggregateKind, 'aggregateKind'), required(input.aggregateId, 'aggregateId'),
-      json(input.payload), required(input.actor, 'actor')]);
+      json(input.payload), required(input.actor, 'actor'), role === 'record' ? 'published' : 'pending']);
   return rows[0].outbox_id;
 }
 
@@ -186,6 +191,16 @@ async function upsertEntityInTransaction(client, { ownerId, entity, actor, sourc
   const allowed = new Set(['person','org','project','product','technology','place','document','concept','event','self']);
   const type = allowed.has(entity?.type) ? entity.type : 'concept';
 
+  // Serialise find-or-create per (owner, type, label) for this transaction.
+  // Two concurrent first turns used to both miss the SELECT and both INSERT:
+  // for 'self' the second commit then failed on aqua_entities_one_self_idx
+  // (the whole turn lost), for other types it silently minted a duplicate
+  // entity (L8). With the lock the second waits, then finds the first's row.
+  // Found 2026-10-04 by the J3 live test; bug fix, not flagged (L15).
+  const lockKey = BigInt.asIntN(64, BigInt(`0x${crypto.createHash('sha256')
+    .update(`aqua-entity:${ownerId}:${type}:${type === 'self' ? '' : normalized}`).digest('hex').slice(0, 16)}`));
+  await client.query('SELECT pg_advisory_xact_lock($1::bigint)', [lockKey.toString()]);
+
   const existing = await client.query(
     `SELECT entity_id FROM aqua_entities
      WHERE owner_id=$1 AND type=$2 AND normalized_label=$3 AND status='active'
@@ -242,7 +257,7 @@ export async function claimWithEvidence(ownerId, claimId) {
   const p = await getPool();
   const { rows } = await p.query(`
     SELECT c.claim_id, c.owner_id, c.subject_entity_id,
-           se.canonical_label AS subject,
+           se.canonical_label AS subject, se.type AS subject_type,
            c.predicate, c.object_entity_id,
            oe.canonical_label AS object_entity,
            c.object_literal, c.object_quantity, c.object_unit,
@@ -264,7 +279,7 @@ export async function claimWithEvidence(ownerId, claimId) {
       LEFT JOIN aqua_sources s
         ON s.owner_id=ev.owner_id AND s.source_id=ev.source_id
      WHERE c.owner_id=$1 AND c.claim_id=$2
-     GROUP BY c.claim_id, c.owner_id, c.subject_entity_id, se.canonical_label,
+     GROUP BY c.claim_id, c.owner_id, c.subject_entity_id, se.canonical_label, se.type,
               c.predicate, c.object_entity_id, oe.canonical_label, c.object_literal,
               c.object_quantity, c.object_unit, c.object_time_from, c.object_time_to,
               c.polarity, c.modality, c.valid_from, c.valid_to, c.asserted_at,
@@ -277,13 +292,16 @@ export async function claimWithEvidence(ownerId, claimId) {
       JOIN aqua_evidence e
         ON e.evidence_id=ce.evidence_id AND e.owner_id=ce.owner_id
      WHERE ce.owner_id=$1 AND ce.claim_id=$2
-     ORDER BY e.created_at ASC, e.evidence_id ASC`, [owner, id]);
+     ORDER BY e.extracted_at ASC, e.evidence_id ASC`, [owner, id]);
   const r = rows[0];
   return {
     claimId: r.claim_id,
     ownerId: r.owner_id,
     subject: r.subject,
     subjectEntityId: r.subject_entity_id,
+    // The entity TYPE, never the label, says whether this is about the user
+    // (L8): E9's claim→belief bridge only seeds beliefs from type='self'.
+    subjectType: r.subject_type,
     predicate: r.predicate,
     objectKind: r.object_entity_id ? 'entity'
       : r.object_quantity != null ? 'quantity'
@@ -310,10 +328,12 @@ export async function claimWithEvidence(ownerId, claimId) {
   };
 }
 
-export async function findClaimsForDedup({ ownerId, claims = [] } = {}) {
+export async function findClaimsForDedup({ ownerId, claims = [], extraPredicates = [] } = {}) {
   const owner = required(ownerId, 'ownerId');
-  const predicates = [...new Set((Array.isArray(claims) ? claims : [])
-    .map(c => c?.predicate).filter(Boolean))];
+  // extraPredicates (2026-10-11): relations S8 must see although no incoming
+  // claim carries them — a resolution status needs the blockers it resolves.
+  const predicates = [...new Set([...(Array.isArray(claims) ? claims : [])
+    .map(c => c?.predicate), ...extraPredicates].filter(Boolean))];
   if (!predicates.length) return [];
   const p = await getPool();
   const { rows } = await p.query(`
@@ -424,7 +444,12 @@ export async function commitUnderstanding(input = {}) {
       const evidenceId=crypto.randomUUID();
       await client.query(`INSERT INTO aqua_evidence
         (evidence_id,owner_id,source_id,locator,quote,checksum) VALUES ($1,$2,$3,$4::jsonb,$5,$6)`,
-        [evidenceId,ownerId,sourceId,JSON.stringify({segmentStart:start,segmentEnd:end}),statement,crypto.createHash('sha256').update(statement).digest('hex')]);
+        // How a reference in the user's words was resolved ("my company" →
+        // Ledgerly via self works_at) is provenance (L4): kept with the span.
+        // `revision`: the user's words stated this as a change/correction of
+        // earlier state (prompt rule 11). It is provenance of THIS span, read
+        // by the contradiction policy (rule 2) to retire the older claim.
+        [evidenceId,ownerId,sourceId,JSON.stringify({segmentStart:start,segmentEnd:end,...(Array.isArray(c._references)&&c._references.length?{references:c._references}:{}),...(c.revises===true?{revision:true}:{}),...(c.contextResolved?{contextResolved:c.contextResolved}:{})}),statement,crypto.createHash('sha256').update(statement).digest('hex')]);
 
       if (!existingClaimId) {
         const fields=['claim_id','owner_id','subject_entity_id','predicate',...Array.from({length:cols.length/2},(_,i)=>cols[i*2]),'polarity','modality','valid_from','valid_to','asserted_at','time_precision','state','extractor','extractor_version','actor','statement_text','statement_norm'];
@@ -738,13 +763,16 @@ export async function transition(input) {
     });
     await outbox(client, {
       ownerId,
-      eventType: targetKind === 'claim' && toState === 'superseded'
-        ? 'claim.superseded'
-        : 'world-model.lifecycle',
+      // A claim becoming disputed/stale is a REFLECTION event (J2 weakens the
+      // belief it supports); it used to go out as the generic lifecycle type,
+      // which nothing consumes. previousState/nextState are the names the
+      // dispatcher reads (fromState/toState kept for existing readers).
+      eventType: targetKind === 'claim' ? claimTransitionEvent(toState) : 'world-model.lifecycle',
       aggregateKind: targetKind,
       aggregateId: targetId, actor,
       payload: {
-        targetKind, targetId, fromState, toState,
+        targetKind, targetId, fromState, toState, previousState: fromState, nextState: toState,
+        ...(targetKind === 'claim' ? { claimId: targetId } : {}),
         ...(targetKind === 'claim' && toState === 'superseded'
           ? { claimId: targetId, supersededBy: input.supersededBy } : {})
       }
@@ -770,6 +798,38 @@ export async function correctClaim(input = {}) {
     if (!current.rows.length) throw new WorldModelError('claim not found');
     const old = current.rows[0];
     if (old.state === 'archived') throw new WorldModelError('archived claim cannot be corrected directly');
+
+    // IDEMPOTENT CORRECTIONS (Phase 3, 2026-10-06). A double-submitted
+    // correction used to supersede the claim and then "correct" the already
+    // superseded claim again — two active successors, one fact. The claim row
+    // is locked above, so this check is race-free per claim.
+    //   · same correctionId already recorded            → replay its result
+    //   · already superseded by a user correction with
+    //     the same statement                             → replay its result
+    //   · already superseded by anything else            → refuse, naming the
+    //     current successor (correct THAT claim)
+    const norm0 = String(statementText).trim().toLowerCase().replace(/\s+/g, ' ');
+    const priorCorrection = async (where, params) => {
+      const r = await client.query(
+        `SELECT correction_id, after FROM aqua_corrections
+          WHERE owner_id=$1 AND target_kind='claim' AND target_id=$2 AND action='correct' ${where}
+          ORDER BY created_at DESC LIMIT 1`, [ownerId, claimId, ...params]);
+      return r.rows[0] ?? null;
+    };
+    if (input.correctionId) {
+      const prior = await priorCorrection('AND correction_id=$3', [input.correctionId]);
+      if (prior) return { correctionId: prior.correction_id, replacedClaimId: claimId, claimId: prior.after?.claimId ?? old.superseded_by, state: 'active', replayed: true };
+    }
+    if (old.state === 'superseded') {
+      const succ = old.superseded_by ? (await client.query(
+        `SELECT claim_id, statement_norm, extractor FROM aqua_claims WHERE owner_id=$1 AND claim_id=$2`,
+        [ownerId, old.superseded_by])).rows[0] : null;
+      if (succ && succ.extractor === 'user-correction' && succ.statement_norm === norm0) {
+        const prior = await priorCorrection('', []);
+        return { correctionId: prior?.correction_id ?? null, replacedClaimId: claimId, claimId: succ.claim_id, state: 'active', replayed: true };
+      }
+      throw new WorldModelError(`claim already superseded${old.superseded_by ? ` by ${old.superseded_by}` : ''} — correct the current claim instead`);
+    }
 
     const successorId = input.successorClaimId ?? crypto.randomUUID();
     const correctionId = input.correctionId ?? crypto.randomUUID();
@@ -1177,7 +1237,7 @@ export async function readHistory(input) {
 export async function purgeOwner(ownerId) {
   const empty = {
     edges: 0, events: 0, lifecycleTransitions: 0, revisions: 0, corrections: 0,
-    beliefClaims: 0, evidence: 0, understandingCommitLedger: 0, sources: 0, outbox: 0,
+    beliefClaims: 0, evidence: 0, understandingCommitLedger: 0, sources: 0, outbox: 0, revisionVoice: 0,
   };
   if (!ownerId) return { ...empty, skipped: 'no owner' };
   if (!isConfigured()) return { ...empty, skipped: 'postgres not configured' };
@@ -1194,6 +1254,7 @@ export async function purgeOwner(ownerId) {
   const revisions = await p.query('DELETE FROM aqua_revisions WHERE owner_id = $1', [ownerId]);
   const corrections = await p.query('DELETE FROM aqua_corrections WHERE owner_id = $1', [ownerId]);
   const outbox = await p.query('DELETE FROM aqua_outbox WHERE owner_id = $1', [ownerId]);
+  const revisionVoice = await p.query('DELETE FROM aqua_revision_voice_state WHERE owner_id = $1', [ownerId]);
 
   // aqua_evidence and aqua_understanding_commit_ledger both REFERENCE
   // aqua_sources (RESTRICT) — clear them before sources.
@@ -1213,6 +1274,7 @@ export async function purgeOwner(ownerId) {
     understandingCommitLedger: understandingCommitLedger.rowCount ?? 0,
     sources: sources.rowCount ?? 0,
     outbox: outbox.rowCount ?? 0,
+    revisionVoice: revisionVoice.rowCount ?? 0,
     skipped: null,
   };
 }
@@ -1238,4 +1300,149 @@ export async function purgeOwnerEntities(ownerId) {
     entityMerges: entityMerges.rowCount ?? 0,
     skipped: null,
   };
+}
+
+/**
+ * Revision voice watermark (0021): advance strictly forward, compare-and-set.
+ * Returns true only for the ONE caller whose advance landed — two processes
+ * that picked the same revision cannot both raise it. `raisedTransitionId` is
+ * null when the considered transitions were judged not worth raising.
+ */
+export async function advanceRevisionVoice(ownerId, { at, transitionId, raisedTransitionId = null } = {}) {
+  if (!ownerId) throw new Error('ownerId is required');
+  if (!at || !transitionId) throw new Error('watermark (at, transitionId) is required');
+  const p = await getPool();
+  const { rowCount } = await p.query(`
+    INSERT INTO aqua_revision_voice_state AS v
+      (owner_id, surfaced_at, surfaced_transition_id, raised_transition_id, raised_count, updated_at)
+    VALUES ($1, $2, $3, $4::uuid, CASE WHEN $4::uuid IS NULL THEN 0 ELSE 1 END, now())
+    ON CONFLICT (owner_id) DO UPDATE
+       SET surfaced_at = EXCLUDED.surfaced_at,
+           surfaced_transition_id = EXCLUDED.surfaced_transition_id,
+           raised_transition_id = COALESCE(EXCLUDED.raised_transition_id, v.raised_transition_id),
+           raised_count = v.raised_count + EXCLUDED.raised_count,
+           updated_at = now()
+     WHERE (v.surfaced_at, v.surfaced_transition_id) < (EXCLUDED.surfaced_at, EXCLUDED.surfaced_transition_id)`,
+    [ownerId, at, transitionId, raisedTransitionId]);
+  return rowCount === 1;
+}
+
+// ── E9 J3 — structural duplicate consolidation (2026-10-04) ─────────────────
+//
+// Two CURRENT claims are duplicates when they are the same assertion: same
+// subject entity, predicate, object (entity, normalised literal, quantity,
+// unit, time), polarity, modality and validity window — exactly S8's write-time
+// identity rule, applied after the fact. The 0017 index dedups on WORDING
+// (statement_norm), so "I work at Intercom" / "I'm working at Intercom" can
+// both be current (concurrent turns, replays under a new extractor version,
+// backfill next to E6). No similarity threshold is involved (L14/L16).
+// disputed/stale claims are never merged: a dispute is information.
+const J3_CURRENT = ['extracted', 'active', 'trusted'];
+const J3_KEY = `subject_entity_id, predicate, object_entity_id, lower(btrim(object_literal)),
+  object_quantity, object_unit, object_time_from, object_time_to, polarity, modality, valid_from, valid_to`;
+
+/** Operational, cross-owner: which owners have at least one duplicate group (owner ids only). */
+export async function ownersWithStructuralDuplicates({ limit = 100 } = {}) {
+  const p = await getPool();
+  const { rows } = await p.query(`
+    SELECT DISTINCT owner_id FROM (
+      SELECT owner_id FROM aqua_claims
+       WHERE state = ANY($1)
+       GROUP BY owner_id, ${J3_KEY}
+      HAVING count(*) > 1) d
+     LIMIT $2`, [J3_CURRENT, Math.max(1, Math.min(1000, Number(limit) || 100))]);
+  return rows.map(r => r.owner_id);
+}
+
+/** One owner's duplicate groups, each claim with what the survivor rule needs. */
+export async function structuralDuplicateGroups(ownerId, { limit = 50 } = {}) {
+  required(ownerId, 'ownerId');
+  const p = await getPool();
+  const { rows } = await p.query(`
+    WITH g AS (
+      SELECT array_agg(claim_id ORDER BY created_at, claim_id) AS ids
+        FROM aqua_claims
+       WHERE owner_id=$1 AND state = ANY($2)
+       GROUP BY ${J3_KEY}
+      HAVING count(*) > 1
+       LIMIT $3)
+    SELECT g.ids, c.claim_id, c.actor, c.state, c.created_at,
+           (SELECT count(*)::int FROM aqua_claim_evidence ce WHERE ce.owner_id=c.owner_id AND ce.claim_id=c.claim_id) AS evidence_count,
+           (SELECT max(s.trust_tier) FROM aqua_claim_evidence ce
+              JOIN aqua_evidence ev ON ev.owner_id=ce.owner_id AND ev.evidence_id=ce.evidence_id
+              JOIN aqua_sources s ON s.owner_id=ev.owner_id AND s.source_id=ev.source_id
+             WHERE ce.owner_id=c.owner_id AND ce.claim_id=c.claim_id) AS trust
+      FROM g JOIN aqua_claims c ON c.owner_id=$1 AND c.claim_id = ANY(g.ids)`,
+    [ownerId, J3_CURRENT, Math.max(1, Math.min(500, Number(limit) || 50))]);
+  const groups = new Map();
+  for (const r of rows) {
+    const key = r.ids.join(',');
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({ claimId: r.claim_id, ownerId, actor: r.actor, state: r.state, createdAt: r.created_at,
+      evidenceCount: r.evidence_count, trust: r.trust == null ? null : Number(r.trust) });
+  }
+  return [...groups.values()];
+}
+
+const IDENTITY_COLUMNS = ['subject_entity_id', 'predicate', 'object_entity_id', 'object_quantity', 'object_unit',
+  'object_time_from', 'object_time_to', 'polarity', 'modality', 'valid_from', 'valid_to'];
+const sameValue = (a, b) => (a instanceof Date || b instanceof Date)
+  ? new Date(a ?? 0).getTime() === new Date(b ?? 0).getTime() && (a == null) === (b == null)
+  : String(a ?? '') === String(b ?? '') && (a == null) === (b == null);
+
+/**
+ * Merge one structural duplicate into its survivor — one transaction, both
+ * rows locked (id order, so two workers cannot deadlock), re-verified under the
+ * lock. Non-destructive: the absorbed claim is ARCHIVED (kept, reversible by a
+ * transition back), its evidence and belief links are added to the survivor
+ * (provenance kept on both), and the merge is recorded as a lifecycle row, a
+ * 'merge' revision and a record outbox event. Returns { applied:false, reason }
+ * when the pair is no longer mergeable (raced, changed, already merged).
+ */
+export async function consolidateClaimDuplicate(input = {}) {
+  const ownerId = required(input.ownerId, 'ownerId');
+  const actor = required(input.actor, 'actor');
+  const survivorId = required(input.survivorId, 'survivorId');
+  const absorbedId = required(input.absorbedId, 'absorbedId');
+  if (survivorId === absorbedId) throw new WorldModelError('a claim cannot absorb itself');
+  return transact(async client => {
+    const { rows } = await client.query(
+      `SELECT * FROM aqua_claims WHERE owner_id=$1 AND claim_id = ANY($2::uuid[]) ORDER BY claim_id FOR UPDATE`,
+      [ownerId, [survivorId, absorbedId]]);
+    const survivor = rows.find(r => r.claim_id === survivorId);
+    const absorbed = rows.find(r => r.claim_id === absorbedId);
+    if (!survivor || !absorbed) return { applied: false, reason: 'missing' };
+    if (!J3_CURRENT.includes(survivor.state) || !J3_CURRENT.includes(absorbed.state)) return { applied: false, reason: 'not-current' };
+    const literal = r => (r.object_literal == null ? null : String(r.object_literal).trim().toLowerCase());
+    if (!IDENTITY_COLUMNS.every(c => sameValue(survivor[c], absorbed[c])) || literal(survivor) !== literal(absorbed)) {
+      return { applied: false, reason: 'not-identical' };
+    }
+    const evidence = await client.query(
+      `INSERT INTO aqua_claim_evidence (owner_id, claim_id, evidence_id, role)
+       SELECT owner_id, $2, evidence_id, 'corroborating' FROM aqua_claim_evidence
+        WHERE owner_id=$1 AND claim_id=$3
+       ON CONFLICT DO NOTHING`, [ownerId, survivorId, absorbedId]);
+    const beliefs = await client.query(
+      `INSERT INTO aqua_belief_claims (owner_id, belief_id, dimension, belief_key, claim_id, relation, weight)
+       SELECT owner_id, belief_id, dimension, belief_key, $2, relation, weight FROM aqua_belief_claims
+        WHERE owner_id=$1 AND claim_id=$3
+       ON CONFLICT DO NOTHING`, [ownerId, survivorId, absorbedId]);
+    await client.query(
+      `UPDATE aqua_claims SET state='archived', superseded_by=NULL, updated_at=now() WHERE owner_id=$1 AND claim_id=$2`,
+      [ownerId, absorbedId]);
+    const reason = input.reason ?? `j3-consolidation:structural-duplicate-of:${survivorId}`;
+    await lifecycle(client, { ownerId, targetKind: 'claim', targetId: absorbedId, fromState: absorbed.state, toState: 'archived', reason, actor });
+    await revision(client, {
+      ownerId, targetKind: 'claim', targetId: absorbedId, changeKind: 'merge',
+      before: { state: absorbed.state }, after: { state: 'archived', mergedInto: survivorId },
+      reason, actor, source: 'j3-consolidation',
+    });
+    const evidenceLinked = evidence.rowCount ?? 0;
+    const beliefLinksCopied = beliefs.rowCount ?? 0;
+    await outbox(client, {
+      ownerId, eventType: 'world-model.consolidation', aggregateKind: 'claim', aggregateId: absorbedId, actor,
+      payload: { claimId: absorbedId, survivorId, evidenceLinked, beliefLinksCopied, jobId: input.jobId ?? null },
+    });
+    return { applied: true, survivorId, absorbedId, evidenceLinked, beliefLinksCopied };
+  });
 }

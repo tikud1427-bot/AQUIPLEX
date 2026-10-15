@@ -221,10 +221,44 @@ describe('shadow mode — wiring', () => {
     // the primary, and the shadow is reached only through an explicit opt-in
     // list. readFlip.test.js covers the flipped behaviour.
     const src = stripComments(fs.readFileSync(path.join(ROOT, 'src/core/storage/dualWriteAdapter.js'), 'utf8'));
-    assert.match(src, /if \(!readShadow\.has\(name\)\) return primary\.readSync\(key\);/);
+    // 2026-10-05: the unflipped branch also hands the shadow its restart
+    // baseline (noteRead) — it still returns the PRIMARY's value.
+    assert.match(src, /if \(!readShadow\.has\(name\)\) \{\s*const value = primary\.readSync\(key\);[\s\S]*?return value;\s*\}/);
     assert.match(src, /if \(!readShadow\.has\(storeName\(key\)\)\) return primary\.existsSync\(key\);/);
 
     const dual = createDualWriteAdapter(createJsonFileAdapter(), spyShadow());
     assert.deepEqual(dual.readsFromShadow(), [], 'a default dual adapter reads from the shadow');
   });
+});
+
+describe('pre-write backup of a store the shadow never held (2026-10-05)', () => {
+  test('is skipped on the shadow, not reported as a failed write', async () => {
+    const { createDualWriteAdapter } = await import('../storage/dualWriteAdapter.js');
+    const failures = [];
+    const primary = { id: 'p', syncDurable: true, existsSync: () => true, readSync: () => '{}', write: async () => {}, writeSync: () => {}, copySync: () => {} };
+    const shadow = { id: 's', syncDurable: false, existsSync: () => false, readSync: () => null, write: async () => {}, writeSync: () => {},
+      copySync: () => { throw new Error('pgBlobAdapter: nothing to copy'); } };
+    createDualWriteAdapter(primary, shadow, { onShadowError: (e) => failures.push(e) }).copySync('/x/.aqua-mind.json', '/x/.aqua-mind.json.bak');
+    assert.deepEqual(failures, []);
+  });
+
+  test('a store the shadow DOES hold is still backed up there', async () => {
+    const { createDualWriteAdapter } = await import('../storage/dualWriteAdapter.js');
+    const copies = [];
+    const primary = { id: 'p', syncDurable: true, existsSync: () => true, readSync: () => '{}', write: async () => {}, writeSync: () => {}, copySync: () => {} };
+    const shadow = { id: 's', syncDurable: false, existsSync: () => true, readSync: () => '{}', write: async () => {}, writeSync: () => {}, copySync: (a, b) => copies.push([a, b]) };
+    createDualWriteAdapter(primary, shadow).copySync('/x/a', '/x/a.bak');
+    assert.deepEqual(copies, [['/x/a', '/x/a.bak']]);
+  });
+});
+
+// 2026-10-05 diagnosis, pinned: the Postgres shadow is installed by the SERVER
+// only. The worker writes the legacy JSON files but never the shadow, so it
+// cannot be one side of a shadow conflict.
+test('only the server installs the Postgres shadow; the worker never does', () => {
+  const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
+  assert.match(read('router.js'), /configureStorageFromEnv\(\)/);
+  for (const rel of ['scripts/worker.mjs', 'src/core/jobs/workerRuntime.js', 'scripts/start-production.mjs']) {
+    assert.doesNotMatch(read(rel), /configureStorageFromEnv|createDualWriteAdapter|createPgBlobAdapter/, `${rel} must not write the shadow`);
+  }
 });

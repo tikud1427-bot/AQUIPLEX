@@ -37,6 +37,8 @@ const { usageGuard } = require("./middleware/usage/usageGuard");
 const { attachCsrfToken, verifyCsrf, enforceSameOrigin, safeEqual } = require("./middleware/csrf");
 const { safeNextPath, rememberPostLoginNext, takePostLoginNext } = require("./middleware/redirectTarget");
 const { validateNonce, mintNativeCode, redeemNativeCode } = require("./services/auth/nativeOAuth.service");
+const { establishSession } = require("./services/auth/establishSession.service");
+const { recordProductEvent, engineEventTap } = require("./services/analytics/productEvents");
 
 // ── Static data ───────────────────────────────────────────────────────────────
 const blogs = require("./blogs");
@@ -130,7 +132,12 @@ app.use(helmet({
 // effective limit doubles. That is a degradation, not a hole — and it is the
 // same instance-count question already open from the Mongo multiple-writers
 // alarm. A shared store is the fix when that is resolved.
+const { createRateLimitStore } = require("./utils/rateLimitStore");
+
+// Stores go through utils/rateLimitStore.js: in-memory today (same behaviour as
+// the default), a shared backend (Redis) plugs in there without touching these.
 const authLimiter = rateLimit({
+  store: createRateLimitStore({ prefix: "auth" }),
   windowMs: 15 * 60 * 1000,
   limit: 10,                          // per IP per 15 min — brute force + signup abuse
   standardHeaders: "draft-7",
@@ -139,6 +146,7 @@ const authLimiter = rateLimit({
 });
 
 const engineLimiter = rateLimit({
+  store: createRateLimitStore({ prefix: "engine" }),
   windowMs: 60 * 1000,
   limit: 30,                          // per IP per minute — generous for a human, ruinous for a script
   standardHeaders: "draft-7",
@@ -147,7 +155,15 @@ const engineLimiter = rateLimit({
 });
 
 // ── Body parsers & static ─────────────────────────────────────────────────────
-app.use(express.json({ limit: "50mb" })); // AQUA project uploads (base64 archives) need a large body limit
+// AQUA project uploads (base64 archives) need a 50 MB JSON body. That parser
+// used to run here, globally and before any auth, so an anonymous request to
+// any route could make the server buffer and parse 50 MB. Now the engine
+// prefixes are skipped here and parsed by `aquaJson` AFTER requireLogin (see
+// aquaAccess); every other route gets 1 MB.
+const AQUA_API_PREFIX = /^\/(api\/aqua|v1)(\/|$)/;
+const platformJson = express.json({ limit: "1mb" });
+const aquaJson = express.json({ limit: "50mb" });
+app.use((req, res, next) => (AQUA_API_PREFIX.test(req.path) ? next() : platformJson(req, res, next)));
 app.use(express.urlencoded({ extended: true }));
 
 // P0 (cache) — the service worker file MUST always be revalidated, otherwise
@@ -548,6 +564,9 @@ app.use("/api/account", accountRoutes);
 
 const aquaEngine = express.Router();
 
+// Activation/retention events (no content — see services/analytics/productEvents.js).
+aquaEngine.use(engineEventTap());
+
 // Credit metering on generation endpoints (same wallet as the rest of the platform)
 aquaEngine.use((req, res, next) => {
   // E11: /v1 is a compatibility alias over the same route tree. Normalize
@@ -573,6 +592,7 @@ aquaEngine.use((req, res, next) => {
 const aquaAccess = [
   engineLimiter,          // before requireLogin: an unauthenticated flood still costs us sockets
   requireLogin,
+  aquaJson,               // the 50 MB upload parser — only for signed-in callers
   (req, res, next) => {
     req.aquaUserId = String(req.session.userId);
     next();
@@ -583,6 +603,16 @@ const aquaAccess = [
 // E11: keep the platform-native /api/aqua surface and expose the same engine
 // at the blueprint's canonical /v1 path. There is still exactly one route
 // implementation and one usage-metering layer.
+// E12 — Prometheus machine scrape. Every /api/aqua route needs a browser
+// session, which a scraper does not have. This one route takes a bearer token
+// instead, and answers 404 unless AQUA_METRICS_TOKEN is set (≥ 32 chars). It
+// serves the same exposition as /api/aqua/provider-health/metrics.
+app.get("/metrics", (req, res, next) => {
+  import("./aqua/src/routes/metricsScrape.js")
+    .then((m) => m.metricsScrape()(req, res))
+    .catch(next);
+});
+
 app.use("/api/aqua", ...aquaAccess);
 app.use("/v1", ...aquaAccess);
 
@@ -716,7 +746,18 @@ app.get("/tools/:id", marketplaceRedirect);
 
 app.get("/bundles", (req, res) => res.render("bundles"));
 
-app.post("/generate-bundle", async (req, res) => {
+// Bundle generation calls the LLM. It used to be open to anonymous callers and
+// free for signed-in ones — a quota drain anyone could script. It now takes a
+// session, the engine rate limit, and chat-message credits for the AI step
+// (step 1 only returns fixed questions and stays free).
+const bundleAiGuard = [
+  engineLimiter,
+  requireLogin,
+  (req, res, next) => (req.body && req.body.step && req.body.step !== 1
+    ? usageGuard("chat_message")(req, res, next)
+    : next()),
+];
+app.post("/generate-bundle", ...bundleAiGuard, async (req, res) => {
   const { goal, step, answers } = req.body;
   if (!goal || !goal.trim()) return res.status(400).json({ error: "Goal is required" });
 
@@ -781,7 +822,7 @@ JSON schema:
     res.json(parsed);
   } catch (err) {
     console.error("❌ /generate-bundle error:", err);
-    res.status(500).json({ error: "AI failed to generate bundle", raw: err.message });
+    res.status(500).json({ error: "AI failed to generate bundle" });
   }
 });
 
@@ -1080,13 +1121,18 @@ app.post("/admin/tools/:id/reject", requireAdmin, async (req, res) => {
 app.get("/about", (req, res) => res.render("about"));
 
 
-app.post("/bundle/:id/run", requireLogin, async (req, res) => {
+app.post("/bundle/:id/run", engineLimiter, requireLogin, usageGuard("chat_message"), async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ error: "Invalid bundle ID" });
+    // runBundle loads by id alone — check ownership here first.
+    const owned = await Bundle.exists({ _id: req.params.id, userId: req.session.userId });
+    if (!owned) return res.status(404).json({ error: "Bundle not found" });
     const { runBundle } = require("./services/execution.service");
     const bundle = await runBundle(req.params.id, generateAI);
     res.json({ success: true, bundle });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[bundle run]", err.message);
+    res.status(500).json({ error: "Failed to run bundle" });
   }
 });
 
@@ -1124,7 +1170,7 @@ app.get("/bundle/:id", requireLogin, async (req, res) => {
 });
 
 // ── Execute a single bundle step ──────────────────────────────────────────────
-app.post("/execute-step", requireLogin, async (req, res) => {
+app.post("/execute-step", engineLimiter, requireLogin, usageGuard("chat_message"), async (req, res) => {
   try {
     const { bundleId, stepIndex } = req.body;
     if (!bundleId || stepIndex === undefined) return res.status(400).json({ error: "bundleId and stepIndex required" });
@@ -1254,24 +1300,29 @@ app.get("/signup", redirectIfLoggedIn, (req, res) => res.render("signup"));
 app.post("/login", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).send("All fields are required");
+    if (typeof email !== "string" || typeof password !== "string" || !email || !password) {
+      return res.status(400).render("login", { error: "Enter your email and password." });
+    }
 
+    // One answer for an unknown email and a wrong password, so the form is
+    // not an oracle for which addresses have accounts.
+    const invalid = () => res.status(401).render("login", { error: "That email and password don't match an account." });
     const user = await User.findOne({ email: email.toLowerCase().trim() });
-    if (!user) return res.status(401).send("User not found");
+    if (!user) return invalid();
 
     const isMatch = user.password !== "google-oauth" ? await bcrypt.compare(password, user.password) : false;
-    if (!isMatch) return res.status(401).send("Invalid credentials");
+    if (!isMatch) return invalid();
 
     // Read BEFORE the identity is written so the value is consumed exactly
     // once; "/home" stays the default for every login that did not ask.
     const destination = takePostLoginNext(req, "/home");
 
-    req.session.user   = { _id: user._id, email: user.email, username: user.email.split("@")[0] };
-    req.session.userId = user._id;
-    req.session.save(() => res.redirect(destination));
+    await establishSession(req, user);
+    recordProductEvent(user._id, "login", { method: "email" });
+    res.redirect(destination);
   } catch (err) {
     console.error(err);
-    res.status(500).send("Login error");
+    res.status(500).render("login", { error: "Something went wrong signing you in. Try again." });
   }
 });
 
@@ -1366,6 +1417,7 @@ app.get(
     // status is decided by the Passport verify callback, not by which client
     // is finishing the login.
     const firstRun = req.user?.$locals?.justCreated === true;
+    recordProductEvent(req.user._id, firstRun ? "signup_completed" : "login", { method: "google" });
 
     // NATIVE LEG: this request started at /auth/google?native=1. Ordinary
     // browser logins never set req.session.nativeReturn, so this branch
@@ -1538,21 +1590,24 @@ app.get(
 app.post("/signup", authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).send("All fields are required");
+    const again = (status, error) => res.status(status).render("signup", { error });
+    if (typeof email !== "string" || typeof password !== "string" || !email || !password) {
+      return again(400, "Enter an email and a password.");
+    }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return res.status(400).send("Invalid email format");
-    if (password.length < 6)    return res.status(400).send("Password must be at least 6 characters");
+    if (!emailRegex.test(email)) return again(400, "That email address doesn't look right.");
+    if (password.length < 6)    return again(400, "Use a password of at least 6 characters.");
 
     const normalizedEmail = email.toLowerCase().trim();
     const exists = await User.findOne({ email: normalizedEmail });
-    if (exists) return res.status(409).send("User already exists");
+    if (exists) return again(409, "An account with this email already exists. Log in instead.");
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const newUser = await new User({ email: normalizedEmail, password: hashedPassword }).save();
 
-    req.session.user   = { _id: newUser._id, email: newUser.email, username: newUser.email.split("@")[0] };
-    req.session.userId = newUser._id;
+    await establishSession(req, newUser);
+    recordProductEvent(newUser._id, "signup_completed", { method: "email" });
     // ── THE FUNNEL ────────────────────────────────────────────────────────────
     // A new account goes to the PRODUCT, not to the workspace dashboard.
     //
@@ -1564,10 +1619,10 @@ app.post("/signup", authLimiter, async (req, res) => {
     //
     // /home is NOT removed: for a returning user it is a legitimate workspace,
     // and /login still goes there. Only the first run changes.
-    req.session.save(() => res.redirect("/aqua"));
+    res.redirect("/aqua");
   } catch (err) {
     console.error(err);
-    res.status(500).send("Signup error");
+    res.status(500).render("signup", { error: "Something went wrong creating your account. Try again." });
   }
 });
 

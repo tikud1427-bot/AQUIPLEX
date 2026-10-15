@@ -51,7 +51,11 @@ describe('understanding is scheduled durably when the queue is available', () =>
     assert.equal(c.enqueue.length, 1);
     assert.equal(c.enqueue[0].kind, 'understanding.turn.v1');
     assert.equal(c.enqueue[0].ownerId, 'user:a');
-    assert.deepEqual(c.enqueue[0].payload, { conversationId: 'conv-1', turn: 3, userMessage: ARGS.userMessage });
+    const { assertedAt, ...rest } = c.enqueue[0].payload;
+    assert.deepEqual(rest, { conversationId: 'conv-1', turn: 3, userMessage: ARGS.userMessage });
+    // Pass 2 (2026-10-11): when it was SAID travels with the job — the S5 anchor
+    // for "next month", so a retried job resolves against the turn, not the retry.
+    assert.ok(Math.abs(Date.parse(assertedAt) - Date.now()) < 60_000, `assertedAt missing or wrong: ${assertedAt}`);
     assert.equal(c.understand, 0, 'both paths ran — one turn would cost two provider calls');
     assert.equal(c.reports.length, 1);
     assert.ok(c.reports[0].scheduled, 'the scheduling was not reported');

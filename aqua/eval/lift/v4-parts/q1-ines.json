@@ -1,0 +1,219 @@
+{
+  "id": "q1-ines",
+  "length": "short",
+  "sessions": [
+    [
+      "olá! ok so a friend told me you can help with business stuff. I run a small bakery in Porto, Padaria Lua, in Bonfim, been open 9 years now. mostly bread, pastéis de nata, broas, some cakes for orders",
+      "first question, totally basic: how do I calculate the food cost percentage of a product? my accountant Sr. Mota always talks about it and I nod like I understand lol",
+      "ok that makes sense. so if a nata costs me 0,31 in ingredients and I sell at 1,30 that's like 24%? that's good no?",
+      "fine. now the real reason I'm here. I'm opening a second shop in Matosinhos, near the market, two streets from the beach. we are calling it Lua 2 for now, Tiago (my son, 15) says that is a terrible name and wants \"Lua do Mar\" haha. we'll see",
+      "the plan is to open on the 4th of November. it's tight. the space was a shoe repair shop so everything needs to be done, floor, electrics, a proper extraction hood",
+      "the landlord is a Sr. Albano Reis, older man, very polite but sloooow. he sent me the draft lease last week, I'll upload it later so you can look",
+      "the big headache right now is the licence from the Câmara de Matosinhos, the licença de utilização for food. the architect submitted it in August and nothing. without it I can't even get the electricity contract changed to commercial",
+      "can you explain what the usual timeline for that is in Portugal? or is it just \"depends on the mood of the person at the counter\" 😂",
+      "yeah thought so. ok",
+      "also my budget for equipment in the new shop is 18 thousand euros max, I don't want a loan bigger than what I already have. oven, mixer, display fridge, the counter. is that realistic?",
+      "the oven I'm looking at is from Fornos Ramalho, a deck oven, 3 decks. the sales guy is called Sérgio, he says 9.800 installed. he wants an answer by friday",
+      "hmm ok I'll ask him if the price includes the hood connection",
+      "one more thing, at Bonfim my manager Rui told me yesterday he's leaving end of September, his girlfriend got a job in Lisbon. I'm happy for him but ai, terrible timing",
+      "I think Joana will take over, she's been doing weekends for 2 years and the regulars love her. need to talk to her",
+      "ok thanks, that's enough for today, I have dough rising"
+    ],
+    [
+      "bom dia. uploaded the lease draft for the Matosinhos place, did you see it? anything weird in there?",
+      "ok the termination thing after 3 years seems fair. the insurance 150k is that normal? my Bonfim policy I think is 100k",
+      "fine, I'll ask the insurance lady",
+      "small correction from last time btw, the opening of Lua 2 is the 14th of November, not the 4th. I wrote it wrong, the 4th was never possible with the works. 14th, a saturday",
+      "and the licence... still nothing. architect called the câmara twice. I'm starting to lose sleep",
+      "completely different thing. my friend Marta is opening her ceramics gallery in Foz on the 7th of November and asked me to do the catering for the opening night, around 60 people. she wants natas obviously and some small savoury things, at least half vegan because her crowd is very \"alternative\" haha",
+      "can you give me ideas for vegan savoury bites that travel well? I'll make them in Bonfim and drive them over",
+      "ooh the mushroom and chestnut empadas are a great idea. and something with grão?",
+      "perfect. how much should I charge her? she's a friend but I can't do it for free, it's 60 people",
+      "ok I'll say 6 euros per person, she'll accept, she's not poor 😅",
+      "also Tiago has this exchange trip with his school to Lyon, French class. they still haven't said if it's February or April. he wants February because of some football tournament in April. I just want to know so I can plan the shop schedule",
+      "anyway. thanks querida"
+    ],
+    [
+      "NEWS!!! the licence for Lua 2 came through! approved on the 29th, the architect sent me the pdf this morning. I almost cried in front of the customers",
+      "so now electricity contract, and the works can really go full speed",
+      "can you make me a simple checklist of what needs to happen between now and opening? floor is done, electrics half done",
+      "add \"staff hiring\" — I need 2 people for Matosinhos. one for the counter, one who can bake early. I want the baker to start at 5 in the morning so we have bread for the 7am opening, like at Bonfim",
+      "ok good list. what should I write in the job ad? keep it short, I hate long ads",
+      "nice. change \"dinâmica\" to something less cliché please",
+      "perfect",
+      "oh and Rui's last day was yesterday. we did a little dinner. Joana is officially the manager at Bonfim from today, 1st of October. she's nervous but she'll be great",
+      "also a thing for the future, Sr. Mota (accountant) told me he's retiring at the end of the year. from January my accountant will be Carla Pinto, she took over part of his clients. he'll still do my IVA for the 4th quarter and the year-end",
+      "ok enough. obrigada"
+    ],
+    [
+      "help I'm cooking for me and Tiago and I'm out of ideas. something quick, but remember no meat or fish for me, I've been vegetarian since my twenties, Tiago eats whatever",
+      "the shakshuka is good, I have eggs and peppers. done",
+      "ok now the bad news. Sérgio from Fornos Ramalho called, I mean texted thank god, I hate phone calls, the oven was supposed to be delivered on the 25th of October and now it's the 6th of November because the factory in Spain is behind. so now THAT is what's holding everything up. without the oven I can't test anything and I can't train the new baker",
+      "if it arrives on the 6th we can still open on the 14th, but it's tight. I paid 30% already, can I ask for a discount for the delay?",
+      "how do I phrase it so I don't sound aggressive? he's been nice",
+      "ok good, send it as a whatsapp, not email",
+      "I'll send it tonight",
+      "also unrelated, what's the difference between a pão de ló from Ovar and the normal one? a customer asked me and I gave a vague answer lol",
+      "haha ok yes it's the runny inside. I knew that. kind of",
+      "last thing — I want to send Albano something about the opening date and the sign for the façade. Tiago designed the logo already with the moon and a wave. but I'll do that tomorrow",
+      "boa noite"
+    ]
+  ],
+  "documents": [
+    {
+      "afterSession": 1,
+      "name": "contrato_arrendamento_matosinhos_rascunho.txt",
+      "text": "DRAFT COMMERCIAL LEASE AGREEMENT (translation of working draft, v2)\n\nLANDLORD: Albano Ferreira Reis, NIF 1xx xxx 452, residing at Rua Brito Capelo 210, 4450-068 Matosinhos.\nContact: telephone +351 912 334 870 | albano.reis.matosinhos@sapo.pt\nTENANT: Inês Calado Unipessoal Lda. (trading as Padaria Lua), represented by Inês Maria Calado.\n\nPREMISES: Ground floor shop, Rua de Roberto Ivens 77, Matosinhos, approx. 64 m2 plus 12 m2 rear storage, in a residential building under horizontal property (condominium).\n\n1. TERM. The lease is granted for a term of five (5) years starting on the 1st of October 2026, automatically renewable for successive periods of three (3) years unless either party gives notice under clause 9.\n\n2. RENT. The monthly rent is EUR 1,450 (one thousand four hundred and fifty euros) for the first and second years. From the third year onward the rent will be updated annually according to the coefficient published by INE. Rent is payable by bank transfer by the 8th day of each month.\n\n3. RENT-FREE PERIOD. In consideration of the works to be carried out by the Tenant, the Landlord grants a rent-free period of one (1) month. The first rent payment is therefore due on the 8th of November 2026.\n\n4. DEPOSIT. On signature the Tenant shall pay a security deposit equal to two (2) months of rent, i.e. EUR 2,900, returnable at the end of the lease less any amounts owed.\n\n5. USE. The premises shall be used exclusively as a bakery, pastry shop and café, with sale of food and non-alcoholic drinks. Sale of alcoholic beverages requires prior written consent of the Landlord.\n\n6. HOURS AND NOISE. Because the premises are located in a residential building, the Tenant shall not operate ovens, mixers, extraction equipment or any other noisy machinery before 06:30 or after 22:00, on any day of the week. Deliveries by truck shall not take place before 07:00.\n\n7. WORKS. The Tenant may carry out the works listed in Annex I (floor, electrical installation, extraction hood, sanitary facility) at its own cost. Structural works require written approval of the Landlord. Repairs to the building facade remain the responsibility of the Landlord.\n\n8. SIGNAGE. Any exterior sign, awning or illuminated board requires prior approval of the condominium general meeting, to be requested through the Landlord. The next ordinary meeting of the condominium is scheduled for the second half of November 2026.\n\n9. TERMINATION. The Tenant may terminate the lease after the end of the third year with at least six (6) months written notice. Early termination before the end of the third year obliges the Tenant to pay the rent corresponding to the remaining months of the third year.\n\n10. INSURANCE. The Tenant shall maintain multi-risk insurance covering fire, water damage and third-party liability, with a minimum insured capital of EUR 150,000 for liability.\n\n11. FORUM. Any disputes shall be settled in the courts of the district of Matosinhos.\n\nAnnex I - list of authorised works (to be attached).\nSignatures: ____________ (Landlord)   ____________ (Tenant)"
+    }
+  ],
+  "questions": [
+    {
+      "id": "q1-ines-q01",
+      "cat": "current_fact",
+      "q": "who is running the Bonfim shop these days?",
+      "required": [
+        "Joana is the manager at Bonfim"
+      ],
+      "forbidden": [
+        "Rui is currently the manager at Bonfim"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q02",
+      "cat": "correction",
+      "q": "remind me, what day does the Matosinhos shop open?",
+      "required": [
+        "14 November"
+      ],
+      "forbidden": [
+        "The Matosinhos shop opens on 4 November"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q03",
+      "cat": "resolved_blocker",
+      "q": "what's the main thing holding up the new shop right now?",
+      "required": [
+        "the oven delivery from Fornos Ramalho is delayed (now 6 November)"
+      ],
+      "forbidden": [
+        "The licence from the Câmara is currently what's blocking the new shop"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q04",
+      "cat": "future_vs_now",
+      "q": "who's my accountant now, and does that change?",
+      "required": [
+        "Sr. Mota is the accountant now",
+        "Carla Pinto from January"
+      ],
+      "forbidden": [
+        "Carla Pinto is currently my accountant"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q05",
+      "cat": "alias",
+      "q": "did the licence for the Matosinhos place ever come through?",
+      "required": [
+        "yes, it was approved (29 September)"
+      ],
+      "forbidden": [
+        "The Matosinhos licence is still pending"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q06",
+      "cat": "same_name_distinct",
+      "q": "what do I need to get ready for the opening on the 7th?",
+      "required": [
+        "Marta's gallery opening catering",
+        "about 60 people",
+        "at least half vegan savoury items"
+      ],
+      "forbidden": [
+        "The Matosinhos shop opens on 7 November"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q07",
+      "cat": "file",
+      "q": "how much was the deposit for the Matosinhos lease again?",
+      "required": [
+        "EUR 2,900 (two months of rent)"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q08",
+      "cat": "file_plus_chat",
+      "q": "is my plan for the new baker's start time in Matosinhos ok?",
+      "required": [
+        "the plan is for the baker to start at 5am",
+        "the lease forbids operating ovens/noisy machinery before 06:30"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q09",
+      "cat": "multi_hop",
+      "q": "who do I need to chase about whatever is holding up the sea shop?",
+      "required": [
+        "Sérgio",
+        "Fornos Ramalho (oven delivery)"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q10",
+      "cat": "uncertainty",
+      "q": "when is Tiago going to Lyon?",
+      "required": [
+        "not decided yet: February or April"
+      ],
+      "forbidden": [
+        "Tiago's Lyon trip is confirmed for February"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q11",
+      "cat": "preference",
+      "q": "give me a quick dinner idea for me and Tiago tonight, something different from last time",
+      "required": [
+        "vegetarian (no meat or fish)"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q12",
+      "cat": "draft",
+      "q": "can you write the message to my landlord about the new shop's opening and the sign?",
+      "required": [
+        "addressed to Albano Reis",
+        "opening on 14 November",
+        "sign needs condominium approval"
+      ],
+      "expectUnknown": false
+    },
+    {
+      "id": "q1-ines-q13",
+      "cat": "unknown",
+      "q": "what is Joana's surname? I need it for her new contract",
+      "expectUnknown": true
+    },
+    {
+      "id": "q1-ines-q14",
+      "cat": "unknown",
+      "q": "what's the name of Tiago's school?",
+      "expectUnknown": true
+    }
+  ]
+}

@@ -28,6 +28,7 @@
  * itself never throws on malformed facts (defensive defaults throughout).
  */
 import { CAPS } from '../mind/mindSchema.js';
+import { deleteItem } from '../mind/mindStore.js';
 import { IDENTITY_FACT_KEYS } from './identity.js';
 import { getSchema } from './memorySchema.js';
 
@@ -208,7 +209,7 @@ export function mergeDuplicateFacts(mind, { now = Date.now() } = {}) {
         { reason: `duplicate_merged:${loser.key}`, value: loser.value, ts: loser.ts, supersededAt: now, revision: loser.revision || 1 },
       ];
       capFactHistory(winner);
-      delete facts[loser.key];
+      deleteItem(mind, 'facts', loser.key);   // tombstoned: a stale copy elsewhere must not bring it back
       report.merged.push({ winner: winner.key, loser: loser.key });
     }
   }

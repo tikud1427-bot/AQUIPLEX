@@ -78,6 +78,10 @@ export default {
       floor: { referenceCoverage: floorCoverage, relevantCoverage: floorRelevant, phraseCoverage: exactPhraseCoverage(floor.answer, acceptable) },
       worldModel: { referenceCoverage: worldCoverage, relevantCoverage: worldRelevant, phraseCoverage: exactPhraseCoverage(worldModel.answer, acceptable) },
       provider: { floor: floor.provider, worldModel: worldModel.provider },
+      model: { floor: floor.model ?? null, worldModel: worldModel.model ?? null },
+      // false = the two lanes were answered by different provider/models, so
+      // this case compares providers, not evidence.
+      paired: actual.paired !== false,
     };
   },
 
@@ -90,6 +94,7 @@ export default {
     const avg = xs => xs.length ? xs.reduce((a,b)=>a+(b?1:0),0)/xs.length : 0;
     return {
       n: scored.length,
+      unpairedCases: scored.filter(x => x.paired === false).length,
       floor: { referenceCoverage: avg(fRef), relevantCoverage: avg(fRel) },
       worldModel: { referenceCoverage: avg(wRef), relevantCoverage: avg(wRel) },
       delta: {

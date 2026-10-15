@@ -41,6 +41,7 @@ const Tool        = require("../../models/Tool");
 const Payment     = require("../../models/Payment");
 const Transaction = require("../../models/Transaction");
 const BillingLog  = require("../../models/BillingLog");
+const ProductEvent = require("../../models/ProductEvent");
 
 const { createLogger } = require("../../utils/logger");
 
@@ -198,7 +199,7 @@ async function deleteAccount({ userId }) {
   }
 
   // 2. PLATFORM — user-owned documents.
-  const [bundles, payments, transactions, billing, tools] = await Promise.all([
+  const [bundles, payments, transactions, billing, tools, productEvents] = await Promise.all([
     Bundle.deleteMany({ userId: uid }),
     Payment.deleteMany({ user: uid }),
     Transaction.deleteMany({ user: uid }),
@@ -206,6 +207,8 @@ async function deleteAccount({ userId }) {
     BillingLog.updateMany({ user: uid }, { $unset: { user: "" } }),
     // Public directory listings — reassigned, not deleted (see header).
     Tool.updateMany({ submittedBy: uid }, { $set: { submittedBy: "anonymous" } }),
+    // Product analytics are keyed by user id and deleted with the account.
+    ProductEvent.deleteMany({ userId: String(uid) }),
   ]);
 
   // 3. The account itself, then every session it opened. Sessions go last so
@@ -220,6 +223,7 @@ async function deleteAccount({ userId }) {
     transactions:     transactions.deletedCount || 0,
     billingAnonymized: billing.modifiedCount || 0,
     toolsAnonymized:  tools.modifiedCount || 0,
+    productEvents:    productEvents.deletedCount || 0,
     sessions,
   };
 

@@ -10,6 +10,13 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'child_process';
+import { existsSync as tarExists } from 'fs';
+
+// On Windows the first `tar` on PATH is often MSYS GNU tar (Git Bash), which reads
+// `C:...` as `host:path` and fails. Windows ships bsdtar, which understands
+// drive letters; the property under test (a system tar reads our archive) holds.
+const WIN_TAR = 'C:/Windows/System32/tar.exe';
+const SYSTEM_TAR = process.platform === 'win32' && tarExists(WIN_TAR) ? WIN_TAR : 'tar';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -91,13 +98,13 @@ test('tar: unsplittable long path ships as a GNU longname and system tar reads i
   const tp = path.join(TMP, 'long.tar');
   fs.writeFileSync(tp, buf);
 
-  const listing = execFileSync('tar', ['-tf', tp], { encoding: 'utf8' }).trim().split('\n');
+  const listing = execFileSync(SYSTEM_TAR, ['-tf', tp], { encoding: 'utf8' }).trim().split(/\r?\n/);
   assert.ok(listing.some(l => l.includes(longSegment)), `long path missing from listing: ${listing.join(' | ')}`);
   assert.ok(listing.some(l => l === 'proj/ok.txt'));
 
   const out = path.join(TMP, 'x-long');
   fs.mkdirSync(out);
-  execFileSync('tar', ['-xf', tp, '-C', out]);
+  execFileSync(SYSTEM_TAR, ['-xf', tp, '-C', out]);
   assert.equal(fs.readFileSync(path.join(out, 'proj', 'deep', longSegment), 'utf8'), 'long name payload');
   assert.equal(fs.readFileSync(path.join(out, 'proj', 'ok.txt'), 'utf8'), 'normal');
 });

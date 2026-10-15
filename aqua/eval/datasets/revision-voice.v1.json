@@ -1,0 +1,870 @@
+{
+  "id": "revision-voice",
+  "version": 1,
+  "authoredAt": "2026-10-04",
+  "about": "Ordered claims (each tagged with the conversation it was said in) for one or two owners, followed by turns. Each turn states whether the revision voice must raise something and, if so, exactly which stored statements it quotes, older first. Written from conversation structure and predicate meaning, not from any benchmark question.",
+  "cases": [
+    {
+      "id": "moved-across-conversations",
+      "cat": "supersession",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          },
+          "text": "I live in Berlin"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Paris",
+            "entityId": "e-paris"
+          },
+          "text": "I moved to Paris"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": {
+            "kind": "superseded",
+            "older": "I live in Berlin",
+            "newer": "I moved to Paris"
+          }
+        },
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": null
+        },
+        {
+          "conv": "c4",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "moved-within-this-conversation-is-not-echoed",
+      "cat": "echo",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          },
+          "text": "I live in Berlin"
+        },
+        {
+          "id": "b",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Paris",
+            "entityId": "e-paris"
+          },
+          "text": "I moved to Paris"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c1",
+          "taskType": "conversation",
+          "expect": null
+        },
+        {
+          "conv": "c2",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "chain-raises-the-newest-change-only",
+      "cat": "temporal",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Intercom",
+            "entityId": "e-intercom"
+          },
+          "text": "I work at Intercom"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Nummo",
+            "entityId": "e-nummo"
+          },
+          "text": "I joined Nummo"
+        },
+        {
+          "id": "c",
+          "conv": "c3",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Zeta",
+            "entityId": "e-zeta"
+          },
+          "text": "I started at Zeta"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c4",
+          "taskType": "conversation",
+          "expect": {
+            "kind": "superseded",
+            "older": "I joined Nummo",
+            "newer": "I started at Zeta"
+          }
+        },
+        {
+          "conv": "c4",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "polarity-flip-is-a-dispute",
+      "cat": "contradiction",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Redis",
+            "entityId": "e-redis"
+          },
+          "text": "I use Redis"
+        },
+        {
+          "id": "b",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Redis",
+            "entityId": "e-redis"
+          },
+          "text": "I do not use Redis",
+          "polarity": "negated"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c1",
+          "taskType": "conversation",
+          "expect": {
+            "kind": "disputed",
+            "quotes": [
+              "I use Redis",
+              "I do not use Redis"
+            ]
+          }
+        },
+        {
+          "conv": "c1",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "dispute-is-raised-even-in-the-same-conversation-later",
+      "cat": "contradiction",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Kafka",
+            "entityId": "e-kafka"
+          },
+          "text": "We run Kafka"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Kafka",
+            "entityId": "e-kafka"
+          },
+          "text": "We never ran Kafka",
+          "polarity": "negated"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c2",
+          "taskType": "conversation",
+          "expect": {
+            "kind": "disputed",
+            "quotes": [
+              "We run Kafka",
+              "We never ran Kafka"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "explicit-correction-is-never-raised",
+      "cat": "correction",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Porto",
+            "entityId": "e-porto"
+          },
+          "text": "I live in Porto",
+          "actor": "user"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Faro",
+            "entityId": "e-faro"
+          },
+          "text": "I live in Faro"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": null
+        },
+        {
+          "conv": "c4",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "newer-correction-is-never-raised",
+      "cat": "correction",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Lyon",
+            "entityId": "e-lyon"
+          },
+          "text": "I live in Lyon"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Nice",
+            "entityId": "e-nice"
+          },
+          "text": "Actually I live in Nice",
+          "actor": "user"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "multi-valued-is-not-a-revision",
+      "cat": "no-change",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Postgres",
+            "entityId": "e-postgres"
+          },
+          "text": "I use Postgres"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Redis",
+            "entityId": "e-redis"
+          },
+          "text": "I use Redis"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "restatement-is-not-a-revision",
+      "cat": "no-change",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          },
+          "text": "I live in Berlin"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          },
+          "text": "I live in Berlin"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "intent-is-not-a-revision",
+      "cat": "no-change",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Nummo",
+            "entityId": "e-nummo"
+          },
+          "text": "I work at Nummo"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Zeta",
+            "entityId": "e-zeta"
+          },
+          "text": "I want to work at Zeta",
+          "modality": "intent"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "closed-window-is-history-not-a-revision",
+      "cat": "no-change",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Intercom",
+            "entityId": "e-intercom"
+          },
+          "text": "I worked at Intercom until June 2024",
+          "validTo": "2024-06-01"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Nummo",
+            "entityId": "e-nummo"
+          },
+          "text": "I joined Nummo in July 2024",
+          "validFrom": "2024-07-01"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "working-turn-neither-raises-nor-burns",
+      "cat": "suitability",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          },
+          "text": "I live in Berlin"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Paris",
+            "entityId": "e-paris"
+          },
+          "text": "I moved to Paris"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "coding",
+          "expect": null
+        },
+        {
+          "conv": "c3",
+          "taskType": "debugging",
+          "expect": null
+        },
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": {
+            "kind": "superseded",
+            "older": "I live in Berlin",
+            "newer": "I moved to Paris"
+          }
+        }
+      ]
+    },
+    {
+      "id": "interview-mode-neither-raises-nor-burns",
+      "cat": "suitability",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Oslo",
+            "entityId": "e-oslo"
+          },
+          "text": "I live in Oslo"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Bergen",
+            "entityId": "e-bergen"
+          },
+          "text": "I moved to Bergen"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": null,
+          "mode": "understanding_interview"
+        },
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": {
+            "kind": "superseded",
+            "older": "I live in Oslo",
+            "newer": "I moved to Bergen"
+          }
+        }
+      ]
+    },
+    {
+      "id": "two-pending-changes-newest-raised-rest-decided",
+      "cat": "temporal",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          },
+          "text": "I live in Berlin"
+        },
+        {
+          "id": "b",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Intercom",
+            "entityId": "e-intercom"
+          },
+          "text": "I work at Intercom"
+        },
+        {
+          "id": "c",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Paris",
+            "entityId": "e-paris"
+          },
+          "text": "I moved to Paris"
+        },
+        {
+          "id": "d",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "works_at",
+          "object": {
+            "entity": "Nummo",
+            "entityId": "e-nummo"
+          },
+          "text": "I joined Nummo"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": {
+            "kind": "superseded",
+            "older": "I work at Intercom",
+            "newer": "I joined Nummo"
+          }
+        },
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": null
+        },
+        {
+          "conv": "c4",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "eligible-dispute-behind-an-echoed-change",
+      "cat": "contradiction",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Redis",
+            "entityId": "e-redis"
+          },
+          "text": "I use Redis"
+        },
+        {
+          "id": "b",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "uses",
+          "object": {
+            "entity": "Redis",
+            "entityId": "e-redis"
+          },
+          "text": "I do not use Redis",
+          "polarity": "negated"
+        },
+        {
+          "id": "c",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          },
+          "text": "I live in Berlin"
+        },
+        {
+          "id": "d",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Paris",
+            "entityId": "e-paris"
+          },
+          "text": "I moved to Paris"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c2",
+          "taskType": "conversation",
+          "expect": {
+            "kind": "disputed",
+            "quotes": [
+              "I use Redis",
+              "I do not use Redis"
+            ]
+          }
+        },
+        {
+          "conv": "c2",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "one-per-object-owner-change",
+      "cat": "supersession",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "Lena",
+          "subjectEntityId": "e-lena",
+          "predicate": "owns",
+          "object": {
+            "entity": "billing service",
+            "entityId": "e-billing-service"
+          },
+          "text": "Lena owns the billing service"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "Omar",
+          "subjectEntityId": "e-omar",
+          "predicate": "owns",
+          "object": {
+            "entity": "billing service",
+            "entityId": "e-billing-service"
+          },
+          "text": "Omar owns the billing service now"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": {
+            "kind": "superseded",
+            "older": "Lena owns the billing service",
+            "newer": "Omar owns the billing service now"
+          }
+        }
+      ]
+    },
+    {
+      "id": "dispute-overtaken-by-a-change-is-not-raised-stale",
+      "cat": "contradiction",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          },
+          "text": "I live in Berlin"
+        },
+        {
+          "id": "b",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          },
+          "text": "I do not live in Berlin",
+          "polarity": "negated"
+        },
+        {
+          "id": "c",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Paris",
+            "entityId": "e-paris"
+          },
+          "text": "I moved to Paris"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c2",
+          "taskType": "conversation",
+          "expect": null
+        }
+      ]
+    },
+    {
+      "id": "another-owners-change-is-invisible",
+      "cat": "isolation",
+      "steps": [
+        {
+          "id": "a",
+          "conv": "c1",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Berlin",
+            "entityId": "e-berlin"
+          },
+          "text": "I live in Berlin",
+          "owner": "other"
+        },
+        {
+          "id": "b",
+          "conv": "c2",
+          "subject": "You",
+          "subjectEntityId": "self",
+          "predicate": "located_in",
+          "object": {
+            "entity": "Paris",
+            "entityId": "e-paris"
+          },
+          "text": "I moved to Paris",
+          "owner": "other"
+        }
+      ],
+      "turns": [
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": null
+        },
+        {
+          "conv": "c3",
+          "taskType": "conversation",
+          "expect": {
+            "kind": "superseded",
+            "older": "I live in Berlin",
+            "newer": "I moved to Paris"
+          },
+          "owner": "other"
+        }
+      ]
+    }
+  ]
+}

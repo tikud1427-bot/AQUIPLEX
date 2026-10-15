@@ -21,6 +21,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-unified-'));
 process.env.AQUA_DATA_DIR = tmp; // stores persist to the data dir now (P0)
@@ -46,10 +47,10 @@ fs.writeFileSync(path.join(tmp, '.aqua-history.json'), JSON.stringify({
 let engine, ltm, mindStore, migrate;
 
 before(async () => {
-  engine    = await import(path.join(repoRoot, 'src/memory/engine.js'));
-  ltm       = await import(path.join(repoRoot, 'src/memory/longTermMemory.js'));
-  mindStore = await import(path.join(repoRoot, 'src/mind/mindStore.js'));
-  migrate   = await import(path.join(repoRoot, 'src/memory/migrate.js'));
+  engine    = await import(pathToFileURL(path.join(repoRoot, 'src/memory/engine.js')).href);
+  ltm       = await import(pathToFileURL(path.join(repoRoot, 'src/memory/longTermMemory.js')).href);
+  mindStore = await import(pathToFileURL(path.join(repoRoot, 'src/mind/mindStore.js')).href);
+  migrate   = await import(pathToFileURL(path.join(repoRoot, 'src/memory/migrate.js')).href);
 });
 
 const flush = () => new Promise(r => setTimeout(r, 700)); // > debounce 500ms
@@ -178,7 +179,7 @@ test('T7/T11 — one persistent store; facts survive process restart', async () 
   const script = `
     process.env.AQUA_DATA_DIR = ${JSON.stringify(tmp)};
     process.chdir(${JSON.stringify(tmp)});
-    const ltm = await import(${JSON.stringify(path.join(repoRoot, 'src/memory/longTermMemory.js'))});
+    const ltm = await import(${JSON.stringify(pathToFileURL(path.join(repoRoot, 'src/memory/longTermMemory.js')).href)});
     const f = ltm.getFact('user:u-cross', 'name');
     if (!f || !/chhanda/i.test(String(f.value))) { console.error('LOST'); process.exit(1); }
     console.log('SURVIVED');

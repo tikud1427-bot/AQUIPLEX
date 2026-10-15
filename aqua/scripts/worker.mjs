@@ -24,16 +24,20 @@
  * a worker that looks alive and processes nothing is worse than one that is
  * plainly down.
  */
-import { claim, complete, fail, reapStale, queueStats, enqueue } from '../src/core/jobs/jobQueue.js';
+import { reapStale, queueStats } from '../src/core/jobs/jobQueue.js';
 import { isConfigured } from '../src/core/db/pool.js';
-import { dispatchPendingClaimReflections } from '../src/brain/reflectionV3/reflectionOutbox.js';
-import { runClaimReflectionJob } from '../src/brain/reflectionV3/reflectionWorker.js';
-import { runClaimContradictionJob } from '../src/brain/reflectionV3/contradictionWorker.js';
-import * as Brain from '../src/brain/index.js';
-import { logE6Turn } from '../src/core/observability.js';
-import { embedOne } from '../src/embeddings/embeddingProvider.js';
-import { upsertClaimEmbedding } from '../src/core/worldModel/embeddingRepository.js';
-import { modelSignature } from '../src/embeddings/embeddingModel.js';
+// The handler table ('understanding.turn.v1' → Brain.understandTurn, claim
+// embedding/reflection/contradiction) and the claim → run → ack step live in
+// workerRuntime.js so live evals and tests drain the queue through the SAME
+// code this process runs (L12), not a copy of it.
+import { HANDLERS, dispatchReflections, runOneJob, scheduleConsolidation, CONSOLIDATION_INTERVAL_MS,
+  scheduleProactiveScan, PROACTIVE_INTERVAL_MS } from '../src/core/jobs/workerRuntime.js';
+// E12: this process's counters (spans, extraction tokens, errors) reach the
+// server's /metrics through aqua_process_metrics — see processMetrics.js.
+import { startMetricsPublisher } from '../src/core/processMetrics.js';
+import { configureTelemetryFromEnv } from '../src/core/telemetryExport.js';
+let stopMetrics = null;
+let telemetry = null;
 
 const flag = (name, dflt) => {
   const i = process.argv.indexOf(name);
@@ -45,100 +49,30 @@ const POLL_MS = Number(flag('--poll', '750'));
 const REAP_EVERY_MS = Number(flag('--reap', String(60_000)));
 const KINDS = flag('--kinds', null)?.split(',').map(s => s.trim()).filter(Boolean) ?? null;
 
-/**
- * The handler table.
- *
- * Production handlers are intentionally small adapters: the queue owns retry,
- * ordering and acknowledgement; domain modules own the actual work.
- * Understanding is the first canonical consumer because it is the most
- * important off-request-path stage in the blueprint. Claim reflection is fed by
- * the transactional outbox and therefore also runs here, never on /chat.
- *
- * Unknown kinds DEAD-LETTER rather than retry forever.
- */
-const HANDLERS = Object.freeze({
-  'claim.embedding.v1': async job => {
-    const payload = job.payload ?? {};
-    const statementText = String(payload.statementText ?? '').trim();
-    if (!statementText) throw new Error('claim embedding job requires statementText');
-    const vector = await embedOne(statementText);
-    if (!vector) throw new Error('claim embedding unavailable; retrying durable job');
-    await upsertClaimEmbedding({
-      ownerId: job.ownerId,
-      claimId: payload.claimId,
-      vector,
-      contentHash: payload.contentHash ?? 'unknown',
-      signature: modelSignature(),
-    });
-  },
-  'understanding.turn.v1': async job => {
-    const started = Date.now();
-    const payload = job.payload ?? {};
-    const result = await Brain.understandTurn({
-      ownerId: job.ownerId,
-      conversationId: payload.conversationId ?? null,
-      turn: Number.isInteger(payload.turn) ? payload.turn : null,
-      userMessage: payload.userMessage ?? '',
-    });
-    logE6Turn({
-      ownerId: job.ownerId,
-      conversationId: payload.conversationId ?? null,
-      result,
-      ms: Date.now() - started,
-    });
-  },
-  'claim.reflection.v1': async job => {
-    await runClaimReflectionJob(job);
-  },
-  'claim.contradiction.v1': async job => {
-    await runClaimContradictionJob(job);
-  },
-});
-
 let running = true;
 let inFlight = null;
 
-async function dispatchReflections() {
-  try {
-    const dispatchedBatch = await dispatchPendingClaimReflections({ limit: 25, jobEnqueue: enqueue });
-    const results = Array.isArray(dispatchedBatch) ? dispatchedBatch : (dispatchedBatch.results ?? []);
-    const dispatched = results.filter(r => r.dispatched).length;
-    const reaped = Number(Array.isArray(dispatchedBatch) ? dispatchedBatch.reaped ?? 0 : dispatchedBatch.reaped ?? 0);
-    if (reaped) console.warn(`[WORKER] reclaimed ${reaped} stale claim outbox row(s)`);
-    if (dispatched) console.log(`[WORKER] dispatched ${dispatched} claim-reflection/embedding outbox event(s)`);
-  } catch (err) {
-    console.error(`[WORKER] outbox dispatch failed: ${err?.message ?? err}`);
-  }
-}
-
 async function runOne() {
-  const job = await claim(WORKER_ID, { kinds: KINDS });
-  if (!job) return false;
-
-  const handler = HANDLERS[job.kind];
-  if (!handler) {
-    await fail(job.jobId, `no handler registered for kind "${job.kind}"`);
-    console.warn(`[WORKER] job ${job.jobId} kind=${job.kind} has no handler`);
-    return true;
-  }
-
-  try {
-    await handler(job);
-    await complete(job.jobId);
-    console.log(`[WORKER] job ${job.jobId} kind=${job.kind} owner=${job.ownerId} done`);
-  } catch (err) {
-    const r = await fail(job.jobId, err);
-    const detail = r.state === 'dead'
-      ? `DEAD after ${job.attempts} attempt(s)`
-      : `retry in ${Math.round(r.retryInMs / 1000)}s`;
-    console.error(`[WORKER] job ${job.jobId} kind=${job.kind} failed — ${detail}: ${err?.message ?? err}`);
-  }
-  return true;
+  return (await runOneJob(WORKER_ID, { kinds: KINDS })) !== null;
 }
 
 async function loop() {
   let lastReap = 0;
+  let lastConsolidation = 0;
+  let lastProactive = 0;
   while (running) {
+    // Phase 4: time passing makes a deadline urgent without any new claim —
+    // one durable evaluation per owner with a deadline/dispute per interval
+    // (deduplicated across workers by the bucket key). No-op when the gate is off.
+    if (PROACTIVE_INTERVAL_MS && Date.now() - lastProactive > PROACTIVE_INTERVAL_MS) {
+      lastProactive = Date.now();
+      await scheduleProactiveScan();
+    }
+    // E9 J3: enqueue durable per-owner consolidation jobs (deduplicated across workers).
+    if (CONSOLIDATION_INTERVAL_MS && Date.now() - lastConsolidation > CONSOLIDATION_INTERVAL_MS) {
+      lastConsolidation = Date.now();
+      await scheduleConsolidation();
+    }
     if (Date.now() - lastReap > REAP_EVERY_MS) {
       lastReap = Date.now();
       try {
@@ -170,6 +104,8 @@ async function shutdown(signal) {
   running = false;
   console.log(`\n[WORKER] ${signal} — finishing the job in hand, taking no more`);
   try { await inFlight; } catch { /* runOne handles its own failures */ }
+  try { await stopMetrics?.(); } catch { /* final snapshot is best-effort */ }
+  try { await telemetry?.shutdown(); } catch { /* flushing spans is best-effort */ }
   try { console.log(`[WORKER] queue at exit: ${JSON.stringify(await queueStats())}`); } catch { /* db may be gone */ }
   console.log('[WORKER] stopped');
   process.exit(0);
@@ -189,4 +125,7 @@ console.log(`[WORKER] ${WORKER_ID} polling every ${POLL_MS}ms`
   + `${KINDS ? ` kinds=${KINDS.join(',')}` : ''}`
   + ` · handlers: ${Object.keys(HANDLERS).join(',')}`);
 console.log(`[WORKER] queue: ${JSON.stringify(await queueStats())}`);
+stopMetrics = startMetricsPublisher({ role: 'worker' });
+telemetry = configureTelemetryFromEnv({ role: 'worker' });
+console.log(`[WORKER] telemetry spans=${telemetry.spans} errors=${telemetry.errors}`);
 await loop();

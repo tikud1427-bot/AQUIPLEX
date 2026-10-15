@@ -313,3 +313,165 @@ describe('S8 — degenerate input', () => {
     assert.notEqual(subjectPredicateKey(claim({ predicate: 'knows' })), subjectPredicateKey(claim()));
   });
 });
+
+// D6 (2026-10-05): "The backend is Rust now" — a REVISION of a many-valued
+// relation that does not name the old value. Decided by the owner's history,
+// never by guessing: exactly one other current value → it is what changed;
+// two or more → ambiguous, nothing retired.
+describe('sole-value revision (D6)', () => {
+  const stored = (id, object, over = {}) => ({ claimId: id, subject: "Tidepool's backend", predicate: 'uses',
+    object: { entity: object }, objectKind: 'entity', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, ...over });
+  const rust = (over = {}) => ({ claimId: 'rust', subject: "Tidepool's backend", predicate: 'uses',
+    object: { entity: 'Rust' }, objectKind: 'entity', polarity: 'asserted', modality: 'fact', revises: true, ...over });
+
+  test('one current value + a revision → a revision contradiction against it', () => {
+    const r = dedupAndDetect([rust()], [stored('go', 'Go')]);
+    assert.deepEqual(r.contradictions.map(c => [c.kind, c.existing.claimId]), [['revision', 'go']]);
+    assert.deepEqual(r.ambiguousRevisions, []);
+  });
+
+  test('two current values → ambiguous: nothing is offered for retirement', () => {
+    const r = dedupAndDetect([rust()], [stored('go', 'Go'), stored('pg', 'Postgres')]);
+    assert.deepEqual(r.contradictions, []);
+    assert.equal(r.ambiguousRevisions.length, 1);
+    assert.equal(r.ambiguousRevisions[0].candidates, 2);
+  });
+
+  test('an ordinary (unmarked) statement never triggers it — "I use Postgres" + "I use Redis" stays compatible', () => {
+    const r = dedupAndDetect([rust({ revises: undefined })], [stored('go', 'Go')]);
+    assert.deepEqual(r.contradictions, []);
+  });
+
+  test('history and other subjects are not rivals', () => {
+    const r = dedupAndDetect([rust()], [stored('old', 'Java', { state: 'superseded' }), stored('db', 'Go', { subject: 'database' }), stored('go', 'Go')]);
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['go']);
+  });
+
+  test('single-valued relations are left to the snapshot rule', () => {
+    const r = dedupAndDetect(
+      [{ claimId: 'porto', subject: 'You', predicate: 'located_in', object: { entity: 'Porto' }, objectKind: 'entity', polarity: 'asserted', modality: 'fact', revises: true }],
+      [{ claimId: 'lisbon', subject: 'You', predicate: 'located_in', object: { entity: 'Lisbon' }, objectKind: 'entity', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true }],
+      { functionalPredicates: new Set(['located_in']) });
+    assert.deepEqual(r.contradictions.map(c => c.kind), ['object']);
+  });
+
+  test('a negated revision (the old value named) needs no inference', () => {
+    const r = dedupAndDetect([rust({ polarity: 'negated', object: { entity: 'Go' } })], [stored('go', 'Go')]);
+    assert.deepEqual(r.contradictions.map(c => c.kind), ['polarity']);
+  });
+});
+
+// 2026-10-11: "My biggest client is now Sora Studio" (prompt rule 13) is about a
+// DIFFERENT subject than the one it replaces. A role handed over is decided by
+// the owner's history: exactly one other current holder → it is what changed.
+describe('role handover (related_to, rule 13)', () => {
+  const holder = (id, subject, role, over = {}) => ({ claimId: id, subject, predicate: 'related_to',
+    object: { literal: role }, objectKind: 'literal', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, ...over });
+  const sora = (over = {}) => ({ claimId: 'sora', subject: 'Sora Studio', predicate: 'related_to',
+    object: { literal: 'biggest client' }, objectKind: 'literal', polarity: 'asserted', modality: 'fact', revises: true, ...over });
+
+  test('one other current holder + a revision → a revision contradiction against that holder', () => {
+    const r = dedupAndDetect([sora()], [holder('kumo', 'Kumo Games', 'biggest client'), holder('ed', 'Daniel Brooks', 'editor')]);
+    assert.deepEqual(r.contradictions.map(c => [c.kind, c.existing.claimId]), [['revision', 'kumo']]);
+  });
+
+  test('two current holders → ambiguous, nothing retired ("my client is now X" ends no other client)', () => {
+    const r = dedupAndDetect([sora({ object: { literal: 'client' } })], [holder('a', 'Acme', 'client'), holder('b', 'Birch', 'client')]);
+    assert.deepEqual(r.contradictions, []);
+    assert.equal(r.ambiguousRevisions.length, 1);
+  });
+
+  test('an unmarked first statement never retires anyone; history and negations are not holders', () => {
+    assert.deepEqual(dedupAndDetect([sora({ revises: undefined })], [holder('kumo', 'Kumo Games', 'biggest client')]).contradictions, []);
+    const r = dedupAndDetect([sora()], [
+      holder('old', 'Old Co', 'biggest client', { state: 'superseded' }),
+      holder('neg', 'Neg Co', 'biggest client', { polarity: 'negated' }),
+    ]);
+    assert.deepEqual(r.contradictions, []);
+  });
+
+  test('the named old holder (negated, revises) is a plain polarity flip', () => {
+    const r = dedupAndDetect([sora({ claimId: 'db-neg', subject: 'Daniel Brooks', object: { literal: 'editor' }, polarity: 'negated' })],
+      [holder('ed', 'Daniel Brooks', 'editor')]);
+    assert.deepEqual(r.contradictions.map(c => c.kind), ['polarity']);
+  });
+});
+
+// Pass 2 (2026-10-11): an explicit RESOLUTION status retires only the blocker
+// claims LINKED to the resolved thing; a generic positive update retires nothing.
+describe('blocker resolution (Pass 2)', () => {
+  const stored = (id, subject, predicate, object, over = {}) => ({ claimId: id, subject, predicate, object,
+    objectKind: object.entity ? 'entity' : 'literal', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, ...over });
+  const status = (subject, literal, over = {}) => ({ claimId: 'new', subject, predicate: 'has_status', object: { literal }, objectKind: 'literal',
+    polarity: 'asserted', modality: 'fact', ...over });
+  const history = () => [
+    stored('b1', 'visa application', 'blocked_by', { entity: 'the embassy' }),
+    stored('b2', 'the embassy', 'has_property', { literal: "hasn't returned my passport" }),
+    stored('b3', 'antenna supplier', 'blocks', { entity: 'drone project' }),
+    stored('b4', 'the embassy', 'has_property', { literal: 'is in the city centre' }),
+  ];
+
+  test('"the embassy returned my passport" retires the blocker relation and the embassy\'s pending state — only those', () => {
+    const r = dedupAndDetect([status('The Embassy', 'returned my passport')], history());
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId).sort(), ['b1', 'b2']);
+    assert.ok(r.contradictions.every(c => c.kind === 'revision'));
+    assert.equal(r.claims.find(c => c.claimId === 'new').revises, true, 'marked as a revision so rule 2 retires the older claims');
+  });
+
+  test('resolving the blocked TASK itself retires its blockers', () => {
+    const r = dedupAndDetect([status('the drone project', 'completed')], history());
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['b3']);
+  });
+
+  test('a positive update that is not a resolution, or a still-pending status, retires nothing', () => {
+    for (const lit of ['going well', 'still not signed', "hasn't arrived yet", 'waiting to be approved']) {
+      const r = dedupAndDetect([status('the embassy', lit)], history());
+      assert.deepEqual(r.contradictions.filter(c => c.kind === 'revision'), [], lit);
+    }
+  });
+
+  test('an unrelated thing being resolved does not touch other blockers', () => {
+    const r = dedupAndDetect([status('the printer', 'fixed')], history());
+    assert.deepEqual(r.contradictions, []);
+  });
+});
+
+// Pass 2 (2026-10-11): a renamed mention of the same event, linked conservatively.
+describe('renamed subject revision (Pass 2)', () => {
+  const FUNC = { functionalPredicates: new Set(['deadline_for']) };
+  const old = (id, subject, date, statementText, over = {}) => ({ claimId: id, subject, predicate: 'deadline_for', object: { literal: date },
+    objectKind: 'literal', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, statementText, ...over });
+  const moved = (subject, over = {}) => ({ claimId: 'new', subject, predicate: 'deadline_for', object: { literal: 'May 18' }, objectKind: 'literal',
+    polarity: 'asserted', modality: 'fact', revises: true, statementText: `Actually the ${subject} moved to May 18`, ...over });
+
+  test('"the planter launch moved" retires the date stated as "launching the ceramic planter line" — even under a mis-attributed subject', () => {
+    const r = dedupAndDetect([moved('planter launch')], [old('p', 'You', 'May 4', "We're launching the ceramic planter line on May 4")], FUNC);
+    assert.deepEqual(r.contradictions.map(c => [c.kind, c.existing.claimId]), [['revision', 'p']]);
+  });
+
+  test('a generic mention ("the launch moved") links nothing — any launch could be meant', () => {
+    const r = dedupAndDetect([moved('launch')], [old('p', 'planter line', 'May 4', 'The planter line launches on May 4')], FUNC);
+    assert.deepEqual(r.contradictions, []);
+  });
+
+  test('two candidates (same-name things in two projects) → ambiguous, nothing retired', () => {
+    const r = dedupAndDetect([moved('planter launch')], [
+      old('a', 'ceramic planter launch', 'May 4', 'The ceramic planter launch is May 4'),
+      old('b', 'concrete planter launch', 'June 2', 'The concrete planter launch is June 2'),
+    ], FUNC);
+    assert.deepEqual(r.contradictions, []);
+    assert.equal(r.ambiguousRevisions.at(-1).reason, 'renamed-subject');
+  });
+
+  test('a different distinctive word does not link ("website launch" vs "planter launch"); no revision marker → no link', () => {
+    const hist = [old('p', 'planter launch', 'May 4', 'The planter launch is May 4')];
+    assert.deepEqual(dedupAndDetect([moved('website launch')], hist, FUNC).contradictions, []);
+    assert.deepEqual(dedupAndDetect([moved('planter line', { revises: undefined })], hist, FUNC).contradictions, []);
+  });
+
+  test('when the new subject already holds its own value, the ordinary snapshot rule decides — no rename inference', () => {
+    const r = dedupAndDetect([moved('planter launch')], [old('own', 'planter launch', 'May 9', 'The planter launch is May 9'),
+      old('p', 'You', 'May 4', "We're launching the ceramic planter line on May 4")], FUNC);
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['own']);
+  });
+});

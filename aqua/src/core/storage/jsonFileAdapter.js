@@ -37,6 +37,39 @@ let tmpCounter = 0;
 const tmpPathFor = key =>
   path.join(path.dirname(key), `.${path.basename(key)}.tmp.${process.pid}.${tmpCounter++}`);
 
+/**
+ * WINDOWS: rename() onto a file that another rename (or a reader) holds open
+ * fails with EPERM / EACCES / EBUSY instead of replacing it atomically as
+ * POSIX rename(2) does. Two concurrent writes to one store therefore threw on
+ * a Windows dev machine (adapterContract "concurrent writes … last value
+ * wins"). The condition is transient, so retry briefly — the same remedy
+ * graceful-fs applies. POSIX never takes this branch: rename there does not
+ * raise these codes for this case.
+ */
+const RENAME_RETRY_CODES = new Set(['EPERM', 'EACCES', 'EBUSY']);
+const RENAME_RETRY_DEADLINE_MS = 2_000;
+const isWin = process.platform === 'win32';
+
+async function renameWithRetry(from, to) {
+  const started = performance.now();
+  for (let delay = 5; ; delay = Math.min(delay * 2, 100)) {
+    try { return await fs.promises.rename(from, to); } catch (err) {
+      if (!isWin || !RENAME_RETRY_CODES.has(err?.code) || performance.now() - started > RENAME_RETRY_DEADLINE_MS) throw err;
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+}
+
+function renameSyncWithRetry(from, to) {
+  const started = performance.now();
+  for (;;) {
+    try { return fs.renameSync(from, to); } catch (err) {
+      if (!isWin || !RENAME_RETRY_CODES.has(err?.code) || performance.now() - started > RENAME_RETRY_DEADLINE_MS) throw err;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+    }
+  }
+}
+
 export function createJsonFileAdapter() {
   return {
     id: 'json-file',
@@ -67,7 +100,7 @@ export function createJsonFileAdapter() {
       const tmp = tmpPathFor(key);
       try {
         await fs.promises.writeFile(tmp, data, 'utf8');
-        await fs.promises.rename(tmp, key);
+        await renameWithRetry(tmp, key);
       } catch (err) {
         try { await fs.promises.unlink(tmp); } catch { /* temp may not exist */ }
         throw err;
@@ -78,7 +111,7 @@ export function createJsonFileAdapter() {
       const tmp = tmpPathFor(key);
       try {
         fs.writeFileSync(tmp, data, 'utf8');
-        fs.renameSync(tmp, key);
+        renameSyncWithRetry(tmp, key);
       } catch (err) {
         try { fs.unlinkSync(tmp); } catch { /* temp may not exist */ }
         throw err;

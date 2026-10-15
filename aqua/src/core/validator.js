@@ -39,7 +39,7 @@ const ERROR_PATTERNS = [
   /^(null|undefined|false)$/i,
   /^error:/i,
   /^(api error|service error|provider error)/i,
-  /^(gemini|groq|openrouter|deepseek|llama)\s+(error|api)\b/i,
+  /^(gemini|groq|openrouter|nvidia|deepseek|llama)\s+(error|api)\b/i,
   /^(500|502|503|504)[\s:]/,
 ];
 

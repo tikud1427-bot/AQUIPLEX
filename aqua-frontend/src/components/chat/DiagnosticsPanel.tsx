@@ -12,7 +12,10 @@ export function DiagnosticsPanel({ diagnostics }: { diagnostics: MessageDiagnost
   // `provider` is intentionally NOT destructured/rendered — backend routing
   // is never surfaced in the UI. This panel is developer-only and shows the
   // shape of the pipeline (task, timing, attempts) without naming providers.
-  const { taskType, confidence, latencyMs, orchestration, memory, fallbackChain } = diagnostics;
+  const { taskType, confidence, latencyMs, orchestration, memory, fallbackChain, verification } = diagnostics;
+  const verificationStatus = verification?.status
+    ?? (verification?.ran ? (verification.passed ? 'verified' : 'issues_unresolved')
+      : (orchestration.verificationEnabled ? 'unavailable' : null));
 
   return (
     <div className="mt-2">
@@ -54,10 +57,15 @@ export function DiagnosticsPanel({ diagnostics }: { diagnostics: MessageDiagnost
                 <Badge variant={COST_VARIANT[orchestration.estimatedLatency as keyof typeof COST_VARIANT] ?? 'default'}>
                   speed: {orchestration.estimatedLatency}
                 </Badge>
-                {orchestration.verificationEnabled && (
+                {/* "verified" only when a review pass completed and confirmed
+                    the answer — not merely because verification was warranted. */}
+                {verificationStatus === 'verified' && (
                   <Badge variant="success">
                     <Sparkles className="h-2.5 w-2.5" /> verified
                   </Badge>
+                )}
+                {verificationStatus && verificationStatus !== 'verified' && verificationStatus !== 'not_requested' && (
+                  <Badge variant="warning">not verified: {verificationStatus.replace(/_/g, ' ')}</Badge>
                 )}
               </div>
 

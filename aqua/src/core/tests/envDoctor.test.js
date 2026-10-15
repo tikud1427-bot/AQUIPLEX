@@ -74,7 +74,9 @@ describe('env-doctor catches what the registry structurally cannot', () => {
   });
 
   test('an absent registered flag is NOT a finding — absent means default', () => {
-    assert.deepEqual(lint('AQUA_E6=on\n'), []);
+    // A gate with no dependency. (AQUA_E6=on alone is now a finding on purpose:
+    // it needs AQUA_SELF_ENTITY — see the gate-dependency test below.)
+    assert.deepEqual(lint('AQUA_BRAIN_INGEST=on\n'), []);
   });
 
   test('the real deployment reproduces all three faults at once', () => {
@@ -111,4 +113,37 @@ describe('env-doctor parses a dotenv file the way dotenv does', () => {
     const e = parseEnvFile('A=1\nB=2\nA=3\n');
     assert.deepEqual(e.map(x => x.line), [1, 2, 3]);
   });
+});
+
+test('gate dependencies: E6 on without the self entity is flagged (first-person claims would be dropped silently)', async () => {
+  const { lintEnv, GATE_DEPENDENCIES } = await import('../../../scripts/env-doctor.mjs');
+  const entry = (key, value, line) => ({ key, value, line });
+  const bad = lintEnv([entry('AQUA_E6', 'on', 1)]);
+  assert.ok(bad.some(f => f.key === 'AQUA_E6' && /AQUA_SELF_ENTITY/.test(f.message)), JSON.stringify(bad));
+  const good = lintEnv([entry('AQUA_E6', 'on', 1), entry('AQUA_SELF_ENTITY', 'on', 2)]);
+  assert.ok(!good.some(f => /AQUA_SELF_ENTITY is/.test(f.message)));
+  assert.ok(GATE_DEPENDENCIES.length >= 4);
+});
+
+test('gate dependencies: only the EXPLICIT legacy voice (=on) needs REFLECT_V2; the canonical default does not', async () => {
+  const { lintEnv } = await import('../../../scripts/env-doctor.mjs');
+  const entry = (key, value, line) => ({ key, value, line });
+  const legacy = lintEnv([entry('AQUA_REVISION_VOICE', 'on', 1)]);
+  assert.ok(legacy.some(f => f.key === 'AQUA_REVISION_VOICE' && /AQUA_REFLECT_V2/.test(f.message)), JSON.stringify(legacy));
+  assert.ok(!lintEnv([]).some(f => f.key === 'AQUA_REVISION_VOICE'), 'the default (canonical voice) must not warn');
+  assert.ok(!lintEnv([entry('AQUA_REVISION_VOICE', 'off', 1)]).some(f => /REFLECT_V2/.test(f.message ?? '')));
+});
+
+test('NVIDIA integration settings pass the doctor; NVIDIA_* keys are outside its AQUA_* remit', () => {
+  const f = lint([
+    'NVIDIA_API_KEY_1=x', 'NVIDIA_API_KEY_2=y', 'NVIDIA_DEFAULT_MODEL=openai/gpt-oss-20b',
+    'AQUA_PROVIDER_PREFER=nvidia',
+    'AQUA_LIFT_LLM=on', 'AQUA_LIFT_PROVIDER=nvidia', 'AQUA_LIFT_MODEL=openai/gpt-oss-20b',
+    'AQUA_E6_PROVIDER=nvidia',
+  ].join('\n'));
+  assert.deepEqual(errors(f), [], JSON.stringify(f));
+  // Bite: a typo of the new setting is still caught, with a suggestion.
+  const typo = errors(lint('AQUA_PROVIDER_PREFERS=nvidia'));
+  assert.equal(typo.length, 1);
+  assert.match(typo[0].hint ?? '', /AQUA_PROVIDER_PREFER/);
 });

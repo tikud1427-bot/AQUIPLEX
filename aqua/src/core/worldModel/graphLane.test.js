@@ -10,7 +10,7 @@
  *  2. TRAVERSAL (real Postgres). pg-mem cannot execute `WITH RECURSIVE`
  *     ("recursirve with statements not implemented"), so the actual walk —
  *     hop distances, cycles, fanout, lifecycle, isolation, determinism —
- *     can only be proven against a real server. Set AQUA_TEST_PG_URL to a
+ *     can only be proven against a real server. Set AQUA_TEST_DATABASE_URL to a
  *     scratch database; the test creates a private schema, applies the three
  *     migrations the edge tables need, and drops the schema afterwards.
  *     Without the variable those tests are SKIPPED and say why — a skip is
@@ -182,9 +182,12 @@ describe('graphLane — contract (no database)', () => {
 
 // ── 2. TRAVERSAL (real Postgres) ──────────────────────────────────────────────
 
-const PG_URL = process.env.AQUA_TEST_PG_URL;
+// One variable for every live-Postgres test: AQUA_TEST_DATABASE_URL (see
+// src/core/db/testDatabaseEnv.js). AQUA_TEST_PG_URL is still read as a legacy
+// alias so an existing local setup keeps working.
+const PG_URL = process.env.AQUA_TEST_DATABASE_URL || process.env.AQUA_TEST_PG_URL;
 const SKIP = PG_URL ? false
-  : 'AQUA_TEST_PG_URL not set — pg-mem cannot run WITH RECURSIVE; run against a scratch Postgres to exercise the walk';
+  : 'AQUA_TEST_DATABASE_URL not set — pg-mem cannot run WITH RECURSIVE; run against a scratch Postgres to exercise the walk';
 
 describe('graphLane — traversal (real Postgres)', { skip: SKIP }, () => {
   const MIG = path.join(path.dirname(fileURLToPath(import.meta.url)), '../db/migrations');

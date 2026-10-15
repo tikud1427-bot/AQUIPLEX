@@ -32,7 +32,7 @@ import intelligenceRoute  from "./src/routes/intelligence.js";
 import brainRoute         from "./src/routes/brain.js";
 import {
   brainEnabled, ingestEnabled, factIngestEnabled, contextV2Enabled, reflectV2Enabled, twinV2Enabled,
-  revisionVoiceEnabled,
+  revisionVoiceMode,
 } from "./src/brain/index.js";
 import { selfEntityEnabled } from "./src/brain/identity/selfEntity.js";
 import { picEnabled, consolidateEnabled, CONSOLIDATE_EVERY_TURNS } from "./src/pic/core.js";
@@ -46,6 +46,18 @@ import { migrateLegacyMemory }  from "./src/memory/migrate.js";
 import { migrateIdentity }      from "./src/memory/identityMigration.js";
 import { fail, ErrorCodes } from "./src/routes/envelope.js";
 import { errorText } from './src/core/errorText.js';
+import { configureTelemetryFromEnv } from './src/core/telemetryExport.js';
+import { startMetricsPublisher } from './src/core/processMetrics.js';
+
+// E12: OTLP traces / error webhook when the environment asks for them
+// (OTEL_EXPORTER_OTLP_ENDPOINT, AQUA_ERROR_WEBHOOK_URL); local ring otherwise.
+const telemetryBackends = configureTelemetryFromEnv({ role: 'server' });
+console.log(`[TELEMETRY] spans=${telemetryBackends.spans} errors=${telemetryBackends.errors}`);
+
+// Server-side counters (the revision voice runs on the turn path, here) reach
+// every instance's /metrics through aqua_process_metrics, like the workers'.
+// No-op without Postgres.
+startMetricsPublisher({ role: 'server' });
 
 // ── One-time unification migration ──────────────────────────────────────────
 // Legacy conversation-scoped facts (.aqua-memory.json) → unified owner-scoped
@@ -79,7 +91,7 @@ try {
     `ingestFacts=${state(factIngestEnabled())} ` +
     `contextV2=${state(contextV2Enabled())} reflectV2=${state(reflectV2Enabled())} ` +
     `twinV2=${state(twinV2Enabled())} selfEntity=${state(selfEntityEnabled())} ` +
-    `revisionVoice=${state(revisionVoiceEnabled())}`,
+    `revisionVoice=${revisionVoiceMode()}`,
   );
 } catch (err) {
   console.warn(`[BRAIN] flag report unavailable: ${err?.message ?? err}`);
@@ -109,8 +121,24 @@ try {
   // stages). Printed on every boot, configured or not. Nothing reads through
   // the pool yet; this line is how that stops being true silently.
   try {
-    const { bootLine } = await import('./src/core/db/pool.js');
+    const { bootLine, isConfigured: dbIsConfigured, isReachable: dbIsReachable } = await import('./src/core/db/pool.js');
     console.log(bootLine());
+    // P0 2026-10-12: "configured" was printed for five days while the server
+    // refused every connection and the schema sat 9 migrations behind. Say
+    // whether it ANSWERS and whether its schema matches this code. Not
+    // awaited — diagnostic, never a reason to delay boot.
+    if (dbIsConfigured()) {
+      (async () => {
+        if (!(await dbIsReachable({ timeoutMs: 3_000 }))) return; // isReachable prints the UNREACHABLE line itself
+        const { status: migrationStatus } = await import('./src/core/db/migrate.js');
+        const s = await migrationStatus();
+        if (s.pending.length || s.drifted.length) {
+          console.error(`[DB] schema BEHIND this code — applied ${s.applied}/${s.total}; pending ${s.pending.map(m => m.file).join(', ') || 'none'}${s.drifted.length ? `; DRIFTED ${s.drifted.map(m => m.file).join(', ')}` : ''}. Canonical writes touching new tables will fail: run \`npm run db:migrate\`.`);
+        } else {
+          console.log(`[DB] schema up-to-date (${s.applied}/${s.total})`);
+        }
+      })().catch(err => console.log(`[DB] schema check unavailable: ${errorText(err)}`));
+    }
     // E3/PR-5 — install the storage backend the environment asks for, then say
     // which one is live. Fails open to JSON with the reason printed.
     const { configureStorageFromEnv, storageBootLine } = await import('./src/core/storage/index.js');

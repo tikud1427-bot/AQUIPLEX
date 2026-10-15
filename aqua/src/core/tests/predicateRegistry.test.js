@@ -253,7 +253,14 @@ describe('predicate registry — who is allowed to use it', () => {
       // registering it. The registry is the only thing that knows works_at and
       // employs are one relationship; deciding direction from word order
       // instead would write two opposed edges for every fact stated twice.
-      'src/brain/understanding/relationshipResolver.js'];
+      'src/brain/understanding/relationshipResolver.js',
+      // 2026-10-04 — CARDINALITY readers. Both read-only. The facade derives
+      // S8's single-valued sets from the registry instead of a hardcoded list;
+      // the E9 contradiction worker asks cardinalityOf() whether two claims are
+      // competing snapshots of one fact before the policy may retire the older.
+      // A second list of "which facts hold one value" would drift from this one.
+      'src/brain/index.js',
+      'src/brain/reflectionV3/contradictionWorker.js'];
     const offenders = [];
     const walk = (dir) => {
       for (const name of fs.readdirSync(dir)) {

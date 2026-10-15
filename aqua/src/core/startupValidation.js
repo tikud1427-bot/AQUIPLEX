@@ -19,7 +19,11 @@ import { validateRegistryOnStartup, getRegistrySnapshot } from '../providers/mod
 import { hasConfiguredKeys as geminiHasKeys }     from '../providers/gemini.js';
 import { hasConfiguredKeys as groqHasKeys }       from '../providers/groq.js';
 import { hasConfiguredKeys as openrouterHasKeys } from '../providers/openrouter.js';
+import { hasConfiguredKeys as nvidiaHasKeys }     from '../providers/nvidia.js';
 import { getSearchHealth }                        from '../search/searchManager.js';
+import keyPoolLib                                 from '../providers/keyPool.cjs';
+
+const { getCredentialDiagnostics } = keyPoolLib;
 
 export function runStartupValidation() {
   console.log('[STARTUP] Validating model registry and provider configuration...');
@@ -33,10 +37,24 @@ export function runStartupValidation() {
     console.warn(`[STARTUP] ⚠ Model registry validation raised an error (continuing anyway): ${err.message}`);
   }
 
-  const keyChecks = { gemini: false, groq: false, openrouter: false };
+  const keyChecks = { gemini: false, groq: false, openrouter: false, nvidia: false };
   try { keyChecks.gemini     = geminiHasKeys(); }     catch { /* no-op — treated as "no keys" */ }
   try { keyChecks.groq       = groqHasKeys(); }       catch { /* no-op */ }
   try { keyChecks.openrouter = openrouterHasKeys(); } catch { /* no-op */ }
+  try { keyChecks.nvidia     = nvidiaHasKeys(); }     catch { /* no-op */ }
+  // Key pools — slot labels and counts only, never a key value. No network
+  // call is made: a configured credential is reported as configured, and its
+  // health stays "credential checks pending" until a real call (or the opt-in
+  // probe, scripts/provider-keys-doctor.mjs --probe) proves it.
+  let credentials = null;
+  try {
+    credentials = getCredentialDiagnostics();
+    for (const snap of Object.values(credentials)) console.log(`[STARTUP] ${snap.summary}`);
+    // Pre-existing line, kept verbatim for anything that greps for it.
+    if (keyChecks.nvidia) console.log(`[STARTUP] NVIDIA key pool: ${credentials.nvidia.distinctCredentials} key slot(s)`);
+  } catch (err) {
+    console.warn(`[STARTUP] ⚠ Key pool diagnostics raised an error (continuing anyway): ${err.message}`);
+  }
 
   for (const [provider, ok] of Object.entries(keyChecks)) {
     if (!ok) {
@@ -69,5 +87,5 @@ export function runStartupValidation() {
 
   console.log(`[STARTUP] Ready. Registry: ${registryResult.validCount} valid / ${registryResult.disabledCount} disabled models.`);
 
-  return { registry: registryResult, keyChecks, search: searchHealth, snapshot: getRegistrySnapshot() };
+  return { registry: registryResult, keyChecks, credentials, search: searchHealth, snapshot: getRegistrySnapshot() };
 }

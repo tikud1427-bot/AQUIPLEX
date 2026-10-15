@@ -1,0 +1,206 @@
+{
+  "id": "world-model-lift-live-ext",
+  "version": 2,
+  "authoredAt": "2026-10-06",
+  "preregistration": "Extension of world-model-lift-live.v1 (unchanged) to reach the pre-registered >= 100 answerable questions. Authored 2026-10-06 BEFORE any run of any condition on these personas, by the same engineer who tunes the system (author independence NOT met; disclosed). Same rubric semantics, same category mix as v1 plus 'temporal' (historical validity). Histories, questions and rubrics must not be edited to change a result; a labelling error may be corrected only with a dated entry in `corrections` and every earlier result re-run.",
+  "corrections": [],
+  "rubricSemantics": {
+    "required": "Each item must be stated or clearly used by the answer. Paraphrase counts; a hedge that still commits to the fact counts.",
+    "forbidden": "Each item is VIOLATED if the answer asserts it as currently true. Mentioning it as past, superseded or corrected is NOT a violation.",
+    "expectUnknown": "The user never stated this. A correct answer says it does not know (and may ask once). Asserting a specific value is fabrication."
+  },
+  "personas": [
+    {
+      "id": "p7-sofia",
+      "history": [
+        "I'm Sofia, I teach chemistry at Riverside High School.",
+        "I lived in Delhi last year, but now I live in Toronto.",
+        "My sister Elena is a nurse in Madrid.",
+        "What's a good way to explain covalent bonds to teenagers?",
+        "I'm writing a lab manual for the grade 11 class.",
+        "The lab manual is due to the department head, Mr. Okoye, on April 20.",
+        "The school's fume hoods are broken, so I can't run the titration labs.",
+        "I'm allergic to latex.",
+        "Actually Mr. Okoye moved the lab manual deadline to May 5.",
+        "Haha that's funny.",
+        "The fume hoods were repaired yesterday.",
+        "My new problem is that the chemistry supply order hasn't arrived.",
+        "I don't coach the robotics club anymore.",
+        "I'd like answers in plain language, no jargon."
+      ],
+      "questions": [
+        { "id": "p7-q01", "cat": "current_fact", "q": "What subject do I teach?", "required": ["chemistry"] },
+        { "id": "p7-q02", "cat": "temporal", "q": "Where did I live last year?", "required": ["Delhi"] },
+        { "id": "p7-q03", "cat": "state_change", "q": "Which city do I live in now?", "required": ["Toronto"], "forbidden": ["she currently lives in Delhi"] },
+        { "id": "p7-q04", "cat": "correction", "q": "When is my lab manual due?", "required": ["May 5"], "forbidden": ["the lab manual is due on April 20"] },
+        { "id": "p7-q05", "cat": "state_change", "q": "What's currently stopping me from running the titration labs?", "required": ["the chemistry supply order hasn't arrived"], "forbidden": ["the broken fume hoods are currently stopping the titration labs"] },
+        { "id": "p7-q06", "cat": "negation", "q": "Should I ask the robotics club kids to help me this week?", "required": ["she no longer coaches the robotics club"] },
+        { "id": "p7-q07", "cat": "preference", "q": "Suggest some gloves I could use for lab work.", "required": ["avoids latex because of her allergy"] },
+        { "id": "p7-q08", "cat": "relational", "q": "Who do I need to send the lab manual to?", "required": ["Mr. Okoye"] },
+        { "id": "p7-q09", "cat": "re_explanation", "q": "Draft a short message to my sister asking how her week at work went.", "required": ["addressed to Elena", "refers to her work as a nurse or at the hospital"] },
+        { "id": "p7-q10", "cat": "unknown", "q": "What's my principal's name?", "expectUnknown": true },
+        { "id": "p7-q11", "cat": "unknown", "q": "How many students are in my grade 11 class?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "p8-omar",
+      "history": [
+        "Hey, I'm Omar and I'm the CTO of Brightpath, a logistics startup.",
+        "Our backend is written in Python and runs on AWS.",
+        "My cofounder Lina handles sales and fundraising.",
+        "Can you summarize what Kubernetes does?",
+        "We're raising a seed round and want to close it by June 30.",
+        "Our lead investor is Northwind Capital.",
+        "The investor data room isn't ready yet, and that's blocking the seed round.",
+        "Priyanka owns the data room.",
+        "We're migrating the backend from AWS to Google Cloud.",
+        "Correction: the seed round close date is July 15, not June 30.",
+        "We don't use Kubernetes; we run everything on serverless.",
+        "Priyanka left the company, and Marcus now owns the data room.",
+        "OK thanks.",
+        "I prefer numbered lists when you give me steps."
+      ],
+      "questions": [
+        { "id": "p8-q01", "cat": "current_fact", "q": "What's my role at my company?", "required": ["CTO"] },
+        { "id": "p8-q02", "cat": "correction", "q": "When do we want to close the seed round?", "required": ["July 15"], "forbidden": ["the seed round closes on June 30"] },
+        { "id": "p8-q03", "cat": "relational", "q": "Who should I chase about the thing that's blocking our seed round?", "required": ["Marcus"], "forbidden": ["Priyanka currently owns the data room"] },
+        { "id": "p8-q04", "cat": "state_change", "q": "Which cloud are we moving to?", "required": ["Google Cloud"] },
+        { "id": "p8-q05", "cat": "negation", "q": "Should I hire a Kubernetes expert for our infrastructure?", "required": ["they do not use Kubernetes; they run on serverless"] },
+        { "id": "p8-q06", "cat": "decision", "q": "Can we close the seed round next week?", "required": ["the data room is not ready / is a blocker", "the target close date is July 15"] },
+        { "id": "p8-q07", "cat": "preference", "q": "Give me the steps to prepare for an investor meeting.", "required": ["uses a numbered list"] },
+        { "id": "p8-q08", "cat": "re_explanation", "q": "Write a short note to my cofounder about the fundraising timeline.", "required": ["addressed to Lina", "the close date is July 15"] },
+        { "id": "p8-q09", "cat": "current_fact", "q": "Who is our lead investor?", "required": ["Northwind Capital"] },
+        { "id": "p8-q10", "cat": "unknown", "q": "How much are we raising in the seed round?", "expectUnknown": true },
+        { "id": "p8-q11", "cat": "unknown", "q": "How many employees does Brightpath have?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "p9-hana",
+      "history": [
+        "I'm Hana, a freelance illustrator based in Osaka.",
+        "My biggest client right now is Kumo Games.",
+        "I'm illustrating a children's book called The Lantern Fox.",
+        "What brushes do digital painters usually use in Procreate?",
+        "The Lantern Fox illustrations are due to the publisher, Maple Press, on September 1.",
+        "My editor at Maple Press is Daniel Brooks.",
+        "My tablet is an iPad Pro.",
+        "I don't take commissions for NSFW work.",
+        "Kumo Games paused our contract last week, so they're not my client anymore.",
+        "My biggest client is now Sora Studio.",
+        "Actually my editor changed; it's now Grace Liu, not Daniel Brooks.",
+        "Wow, cool.",
+        "I lived in Kyoto until 2023.",
+        "I'm planning to run a Kickstarter for an art book next spring."
+      ],
+      "questions": [
+        { "id": "p9-q01", "cat": "state_change", "q": "Who is my biggest client?", "required": ["Sora Studio"], "forbidden": ["Kumo Games is currently her biggest client"] },
+        { "id": "p9-q02", "cat": "correction", "q": "Who should I email about The Lantern Fox deadline?", "required": ["Grace Liu"], "forbidden": ["Daniel Brooks is currently her editor"] },
+        { "id": "p9-q03", "cat": "current_fact", "q": "When are the Lantern Fox illustrations due?", "required": ["September 1"] },
+        { "id": "p9-q04", "cat": "temporal", "q": "Where did I live before 2023 ended?", "required": ["Kyoto"] },
+        { "id": "p9-q05", "cat": "negation", "q": "A client is asking me for an NSFW commission. Do I usually take those?", "required": ["she does not take NSFW commissions"] },
+        { "id": "p9-q06", "cat": "current_fact", "q": "Which city am I based in?", "required": ["Osaka"] },
+        { "id": "p9-q07", "cat": "relational", "q": "Which publisher is my children's book with?", "required": ["Maple Press"] },
+        { "id": "p9-q08", "cat": "decision", "q": "Should I start a big new project for Kumo Games this month?", "required": ["Kumo Games paused the contract / is no longer a client", "the Lantern Fox illustrations are due September 1"] },
+        { "id": "p9-q09", "cat": "re_explanation", "q": "Help me outline next steps for my crowdfunding plan.", "required": ["Kickstarter for an art book", "next spring"] },
+        { "id": "p9-q10", "cat": "unknown", "q": "How much does Sora Studio pay me per illustration?", "expectUnknown": true },
+        { "id": "p9-q11", "cat": "unknown", "q": "What's the name of my art book?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "p10-marcus",
+      "history": [
+        "Hi, I'm Marcus. I'm a nurse practitioner at St. Jude Clinic.",
+        "I'm training for the Chicago Marathon in October.",
+        "My running coach is Tasha.",
+        "How many calories does a 20 mile run burn?",
+        "I live in Evanston.",
+        "My left knee has been bothering me, so Tasha cut my mileage.",
+        "I switched from the Pegasus to the Brooks Ghost shoes.",
+        "Thanks.",
+        "I'm vegetarian.",
+        "I'm not doing the Boston Marathon this year.",
+        "My knee is fine now, the physio cleared me.",
+        "My goal time for Chicago is under 3 hours 30 minutes.",
+        "Actually, Tasha moved away, my coach is now Ben.",
+        "I moved from Evanston to Oak Park in August."
+      ],
+      "questions": [
+        { "id": "p10-q01", "cat": "current_fact", "q": "Which race am I training for?", "required": ["the Chicago Marathon"] },
+        { "id": "p10-q02", "cat": "correction", "q": "Who is my running coach?", "required": ["Ben"], "forbidden": ["Tasha is currently his coach"] },
+        { "id": "p10-q03", "cat": "state_change", "q": "Where do I live?", "required": ["Oak Park"], "forbidden": ["he currently lives in Evanston"] },
+        { "id": "p10-q04", "cat": "state_change", "q": "Is my knee still a problem for training?", "required": ["the knee is fine now / he was cleared by the physio"] },
+        { "id": "p10-q05", "cat": "preference", "q": "Suggest a pre-race dinner for me.", "required": ["vegetarian meal"] },
+        { "id": "p10-q06", "cat": "negation", "q": "Should I book a hotel in Boston for the marathon this year?", "required": ["he is not doing the Boston Marathon this year"] },
+        { "id": "p10-q07", "cat": "current_fact", "q": "Which running shoes am I using now?", "required": ["Brooks Ghost"], "forbidden": ["he currently runs in the Pegasus"] },
+        { "id": "p10-q08", "cat": "re_explanation", "q": "Write a pacing plan for my race.", "required": ["Chicago Marathon", "under 3 hours 30 minutes"] },
+        { "id": "p10-q09", "cat": "temporal", "q": "Where did I live before August?", "required": ["Evanston"] },
+        { "id": "p10-q10", "cat": "unknown", "q": "What's my current weekly mileage?", "expectUnknown": true },
+        { "id": "p10-q11", "cat": "unknown", "q": "What was my time in my last half marathon?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "p11-grace",
+      "history": [
+        "I'm Grace, I manage the mobile team at Finlo, a banking app company.",
+        "My team has five engineers.",
+        "Our Android release 4.2 is planned for March 18.",
+        "What is a feature flag?",
+        "The new login flow depends on the identity service upgrade.",
+        "Ravi owns the identity service upgrade.",
+        "I report to Diane, the VP of Engineering.",
+        "We use Jira for tracking.",
+        "The identity service upgrade is delayed because of a security review.",
+        "We stopped using Jira and moved to Linear.",
+        "Correction: release 4.2 is planned for March 25, not March 18.",
+        "Sounds good.",
+        "Diane left the company; I now report to Tom, the CTO.",
+        "I don't want to ship the login flow without the security review."
+      ],
+      "questions": [
+        { "id": "p11-q01", "cat": "correction", "q": "When is release 4.2?", "required": ["March 25"], "forbidden": ["release 4.2 is planned for March 18"] },
+        { "id": "p11-q02", "cat": "state_change", "q": "Who is my manager?", "required": ["Tom"], "forbidden": ["Diane is currently her manager"] },
+        { "id": "p11-q03", "cat": "state_change", "q": "Which tool should I use to file the release ticket?", "required": ["Linear"], "forbidden": ["they currently use Jira"] },
+        { "id": "p11-q04", "cat": "relational", "q": "Who should I talk to about what the new login flow is waiting on?", "required": ["Ravi"] },
+        { "id": "p11-q05", "cat": "decision", "q": "Can we ship the new login flow in release 4.2 next week?", "required": ["the login flow depends on the identity service upgrade, which is delayed", "she does not want to ship without the security review"] },
+        { "id": "p11-q06", "cat": "current_fact", "q": "How many engineers are on my team?", "required": ["five"] },
+        { "id": "p11-q07", "cat": "current_fact", "q": "What company do I work for?", "required": ["Finlo"] },
+        { "id": "p11-q08", "cat": "re_explanation", "q": "Draft a status update to my manager about release 4.2.", "required": ["addressed to Tom", "release 4.2 is March 25"] },
+        { "id": "p11-q09", "cat": "negation", "q": "Should I skip the security review to save time?", "required": ["she does not want to ship without the security review"] },
+        { "id": "p11-q10", "cat": "unknown", "q": "What's the budget for my team this quarter?", "expectUnknown": true },
+        { "id": "p11-q11", "cat": "unknown", "q": "Which iOS version are we releasing next?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "p12-tomas",
+      "history": [
+        "I'm Tomás, a PhD student in economics at the University of Chile.",
+        "My research is on minimum wage effects in Latin America.",
+        "My supervisor is Professor Ana Rojas.",
+        "Can you explain difference-in-differences?",
+        "I have a conference presentation at LACEA in November.",
+        "My paper draft for LACEA is due on October 10.",
+        "I share an apartment with my friend Diego.",
+        "I'm using Stata for my analysis.",
+        "Hmm interesting.",
+        "I switched from Stata to R last month.",
+        "The LACEA paper deadline was extended to October 24.",
+        "I'm not applying to industry jobs; I want an academic job.",
+        "My second supervisor is Dr. Paul Kim.",
+        "I moved out of the apartment with Diego, I live alone now."
+      ],
+      "questions": [
+        { "id": "p12-q01", "cat": "correction", "q": "When is my LACEA paper due?", "required": ["October 24"], "forbidden": ["the paper is due October 10"] },
+        { "id": "p12-q02", "cat": "state_change", "q": "Which software do I use for my analysis?", "required": ["R"], "forbidden": ["he currently uses Stata"] },
+        { "id": "p12-q03", "cat": "current_fact", "q": "What's my research about?", "required": ["minimum wage effects in Latin America"] },
+        { "id": "p12-q04", "cat": "relational", "q": "Who are my supervisors?", "required": ["Professor Ana Rojas", "Dr. Paul Kim"] },
+        { "id": "p12-q05", "cat": "negation", "q": "Can you help me prepare for consulting job interviews?", "required": ["he is not applying to industry jobs / wants an academic job"] },
+        { "id": "p12-q06", "cat": "state_change", "q": "Do I still live with Diego?", "required": ["no, he lives alone now"] },
+        { "id": "p12-q07", "cat": "decision", "q": "Should I take a week off at the start of October?", "required": ["the LACEA paper is due October 24"] },
+        { "id": "p12-q08", "cat": "re_explanation", "q": "Write a short email to my main supervisor about my conference paper.", "required": ["addressed to Professor Ana Rojas", "the LACEA paper / conference"] },
+        { "id": "p12-q09", "cat": "current_fact", "q": "Which university am I at?", "required": ["University of Chile"] },
+        { "id": "p12-q10", "cat": "unknown", "q": "What's my thesis committee meeting date?", "expectUnknown": true },
+        { "id": "p12-q11", "cat": "unknown", "q": "How many chapters does my dissertation have?", "expectUnknown": true }
+      ]
+    }
+  ]
+}

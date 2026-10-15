@@ -96,3 +96,25 @@ describe('E8 end-to-end policy gate (pure production seams)', () => {
     assert.equal(item.via, 'lexical');
   });
 });
+
+describe('E8 PARTIAL vs UNKNOWN — honest gaps without refusing to answer (2026-10-07)', () => {
+  const decide = (filledIds) => {
+    const query = 'Should we launch?';
+    const cands = filledIds.map(id => candidate(id, `${id} known`, [id]));
+    const plan = withRound(fillQueryPlan(buildQueryPlan(query, { taskType: 'decision' }), cands), 2);
+    return assembleContext(cands, ctx(query), { queryPlan: plan, limit: 8, charBudget: 1400 });
+  };
+
+  test('some required slots known → PARTIAL: answer from what is known, name the gap, ask at most once', () => {
+    const a = decide(['goal', 'blockers']);
+    assert.match(a.block, /EVIDENCE STATUS: PARTIAL/);
+    assert.match(a.block, /Not known: deadline\. Say so plainly; do not infer or fabricate it\. If it changes the answer, ask about it once\./);
+    assert.doesNotMatch(a.block, /EVIDENCE STATUS: UNKNOWN/);
+    assert.equal(a.stats.contextEngine.epistemicState, 'unknown', 'the machine-readable state is unchanged');
+  });
+
+  test('a known NON-required slot does not make it PARTIAL', () => {
+    const a = decide(['prior_plans']);
+    assert.match(a.block, /EVIDENCE STATUS: UNKNOWN/);
+  });
+});

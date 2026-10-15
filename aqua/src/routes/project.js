@@ -37,8 +37,20 @@ import { serializeCallGraph, getCallGraphStats, whoCalls, whatCalls, impactOf, t
 
 import { resolveOwner, rememberWorkspace } from '../memory/engine.js';
 import { ownerForUser }                     from '../memory/ownerResolver.js';
+import { canAccessWorkspace }               from '../project/workspaceAccess.js';
+
+import { ok, fail, ErrorCodes } from './envelope.js';
 
 const router = express.Router();
+
+// The few failures whose status is computed at runtime (edit / apply /
+// checkpoint) map onto the closed taxonomy by the SAME status they always
+// returned — E11 adds a code, it never changes a status.
+const CODE_FOR_STATUS = Object.freeze({
+  400: ErrorCodes.BAD_REQUEST, 404: ErrorCodes.NOT_FOUND, 409: ErrorCodes.CONFLICT,
+  422: ErrorCodes.UNPROCESSABLE, 500: ErrorCodes.INTERNAL,
+});
+const codeForStatus = status => CODE_FOR_STATUS[status] ?? ErrorCodes.INTERNAL;
 
 // ── Ownership guard (404-uniform, conversations.js / artifacts.js pattern) ────
 //
@@ -63,14 +75,9 @@ const router = express.Router();
 // matching the rule conversations.js already set.
 
 function assertWorkspaceOwner(req, res, id) {
-  const workspace = getWorkspace(id);
-  if (!workspace) {
-    res.status(404).json({ success: false, error: 'Workspace not found' });
-    return false;
-  }
-  const scopeUser = req.aquaUserId ?? null;
-  if (scopeUser && workspace.ownerId !== ownerForUser(scopeUser)) {
-    res.status(404).json({ success: false, error: 'Workspace not found' });
+  // The same rule chat applies (project/workspaceAccess.js) — one definition.
+  if (!canAccessWorkspace(req.aquaUserId ?? null, id)) {
+    fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
     return false;
   }
   return true;
@@ -88,10 +95,7 @@ router.post('/workspace', (req, res) => {
   const ownerId = resolveOwner({ userId: req.aquaUserId ?? null, conversationId: req.body?.conversationId ?? null });
   const workspace = createWorkspace({ name, description, ownerId });
   rememberWorkspace(ownerId, workspace);
-  res.json({
-    success:   true,
-    workspace: { id: workspace.id, createdAt: workspace.createdAt, indexStatus: workspace.indexStatus },
-  });
+  ok(res, { workspace: { id: workspace.id, createdAt: workspace.createdAt, indexStatus: workspace.indexStatus } });
 });
 
 // ── Upload + ingest files ─────────────────────────────────────────────────────
@@ -99,7 +103,7 @@ router.post('/workspace', (req, res) => {
 router.post('/workspace/:id/files', async (req, res) => {
   const { id } = req.params;
   const workspace = getWorkspace(id);
-  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  if (!workspace) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
 
   const { files, zip } = req.body ?? {};
   let rawFiles = [];
@@ -108,15 +112,12 @@ router.post('/workspace/:id/files', async (req, res) => {
     try {
       rawFiles = await extractZipBounded(zip);
     } catch (err) {
-      return res.status(400).json({ success: false, error: err.message });
+      return fail(res, ErrorCodes.BAD_REQUEST, err.message);
     }
   } else if (Array.isArray(files)) {
     rawFiles = files;
   } else {
-    return res.status(400).json({
-      success: false,
-      error:   'Provide "files": [{ path, content }] or "zip": "<base64>"',
-    });
+    return fail(res, ErrorCodes.BAD_REQUEST, 'Provide "files": [{ path, content }] or "zip": "<base64>"');
   }
 
   // Day 5: the pipeline (ingest → index → summarize → graph → analyze →
@@ -127,16 +128,12 @@ router.post('/workspace/:id/files', async (req, res) => {
   // structured JSON.
   try {
     const result = await runWorkspaceIngestion(id, rawFiles);
-    res.json({ success: true, workspaceId: id, ...result });
+    ok(res, { workspaceId: id, ...result });
   } catch (err) {
     if (err.code === 'NO_VALID_FILES') {
-      return res.status(400).json({ success: false, error: err.message });
+      return fail(res, ErrorCodes.BAD_REQUEST, err.message);
     }
-    res.status(500).json({
-      success: false,
-      workspaceId: id,
-      error: `Indexing failed: ${err.message}. The workspace was marked failed — you can retry the upload.`,
-    });
+    fail(res, ErrorCodes.INTERNAL, `Indexing failed: ${err.message}. The workspace was marked failed — you can retry the upload.`, { workspaceId: id });
   }
 });
 
@@ -144,16 +141,16 @@ router.post('/workspace/:id/files', async (req, res) => {
 
 router.get('/workspace/:id', (req, res) => {
   const workspace = getWorkspace(req.params.id);
-  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
-  res.json({ success: true, workspace: { ...workspace, indexStats: getIndexStats(req.params.id) } });
+  if (!workspace) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
+  ok(res, { workspace: { ...workspace, indexStats: getIndexStats(req.params.id) } });
 });
 
 // ── File list ─────────────────────────────────────────────────────────────────
 
 router.get('/workspace/:id/files', (req, res) => {
   const workspace = getWorkspace(req.params.id);
-  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
-  res.json({ success: true, workspaceId: req.params.id, files: workspace.files });
+  if (!workspace) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
+  ok(res, { workspaceId: req.params.id, files: workspace.files });
 });
 
 // ── Workspace overview (cached intelligence) ──────────────────────────────────
@@ -162,29 +159,24 @@ router.get('/workspace/:id/files', (req, res) => {
 
 router.get('/workspace/:id/overview', (req, res) => {
   const workspace = getWorkspace(req.params.id);
-  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  if (!workspace) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
 
   if (!workspace.overview) {
-    return res.status(200).json({
-      success:  true,
-      workspaceId: req.params.id,
-      overview: null,
-      note: workspace.indexStatus === 'indexed'
+    return ok(res, { workspaceId: req.params.id, overview: null, note: workspace.indexStatus === 'indexed'
         ? 'This workspace was indexed before overview generation existed. Re-upload to generate one.'
-        : `Workspace not yet indexed (status: ${workspace.indexStatus}).`,
-    });
+        : `Workspace not yet indexed (status: ${workspace.indexStatus}).` });
   }
-  res.json({ success: true, workspaceId: req.params.id, overview: workspace.overview });
+  ok(res, { workspaceId: req.params.id, overview: workspace.overview });
 });
 
 // ── Dependency graph ──────────────────────────────────────────────────────────
 
 router.get('/workspace/:id/graph', (req, res) => {
   const workspace = getWorkspace(req.params.id);
-  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  if (!workspace) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
   const graph  = serializeGraph(req.params.id);
   const cycles = detectCycles(req.params.id);
-  res.json({ success: true, workspaceId: req.params.id, graph, cycles });
+  ok(res, { workspaceId: req.params.id, graph, cycles });
 });
 
 // ── Call graph (function → function) ──────────────────────────────────────────
@@ -192,9 +184,9 @@ router.get('/workspace/:id/graph', (req, res) => {
 // GET /project/workspace/:id/call-graph  → serialized caller map + stats
 router.get('/workspace/:id/call-graph', (req, res) => {
   const workspace = getWorkspace(req.params.id);
-  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  if (!workspace) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
   const graph = serializeCallGraph(req.params.id);
-  res.json({ success: true, workspaceId: req.params.id, built: !!graph, graph, stats: getCallGraphStats(req.params.id) });
+  ok(res, { workspaceId: req.params.id, built: !!graph, graph, stats: getCallGraphStats(req.params.id) });
 });
 
 // GET /project/workspace/:id/callers?symbol=NAME&depth=8
@@ -203,42 +195,29 @@ router.get('/workspace/:id/call-graph', (req, res) => {
 //   trace         — "trace this request" (forward call chain)
 router.get('/workspace/:id/callers', (req, res) => {
   const workspace = getWorkspace(req.params.id);
-  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  if (!workspace) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
 
   const symbol = req.query.symbol;
-  if (!symbol) return res.status(400).json({ success: false, error: 'Query param ?symbol= required' });
+  if (!symbol) return fail(res, ErrorCodes.BAD_REQUEST, 'Query param ?symbol= required');
 
   const depth = Math.min(Math.max(parseInt(req.query.depth, 10) || 8, 1), 20);
-  res.json({
-    success:       true,
-    workspaceId:   req.params.id,
-    symbol,
-    defined:       getDefinitions(req.params.id, symbol),
-    directCallers: whoCalls(req.params.id, symbol),
-    callees:       whatCalls(req.params.id, symbol),
-    impact:        impactOf(req.params.id, symbol, { maxDepth: depth }),
-    trace:         traceFrom(req.params.id, symbol, { maxDepth: depth }),
-  });
+  ok(res, { workspaceId:   req.params.id, symbol, defined:       getDefinitions(req.params.id, symbol), directCallers: whoCalls(req.params.id, symbol), callees:       whatCalls(req.params.id, symbol), impact:        impactOf(req.params.id, symbol, { maxDepth: depth }), trace:         traceFrom(req.params.id, symbol, { maxDepth: depth }) });
 });
 
 // ── Index query ───────────────────────────────────────────────────────────────
 
 router.post('/workspace/:id/query', (req, res) => {
   const workspace = getWorkspace(req.params.id);
-  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  if (!workspace) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
 
   const { symbol, keyword, importModule, filePath } = req.body ?? {};
   const results = queryIndex(req.params.id, { symbol, keyword, importModule, filePath });
 
-  res.json({
-    success:     true,
-    workspaceId: req.params.id,
-    results: {
+  ok(res, { workspaceId: req.params.id, results: {
       files:   results.files.map(f => ({ path: f.path, lang: f.lang, summary: f.summary, functions: f.functions })),
       symbols: results.symbols,
       imports: results.imports,
-    },
-  });
+    } });
 });
 
 // ── List all workspaces ───────────────────────────────────────────────────────
@@ -250,26 +229,22 @@ router.get('/workspaces', (req, res) => {
   const scopeUser = req.aquaUserId ?? null;
   const owner     = scopeUser ? ownerForUser(scopeUser) : null;
   const workspaces = listWorkspaces().filter(ws => !owner || ws.ownerId === owner);
-  res.json({
-    success:    true,
-    count:      workspaces.length,
-    workspaces: workspaces.map(ws => ({
+  ok(res, { count:      workspaces.length, workspaces: workspaces.map(ws => ({
       id:          ws.id,
       projectType: ws.projectType,
       indexStatus: ws.indexStatus,
       fileCount:   ws.files?.length ?? 0,
       createdAt:   ws.createdAt,
       meta:        ws.meta,
-    })),
-  });
+    })) });
 });
 
 // ── Delete workspace ──────────────────────────────────────────────────────────
 
 router.delete('/workspace/:id', (req, res) => {
   const deleted = deleteWorkspace(req.params.id);
-  if (!deleted) return res.status(404).json({ success: false, error: 'Workspace not found' });
-  res.json({ success: true, deleted: req.params.id });
+  if (!deleted) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
+  ok(res, { deleted: req.params.id });
 });
 
 // ── File content fetch ────────────────────────────────────────────────────────
@@ -277,10 +252,10 @@ router.delete('/workspace/:id', (req, res) => {
 
 router.get('/workspace/:id/file-content', (req, res) => {
   const workspace = getWorkspace(req.params.id);
-  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  if (!workspace) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
 
   const { path: filePath } = req.query;
-  if (!filePath) return res.status(400).json({ success: false, error: 'Query param ?path= required' });
+  if (!filePath) return fail(res, ErrorCodes.BAD_REQUEST, 'Query param ?path= required');
 
   // Day 4 fix: the in-memory index HAS full content (index.byPath entries carry
   // it — retrieval and patch editing both depend on that). Serve it when the
@@ -289,10 +264,7 @@ router.get('/workspace/:id/file-content', (req, res) => {
   const index = getIndex(req.params.id);
   const entry = index?.byPath.get(filePath);
   if (entry) {
-    return res.json({
-      success:     true,
-      workspaceId: req.params.id,
-      file: {
+    return ok(res, { workspaceId: req.params.id, file: {
         path:      filePath,
         lang:      entry.lang,
         size:      entry.size,
@@ -303,21 +275,15 @@ router.get('/workspace/:id/file-content', (req, res) => {
         imports:   entry.imports ?? [],
         importedBy: whoImports(req.params.id, filePath),
         importsFiles: whatImports(req.params.id, filePath),
-      },
-    });
+      } });
   }
 
   const meta = workspace.files?.find(f => f.path === filePath);
   if (!meta) {
-    return res.status(404).json({ success: false, error: `File '${filePath}' not in index` });
+    return fail(res, ErrorCodes.NOT_FOUND, `File '${filePath}' not in index`);
   }
   // Index gone (server restarted) — metadata only.
-  res.json({
-    success:     true,
-    workspaceId: req.params.id,
-    file:        meta,
-    note:        'Index is not live (server restarted since upload). Re-upload to restore file content.',
-  });
+  ok(res, { workspaceId: req.params.id, file:        meta, note:        'Index is not live (server restarted since upload). Re-upload to restore file content.' });
 });
 
 // ── Patch proposal ────────────────────────────────────────────────────────────
@@ -326,18 +292,15 @@ router.get('/workspace/:id/file-content', (req, res) => {
 
 router.post('/workspace/:id/patch', (req, res) => {
   const workspace = getWorkspace(req.params.id);
-  if (!workspace) return res.status(404).json({ success: false, error: 'Workspace not found' });
+  if (!workspace) return fail(res, ErrorCodes.NOT_FOUND, 'Workspace not found');
 
   const { description, reasoning, changes } = req.body ?? {};
   if (!Array.isArray(changes) || !changes.length) {
-    return res.status(400).json({
-      success: false,
-      error: 'Body must include { description, reasoning, changes: [...] }',
-    });
+    return fail(res, ErrorCodes.BAD_REQUEST, 'Body must include { description, reasoning, changes: [...] }');
   }
 
   const patch = formatPatch({ description, reasoning, changes });
-  res.json({ success: true, workspaceId: req.params.id, patch });
+  ok(res, { workspaceId: req.params.id, patch });
 });
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -352,7 +315,7 @@ router.post('/workspace/:id/patch', (req, res) => {
 router.post('/workspace/:id/edit', async (req, res) => {
   const { instruction, repair, maxAttempts } = req.body ?? {};
   if (!instruction || typeof instruction !== 'string' || !instruction.trim()) {
-    return res.status(400).json({ success: false, error: 'Body must include a non-empty "instruction" string' });
+    return fail(res, ErrorCodes.BAD_REQUEST, 'Body must include a non-empty "instruction" string');
   }
   try {
     // Phase 4a — opt-in autonomous repair. Default (no `repair`) is the exact
@@ -365,36 +328,32 @@ router.post('/workspace/:id/edit', async (req, res) => {
         maxAttempts: Number.isInteger(maxAttempts) ? maxAttempts : undefined,
       });
       if (!outcome.proposal) {
-        return res.status(422).json({ success: false, error: 'No usable patch could be produced.', attempts: outcome.attempts });
+        return fail(res, ErrorCodes.UNPROCESSABLE, 'No usable patch could be produced.', { attempts: outcome.attempts });
       }
-      return res.json({
-        success: true, workspaceId: req.params.id,
-        proposal: serializeProposal(outcome.proposal),
-        repair: { converged: outcome.converged, repaired: outcome.repaired, attemptCount: outcome.attemptCount, attempts: outcome.attempts },
-      });
+      return ok(res, { workspaceId: req.params.id, proposal: serializeProposal(outcome.proposal), repair: { converged: outcome.converged, repaired: outcome.repaired, attemptCount: outcome.attemptCount, attempts: outcome.attempts } });
     }
 
     const proposal = await proposeEdit({ workspaceId: req.params.id, instruction: instruction.trim() });
-    res.json({ success: true, workspaceId: req.params.id, proposal: serializeProposal(proposal) });
+    ok(res, { workspaceId: req.params.id, proposal: serializeProposal(proposal) });
   } catch (err) {
     const status = err.code === 'NO_WORKSPACE' ? 404
                  : err.code === 'NOT_INDEXED' || err.code === 'NO_TARGETS' || err.code === 'BAD_EDIT_PLAN' || err.code === 'ALL_OPS_FAILED' ? 422
                  : 500;
     console.error(`[EDIT] proposal failed workspace=${req.params.id}:`, err.message);
-    res.status(status).json({ success: false, error: err.message, code: err.code ?? 'EDIT_FAILED', failedOperations: err.failedOperations ?? [] });
+    fail(res, codeForStatus(status), err.message, { code: err.code ?? 'EDIT_FAILED', failedOperations: err.failedOperations ?? [] });
   }
 });
 
 // ── List / fetch proposals ────────────────────────────────────────────────────
 
 router.get('/workspace/:id/edits', (req, res) => {
-  res.json({ success: true, workspaceId: req.params.id, proposals: listProposals(req.params.id) });
+  ok(res, { workspaceId: req.params.id, proposals: listProposals(req.params.id) });
 });
 
 router.get('/workspace/:id/edit/:proposalId', (req, res) => {
   const p = getProposal(req.params.id, req.params.proposalId);
-  if (!p) return res.status(404).json({ success: false, error: 'Proposal not found' });
-  res.json({ success: true, workspaceId: req.params.id, proposal: serializeProposal(p) });
+  if (!p) return fail(res, ErrorCodes.NOT_FOUND, 'Proposal not found');
+  ok(res, { workspaceId: req.params.id, proposal: serializeProposal(p) });
 });
 
 // ── Apply (safe, atomic, conflict-checked) ────────────────────────────────────
@@ -409,52 +368,49 @@ router.post('/workspace/:id/edit/:proposalId/apply', (req, res) => {
   }
   const result = applyProposal(req.params.id, req.params.proposalId);
   if (!result.ok) {
-    return res.status(result.conflicts ? 409 : 400).json({
-      success: false, error: result.error,
-      ...(result.conflicts ? { conflicts: result.conflicts, suggestion: result.suggestion } : {}),
-    });
+    return fail(res, codeForStatus(result.conflicts ? 409 : 400), result.error, { ...(result.conflicts ? { conflicts: result.conflicts, suggestion: result.suggestion } : {}) });
   }
-  res.json({ success: true, workspaceId: req.params.id, proposal: result.proposal, indexStats: result.indexStats, ...(checkpoint ? { checkpoint } : {}) });
+  ok(res, { workspaceId: req.params.id, proposal: result.proposal, indexStats: result.indexStats, ...(checkpoint ? { checkpoint } : {}) });
 });
 
 // ── Checkpoints (workspace-level recovery, Phase 4a) ──────────────────────────
 
 router.post('/workspace/:id/checkpoint', (req, res) => {
   const result = createCheckpoint(req.params.id, { label: req.body?.label });
-  if (!result.ok) return res.status(result.error === 'Workspace not found' ? 404 : 400).json({ success: false, error: result.error });
-  res.json({ success: true, workspaceId: req.params.id, checkpoint: result.checkpoint });
+  if (!result.ok) return fail(res, codeForStatus(result.error === 'Workspace not found' ? 404 : 400), result.error);
+  ok(res, { workspaceId: req.params.id, checkpoint: result.checkpoint });
 });
 
 router.get('/workspace/:id/checkpoints', (req, res) => {
-  res.json({ success: true, workspaceId: req.params.id, checkpoints: listCheckpoints(req.params.id) });
+  ok(res, { workspaceId: req.params.id, checkpoints: listCheckpoints(req.params.id) });
 });
 
 router.post('/workspace/:id/checkpoint/:checkpointId/restore', (req, res) => {
   const result = restoreCheckpoint(req.params.id, req.params.checkpointId);
-  if (!result.ok) return res.status(result.error === 'Checkpoint not found' ? 404 : 400).json({ success: false, error: result.error });
-  res.json({ success: true, workspaceId: req.params.id, restored: result.restored, indexStats: result.indexStats });
+  if (!result.ok) return fail(res, codeForStatus(result.error === 'Checkpoint not found' ? 404 : 400), result.error);
+  ok(res, { workspaceId: req.params.id, restored: result.restored, indexStats: result.indexStats });
 });
 
 router.delete('/workspace/:id/checkpoint/:checkpointId', (req, res) => {
   const result = deleteCheckpoint(req.params.id, req.params.checkpointId);
-  if (!result.ok) return res.status(404).json({ success: false, error: result.error });
-  res.json({ success: true, workspaceId: req.params.id, deleted: result.deleted });
+  if (!result.ok) return fail(res, ErrorCodes.NOT_FOUND, result.error);
+  ok(res, { workspaceId: req.params.id, deleted: result.deleted });
 });
 
 // ── Reject ────────────────────────────────────────────────────────────────────
 
 router.post('/workspace/:id/edit/:proposalId/reject', (req, res) => {
   const result = rejectProposal(req.params.id, req.params.proposalId);
-  if (!result.ok) return res.status(400).json({ success: false, error: result.error });
-  res.json({ success: true, workspaceId: req.params.id, proposal: result.proposal });
+  if (!result.ok) return fail(res, ErrorCodes.BAD_REQUEST, result.error);
+  ok(res, { workspaceId: req.params.id, proposal: result.proposal });
 });
 
 // ── Revert an applied proposal ────────────────────────────────────────────────
 
 router.post('/workspace/:id/edit/:proposalId/revert', (req, res) => {
   const result = revertProposal(req.params.id, req.params.proposalId);
-  if (!result.ok) return res.status(400).json({ success: false, error: result.error });
-  res.json({ success: true, workspaceId: req.params.id, proposal: result.proposal });
+  if (!result.ok) return fail(res, ErrorCodes.BAD_REQUEST, result.error);
+  ok(res, { workspaceId: req.params.id, proposal: result.proposal });
 });
 
 export default router;

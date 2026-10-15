@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { pathToFileURL } from 'url';
 
 const repoRoot = process.cwd();
 let extractFacts, engine;
@@ -20,8 +21,8 @@ let extractFacts, engine;
 before(async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-extract-'));
   process.chdir(tmp);
-  ({ extractFacts } = await import(path.join(repoRoot, 'src/memory/memoryExtractor.js')));
-  engine = await import(path.join(repoRoot, 'src/memory/engine.js'));
+  ({ extractFacts } = await import(pathToFileURL(path.join(repoRoot, 'src/memory/memoryExtractor.js')).href));
+  engine = await import(pathToFileURL(path.join(repoRoot, 'src/memory/engine.js')).href);
 });
 
 /** Assert a message extracts a fact whose key matches and value contains want. */
@@ -137,7 +138,7 @@ test('E2E — identity, project, preference, goal all persist across conversatio
 
 // ── Graph: projects & goals become nodes (Req 4) ─────────────────────────────
 test('graph — project and goal facts create graph nodes', async () => {
-  const { peekMind } = await import(path.join(repoRoot, 'src/mind/mindStore.js'));
+  const { peekMind } = await import(pathToFileURL(path.join(repoRoot, 'src/mind/mindStore.js')).href);
   const owner = engine.resolveOwner({ userId: 'graph-user', conversationId: 'g1' });
   engine.memoryObserve(owner, { userMessage: "I'm building Aquiplex. My cofounder is Ananya.", conversationId: 'g1' });
   const mind = peekMind(owner);

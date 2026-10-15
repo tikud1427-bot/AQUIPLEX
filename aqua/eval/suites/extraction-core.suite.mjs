@@ -93,11 +93,26 @@ export default {
         f.modality === c.modality &&
         (c.time ? Boolean(f.time || f.validFrom || f.validTo) : true))).length;
 
+    // POLARITY HELD (2026-10-06). `detection_negation` asks only whether the
+    // sentence produced SOMETHING. "Priya no longer works at Aquiplex" scored
+    // as detected while it produced a negated claim AND an asserted twin — a
+    // current positive fact the user just denied. A case whose labels negate
+    // a fact holds polarity only if a negated fact was emitted and no asserted
+    // fact shares a negated fact's predicate + object.
+    const objKey = f => JSON.stringify(f.object ?? null).toLowerCase();
+    const labelledNegated = claims.some(c => c.polarity === 'negated');
+    const negFacts = actual.facts.filter(f => f.polarity === 'negated');
+    const polarityHeld = labelledNegated
+      ? negFacts.length > 0 && !actual.facts.some(f => f.polarity !== 'negated'
+          && negFacts.some(n => n.predicate === f.predicate && objKey(n) === objKey(f)))
+      : null;
+
     return {
       correct: emitted && subjectHits === claims.length
                && predicateHits === claims.length && fidelityHits === claims.length,
       kind: 'positive',
       cat: testCase.cat,
+      polarityHeld,
       emitted,
       claims: claims.length,
       subjectHits,
@@ -136,6 +151,12 @@ export default {
       // per-category detection — where the misses actually are
       ...Object.fromEntries(Object.entries(byCat).sort()
         .map(([cat, v]) => [`detection_${cat}`, ratio(v.detected, v.n)])),
+
+      // strict negation: negated AND no asserted twin (see score()). Over the
+      // negation category only, so its denominator equals n_cases_negation.
+      negation_polarity: ratio(
+        pos.filter(s => s.cat === 'negation' && s.polarityHeld === true).length,
+        pos.filter(s => s.cat === 'negation').length),
 
       // ── Denominators, so a 0/0 is distinguishable from a measured 0.0 ──
       //

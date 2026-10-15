@@ -34,7 +34,10 @@ export function ResponseConfidence({
   if (!workspace?.contextInjected) return null;
 
   const fileCount = workspace.filesReferenced?.length ?? 0;
-  const verified = !!(verification?.ran && verification?.passed);
+  // Prefer the server's verdict; ran&&passed is the fallback for older servers.
+  const verified = verification?.status
+    ? verification.status === 'verified'
+    : !!(verification?.ran && verification?.passed);
 
   const level: ConfidenceLevel =
     fileCount >= 3 || (fileCount >= 1 && verified) ? 'High' : fileCount >= 1 ? 'Medium' : 'Low';

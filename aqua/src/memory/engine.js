@@ -28,7 +28,8 @@ import { storeFacts, storeFact, deleteFact, getFacts } from './longTermMemory.js
 import { retrieveRelevantFacts, formatFactsForPrompt } from './memoryRetriever.js';
 import { getIdentity, hasIdentity, formatIdentityBlock, isIdentityQuery, answerIdentityQuery } from './identity.js';
 import { mindObserve, mindContext, mindAfterTurn } from '../mind/index.js';
-import { getMind, peekMind, touchMind } from '../mind/mindStore.js';
+import { getMind, peekMind, touchMind, deleteItem } from '../mind/mindStore.js';
+import { forgetInBackground, retireSupersededInBackground } from './forget.js';
 import { upsertNode, upsertEdge, SELF_KEY } from '../mind/relationshipGraph.js';
 import { recallGraphPaths, formatGraphRecall } from '../mind/graphRecall.js';
 import { recallEpisodes, formatEpisodeRecall, isPastRecallQuery, latestEpisode } from '../mind/episodeRecall.js';
@@ -138,6 +139,9 @@ export function memoryObserve(ownerId, {
   }
 
   let extractedFacts = [];
+  // What each fact said before this turn — a value this turn REPLACES has its
+  // old sentence retired from the conversation lane below (step 4b).
+  const previous = new Map(getFacts(ownerId).map(f => [f.key, { value: f.value, sourceText: f.sourceText }]));
   try {
     // 1. Extract (parser → candidates → normalize → dedupe → resolve-vs-stored)
     const { facts, report } = extractFactsWithReport(userMessage, ownerId);
@@ -156,7 +160,11 @@ export function memoryObserve(ownerId, {
     const forgetResult = detectForget(userMessage);
     if (forgetResult.isForget && forgetResult.hint) {
       const hintKey = resolveCanonicalKey(forgetResult.hint.replace(/my\s+/i, '').trim());
+      const forgotten = getFacts(ownerId).find(f => f.key === hintKey) ?? null;
       const deleted = deleteFact(ownerId, hintKey);
+      // The same statement also lives in the World Model — forget it there too
+      // (background: a chat turn never waits on, or fails for, this).
+      if (deleted && forgotten) forgetInBackground(ownerId, hintKey, forgotten.value);
       trace.forget = { hint: forgetResult.hint, key: hintKey, deleted };
     }
 
@@ -169,6 +177,14 @@ export function memoryObserve(ownerId, {
         sourceText: userMessage, ts: Date.now(), isCorrection: true,
       }, { trace });
       trace.correction = { key: updateResult.key, value: updateResult.value };
+    }
+
+    // 4b. A replaced value must stop answering on a legacy/degraded read too:
+    //     the sentence that stated it still sits in the conversation lane,
+    //     which nothing else revises. Background — never on the turn's path.
+    for (const f of getFacts(ownerId)) {
+      const before = previous.get(f.key);
+      if (before && JSON.stringify(before.value) !== JSON.stringify(f.value)) retireSupersededInBackground(ownerId, f.key, before);
     }
   } catch (err) {
     console.warn('[MEMORY] fact observation failed (non-fatal):', err.message);
@@ -199,11 +215,31 @@ export function memoryObserve(ownerId, {
  * cognitive state + relevant file memory, under ONE token budget. Smallest
  * high-quality context — nothing dumped.
  */
+/** Drop identity entries the canonical World Model contradicts (gap-fill mode). */
+function filterIdentity(identity, vetoed) {
+  if (!identity) return identity;
+  return Object.fromEntries(Object.entries(identity).filter(([, v]) => !vetoed({ key: v.factKey, value: v.value })));
+}
+
 export function memoryRetrieve(ownerId, {
   query = '', taskType = 'conversation',
   budgetTokens = TOTAL_BUDGET_TOKENS, factLimit = 10, requestId = null,
   semanticScores = null, fileChunks = null,
+  // E10 read flip (D5): false when the canonical World Model owns the answer
+  // context. The legacy user-world lanes (identity card, regex facts, Mind
+  // state, Mind graph, episodes) are then skipped — they are never revised by
+  // supersession and outvoted the World Model on changed facts. Uploaded-file
+  // lanes are document content, not user-world state, and stay.
+  legacyUserMemory = true,
+  // E10 authoritative read (2026-10-06): with legacyUserMemory='gapfill' the
+  // legacy identity card and regex facts may only FILL GAPS — every one the
+  // canonical World Model contradicts (it holds a current value for that
+  // attribute, or has retired/negated that exact value) is vetoed. The Mind,
+  // legacy graph and episode lanes stay out, as under a full flip.
+  legacyVeto = null,
 } = {}) {
+  const vetoed = item => (typeof legacyVeto === 'function' ? Boolean(legacyVeto(item)) : false);
+  const mindLanes = legacyUserMemory === true;
   const trace = (requestId && traces.get(requestId)) || makeTrace({ ownerId });
   trace.budgetTokens = budgetTokens;
   if (!ownerId) return { block: '', relevantFacts: [], cognitiveUsed: {}, trace };
@@ -225,8 +261,8 @@ export function memoryRetrieve(ownerId, {
   //    is scoped to what was asked; otherwise the compact full card rides along.
   let identityBlock = '';
   try {
-    const identity = getIdentity(ownerId);
-    if (hasIdentity(identity)) {
+    const identity = legacyUserMemory ? filterIdentity(getIdentity(ownerId), vetoed) : null;
+    if (identity && hasIdentity(identity)) {
       identityBlock = isIdentityQuery(query)
         ? answerIdentityQuery(identity, query)
         : formatIdentityBlock(identity);
@@ -242,7 +278,7 @@ export function memoryRetrieve(ownerId, {
   let factBlock = '';
   let relevantFacts = [];
   try {
-    relevantFacts = retrieveRelevantFacts(ownerId, query, factLimit, { trace, semanticScores });
+    relevantFacts = legacyUserMemory ? retrieveRelevantFacts(ownerId, query, factLimit, { trace, semanticScores }).filter(f => !vetoed(f)) : [];
     factBlock = formatFactsForPrompt(relevantFacts);
     trace.retrieved = relevantFacts.map(f => ({ key: f.key, value: f.value }));
   } catch (err) {
@@ -254,7 +290,9 @@ export function memoryRetrieve(ownerId, {
   const identityTokens = estimateTokens(identityBlock);
   const factTokens = estimateTokens(factBlock);
   const cognitiveBudget = Math.max(MIN_COGNITIVE_BUDGET, budgetTokens - identityTokens - factTokens);
-  const cognitive = mindContext(ownerId, { query, taskType, budgetTokens: cognitiveBudget });
+  const cognitive = mindLanes
+    ? mindContext(ownerId, { query, taskType, budgetTokens: cognitiveBudget })
+    : { block: '', used: {} };
   trace.cognitiveUsed = cognitive.used || {};
 
   // ── Memory 5.0 lanes (Phases B + C) — each budget-gated, each fail-open ─────
@@ -266,7 +304,7 @@ export function memoryRetrieve(ownerId, {
   // Phase B — multi-hop graph recall: connected knowledge the query names.
   let graphBlock = '';
   try {
-    const mindView = peekMind(ownerId);
+    const mindView = mindLanes ? peekMind(ownerId) : null;
     if (mindView) {
       const paths = recallGraphPaths(mindView, query);
       if (paths.length) {
@@ -287,7 +325,7 @@ export function memoryRetrieve(ownerId, {
   // past-tense recall). Answers "what did we do about X" from experience.
   let episodeBlock = '';
   try {
-    const mindView = peekMind(ownerId);
+    const mindView = mindLanes ? peekMind(ownerId) : null;
     if (mindView) {
       let eps = recallEpisodes(mindView, query);
       // Continuation fast-path: no token match, but the user asked to resume —
@@ -445,7 +483,7 @@ function enforceFileCap(mind) {
     .sort((a, b) => (a[1].lastReferencedAt || 0) - (b[1].lastReferencedAt || 0));
   while (sorted.length > FILE_MEMORY_CAP) {
     const [k] = sorted.shift();
-    delete mind.files[k];
+    deleteItem(mind, 'files', k);
     // Phase D — evicting the file entry also drops its content chunks; a
     // file the owner no longer "remembers" must not keep matching queries.
     removeFileChunks(mind.ownerId, k);

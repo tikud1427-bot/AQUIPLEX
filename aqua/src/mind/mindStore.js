@@ -17,6 +17,7 @@
  * rest of AQUA persistence currently uses. All access goes through this
  * module's API, so swapping to SQLite/Postgres later touches ONE file.
  */
+import fs from 'node:fs';
 import { createEmptyMind } from './mindSchema.js';
 import { createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore } from '../core/atomicStore.js';
 import { migrateLegacyFile } from '../core/dataDir.js';
@@ -32,6 +33,145 @@ const STORE_SCHEMA = 1; // envelope version (mind objects carry their own `versi
 const store = new Map();
 let loaded = false;
 
+// ── TWO PROCESSES, ONE FILE (P0 2026-10-12) ──────────────────────────────────
+// The launcher runs server + worker on one DATA_DIR and both persist this
+// store. Each used to write its WHOLE in-memory map: measured on the real
+// product, the worker (loaded before a user existed) overwrote the server's
+// copy and the user's 4 facts went to 0 — on disk and in the Mongo mirror.
+// Now a flush writes only what THIS process changed, merged into what is on
+// disk right now:
+//   · owners this process did not change are taken from disk (and refreshed
+//     in memory, in place — references other modules hold stay valid);
+//   · owners changed by both processes are merged field by field (facts per
+//     key, newer wins; beliefs/goals/episodes/files union);
+//   · owners deleted here stay deleted.
+// The read→rename window that remains is covered by the mirror's generation
+// CAS, which preserves anything overwritten (core/mongoMirror.js).
+const dirty = new Set();          // owners this process changed since its last flush
+const deleted = new Map();        // owner → when THIS process deleted it (persisted in the envelope, see below)
+const baseUpdatedAt = new Map();  // owner → updatedAt this process last loaded or wrote
+
+// ── DELETIONS THAT HOLD ACROSS PROCESSES (audit 2026-10-12) ─────────────────
+// The merge above unions the two processes' versions, and a union cannot tell
+// "deleted here" from "never seen here": a fact the user deleted through the
+// server was re-added from the worker's older copy on the server's next flush,
+// and the worker's own next flush wrote its stale copy back. The same held for
+// beliefs, goals, episodes, files — and for a whole deleted owner, whose
+// `deleted` mark lived only in the deleting process's memory.
+// A deletion is therefore recorded as DATA:
+//   · per item  — mind.tombstones[bag][key] = when it was deleted;
+//   · per owner — `deletedOwners` in the file envelope (beside schema/savedAt).
+// An item is live iff it changed AFTER its tombstone, so saying the same thing
+// again later brings it back, and a stale copy never does.
+const TOMBSTONE_BAGS = Object.freeze(['facts', 'beliefs', 'goals', 'episodes', 'files']);
+const TOMBSTONE_TTL_MS = 30 * 24 * 3600 * 1000;   // far beyond any flush interval between the two processes
+const TOMBSTONE_CAP = 2000;                        // per bag, newest kept
+
+/** When an item last changed. Facts keep `ts` = first stored; a correction moves `updatedAt`. */
+const itemTime = x => Math.max(Number(x?.updatedAt ?? 0), Number(x?.ts ?? 0), Number(x?.createdAt ?? 0), Number(x?.lastReferencedAt ?? 0));
+
+function pruneTombstones(t, now = Date.now()) {
+  for (const [k, at] of Object.entries(t)) if (now - at > TOMBSTONE_TTL_MS) delete t[k];
+  const keys = Object.keys(t);
+  if (keys.length > TOMBSTONE_CAP) {
+    keys.sort((a, b) => t[a] - t[b]).slice(0, keys.length - TOMBSTONE_CAP).forEach(k => delete t[k]);
+  }
+}
+
+/**
+ * Record that `mind[bag][key]` was deleted. Every deletion of a mind item goes
+ * through here (or deleteItem); a bare `delete` is undone by the next merge.
+ */
+export function markDeleted(mind, bag, key, at = Date.now()) {
+  if (!mind || key == null || !TOMBSTONE_BAGS.includes(bag)) return;
+  mind.tombstones ??= {};
+  const t = (mind.tombstones[bag] ??= {});
+  t[key] = Math.max(t[key] ?? 0, at);
+  pruneTombstones(t, at);
+}
+
+/** Delete one item and record the deletion. Returns whether it existed. */
+export function deleteItem(mind, bag, key, at = Date.now()) {
+  if (!mind) return false;
+  const existed = !!mind[bag] && Object.prototype.hasOwnProperty.call(mind[bag], key);
+  if (existed) delete mind[bag][key];
+  markDeleted(mind, bag, key, at);
+  return existed;
+}
+
+function readDiskData() {
+  try {
+    if (!fs.existsSync(STORE_FILE)) return { data: null, deletedOwners: {} };
+    const parsed = JSON.parse(fs.readFileSync(STORE_FILE, 'utf8'));
+    const { data } = unwrapStore(parsed, { expected: STORE_SCHEMA, file: STORE_FILE, label: 'mind' });
+    return { data: data && typeof data === 'object' ? data : null, deletedOwners: parsed?.__aqua?.deletedOwners ?? {} };
+  } catch {
+    return { data: null, deletedOwners: {} };   // unreadable mid-rename or corrupt: write ours (the previous behaviour), never block a flush
+  }
+}
+
+const tsOf = x => Number(x?.ts ?? x?.updatedAt ?? 0);
+/** Replace `target`'s contents with `source`'s, keeping the object identity. */
+function replaceInPlace(target, source) {
+  for (const k of Object.keys(target)) if (!(k in source)) delete target[k];
+  Object.assign(target, source);
+}
+/** Both processes changed this owner: fold the disk version into ours, in place. */
+function mergeConcurrent(ours, disk) {
+  // Tombstones first: the union of both sides' deletions, newest time wins.
+  ours.tombstones ??= {};
+  for (const bag of TOMBSTONE_BAGS) {
+    const t = (ours.tombstones[bag] ??= {});
+    for (const [k, at] of Object.entries(disk.tombstones?.[bag] ?? {})) t[k] = Math.max(t[k] ?? 0, at);
+  }
+  const deletedAt = (bag, key) => ours.tombstones[bag]?.[key] ?? 0;
+  for (const bag of TOMBSTONE_BAGS) {
+    ours[bag] ??= {};
+    for (const [key, item] of Object.entries(disk[bag] ?? {})) {
+      if (itemTime(item) <= deletedAt(bag, key)) continue;          // deleted after this copy was written
+      const mine = ours[bag][key];
+      if (!mine || itemTime(item) > itemTime(mine)) ours[bag][key] = item;
+    }
+    // …and a deletion the OTHER process made removes our older copy.
+    for (const [key, item] of Object.entries(ours[bag])) {
+      if (itemTime(item) <= deletedAt(bag, key)) delete ours[bag][key];
+    }
+  }
+  for (const part of ['nodes', 'edges']) {
+    ours.graph ??= { nodes: {}, edges: {} };
+    for (const [k, v] of Object.entries(disk.graph?.[part] ?? {})) if (!ours.graph[part][k]) ours.graph[part][k] = v;
+  }
+  ours.turnCount = Math.max(ours.turnCount ?? 0, disk.turnCount ?? 0);
+  ours.updatedAt = Math.max(tsOf(ours), tsOf(disk));
+}
+
+/**
+ * Pure merge step of a flush — exported for tests. Mutates `memory` in place.
+ * `deletedOwners`: owner → deletion time, this process's and the file's.
+ * An owner deleted at T stays deleted unless a copy changed after T (the
+ * user came back and the owner was recreated).
+ */
+export function mergeForFlush(memory, disk, { dirtyOwners, deletedOwners, base }) {
+  let merged = 0, adopted = 0;
+  const deletedAtOf = ownerId => (deletedOwners instanceof Map ? deletedOwners.get(ownerId) : (deletedOwners?.has?.(ownerId) ? Infinity : undefined)) ?? 0;
+  for (const [ownerId, mine] of [...memory.entries()]) {
+    const at = deletedAtOf(ownerId);
+    if (at && tsOf(mine) <= at) memory.delete(ownerId);           // deleted by the other process
+  }
+  for (const [ownerId, d] of Object.entries(disk ?? {})) {
+    const at = deletedAtOf(ownerId);
+    if (at && tsOf(d) <= at) continue;
+    const mine = memory.get(ownerId);
+    if (!mine) { memory.set(ownerId, upgradeMind(d)); base.set(ownerId, tsOf(d)); adopted++; continue; }
+    const siblingChanged = tsOf(d) > (base.get(ownerId) ?? 0);
+    if (!siblingChanged) continue;
+    if (dirtyOwners.has(ownerId)) { mergeConcurrent(mine, upgradeMind(d)); merged++; }
+    else { replaceInPlace(mine, upgradeMind(d)); adopted++; }
+    base.set(ownerId, tsOf(mine));
+  }
+  return { merged, adopted };
+}
+
 function loadFromDisk() {
   if (loaded) return;
   loaded = true;
@@ -41,19 +181,36 @@ function loadFromDisk() {
   if (parsed == null) return;
   const { data } = unwrapStore(parsed, { expected: STORE_SCHEMA, file: STORE_FILE, label: 'mind' });
   if (!data || typeof data !== 'object') return;
-  for (const [ownerId, mind] of Object.entries(data)) store.set(ownerId, upgradeMind(mind));
+  adoptDeletedOwners(parsed?.__aqua?.deletedOwners);
+  for (const [ownerId, mind] of Object.entries(data)) { store.set(ownerId, upgradeMind(mind)); baseUpdatedAt.set(ownerId, tsOf(mind)); }
   console.log(`[MIND] Loaded ${store.size} cognitive models from ${STORE_FILE}`);
+}
+
+/** Fold the file's owner deletions into ours (newest time wins), bounded by the tombstone TTL. */
+function adoptDeletedOwners(fromDisk, now = Date.now()) {
+  for (const [ownerId, at] of Object.entries(fromDisk ?? {})) {
+    if (Number.isFinite(at) && at > (deleted.get(ownerId) ?? 0)) deleted.set(ownerId, at);
+  }
+  for (const [ownerId, at] of deleted) if (now - at > TOMBSTONE_TTL_MS) deleted.delete(ownerId);
 }
 
 // Phase 3b — atomic + async persistence via the shared primitive. Crash-safe
 // (temp+rename) and non-blocking; serialize snapshots at flush time. The
 // writer also takes a `.bak` boot backup before this process's first flush.
 const _writer = createDebouncedWriter(STORE_FILE);
-function scheduleSave() {
+function scheduleSave(ownerId = null) {
+  if (ownerId) dirty.add(ownerId);
   _writer.schedule(() => {
+    const disk = readDiskData();
+    adoptDeletedOwners(disk.deletedOwners);
+    const r = mergeForFlush(store, disk.data, { dirtyOwners: dirty, deletedOwners: deleted, base: baseUpdatedAt });
+    if (r.merged) console.log(`[MIND] merged ${r.merged} owner(s) changed concurrently by another process`);
     const data = {};
-    for (const [ownerId, mind] of store.entries()) data[ownerId] = mind;
-    return JSON.stringify(wrapStore(STORE_SCHEMA, data));
+    for (const [owner, mind] of store.entries()) { data[owner] = mind; baseUpdatedAt.set(owner, tsOf(mind)); }
+    dirty.clear();
+    const envelope = wrapStore(STORE_SCHEMA, data);
+    if (deleted.size) envelope.__aqua.deletedOwners = Object.fromEntries(deleted);
+    return JSON.stringify(envelope);
   });
 }
 loadFromDisk();
@@ -135,8 +292,9 @@ export function adoptMind(fromOwner, toOwner) {
   dst.turnCount += src.turnCount || 0;
   src.adoptedInto = toOwner;
   src.adoptedAt = Date.now();
+  src.updatedAt = Date.now();
+  dirty.add(fromOwner);
   touchMind(dst);
-  scheduleSave();
   console.log(`[MIND] ADOPTED ${fromOwner} → ${toOwner} facts=${Object.keys(src.facts || {}).length} beliefs=${Object.keys(src.beliefs || {}).length}`);
   return true;
 }
@@ -146,6 +304,10 @@ export function getMind(ownerId) {
   let mind = store.get(ownerId);
   if (!mind) {
     mind = createEmptyMind(ownerId);
+    // A mind recreated after a deletion must read as newer than it, even
+    // within the same millisecond, or the next flush would drop it.
+    const deletedAt = deleted.get(ownerId);
+    if (deletedAt && mind.updatedAt <= deletedAt) mind.updatedAt = deletedAt + 1;
     store.set(ownerId, mind);
     console.log(`[MIND] MIND_CREATED owner=${ownerId}`);
   }
@@ -166,12 +328,19 @@ export function peekMind(ownerId) {
 export function touchMind(mind) {
   if (!mind) return;
   mind.updatedAt = Date.now();
-  scheduleSave();
+  // Minds from older files may lack ownerId; find the key so the change is
+  // still marked as THIS process's (or the merge would take the disk copy).
+  let owner = mind.ownerId ?? null;
+  if (!owner) for (const [k, v] of store) if (v === mind) { owner = k; break; }
+  scheduleSave(owner);
 }
 
 export function deleteMind(ownerId) {
   const existed = store.delete(ownerId);
-  if (existed) scheduleSave();
+  // Persisted (envelope `deletedOwners`), so the OTHER process drops its copy
+  // too — even when this process never loaded the owner.
+  deleted.set(ownerId, Date.now());
+  scheduleSave();
   // Phase D — GDPR cascade: deleting a mind also purges every vector the
   // owner accumulated (fact vectors live in ns `<ownerId>`, uploaded-file
   // content chunks in ns `files:<ownerId>`). Runs even if the mind object
@@ -207,4 +376,5 @@ export function _iterateMindsForStats() {
 /** Test-only: reset in-memory state (does not touch disk). */
 export function _clearAllForTests() {
   store.clear();
+  dirty.clear(); deleted.clear(); baseUpdatedAt.clear();
 }

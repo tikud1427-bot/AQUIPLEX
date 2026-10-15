@@ -84,6 +84,12 @@ const span = (from, to, precision, anchor, reason) => ({
 const PAST_TENSE = /\b(?:was|were|had|did|used\s+to|previously|formerly|left|joined|quit|moved|ended|finished|completed|stopped|shipped|launched|resigned|graduated)\b/i;
 const PRESENT_TENSE = /\b(?:am|is|are|have|has|currently|these\s+days|now|still|these|work|works|live|lives|run|runs)\b/i;
 
+// FUTURE (2026-10-11, Pass 2): "from next month my manager will be Priya",
+// "we're moving to Rotterdam in March", "Tomás is leaving at the end of the
+// month". Before this, "will" matched no tense, so a future state was either
+// timeless (read as current) or closed at the end of the named period.
+const FUTURE_TENSE = /\b(?:will|won['’]t|shall|going\s+to|gonna|from\s+next|starting\s+next|as\s+of\s+next|moving|relocating|leaving|joining|taking\s+over|takes\s+over|scheduled|upcoming|is\s+due\s+to)\b|['’]ll\b/i;
+
 export function tenseOf(text) {
   const t = String(text ?? '');
   // Past wins a tie: "I used to work at X and now work at Y" describes a
@@ -91,9 +97,19 @@ export function tenseOf(text) {
   // both open. A closed range that should have been open is recoverable from
   // the quote; two overlapping open ranges are a contradiction nobody asked for.
   if (PAST_TENSE.test(t)) return 'past';
+  if (FUTURE_TENSE.test(t)) return 'future';
   if (PRESENT_TENSE.test(t)) return 'present';
   return 'unknown';
 }
+
+/**
+ * Predicates whose DATE IS THE CONTENT, not the claim's validity (2026-10-11).
+ * "The launch is on March 17" is true NOW; March 17 is the value. Stamping it
+ * as valid_from made every dated deadline invisible to current-only lanes
+ * until the deadline had passed — and, once month-only dates resolved, would
+ * have done the same to "launch on March 17".
+ */
+export const CONTENT_TIME_PREDICATES = Object.freeze(new Set(['deadline_for', 'plans_to', 'decided', 'rejected', 'task_owner']));
 
 /**
  * Resolve a temporal expression against when it was said.
@@ -106,7 +122,7 @@ export function tenseOf(text) {
  * @returns {{validFrom:string|null, validTo:string|null, precision:string,
  *            anchor:string|null, reason:string, quote:string|null}}
  */
-export function normaliseTemporal(text, assertedAt = null) {
+export function normaliseTemporal(text, assertedAt = null, opts = {}) {
   const raw = String(text ?? '');
   if (!raw.trim()) return nothing('empty-text');
 
@@ -155,6 +171,37 @@ export function normaliseTemporal(text, assertedAt = null) {
     // "since 2024" is open-ended by construction; "in 2024" is the year.
     const open = /\bsince\s+\d{4}\b/.test(t);
     return span(utc(y, 0, 1), open ? null : endOfYear(y), 'year', String(y), open ? 'since-year' : 'year');
+  }
+
+  // ── Month (and day) WITHOUT a year (2026-10-11): "in March", "on March 14",
+  // "the 14th of March". The year is decided by TENSE against when it was
+  // said — future: the next such date; past: the last one. Present/unknown
+  // tense cannot decide it, so it stays unanchored (never invented).
+  // A bare month name with no day must follow a time preposition: "may" is
+  // also a modal verb ("we may move in June"), "march" a verb. First match
+  // that is a date wins.
+  const monthOnly = [...t.matchAll(new RegExp(`\\b(?:(\\d{1,2})(?:st|nd|rd|th)?\\s+(?:of\\s+)?)?(${MONTHS.join('|')})\\b(?:\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b)?`, 'g'))]
+    .find(mm => mm[1] || mm[3]
+      || /\b(?:in|on|by|until|till|from|since|before|after|early|mid|late|of|end\s+of|start\s+of|beginning\s+of)\s+(?:the\s+)?$/.test(t.slice(0, mm.index)));
+  if (monthOnly) {
+    if (!haveAnchor) return unanchored('month-without-asserted-at', monthOnly[0]);
+    const tense = opts.tense ?? tenseOf(raw);
+    if (tense !== 'future' && tense !== 'past') return unanchored('month-without-year', monthOnly[0]);
+    const m = MONTHS.indexOf(monthOnly[2]);
+    const day = monthOnly[1] ? +monthOnly[1] : (monthOnly[3] ? +monthOnly[3] : null);
+    const sY = said.getUTCFullYear();
+    const pick = y => (day ? utc(y, m, day) : utc(y, m, 1));
+    const saidDay = utc(sY, said.getUTCMonth(), said.getUTCDate());
+    const sameMonth = !day && m === said.getUTCMonth();
+    let y = sY;
+    if (tense === 'future' && pick(sY) < saidDay && !sameMonth) y = sY + 1;
+    if (tense === 'past' && pick(sY) > saidDay && !sameMonth) y = sY - 1;
+    if (day) {
+      const probe = pick(y);
+      if (probe.getUTCMonth() !== m) return unanchored('impossible-date', monthOnly[0]);
+      return span(probe, endOfDay(y, m, day), 'day', monthOnly[0], `month-day-${tense}`);
+    }
+    return span(utc(y, m, 1), endOfMonth(y, m), 'month', monthOnly[0], `month-${tense}`);
   }
 
   // ── Relative: everything below needs an anchor ─────────────────────────────
@@ -220,15 +267,50 @@ export function normaliseTemporal(text, assertedAt = null) {
  */
 export function applyTemporal(claim, assertedAt, opts = {}) {
   const text = opts.text ?? claim?.statementText ?? claim?.statement_text ?? '';
-  const t = normaliseTemporal(text, assertedAt);
   const tense = tenseOf(text);
+  let t = normaliseTemporal(text, assertedAt, { tense });
+  // MODEL PHRASE FALLBACK (2026-10-11, real-extraction check): the model often
+  // quotes a SPAN without the time words ("my team lead will be Dalia Mor")
+  // and puts them in validFrom/validTo AS WRITTEN ("next month"), per the
+  // prompt. Those phrases were dropped, so the change applied immediately.
+  // The span stays the primary evidence; the phrases are resolved by the same
+  // rules (never computed by the model, never invented here).
+  let source = 'statement';
+  const phrase = s => (typeof s === 'string' && s.trim() && !/^\d{4}-\d{2}-\d{2}T/.test(s) ? s : null);
+  if (!t.validFrom && !t.validTo) {
+    const pf = phrase(claim?.validFrom), pt = phrase(claim?.validTo);
+    if (pf) {
+      const f = normaliseTemporal(pf, assertedAt, { tense });
+      if (f.validFrom) { t = f; source = 'model-phrase'; }
+    }
+    if (pt) {
+      const e = normaliseTemporal(pt, assertedAt, { tense });
+      if (e.validTo) { t = { ...t, validTo: e.validTo, precision: t.validFrom ? t.precision : e.precision, anchor: t.anchor ?? e.anchor }; source = 'model-phrase'; }
+    }
+  }
+
+  // The date of a deadline/plan/decision is its VALUE (see CONTENT_TIME_PREDICATES):
+  // the claim holds now, so no validity window is written. The anchor is kept.
+  if (CONTENT_TIME_PREDICATES.has(claim?.predicate)) {
+    return {
+      ...claim, validFrom: null, validTo: null, timePrecision: 'none',
+      temporal: Object.freeze({ anchor: t.anchor, reason: `content-time:${t.reason}`, tense, openedByTense: false, future: false }),
+    };
+  }
 
   let validTo = t.validTo;
-  if (t.validFrom && tense === 'present') {
+  if (t.validFrom && tense === 'present' && source === 'statement') {
     // Present tense: the state is still true, so the range is open even though
     // the expression named a start.
     validTo = null;
   }
+  // FUTURE STATE (2026-10-11): a state that STARTS later ("from next month my
+  // manager will be Priya") holds from then on — open-ended, not closed at the
+  // end of the named month. It is not current until valid_from.
+  const said = assertedAt == null ? null : new Date(assertedAt);
+  const future = Boolean(t.validFrom && tense !== 'past' && said && !Number.isNaN(said.getTime())
+    && Date.parse(t.validFrom) > said.getTime());
+  if (future) validTo = null;
 
   return {
     ...claim,
@@ -236,7 +318,7 @@ export function applyTemporal(claim, assertedAt, opts = {}) {
     validTo,
     timePrecision: t.precision,
     temporal: Object.freeze({
-      anchor: t.anchor, reason: t.reason, tense,
+      anchor: t.anchor, reason: t.reason, tense, future, source,
       // Kept so a later reader can tell an open range meant "still true" from
       // one that meant "we never knew when it ended".
       openedByTense: Boolean(t.validFrom && tense === 'present' && t.validTo),

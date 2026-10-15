@@ -57,9 +57,7 @@ export function runBoundedRetrievalRounds({
         slotId,
         limit: Math.max(limit, 8),
       });
-      for (const item of targeted?.items ?? []) {
-        roundTwoItems.push({ ...item, slotIds: [slotId] });
-      }
+      for (const item of targeted?.items ?? []) roundTwoItems.push(stampSlot(item, slot));
     }
   }
 
@@ -121,7 +119,7 @@ export async function runBoundedRetrievalRoundsAsync({
         slotId,
       });
       roundCalls.push({ round: 2, query: targetedQuery, slotId, limit: Math.max(limit, 8) });
-      for (const item of targeted?.items ?? []) roundTwoItems.push({ ...item, slotIds: [slotId] });
+      for (const item of targeted?.items ?? []) roundTwoItems.push(stampSlot(item, slot));
     }
   }
 
@@ -136,8 +134,23 @@ export async function runBoundedRetrievalRoundsAsync({
   };
 }
 
+/**
+ * Attribute a round-two item to the slot it was fetched for — but only when it
+ * can fill that slot. For a predicate-defined slot the item must carry one of
+ * the slot's predicates; a text hit for "<question> blocker" is kept as
+ * context, never as evidence that a blocker is known (E8, 2026-10-07).
+ * Untyped slots keep the old behaviour.
+ */
+export function stampSlot(item, slot) {
+  if (!slot) return item;
+  const preds = slot.predicates ?? [];
+  if (preds.length && !(item?.predicate && preds.includes(String(item.predicate)))) return item;
+  return { ...item, slotIds: [...new Set([...(item.slotIds ?? []), slot.id])] };
+}
+
 function floorItemsToCandidates(items) {
   return items.map(it => ({
+    predicate: it.predicate ?? null,
     kind: it.kind,
     id: it.id ?? it.nodeId ?? it.statement,
     text: it.statement ?? it.entity ?? it.text ?? '',

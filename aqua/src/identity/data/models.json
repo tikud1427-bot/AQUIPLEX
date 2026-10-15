@@ -8,7 +8,7 @@
     },
     {
       "name": "Google Gemini",
-      "models": ["gemini-2.5-flash", "gemini-3.5-flash"],
+      "models": ["gemini-2.5-flash", "gemini-3.6-flash"],
       "role": "Large context window and multimodal (vision) support."
     },
     {

@@ -226,6 +226,9 @@ export async function runDebate({
       );
       provider  = result.provider ?? provider;
       panelText = result.text;
+      // A panel cut off by its budget is incomplete JSON. Say so — it used to
+      // surface as "panel_unparseable", which reads like a model format bug.
+      if (result.truncated) return failOpen(`panel_truncated on pass ${passes + 1}/${cap}: reviewer output hit the token budget (${String(panelText ?? '').length} chars)`);
     } catch (err) {
       return failOpen(`panel call failed on pass ${passes + 1}/${cap}: ${err.message}`);
     }

@@ -1,0 +1,80 @@
+{
+  "id": "reexplanation-longitudinal",
+  "version": 1,
+  "authoredAt": "2026-10-06",
+  "note": "Controlled longitudinal re-explanation evaluation (Phase 3 / Gate 9). Each persona lives through sessions. In every session the user makes the same fact-dependent requests (probes). A probe SUCCEEDS when the context the system would answer from contains the probe's current value and does not offer a stale value as current; otherwise the user must RE-EXPLAIN, and the explain utterance becomes part of that system's knowledge (ingested through the production E6 path for the World Model; appended to the history for memory). After a session's probes, the session's world changes are said. Rate per session = re-explanations / probes. Intended direction: DOWN. Authored before any run by the engineer who built the system (independence not met; disclosed). Values are chosen to be unambiguous substrings for a deterministic presence check.",
+  "personas": [
+    {
+      "id": "l1-nadia",
+      "intro": ["Hi, I'm Nadia.", "Can you help me stay organised this quarter?"],
+      "probes": [
+        { "id": "employer", "q": "Draft a one-line bio for my conference badge.", "need": "Fernway", "explain": "I work at Fernway as a data engineer." },
+        { "id": "city", "q": "Suggest a coworking space near where I live.", "need": "Lisbon", "explain": "I live in Lisbon." },
+        { "id": "manager", "q": "Write a short note to my manager asking for Friday off.", "need": "Tiago", "explain": "My manager is Tiago." },
+        { "id": "project", "q": "Summarise the project I'm leading for my weekly update.", "need": "pipeline migration", "explain": "I'm leading the pipeline migration project." },
+        { "id": "deadline", "q": "How many weeks do I have left on my main project?", "need": "November 20", "explain": "The pipeline migration is due on November 20." }
+      ],
+      "sessions": [
+        { "changes": [] },
+        { "changes": ["Update: the pipeline migration deadline moved to December 4, not November 20."], "updates": { "deadline": { "need": "December 4", "stale": ["November 20"], "explain": "The pipeline migration is now due on December 4, not November 20." } } },
+        { "changes": ["I moved from Lisbon to Porto last week."], "updates": { "city": { "need": "Porto", "stale": ["Lisbon"], "explain": "I live in Porto now, not Lisbon." } } },
+        { "changes": [] },
+        { "changes": [] }
+      ]
+    },
+    {
+      "id": "l2-arun",
+      "intro": ["Hey, Arun here.", "I want you to help me with my startup work."],
+      "probes": [
+        { "id": "company", "q": "Write a two-sentence pitch for my company.", "need": "Quillbase", "explain": "My company is Quillbase, it makes invoicing software for small shops." },
+        { "id": "cofounder", "q": "Draft a message to my cofounder about our board meeting.", "need": "Mira", "explain": "My cofounder is Mira." },
+        { "id": "investor", "q": "Draft a thank-you email to our lead investor.", "need": "Bluefin Ventures", "explain": "Our lead investor is Bluefin Ventures." },
+        { "id": "blocker", "q": "What's holding up our mobile release?", "need": "app store review", "explain": "The mobile release is blocked by the app store review." },
+        { "id": "stack", "q": "Which backend language should new hires learn first?", "need": "Elixir", "explain": "Our backend is written in Elixir." }
+      ],
+      "sessions": [
+        { "changes": [] },
+        { "changes": ["The app store review passed. Now the mobile release is blocked by the payments SDK upgrade."], "updates": { "blocker": { "need": "payments SDK", "stale": ["app store review"], "explain": "The mobile release is now blocked by the payments SDK upgrade, not the app store review." } } },
+        { "changes": [] },
+        { "changes": ["Correction: our backend is written in Rust, not Elixir."], "updates": { "stack": { "need": "Rust", "stale": ["Elixir"], "explain": "Our backend is written in Rust, not Elixir." } } },
+        { "changes": [] }
+      ]
+    },
+    {
+      "id": "l3-keiko",
+      "intro": ["Hello! I'm Keiko.", "I'd like help with my running and my job."],
+      "probes": [
+        { "id": "race", "q": "Make me a training plan for my next race.", "need": "Osaka Marathon", "explain": "I'm training for the Osaka Marathon." },
+        { "id": "coach", "q": "Write a quick message to my running coach about my long run.", "need": "Hiro", "explain": "My running coach is Hiro." },
+        { "id": "diet", "q": "Suggest a high-protein dinner for me.", "need": "vegetarian", "explain": "I'm vegetarian." },
+        { "id": "job", "q": "Help me prepare for my performance review at work.", "need": "Sakura Bank", "explain": "I'm a risk analyst at Sakura Bank." },
+        { "id": "shoes", "q": "Should I buy another pair of my current running shoes?", "need": "Novablast", "explain": "I run in the Asics Novablast." }
+      ],
+      "sessions": [
+        { "changes": [] },
+        { "changes": [] },
+        { "changes": ["Hiro moved away, my running coach is now Emi."], "updates": { "coach": { "need": "Emi", "stale": ["Hiro"], "explain": "My running coach is Emi now, not Hiro." } } },
+        { "changes": ["I switched from the Novablast to the Nike Pegasus."], "updates": { "shoes": { "need": "Pegasus", "stale": ["Novablast"], "explain": "I run in the Nike Pegasus now, not the Novablast." } } },
+        { "changes": [] }
+      ]
+    },
+    {
+      "id": "l4-sam",
+      "intro": ["I'm Sam.", "Mostly I'll ask about my PhD."],
+      "probes": [
+        { "id": "topic", "q": "Write the first sentence of my thesis abstract.", "need": "coral reef", "explain": "My thesis is about coral reef bleaching." },
+        { "id": "advisor", "q": "Draft an email to my advisor asking for feedback.", "need": "Dr. Okoro", "explain": "My advisor is Dr. Okoro." },
+        { "id": "uni", "q": "Which university library should I book a room at?", "need": "University of Cape Town", "explain": "I'm at the University of Cape Town." },
+        { "id": "tool", "q": "Which statistics tool should I write my scripts in?", "need": "Python", "explain": "I do my analysis in Python." },
+        { "id": "defense", "q": "When should I start rehearsing for my defense?", "need": "March 12", "explain": "My thesis defense is on March 12." }
+      ],
+      "sessions": [
+        { "changes": [] },
+        { "changes": ["My defense got moved to April 2, not March 12."], "updates": { "defense": { "need": "April 2", "stale": ["March 12"], "explain": "My thesis defense is on April 2 now, not March 12." } } },
+        { "changes": [] },
+        { "changes": ["I switched my analysis from Python to R."], "updates": { "tool": { "need": "R", "stale": ["Python"], "explain": "I do my analysis in R now, not Python." } } },
+        { "changes": [] }
+      ]
+    }
+  ]
+}

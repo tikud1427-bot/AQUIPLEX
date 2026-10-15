@@ -17,7 +17,7 @@
  */
 import { DIMENSION_DYNAMICS, DIMENSIONS, STATUS, GOAL_STATUS, CAPS, createTimelineEvent } from './mindSchema.js';
 import { decay, isEstablished, isArchiveCandidate } from './confidence.js';
-import { touchMind } from './mindStore.js';
+import { touchMind, deleteItem } from './mindStore.js';
 import { pushTimeline } from './timeline.js';
 import { decayWorkingMemory } from './workingMemory.js';
 import { closeStaleEpisodes } from './episodeTracker.js';
@@ -56,7 +56,7 @@ export function reflect(mind) {
     if (b.privacy?.retentionDays) {
       const ttlMs = b.privacy.retentionDays * 24 * 3600 * 1000;
       if (now - b.createdAt > ttlMs) {
-        delete mind.beliefs[bk];
+        deleteItem(mind, 'beliefs', bk);
         report.expired.push(bk);
         continue;
       }

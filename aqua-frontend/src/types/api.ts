@@ -119,6 +119,12 @@ export interface ChatSuccessResponse {
     ran: boolean;
     passed: boolean | null;
     revised: boolean;
+    /** The truthful verdict (server: orchestrator/verificationStrategy.js). Absent on older servers. */
+    status?: 'not_requested' | 'unavailable' | 'failed' | 'incomplete' | 'verified'
+      | 'revised_unconfirmed' | 'issues_unresolved' | 'disputed' | 'inconclusive';
+    /** true ⇔ a completed review pass confirmed the delivered answer. */
+    verified?: boolean;
+    error?: string | null;
   };
 
   orchestration: {

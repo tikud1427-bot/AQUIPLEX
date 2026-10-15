@@ -1,3 +1,4 @@
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runClaimReflectionJob } from './reflectionWorker.js';
 
@@ -40,3 +41,19 @@ import fs from 'node:fs';
 const workerSource = fs.readFileSync(new URL('./reflectionWorker.js', import.meta.url), 'utf8');
 if (!workerSource.includes("../../core/worldModel/worldModelRepository.js")) throw new Error('E9 reflection worker is not using canonical world-model claims');
 console.log('E9 canonical claim loader boundary: 1/1 assertion passed');
+
+test('a Mind store failure RETRIES the job instead of completing it unreflected', async () => {
+  const { runClaimReflectionJob } = await import('./reflectionWorker.js');
+  await assert.rejects(
+    runClaimReflectionJob({ ownerId: 'u-mind-down', payload: { claimId: 'c1' } }, { loadMind: () => null }),
+    err => err.code === 'MIND_UNAVAILABLE',
+  );
+});
+
+test('a claim that no longer exists stays terminal (retrying cannot help)', async () => {
+  const { runClaimReflectionJob } = await import('./reflectionWorker.js');
+  const r = await runClaimReflectionJob({ ownerId: 'u-gone', payload: { claimId: 'c-gone' } },
+    { loadMind: () => ({ beliefs: {} }), loadClaim: async () => null });
+  assert.equal(r.ok, false);
+  assert.equal(r.reason, 'claim-not-found');
+});

@@ -31,55 +31,59 @@
  *     better by trying a different model with the same key), so those
  *     still propagate immediately as real provider failures. Only
  *     model-scoped errors (404/429/5xx) retry within this call.
+ *   - Key pool (2026-10-15): keys now rotate through the shared pool
+ *     (keyPool.cjs). A refused/out-of-credit key or an ACCOUNT-scoped 429
+ *     moves the same request to the next key instead of failing the
+ *     provider; model-scoped failures keep the behaviour described above.
  *   - TRUNCATED_MAX_TOKENS is no longer thrown (Issue 1) — hitting the
  *     output cap returns { text, truncated: true, finishReason: 'length' }
  *     as a successful completion.
  */
 
 import OpenAI from 'openai';
-import {
-  getCandidateModels, markModelRateLimited, markModelTempFailed, markModelUnavailable, pinCandidates } from './modelRegistry.js';
-import { classifyProviderError, retryAfterMs } from './providerErrors.js';
+import { getCandidateModels, pinCandidates } from './modelRegistry.js';
+import { rotate, keyPoolFor, raceAbort } from './keyRotation.js';
+import { recordProviderCall } from '../core/costAccounting.js';
 
-// ── Key rotation ───────────────────────────────────────────────────────────────
-
-function getKeys() {
-  return [
-    process.env.OPENROUTER_API_KEY_1,
-    process.env.OPENROUTER_API_KEY_2,
-    process.env.OPENROUTER_API_KEY_3,
-    process.env.OPENROUTER_API_KEY_4,
-  ].filter(Boolean);
+/** E12: every successful call is counted (tokens always; USD only when priced). */
+function countedCall(provider, purpose, res) {
+  try { recordProviderCall({ provider, model: res.model ?? null, usage: res.usage ?? null, purpose: purpose ?? 'other' }); } catch { /* observability never fails a call */ }
+  return res;
 }
+
+// ── Key rotation (shared — keyPool.cjs) ────────────────────────────────────────
+// OPENROUTER_API_KEY_1..N (any N) + the bare OPENROUTER_API_KEY, deduped.
+// Which failures move to ANOTHER KEY (keyRotation.js policy):
+//   401/403          the key is refused → quarantined, next key
+//   402              that account's credits are spent → key cooldown, next key
+//   429 key/account  "Rate limit exceeded: free-models-per-day" etc → key cooldown
+//                    (X-RateLimit-Reset honoured), next key
+// Which stay MODEL-scoped (unchanged): 404 not-found (permanent), "no
+// endpoints" capacity (transient), 429 upstream saturation, 5xx.
+
+const pool = keyPoolFor('openrouter');
 
 /** Startup validation (Issue 6) — does this provider have any usable key at all? */
 export function hasConfiguredKeys() {
-  return getKeys().length > 0;
-}
-
-let keyIndex = 0;
-
-function nextKey() {
-  const keys = getKeys();
-  if (!keys.length) throw new Error('No OpenRouter keys configured');
-  const key = keys[keyIndex];
-  keyIndex  = (keyIndex + 1) % keys.length;
-  return key;
+  return pool.hasKeys();
 }
 
 const clientCache = new Map();
 
 function getClient(key) {
-  if (!clientCache.has(key)) {
-    clientCache.set(key, new OpenAI({
+  const url = process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1';
+  const cacheKey = `${url}\u0000${key}`;
+  if (!clientCache.has(cacheKey)) {
+    clientCache.set(cacheKey, new OpenAI({
       apiKey:  key,
       // Overridable for corporate proxies / gateways / integration tests.
-      baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+      baseURL: url,
+      // Retries are OURS: the SDK would re-send a 429 on the same key.
+      maxRetries: 0,
     }));
   }
-  return clientCache.get(key);
+  return clientCache.get(cacheKey);
 }
-
 
 function normalizeUsage(usage) {
   const inputTokens = Number(usage?.prompt_tokens ?? usage?.promptTokens);
@@ -87,6 +91,20 @@ function normalizeUsage(usage) {
   if (!Number.isFinite(inputTokens) && !Number.isFinite(outputTokens)) return null;
   return { inputTokens: Number.isFinite(inputTokens) ? inputTokens : 0, outputTokens: Number.isFinite(outputTokens) ? outputTokens : 0 };
 }
+
+const timeoutError = () => new Error('TIMEOUT');
+const emptyResponse = detail => Object.assign(new Error(`OpenRouter: ${detail}`), { code: 'INVALID_RESPONSE' });
+
+function chatMessagesOf(systemPrompt, messages) {
+  return [
+    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+    ...messages.map(m => ({ role: m.role, content: m.content })),
+  ];
+}
+
+// Bounded so a fully-degraded registry can't turn into an unbounded loop —
+// never more models than this per call (pre-existing limit).
+const MODEL_ATTEMPT_LIMIT = 5;
 
 // ── Generate ───────────────────────────────────────────────────────────────────
 
@@ -104,125 +122,51 @@ function normalizeUsage(usage) {
  *                      MODEL_PIN_UNAVAILABLE. Never silently substituted.
  *   `opts.temperature` sent only when supplied, so an omitted value leaves
  *                      the request bytes identical to before this change.
- *   The return gains `model`, naming which model actually answered. Additive:
- *   every existing caller destructures { text, truncated, finishReason }.
- *   Without it a run cannot be attributed — disqualifying for a measurement,
- *   and invisible in the old return shape.
- *   STREAMING IS DELIBERATELY UNTOUCHED. Extraction never streams, and the
- *   stream paths carry their own truncation and abort handling; widening the
- *   change to reach them would grow the risk envelope for no caller.
+ *   `opts.purpose`     cost/usage bucket.
+ *   The return gains `model` (which model answered) and `keySlot` (slot
+ *   label, never the key). Additive.
  */
 export async function generateOpenRouter(systemPrompt, messages, signal, maxTokens, opts = {}) {
-  if (signal?.aborted) throw new Error('TIMEOUT');
+  if (signal?.aborted) throw timeoutError();
 
   const candidates = pinCandidates(getCandidateModels('openrouter'), opts.model ?? null, 'openrouter');
   if (!candidates.length) throw Object.assign(new Error('No OpenRouter models currently available (cooling down or deprecated)'), { code: 'NO_CANDIDATE_MODELS' });
+  const chatMessages = chatMessagesOf(systemPrompt, messages);
 
-  const key    = nextKey();
-  const client = getClient(key);
+  const res = await rotate('openrouter', {
+    models: candidates.slice(0, MODEL_ATTEMPT_LIMIT), signal, purpose: opts?.purpose ?? 'other',
+    attempt: async ({ key, modelId, model }) => {
+      const capTokens = maxTokens ? Math.min(maxTokens, model.maxOutputTokens) : maxTokens;
+      const req = getClient(key).chat.completions.create({
+        model:    modelId,
+        messages: chatMessages,
+        ...(capTokens ? { max_tokens: capTokens } : {}),
+        ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
+      });
+      const result = await raceAbort(req, signal);
 
-  const chatMessages = [
-    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-    ...messages.map(m => ({ role: m.role, content: m.content })),
-  ];
+      const finishReason = result?.choices?.[0]?.finish_reason;
+      const text = result?.choices?.[0]?.message?.content;
 
-  let lastError;
-  // Bounded so a fully-degraded registry can't turn into an unbounded loop
-  // — never more attempts than models actually available this call.
-  const attemptLimit = Math.min(candidates.length, 5);
-
-  for (let i = 0; i < attemptLimit; i++) {
-    const modelId   = candidates[i].modelId;
-    const capTokens = maxTokens ? Math.min(maxTokens, candidates[i].maxOutputTokens) : maxTokens;
-
-    if (signal?.aborted) throw new Error('TIMEOUT');
-
-    console.log(`[OPENROUTER] model=${modelId} key=...${key.slice(-4)} (${i + 1}/${attemptLimit})`);
-
-    const req = client.chat.completions.create({
-      model:    modelId,
-      messages: chatMessages,
-      ...(capTokens ? { max_tokens: capTokens } : {}),
-      ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
-    });
-    // Demo-stability fix: a lost Promise.race leaves `req` running detached;
-    // a late rejection would be an unhandled rejection — fatal on modern
-    // Node — and would crash the server mid-request. No-op handler marks it
-    // handled; race path unaffected. (Same fix in groq.js / gemini.js.)
-    Promise.resolve(req).catch(() => {});
-
-    let result;
-    try {
-      result = signal
-        ? await Promise.race([
-            req,
-            new Promise((_, rej) => {
-              if (signal.aborted) return rej(new Error('TIMEOUT'));
-              signal.addEventListener('abort', () => rej(new Error('TIMEOUT')), { once: true });
-            }),
-          ])
-        : await req;
-    } catch (err) {
-      if (err.message === 'TIMEOUT') throw err; // router's budget spent — propagate immediately
-
-      lastError = err;
-      const { type, status } = classifyProviderError(err);
-
-      // ── Model-scoped failures (Issue 4): only disable THIS model, try the next one ──
-      if (type === 'model_not_found') {                 // permanent — wrong/removed model id
-        markModelUnavailable('openrouter', modelId, `${status ?? ''} ${err.message}`.trim());
-        continue;
+      // ── Issue 1: hitting the output-token cap is SUCCESS, not failure ──
+      if (capTokens && finishReason === 'length') {
+        if (!text || !text.trim()) throw emptyResponse(`model ${modelId} returned empty truncated response`);
+        console.log(`[OPENROUTER] model=${modelId} hit maxTokens=${capTokens} cap — returning partial as successful completion`);
+        return { text, truncated: true, finishReason: 'length', model: modelId, usage: normalizeUsage(result?.usage) };
       }
-      if (type === 'model_unavailable') {               // TRANSIENT no-capacity ("no endpoints") — self-heals
-        markModelTempFailed('openrouter', modelId, 60_000);
-        continue;
-      }
-      if (type === 'rate_limit') {
-        markModelRateLimited('openrouter', modelId, retryAfterMs(err) ?? 120_000);
-        continue;
-      }
-      if (type === 'server_error') {
-        markModelTempFailed('openrouter', modelId, retryAfterMs(err) ?? 45_000);
-        continue;
-      }
+      if (!text) throw emptyResponse(`model ${modelId} returned empty response`);
+      return { text, truncated: false, finishReason: finishReason ?? 'stop', model: modelId, usage: normalizeUsage(result?.usage) };
+    },
+  });
 
-      // ── Provider/key-scoped failures: trying a different model with the
-      // same bad key/connection won't help — this genuinely IS a provider
-      // failure, so propagate immediately (router.js correctly marks
-      // openrouter's health for these, per Issue 4's differentiation).
-      console.log(`[OPENROUTER] key=...${key.slice(-4)} model=${modelId} error type=${type} status=${status} msg=${err.message}`);
-      throw err;
-    }
-
-    const finishReason = result?.choices?.[0]?.finish_reason;
-    const text = result?.choices?.[0]?.message?.content;
-
-    // ── Issue 1: hitting the output-token cap is SUCCESS, not failure ──
-    if (capTokens && finishReason === 'length') {
-      if (!text || !text.trim()) {
-        lastError = new Error(`OpenRouter: model ${modelId} returned empty truncated response`);
-        continue;
-      }
-      console.log(`[OPENROUTER] model=${modelId} hit maxTokens=${capTokens} cap — returning partial as successful completion`);
-      return { text, truncated: true, finishReason: 'length', model: modelId, usage: normalizeUsage(result?.usage) };
-    }
-
-    if (!text) {
-      lastError = new Error(`OpenRouter: model ${modelId} returned empty response`);
-      continue;
-    }
-
-    return { text, truncated: false, finishReason: finishReason ?? 'stop', model: modelId, usage: normalizeUsage(result?.usage) };
-  }
-
-  throw lastError ?? new Error('All OpenRouter models exhausted for this request');
+  return countedCall('openrouter', opts?.purpose, res);
 }
 
 /**
  * Streaming variant (Day 3 — Real Streaming).
  *
  * Same registry-driven model fallback and error scoping as
- * generateOpenRouter, with the streaming rule: model fallback only BEFORE
+ * generateOpenRouter, with the streaming rule: key/model fallback only BEFORE
  * the first emitted delta; mid-stream failures return the partial as
  * finishReason='interrupted'.
  *
@@ -230,79 +174,73 @@ export async function generateOpenRouter(systemPrompt, messages, signal, maxToke
  * @returns {Promise<{ text:string, truncated:boolean, finishReason:string, streamed:true }>}
  */
 export async function streamOpenRouter(systemPrompt, messages, signal, maxTokens, onDelta) {
-  if (signal?.aborted) throw new Error('TIMEOUT');
+  if (signal?.aborted) throw timeoutError();
 
   const candidates = getCandidateModels('openrouter');
   if (!candidates.length) throw Object.assign(new Error('No OpenRouter models currently available (cooling down or deprecated)'), { code: 'NO_CANDIDATE_MODELS' });
+  const chatMessages = chatMessagesOf(systemPrompt, messages);
+  const purpose = 'chat';
 
-  const key    = nextKey();
-  const client = getClient(key);
-
-  const chatMessages = [
-    ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-    ...messages.map(m => ({ role: m.role, content: m.content })),
-  ];
-
-  let lastError;
-  const attemptLimit = Math.min(candidates.length, 5);
-
-  for (let i = 0; i < attemptLimit; i++) {
-    const modelId   = candidates[i].modelId;
-    const capTokens = maxTokens ? Math.min(maxTokens, candidates[i].maxOutputTokens) : maxTokens;
-
-    if (signal?.aborted) throw new Error('TIMEOUT');
-    console.log(`[OPENROUTER] stream model=${modelId} key=...${key.slice(-4)} (${i + 1}/${attemptLimit})`);
-
-    let stream;
-    try {
-      stream = await client.chat.completions.create(
-        {
-          model:    modelId,
-          messages: chatMessages,
-          stream:   true,
-          stream_options: { include_usage: true },
-          ...(capTokens ? { max_tokens: capTokens } : {}),
-        },
-        { signal },
-      );
-    } catch (err) {
-      if (signal?.aborted || err.name === 'AbortError') throw new Error('TIMEOUT');
-      lastError = err;
-      const { type, status } = classifyProviderError(err);
-      if (type === 'model_not_found')   { markModelUnavailable('openrouter', modelId, `${status ?? ''} ${err.message}`.trim()); continue; }
-      if (type === 'model_unavailable') { markModelTempFailed('openrouter', modelId, 60_000); continue; }
-      if (type === 'rate_limit')        { markModelRateLimited('openrouter', modelId, retryAfterMs(err) ?? 120_000); continue; }
-      if (type === 'server_error')      { markModelTempFailed('openrouter', modelId, retryAfterMs(err) ?? 45_000);   continue; }
-      // Provider/key-scoped failure — a different model won't help.
-      throw err;
-    }
-
-    let text = '';
-    let finishReason = null;
-    let usage = null;
-    try {
-      for await (const chunk of stream) {
-        if (signal?.aborted) throw new Error('TIMEOUT');
-        const delta = chunk?.choices?.[0]?.delta?.content;
-        finishReason = chunk?.choices?.[0]?.finish_reason ?? finishReason;
-        usage = normalizeUsage(chunk?.usage) ?? usage;
-        if (delta) { text += delta; onDelta(delta); }
+  const res = await rotate('openrouter', {
+    models: candidates.slice(0, MODEL_ATTEMPT_LIMIT), signal, label: 'stream ', purpose,
+    attempt: async ({ key, modelId, model }) => {
+      const capTokens = maxTokens ? Math.min(maxTokens, model.maxOutputTokens) : maxTokens;
+      const started = Date.now();
+      let stream;
+      try {
+        stream = await getClient(key).chat.completions.create(
+          {
+            model:    modelId,
+            messages: chatMessages,
+            stream:   true,
+            stream_options: { include_usage: true },
+            ...(capTokens ? { max_tokens: capTokens } : {}),
+          },
+          { signal },
+        );
+      } catch (err) {
+        if (signal?.aborted || err.name === 'AbortError') throw timeoutError();
+        throw err;
       }
-    } catch (err) {
-      if (text) {
-        console.log(`[OPENROUTER] stream interrupted after ${text.length} chars model=${modelId}: ${err.message}`);
-        return { text, truncated: true, finishReason: 'interrupted', streamed: true };
+
+      let text = '';
+      let finishReason = null;
+      let usage = null;
+      let ttftMs = null;
+      try {
+        for await (const chunk of stream) {
+          if (signal?.aborted) throw timeoutError();
+          const delta = chunk?.choices?.[0]?.delta?.content;
+          finishReason = chunk?.choices?.[0]?.finish_reason ?? finishReason;
+          usage = normalizeUsage(chunk?.usage) ?? usage;
+          if (delta) {
+            if (ttftMs == null) ttftMs = Date.now() - started;
+            text += delta; onDelta(delta);
+          }
+        }
+      } catch (err) {
+        if (text) {
+          console.log(`[OPENROUTER] stream interrupted after ${text.length} chars model=${modelId}: ${err.message}`);
+          throw Object.assign(new Error('STREAM_INTERRUPTED'), {
+            partial: { text, truncated: true, finishReason: 'interrupted', streamed: true, model: modelId, usage },
+          });
+        }
+        if (signal?.aborted || err.name === 'AbortError' || err.message === 'TIMEOUT') throw timeoutError();
+        throw err;
       }
-      if (signal?.aborted || err.name === 'AbortError' || err.message === 'TIMEOUT') throw new Error('TIMEOUT');
-      lastError = err;
-      continue;
-    }
 
-    if (!text.trim()) { lastError = new Error(`OpenRouter: model ${modelId} stream returned empty response`); continue; }
+      if (!text.trim()) throw emptyResponse(`model ${modelId} stream returned empty response`);
+      const truncated = capTokens && finishReason === 'length';
+      return { text, truncated: !!truncated, finishReason: truncated ? 'length' : (finishReason ?? 'stop'), streamed: true, model: modelId, usage, ttftMs };
+    },
+  });
 
-    const truncated = capTokens && finishReason === 'length';
-    return { text, truncated: !!truncated, finishReason: truncated ? 'length' : (finishReason ?? 'stop'), streamed: true, model: modelId, usage };
-  }
+  if (res.finishReason === 'interrupted') return res; // uncounted (unchanged contract)
+  return countedCall('openrouter', purpose, res);
+}
 
-  throw lastError ?? new Error('All OpenRouter stream attempts exhausted');
+/** Test-only: forget key cooldowns/quarantine and cached clients. */
+export function __resetForTests() {
+  pool.resetCredentials();
+  clientCache.clear();
 }

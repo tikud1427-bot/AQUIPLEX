@@ -29,14 +29,21 @@ import { GATES, SETTINGS, REGISTERED, flagReport, flagBootLine } from '../flags.
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(HERE, '../..');
 const ROUTER = path.resolve(SRC, '../router.js');
+// The platform's rate-limit store reads an AQUA_ setting too (2026-10-04).
+const PLATFORM_FILES = [path.resolve(SRC, '../../utils/rateLimitStore.js')];
+// The World-Model Lift adapter reads its AQUA_LIFT_* settings outside src/
+// (2026-10). Registered so env-doctor accepts them in a .env.
+const EVAL_FILES = [path.resolve(SRC, '../eval/adapters/pairedAnswerLift.mjs')];
 
-/** Every .js under src/, excluding tests — tests set flags, they do not define them. */
+/** Every .js / .cjs under src/, excluding tests — tests set flags, they do not define them.
+ *  (.cjs since 2026-10-15: the shared provider key pool is CommonJS so the
+ *  platform client can load it; a knob read there must be visible here.) */
 function sourceFiles(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     const p = path.join(dir, entry);
     if (statSync(p).isDirectory()) {
       if (entry !== 'tests' && entry !== 'node_modules') sourceFiles(p, out);
-    } else if (entry.endsWith('.js') && !entry.endsWith('.test.js')) {
+    } else if (/\.c?js$/.test(entry) && !entry.endsWith('.test.js')) {
       out.push(p);
     }
   }
@@ -59,12 +66,15 @@ function sourceFiles(dir, out = []) {
  */
 function readFromEnv() {
   const found = new Set();
-  const files = [...sourceFiles(SRC), ROUTER];
+  const files = [...sourceFiles(SRC), ROUTER, ...PLATFORM_FILES, ...EVAL_FILES];
   for (const f of files) {
     const text = readFileSync(f, 'utf8');
     for (const m of text.matchAll(/process\.env\.(AQUA_[A-Z0-9_]+)/g)) found.add(m[1]);
     for (const m of text.matchAll(/process\.env\[['"](AQUA_[A-Z0-9_]+)['"]\]/g)) found.add(m[1]);
     for (const m of text.matchAll(/env[A-Za-z]*\(\s*['"](AQUA_[A-Z0-9_]+)['"]/g)) found.add(m[1]);
+    // An injectable env object (`env = process.env`) read as env.AQUA_X — the
+    // telemetry/rate-limit adapters take one so tests need not mutate process.env.
+    for (const m of text.matchAll(/\benv\.(AQUA_[A-Z0-9_]+)/g)) found.add(m[1]);
   }
   return found;
 }
@@ -90,17 +100,38 @@ describe('the flag registry matches the source, in both directions', () => {
     assert.equal(new Set(names).size, names.length, 'a flag is registered twice');
   });
 
-  test('the census is what it is — 30 gates, 28 settings, 58 read', () => {
+  test('the census is what it is — 32 gates, 41 settings, 73 read', () => {
     // Pinned as a NUMBER because the audit's figure was wrong and the wrong
     // figure survived into two reports. If this changes, someone added a flag
     // and should say so; if it changes without a registry edit, the tests above
     // fail first and this one explains why the total moved.
-    assert.equal(GATES.length, 30);
+    // +1 gate (2026-10-06): AQUA_PROACTIVE — Phase 4 proactive interventions,
+    // off until eval/suites/proactive-core is recorded (L14).
+    // +1 gate (2026-10-11): AQUA_WORLD_CORE — the current-world section of the
+    // answer context, ON by default (=off is the rollback).
+    assert.equal(GATES.length, 32);
     // +2 settings, 0 gates (Sep 30): AQUA_E6_MINT and AQUA_E6_SINGLE_VALUED. Both
     // are SETTINGS because neither opens a subsystem — they tune one stage of an
     // already-gated one.
-    assert.equal(SETTINGS.length, 28);
-    assert.equal(readFromEnv().size, 58);
+    // +4 settings (2026-10-04): the error webhook URL/token and the shared
+    // rate-limit Redis URL (env-activated E12 backends), and AQUA_TEST_DATABASE_URL —
+    // read since 10-03 through an injected env object, which the scan did not see
+    // until it learned the `env.AQUA_X` pattern.
+    // +1 setting (2026-10-04): AQUA_CONSOLIDATION_INTERVAL_MS, the J3 scheduler interval.
+    // +4 settings (2026-10, NVIDIA provider): AQUA_PROVIDER_PREFER (router
+    // ranking override for controlled rollout) and the three eval-only
+    // AQUA_LIFT_* settings, which were read but unregistered before.
+    // +1 setting (2026-10-05): AQUA_METRICS_TOKEN, the bearer token of the
+    // Prometheus machine scrape (routes/metricsScrape.js).
+    // +1 setting (2026-10-06): AQUA_PROACTIVE_INTERVAL_MS, the worker's periodic
+    // proactive scan interval.
+    // +2 settings (2026-10-12, P0): AQUA_MIRROR_ROLE and AQUA_MIRROR_LEASE_MS —
+    // the single-writer lease of the Mongo mirror.
+    // +3 settings (2026-10-15, key pools): AQUA_PROVIDER_MAX_KEYS_PER_MODEL,
+    // AQUA_PROVIDER_MAX_KEY_ATTEMPTS (per-request key-rotation bounds) and
+    // AQUA_PROVIDER_KEY_REJECT_TTL_MS (opt-in expiry of a rejected key).
+    assert.equal(SETTINGS.length, 44);
+    assert.equal(readFromEnv().size, 76);
   });
 });
 
@@ -122,7 +153,12 @@ describe('the registry records how each gate actually reads its variable', () =>
 
   test('the ON-by-default gates are named, because they are the surprising ones', () => {
     const onByDefault = GATES.filter(g => g.dflt === 'on').map(g => g.name).sort();
-    assert.deepEqual(onByDefault, ['AQUA_BRAIN', 'AQUA_EMBEDDINGS', 'AQUA_PARSE_WORKER', 'AQUA_PIC']);
+    // AQUA_REVISION_VOICE joined 2026-10-04 after its L14 eval (revision-voice suite);
+    // the legacy-ledger voice it can also run stays opt-in (=on).
+    // AQUA_PROACTIVE joined 2026-10-06 after its L14 eval (proactive-core suite,
+    // baseline recorded) and the live production-path test.
+    // AQUA_WORLD_CORE joined 2026-10-11: measured on the World-Model Lift (held-out v3).
+    assert.deepEqual(onByDefault, ['AQUA_BRAIN', 'AQUA_EMBEDDINGS', 'AQUA_PARSE_WORKER', 'AQUA_PIC', 'AQUA_PROACTIVE', 'AQUA_REVISION_VOICE', 'AQUA_WORLD_CORE']);
   });
 
   test('an overridden gate reports its RAW value, not just the resolved one', () => {
@@ -139,7 +175,7 @@ describe('the registry records how each gate actually reads its variable', () =>
 describe('the boot line is worth printing', () => {
   test('it names the overridden gates, not all 29', () => {
     const line = flagBootLine({ AQUA_E6: 'on' });
-    assert.match(line, /30 gates · 28 settings/);
+    assert.match(line, /32 gates · 44 settings/);
     assert.match(line, /AQUA_E6=on/);
     assert.ok(!line.includes('AQUA_TWIN_V2'), 'a default gate was listed — the line is noise');
   });

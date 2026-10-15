@@ -107,7 +107,7 @@ export async function assembleTurnContextAsync(deps, ownerId, query, opts = {}) 
       : fusedRankedCandidates;
     const assembled = assembleContext(
       rankedCandidates.map(c => ({ ...c, selectionScore: retrievalV3Enabled() ? (c.crossEncoderFusedScore ?? c.fusedScore) : c.score })),
-      ctx, { limit, charBudget, queryPlan: planState },
+      ctx, { limit, charBudget, queryPlan: planState, retiredTexts: opts.retiredTexts ?? null },
     );
     metrics.v2Assemblies += 1;
     metrics.itemsSelected += assembled.items.length;
@@ -214,7 +214,7 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
       : fusedRankedCandidates;
     const assembled = assembleContext(
       rankedCandidates.map(c => ({ ...c, selectionScore: retrievalV3Enabled() ? (c.crossEncoderFusedScore ?? c.fusedScore) : c.score })),
-      ctx, { limit, charBudget, queryPlan: planState },
+      ctx, { limit, charBudget, queryPlan: planState, retiredTexts: opts.retiredTexts ?? null },
     );
 
     metrics.v2Assemblies += 1;
@@ -265,6 +265,7 @@ async function retrieveRoundAsync(deps, ownerId, query, retrievalOpts, opts = {}
       round: retrievalOpts.round,
       semanticScores: opts.semanticScores,
       requestedLanes: opts.retrievalV3Lanes,
+      queryPlan: retrievalOpts.queryPlan ?? null,
     });
     if (!canonical.items.length) return floor;
     return mergeFloorResults(floor, canonical);
@@ -278,29 +279,73 @@ function laneEnabled(requestedLanes, lane) {
   return !Array.isArray(requestedLanes) || requestedLanes.includes(lane);
 }
 
+/**
+ * Question cue → predicate. Patterns, not literal phrases (2026-10-04): the
+ * old list matched "work at" but not "where do I work?", so the structured lane
+ * had no predicate constraint and any first-person claim containing "work"
+ * ("I do deep work in the mornings") could outrank employment. A cue only
+ * NARROWS the structured lane (intersected with the anchors); it never adds a
+ * claim the anchors would not reach.
+ */
+const PREDICATE_CUES = [
+  ['works_at', /\bwork(?:s|ing|ed)?\s+(?:at|for)\b|\bwhere\s+(?:do|does|did|am|is)\s+\w+\s+work(?:ing)?\b|\bemploy|\bemployer\b|\bjob\b|\bcompany\b/],
+  ['member_of', /\bmember\s+of\b|\bbelongs?\s+to\b|\bwhich\s+team\b/],
+  ['owns', /\bown(?:s|er|ed|ing)?\b|\bin\s+charge\b|\bresponsible\b|\bhandl(?:es|ing)\b/],
+  ['owned_by', /\bowned\s+by\b|\bwho\s+(?:owns|handles|is\s+handling|runs)\b/],
+  ['located_in', /\b(?:live|lives|living|based|located|headquartered)\b|\bwhich\s+city\b|\bwhere\s+(?:am\s+i|are\s+we|is\s+\w+\s+based)\b/],
+  ['role_is', /\b(?:role|title|position)\b|\bwhat\s+do\s+i\s+do\b/],
+  ['reports_to', /\b(?:manager|boss|supervisor)\b|\breports?\s+to\b/],
+  ['depends_on', /\bdepends?\s+on\b|\bdependenc/],
+  ['blocks', /\bblock(?:s|ing|er|ers)?\b|\bholding\s+up\b|\bstuck\b/],
+  ['blocked_by', /\bblocked\s+by\b|\bblocker\b/],
+  ['plans_to', /\bplan(?:s|ning|ned)?\b|\bintend|\bgoal\b|\bwant\s+to\b/],
+  ['decided', /\bdecid|\bdecision\b|\bagreed\b/],
+  ['rejected', /\breject|\bruled\s+out\b|\bdecided\s+not\b/],
+  ['has_status', /\bstatus\b|\bprogress\b|\bstate\s+of\b/],
+  ['deadline_for', /\bdeadline\b|\bdue\b|\btarget\s+date\b|\bwhen\s+(?:is|does|will)\b/],
+  ['uses', /\b(?:use|uses|using|stack|tools?)\b/],
+  ['builds', /\bbuild(?:s|ing)?\b|\bworking\s+on\b|\bproject\b/],
+  ['prefers', /\bprefer|\bfavou?rite\b/],
+  ['habit_of', /\busually\b|\bhabit\b|\broutine\b/],
+];
 function predicateHintsForQuery(query) {
   const q = String(query ?? '').toLowerCase();
-  const out = [];
-  const add = (p, words) => { if (words.some(w => q.includes(w))) out.push(p); };
-  add('works_at', ['work at', 'works at', 'employed', 'employer', 'job']);
-  add('member_of', ['member of', 'belongs to']);
-  add('owns', ['own', 'owns', 'owner']);
-  add('owned_by', ['owned by']);
-  add('depends_on', ['depends on', 'dependency']);
-  add('blocks', ['block', 'blocking', 'blocks']);
-  add('blocked_by', ['blocked by', 'blocker']);
-  add('plans_to', ['plan', 'plans', 'intend']);
-  add('decided', ['decided', 'decision', 'agreed']);
-  add('has_status', ['status', 'state']);
-  add('deadline_for', ['deadline', 'due', 'target date']);
-  add('uses', ['use', 'uses', 'using']);
-  return [...new Set(out)].slice(0, 8);
+  return [...new Set(PREDICATE_CUES.filter(([, re]) => re.test(q)).map(([p]) => p))].slice(0, 8);
+}
+export { predicateHintsForQuery as _predicateHintsForTests };
+
+/**
+ * Which current role holders does the question refer to? A role matches when
+ * its HEAD noun (last word: "biggest client" → client, "tech lead" → lead)
+ * appears in the question, singular or plural. "my client" therefore reaches
+ * every current client — bounded to 8; disambiguation is the answer's job,
+ * hiding them is not.
+ */
+const roleTokens = s => String(s ?? '').toLowerCase().normalize('NFKC').split(/[^\p{L}\p{N}]+/u).filter(t => t.length > 1);
+const singular = t => (t.length > 3 && t.endsWith('s') && !t.endsWith('ss') ? t.slice(0, -1) : t);
+export function roleAnchorsForQuery(query, holders = []) {
+  const q = new Set(roleTokens(query).map(singular));
+  if (!q.size) return [];
+  const ids = [];
+  for (const h of Array.isArray(holders) ? holders : []) {
+    const head = roleTokens(h?.role).map(singular).pop();
+    if (head && q.has(head) && h.entityId && !ids.includes(h.entityId)) ids.push(String(h.entityId));
+  }
+  return ids.slice(0, 8);
 }
 
-async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, retrospective = false, slotId = null, round = 1, semanticScores = null, requestedLanes = null } = {}) {
+async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, retrospective = false, slotId = null, round = 1, semanticScores = null, requestedLanes = null, queryPlan = null } = {}) {
   const items = [];
   const seen = new Set();
   const pool = await getPool();
+  const planSlots = Array.isArray(queryPlan?.slots) ? queryPlan.slots : [];
+  // Slots a claim can fill, decided by its predicate alone (E8, 2026-10-07).
+  // This replaced `slotIds: slotId ? [slotId] : []`, which attributed EVERY
+  // claim fetched during a slot's round to that slot — a lexical hit on
+  // "<question> blocker" counted as a known blocker.
+  const slotsFor = predicate => planSlots
+    .filter(s => (s.predicates ?? []).includes(String(predicate)))
+    .map(s => s.id);
   const add = (claim, lane, score = null, entityIds = []) => {
     if (!claim?.claimId || !claim.statement) return;
     if (claim.state === 'archived') return;
@@ -321,7 +366,13 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
       trusted: claim.state === 'trusted',
       disputed: claim.state === 'disputed',
       stale: claim.state === 'stale',
-      slotIds: slotId ? [slotId] : [],
+      // Only reachable on a retrospective (past-tense) question; rendered as
+      // "no longer current" so history is never presented as the present.
+      superseded: claim.state === 'superseded',
+      slotIds: slotsFor(claim.predicate),
+      predicate: claim.predicate ?? null,
+      understood: understoodOf(claim),
+      assertedAt: claim.assertedAt ?? null,
     }));
   };
 
@@ -330,8 +381,27 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
     for (const claim of lexical) add(claim, 'lexical', claim.retrievalScore);
   }
 
+  // ROLE REFERENCES (2026-10-11): "Where does my mentor work?" names no entity,
+  // so no lane anchored on Sam Patel and his employer never reached the answer.
+  // A role word in the question that names a CURRENT role holder (related_to,
+  // prompt rule 13) anchors on that holder. Owner-scoped, bounded (≤ 8).
+  let roleIds = [];
+  if (laneEnabled(requestedLanes, 'structured') || laneEnabled(requestedLanes, 'graph')) {
+    try { roleIds = roleAnchorsForQuery(query, await canonicalWM.roleHolders(ownerId, { limit: 64, pool })); }
+    catch { roleIds = []; }
+  }
+
   if (laneEnabled(requestedLanes, 'structured')) {
-    const anchorIds = await canonicalWM.findEntityIds(ownerId, query, { limit: 8, pool });
+    const anchored = await canonicalWM.findEntities(ownerId, query, { limit: 8, pool });
+    const anchorIds = anchored.map(e => String(e.id));
+    if (roleIds.length) {
+      // Everything currently known ABOUT the person or organisation the role
+      // names — including the role claim itself — whatever the question's cue.
+      const about = await canonicalWM.structuredClaims(ownerId, {
+        entityIds: roleIds, predicates: [], currentOnly: !retrospective, limit: 16, pool,
+      });
+      for (const claim of about) add(claim, 'structured', null, roleIds);
+    }
     const predicateHints = predicateHintsForQuery(query);
     if (!anchorIds.length && !predicateHints.length) {
       // A structured lane without a predicate/entity constraint would be a
@@ -345,7 +415,39 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
       pool,
     });
       for (const claim of structured) add(claim, 'structured', null, anchorIds);
+
+      // A predicate cue NARROWS the anchored query ("my company" → works_at),
+      // which used to drop what is known ABOUT the anchored thing itself
+      // ("Quillbase makes invoicing software"). Facts whose SUBJECT is a
+      // non-self anchor are added, bounded. Self is excluded by TYPE (L8):
+      // everything about the user would flood the lane.
+      const things = anchored.filter(e => e.type !== 'self').map(e => String(e.id));
+      if (predicateHints.length && things.length) {
+        const about = await canonicalWM.structuredClaims(ownerId, {
+          entityIds: things, predicates: [], currentOnly: !retrospective, limit: 12, pool,
+        });
+        for (const claim of about) {
+          if (things.includes(String(claim.subjectEntityId))) add(claim, 'structured', null, anchorIds);
+        }
+      }
     }
+  }
+
+  // SLOT LANE (E8). The required slots of a decision/planning scaffold are
+  // fetched by what DEFINES them — current claims of the slot's predicates —
+  // not by words in the question. "Should I launch this week?" names no
+  // blocker, yet the answer depends on whether one exists. Owner-scoped and
+  // bounded: one query, at most 16 predicates, `limit` rows. Reported under
+  // the existing 'structured' lane so ablation and RRF see it as structured
+  // evidence rather than a new, unevaluated lane (L14).
+  const wanted = [...new Set(planSlots
+    .filter(s => (slotId ? s.id === slotId : s.required))
+    .flatMap(s => s.predicates ?? []))].slice(0, 16);
+  if (wanted.length && laneEnabled(requestedLanes, 'structured')) {
+    const slotClaims = await canonicalWM.structuredClaims(ownerId, {
+      predicates: wanted, currentOnly: !retrospective, limit: Math.min(limit, 24), pool,
+    });
+    for (const claim of slotClaims) add(claim, 'structured');
   }
 
   if (laneEnabled(requestedLanes, 'dense')) {
@@ -372,7 +474,7 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
   }
 
   if (laneEnabled(requestedLanes, 'graph')) {
-    const anchors = await canonicalWM.findEntityIds(ownerId, query, { limit: 8, pool });
+    const anchors = [...new Set([...(await canonicalWM.findEntityIds(ownerId, query, { limit: 8, pool })), ...roleIds])].slice(0, 12);
     if (anchors.length) {
       const walked = await traverseGraph(pool, ownerId, anchors, {
         maxHops: 2, fanout: 6, maxEntities: 48, retrospective,
@@ -382,6 +484,26 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
         const claims = await canonicalWM.readClaims(ownerId, claimIds, { retrospective, pool });
         const byId = new Map(claims.map(c => [String(c.claimId), c]));
         for (const hop of walked.entities) add(byId.get(String(hop.viaClaimId)), 'graph', 1 / (1 + Number(hop.hop || 0)), hop.path ?? []);
+
+        // NEIGHBOUR FACTS (2026-10-04). The walk returns the EDGE claims
+        // ("I run product at Ledgerly") but never what is known ABOUT the
+        // entity it reached ("Ledgerly is a budgeting app for freelancers" —
+        // a literal-object claim, so not an edge). Measured on live Postgres:
+        // "What does my company do?" anchored on the user, reached Ledgerly,
+        // and still could not answer. Facts whose subject is a ONE-hop
+        // neighbour are added, bounded (8 entities, 16 claims, owner-scoped),
+        // and scored below the edges that led to them.
+        const neighbours = [...new Set(walked.entities
+          .filter(x => Number(x.hop || 0) <= 1 && x.entityId && !anchors.includes(x.entityId))
+          .map(x => x.entityId))].slice(0, 8);
+        if (neighbours.length && canonicalWM.structuredClaims) {
+          const about = await canonicalWM.structuredClaims(ownerId, {
+            entityIds: neighbours, predicates: [], currentOnly: !retrospective, limit: 16, pool,
+          });
+          for (const claim of about) {
+            if (neighbours.includes(claim.subjectEntityId)) add(claim, 'graph', 0.4, [claim.subjectEntityId]);
+          }
+        }
       }
     }
   }
@@ -464,7 +586,12 @@ async function gatherCanonicalGraphCandidates(deps, ownerId, query, floor, opts)
       return [{
         ...normFact(String(claim.claimId), claim.statementText, {
           confidence: claim.confidence,
-          citations: deps.formatCitation && Array.isArray(claim.evidence) ? claim.evidence.map(deps.formatCitation) : [],
+          // Canonical evidence rows ({ quote, locator, role, extracted_at }), as
+          // the canonical dense lane passes them; the assembler renders them.
+          // formatCitation is the FILE-evidence formatter (it reads
+          // `.location`): applied here it threw on every claim, and the lane
+          // returned [] on 40 of 53 live turns (2026-10-05).
+          citations: Array.isArray(claim.evidence) ? claim.evidence : [],
           via: `graph:${edge.hop}:${edge.direction}:${edge.predicate ?? 'relationship'}`,
           sourceType: claim.sourceKind ?? 'conversation',
           entityIds: Array.isArray(edge.path) ? edge.path : [edge.entityId],
@@ -475,6 +602,10 @@ async function gatherCanonicalGraphCandidates(deps, ownerId, query, floor, opts)
           trusted: claim.state === 'trusted',
           disputed: claim.state === 'disputed',
           stale: claim.state === 'stale',
+          superseded: claim.state === 'superseded',
+          predicate: claim.predicate ?? null,
+          understood: understoodOf(claim),
+          assertedAt: claim.assertedAt ?? null,
         }),
       }];
     });
@@ -503,18 +634,30 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
   const laneAllowed = lane => !enabledLanes || enabledLanes.has(lane);
   for (const it of floor.items ?? []) {
     if (it.kind === 'fact') {
-      const floorLane = laneForVia(it.via);
-      if (!laneAllowed(floorLane)) continue;
+      // TWO ITEM SHAPES ARRIVE HERE. PIC floor facts carry `statement`;
+      // canonical World-Model facts (canonicalCandidatesForQuery → normFact,
+      // merged in by retrieveRoundAsync) carry `text`, their own `lanes`,
+      // entityIds and timestamp. Reading only `statement` sent every canonical
+      // claim to the model as "• undefined" — measured on live Postgres
+      // 2026-10-03 — and relabelled its lane 'unknown', so RRF and the slot
+      // engine could not see which lane found it. Bug fix, not flagged (L15).
+      const lanes = Array.isArray(it.lanes) && it.lanes.length ? it.lanes : [laneForVia(it.via)];
+      if (!lanes.some(laneAllowed)) continue;
+      const text = it.statement ?? it.text;
+      if (typeof text !== 'string' || !text.trim()) continue;
       const key = `fact:${it.id}`;
-      byId.set(key, normFact(it.id, it.statement, {
+      byId.set(key, normFact(it.id, text, {
         confidence: it.confidence, citations: it.citations,
         // Preserve the retrieval lane that produced the floor item. Dense
         // candidates were previously relabelled as lexical here, making RRF
         // unable to see the independent dense vote it was designed to fuse.
-        lanes: [laneForVia(it.via)],
-        trusted: it.trusted, disputed: it.disputed, stale: it.stale,
-        via: it.via, sourceType: 'document',
-        entityIds: [], timestamp: null, semanticId: it.id, slotIds: it.slotIds ?? [],
+        lanes,
+        trusted: it.trusted, disputed: it.disputed, stale: it.stale, superseded: it.superseded,
+        via: it.via, sourceType: it.sourceType ?? 'document',
+        entityIds: Array.isArray(it.entityIds) ? it.entityIds : [],
+        timestamp: it.timestamp ?? null, semanticId: it.id, slotIds: it.slotIds ?? [],
+        predicate: it.predicate ?? null,
+        understood: it.understood ?? null, assertedAt: it.assertedAt ?? null,
       }));
     } else if (it.kind === 'entity') {
       byId.set(`entity:${it.nodeId}`, normEntity(it.nodeId, it.entity, {
@@ -551,6 +694,11 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
   const focusEntities = findFocusEntities(G, ownerId, query, shape);
   for (const ent of focusEntities) {
     const ekey = `entity:${ent.id}`;
+    // NOTE (2026-10-04, measured, NOT changed): the self node here also renders
+    // as "• Entity: You", which tells the model nothing. Dropping it freed a
+    // seat that a below-relevance fact then took: context-core noise_lines
+    // 18 → 19 (mrr +0.001). The gate protects noise_lines, so the line stays
+    // until seat-filling itself is fixed.
     if (!byId.has(ekey)) {
       byId.set(ekey, normEntity(ent.id, ent.label, {
         entityType: ent.data?.entityType, aliases: ent.data?.aliases ?? [],
@@ -689,6 +837,9 @@ function addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowe
       trusted: Number(canonical.confidenceCorroboration ?? 0) >= 0.5,
       disputed: canonical.state === 'disputed',
       stale: false,
+      predicate: canonical.predicate ?? null,
+      understood: understoodOf(canonical),
+      assertedAt: canonical.assertedAt ?? null,
     }));
   }
   return [...byId.values()];
@@ -818,6 +969,7 @@ function normFact(id, text, extra = {}) {
     confidence: extra.confidence ?? 0.5,
     citations: extra.citations ?? [],
     trusted: !!extra.trusted, disputed: !!extra.disputed, stale: !!extra.stale,
+    superseded: !!extra.superseded,
     via: extra.via ?? 'lexical',
     sourceType: extra.sourceType ?? 'document',
     entityIds: extra.entityIds ?? [],
@@ -826,7 +978,35 @@ function normFact(id, text, extra = {}) {
     semanticId: extra.semanticId ?? id,
     slotIds: Array.isArray(extra.slotIds) ? [...new Set(extra.slotIds)] : [],
     lanes: Array.isArray(extra.lanes) ? [...new Set(extra.lanes)] : [],
+    predicate: extra.predicate ?? null,
+    // Canonical claims only: what the World Model UNDERSTOOD the statement to
+    // say (resolved subject, relation, object, polarity, modality) and when it
+    // was said. Legacy facts have neither and render exactly as before.
+    understood: extra.understood ?? null,
+    assertedAt: extra.assertedAt ?? null,
     epistemic: 'observed',
+  };
+}
+
+/**
+ * The World Model's reading of a canonical claim, for rendering (2026-10-06).
+ * Labels are display-only (L2); ids stay on the item, never in the prompt.
+ */
+export function understoodOf(claim) {
+  // Two read shapes reach here: canonicalReadModel ({kind, label|value|…}) and
+  // worldModelRepository.claimWithEvidence ({entity|literal|quantity|time}).
+  const o = claim?.object ?? {};
+  const day = t => { const d = t ? new Date(t) : null; return d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null; };
+  const object = o.kind === 'entity' ? (o.label ?? null)
+    : o.kind === 'quantity' || o.quantity != null ? `${o.quantity}${o.unit ? ` ${o.unit}` : ''}`
+      : o.kind === 'time' ? day(o.from)
+        : o.time != null ? day(o.time)
+          : (o.entity ?? o.value ?? o.literal ?? null);
+  if (!claim?.predicate || !claim?.subject || object == null) return null;
+  return {
+    subject: String(claim.subject), predicate: String(claim.predicate), object: String(object),
+    polarity: claim.polarity ?? 'asserted', modality: claim.modality ?? 'fact',
+    validFrom: claim.validFrom ?? null, validTo: claim.validTo ?? null,
   };
 }
 

@@ -25,7 +25,8 @@
  *   node scripts/e6-shadow.mjs                      # all 200 cases
  *   node scripts/e6-shadow.mjs --limit 20           # a cheap smoke run first
  *   node scripts/e6-shadow.mjs --model <model-id>   # pin, strongly advised
- *   node scripts/e6-shadow.mjs --provider groq      # groq or openrouter (default)
+ *   node scripts/e6-shadow.mjs --provider groq      # groq | openrouter (default) | nvidia
+ *   node scripts/e6-shadow.mjs --provider nvidia --model openai/gpt-oss-20b --limit 20
  *   node scripts/e6-shadow.mjs --repeat 3           # measure run-to-run noise
  *   node scripts/e6-shadow.mjs --category negation --repeat 5  # gate-focused repeat
  *   node scripts/e6-shadow.mjs --pace 1200          # ms between calls (default 350)
@@ -45,6 +46,8 @@
  * rather than a theoretical one. PR-5b added the pin and the model echo
  * precisely so this check can pass; if it fails, pass --model.
  */
+// FIRST: a private data dir before any store module loads (see the module).
+import '../eval/core/isolateDataDir.mjs';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -79,7 +82,8 @@ import suite from '../eval/suites/extraction-core.suite.mjs';
 import { extractWithCurrentEngine, surfacesOf } from '../eval/adapters/currentExtractor.mjs';
 import { extractE6 } from '../eval/adapters/e6Extractor.mjs';
 import { generateOpenRouter } from '../src/providers/openrouter.js';
-import { generateGroq, msUntilAnyKeyFree } from '../src/providers/groq.js';
+import { generateGroq, msUntilAnyKeyFree as groqMsUntilAnyKeyFree } from '../src/providers/groq.js';
+import { generateNvidia, msUntilAnyKeyFree as nvidiaMsUntilAnyKeyFree } from '../src/providers/nvidia.js';
 import { buildExtractionPrompt } from '../src/brain/understanding/extractionPrompt.js';
 import { __clearExtractionCache } from '../src/brain/understanding/extractionClient.js';
 
@@ -119,6 +123,42 @@ export const ABORT_AFTER_CONSECUTIVE_ERRORS = 10;
  */
 export const MAX_STALL_WAIT_MS = 15 * 60 * 1000;
 
+/**
+ * The transports this harness can measure. ONE per run — a run's numbers are
+ * attributable to exactly one provider/model, never a mix. `msUntilAnyKeyFree`
+ * exists where the adapter owns a key pool with cooldowns (the wait-out logic
+ * below needs it); OpenRouter has none.
+ */
+// `maxTokens` matches the production transport (brain/index.js e6Transport):
+// 1024 is the measured Groq call shape; NVIDIA's gpt-oss-20b exhausted 1024 on
+// hidden reasoning (empty or cut-off JSON) and needs 4096.
+export const E6_PROVIDERS = Object.freeze({
+  groq:       { generate: generateGroq,       msUntilAnyKeyFree: groqMsUntilAnyKeyFree,   maxTokens: 1024 },
+  openrouter: { generate: generateOpenRouter, msUntilAnyKeyFree: null,                    maxTokens: 1024 },
+  nvidia:     { generate: generateNvidia,     msUntilAnyKeyFree: nvidiaMsUntilAnyKeyFree, maxTokens: 4096 },
+});
+
+export const PROVIDER_HELP = [
+  '  --provider groq        Groq (GROQ_API_KEY_1..5)',
+  '  --provider openrouter  OpenRouter (OPENROUTER_API_KEY_1..4) — the default',
+  '  --provider nvidia      NVIDIA (NVIDIA_API_KEY_1..N), e.g. --model openai/gpt-oss-20b',
+].join('\n');
+
+/** @returns {{ name: string, generate: Function, msUntilAnyKeyFree: Function|null }|null} */
+export function resolveShadowProvider(name) {
+  const key = String(name ?? 'openrouter').toLowerCase();
+  return Object.hasOwn(E6_PROVIDERS, key) ? { name: key, ...E6_PROVIDERS[key] } : null;
+}
+
+/**
+ * A run is attributable only to ONE model: none reported means nothing is
+ * known, and two or more means the provider rotated mid-run (unpinned
+ * OpenRouter does) — the numbers would blend models.
+ */
+export function isAttributable(models) {
+  return (models?.size ?? models?.length ?? 0) === 1;
+}
+
 export const PROMOTION_GATE = Object.freeze({
   precision: 0.85,
   recall: 0.70,
@@ -155,12 +195,17 @@ export function evaluatePromotion(metrics, baseline, { comparable = true, noise 
     // `n_cases_negation` is published by the suite precisely so this can tell
     // "the extractor scored zero" from "no negation case was sent".
     negation: (metrics.n_cases_negation ?? 0) > 0 ? (metrics.detection_negation ?? 0) : null,
+    // Stricter companion (2026-10-06): the negation was emitted AND no asserted
+    // twin of it. Same threshold. Absent on result files older than the metric.
+    negation_polarity: (metrics.n_cases_negation ?? 0) > 0 && typeof metrics.negation_polarity === 'number'
+      ? metrics.negation_polarity : null,
   };
 
   const checks = [
     ['precision', measured.precision, PROMOTION_GATE.precision],
     ['recall', measured.recall, PROMOTION_GATE.recall],
     ['negation', measured.negation, PROMOTION_GATE.negation],
+    ['negation_polarity', measured.negation_polarity, PROMOTION_GATE.negation],
   ].map(([name, got, need]) => (got == null
     ? { name, got: null, need, pass: false, measured: false }
     : { name, got, need, pass: got >= need, measured: true }));
@@ -388,16 +433,18 @@ async function main() {
    * exists to catch. Both signatures are identical, so this is a binding
    * choice, not a rewrite.
    */
-  const providerName = String(flag('--provider', 'openrouter')).toLowerCase();
-  const generate = providerName === 'groq' ? generateGroq : generateOpenRouter;
-  if (!['groq', 'openrouter'].includes(providerName)) {
-    console.error(`\n✗ Unknown --provider "${providerName}" — expected groq or openrouter.\n`);
+  const transport = resolveShadowProvider(flag('--provider', 'openrouter'));
+  if (!transport) {
+    console.error(`\n✗ Unknown --provider "${flag('--provider')}". Supported:\n${PROVIDER_HELP}\n`);
     process.exit(1);
   }
+  const providerName = transport.name;
+  const generate = transport.generate;
+  console.error(`  provider=${providerName} model=${modelPin ?? '(unpinned — pass --model)'}`);
 
   const callModel = async ({ system, user, temperature, model }) => {
     const res = await generate(system, [{ role: 'user', content: user }],
-      undefined, 1024, { model: model ?? modelPin ?? undefined, temperature });
+      undefined, transport.maxTokens, { model: model ?? modelPin ?? undefined, temperature });
     return { text: res.text, model: res.model ?? null };
   };
 
@@ -413,6 +460,8 @@ async function main() {
     console.error('    curl -s https://openrouter.ai/api/v1/models | jq -r \'.data[]|select(.pricing.prompt=="0")|.id\'');
     console.error('  Or use the provider the registry already has this model on:');
     console.error('    node scripts/e6-shadow.mjs --provider groq --model openai/gpt-oss-120b --limit 20');
+    console.error('    node scripts/e6-shadow.mjs --provider nvidia --model openai/gpt-oss-20b --limit 20');
+    console.error(`  Providers:\n${PROVIDER_HELP}`);
     console.error('  Nothing was measured —');
     console.error('  a run with no transport emits no claims and would score 0.0% detection,');
     console.error('  which is indistinguishable from a catastrophically bad extractor.\n');
@@ -454,8 +503,8 @@ async function main() {
       // A stall is waitable when the provider says when it ends. Retry the SAME
       // case once after sleeping; the alternative is scoring an empty
       // extraction, which reads as a confident 0% rather than as a pause.
-      if ((e6.stats.errors ?? 0) > 0 && providerName === 'groq') {
-        const wait = msUntilAnyKeyFree();
+      if ((e6.stats.errors ?? 0) > 0 && transport.msUntilAnyKeyFree) {
+        const wait = transport.msUntilAnyKeyFree();
         if (wait != null && wait > 0 && wait <= MAX_STALL_WAIT_MS) {
           process.stderr.write(`\n  ⏸  all keys cooling — sleeping ${Math.ceil(wait / 1000)}s, retrying case ${i + 1}\n`);
           await sleep(wait + 1000);
@@ -608,6 +657,7 @@ async function main() {
   }
 
   console.log(`\nE6 SHADOW RUN · ${cases.length} cases · ${e6Stats.called} calls, ${e6Stats.cached} cache hits`);
+  console.log(`provider: ${providerName} · model pin: ${modelPin ?? '(none)'}`);
   console.log(`models seen: ${[...e6Stats.models].join(', ') || '(none reported)'}\n`);
   console.log('metric                     baseline    current       E6');
   for (const k of ['detection_recall', 'subject_recall', 'predicate_accuracy',
@@ -689,9 +739,11 @@ async function main() {
     }
   }
 
-  const attributable = e6Stats.models.size > 0;
+  const attributable = isAttributable(e6Stats.models);
   if (!attributable) {
-    console.log('\n⚠️  NOT PUBLISHABLE — no model id was reported for any call.');
+    console.log(e6Stats.models.size === 0
+      ? '\n⚠️  NOT PUBLISHABLE — no model id was reported for any call.'
+      : `\n⚠️  NOT PUBLISHABLE — ${e6Stats.models.size} different models answered this run (${[...e6Stats.models].join(', ')}).`);
     console.log('    A difference in these numbers could be the prompt or a different model,');
     console.log('    and nothing here distinguishes them. Re-run with --model <id>.');
   }
@@ -717,6 +769,7 @@ async function main() {
     mkdirSync(path.dirname(p), { recursive: true });
     writeFileSync(p, JSON.stringify({
       cases: cases.length, category: category ?? null, baseline, current: mCur, e6: mE6, verdict,
+      provider: providerName, modelPin: modelPin ?? null, maxTokens: transport.maxTokens,
       attributable, models: [...e6Stats.models], stats: { ...e6Stats, models: [...e6Stats.models] },
       reportedPass: reported.index, validPasses: good.length, totalPasses: passes.length,
       // Per case, from the REPORTED pass. This is what turns a score into a
