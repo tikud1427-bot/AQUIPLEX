@@ -23,6 +23,14 @@ const Payment  = require("../../models/Payment");
 const { getPackById } = require("../../utils/credits/packs");
 const { createLogger } = require("../../utils/logger");
 
+/** Constant-time compare of two hex HMAC digests; false on any shape mismatch. */
+function hexDigestEquals(expectedHex, givenHex) {
+  if (typeof givenHex !== "string" || !/^[0-9a-f]+$/i.test(givenHex)) return false;
+  const a = Buffer.from(expectedHex, "hex");
+  const b = Buffer.from(givenHex, "hex");
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 const log = createLogger("RAZORPAY");
 
 // ── Razorpay client (lazy-init, singleton) ────────────────────────────────────
@@ -126,7 +134,7 @@ async function verifyPayment(razorpayOrderId, razorpayPaymentId, razorpaySignatu
     .update(`${razorpayOrderId}|${razorpayPaymentId}`)
     .digest("hex");
 
-  if (expectedSig !== razorpaySignature) {
+  if (!hexDigestEquals(expectedSig, razorpaySignature)) {
     log.warn(`Signature mismatch: orderId=${razorpayOrderId} user=${userId}`);
     throw new Error("INVALID_SIGNATURE");
   }
@@ -202,7 +210,7 @@ function verifyWebhookSignature(rawBody, signature) {
     .update(rawBody)
     .digest("hex");
 
-  return digest === signature;
+  return hexDigestEquals(digest, signature);
 }
 
 // ── Get payment status from Razorpay (for reconciliation) ────────────────────
@@ -228,6 +236,7 @@ module.exports = {
   createOrder,
   verifyPayment,
   verifyWebhookSignature,
+  hexDigestEquals,
   fetchRazorpayPayment,
   fetchRazorpayOrder,
   getUserPaymentHistory,

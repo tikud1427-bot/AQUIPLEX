@@ -13,7 +13,7 @@
  *     → { text, truncated, finishReason, streamed: true, model, usage, keySlot }
  * `keySlot` ("#3") is additive observability — the slot NUMBER, never the key.
  *
- * KEY POOL — the part that differs from the other adapters.
+ * KEY POOL — shared with every adapter and the platform client (keyPool.cjs).
  *   Keys come from NVIDIA_API_KEY_1..N (any N, discovered from the env, not a
  *   fixed list) plus the bare NVIDIA_API_KEY. Blank values are ignored and a
  *   key that appears in two slots is used once. Selection is round-robin and
@@ -21,8 +21,9 @@
  *     429       → that key cools for Retry-After (or 60s), the SAME request
  *                 retries on the next key. One throttled key is not a
  *                 provider failure, so it never reaches router health.
- *     401/403   → that key cools for 24h (a bad credential does not heal by
- *                 retrying), next key.
+ *     401/403   → that key is quarantined until reset/restart (a bad
+ *                 credential does not heal by waiting), next key.
+ *     402       → credits spent: that key cools 24h, next key.
  *   Only when EVERY key is cooling does the call fail — as a rate_limit carrying
  *   the time until the first key frees, so the router backs off by exactly that.
  *
@@ -40,16 +41,12 @@
  */
 
 import OpenAI from 'openai';
-import {
-  getCandidateModels, markModelWorking, markModelUnavailable, markModelTempFailed, pinCandidates,
-} from './modelRegistry.js';
-import { classifyProviderError, retryAfterMs } from './providerErrors.js';
+import { getCandidateModels, markModelWorking, pinCandidates } from './modelRegistry.js';
+import { rotate, keyPoolFor } from './keyRotation.js';
 import { recordProviderCall } from '../core/costAccounting.js';
 
 const PROVIDER = 'nvidia';
 const DEFAULT_BASE_URL = 'https://integrate.api.nvidia.com/v1';
-const RATE_LIMIT_COOLDOWN_MS = 60_000;
-const AUTH_COOLDOWN_MS = 86_400_000;
 // The router's AbortSignal is the real budget; this only stops a direct caller
 // (E6 harness, smoke test) from hanging on a dead socket forever.
 const REQUEST_TIMEOUT_MS = 120_000;
@@ -72,101 +69,33 @@ export function normalizeUsage(usage) {
 }
 
 // ── Key pool ──────────────────────────────────────────────────────────────────
+//
+// Discovery, cooldowns and quarantine live in the shared key pool
+// (keyPool.cjs) — the same instance the platform client and every other
+// adapter use. Slot labels ("#3", "#bare") are the only identifiers printed.
 
-/**
- * Discover key slots from the environment, every call (cheap; lets a test or
- * an operator change keys without a restart). Numbered slots in ascending
- * order, then the bare NVIDIA_API_KEY if it is not a duplicate of one of them.
- *
- * @returns {Array<{ slot: string, key: string }>} slot is "#<n>" or "#bare"
- */
-function getKeySlots(env = process.env) {
-  const numbered = [];
-  for (const [name, raw] of Object.entries(env)) {
-    const m = /^NVIDIA_API_KEY_(\d+)$/.exec(name);
-    const key = String(raw ?? '').trim();
-    if (m && key) numbered.push({ n: Number(m[1]), key });
-  }
-  numbered.sort((a, b) => a.n - b.n);
-
-  const seen = new Set();
-  const out = [];
-  for (const { n, key } of numbered) {
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push({ slot: `#${n}`, key });
-  }
-  const bare = String(env.NVIDIA_API_KEY ?? '').trim();
-  if (bare && !seen.has(bare)) out.push({ slot: '#bare', key: bare });
-  return out;
-}
+const pool = keyPoolFor(PROVIDER);
+const clientCache = new Map(); // baseURL + key → OpenAI client (in-memory only)
 
 /** Slot labels only — safe to print. */
 export function getKeySlotSummary() {
-  const slots = getKeySlots().map(s => s.slot);
+  const slots = pool.entries().map(s => s.slot);
   return { count: slots.length, slots };
 }
 
 /** Startup validation (Issue 6) — does this provider have any usable key at all? */
 export function hasConfiguredKeys() {
-  return getKeySlots().length > 0;
-}
-
-let cursor = 0;
-// slot label → { until: epoch ms usable again, reason: 'throttled'|'rejected' }
-const keyCooldowns = new Map();
-const clientCache  = new Map(); // baseURL + key → OpenAI client (in-memory only)
-
-function onCooldown(slot) {
-  const c = keyCooldowns.get(slot);
-  return c ? Date.now() < c.until : false;
-}
-
-function applyCooldown(slot, ms, reason = 'throttled') {
-  keyCooldowns.set(slot, { until: Date.now() + ms, reason });
-}
-
-/** Soonest a THROTTLED key frees (ms), or null when none is throttled. */
-function msUntilThrottledKeyFree() {
-  let soonest = null;
-  for (const { slot } of getKeySlots()) {
-    const c = keyCooldowns.get(slot);
-    if (c?.reason !== 'throttled') continue;
-    const wait = Math.max(0, c.until - Date.now());
-    soonest = soonest == null ? wait : Math.min(soonest, wait);
-  }
-  return soonest;
-}
-
-function anyKeyThrottled() {
-  return msUntilThrottledKeyFree() != null;
+  return pool.hasKeys();
 }
 
 /**
  * Milliseconds until at least one key is usable: 0 when one is free now, null
- * when none are configured. Same contract as groq.js — the E6 harness sleeps
- * through a finite rate-limit wait instead of scoring it as a dead transport.
+ * when none are configured (or every one is rejected — waiting will not help).
+ * Same contract as groq.js — the E6 harness sleeps through a finite
+ * rate-limit wait instead of scoring it as a dead transport.
  */
 export function msUntilAnyKeyFree() {
-  const slots = getKeySlots();
-  if (!slots.length) return null;
-  let soonest = Infinity;
-  for (const { slot } of slots) {
-    const wait = Math.max(0, (keyCooldowns.get(slot)?.until ?? 0) - Date.now());
-    if (wait === 0) return 0;
-    soonest = Math.min(soonest, wait);
-  }
-  return soonest;
-}
-
-/** Next usable slot not already tried this request, round-robin; null if none. */
-function nextSlot(slots, tried) {
-  for (let i = 0; i < slots.length; i++) {
-    const s = slots[cursor % slots.length];
-    cursor = (cursor + 1) % slots.length;
-    if (!tried.has(s.slot) && !onCooldown(s.slot)) return s;
-  }
-  return null;
+  return pool.msUntilAvailable();
 }
 
 function baseURL() {
@@ -190,24 +119,12 @@ function getClient(key) {
   return clientCache.get(cacheKey);
 }
 
-function noKeysError() {
-  return Object.assign(new Error('No NVIDIA keys configured'), { code: 'NO_KEYS' });
-}
-
-/** No key usable, some only throttled — a WAIT, reported as a rate limit with the exact wait. */
-function allKeysCoolingError() {
-  const wait = msUntilThrottledKeyFree() ?? RATE_LIMIT_COOLDOWN_MS;
-  return Object.assign(new Error(`All NVIDIA keys rate limited or cooling down (next free in ${Math.ceil(wait / 1000)}s)`), {
-    status: 429, retryAfterMs: wait, code: 'ALL_KEYS_COOLING',
-  });
-}
-
-/** Every key was rejected (401/402/403) earlier — permanent until keys change. */
-function allKeysRejectedError() {
-  return Object.assign(new Error('All NVIDIA keys rejected (unauthorized or out of credits) — key cooldown 24h'), {
-    status: 401, code: 'ALL_KEYS_REJECTED',
-  });
-}
+const MESSAGES = {
+  noKeys: 'No NVIDIA keys configured',
+  allCooling: wait => `All NVIDIA keys rate limited or cooling down (next free in ${Math.ceil(wait / 1000)}s)`,
+  allRejected: 'All NVIDIA keys rejected (unauthorized) — fix credentials and restart',
+  allBilling: 'All NVIDIA keys out of credits (402)',
+};
 
 function invalidResponse(detail) {
   return Object.assign(new Error(`NVIDIA: ${detail}`), { code: 'INVALID_RESPONSE' });
@@ -223,99 +140,31 @@ function chatMessagesOf(systemPrompt, messages) {
 const timeoutError = () => new Error('TIMEOUT');
 
 /**
- * Apply the key/model consequence of one failed attempt.
- * @returns {'rate_limited'|'key_rejected'|'next_model'}
- */
-function handleAttemptError(err, slot, modelId, label) {
-  const cls = classifyProviderError(err);
-  const { type, status } = cls;
-  if (type === 'rate_limit') {
-    const cd = retryAfterMs(err) ?? RATE_LIMIT_COOLDOWN_MS;
-    applyCooldown(slot, cd);
-    console.log(`[NVIDIA] ${label}model=${modelId} key=${slot} rate limited → key cooldown ${Math.ceil(cd / 1000)}s, trying next key`);
-    return 'rate_limited';
-  }
-  // 402 = this account's credits are spent. Scoped to the KEY: the other
-  // accounts' keys are unaffected, and retrying this one soon will not help.
-  if (type === 'auth' || status === 402) {
-    applyCooldown(slot, AUTH_COOLDOWN_MS, 'rejected');
-    console.log(`[NVIDIA] ${label}key=${slot} auth error status=${status} → key cooldown 24h, trying next key`);
-    return 'key_rejected';
-  }
-  if (type === 'model_not_found') {
-    markModelUnavailable(PROVIDER, modelId, `${status ?? ''} ${err.message}`.trim());
-    return 'next_model';
-  }
-  if (type === 'model_unavailable') {
-    markModelTempFailed(PROVIDER, modelId, 60_000);
-    return 'next_model';
-  }
-  console.log(`[NVIDIA] ${label}model=${modelId} key=${slot} error type=${type} status=${status ?? 'n/a'} msg=${err.message}`);
-  return 'next_model';
-}
-
-/**
  * The shared loop: every candidate model, and for each model every usable key
- * at most once. `attempt(client, modelId, capTokens, slot)` performs one
- * request and resolves to a result, or throws.
+ * at most once (keyRotation.js — NVIDIA's policy is key-wide 429 cooldowns,
+ * every key tried once per model). `attempt(client, modelId, capTokens, slot)`
+ * performs one request and resolves to a result, or throws.
  */
 async function runWithRotation({ opts, signal, maxTokens, label, attempt }) {
   if (signal?.aborted) throw timeoutError();
-
-  const slots = getKeySlots();
-  if (!slots.length) throw noKeysError();
+  if (!pool.hasKeys()) throw Object.assign(new Error(MESSAGES.noKeys), { code: 'NO_KEYS' });
 
   const candidates = pinCandidates(getCandidateModels(PROVIDER), opts.model ?? null, PROVIDER);
   if (!candidates.length) {
     throw Object.assign(new Error('No NVIDIA models currently available (cooling down or deprecated)'), { code: 'NO_CANDIDATE_MODELS' });
   }
 
-  let lastError = null;
-  let rateLimited = false; // at least one key was throttled during THIS call
-
-  for (const entry of candidates) {
-    const modelId = entry.modelId;
-    const capTokens = maxTokens ? Math.min(maxTokens, entry.maxOutputTokens) : maxTokens;
-    const tried = new Set();
-
-    for (;;) {
-      if (signal?.aborted) throw timeoutError();
-      const s = nextSlot(slots, tried);
-      if (!s) break; // every key tried or cooling for this model
-      tried.add(s.slot);
-
-      console.log(`[NVIDIA] ${label}model=${modelId} key=${s.slot}`);
-      try {
-        const res = await attempt(getClient(s.key), modelId, capTokens, s.slot);
-        markModelWorking(PROVIDER, modelId);
-        return { ...res, keySlot: s.slot };
-      } catch (err) {
-        // Mid-stream interruption: tokens already reached the client, so the
-        // partial is the answer — even when the cause was an abort (groq.js does
-        // the same).
-        if (err?.partial) return { ...err.partial, keySlot: s.slot };
-        if (err?.message === 'TIMEOUT' || signal?.aborted) throw timeoutError();
-        lastError = err;
-        const next = handleAttemptError(err, s.slot, modelId, label);
-        if (next === 'rate_limited') { rateLimited = true; continue; }
-        if (next === 'key_rejected') continue;
-        break;
-      }
-    }
-  }
-
-  // Keys ran out. If ANY key is merely throttled, the provider will come back:
-  // one rate_limit carrying the exact wait — even when other keys were
-  // rejected, so a mixed 429/401 pool is not reported as a permanent auth
-  // failure. Only a pool that is entirely REJECTED surfaces as auth.
-  const lastType = lastError ? classifyProviderError(lastError).type : null;
-  const keysExhausted = !lastError || lastType === 'rate_limit' || lastType === 'auth' || lastError?.status === 402;
-  if (keysExhausted) {
-    if (rateLimited || anyKeyThrottled()) throw allKeysCoolingError();
-    if (!lastError) throw allKeysRejectedError();
-  }
-  throw lastError;
+  const res = await rotate(PROVIDER, {
+    models: candidates, signal, label, purpose: opts?.purpose ?? 'other', messages: MESSAGES,
+    attempt: ({ key, slot, modelId, model }) => {
+      const capTokens = maxTokens ? Math.min(maxTokens, model.maxOutputTokens) : maxTokens;
+      return attempt(getClient(key), modelId, capTokens, slot);
+    },
+  });
+  if (res.finishReason !== 'interrupted') markModelWorking(PROVIDER, res.model);
+  return res;
 }
+
 
 // ── Generate ──────────────────────────────────────────────────────────────────
 
@@ -429,7 +278,6 @@ export async function streamNvidia(systemPrompt, messages, signal, maxTokens, on
  * production path calls this (same pattern as health.js / modelRegistry.js).
  */
 export function __resetForTests() {
-  cursor = 0;
-  keyCooldowns.clear();
+  pool.resetCredentials();
   clientCache.clear();
 }

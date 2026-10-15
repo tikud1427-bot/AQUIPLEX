@@ -20,6 +20,21 @@
  * fallback owner prefix carries it, and only until adoption.
  */
 import { peekMind, adoptMind } from '../mind/mindStore.js';
+import { conversationExists, canAccessConversation } from './conversationStore.js';
+
+/**
+ * May `userId` adopt the `conv:` mind of `conversationId`? Only when the
+ * conversation is unknown to the store (a pre-login id the client still
+ * holds) or the store says the caller owns it — the same rule chat applies
+ * before it reuses a conversation. Without this, any route that forwards a
+ * client-supplied conversationId (brain GETs, /intelligence/orchestrate,
+ * /project/workspace) let one account absorb and tombstone another
+ * conversation's orphaned memory.
+ */
+function mayAdopt(userId, conversationId) {
+  if (!conversationExists(conversationId)) return true;
+  return canAccessConversation(userId, conversationId);
+}
 
 export function ownerForUser(userId) {
   return userId ? `user:${userId}` : null;
@@ -40,7 +55,7 @@ export function resolveOwner({ userId = null, conversationId = null } = {}) {
     if (conversationId) {
       const convOwner = ownerForConversation(conversationId);
       const orphan = peekMind(convOwner);
-      if (orphan && !orphan.adoptedInto) {
+      if (orphan && !orphan.adoptedInto && mayAdopt(userId, conversationId)) {
         adoptMind(convOwner, userOwner);
       }
     }

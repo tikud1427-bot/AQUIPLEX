@@ -1232,7 +1232,7 @@ router.post('/', async (req, res) => {
       latencyMs: result.latency,
     });
 
-    recordTurnCost(costLedger.summary());
+    recordTurnCost(costLedger.summary(), { providerCallsAlreadyCounted: true });
     logCompletion(ctx, { taskType, classifierConfidence: confidence, promptModules,
       responseLength: finalAnswer.length, selectedProvider: result.provider, finalLatencyMs: result.latency });
     return res.json(payload);
@@ -1571,7 +1571,7 @@ router.post('/stream', async (req, res) => {
       } catch { /* fail-open: learning must never affect the completed turn */ }
 
       try {
-        recordTurnCost(costLedger.summary());
+        recordTurnCost(costLedger.summary(), { providerCallsAlreadyCounted: true });
       } catch { /* fail-open: accounting must never affect the completed turn */ }
 
       // Post-turn understanding — Mind post-turn, world-model ingest, Digital

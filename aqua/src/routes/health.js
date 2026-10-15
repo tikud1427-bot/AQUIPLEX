@@ -18,6 +18,9 @@ import { getMirrorStatus }            from '../core/mongoMirror.js';
 import '../orchestrator/capabilities.js'; // side-effect: registers every capability definition
 import { getAllCapabilities }         from '../orchestrator/capabilityRegistry.js';
 import { ok }                         from './envelope.js';
+import keyPoolLib                     from '../providers/keyPool.cjs';
+
+const { getCredentialDiagnostics, getProviderUsageSnapshot } = keyPoolLib;
 
 const router = express.Router();
 
@@ -43,6 +46,13 @@ router.get('/', (req, res) => {
     // Web Search: provider key pools (per-slot usage/cooldown — never key
     // material), circuit breakers, cache hit/miss, and effective config.
     search:  getSearchHealth(),
+    // AI provider key pools: per-slot status (available/cooling/rejected),
+    // health (unknown/verified/rejected — a populated env var is never
+    // "valid"), duplicates ignored. Slot labels only, never key material.
+    credentials:   getCredentialDiagnostics(),
+    // Per provider/model/slot/purpose attempt counters, latency, TTFT, key
+    // switches, rate-limit hints; tokens null where the provider reported none.
+    providerUsage: getProviderUsageSnapshot(),
   });
 });
 

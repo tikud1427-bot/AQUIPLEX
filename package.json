@@ -5,8 +5,10 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "test": "npm run test:all",
-    "test:all": "node aqua/scripts/run-tests.mjs",
+    "test": "npm run test:aqua && npm run test:platform",
+    "test:all": "npm run test:aqua && npm run test:platform",
+    "test:aqua": "cd aqua && npm test",
+    "test:platform": "node --test \"tests/**/*.test.js\"",
     "test:edit": "node aqua/src/project/tests/editEngine.test.js && node aqua/src/project/tests/editRoutes.test.js",
     "test:upload": "node aqua/scripts/run-tests.mjs src/upload",
     "test:mind": "node aqua/scripts/run-tests.mjs src/mind",

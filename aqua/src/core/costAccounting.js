@@ -74,10 +74,19 @@ export function createTurnLedger() {
 
 const agg = { turns: 0, calls: 0, inputTokens: 0, outputTokens: 0, unpricedCalls: 0, pricedCostUsd: 0, byPurpose: {} };
 
-/** Fold a finished turn's summary into process-wide counters. */
-export function recordTurnCost(summary) {
+/**
+ * Fold a finished turn's summary into process-wide counters.
+ *
+ * `providerCallsAlreadyCounted`: every provider adapter already folds each
+ * successful call into these counters via recordProviderCall(). A caller whose
+ * ledger only re-records those same calls (the chat route) passes true, so the
+ * turn is counted without counting its calls and tokens a second time —
+ * before 2026-10-15 every chat call appeared twice in /metrics.
+ */
+export function recordTurnCost(summary, { providerCallsAlreadyCounted = false } = {}) {
   if (!summary || !Number.isFinite(summary.calls)) return;
   agg.turns++;
+  if (providerCallsAlreadyCounted) return;
   agg.calls += summary.calls;
   agg.inputTokens += summary.inputTokens ?? 0;
   agg.outputTokens += summary.outputTokens ?? 0;

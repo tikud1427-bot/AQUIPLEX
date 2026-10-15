@@ -39,10 +39,10 @@ test('a call with no usage report is counted as unpriced, never as free', () => 
 });
 
 test('every provider transport records its successful calls', () => {
-  // Success exits per adapter: groq/gemini/openrouter return separately for
-  // truncated, normal and streamed completions (3); nvidia.js funnels truncated
-  // and normal through one generate exit plus one stream exit (2).
-  const SUCCESS_EXITS = { 'groq.js': 3, 'gemini.js': 3, 'openrouter.js': 3, 'nvidia.js': 2 };
+  // Success exits per adapter. Since the shared key pool (2026-10-15) every
+  // adapter funnels truncated and normal completions through ONE generate exit
+  // plus one stream exit (2); gemini.js adds its media-analysis exit (3).
+  const SUCCESS_EXITS = { 'groq.js': 2, 'gemini.js': 3, 'openrouter.js': 2, 'nvidia.js': 2 };
   for (const [f, min] of Object.entries(SUCCESS_EXITS)) {
     const s = readFileSync(path.join(SRC, 'providers', f), 'utf8');
     assert.match(s, /recordProviderCall\(/, `${f} does not record cost`);

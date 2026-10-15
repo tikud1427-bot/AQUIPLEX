@@ -42,7 +42,8 @@
  *   model_not_found   404 / "not found" / "does not exist" / deprecation.  PERMANENT.
  *   model_unavailable NEW — transient no-capacity ("no endpoints", …).      retryable.
  *   rate_limit        429 / "too many requests" / "quota".                  retryable.
- *   auth              401 / 403 / bad key.                                   permanent.
+ *   auth              401 / 403 / bad key (incl. Google's 400 API_KEY_INVALID). permanent.
+ *   billing           402 / out of credits on EVERY key the adapter holds.   not retryable.
  *   config            missing/invalid key, nothing configured.              permanent.
  *   server_error      5xx.                                                  retryable.
  *   network           no HTTP status (DNS/connect/reset/fetch failure).     retryable.
@@ -51,6 +52,9 @@
  *   unknown           uncategorized — treated as retryable (generous), but  retryable.
  *                     still counts toward the circuit breaker so it can't loop forever.
  */
+
+import keyPoolLib from './keyPool.cjs';
+const { classifyKeyFailure, retryHintMs } = keyPoolLib;
 
 // ── Message hint tables ───────────────────────────────────────────────────────
 
@@ -97,6 +101,9 @@ const META = {
   model_unavailable: { retryable: true,  scope: 'model',    permanent: false },
   rate_limit:        { retryable: true,  scope: 'model',    permanent: false },
   auth:              { retryable: false, scope: 'provider', permanent: true  },
+  // 402 — credits/billing. Not retryable in this request (waiting seconds does
+  // not top up an account) but not permanent either: credits can be added.
+  billing:           { retryable: false, scope: 'provider', permanent: false },
   config:            { retryable: false, scope: 'provider', permanent: true  },
   server_error:      { retryable: true,  scope: 'model',    permanent: false },
   network:           { retryable: true,  scope: 'provider', permanent: false },
@@ -161,7 +168,10 @@ export function retryAfterMs(err, now = Date.now) {
     if (unit.startsWith('m') && unit !== 'ms') return Math.round(n * 60_000);
     return Math.round(n * 1000);
   }
-  return null;
+  // Provider-specific shapes the generic parse above misses: Google RetryInfo
+  // `retryDelay` / "Please retry in 31.5s", Groq x-ratelimit-reset-* durations,
+  // OpenRouter X-RateLimit-Reset epoch ms. Shared with the key pool.
+  return retryHintMs(err, now());
 }
 
 function readHeader(err, name) {
@@ -216,6 +226,10 @@ export function classifyProviderError(err) {
 
   // 3. Explicit status codes win over message-sniffing (except deprecation above).
   if (status === 429) return base('rate_limit', status);
+  if (status === 402 || err.code === 'ALL_KEYS_BILLING') return base('billing', status);
+  // Google answers an invalid/expired API key with a 400 (API_KEY_INVALID),
+  // not a 401 — a credential failure, not a malformed request.
+  if (status === 400 && classifyKeyFailure(err).kind === 'auth') return base('auth', status);
   if (status === 401 || status === 403) return base('auth', status);
   if (status === 410) return base('model_not_found', status); // Gone — a retired model id
   if (status === 404) {

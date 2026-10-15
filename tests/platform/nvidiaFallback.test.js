@@ -20,6 +20,9 @@ const realLog = console.log, realWarn = console.warn, realErr = console.error;
 
 function freshClient() {
   delete require.cache[require.resolve(path.join(ROOT, 'services', 'ai.client.js'))];
+  // Key cooldowns live in the shared pool module (one per process, shared with
+  // the engine) — a fresh client needs a fresh pool too.
+  delete require.cache[require.resolve(path.join(ROOT, 'aqua', 'src', 'providers', 'keyPool.cjs'))];
   return require(path.join(ROOT, 'services', 'ai.client.js'));
 }
 

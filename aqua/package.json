@@ -50,7 +50,8 @@
     "test:e9:contradiction": "node --test src/brain/reflectionV3/contradictionPolicy.test.js",
     "doctor:e7": "node scripts/e7-doctor.mjs",
     "doctor:dlq": "node scripts/dlq-doctor.mjs",
-    "smoke:nvidia": "node scripts/nvidia-smoke.mjs"
+    "smoke:nvidia": "node scripts/nvidia-smoke.mjs",
+    "doctor:providers": "node scripts/provider-keys-doctor.mjs"
   },
   "dependencies": {
     "@e965/xlsx": "^0.20.3",

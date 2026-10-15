@@ -35,13 +35,15 @@ const PLATFORM_FILES = [path.resolve(SRC, '../../utils/rateLimitStore.js')];
 // (2026-10). Registered so env-doctor accepts them in a .env.
 const EVAL_FILES = [path.resolve(SRC, '../eval/adapters/pairedAnswerLift.mjs')];
 
-/** Every .js under src/, excluding tests — tests set flags, they do not define them. */
+/** Every .js / .cjs under src/, excluding tests — tests set flags, they do not define them.
+ *  (.cjs since 2026-10-15: the shared provider key pool is CommonJS so the
+ *  platform client can load it; a knob read there must be visible here.) */
 function sourceFiles(dir, out = []) {
   for (const entry of readdirSync(dir)) {
     const p = path.join(dir, entry);
     if (statSync(p).isDirectory()) {
       if (entry !== 'tests' && entry !== 'node_modules') sourceFiles(p, out);
-    } else if (entry.endsWith('.js') && !entry.endsWith('.test.js')) {
+    } else if (/\.c?js$/.test(entry) && !entry.endsWith('.test.js')) {
       out.push(p);
     }
   }
@@ -125,8 +127,11 @@ describe('the flag registry matches the source, in both directions', () => {
     // proactive scan interval.
     // +2 settings (2026-10-12, P0): AQUA_MIRROR_ROLE and AQUA_MIRROR_LEASE_MS —
     // the single-writer lease of the Mongo mirror.
-    assert.equal(SETTINGS.length, 41);
-    assert.equal(readFromEnv().size, 73);
+    // +3 settings (2026-10-15, key pools): AQUA_PROVIDER_MAX_KEYS_PER_MODEL,
+    // AQUA_PROVIDER_MAX_KEY_ATTEMPTS (per-request key-rotation bounds) and
+    // AQUA_PROVIDER_KEY_REJECT_TTL_MS (opt-in expiry of a rejected key).
+    assert.equal(SETTINGS.length, 44);
+    assert.equal(readFromEnv().size, 76);
   });
 });
 
@@ -170,7 +175,7 @@ describe('the registry records how each gate actually reads its variable', () =>
 describe('the boot line is worth printing', () => {
   test('it names the overridden gates, not all 29', () => {
     const line = flagBootLine({ AQUA_E6: 'on' });
-    assert.match(line, /32 gates · 41 settings/);
+    assert.match(line, /32 gates · 44 settings/);
     assert.match(line, /AQUA_E6=on/);
     assert.ok(!line.includes('AQUA_TWIN_V2'), 'a default gate was listed — the line is noise');
   });

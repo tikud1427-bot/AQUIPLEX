@@ -38,7 +38,8 @@ test('helmet is required and mounted', () => {
 });
 
 test('helmet is mounted BEFORE the body parsers, so every route below is covered', () => {
-  assert.ok(at('app.use(helmet(') < at('app.use(express.json('));
+  assert.ok(at('app.use(helmet(') < at('const platformJson = express.json('));
+  assert.ok(at('app.use(helmet(') < at('app.use(express.urlencoded('));
 });
 
 test('helmet is mounted AFTER the Razorpay webhook, whose raw body must stay untouched', () => {
@@ -72,9 +73,12 @@ test('every credential entry point is rate limited', () => {
 test('the LLM engine is rate limited BEFORE the auth check', () => {
   // An unauthenticated flood still costs sockets and event-loop time, so the
   // limiter has to sit in front of requireLogin, not behind it.
-  const mount = SRC.indexOf('"/api/aqua",');
-  assert.ok(mount > -1);
-  const block = SRC.slice(mount, mount + 260);
+  // Since E11 the chain is the `aquaAccess` array, mounted at /api/aqua and /v1.
+  assert.match(SRC, /app\.use\("\/api\/aqua", \.\.\.aquaAccess\)/);
+  const def = SRC.indexOf('const aquaAccess = [');
+  assert.ok(def > -1);
+  const block = SRC.slice(def, SRC.indexOf('];', def));
+  assert.ok(block.includes('engineLimiter') && block.includes('requireLogin'), block);
   assert.ok(block.indexOf('engineLimiter') < block.indexOf('requireLogin'), block);
 });
 
@@ -106,7 +110,10 @@ test('signup lands in the PRODUCT, not the workspace dashboard', () => {
 
 test('a NEW Google account goes to the product; a returning one keeps the workspace', () => {
   assert.match(SRC, /user\.\$locals\.justCreated = true/);
-  assert.match(SRC, /firstRun \? "\/aqua" : "\/home"/);
+  // A returning user's destination is the switch-account target, whose
+  // default is /home (takePostLoginNext(req, "/home")).
+  assert.match(SRC, /firstRun \? "\/aqua" : \(req\._postLoginNext \|\| "\/home"\)/);
+  assert.match(SRC, /req\._postLoginNext = takePostLoginNext\(req, "\/home"\)/);
 });
 
 test('the first-run marker is never persisted', () => {
@@ -121,5 +128,15 @@ test('/home is NOT removed — a returning user still has a workspace', () => {
   // wrong. Login is untouched.
   assert.match(SRC, /app\.get\("\/home", requireLogin/);
   const i = at('app.post("/login"');
-  assert.match(SRC.slice(i, i + 1200), /res\.redirect\("\/home"\)/);
+  assert.match(SRC.slice(i, i + 1600), /takePostLoginNext\(req, "\/home"\)/);
+});
+
+test('the 50 MB JSON parser runs only for signed-in engine calls', () => {
+  // It used to be global and pre-auth: any anonymous POST to any route could
+  // make the server buffer and parse 50 MB.
+  assert.ok(!/app\.use\(express\.json\(\{ limit: "50mb" \}\)\)/.test(SRC), 'global 50mb parser is back');
+  assert.match(SRC, /const platformJson = express\.json\(\{ limit: "1mb" \}\)/);
+  const def = at('const aquaAccess = [');
+  const block = SRC.slice(def, SRC.indexOf('];', def));
+  assert.ok(block.indexOf('requireLogin') < block.indexOf('aquaJson'), 'aquaJson must come after requireLogin');
 });

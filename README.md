@@ -2,6 +2,30 @@
 
 AQUIPLEX = the platform. **AQUA = the only AI.**
 
+## What we're building
+
+**Aqua knows where your project stands.** It is an AI assistant for early-stage
+founders that keeps the current state of their company: what's decided, what
+changed, and where each fact came from. Facts can be corrected or deleted, and
+that holds across conversations.
+
+Current status, stated honestly:
+
+- **Built:** onboarding interview, sourced and correctable memory, file ingestion.
+- **Not yet shown:** that this memory beats simpler approaches. See [PRODUCT_SCORECARD.md](PRODUCT_SCORECARD.md).
+
+| Document | What it covers |
+|---|---|
+| [REPO_AUDIT.md](REPO_AUDIT.md) | Current state, **release blockers**, security findings, capability matrix |
+| [YC_PRODUCT_THESIS.md](YC_PRODUCT_THESIS.md) | Directions considered, the chosen segment and promise, assumptions |
+| [PRODUCT_SCORECARD.md](PRODUCT_SCORECARD.md) | Measured baseline (stale-answer rate), funnel definitions, pending v4 experiment |
+| [IMPLEMENTATION_LOG.md](IMPLEMENTATION_LOG.md) | Changes, root causes, test commands and results |
+| [PILOT_VALIDATION_PLAN.md](PILOT_VALIDATION_PLAN.md) | Interviews → design partners → paid test, with decision rules |
+| [YC_APPLICATION_DRAFT.md](YC_APPLICATION_DRAFT.md) | Fact-checked application prep and live demo script |
+
+The roughly 70 dated `*.md` reports at the repo root are history. Where they
+disagree with the documents above, the documents above win.
+
 ## Architecture
 
 ```
@@ -64,9 +88,32 @@ Zero keys = search dormant, chat unchanged. Optional tuning:
 ## Tests
 
 ```bash
-npm run test:aqua                          # edit + upload + identity + search
-cd aqua && node --test src/**/tests/*.test.js
+npm test                 # = test:aqua (engine battery) && test:platform (root tests/)
+npm run test:aqua        # cd aqua && npm test — every aqua suite, discovered
+npm run test:platform    # auth, sessions, CSRF, billing, account deletion, launch safety
+cd aqua && DATABASE_URL= npm run eval:gate   # evaluation regression gate (as CI runs it)
 ```
+
+CI runs two workflows. `eval-gate.yml` runs the aqua battery plus the gate on
+`aqua/**` changes. `platform-tests.yml` runs the root tests on every PR. Live
+Postgres and Redis suites need disposable containers; never point tests at
+`.env` databases.
+
+## Product analytics
+
+Server-side and content-free: user id, event name and time only. The events are
+signup, login, chat turn, upload, project created, memory corrected and memory
+forgotten. They are deleted with the account and expire after 400 days. Turn
+them off with `AQUA_PRODUCT_EVENTS=off`.
+
+Read-only report:
+
+```bash
+node scripts/activation-report.mjs --mongo <uri> [--days 120] [--json out.json]
+```
+
+The report covers activation (chat on 2 or more days in the first 7) and
+week-1 and week-4 retention, by signup cohort.
 
 ## Removed in the v2 restructure
 

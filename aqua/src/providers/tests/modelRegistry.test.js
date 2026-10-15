@@ -15,6 +15,14 @@ describe('modelRegistry.js — candidate selection', () => {
     }
   });
 
+  test('Gemini registry uses the current 3.6 Flash fallback, not deprecated 3.5 Flash', () => {
+    __resetForTests();
+    const ids = getCandidateModels('gemini').map(m => m.modelId);
+    assert.deepEqual(ids, ['gemini-2.5-flash', 'gemini-3.6-flash']);
+    assert.ok(!ids.includes('gemini-3.5-flash'));
+    assert.equal(pickModel('gemini').modelId, 'gemini-2.5-flash');
+  });
+
   test('gemini/groq (rotate:false) always prefer the first entry in listed order', () => {
     __resetForTests();
     const first = pickModel('gemini').modelId;

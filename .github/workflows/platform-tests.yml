@@ -1,0 +1,22 @@
+# Platform tests: auth, sessions, CSRF, account deletion, billing guards,
+# launch safety. These live in the root tests/ directory and were never run by
+# eval-gate.yml (which works inside aqua/ and only on aqua/** changes), so
+# security regressions in index.js could merge unnoticed.
+name: platform-tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  platform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22          # node --test glob patterns need >= 21
+      - run: npm ci
+      - name: Platform test battery
+        run: npm run test:platform

@@ -19,7 +19,7 @@
 <section class="px-pricing-hero">
   <div class="px-container">
     <div class="px-badge px-badge-accent"><span class="px-badge-dot" aria-hidden="true"></span> Prepaid credits</div>
-    <h1>Pay once. Build forever.</h1>
+    <h1>Pay for what you use.</h1>
     <p>No subscriptions. No recurring charges. Buy credits when you need them — they never expire.</p>
 
     <div class="px-free-callout">
@@ -51,16 +51,13 @@
       </tr>
     </thead>
     <tbody>
-      <tr><td>Chat message</td><td style="text-align:right;">5</td></tr>
-      <tr><td>Chat with file analysis</td><td style="text-align:right;">8</td></tr>
-      <tr><td>Code review</td><td style="text-align:right;">10</td></tr>
-      <tr><td>Code generation</td><td style="text-align:right;">20</td></tr>
-      <tr><td>Section / component generation</td><td style="text-align:right;">15–20</td></tr>
-      <tr><td>Feature update</td><td style="text-align:right;">25</td></tr>
-      <tr><td>Image generation</td><td style="text-align:right;">30</td></tr>
-      <tr><td>Deep research</td><td style="text-align:right;">40</td></tr>
-      <tr><td>Full app generation</td><td style="text-align:right;">150</td></tr>
-      <tr><td>Multi-agent orchestration</td><td style="text-align:right;">200</td></tr>
+      <%# Only actions the server actually meters (index.js usage guards). The
+          old list advertised code/image/app generation and multi-agent
+          orchestration, none of which the product offers. %>
+      <tr><td>Message to Aqua</td><td style="text-align:right;">5</td></tr>
+      <tr><td>Uploading a file or project for Aqua to read</td><td style="text-align:right;">8</td></tr>
+      <tr><td>Editing or regenerating a generated file</td><td style="text-align:right;">8</td></tr>
+      <tr><td>Seeing, correcting or deleting what Aqua remembers</td><td style="text-align:right;">Free</td></tr>
     </tbody>
   </table>
 </section>

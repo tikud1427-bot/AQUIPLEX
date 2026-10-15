@@ -75,6 +75,16 @@ describe('root test wiring — local and CI run the same thing', () => {
     assert.match(rootPkg.scripts.test, /test:aqua/);
   });
 
+  test('the root battery runs the platform tests too, and CI runs them on every PR', () => {
+    // These tests (auth, CSRF, sessions, account deletion, launch safety) sat
+    // outside both `npm test` and CI: three of them had gone stale unseen.
+    assert.match(rootPkg.scripts.test, /test:platform/);
+    assert.match(rootPkg.scripts['test:platform'], /node --test "tests\/\*\*\/\*\.test\.js"/);
+    const platformCi = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'platform-tests.yml'), 'utf8');
+    assert.match(platformCi, /run:\s*npm run test:platform/);
+    assert.doesNotMatch(platformCi, /paths:/, 'a path filter would skip index.js changes');
+  });
+
   test('CI runs the same battery the root command does', () => {
     // CI was never the broken half; this pins that it stays the reference.
     assert.match(workflow, /working-directory:\s*aqua/);

@@ -176,10 +176,13 @@ function timedAbort(ms) {
   return { signal: ctrl.signal, clear: () => clearTimeout(t) };
 }
 
-async function callProvider(providerFns, provider, systemPrompt, messages, signal, maxTokens) {
+async function callProvider(providerFns, provider, systemPrompt, messages, signal, maxTokens, purpose) {
   const start  = Date.now();
   const fn     = providerFns[provider] ?? providerFns.openrouter;
-  const result = await fn(systemPrompt, messages, signal, maxTokens); // { text, truncated, finishReason, model, usage }
+  // 5th arg carries ONLY the cost/usage purpose — no model pin, no temperature,
+  // so the request bytes are unchanged. Credential rotation happens INSIDE the
+  // adapter (keyPool.cjs); this router only ranks providers.
+  const result = await fn(systemPrompt, messages, signal, maxTokens, { purpose }); // { text, truncated, finishReason, model, usage, keySlot, keyAttempts }
   return { ...result, latency: Date.now() - start };
 }
 
@@ -264,8 +267,9 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
       if (LOG_DEBUG) console.log(`[PROVIDER] → ${provider} round=${round} score=${score.toFixed(0)} timeout=${timeoutMs}ms task=${taskType}`);
 
       try {
-        const { text, truncated, finishReason, latency, model, usage } =
-          await callProvider(providerFns, provider, systemPrompt, messages, signal, maxTokens);
+        const { text, truncated, finishReason, latency, model, usage, keySlot, keyAttempts } =
+          await callProvider(providerFns, provider, systemPrompt, messages, signal, maxTokens, ctx.costPurpose ?? 'chat');
+        const keyInfo = keySlot ? { keySlot, keyAttempts: keyAttempts ?? 1 } : {};
         if (ctx.costLedger && usage) {
           ctx.costLedger.record({ provider, model, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, purpose: ctx.costPurpose ?? 'chat' });
         }
@@ -275,7 +279,7 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
         // The provider did its job and ran out of output budget — it did not fail.
         if (truncated) {
           markSuccess(provider, latency);
-          fallbackChain.push({ provider, outcome: 'success', truncated: true, latencyMs: latency });
+          fallbackChain.push({ provider, outcome: 'success', truncated: true, latencyMs: latency, ...keyInfo });
           ctx.attempts?.push({ provider, outcome: 'success', truncated: true, latencyMs: latency, score });
           console.log(`[ROUTER] ✓ ${provider} (truncated, finishReason=length) latency=${latency}ms round=${round} req=${requestId}`);
           return {
@@ -296,8 +300,8 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
         }
 
         markSuccess(provider, latency);
-        fallbackChain.push({ provider, outcome: 'success', latencyMs: latency });
-        ctx.attempts?.push({ provider, outcome: 'success', latencyMs: latency, score });
+        fallbackChain.push({ provider, outcome: 'success', latencyMs: latency, ...keyInfo });
+        ctx.attempts?.push({ provider, outcome: 'success', latencyMs: latency, score, ...keyInfo });
         console.log(`[ROUTER] ✓ ${provider} latency=${latency}ms score=${score.toFixed(0)} round=${round} req=${requestId}`);
         return {
           provider, model, usage, text, taskType, latency, score, confidence, labels, fallbackChain,
@@ -482,7 +486,7 @@ export async function generateTextStream({
     onEvent({ type: 'provider_attempt', provider, score: +score.toFixed(1), attempt });
 
     try {
-      const { text, truncated, finishReason, latency, model, usage } =
+      const { text, truncated, finishReason, latency, model, usage, keySlot, keyAttempts } =
         await callProviderStream(provider, systemPrompt, messages, ctrl.signal, maxTokens, onDelta, streamFns);
       clearTimeout(stallTimer);
       clientSignal?.removeEventListener('abort', onClientAbort);
@@ -501,7 +505,7 @@ export async function generateTextStream({
       }
 
       markSuccess(provider, latency);
-      const outcome = { provider, outcome: 'success', truncated: !!truncated, latencyMs: latency };
+      const outcome = { provider, outcome: 'success', truncated: !!truncated, latencyMs: latency, ...(keySlot ? { keySlot, keyAttempts: keyAttempts ?? 1 } : {}) };
       fallbackChain.push(outcome);
       ctx.attempts?.push({ ...outcome, score });
       console.log(`[ROUTER] ✓ ${provider} (stream${truncated ? `, ${finishReason}` : ''}) latency=${latency}ms tokens=${tokenCount} req=${requestId}`);
