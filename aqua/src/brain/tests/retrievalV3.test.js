@@ -83,4 +83,21 @@ describe('E7 retrieval V3 fusion', () => {
     assert.deepEqual(out.map(x => x.id), ['a', 'b']);
   });
 
+  // 2026-10-17: canonical ids are random UUIDs minted per database. Ties were
+  // broken by id (lane rows read `r.text`, which rows do not carry; the fusion
+  // sort used the id), so 122 of 200 retrieval-core queries reordered between
+  // two seedings of identical data. Ties are now broken by content.
+  test('fusion order is a function of content, not of the ids a database minted', () => {
+    const texts = ['I run product at Nummo', 'I live in Pune', 'I use Linear', 'Dev reports to me'];
+    const order = ids => {
+      const candidates = texts.map((text, i) => ({ id: ids[i], kind: 'fact', text, score: 0.3, lanes: ['structured'] }));
+      const lanes = lanesFromCandidates(candidates).map(l => l.rows);
+      return reciprocalRankFusion(lanes).map(x => x.candidate.text);
+    };
+    const a = order(['f3a1', '0b22', 'c9e0', '77d4']);
+    const b = order(['01ff', 'ee10', '5a5a', 'aa00']);
+    assert.deepEqual(a, b);
+    assert.deepEqual(a, [...texts].sort((x, y) => x.localeCompare(y)));
+  });
+
 });

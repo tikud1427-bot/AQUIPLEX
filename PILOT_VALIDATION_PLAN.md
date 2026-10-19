@@ -14,8 +14,9 @@ Nothing in this plan has been done yet. No one has been contacted.
 These must be done before inviting anyone:
 
 - [ ] Rotate the exposed credentials (`REPO_AUDIT.md` §5) and make the repo private.
-- [ ] Ship the security hotfix, including this session's fixes, to production.
-- [ ] Replace free-tier models with at least one paid key. A pilot must not fail on quota.
+- [ ] Ship the release candidate (`RELEASE_MANIFEST_RC_2026-10-17.md`): hotfix + security, billing and reliability fixes. No migrations.
+- [ ] **Second release for the pilot workflow.** The Memory page that shows what answers (with per-claim correct and delete) needs this branch's authoritative read mode. It requires migrations 0016–0024 on the production database (all additive; read them first), `AQUA_CANONICAL_READ` left unset, and a decision for existing users: E10-migrated facts are invisible to canonical reads (REPO_AUDIT F4), so either re-extract them or keep the legacy fill. Run `aqua/scripts/e2e-founder-journey.mjs` against staging before inviting anyone.
+- [ ] Replace free-tier models with at least one paid key, **especially the extraction provider**. Measured: the Groq free tier allows about 10 extractions per minute for the whole product, and one founder's onboarding burst hits that. Estimated cost on paid gpt-oss-120b: about $0.0025 per turn.
 - [ ] Confirm product events are being written in production. Run `scripts/activation-report.mjs --mongo <prod read-only URI>` after one test signup.
 - [ ] Load the cost-accounting price table so cost per user is known.
 
@@ -108,3 +109,13 @@ explicit consent for a specific debugging session. Offer deletion at the end.
 - **Monday:** run `activation-report.mjs`; review the funnel and cohort table.
 - **Wednesday:** partner check-ins (5 minutes each, 3 fixed questions).
 - **Friday:** update `PRODUCT_SCORECARD.md` with measured numbers only. Log every stale or fabrication incident partners report, with how it was fixed.
+
+## Next experiments (in this order)
+
+1. **Lift v4** on a host that stays up (pre-registered; one command). It decides whether the World Model stays the answer context or is simplified to state tracking.
+2. **Canonical-read noise.** Reduce the 153 noise lines and raise unknown honesty on the `context-canonical` gate without losing recall. Then re-run the founder journey and v3 or v4 fabrication.
+3. **Change capture at volume.** A held-out set of real founder-style change sentences (single and compound), written by someone other than the tuner. Measure the share that reach memory and are used in the next conversation. Target ≥ 95% for single changes.
+4. **Problem interviews** (Phase 1): is stale context a frequent, costly pain for founders?
+5. **Design-partner usage** (Phase 2): activation (2+ chat days in 7), week-2 and week-3 usage, stale incidents per partner per week, corrections per 100 turns.
+6. **Paid conversion** (Phase 3): count payments from activated partners at a fixed monthly price.
+

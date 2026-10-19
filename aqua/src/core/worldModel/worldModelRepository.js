@@ -328,14 +328,215 @@ export async function claimWithEvidence(ownerId, claimId) {
   };
 }
 
-export async function findClaimsForDedup({ ownerId, claims = [], extraPredicates = [] } = {}) {
+/**
+ * S8's history. Two implementations, one row shape (2026-10-18):
+ *
+ *  · 'full'    every non-archived claim of the incoming predicates — the
+ *              original. Measured: linear in history (0.72 s per segment at
+ *              20,000 claims of one predicate), unbounded.
+ *  · 'bounded' (default) only what some S8 rule can use, by targeted indexed
+ *              lookups, then hydrated through the SAME select. See
+ *              boundedDedupCandidates for the rule → candidate mapping. Buckets
+ *              cut by a cap are reported on the result (`truncation`) so every
+ *              "exactly one candidate" rule abstains instead of guessing.
+ *  AQUA_S8_HISTORY=full is the rollback.
+ *
+ * Rows are ordered oldest → newest (claim id last): S8 seeds a map by exact
+ * key, so with two rows of one key the LATER one must win deterministically —
+ * the original query had no ORDER BY.
+ */
+export async function findClaimsForDedup({ ownerId, claims = [], extraPredicates = [], mode = null, sameKind = null } = {}) {
   const owner = required(ownerId, 'ownerId');
-  // extraPredicates (2026-10-11): relations S8 must see although no incoming
-  // claim carries them — a resolution status needs the blockers it resolves.
   const predicates = [...new Set([...(Array.isArray(claims) ? claims : [])
     .map(c => c?.predicate), ...extraPredicates].filter(Boolean))];
-  if (!predicates.length) return [];
+  if (!predicates.length) return withTruncation([], emptyTruncation());
+  const how = mode ?? (String(process.env.AQUA_S8_HISTORY ?? 'bounded').toLowerCase() === 'full' ? 'full' : 'bounded');
   const p = await getPool();
+  if (how === 'full') return withTruncation(await dedupRows(p, owner, { predicates }), emptyTruncation());
+  const cand = await boundedDedupCandidates(p, owner, claims, predicates, { sameKind });
+  const rows = cand.ids.length ? await dedupRows(p, owner, { ids: cand.ids }) : [];
+  return withTruncation(rows, cand.truncation);
+}
+
+export const DEDUP_BUCKET_LIMIT = 200;
+export const DEDUP_TEXT_LIMIT = 200;
+const emptyTruncation = () => ({ subjects: new Set(), kindComplete: new Set(), roles: false, text: false, candidates: 0 });
+function withTruncation(rows, truncation) {
+  Object.defineProperty(rows, 'truncation', { value: truncation, enumerable: false });
+  return rows;
+}
+const dedupNorm = s => String(s ?? '').trim().toLowerCase();
+const dedupLabelKey = s => String(s ?? '').toLowerCase().normalize('NFKC').replace(/^(?:the|a|an|my|our|your)\s+/, '').replace(/\s+/g, ' ').trim();
+const DEDUP_WORD_STOP = new Set(['the', 'and', 'our', 'my', 'your', 'for', 'with', 'from', 'that', 'this', 'now', 'are', 'was', 'were', 'has', 'have', 'had',
+  'not', 'but', 'about', 'into', 'its', 'their', 'they', 'we', 'you', 'self', 'actually', 'moved', 'move']);
+const dedupWords = s => [...new Set((String(s ?? '').toLowerCase().normalize('NFKC').match(/[\p{L}\p{N}]{3,}/gu) ?? [])
+  .filter(w => !DEDUP_WORD_STOP.has(w)))];
+
+/**
+ * Candidate claim ids for S8, per rule (claimDedup.js):
+ *  ① exact identity / corroboration / return to an old value — same subject,
+ *     predicate and object, ANY non-archived state. Uncapped (tiny by definition).
+ *  ② every rule keyed on the subject (snapshot & polarity contradiction,
+ *     sole-value revision, responsibility ended, plan cancelled, blocker
+ *     resolution's own pending state) and on the object (one-per-object,
+ *     blocker relations naming the resolved thing): CURRENT claims of those
+ *     entities, capped PER (entity, predicate) bucket — a long-held value can
+ *     never fall off a global cap.
+ *  ③ role handover: related_to claims holding the same role literal.
+ *  ④ rules matching WORDS across subjects (renamed subject, attribute named as a
+ *     subject, plan rescheduled): current claims whose sentence contains a word
+ *     of an incoming subject or sentence, or whose subject label does.
+ */
+async function boundedDedupCandidates(p, owner, claims, predicates, { sameKind = null } = {}) {
+  const list = (Array.isArray(claims) ? claims : []).filter(Boolean);
+  const labels = new Set();
+  for (const c of list) {
+    for (const s of [c.subject, c.object?.entity]) {
+      if (!s) continue;
+      labels.add(dedupNorm(s)); labels.add(dedupLabelKey(s));
+    }
+  }
+  const roles = [...new Set(list.filter(c => c.predicate === 'related_to').map(c => dedupNorm(c.object?.literal ?? c.object?.value)).filter(Boolean))];
+  const words = [...new Set(list.flatMap(c => [...dedupWords(c.subject), ...dedupWords(c.statementText ?? c.statement)]))].slice(0, 40);
+  const truncation = emptyTruncation();
+  const ids = new Set();
+  // S8's notion of current: everything but history (claimDedup: superseded / archived are the past).
+  const HISTORY = ['superseded', 'archived'];
+
+  // Entities the incoming claims name (exact label or determiner-stripped key).
+  const { rows: ents } = await p.query(`
+    SELECT entity_id, lower(canonical_label) AS label FROM aqua_entities
+     WHERE owner_id = $1 AND (lower(canonical_label) = ANY($2::text[])
+       OR regexp_replace(lower(canonical_label), '^(the|a|an|my|our|your)\\s+', '') = ANY($2::text[]))`, [owner, [...labels]]);
+  const entIds = ents.map(e => e.entity_id);
+  const entLabel = new Map(ents.map(e => [String(e.entity_id), e.label]));
+
+  if (entIds.length) {
+    // ① exact identity, any non-archived state.
+    // Per incoming claim: its subject's entity ids, and its entity object's ids.
+    const idsOf = label => ents.filter(e => e.label === dedupNorm(label) || dedupLabelKey(e.label) === dedupLabelKey(label)).map(e => e.entity_id);
+    const exact = list.flatMap(c => {
+      const o = c.object ?? {};
+      return idsOf(c.subject).map(e => ({ e, p: c.predicate,
+        lit: o.literal != null ? dedupNorm(o.literal) : null,
+        obj: o.entity != null ? (idsOf(o.entity)[0] ?? null) : null, q: o.quantity ?? null }));
+    });
+    if (exact.length) {
+      // Index-backed: aqua_claims_exact_literal_idx · aqua_claims_owner_predicate_idx · statement_lookup prefix.
+      // One index lookup per object kind (an OR across them defeats the indexes).
+      const { rows: ex } = await p.query(`
+        WITH k AS (SELECT * FROM jsonb_to_recordset($2::jsonb) AS k(e uuid, p text, lit text, obj uuid, q numeric))
+        SELECT c.claim_id FROM k JOIN aqua_claims c ON c.owner_id = $1 AND c.subject_entity_id = k.e AND c.predicate = k.p
+               AND lower(btrim(c.object_literal)) = k.lit AND c.state <> 'archived' WHERE k.lit IS NOT NULL
+        UNION
+        SELECT c.claim_id FROM k JOIN aqua_claims c ON c.owner_id = $1 AND c.predicate = k.p AND c.object_entity_id = k.obj
+               AND c.subject_entity_id = k.e AND c.state <> 'archived' WHERE k.obj IS NOT NULL
+        UNION
+        SELECT c.claim_id FROM k JOIN aqua_claims c ON c.owner_id = $1 AND c.subject_entity_id = k.e AND c.predicate = k.p
+               AND c.object_quantity = k.q AND c.state <> 'archived' WHERE k.q IS NOT NULL`, [owner, JSON.stringify(exact)]);
+      for (const r of ex) ids.add(r.claim_id);
+    }
+
+    // ② current claims of the named entities, the newest N+1 per (entity,
+    // predicate) on each side — index-backed (aqua_claims_*_recent_idx), so the
+    // cost is N per bucket, not the bucket. N+1 rows ⇒ the bucket was cut.
+    const { rows: bucket } = await p.query(`
+      SELECT x.claim_id, e.entity_id AS key_entity, pr.predicate, x.side
+        FROM unnest($2::uuid[]) AS e(entity_id) CROSS JOIN unnest($3::text[]) AS pr(predicate)
+        CROSS JOIN LATERAL (
+          (SELECT c.claim_id, 's' AS side FROM aqua_claims c
+            WHERE c.owner_id = $1 AND c.subject_entity_id = e.entity_id AND c.predicate = pr.predicate
+              AND c.state <> ALL (ARRAY['superseded'::text, 'archived'::text])
+            ORDER BY c.asserted_at DESC, c.claim_id DESC LIMIT $4)
+          UNION ALL
+          (SELECT c.claim_id, 'o' AS side FROM aqua_claims c
+            WHERE c.owner_id = $1 AND c.object_entity_id = e.entity_id AND c.predicate = pr.predicate
+              AND c.object_entity_id IS NOT NULL AND c.state <> ALL (ARRAY['superseded'::text, 'archived'::text])
+            ORDER BY c.asserted_at DESC, c.claim_id DESC LIMIT $4)) x`, [owner, entIds, predicates, DEDUP_BUCKET_LIMIT + 1]);
+    const per = new Map();
+    for (const r of bucket) {
+      const k = `${r.key_entity}|${r.predicate}|${r.side}`;
+      const n = (per.get(k) ?? 0) + 1; per.set(k, n);
+      if (n <= DEDUP_BUCKET_LIMIT) ids.add(r.claim_id);
+      else {
+        const l = entLabel.get(String(r.key_entity));
+        if (l) { truncation.subjects.add(l); truncation.subjects.add(dedupLabelKey(l)); }
+      }
+    }
+
+    // ②′ SAME-KIND RIVALS of a has_property revision (sole-value revision only
+    // needs those). Literals only — no joins — classified by S8's own rule
+    // (`sameKind`, passed in by the caller), so a large bucket never hides the
+    // one same-kind value a change replaces. Up to 3 kept: ≥ 2 is ambiguous.
+    if (typeof sameKind === 'function') {
+      for (const c of list.filter(x => x.revises === true && x.predicate === 'has_property' && (x.polarity ?? 'asserted') === 'asserted')) {
+        const subjectIds = idsOf(c.subject);
+        if (!subjectIds.length) continue;
+        const { rows: lits } = await p.query(`
+          SELECT claim_id, object_literal FROM aqua_claims
+           WHERE owner_id = $1 AND subject_entity_id = ANY($2::uuid[]) AND predicate = 'has_property'
+             AND state <> ALL (ARRAY['superseded'::text, 'archived'::text]) AND polarity = 'asserted' AND modality = 'fact'
+             AND object_literal IS NOT NULL
+           ORDER BY asserted_at DESC, claim_id DESC`, [owner, subjectIds]);
+        const same = lits.filter(r => dedupNorm(r.object_literal) !== dedupNorm(c.object?.literal)
+          && sameKind(c, { object: { literal: r.object_literal } })).slice(0, 3);
+        for (const r of same) ids.add(r.claim_id);
+        truncation.kindComplete.add(dedupNorm(c.subject)); truncation.kindComplete.add(dedupLabelKey(c.subject));
+      }
+    }
+  }
+
+  // ③ role holders.
+  if (roles.length) {
+    const { rows: rh } = await p.query(`
+      SELECT claim_id FROM aqua_claims
+       WHERE owner_id = $1 AND predicate = 'related_to' AND state <> ALL($3::text[]) AND lower(trim(object_literal)) = ANY($2::text[])
+       ORDER BY asserted_at DESC, claim_id LIMIT $4`, [owner, roles, HISTORY, DEDUP_TEXT_LIMIT + 1]);
+    if (rh.length > DEDUP_TEXT_LIMIT) truncation.roles = true;
+    for (const r of rh.slice(0, DEDUP_TEXT_LIMIT)) ids.add(r.claim_id);
+  }
+
+  // ④ word-matched candidates across subjects (prefix match covers inflection).
+  if (words.length) {
+    const tsq = words.map(w => `${w.replace(/[^\p{L}\p{N}]/gu, '')}:*`).filter(w => w.length > 2).join(' | ');
+    const textPreds = [...new Set([...predicates, 'plans_to'])];
+    // (a) sentence match on active/trusted — the partial GIN index
+    //     aqua_claims_lexical_idx serves exactly this predicate;
+    // (b) the same on the rarer non-history states the index omits;
+    // (c) subject LABEL match: on the (smaller) entity table first, then an
+    //     indexed claim lookup by subject.
+    const [{ rows: ta }, { rows: tb }, { rows: le }] = await Promise.all([
+      p.query(`SELECT claim_id, asserted_at FROM aqua_claims
+                WHERE owner_id = $1 AND state = ANY(ARRAY['active','trusted']) AND predicate = ANY($2::text[])
+                  AND to_tsvector('simple', coalesce(statement_text, '')) @@ to_tsquery('simple', $3)
+                ORDER BY asserted_at DESC, claim_id LIMIT $4`, [owner, textPreds, tsq, DEDUP_TEXT_LIMIT + 1]),
+      p.query(`SELECT claim_id, asserted_at FROM aqua_claims
+                WHERE owner_id = $1 AND state <> ALL(ARRAY['active','trusted','superseded','archived']) AND predicate = ANY($2::text[])
+                  AND to_tsvector('simple', coalesce(statement_text, '')) @@ to_tsquery('simple', $3)
+                ORDER BY asserted_at DESC, claim_id LIMIT $4`, [owner, textPreds, tsq, DEDUP_TEXT_LIMIT + 1]),
+      p.query(`SELECT entity_id FROM aqua_entities
+                WHERE owner_id = $1 AND to_tsvector('simple', lower(canonical_label)) @@ to_tsquery('simple', $2) LIMIT 64`, [owner, tsq]),
+    ]);
+    let tc = [];
+    // Subjects the incoming claims NAME are covered by ② (and its guard); the
+    // label branch exists for OTHER subjects only, so it never re-reads them.
+    const named = new Set(entIds.map(String));
+    const others = le.map(e => e.entity_id).filter(id => !named.has(String(id)));
+    if (others.length) {
+      ({ rows: tc } = await p.query(`SELECT claim_id, asserted_at FROM aqua_claims
+                WHERE owner_id = $1 AND subject_entity_id = ANY($2::uuid[]) AND state <> ALL($3::text[]) AND predicate = ANY($4::text[])
+                ORDER BY asserted_at DESC, claim_id LIMIT $5`, [owner, others, HISTORY, textPreds, DEDUP_TEXT_LIMIT + 1]));
+    }
+    const tx = [...new Map([...ta, ...tb, ...tc].map(r => [r.claim_id, r])).values()]
+      .sort((x, y) => new Date(y.asserted_at) - new Date(x.asserted_at) || String(x.claim_id).localeCompare(String(y.claim_id)));
+    if (ta.length > DEDUP_TEXT_LIMIT || tb.length > DEDUP_TEXT_LIMIT || tc.length > DEDUP_TEXT_LIMIT || tx.length > DEDUP_TEXT_LIMIT || le.length >= 64) truncation.text = true;
+    for (const r of tx.slice(0, DEDUP_TEXT_LIMIT)) ids.add(r.claim_id);
+  }
+  truncation.candidates = ids.size;
+  return { ids: [...ids], truncation };
+}
+
+async function dedupRows(p, owner, { predicates = null, ids = null }) {
   const { rows } = await p.query(`
     SELECT c.claim_id, c.owner_id, c.subject_entity_id, se.canonical_label AS subject,
            c.predicate, c.object_entity_id, oe.canonical_label AS object_entity,
@@ -351,15 +552,16 @@ export async function findClaimsForDedup({ ownerId, claims = [], extraPredicates
         AND ev.evidence_id IN (SELECT ce.evidence_id FROM aqua_claim_evidence ce
                                WHERE ce.owner_id = c.owner_id AND ce.claim_id = c.claim_id)
       LEFT JOIN aqua_sources s ON s.source_id = ev.source_id AND s.owner_id = c.owner_id
-     WHERE c.owner_id = $1 AND c.predicate = ANY($2::text[])
-       AND c.state <> 'archived'
+     WHERE c.owner_id = $1 AND c.state <> 'archived'
+       AND ${ids ? 'c.claim_id = ANY($2::uuid[])' : 'c.predicate = ANY($2::text[])'}
      GROUP BY c.claim_id, c.owner_id, c.subject_entity_id, se.canonical_label,
               c.predicate, c.object_entity_id, oe.canonical_label,
               c.object_literal, c.object_quantity, c.object_unit,
               c.object_time_from, c.object_time_to, c.polarity, c.modality,
               c.valid_from, c.valid_to, c.asserted_at, c.state,
               c.statement_text, c.extractor_version
-  `, [owner, predicates]);
+     ORDER BY c.asserted_at, c.claim_id
+  `, [owner, ids ?? predicates]);
   return rows.map(r => ({
     claimId: r.claim_id,
     subject: r.subject,
@@ -397,7 +599,7 @@ export async function commitUnderstanding(input = {}) {
     // satisfy the FK on a fresh conversation.
     await client.query(`INSERT INTO aqua_sources
       (source_id,owner_id,kind,external_ref,title,trust_tier,content_hash)
-      VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT (source_id) DO NOTHING`,
+      VALUES ($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING`,  // either unique index (pkey or id+owner): a concurrent first commit of the same turn (2026-10-19)
       [sourceId,ownerId,input.sourceKind??'conversation',input.externalRef??null,input.title??null,input.trustTier??1,input.contentHash??null]);
 
     const ledger = await recordUnderstandingCommit({ownerId,sourceId,segmentRange:{start,end},
@@ -1010,7 +1212,7 @@ export async function persistInferredPattern(input = {}) {
       INSERT INTO aqua_sources
         (source_id,owner_id,kind,external_ref,title,trust_tier,content_hash)
       VALUES ($1,$2,'reflection',$3,$4,$5,$6)
-      ON CONFLICT (source_id) DO NOTHING`,
+      ON CONFLICT DO NOTHING`,
       [sourceId, ownerId, `reflection:${extractor}`, 'Reflection V3 pattern inference', confidence,
        crypto.createHash('sha256').update(statementText).digest('hex')]);
 

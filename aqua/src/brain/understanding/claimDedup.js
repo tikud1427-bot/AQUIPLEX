@@ -74,6 +74,38 @@ function objectSig(claim) {
 }
 
 /**
+ * WHAT KIND OF VALUE a literal is (2026-10-17). `has_property` is the
+ * catch-all attribute: one subject holds many unrelated ones ("42 paying
+ * clinics", "$39 per clinic per month") with no key saying which is which. The
+ * sole-value revision below retired the subject's ONLY other current value, so
+ * "the price is now $39" retired the clinic count (held-out world, worker run).
+ * A revision may only replace a value of the same kind; free text must also
+ * share a content word. Conservative: unknown → not the same attribute.
+ */
+const VALUE_KINDS = [
+  ['money', /[$€£₹]\s?\d|\b\d[\d,.]*\s?(?:k|m)?\s?(?:usd|eur|gbp|inr|dollars?|euros?|pounds?|rupees?)\b/i],
+  ['percent', /\d\s?%|\bper\s?cent\b|\bpercent\b/i],
+  ['duration', /\b\d+(?:\.\d+)?\s*(?:minutes?|hours?|days?|weeks?|months?|years?|yrs?)\b/i],
+  ['date', /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}\b|\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b|\b\d{4}-\d{2}-\d{2}\b|\b(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i],
+  ['count', /\d/],
+];
+const VALUE_STOP = new Set(['the', 'and', 'with', 'from', 'that', 'this', 'our', 'their', 'per', 'now', 'about', 'than', 'into']);
+function valueKind(claim) {
+  const o = claim?.object ?? {};
+  const text = o.quantity != null ? `${o.quantity} ${o.unit ?? ''}` : String(o.literal ?? o.value ?? '');
+  return VALUE_KINDS.find(([, re]) => re.test(text))?.[0] ?? 'text';
+}
+const valueWords = c => new Set(String(c?.object?.literal ?? c?.object?.value ?? '').toLowerCase()
+  .match(/[\p{L}]{4,}/gu)?.filter(w => !VALUE_STOP.has(w)) ?? []);
+export function sameAttributeValue(a, b) {
+  const ka = valueKind(a);
+  if (ka !== valueKind(b)) return false;
+  if (ka !== 'text') return true;
+  const wb = valueWords(b);
+  return [...valueWords(a)].some(w => wb.has(w));
+}
+
+/**
  * Exact identity: subject + predicate + object + polarity.
  *
  * Modality is DELIBERATELY absent. "I plan to join Zeta" and "I joined Zeta"
@@ -225,7 +257,10 @@ export function inStoredVocabulary(c) {
 const PENDING_PREDICATES = new Set(['has_status', 'has_property']);
 const RESOLVED_RE = /\b(?:fixed|resolved|solved|done|complete(?:d)?|finished|signed|approved|granted|arrived|delivered|received|returned|came\s+through|cleared|sorted(?:\s+out)?|unblocked|repaired|working\s+again|back\s+online|passed|accepted|issued|no\s+longer\s+(?:an?\s+)?(?:issue|problem|blocking|blocker))\b/i;
 const UNRESOLVED_RE = /\b(?:not|n['’]t|never|still|yet|pending|waiting|awaiting|delayed|late|stuck)\b/i;
-const PENDING_RE = /\b(?:hasn['’]t|has\s+not|haven['’]t|have\s+not|isn['’]t|not\s+yet|still|pending|waiting|awaiting|late|delayed|stuck|missing|broken|down|blocked|blocking|overdue|timing\s+out|failing|fails|keeps)\b/i;
+// `blockers?` (2026-10-18): "Our biggest blocker is the Google Calendar sync"
+// is (sync, has_property, "biggest blocker"); without the noun, "the sync is
+// fixed now" retired the sentence's other claim and left this one current.
+const PENDING_RE = /\b(?:hasn['’]t|has\s+not|haven['’]t|have\s+not|isn['’]t|not\s+yet|still|pending|waiting|awaiting|late|delayed|stuck|missing|broken|down|blocked|blocking|blockers?|overdue|timing\s+out|failing|fails|keeps)\b/i;
 
 /** "the embassy" / "The Embassy" / "my visa application" → one comparable key. */
 function labelKey(s) {
@@ -254,6 +289,39 @@ function subjectWords(s) {
     .filter(w => w.length > 2 && !WORD_STOP.has(w)).map(stemWord).filter(w => w.length > 2))];
 }
 
+/** Relations that say who is responsible for what (2026-10-18). */
+const RESPONSIBILITY_PREDICATES = new Set(['role_is', 'task_owner', 'owns', 'builds', 'manages']);
+// What someone DOES, as the extractor actually phrases it (2026-10-19): the same
+// sentence came back across recordings as builds / habit_of / has_status. Never
+// employment, membership or place: "Kofi is no longer working on the Brightloop
+// launch" must not end Kofi's job at Brightloop.
+const ACTIVITY_PREDICATES = new Set([...RESPONSIBILITY_PREDICATES, 'habit_of', 'has_status', 'has_property', 'uses']);
+/** A sentence that states something ENDED, even when E6 did not set `revises`. */
+const ENDED_RE = /\b(?:no\s+longer|not\s+anymore|anymore|stopped|quit|took\s+over|taken\s+over|handed\s+over|handed\s+off|stepped\s+down|moved\s+off|left)\b/i;
+const OBJECT_GENERIC = new Set([...GENERIC_WORDS, 'lead', 'leads', 'leading', 'working', 'help', 'helping', 'handle', 'handling', 'own', 'owns', 'run', 'runs', 'running', 'build', 'building', 'weekend']);
+const CANCEL_RE = /\b(?:cancel(?:l)?ed|called\s+off|scrapped|abandoned|shelved|dropped|not\s+happening|won['’]t\s+happen)\b/i;
+const CANCEL_WORDS = new Set(['cancel', 'cancell', 'cancelled', 'canceled', 'scrap', 'scrapp', 'drop', 'dropp', 'abandon', 'shelv']);
+function distinctiveObjectWords(c) {
+  const o = c?.object ?? {};
+  return subjectWords(o.entity ?? o.literal ?? o.value ?? '').filter(w => !OBJECT_GENERIC.has(w));
+}
+
+/**
+ * History predicates the cross-predicate revision rules need beyond the
+ * incoming claims' own (S8's history is loaded per predicate): an ended
+ * responsibility needs the other responsibility relations; a rescheduled date
+ * needs the plans it may replace. Empty for ordinary turns.
+ */
+export function revisionHistoryPredicates(claims = []) {
+  const extra = new Set();
+  for (const c of Array.isArray(claims) ? claims : []) {
+    if ((c?.polarity ?? 'asserted') === 'negated' && ACTIVITY_PREDICATES.has(c?.predicate)) for (const p of ACTIVITY_PREDICATES) extra.add(p);
+    if (c?.revises === true && c?.predicate === 'deadline_for') extra.add('plans_to');
+    if (CANCEL_RE.test(String(c?.statementText ?? '')) && ['rejected', 'decided', 'has_status'].includes(c?.predicate)) extra.add('plans_to');
+  }
+  return [...extra];
+}
+
 /** Predicates S8 needs in history when a batch carries a resolution status. */
 export const RESOLUTION_HISTORY_PREDICATES = Object.freeze(['blocks', 'blocked_by', 'has_status', 'has_property']);
 
@@ -263,6 +331,27 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
   const contradictions = [];
   const evidenceAttachments = [];
   const ambiguousRevisions = [];
+
+  // BOUNDED HISTORY (2026-10-18). When the repository capped a candidate set
+  // (worldModelRepository.findClaimsForDedup → `truncation`), a rule that needs
+  // "exactly one" candidate cannot know there is only one: it abstains and the
+  // revision is recorded as ambiguous. A cap can cost a revision, never cause a
+  // wrong one. Without truncation info (the full history) nothing changes.
+  const t = opts.truncation ?? null;
+  const abstain = (claim, list, reason) => { list.push({ claim, candidates: 'unknown', reason: `history-truncated:${reason}` }); return true; };
+  const inSet = (set, claim) => Boolean(set?.has?.(norm(claim.subject)) || set?.has?.(labelKey(claim.subject)));
+  const cut = {
+    // Sole-value revision: a cut bucket hides rivals only for has_property, whose
+    // rivals are filtered by KIND — unless the repository fetched every same-kind
+    // value (`kindComplete`). For any other predicate a cut bucket already holds
+    // > N rivals, so the rule is ambiguous on its own, exactly as with full history.
+    soleValue: (claim, _c, list) => claim.predicate === 'has_property' && inSet(t?.subjects, claim) && !inSet(t?.kindComplete, claim) && abstain(claim, list, 'subject'),
+    // Rules whose candidate must contain every distinctive word: found through
+    // the subject bucket OR the word lookup, so only both cut is unsafe.
+    subjectAndText: (claim, _c, list) => inSet(t?.subjects, claim) && Boolean(t?.text) && abstain(claim, list, 'subject+text'),
+    roles: (claim, _c, list) => Boolean(t?.roles) && abstain(claim, list, 'roles'),
+    text: (claim, _c, list) => Boolean(t?.text) && abstain(claim, list, 'text'),
+  };
 
   // Seed with what is already stored so incoming claims corroborate and
   // contradict against history, not only against each other in this batch.
@@ -332,14 +421,140 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
         && subjectPredicateKey(o) === subjectPredicateKey(claim)
         && o.state !== 'superseded' && o.state !== 'archived'
         && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact'
-        && objectSig(o).value !== sig.value);
-      if (rivals.length === 1 && !contradictions.some(c => c.incoming === claim && c.existing === rivals[0])) {
+        && objectSig(o).value !== sig.value
+        // The catch-all attribute holds unrelated values: only one of the same kind can be the one replaced.
+        && (claim.predicate !== 'has_property' || sameAttributeValue(claim, o)));
+      if (rivals.length <= 1 && cut.soleValue(claim, rivals, ambiguousRevisions)) { /* history cut: abstained */ } else if (rivals.length === 1 && !contradictions.some(c => c.incoming === claim && c.existing === rivals[0])) {
         contradictions.push({
           kind: 'revision', reason: `${claim.predicate} revised; ${rivals[0].subject} held one other current value`,
           incoming: claim, existing: rivals[0], subject: claim.subject, predicate: claim.predicate,
         });
       } else if (rivals.length > 1) {
         ambiguousRevisions.push({ claim, candidates: rivals.length });
+      }
+    }
+
+    // ATTRIBUTE NAMED AS A SUBJECT (2026-10-17). "Our price is $29 per clinic
+    // per month" was stored as (Our price, has_property, $29…) and "We raised
+    // our price to $39 per clinic per month" as (You, has_property, $39…): two
+    // subjects, so no rule above compared them and both prices stayed current
+    // (held-out world). Same evidence bar as the renamed-subject rule below: a
+    // change (`revises`) of has_property, no contradiction found for it yet, and
+    // exactly ONE current claim under another subject whose distinctive words
+    // all appear in the other claim's own sentence (either direction) and whose
+    // value is the same kind. Two → ambiguous, nothing retired.
+    if (claim.revises === true && claim.predicate === 'has_property'
+        && (claim.polarity ?? 'asserted') === 'asserted' && (claim.modality ?? 'fact') === 'fact'
+        && !contradictions.some(c => c.incoming === claim)) {
+      const sentenceOf = c => new Set(subjectWords(c.statementText ?? c.statement ?? ''));
+      const distinctive = s => subjectWords(s).filter(w => !GENERIC_WORDS.has(w));
+      const mine = sentenceOf(claim);
+      const cands = [...kept.values()].map(k => k.claim).filter(o => o !== claim && o._persisted
+        && o.predicate === 'has_property' && labelKey(o.subject) !== labelKey(claim.subject)
+        && o.state !== 'superseded' && o.state !== 'archived'
+        && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact'
+        && sameAttributeValue(claim, o)
+        && (() => {
+          const theirs = distinctive(o.subject);
+          const ours = distinctive(claim.subject);
+          return (theirs.length && theirs.every(w => mine.has(w)))
+            || (ours.length && ours.every(w => sentenceOf(o).has(w)));
+        })());
+      if (cands.length <= 1 && cut.text(claim, cands, ambiguousRevisions)) { /* history cut: abstained */ } else if (cands.length === 1) {
+        contradictions.push({
+          kind: 'revision', reason: `has_property revised; "${cands[0].subject}" names the attribute "${claim.statementText ?? claim.subject}" changes`,
+          incoming: claim, existing: cands[0], subject: claim.subject, predicate: claim.predicate,
+        });
+      } else if (cands.length > 1) {
+        ambiguousRevisions.push({ claim, candidates: cands.length, reason: 'attribute-subject' });
+      }
+    }
+
+    // RESPONSIBILITY ENDED (2026-10-18, held-out stale cases h009, h024). "Rui
+    // has taken over design from Ines" → (Ines, task_owner, design) NEGATED, and
+    // "Kofi is no longer working on Atlas" → (Kofi, task_owner, "working on
+    // Atlas") NEGATED. What they end was stored under another responsibility
+    // predicate — (Ines, role_is, "leads design"), (Kofi, builds, Atlas) — so the
+    // polarity rule, which needs one predicate, never compared them and both
+    // stayed current. Linked only when the sentence states an END (`revises`, or
+    // "no longer"/"taken over"/…), on the same subject, and EVERY distinctive word
+    // of the ended responsibility is in the old claim's object. History is kept:
+    // the old claim is superseded, not deleted.
+    if ((claim.polarity ?? 'asserted') === 'negated' && ACTIVITY_PREDICATES.has(claim.predicate)
+        && (claim.modality ?? 'fact') === 'fact'
+        && (claim.revises === true || ENDED_RE.test(String(claim.statementText ?? '')))) {
+      const want = distinctiveObjectWords(claim);
+      const ended = want.length ? [...kept.values()].map(k => k.claim).filter(o => o !== claim && o._persisted
+        && labelKey(o.subject) === labelKey(claim.subject) && ACTIVITY_PREDICATES.has(o.predicate) && !(o.predicate === claim.predicate && objectSig(o).value === objectSig(claim).value)
+        && o.state !== 'superseded' && o.state !== 'archived'
+        && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact'
+        && !contradictions.some(c => c.incoming === claim && c.existing === o)
+        && (() => { const have = new Set(distinctiveObjectWords(o)); return want.every(w => have.has(w)); })()) : [];
+      if (ended.length <= 1 && cut.subjectAndText(claim, ended, ambiguousRevisions)) { /* history cut: abstained */ } else if (ended.length === 1) {
+        contradictions.push({
+          kind: 'revision', reason: `${claim.subject} no longer ${claim.predicate} "${objectSig(claim).value}" — ends ${ended[0].predicate} "${objectSig(ended[0]).value}"`,
+          incoming: claim, existing: ended[0], subject: claim.subject, predicate: claim.predicate,
+        });
+        claim.revises = true;
+      } else if (ended.length > 1) {
+        ambiguousRevisions.push({ claim, candidates: ended.length, reason: 'responsibility-ended' });
+      }
+    }
+
+    // PLAN RESCHEDULED (2026-10-18, held-out stale cases h003, h051). "We're
+    // planning to launch publicly on April 14" → (You, plans_to, "launch publicly
+    // on April 14", intent); "We moved the public launch to May 2" → (public
+    // launch, deadline_for, May 2, revises). One date, two shapes: April 14 stayed
+    // current. Linked only for a CHANGE (`revises`) of a dated relation, against
+    // exactly ONE current dated plan whose words contain every word of the new
+    // subject (prefix-aware: "public" ~ "publicly"), with a different date.
+    if (claim.revises === true && claim.predicate === 'deadline_for'
+        && (claim.polarity ?? 'asserted') === 'asserted'
+        && !contradictions.some(c => c.incoming === claim)) {
+      const words = subjectWords(claim.subject);
+      const plans = words.length ? [...kept.values()].map(k => k.claim).filter(o => o !== claim && o._persisted
+        && o.predicate === 'plans_to' && o.state !== 'superseded' && o.state !== 'archived'
+        && (o.polarity ?? 'asserted') === 'asserted'
+        && valueKind(o) === 'date' && objectSig(o).value !== objectSig(claim).value
+        && (() => {
+          const have = [...new Set([...subjectWords(o.object?.literal ?? ''), ...subjectWords(o.statementText ?? '')])];
+          return words.every(w => have.some(h => h === w || (w.length >= 5 && (h.startsWith(w) || w.startsWith(h)))));
+        })()) : [];
+      if (plans.length <= 1 && cut.text(claim, plans, ambiguousRevisions)) { /* history cut: abstained */ } else if (plans.length === 1) {
+        contradictions.push({
+          kind: 'revision', reason: `"${claim.subject}" rescheduled — replaces the plan "${objectSig(plans[0]).value}"`,
+          incoming: claim, existing: plans[0], subject: claim.subject, predicate: claim.predicate,
+        });
+      } else if (plans.length > 1) {
+        ambiguousRevisions.push({ claim, candidates: plans.length, reason: 'plan-rescheduled' });
+      }
+    }
+
+    // PLAN CANCELLED (2026-10-18). "We're planning a team offsite in Porto in
+    // June" → (You, plans_to, …, intent); "We cancelled the Porto offsite" →
+    // (You, rejected, "Porto offsite"). The plan stayed current and the profile
+    // kept saying it was planned. Linked only on explicit cancel language, same
+    // subject, and exactly ONE current plan containing every distinctive word of
+    // what was cancelled. The plan is superseded (kept as history), not deleted.
+    if (CANCEL_RE.test(String(claim.statementText ?? '')) && (claim.polarity ?? 'asserted') === 'asserted'
+        && ['rejected', 'decided', 'has_status'].includes(claim.predicate)) {
+      // The cancelled THING may be the subject — (Porto offsite, has_status, "cancelled") —
+      // or the object — (You, rejected, "Porto offsite"). Its words, either way.
+      const selfSubject = /^(?:you|self|i)$/i.test(String(claim.subject ?? '').trim());
+      const want = [...new Set([...distinctiveObjectWords(claim), ...(selfSubject ? [] : subjectWords(claim.subject).filter(w => !GENERIC_WORDS.has(w)))])]
+        .filter(w => !CANCEL_WORDS.has(w));
+      const plans = want.length ? [...kept.values()].map(k => k.claim).filter(o => o !== claim && o._persisted
+        && o.predicate === 'plans_to' && (selfSubject ? labelKey(o.subject) === labelKey(claim.subject) : true)
+        && o.state !== 'superseded' && o.state !== 'archived' && (o.polarity ?? 'asserted') === 'asserted'
+        && (() => { const have = new Set(distinctiveObjectWords(o)); return want.every(w => have.has(w)); })()) : [];
+      if (plans.length <= 1 && cut.subjectAndText(claim, plans, ambiguousRevisions)) { /* history cut: abstained */ } else if (plans.length === 1) {
+        contradictions.push({
+          kind: 'revision', reason: `plan cancelled: "${objectSig(plans[0]).value}"`,
+          incoming: claim, existing: plans[0], subject: claim.subject, predicate: claim.predicate,
+        });
+        claim.revises = true;
+      } else if (plans.length > 1) {
+        ambiguousRevisions.push({ claim, candidates: plans.length, reason: 'plan-cancelled' });
       }
     }
 
@@ -360,7 +575,7 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
         && String(o.subject ?? '').toLowerCase() !== String(claim.subject ?? '').toLowerCase()
         && o.state !== 'superseded' && o.state !== 'archived'
         && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact');
-      if (holders.length === 1 && !contradictions.some(c => c.incoming === claim && c.existing === holders[0])) {
+      if (holders.length <= 1 && cut.roles(claim, holders, ambiguousRevisions)) { /* history cut: abstained */ } else if (holders.length === 1 && !contradictions.some(c => c.incoming === claim && c.existing === holders[0])) {
         contradictions.push({
           kind: 'revision', reason: `role "${role}" handed over from ${holders[0].subject} to ${claim.subject}`,
           incoming: claim, existing: holders[0], subject: claim.subject, predicate: claim.predicate,
@@ -392,7 +607,7 @@ export function dedupAndDetect(incoming, existing = [], opts = {}) {
           && o.state !== 'superseded' && o.state !== 'archived'
           && (o.polarity ?? 'asserted') === 'asserted' && (o.modality ?? 'fact') === 'fact'
           && (() => { const have = new Set([...subjectWords(o.subject), ...subjectWords(o.statementText ?? o.statement ?? '')]); return words.every(w => have.has(w)); })());
-        if (cands.length === 1) {
+        if (cands.length <= 1 && cut.text(claim, cands, ambiguousRevisions)) { /* history cut: abstained */ } else if (cands.length === 1) {
           contradictions.push({
             kind: 'revision', reason: `"${claim.subject}" refers to the subject of "${cands[0].statementText ?? cands[0].subject}" (renamed mention of the same ${claim.predicate})`,
             incoming: claim, existing: cands[0], subject: claim.subject, predicate: claim.predicate,

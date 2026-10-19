@@ -123,6 +123,18 @@ export function validateClaim(input) {
     kind = 'literal';
     coerced = 'entity→literal';
   }
+  // QUANTITY → LITERAL, CONTENT-PRESERVING (2026-10-18). "We're now at 57
+  // paying clinics" came back as has_property {quantity:57, unit:"paying
+  // clinics"} — correct — and was refused here because has_property takes a
+  // literal, so the new customer count never reached the World Model and the
+  // old one stayed current (held-out world, stale case h014). Same rule as
+  // above: the literal carries the same text, and S4 gate ② still requires it
+  // to appear in the quote ("57 paying clinics").
+  if (form === 'quantity' && expected === 'literal' && Number.isFinite(Number(object.quantity))) {
+    obj = { literal: `${object.quantity}${object.unit ? ` ${String(object.unit).trim()}` : ''}`.trim() };
+    kind = 'literal';
+    coerced = 'quantity→literal';
+  }
   if (kind !== expected) {
     return { ok: false, reason: `object-kind-mismatch:${predicate} wants ${expected}, got ${form}` };
   }

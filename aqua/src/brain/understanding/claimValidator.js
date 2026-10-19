@@ -122,6 +122,43 @@ export function canonText(s) {
     .trim();
 }
 
+/** Crude English inflection stem: helping/helps/helped/help → "help"; preparing/prepare → "prepar". */
+function stem(w) {
+  let s = w;
+  for (const suf of ['ing', 'ed', 'es', 's']) {
+    if (s.endsWith(suf) && s.length - suf.length >= 3) { s = s.slice(0, -suf.length); break; }
+  }
+  if (s.endsWith('e') && s.length > 3) s = s.slice(0, -1);
+  return s;
+}
+const bare = t => t.toLowerCase().replace(/^[^a-z0-9$]+|[^a-z0-9%]+$/g, '');
+
+/**
+ * Gate ②′. The span of `quote` that says `literal` with at most ONE word
+ * differing by inflection, or null. Every other word must match exactly and
+ * in order, at least one word must match exactly, and the differing word must
+ * be alphabetic on both sides. Returns the quote's own text (trailing
+ * punctuation trimmed), never the literal.
+ */
+export function groundInflectedSpan(literal, quote) {
+  const want = String(literal ?? '').trim().split(/\s+/).map(bare).filter(Boolean);
+  if (want.length < 2) return null;
+  const toks = [...String(quote ?? '').matchAll(/\S+/g)].map(m => ({ raw: m[0], at: m.index, w: bare(m[0]) }));
+  for (let i = 0; i + want.length <= toks.length; i++) {
+    let differing = 0, exact = 0, ok = true;
+    for (let j = 0; j < want.length && ok; j++) {
+      const a = toks[i + j].w, b = want[j];
+      if (a === b) { exact++; continue; }
+      if (/^[a-z]+$/.test(a) && /^[a-z]+$/.test(b) && stem(a) === stem(b) && ++differing <= 1) continue;
+      ok = false;
+    }
+    if (!ok || exact === 0) continue;
+    const first = toks[i], last = toks[i + want.length - 1];
+    return String(quote).slice(first.at, last.at + last.raw.length).replace(/[.,;:!?]+$/, '');
+  }
+  return null;
+}
+
 /** First person by GRAMMAR, never by surface form (S6's rule, applied early). */
 const FIRST_PERSON_SUBJECT = new Set(['self', 'i', 'me', 'my', 'mine', 'we', 'us', 'our', 'ours']);
 
@@ -188,9 +225,21 @@ export function validateAgainstSegment(claim, segment, opts = {}) {
   // real span, real words, and a fabricated fact wearing valid provenance.
   const kind = claim.objectKind ?? null;
   const objVal = kind && claim.object ? claim.object[kind] : undefined;
+  let grounded = null;
   if (kind === 'literal' || kind === 'quantity') {
     if (objVal === undefined || objVal === null) return fail(2, 'object-missing');
-    if (!norm(quote).includes(norm(objVal)))     return fail(2, 'object-not-in-quote');
+    if (!norm(quote).includes(norm(objVal))) {
+      // ②′ GROUND, DON'T RELAX (2026-10-19). "Jun is helping me prepare the
+      // investor deck" came back as (Jun, task_owner, "help me prepare the
+      // investor deck") and was discarded here in 3 of 6 live readings — the
+      // person was extracted correctly and lost to a verb form. When the
+      // quote holds the SAME words in the same order, at most one differing
+      // only by inflection, the object is REPLACED by the quote's own span,
+      // so what is stored still appears verbatim in the quote. Literals only:
+      // a quantity must match exactly. Anything else is still discarded.
+      grounded = kind === 'literal' ? groundInflectedSpan(String(objVal), quote) : null;
+      if (!grounded) return fail(2, 'object-not-in-quote');
+    }
   }
   // Entity and time objects are exempt BY DESIGN and it is worth being
   // explicit: an entity object is a resolved id whose surface form need not
@@ -251,6 +300,9 @@ export function validateAgainstSegment(claim, segment, opts = {}) {
     reason: null,
     claim: Object.freeze({
       ...claim,
+      // ②′: the verbatim span replaces the model's inflected wording; the
+      // original is kept so the repair is auditable.
+      ...(grounded ? { object: { ...claim.object, literal: grounded }, objectGrounded: { from: String(objVal), rule: 'inflection' } } : {}),
       // Provenance of a ⑤b resolution — kept in the evidence locator (L4).
       ...(contextResolved ? { contextResolved } : {}),
       confidence: Object.freeze({

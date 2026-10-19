@@ -1,0 +1,37 @@
+{
+  "id": "attribution-dev.v1",
+  "status": "DEVELOPMENT — not frozen, not held out. Free to inspect and tune against.",
+  "created": "2026-10-19",
+  "purpose": "Diagnose WHO-did/owns/runs-WHAT extraction failures observed on the development attribution battery (2026-10-18/19): a helper credited as the owner ('I help Maria with her thesis' → self task_owner thesis), a hire with no role claim ('We hired Omar to run sales'), a client relation lost, and an actor dropped. Written fresh for this purpose; unrelated to the frozen v4 and final evaluation sets, which were not opened.",
+  "scoring": {
+    "req": "[subject, objectWord]: some committed ASSERTED claim has a subject whose label contains `subject` ('self' = the user) and an object containing `objectWord` (empty = any object).",
+    "forbid": "[subject, objectWord, predicates?]: no committed ASSERTED claim may match — a responsibility the sentence did not give to that subject.",
+    "note": "A case is a PASS when every req holds and no forbid matches. Run live (the model is non-deterministic): report x of n per class over at least 3 runs, never a single run."
+  },
+  "classes": {
+    "helper-not-owner": "The user (or someone) helps with another person's thing; the thing belongs to that person.",
+    "hire-role": "A hire or assignment gives a person a responsibility.",
+    "contrast": "Ownership stated against someone else ('X, not me', 'X leads; I only …').",
+    "handover": "A responsibility moved from one person to another.",
+    "joint-actor": "Two people did one thing.",
+    "client-relation": "An external party's relation to the user's company."
+  },
+  "cases": [
+    { "id": "a01", "class": "helper-not-owner", "text": "I help Maria with her thesis.", "req": [["maria", "thesis"]], "forbid": [["self", "thesis", ["owns", "builds", "task_owner"]]] },
+    { "id": "a02", "class": "helper-not-owner", "text": "I'm helping Lena finish her pitch deck this week.", "req": [["lena", "deck"]], "forbid": [["self", "deck", ["owns", "builds", "task_owner"]]] },
+    { "id": "a03", "class": "helper-not-owner", "text": "Ravi is helping me set up the analytics dashboard.", "req": [["ravi", "analytics"]] },
+    { "id": "a04", "class": "helper-not-owner", "text": "My sister runs a bakery and I do her bookkeeping on Sundays.", "req": [["sister", "bakery"]], "forbid": [["self", "bakery", ["owns", "manages", "task_owner"]]] },
+    { "id": "a05", "class": "hire-role", "text": "We hired Omar to run sales; he starts next month.", "req": [["omar", "sales"]] },
+    { "id": "a06", "class": "hire-role", "text": "I asked Zoe to handle customer support from Monday.", "req": [["zoe", "support"]], "forbid": [["self", "support", ["owns", "manages", "task_owner"]]] },
+    { "id": "a07", "class": "hire-role", "text": "Dev joined last week as our first backend engineer.", "req": [["dev", "engineer"]] },
+    { "id": "a08", "class": "contrast", "text": "Priya, not me, owns the billing migration.", "req": [["priya", "billing"]], "forbid": [["self", "billing", ["owns", "manages", "task_owner"]]] },
+    { "id": "a09", "class": "contrast", "text": "Arjun leads design; I only review his mockups.", "req": [["arjun", "design"]], "forbid": [["self", "design", ["manages", "owns"]]] },
+    { "id": "a10", "class": "contrast", "text": "My cofounder Sam runs ops while I handle product.", "req": [["sam", "ops"], ["self", "product"]], "forbid": [["self", "ops", ["manages", "owns"]], ["sam", "product", ["manages", "owns"]]] },
+    { "id": "a11", "class": "handover", "text": "Tom used to run marketing; Ines took it over in March.", "req": [["ines", "marketing"]] },
+    { "id": "a12", "class": "handover", "text": "I've handed the hiring pipeline to Hana.", "req": [["hana", "hiring"]] },
+    { "id": "a13", "class": "joint-actor", "text": "The investor memo was written by Kai and Mira.", "req": [["kai", "memo"], ["mira", "memo"]] },
+    { "id": "a14", "class": "joint-actor", "text": "Noor and I are building the onboarding flow together.", "req": [["noor", "onboarding"], ["self", "onboarding"]] },
+    { "id": "a15", "class": "client-relation", "text": "Our client Fennel asked us to redesign their menu app.", "req": [["fennel", ""]] },
+    { "id": "a16", "class": "client-relation", "text": "Lumen Health is our biggest customer and wants SSO by June.", "req": [["lumen", "customer"]] }
+  ]
+}

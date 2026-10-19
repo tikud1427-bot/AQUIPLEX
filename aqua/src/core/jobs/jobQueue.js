@@ -42,6 +42,26 @@ export function backoffMs(attempts, capMs = BACKOFF_CAP_MS) {
 }
 
 /**
+ * Provider CAPACITY failures (rate limit, 429, quota, every key cooling down)
+ * clear on a minutes scale — Groq's free tier is tokens-per-MINUTE per
+ * organisation. On the 2^n-seconds schedule a turn retried for ~30 s and was
+ * dead-lettered while the limit was still in force: the user's change was lost
+ * (live product journey, 2026-10-16: "we moved the launch to May 2" never
+ * reached memory). Capacity failures wait 1, 2, 4, 8 min, then the cap.
+ */
+export const CAPACITY_ERROR_RE = /rate.?limit|\b429\b|quota|cooling down|too many requests|tokens per (minute|day)/i;
+
+export function capacityBackoffMs(attempts, capMs = BACKOFF_CAP_MS) {
+  const n = Math.max(1, Number(attempts) || 1);
+  return Math.min(capMs, 60_000 * 2 ** (n - 1));
+}
+
+/** The retry wait for a failure message: capacity errors on the minutes schedule. */
+export function retryWaitMs(attempts, message) {
+  return CAPACITY_ERROR_RE.test(String(message ?? '')) ? capacityBackoffMs(attempts) : backoffMs(attempts);
+}
+
+/**
  * Is there a durable queue to schedule onto? Lets callers above the storage
  * layer ask WITHOUT importing the pool (the pool has a declared-consumers guard).
  */
@@ -150,7 +170,7 @@ export async function fail(jobId, error) {
     return { state: 'dead', retryInMs: 0 };
   }
 
-  const wait = backoffMs(attempts);
+  const wait = retryWaitMs(attempts, message);
   await p.query(
     `UPDATE aqua_jobs SET state = 'queued', last_error = $2, claimed_by = NULL,
        run_after = now() + ($3::int * interval '1 millisecond'), updated_at = now()

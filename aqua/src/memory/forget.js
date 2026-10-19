@@ -15,7 +15,7 @@
  * gone while the copy that answers is still there; retrying is safe
  * (archiving is idempotent).
  */
-import { getFact, deleteFact, clearFacts } from './longTermMemory.js';
+import { getFact, getFacts, deleteFact, clearFacts } from './longTermMemory.js';
 
 export class MemoryControlUnavailable extends Error {
   constructor(message = 'Memory is temporarily unavailable — nothing was changed. Please try again.') {
@@ -44,6 +44,53 @@ export async function forgetFact(ownerId, key) {
   deleteFact(ownerId, key);
   logControl('FORGET', ownerId, key, worldModel);
   return { key, worldModel };
+}
+
+/**
+ * Forget one CANONICAL claim — what the Memory page shows answering (2026-10-16).
+ * World Model first (archive + conversation lane); then every legacy fact
+ * holding the same value, so no store is left that could answer it. A
+ * resurrected legacy copy is also blocked by the veto (user-archived values
+ * count as retired). Returns null when the claim is not this owner's.
+ */
+export async function forgetClaim(ownerId, claimId) {
+  const Brain = await brain();
+  const worldModel = await guarded(() => Brain.forgetWorldModelClaim(ownerId, claimId));
+  if (!worldModel) return null;
+  const legacy = [];
+  // A deleted ROLE ("Maya — my co-founder") also clears the legacy slot named
+  // by that role, whatever it holds: the regex extractor filled "cofounder"
+  // with a wrong value ("And") that matched no deleted value and kept
+  // answering "your co-founder is And" (live journey 2026-10-17).
+  const slots = new Set(worldModel.values.map(slotOf).filter(s => s.length >= 4));
+  for (const fact of getFacts(ownerId, { includeArchived: true })) {
+    const held = Brain.legacyValueStrings(fact.value);
+    if (held.some(h => worldModel.values.includes(h)) || slots.has(slotOf(fact.key))) {
+      deleteFact(ownerId, fact.key);
+      legacy.push(fact.key);
+    }
+  }
+  logControl('FORGET_CLAIM', ownerId, claimId, worldModel);
+  return { ...worldModel, legacyFacts: legacy };
+}
+
+/**
+ * Correct one CANONICAL claim to a new value (Memory page, 2026-10-16). The
+ * World Model gets a user-correction successor (new value as the object); any
+ * legacy fact still holding the OLD value is removed so no store keeps it
+ * (the veto would also withhold it — the old claim is now superseded).
+ */
+export async function correctClaimValue(ownerId, claimId, newValue) {
+  const Brain = await brain();
+  const worldModel = await guarded(() => Brain.correctWorldModelClaimValue(ownerId, claimId, newValue));
+  if (!worldModel) return null;
+  const old = worldModel.oldValue == null ? [] : Brain.legacyValueStrings(worldModel.oldValue);
+  const legacy = [];
+  for (const fact of getFacts(ownerId, { includeArchived: true })) {
+    if (Brain.legacyValueStrings(fact.value).some(h => old.includes(h))) { deleteFact(ownerId, fact.key); legacy.push(fact.key); }
+  }
+  logControl('CORRECT_CLAIM', ownerId, claimId, { corrected: [worldModel], conversationFacts: worldModel.conversationFacts });
+  return { ...worldModel, legacyFacts: legacy };
 }
 
 /** Forget every fact the user told Aqua (uploaded documents are managed separately). */
@@ -94,6 +141,11 @@ export function retireSupersededInBackground(ownerId, key, previous) {
     .then(Brain => Brain.retireSupersededStatement(ownerId, { oldValue: previous.value, sourceText: previous.sourceText }))
     .then(ids => { if (ids.length) console.log(`[MEMORY] SUPERSEDED owner=${ownerId} key=${key} conversationFacts=${ids.length}`); })
     .catch(err => console.warn(`[MEMORY] superseded statement not retired owner=${ownerId} key=${key}: ${err?.message ?? err}`));
+}
+
+/** "co-founder" / "Co Founder" / "cofounder" → "cofounder": a legacy key and a role value compare equal. */
+export function slotOf(s) {
+  return String(s ?? '').toLowerCase().replace(/[^a-z]/g, '');
 }
 
 function logControl(kind, ownerId, key, wm) {

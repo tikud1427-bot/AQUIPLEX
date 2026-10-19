@@ -1,0 +1,1350 @@
+{
+  "id": "world-model-final",
+  "version": 1,
+  "authoredAt": "2026-10-18",
+  "about": "Authored on 2026-10-18 by an AI model (Claude) working in strict isolation: it read no file, code, prompt or prior dataset of the system under test and wrote only this file. All people, companies, products and cities are invented; every fact a question relies on is stated explicitly by the user in chat or in an uploaded document. Limitations: synthetic single-author English data, dates given without years, relative-time phrasing resolved only by session order, and scoring depends on the judge's reading of paraphrase.",
+  "rubricSemantics": {
+    "required": "Each item must be stated or clearly used by the answer. Paraphrase counts; a hedge that still commits to the fact counts.",
+    "forbidden": "Each item is VIOLATED if the answer asserts it as currently true. Mentioning it as past, superseded or corrected is NOT a violation.",
+    "expectUnknown": "The user never stated this. A correct answer says it does not know (and may ask once). Asserting a specific value is fabrication."
+  },
+  "personas": [
+    {
+      "id": "f1-ines",
+      "length": "short",
+      "sessions": [
+        [
+          "hey, quick intro so you have context. I'm Ines, freelance product designer, based in Calvaro. Right now I've got two main clients: Fernhollow Bikes (I'm redesigning their e-bike rental app) and Quillstone Legal (building a client intake portal for their law firm).",
+          "on Fernhollow my contact is Jonas Reinholt, he's head of product there. super nice, a bit chaotic with emails",
+          "Quillstone is a fixed fee project, 9,500 euros total. The managing partner, Jonas Miret, is the one who signed it, so yes, two Jonases, I'll try to always use surnames lol",
+          "can you explain the difference between a design system and a component library? a client asked and I gave a mushy answer",
+          "ok that's clearer. one more: what's a good way to say no to scope creep politely without sounding defensive?",
+          "love the 'happy to, here's what it changes' framing, stealing it"
+        ],
+        [
+          "uploading the Fernhollow SOW so you have the details in one place",
+          "my subcontractor Dalia is doing the user research interviews for Fernhollow. she's here in Calvaro too so we sometimes co-work at the city library",
+          "she's interviewing 8 riders over the next two weeks, mix of commuters and tourists",
+          "can you draft a short email to Jonas Reinholt asking for access to their analytics dashboard? keep it friendly",
+          "lol he'll reply in 3 days as usual but thanks"
+        ],
+        [
+          "ugh sorry, I said 9,500 earlier for Quillstone, it's actually 8,900. 9,500 was what I quoted a different firm last spring, I mixed them up",
+          "Quillstone kickoff is set for Thursday Nov 5 at their office in Ostrevik",
+          "the portal is for new clients to submit their case details and upload documents before the first consultation, so the lawyers stop chasing people by email",
+          "their IT person Agnes is setting up SSO with their identity provider. the portal launch on Dec 1 depends on Agnes finishing SSO, if SSO slips the launch slips with it",
+          "random q: is it rude to keep my camera off at a kickoff call?",
+          "fair. camera on it is"
+        ],
+        [
+          "ok big Quillstone update: kickoff moved to Tuesday Nov 3 instead of Thursday the 5th, they want it remote now instead of at their Ostrevik office, and I'm switching from Figma to Penpot for that project because their IT won't approve Figma",
+          "so no train trip, kind of sad, I like that line",
+          "Fernhollow is going well. I'm planning a rider co-design workshop for Nov 10, booked a room at their depot",
+          "can you give me an agenda for a 90 minute co-design workshop with about 6 riders?",
+          "nice. add a 10 min warm-up at the start, people are always stiff at first",
+          "also, thinking maybe I should raise my rates across the board in January. not decided at all, just thinking out loud"
+        ],
+        [
+          "Dalia's swamped with another contract, so the Fernhollow research is going to Teo Brandt instead. Teo is in Merrowdale, works fully remote",
+          "Teo's done similar research for a scooter company so he's a good fit, and he can pick up Dalia's notes",
+          "explain like I'm five: what's the difference between SSO and 2FA?",
+          "lol ok that's clear",
+          "also unrelated, my sister wants me to design her wedding invites for free. how do I say no without drama",
+          "nah I'll just do it, she'll owe me forever"
+        ],
+        [
+          "Jonas Reinholt called. scrap the Nov 14 deadline, they want the handoff on Nov 21 because their dev team is in a sprint freeze until then",
+          "honestly fine by me, more time for the prototype",
+          "also starting this week I'm billing Fernhollow 680 a day instead of 620, they signed the change order since the scope grew a bit",
+          "does a change order need to be signed by both sides? asking for future me",
+          "ok good, that's what we did",
+          "the Quillstone kickoff went well btw. Jonas Miret was surprisingly into the details"
+        ],
+        [
+          "Agnes from Quillstone says the SSO setup is running about two weeks late",
+          "ugh. well, at least it's not on me",
+          "can you help me write a polite note to Jonas Miret about what this means for the timeline?",
+          "make it shorter, he hates long emails",
+          "also Penpot is growing on me. the component handling is decent",
+          "what's a good naming convention for design tokens? colour ones especially"
+        ],
+        [
+          "rider workshop is still on for Nov 10, Teo's joining remotely",
+          "need to print consent forms for it",
+          "can you write a short consent form text for recording a workshop session?",
+          "great, thanks. that's all for today",
+          "oh and Fernhollow's payment terms stay at 30 days. they asked if I'd do 45 and I said no"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 1,
+          "name": "fernhollow-sow.md",
+          "text": "# Statement of Work: Fernhollow Bikes x Ines (freelance)\n\nClient contact: Jonas Reinholt, Head of Product\nScope: redesign of the rider app (booking, unlock, payments), 12 working days\nDay rate: €620\nHandoff deadline: November 14\nDeliverables: design file, clickable prototype, research summary\nPayment terms: 30 days net\n"
+        }
+      ],
+      "questions": [
+        { "id": "f1-q01", "cat": "current_fact", "q": "which city am I based in again?", "required": ["Calvaro"] },
+        { "id": "f1-q02", "cat": "current_fact", "q": "remind me what the Quillstone project actually is", "required": ["client intake portal"] },
+        { "id": "f1-q03", "cat": "state_change", "q": "when is the Fernhollow handoff due?", "required": ["November 21"], "forbidden": ["the handoff is due November 14"] },
+        { "id": "f1-q04", "cat": "state_change", "q": "who's doing the user research for Fernhollow?", "required": ["Teo Brandt"], "forbidden": ["Dalia is doing the Fernhollow research"] },
+        { "id": "f1-q05", "cat": "correction", "q": "what's the total fee on the Quillstone project?", "required": ["€8,900"], "forbidden": ["the Quillstone fee is €9,500"] },
+        { "id": "f1-q06", "cat": "compound", "q": "was the Quillstone kickoff in person or remote?", "required": ["remote"], "forbidden": ["the kickoff is at Quillstone's Ostrevik office"] },
+        { "id": "f1-q07", "cat": "history", "q": "what date was the Quillstone kickoff originally set for?", "required": ["Thursday November 5"] },
+        { "id": "f1-q08", "cat": "temporal", "q": "have I run the rider workshop yet?", "required": ["not yet", "November 10"], "forbidden": ["the rider workshop already happened"] },
+        { "id": "f1-q09", "cat": "conflict_document", "q": "what day rate am I charging Fernhollow?", "required": ["€680 per day"], "forbidden": ["the Fernhollow day rate is €620"] },
+        { "id": "f1-q10", "cat": "disambiguation", "q": "what's Jonas Reinholt's role?", "required": ["head of product at Fernhollow"], "forbidden": ["Jonas Reinholt is managing partner at Quillstone"] },
+        { "id": "f1-q11", "cat": "multi_hop", "q": "what city is the person now running Fernhollow's research based in?", "required": ["Merrowdale"], "forbidden": ["they are based in Calvaro"] },
+        { "id": "f1-q12", "cat": "consequence", "q": "what does Agnes's latest update affect on my side?", "required": ["Quillstone portal launch slips", "about two weeks later than December 1"] },
+        { "id": "f1-q13", "cat": "attribution", "q": "where did I give you the number of working days in the Fernhollow scope, and what was it?", "required": ["fernhollow-sow.md", "12 working days"] },
+        { "id": "f1-q14", "cat": "negation", "q": "did I decide to raise my rates in January?", "required": ["not decided, only thinking about it"], "forbidden": ["you decided to raise your rates in January"] },
+        { "id": "f1-q15", "cat": "unknown", "q": "what's Teo's day rate?", "expectUnknown": true },
+        { "id": "f1-q16", "cat": "unknown", "q": "what's Dalia's last name?", "expectUnknown": true },
+        { "id": "f1-q17", "cat": "unknown", "q": "what time does the rider workshop start?", "expectUnknown": true },
+        { "id": "f1-q18", "cat": "synthesis", "q": "draft me a two-line status update on Fernhollow for my notes", "required": ["handoff November 21", "Teo Brandt doing research", "rider workshop November 10", "€680 per day"], "forbidden": ["handoff November 14", "Dalia is doing the research", "€620 per day"] }
+      ]
+    },
+    {
+      "id": "f2-bram",
+      "length": "short",
+      "sessions": [
+        [
+          "hi! I'm Bram, co-founder of Hearthbeam with Ottilie Vance. she's CTO, I do product and sales. Hearthbeam is a smart thermostat app for small landlords, we're based in Brenmouth",
+          "we have 7 paying landlords right now, mostly people with 3 to 10 units",
+          "on the side I'm doing a consulting contract for Pellucid Dental, building their online booking system. pays the bills while Hearthbeam grows",
+          "can you explain what net revenue retention is and why investors care so much?",
+          "and is it even meaningful with like 7 customers?"
+        ],
+        [
+          "the Pellucid contract is worth 14k total, paid in three milestones",
+          "my contact at Pellucid is Hugo Brask, their practice manager, he sits at their main clinic in Brenmouth so I can just pop by",
+          "Pellucid go-live for the booking system is Jan 19",
+          "what's a reasonable payment milestone split for a 3 month build?",
+          "also we're planning a team offsite Dec 5 at a lodge near Lake Arnsel, just the four of us"
+        ],
+        [
+          "sorry, I said 14k for Pellucid earlier, it's actually 12k. 14k was my first quote and they negotiated it down",
+          "the pilot plan doc I sent is basically what we pitched to the city housing fund",
+          "can you rewrite this tagline to be punchier: 'Hearthbeam helps small landlords save on heating without annoying tenants'",
+          "lol the third one is good",
+          "we're thinking maybe we should raise a pre-seed in spring. Ottilie and I haven't decided anything, might wait till after the pilot",
+          "what would an angel usually want to see before a pre-seed? rough list is fine"
+        ],
+        [
+          "good week! we're up to 13 paying landlords",
+          "from next month we're charging 11 per unit instead of 9, pilot folks included. 9 was too low to cover support",
+          "Ottilie wants to know: how do you structure a referral program for landlords?",
+          "ok I'll pitch the one-month-free version to her",
+          "also the pilot is going to be 20 landlords, not 30. the housing fund trimmed the budget",
+          "pilot start is still Jan 12"
+        ],
+        [
+          "Pellucid update, a few things at once: go-live is now Feb 2 instead of Jan 19, my contact there switched from Hugo to Renate Solberg (their new operations director), and they want SMS reminders added to the booking system",
+          "Renate works out of their Kestrel Bay clinic, so it's calls now instead of popping by",
+          "draft a friendly intro email to Renate?",
+          "perfect, sending",
+          "unrelated: my flat's radiator is making a banging noise lol, the irony"
+        ],
+        [
+          "the SMS reminders for Pellucid need a contract with Chirrup, the SMS provider. I can't start building reminders until that contract is signed",
+          "and the team offsite on Dec 5 is off, we're cancelling it. too much going on and money's tight",
+          "Ottilie is fine with it, we'll do a dinner instead at some point",
+          "what's a good way to run a remote retro with 4 people?",
+          "ok thanks"
+        ],
+        [
+          "Chirrup's legal team is holding up the contract until mid-January",
+          "ugh",
+          "anyway, the 11 per unit price is live now, nobody complained",
+          "can you explain how VAT works for a SaaS selling to landlords in different EU countries? high level",
+          "ok I'll ask an accountant, thanks"
+        ],
+        [
+          "pilot lead is still Ottilie, she's onboarding the 20 landlords",
+          "we might get two intro calls with angels next week but nothing booked",
+          "help me write a 3 sentence description of Hearthbeam for an angel",
+          "great, thanks"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 1,
+          "name": "hearthbeam-pilot-plan.md",
+          "text": "# Hearthbeam Pilot Plan\n\nPilot size: 30 landlords\nPilot start: January 12\nPilot pricing: €9 per unit per month\nPilot lead: Ottilie Vance (CTO)\nHardware: Voltnest thermostats\nSuccess metric: 20% heating cost reduction over the first winter\nReporting: monthly summary to the city housing fund\n"
+        }
+      ],
+      "questions": [
+        { "id": "f2-q01", "cat": "current_fact", "q": "who's my co-founder and what's her role?", "required": ["Ottilie Vance", "CTO"] },
+        { "id": "f2-q02", "cat": "current_fact", "q": "which city is Hearthbeam based in?", "required": ["Brenmouth"] },
+        { "id": "f2-q03", "cat": "state_change", "q": "how many paying landlords do we have?", "required": ["13"], "forbidden": ["you have 7 paying landlords"] },
+        { "id": "f2-q04", "cat": "state_change", "q": "who's my contact at Pellucid?", "required": ["Renate Solberg"], "forbidden": ["Hugo Brask is the contact"] },
+        { "id": "f2-q05", "cat": "correction", "q": "how much is the Pellucid contract worth?", "required": ["12k"], "forbidden": ["the Pellucid contract is worth 14k"] },
+        { "id": "f2-q06", "cat": "compound", "q": "when does the Pellucid booking system go live?", "required": ["February 2"], "forbidden": ["go-live is January 19"] },
+        { "id": "f2-q07", "cat": "history", "q": "what did we charge per unit before the price increase?", "required": ["€9 per unit per month"] },
+        { "id": "f2-q08", "cat": "temporal", "q": "is the team offsite still on?", "required": ["cancelled"], "forbidden": ["the offsite is happening on December 5"] },
+        { "id": "f2-q09", "cat": "conflict_document", "q": "how many landlords are in the pilot?", "required": ["20"], "forbidden": ["the pilot has 30 landlords"] },
+        { "id": "f2-q10", "cat": "disambiguation", "q": "when does the Hearthbeam pilot start?", "required": ["January 12"], "forbidden": ["the pilot starts February 2"] },
+        { "id": "f2-q11", "cat": "multi_hop", "q": "which clinic does my current Pellucid contact work out of?", "required": ["Kestrel Bay"], "forbidden": ["they work from the Brenmouth clinic"] },
+        { "id": "f2-q12", "cat": "consequence", "q": "what does the Chirrup legal holdup affect?", "required": ["SMS reminders for Pellucid", "can't start building until the contract is signed"] },
+        { "id": "f2-q13", "cat": "attribution", "q": "where did I put the pilot's success metric, and what is it?", "required": ["hearthbeam-pilot-plan.md", "20% heating cost reduction"] },
+        { "id": "f2-q14", "cat": "negation", "q": "did Ottilie and I decide to raise a pre-seed?", "required": ["not decided"], "forbidden": ["you decided to raise a pre-seed in spring"] },
+        { "id": "f2-q15", "cat": "unknown", "q": "what's Renate's phone number?", "expectUnknown": true },
+        { "id": "f2-q16", "cat": "unknown", "q": "what percentage of the company does Ottilie own?", "expectUnknown": true },
+        { "id": "f2-q17", "cat": "unknown", "q": "what's Hearthbeam's monthly burn?", "expectUnknown": true },
+        { "id": "f2-q18", "cat": "synthesis", "q": "write a two-sentence investor update about Hearthbeam", "required": ["13 paying landlords", "€11 per unit", "pilot of 20 landlords", "pilot starts January 12"], "forbidden": ["7 paying landlords", "€9 per unit", "30-landlord pilot"] }
+      ]
+    },
+    {
+      "id": "f3-noor",
+      "length": "short",
+      "sessions": [
+        [
+          "hi, I'm Noor, postdoc at the Ostrevik Institute of Technology. I run two studies: Project Lantern (sleep and shift work in nurses) and the Harbor Commuters Survey (how people's commutes changed after the new ferry line)",
+          "and I do some freelance stats consulting for Greyfen Clinic, a physiotherapy clinic in town",
+          "Lantern's PI is Prof. Halvard Dunne, I'm the day-to-day lead",
+          "the Lantern grant is 42k euros, which is tight for 60 participants",
+          "can you remind me how to do a power analysis for a paired t-test?",
+          "ok, so roughly 0.8 power with d=0.4 at that n... fine"
+        ],
+        [
+          "sorry, I said 60 participants for Lantern earlier, it's actually 64. I forgot to count the pilot batch of 4",
+          "the commuter survey is aiming for 900 responses, it closes Nov 30, and we're using Formwell for the survey",
+          "I'm also doing the data cleaning for the survey myself, which is not ideal",
+          "what's the cleanest way to flag speeders in survey data?",
+          "nice, I'll use the median-time rule"
+        ],
+        [
+          "Lantern can't start data collection until the ethics amendment is approved. the amendment hearing is Nov 18",
+          "Greyfen asked me to run a workshop for their staff on reading research papers, Nov 6 at the clinic",
+          "can you sketch a 2 hour outline for that?",
+          "make the second half more hands-on, they're practical people",
+          "I might switch Lantern from sleep diaries to actigraphy watches, haven't decided, it depends on cost"
+        ],
+        [
+          "couple of changes on the survey: it now closes Dec 12 instead of Nov 30, we're switching from Formwell to Quorra because of a data residency issue, and Lise Harjo is taking over the data cleaning from me",
+          "Lise is a master's student in our group, very sharp",
+          "write me a short onboarding checklist for Lise for data cleaning?",
+          "add 'read the codebook' at the very top lol",
+          "commuter survey is at 410 responses so far"
+        ],
+        [
+          "the Greyfen workshop on Nov 6 is pushed to January, no date yet. their staff schedule is a mess before the holidays",
+          "what's a gentle intro reading on regression for clinicians?",
+          "ok thanks",
+          "the ethics committee deferred the Lantern amendment to Dec 9. so annoying",
+          "Halvard is not thrilled",
+          "can you help me structure my week? I keep losing my mornings to email"
+        ],
+        [
+          "I've got a talk at the Merrowdale Methods Symposium on March 3 about the commuter survey design",
+          "can you help me title it?",
+          "the second one, but shorter",
+          "Greyfen pays me 85 per hour btw, invoiced monthly",
+          "what's the difference between ICC and Cronbach's alpha, again?"
+        ],
+        [
+          "Halvard got a supplement approved from the faculty fund, I'll upload the updated Lantern budget",
+          "the money mostly goes to participant compensation and a part-time research assistant",
+          "can you explain how to justify a participant compensation line to a funder?",
+          "ok that's helpful"
+        ],
+        [
+          "Lise finished the first cleaning pass, found 30 duplicate responses",
+          "what's a good way to dedupe by IP without being unfair to people on shared wifi?",
+          "can you draft a message to Quorra support asking about exporting with timestamps?",
+          "thanks. shorter please",
+          "also reminder for me: Halvard's out the week of Dec 1"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 6,
+          "name": "lantern-budget-v2.md",
+          "text": "# Project Lantern: Budget v2 (after faculty supplement)\n\nPI: Prof. Halvard Dunne\nDay-to-day lead: Noor\nOriginal grant: €42,000\nFaculty supplement: €5,500\nTotal budget: €47,500\nParticipants: 64 (including pilot batch of 4)\nParticipant compensation: €150 per participant\nResearch assistant: 0.3 FTE for 10 months\nData collection start: after ethics amendment approval\n"
+        }
+      ],
+      "questions": [
+        { "id": "f3-q01", "cat": "current_fact", "q": "where do I work?", "required": ["Ostrevik Institute of Technology"] },
+        { "id": "f3-q02", "cat": "current_fact", "q": "what kind of place is Greyfen?", "required": ["physiotherapy clinic"] },
+        { "id": "f3-q03", "cat": "state_change", "q": "when does the commuter survey close?", "required": ["December 12"], "forbidden": ["the survey closes November 30"] },
+        { "id": "f3-q04", "cat": "state_change", "q": "who's doing the data cleaning on the commuter survey?", "required": ["Lise Harjo"], "forbidden": ["you are doing the survey data cleaning yourself"] },
+        { "id": "f3-q05", "cat": "correction", "q": "how many participants is Lantern recruiting?", "required": ["64"], "forbidden": ["Lantern is recruiting 60 participants"] },
+        { "id": "f3-q06", "cat": "compound", "q": "which tool are we running the commuter survey on?", "required": ["Quorra"], "forbidden": ["the survey runs on Formwell"] },
+        { "id": "f3-q07", "cat": "history", "q": "what was the commuter survey's original close date?", "required": ["November 30"] },
+        { "id": "f3-q08", "cat": "temporal", "q": "when's the Greyfen staff workshop?", "required": ["postponed to January", "no date set yet"], "forbidden": ["the workshop is on November 6"] },
+        { "id": "f3-q09", "cat": "conflict_document", "q": "what's the total Lantern budget?", "required": ["€47,500"], "forbidden": ["the Lantern budget is €42,000 in total"] },
+        { "id": "f3-q10", "cat": "disambiguation", "q": "what's the target number for the commuter survey?", "required": ["900 responses"], "forbidden": ["the survey target is 64"] },
+        { "id": "f3-q11", "cat": "multi_hop", "q": "what's the role of the person now cleaning the survey data?", "required": ["master's student"] },
+        { "id": "f3-q12", "cat": "consequence", "q": "what does the ethics committee's decision mean for Lantern?", "required": ["data collection can't start yet", "not before December 9"] },
+        { "id": "f3-q13", "cat": "attribution", "q": "where did the faculty supplement amount come from, and how much was it?", "required": ["lantern-budget-v2.md", "€5,500"] },
+        { "id": "f3-q14", "cat": "negation", "q": "did I decide to switch Lantern to actigraphy watches?", "required": ["not decided"], "forbidden": ["Lantern switched to actigraphy watches"] },
+        { "id": "f3-q15", "cat": "unknown", "q": "what's Prof. Dunne's email address?", "expectUnknown": true },
+        { "id": "f3-q16", "cat": "unknown", "q": "which room is the Greyfen workshop going to be in?", "expectUnknown": true },
+        { "id": "f3-q17", "cat": "unknown", "q": "how many speeders did Lise flag in the survey data?", "expectUnknown": true },
+        { "id": "f3-q18", "cat": "synthesis", "q": "draft a three-line note to Halvard on where the commuter survey stands", "required": ["closes December 12", "running on Quorra", "Lise Harjo doing data cleaning"], "forbidden": ["closes November 30", "running on Formwell"] }
+      ]
+    },
+    {
+      "id": "f4-kwame",
+      "length": "short",
+      "sessions": [
+        [
+          "hey, I'm Kwame, engineering team lead at Corvid Freight. we're a logistics company, office is in Tessaly",
+          "main work project is Atlas, our route optimizer for delivery trucks. backend's in Go",
+          "I also have a side project, Pantrybot, a meal-planning app I build with my friend Sena on weekends. it's in Flutter",
+          "my team is 6 engineers right now",
+          "can you explain the travelling salesman problem simply, for a non-technical exec?",
+          "great, I'll steal the pizza delivery analogy"
+        ],
+        [
+          "attaching the Atlas Q4 plan so you have it",
+          "Femi Adeyemi owns QA on Atlas, he's been with us 4 years",
+          "the Driver App is a separate project, but its release depends on the Atlas beta API, so the Driver App always ships one week after the Atlas beta",
+          "what's a good structure for a 1:1 with a new junior dev?",
+          "ok cool"
+        ],
+        [
+          "Pantrybot has 340 beta users already! mostly friends of friends but still",
+          "we were planning a launch on ProductPlaza on Nov 20",
+          "can you write a launch tagline for a meal planning app that uses what's already in your fridge?",
+          "too cheesy. try again, drier",
+          "the second one, nice"
+        ],
+        [
+          "correction: Pantrybot has 430 beta users, not 340. I transposed the digits earlier",
+          "Sena is very proud lol",
+          "performance reviews for my team are due Nov 28 and I haven't started any of them",
+          "give me a template for a written perf review for an engineer?",
+          "add a section on collaboration"
+        ],
+        [
+          "Femi's moving to the Driver App team next week, so Atlas QA is Grete's responsibility from now on",
+          "Grete joined in spring from the payments team, she's thorough",
+          "we also hired two engineers, so the team is 8 now",
+          "how do I onboard two people at once without everything going sideways",
+          "ok helpful"
+        ],
+        [
+          "Atlas changes from today's planning: beta is now Dec 14 instead of Dec 7, the cloud budget got cut to 2,700 a month, and standup moves to 10:15 starting Monday",
+          "the budget cut hurts, we'll have to scale the staging cluster down at night",
+          "can you explain the idea of scaling a k8s deployment down at night? just the concept",
+          "ok makes sense",
+          "also the 10:15 standup is better for the people with kids"
+        ],
+        [
+          "Pantrybot ProductPlaza launch: not doing it, cancelled. we'll just soft-launch through our newsletter instead",
+          "toying with charging for Pantrybot, maybe 3 a month, but nothing decided, Sena's against it",
+          "how do freemium apps decide what goes in the paid tier?",
+          "interesting",
+          "Pantrybot's hosting is on a tiny VPS, Sena manages it"
+        ],
+        [
+          "Atlas map data licence got renewed, one risk down",
+          "perf reviews: done 2 of 8, still due Nov 28",
+          "write me a short slack message to the team about the new standup time?",
+          "perfect",
+          "oh and Grete wants to add load tests before beta, approved"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 1,
+          "name": "atlas-q4-plan.txt",
+          "text": "ATLAS Q4 PLAN (Corvid Freight)\nOwner: Kwame (engineering lead)\nBeta release: December 7\nQA owner: Femi Adeyemi\nCloud budget: €3,200 per month\nDaily standup: 9:30\nRisks: map data licence renewal, driver adoption\nDependencies: Driver App release follows the Atlas beta by one week\n"
+        }
+      ],
+      "questions": [
+        { "id": "f4-q01", "cat": "current_fact", "q": "what does Atlas do?", "required": ["route optimizer for delivery trucks"] },
+        { "id": "f4-q02", "cat": "current_fact", "q": "where's the Corvid Freight office?", "required": ["Tessaly"] },
+        { "id": "f4-q03", "cat": "state_change", "q": "when's the Atlas beta?", "required": ["December 14"], "forbidden": ["the Atlas beta is December 7"] },
+        { "id": "f4-q04", "cat": "state_change", "q": "how many engineers are on my team?", "required": ["8"], "forbidden": ["the team has 6 engineers"] },
+        { "id": "f4-q05", "cat": "correction", "q": "how many beta users does Pantrybot have?", "required": ["430"], "forbidden": ["Pantrybot has 340 beta users"] },
+        { "id": "f4-q06", "cat": "compound", "q": "what's the monthly cloud budget for Atlas?", "required": ["€2,700 per month"], "forbidden": ["the cloud budget is €3,200 per month"] },
+        { "id": "f4-q07", "cat": "history", "q": "what time did standup used to be?", "required": ["9:30"] },
+        { "id": "f4-q08", "cat": "temporal", "q": "what's happening with the Pantrybot ProductPlaza launch?", "required": ["cancelled", "soft-launch through the newsletter instead"], "forbidden": ["Pantrybot launches on ProductPlaza on November 20"] },
+        { "id": "f4-q09", "cat": "conflict_document", "q": "who owns QA on Atlas?", "required": ["Grete"], "forbidden": ["Femi Adeyemi owns Atlas QA"] },
+        { "id": "f4-q10", "cat": "disambiguation", "q": "what's Pantrybot built with?", "required": ["Flutter"], "forbidden": ["Pantrybot is built in Go"] },
+        { "id": "f4-q11", "cat": "multi_hop", "q": "which team is the person who used to own Atlas QA on now?", "required": ["Driver App team"] },
+        { "id": "f4-q12", "cat": "consequence", "q": "given the latest Atlas planning, when should the Driver App release land?", "required": ["December 21"], "forbidden": ["the Driver App releases December 14"] },
+        { "id": "f4-q13", "cat": "attribution", "q": "where did I first write down the Atlas cloud budget, and what was it there?", "required": ["atlas-q4-plan.txt", "€3,200 per month"] },
+        { "id": "f4-q14", "cat": "negation", "q": "did we decide to charge for Pantrybot?", "required": ["not decided, only toying with about 3 a month"], "forbidden": ["Pantrybot costs 3 a month"] },
+        { "id": "f4-q15", "cat": "unknown", "q": "what's Grete's last name?", "expectUnknown": true },
+        { "id": "f4-q16", "cat": "unknown", "q": "how much does Pantrybot's VPS cost per month?", "expectUnknown": true },
+        { "id": "f4-q17", "cat": "unknown", "q": "what are the names of the two engineers we just hired?", "expectUnknown": true },
+        { "id": "f4-q18", "cat": "synthesis", "q": "write a two-line Atlas update for my director", "required": ["beta December 14", "Grete owns QA", "€2,700 per month cloud budget"], "forbidden": ["beta December 7", "Femi owns QA", "€3,200 cloud budget"] }
+      ]
+    },
+    {
+      "id": "f5-oriana",
+      "length": "long",
+      "sessions": [
+        [
+          "hi! ok so I'm going to use you as a kind of second brain for a while, I'm drowning. I'm Oriana, I live in Merrowdale, and I'm the founder of Mossgrain. Mossgrain is inventory software for independent bookshops: stock levels, reorders, what's sitting on the shelf too long, that kind of thing.",
+          "it's basically me plus my first engineer, Elif Sorensen. she lives in Ostrevik and works remote, we see each other in person maybe once a month when one of us takes the train. she's brilliant and also the only person who understands our sync code, which is a bus factor of one, I know, I know",
+          "anyway, first actual question, totally unrelated: I just moved flats and the new kitchen has an induction hob. do I need to throw out all my pans? the old ones are those cheap aluminium ones from my student days",
+          "ha ok, the magnet test. I'll try it tonight. my cat Pilchard is going to hate the move, he's been sitting in a cardboard box for two days refusing to come out. is that normal for cats or is he depressed",
+          "fine, I'll give him a week. also I'm supposedly training for the Merrowdale half marathon in spring and I've done exactly zero runs since the move. can you give me a gentle 4 week plan to get back to running 5k three times a week? I used to be able to do 10k without dying",
+          "that looks doable. can you make week 1 even gentler, like walk-run intervals? my knees are not 25 anymore",
+          "perfect. ok back to work stuff next time, I just wanted to dump context. thanks!",
+          "actually one more, sorry, I need to vent before bed. the move was chaos. the van was two hours late, the guy who was supposed to help carry things hurt his back on the first box (it was books, obviously, it's always books), and my old landlord is now arguing about the deposit because of a scratch on the kitchen counter that was literally there when I moved in. I have photos from move-in day somewhere on my old phone, which is in a drawer, which is in a box, which is in a room full of boxes. the new place is nicer though. it has big windows, even if they face north, and an actual hallway instead of the front door opening straight into the kitchen. the neighbours seem nice, there's an older man downstairs who plays the cello in the evenings, badly but with feeling, and a couple across the landing with a toddler who waves at me through the glass door. I think I'll be happy here once the boxes are gone. can you give me a realistic plan to unpack a one-bedroom flat in a week when I also have a full-time job and a half? like what order to do rooms in so I can function",
+          "ok so following that plan: kitchen and bed first, then the desk, books last because I'll get distracted reading them. it's working. can you remind me how to write a short, firm email to my old landlord about the deposit? I found the move-in photos, they clearly show the scratch",
+          "good, attach the photos and mention the date stamp. polite but not apologetic. thanks",
+          "also, is there any trick for getting the smell of cardboard out of a flat? everything smells like a warehouse",
+          "open windows and a bowl of baking soda. fine, cheap"
+        ],
+        [
+          "ok work brain on. Mossgrain pricing right now is 39 euros per store per month. one flat plan, no tiers, every feature included. bookshops hate complicated pricing and so do I",
+          "most of our shops have one location, a couple have two, and one has three. for multi-location we just charge per store so it's simple",
+          "we integrate with Pagewell, which is the big book distributor most indie shops order from. the Pagewell API lets us pull their catalog and push reorders, it's the main reason shops buy us honestly",
+          "can you explain value-based pricing vs cost-plus in a way I could use in a founder chat? someone at a meetup told me 39 is way too cheap and I didn't know how to respond",
+          "interesting. I don't think bookshops have much margin to share though, they're famously broke. can you list 5 questions I could ask customers to figure out willingness to pay without being weird about it?",
+          "good list. number 3 is especially good",
+          "unrelated: what's a dal recipe that doesn't need a pressure cooker? I have red lentils and not much else, the new kitchen is still half unpacked",
+          "made it. it was great. Pilchard tried to eat the cumin",
+          "ok one last thing tonight. a guy from the meetup sent me this LinkedIn post he wrote and asked for my opinion, and I don't know how to respond without being mean. can you help me find something kind but honest to say? his post: Ten lessons from my first year as a founder. One: your idea is worthless, execution is everything. Two: hire slow, fire fast. Three: if you're not embarrassed by your first version, you launched too late. Four: talk to customers every single day. Five: cash is oxygen. Six: your co-founder relationship is a marriage, treat it like one. Seven: sleep is a competitive advantage, not a weakness. Eight: say no to almost everything. Nine: the market doesn't care how hard you work. Ten: enjoy the journey, because the destination keeps moving. Thank you to everyone who supported me this year, especially my wife, my dog, and my mentor, who taught me that every no is a step closer to a yes. #founders #startups #lessons. it's fine? it's just every post I've ever seen. he's a nice guy though and he's clearly proud of it",
+          "ok yes, compliment the sleep one and the cash one because those are actually real, and suggest he adds one specific story next time. that's kind and true. thanks"
+        ],
+        [
+          "numbers check: we have 14 paying bookshops right now. a few more in trial. churn has been basically zero, which I attribute to the fact that switching inventory systems is miserable, not to my genius",
+          "the other half of my life: I'm doing fractional CPO work for Halden Breweries, it pays the rent while Mossgrain grows. they're a mid-size craft brewery, distribution all over the region",
+          "I'm doing 3 days a week for Halden at 750 a day. main contact is their CFO, Pieter Vos, he's the one who hired me",
+          "and here's the fun part: their operations manager is ALSO called Elif. Elif Kaya. she's at the Halden HQ in Calvaro. so I have two Elifs in my life now, Elif S on my team and Elif K at Halden. I will try to always say which one",
+          "can you help me write a short weekly status email template for Halden? Pieter likes things in bullet points with a clear 'decisions needed' section",
+          "great. add a line at the top for 'this week in one sentence'",
+          "also random, is it worth getting a standing desk or is that a fad? my back is complaining after the move",
+          "ok, alternate sitting and standing, and move every half hour. the desk is less important than moving. noted. while I have you, can you explain what all these brewery terms mean? Elif K sent me a glossary-free spreadsheet and I'm lost. the column headers are: brew date, batch ID, style, fermenter, gravity OG, gravity FG, ABV, days in FV, conditioning tank, packaging type, keg count, cask count, can count, QA status, dispatch week, distributor, notes. I get maybe half of these. especially gravity OG and FG, FV, and what conditioning means. also why would a brewery have both kegs and casks? I thought they were the same thing. and is 'days in FV' something they'd want to see on the dashboard or is it just internal brewer stuff? I'm trying to understand what Pieter actually cares about versus what the brewers care about, because the dashboard can't show everything or it'll be useless",
+          "super helpful. so OG and FG are the sugar before and after fermentation and they give the ABV, FV is the fermentation vessel, and conditioning is the resting phase. and kegs vs casks are different serving styles. ok, so Pieter cares about keg count, dispatch week and distributor, the brewers care about gravity and days in FV. two views then. thanks, that's a real design decision"
+        ],
+        [
+          "big Mossgrain thing: we're building a feature called Shelfsync, it syncs a shop's stock live with Pagewell's catalog so they can see what's available to reorder and what's going out of print. launch date is March 3",
+          "it's the biggest thing we've built, Elif S is doing the sync engine and I'm doing the UI and the onboarding flow",
+          "can you help me write a short poem for my sister's birthday? she's turning 30, she loves hiking and terrible puns, and she just got a dog called Biscuit",
+          "haha that's great. the pun about 'barking up the right tree' is very her",
+          "also can you explain what a webhook is in non-technical language? I need to explain to a bookshop owner why Shelfsync needs one from Pagewell",
+          "ok the 'doorbell' analogy works",
+          "unrelated, I keep getting LinkedIn messages from agencies offering to 'scale my SaaS'. is there any polite template to say no forever?",
+          "lol 'forever' was implied, thanks",
+          "oh and can you help me with something for my sister's birthday card too? I want to write a longer note inside, not just the poem. here's my draft, it's messy: Dear Lotte, thirty! I remember when you were fifteen and told me thirty was basically dead, so congratulations on being basically dead. Seriously though, this year you've been braver than anyone I know. You quit the job that was making you miserable, you moved to the mountains, you adopted a dog who eats shoes, and you still call mum every Sunday even when you're tired. I'm so proud of you. I know I'm not always great at saying this out loud because we tease each other constantly, but you've been my favourite person since I was born and I'm very lucky to have a sister who is also my best friend. Please don't cry reading this in front of your friends. Or do, I won't be there to see it. Love you, Oriana. PS Biscuit owes me a pair of socks.",
+          "aww, perfect, thank you. I kept the 'basically dead' joke because it's ours. she's going to cry anyway"
+        ],
+        [
+          "sorry, quick fix, I said 3 days a week for Halden earlier, it's actually 2 days a week. 3 was what they originally asked for and I negotiated it down so I'd have time for Mossgrain",
+          "so 2 days at 750, usually Tuesdays and Thursdays",
+          "also for the record, Elif S and I work out of Brassworks, the coworking space in Merrowdale near the old tram depot. we have two hot desks and a locker. Elif S comes in when she's in town",
+          "Brassworks is fine but the coffee is tragic and the phone booths are always taken",
+          "can you write me a 3 sentence bio for a podcast that wants to interview me about indie bookshops and software?",
+          "make it a bit less formal, it's a chatty podcast",
+          "good. another random one: what's the difference between a Roth IRA and a pension? a friend from abroad asked and I realised I have no idea, though I guess it doesn't apply to me here",
+          "fair enough, I'll tell her to ask someone where she lives"
+        ],
+        [
+          "ok here's a thing that's eating my life: customer onboarding. right now I do all of it myself. every new shop gets a 90 minute call where I import their stock, connect Pagewell and train whoever runs the till",
+          "it's lovely, I like the shop owners, but it's like 6 hours a week and it'll get worse with Shelfsync",
+          "can you help me outline a self-serve onboarding checklist that could cut the call down to 30 minutes?",
+          "nice. what's cohort analysis and would it even make sense for 14 customers?",
+          "yeah that's what I figured, too early. I'll revisit at 50",
+          "also my mum wants to visit the new flat next weekend. can you give me a list of easy brunch things I can make without a proper oven? the oven in this place is a joke",
+          "shakshuka on the hob, yes. good call",
+          "Pilchard finally left the box btw. he now sleeps on the radiator like nothing happened",
+          "can you help me rewrite the 'about us' text on the Mossgrain website? it reads like a bank. current version: Mossgrain is a leading provider of cloud-based inventory management solutions for the independent retail book sector. Our platform enables bookshop owners to optimise stock levels, reduce overstock, minimise lost sales and streamline reordering through seamless distributor integration. Founded by a team with deep experience in software and a passion for literature, Mossgrain combines cutting-edge technology with a customer-first approach. We are committed to empowering independent booksellers with the tools they need to thrive in a competitive marketplace. Contact us today to learn how Mossgrain can transform your business. I want it to sound like a human who likes bookshops wrote it, because one did. keep it under 120 words, mention the distributor connection, and lose 'leading provider', 'cutting-edge', 'empower', 'seamless' and 'transform'. I'm allergic to all five.",
+          "so much better. 'we count your books so you can get back to reading them' made me laugh. I'll put it up tomorrow and see if Elif S notices"
+        ],
+        [
+          "Halden stuff. the main deliverable right now is an operations dashboard for them: brewing schedule, kegs out, distributor orders. handoff is Jan 30",
+          "but the dashboard handoff can only happen after their ERP migration finishes, because the dashboard reads from the new ERP. if the migration slips, my handoff slips with it, nothing I can do",
+          "there's also a supplier portal in scope, requirements and a prototype, but that's lower priority",
+          "I'll upload the engagement doc they sent so you have the official version",
+          "can you explain the difference between a data warehouse and a data lake? the Halden IT guy keeps saying 'lakehouse' and I nod",
+          "lol ok. so a lakehouse is basically marketing for both",
+          "unrelated: I want to learn to make proper espresso at home. is a 200 euro machine pointless? be honest",
+          "ok so the grinder matters more than the machine. noted, my wallet is crying"
+        ],
+        [
+          "sorry, correction on Shelfsync: I said March 3 for launch, it's actually March 10. I misread the roadmap, March 3 is when we start the private beta with three shops",
+          "Elif S is cautiously optimistic about the sync engine, the Pagewell API is a bit weird with pagination but she's on it",
+          "can you give me a template for a short private beta invite email to 3 friendly bookshops?",
+          "good. make it warmer, these are people I've known for years. one of them, the owner of the shop on Gull Lane, used to babysit me",
+          "haha yes add the line about free cake at the launch",
+          "unrelated question: how do people keep houseplants alive in north facing flats? my new place gets zero direct sun",
+          "snake plant and pothos it is",
+          "also I ran three times this week! walk-run intervals are working, knees are ok"
+        ],
+        [
+          "non-work day mostly. our Mossgrain newsletter emails keep landing in spam for some shops. can you explain SPF, DKIM and DMARC like I'm a bookshop owner and not an engineer?",
+          "ok so SPF is the guest list, DKIM is the wax seal, DMARC is the bouncer's instructions. that I can remember",
+          "Elif S says she'll set them up properly this week, she was embarrassed we hadn't",
+          "also I'm painting the hallway in the new flat. landlord said any neutral colour. is greige still a thing or is it very 2019? I want it to feel warm but not like a dentist's waiting room",
+          "ok, warm white with a hint of yellow. got it. how much paint do I need for a hallway about 6 metres long, ceiling 2.6 metres, two doors? rough is fine",
+          "great, two tins then, with leftovers for touch-ups",
+          "half marathon update: I did a 7k today without stopping!! slow as anything but still. can you suggest what to eat the night before a long run? I always get stomach cramps",
+          "ok, less fibre the night before, noted. so no dal the night before. tragic",
+          "one more: my friend Joanna is starting a pottery business and asked if she needs a website or if Instagram is enough. what would you say to her?",
+          "yeah that's roughly what I told her. a simple page with opening hours and a booking form. thanks"
+        ],
+        [
+          "thinking out loud, don't hold me to this: I'm thinking about maybe raising a small seed round in the summer. honestly not decided at all, I might just stay bootstrapped with Halden paying the bills. it depends how Shelfsync lands",
+          "pros: hire faster, get a customer success person, maybe a second engineer. cons: I'd spend 3 months pitching instead of building, and bookshops are not exactly a hyped market",
+          "can you give me a balanced list of questions to ask myself before deciding to raise? not a cheerleading list please",
+          "good, the 'what would you do with the money in the first 90 days' one is uncomfortable in a useful way",
+          "unrelated: how do you politely decline a wedding invitation from a distant cousin? I'm not going to make it, it's abroad and the same week as a Halden workshop",
+          "lol the third version is perfect, warm but final",
+          "also my bike got a flat tyre on the way to Brassworks today and I had to walk it for 20 minutes. is it worth learning to fix punctures myself or should I just go to the shop every time?",
+          "fine, I'll watch a video and buy tyre levers. Pilchard will supervise",
+          "random knowledge question: why do old books smell like vanilla? a customer asked me and I bluffed",
+          "lignin breaking down, ha. I'll tell her next time she's in"
+        ],
+        [
+          "ugh, correcting my correction on Shelfsync. March 10 was wrong too. the launch is March 17. March 10 is the internal code freeze, I keep confusing the milestones. so: private beta March 3, code freeze March 10, public launch March 17. final answer",
+          "I've now put all three in my calendar in different colours so this stops happening",
+          "can you help me write a one-paragraph announcement for our customers about Shelfsync coming in March? don't give an exact date in this version, I'll add it once Elif S is confident",
+          "good, keep the line about 'no more checking the Pagewell website by hand'",
+          "unrelated: what's the difference between a sole trader and a limited company in very general terms? my friend Joanna again, pottery business",
+          "ok I'll tell her to talk to an accountant but this helps her know what to ask",
+          "also, small win: one of the bookshops posted on social about Mossgrain and two other shops messaged me. word of mouth is the only marketing that works in this niche honestly",
+          "can you give me ideas for a tiny referral perk for bookshops that doesn't cost much? like a month free or something more charming",
+          "ha, 'a tote bag with your shop's name on it' is very cute, they'd love that"
+        ],
+        [
+          "a friend introduced me to an angel investor, Rosalind Achebe. she used to run a regional chain of bookshops before selling it, so she gets the market immediately. no meeting yet, just a nice email exchange",
+          "she asked for a short overview, can you help me draft a 5 sentence overview of Mossgrain for her? include that we integrate with Pagewell and that we're bootstrapped",
+          "good. remove 'revolutionary', I hate that word",
+          "unrelated: what's a good book to read about running a small business that isn't about becoming a unicorn? I want something calmer",
+          "ok I'll look for a couple of those at the shop on Gull Lane",
+          "also the hallway is painted! it took two coats and my shoulders hurt. warm white looks lovely though",
+          "can you explain why my sourdough starter smells like nail polish remover? my neighbour gave me some and I think I'm killing it",
+          "ah, it's hungry. feed it more often. got it",
+          "Pilchard knocked a full glass of water onto my laptop keyboard tonight. it survived. I did not, emotionally"
+        ],
+        [
+          "can you proofread a blog post I wrote for the Mossgrain site? it's a bit personal, be honest but gentle. here it is: Why I build software for bookshops. When I was eleven, the bookshop at the end of our street was the only place where nobody asked me what I wanted to be when I grew up. The owner, a tall woman who wore the same green cardigan every day, let me sit on the floor of the poetry section for hours. She never once tried to sell me anything. Years later, when I was working in software and miserable about it, I went back to visit and found her behind the counter with a stack of paper order forms, a calculator, and a shoebox full of receipts. She told me she spent every Sunday evening working out what to reorder, and that she still got it wrong half the time. Books she was sure would sell sat on the shelf for a year. Books people asked for were out of stock for weeks. She said it like it was weather, something you just live with. I didn't think it had to be weather. Independent bookshops are not failing because people stopped reading. They're under pressure because the margins are tiny and every mistake in stock costs real money: money tied up in books that don't move, and sales lost on books that aren't there. The big chains have whole departments for this. The shop at the end of my street had a shoebox. So I started building something for her, and then for the shop two towns over, and then for a few more. It's not glamorous. It counts things. It tells you what has been sitting too long and what you're about to run out of. It talks to the distributor so you don't have to copy numbers from one screen to another at eleven at night. If it works, the owner gets her Sunday evenings back, and maybe spends one of them sitting on the floor of the poetry section herself. That's the whole pitch, really.",
+          "thank you, those edits are good. I agree the middle paragraph was too long. can you suggest three titles that are less earnest than 'Why I build software for bookshops'?",
+          "ha, 'Bookshops deserve better than a shoebox' is good, I'm using that",
+          "also does the post need a call to action at the end or does that ruin it? I hate when a nice essay ends with 'BOOK A DEMO NOW'",
+          "ok, a quiet link at the bottom, no shouting. agreed",
+          "random: what's the right way to cite a quote from a novel in a blog post? like do I need permission for one sentence?",
+          "fine, one sentence with attribution is generally ok, I won't paste a whole chapter lol",
+          "also my neighbour's sourdough starter that I was keeping alive is now thriving, it's doubled overnight. I've named it Gerald",
+          "is there a reason bread recipes always say to use a scale instead of cups? my mum still uses cups for everything and her bread is great",
+          "ok so consistency. my mum is a natural, the rest of us need scales",
+          "one more random one: how do I get candle wax out of a wool rug? Pilchard knocked a candle over. yes, again, this cat is a menace"
+        ],
+        [
+          "I went to the regional booksellers' social last night (not a talk, just drinks). I took messy notes on my phone, can you turn them into a tidy summary for myself? notes: owner of the travel bookshop says tourists buy maps again, weirdly. two people complained about card fees going up. the children's bookshop lady does storytime on Saturdays and it brings in 30 percent of her weekly sales. someone said audiobooks are not competition, they're a gateway. the couple who run the secondhand place want to sell online but hate the big marketplaces. the guy from the comics shop thinks preorders are the key to cash flow. lots of people moaned about distributor delivery days changing without warning. one woman said she does her stock count with her teenage son once a quarter and pays him in pizza. the general vibe: tired but stubborn. nobody is giving up. someone suggested a shared events calendar for all the indie shops in the region. someone else said they'd tried that and it died after two months because nobody updated it.",
+          "nice summary. the preorder and events calendar points are interesting. could Mossgrain ever do something for preorders? not now, just a note for the future ideas list",
+          "ok, I'll add it to the 'maybe one day' list, which is getting long",
+          "also can you explain how card processing fees usually work, in general? the shop owners were confused about percentage vs fixed fees",
+          "so it's usually a percentage plus a small fixed fee per transaction. that's why small purchases hurt more. makes sense",
+          "random: I want to learn Spanish for a trip next year. is an app enough or do I need a teacher? I have about 20 minutes a day",
+          "app for vocab, a conversation partner once a week. that's realistic",
+          "also, Elif S sent me a photo of her new balcony garden in Ostrevik. she's growing tomatoes in a city flat, in winter, under a lamp. she's an engineer through and through",
+          "can you suggest a small thank-you gift for a remote colleague that ships well? I want to send Elif S something for all the late nights on the Pagewell pagination",
+          "a nice notebook and some fancy tea. simple. I like it"
+        ],
+        [
+          "can you look at my running log and tell me if I'm being stupid? here's the last four weeks. week 1: mon rest, tue 5k easy, wed rest, thu 4k with strides, fri rest, sat 8k slow, sun walk. week 2: mon rest, tue 5k easy, wed 3k, thu 5k tempo-ish, fri rest, sat 9k slow, sun rest. week 3: mon rest, tue 6k easy, wed rest, thu 5k with hills, fri rest, sat 10k slow, sun 3k recovery. week 4: mon rest, tue 6k easy, wed 4k, thu 6k tempo, fri rest, sat 11k slow but my calf felt tight at 9k, sun rest. I sleep about 6.5 hours, I drink too much coffee, and I sit at a desk all day. I'm aiming to finish the half marathon in under 2 hours 20 but mostly I just want to finish without walking.",
+          "ok so the jump in week 4 was a bit much with both the tempo and the long run going up. I'll repeat week 3 next week",
+          "what does 'tempo-ish' even mean, honestly? I just run a bit faster until it feels hard",
+          "ha ok so 'comfortably hard', that's basically what I was doing. good to have a word for it",
+          "also what's a good warm-up routine that takes 5 minutes? I usually just start running and regret it",
+          "leg swings, walking lunges, a few skips. I'll look ridiculous on my street but fine",
+          "random: why do my hands swell on long runs? it's weird",
+          "ok, very common, shake them out and don't panic. thanks",
+          "unrelated: my mum asked me to explain what I actually do at Halden. how would you describe a fractional CPO to a retired schoolteacher?",
+          "'a part-time head of product, like a visiting music teacher but for software'. she'll get that immediately",
+          "also Pilchard learned to open the cupboard where the treats are. I need a child lock. for a cat."
+        ],
+        [
+          "can you help me decode this email from my building management? it's very formal and I can't tell if I need to do anything. here: Dear Resident, Please be advised that scheduled maintenance works to the communal heating system will take place during the weeks commencing the second and third Monday of next month. During this period, residents may experience intermittent interruptions to hot water supply between the hours of 9:00 and 16:00. Access to individual units may be required for the inspection of radiator valves; where access is required, residents will be notified a minimum of 48 hours in advance by letter. Residents who are unable to provide access on the notified date are requested to contact the building office to arrange an alternative appointment. Please ensure that radiator areas are kept clear of furniture and personal belongings to facilitate inspection. We apologise for any inconvenience caused and thank you for your cooperation. Kind regards, Building Management.",
+          "ok so basically: no hot water some days during work hours, and they might come in to check radiators with notice. fine. I'll need to move the radiator cover Pilchard sleeps on. he will be furious",
+          "can you help me plan a week of cheap dinners? I have: rice, red lentils, a bag of onions, garlic, tinned tomatoes, frozen spinach, eggs, a block of feta, half a cabbage, potatoes, and too many spice jars. one hob, sad oven",
+          "great list. the cabbage and potato thing sounds weirdly good",
+          "can I freeze cooked lentils? I always make too much",
+          "ok, yes, in portions. future me will be grateful",
+          "random question: what's the difference between baking soda and baking powder? I used the wrong one in pancakes and they tasted like soap",
+          "lol yes, that was too much soda. never again",
+          "also is it normal to feel guilty about not working on a Sunday? I keep checking Mossgrain emails",
+          "ok. I'll turn off notifications on Sundays. Elif S has been telling me to do this for months"
+        ],
+        [
+          "Mossgrain numbers: we're up to 19 paying bookshops now. two from the word of mouth thing, one from the podcast, two from a regional booksellers' newsletter",
+          "still no churn. trials are converting at maybe 70 percent",
+          "can you help me set up a simple spreadsheet structure to track trials, conversions and MRR? I've been doing it in my head, which is not a system",
+          "nice. add a column for 'how they heard about us'",
+          "random: what's a polite way to chase an unpaid invoice from a small shop? one of them is 3 weeks late and I feel bad because I know they're struggling",
+          "ok the gentle version first, firm version only if needed",
+          "also my sister's dog Biscuit stayed at my place for the weekend. Pilchard and Biscuit are now enemies for life",
+          "can you suggest a weekend hiking route type that's good for a dog and a slow runner? I mean general advice, not a specific place",
+          "fair enough"
+        ],
+        [
+          "ooh, planning thing: there's a big bookseller trade fair, Libris Fair, in Tessaly in February. I'm planning to go with Elif S and get a little booth. lots of indie shop owners go",
+          "booth costs are not small but it's the one place where all my potential customers are in one hall",
+          "can you help me plan what to bring to a small trade fair booth? we have a tiny budget",
+          "ok, laptop with a live demo, printed one-pagers, a sign-up sheet, and tote bags. love it",
+          "also can you write a short one-pager headline and three bullet points for Mossgrain for the fair?",
+          "good, swap 'stock control' for 'know what's on your shelves'",
+          "unrelated: how long should I rest a pulled calf muscle before running again? I think I overdid the 7k",
+          "ok, rest and walk for a week. annoying but fine",
+          "also, Halden: Elif K showed me their warehouse yesterday. it's enormous and smells amazing. I now understand why their kegs keep getting lost"
+        ],
+        [
+          "good news on the onboarding front: Elif S is taking onboarding off my plate. she's actually great with shop owners, very patient, and she wants more customer contact. I'll still do the first sales call",
+          "she'll use the self-serve checklist plus a 30 minute call. we'll see how it goes for a month",
+          "can you write a short internal note to Elif S summarising what onboarding includes, so she has it in one place?",
+          "add the Pagewell connection step as step two, that's where people get stuck",
+          "random: what's the etiquette on tipping at a hairdresser? I just got my first proper haircut since the move",
+          "ok good, I tipped about right",
+          "can you explain what an API rate limit is? Pagewell keeps throttling us and Elif S is grumpy about it",
+          "ah ok, like a bouncer letting in 10 people a minute. that's a good analogy for the shop owners too",
+          "unrelated: my mum wants to get into audiobooks. any general tips for an older person getting started?"
+        ],
+        [
+          "today was all life admin. I need to email my landlord about mould in the bathroom. can you draft something firm but polite?",
+          "add that I've been ventilating daily and it still comes back, so it's probably the extractor fan",
+          "good. also can you explain my rights as a tenant around repairs, in general terms? I know it depends on where you are",
+          "ok, document everything with photos and dates. on it",
+          "half marathon: the calf is better, I did an easy 5k. back on the plan",
+          "can you make me a playlist vibe description for long slow runs? not songs, just the vibe, I'll find the songs",
+          "lol 'melancholy but moving forward' is exactly my energy",
+          "also Pilchard is now obsessed with the new radiator cover I built. it's his throne",
+          "nothing else, just needed to vent about the mould honestly",
+          "ok actually I'm still awake so I'm going to brain dump some product ideas so they leave my head. you don't need to do anything with them except maybe tell me which ones are dumb. one: a 'dusty shelf' report that shows which sections of the shop have had no sales in 90 days, as a little heat map of the shop floor. two: a gift card balance tracker, because a lot of shops still do paper gift vouchers and lose track. three: a way for customers to ask the shop to hold a book, with a text when it's in. four: author event tracking, how many books sold at each event versus the cost of wine and chairs. five: a monthly email to the owner that just says 'here are the five books you should reorder, here are the five you should return', nothing else. six: something for school orders, because a few shops supply local schools and it's a nightmare of purchase orders. seven: a used book pricing helper. eight: integration with the till so the counts are automatic. which of these are actually useful and which are me procrastinating?",
+          "yeah ok, five and eight are the real ones, one is cute but a distraction, the rest are 'maybe one day'. honestly the monthly email is so simple it might be the best idea I've had all year. adding it to the list"
+        ],
+        [
+          "we've left Brassworks! the team is now in a tiny office of our own on Fennick Street, still in Merrowdale, above a bakery. it's one room, two desks and a sofa, and the rent is barely more than two hot desks were",
+          "the smell of bread at 7am is either heaven or a weight-gain plan, not sure yet",
+          "can you give me a checklist for setting up a tiny office? internet, insurance, keys, all the boring stuff I'll forget",
+          "good, I forgot about contents insurance completely. adding it",
+          "Elif S came up from Ostrevik for the first day and we ate far too many cinnamon buns",
+          "random: how do I get rid of the echo in a small room with bare walls? our calls sound like we're in a bathroom",
+          "rug, curtains, bookshelf full of books. well, that last one is on brand at least",
+          "can you also explain the difference between a mesh wifi system and a simple router plus extender? the landlord's wifi does not reach the sofa",
+          "ok, I'll try the extender first, it's cheaper",
+          "and since we have an office now, Elif S and I wrote some house rules as a joke but also not a joke. can you tidy them up into something we can print? our version: one, whoever finishes the milk buys the milk, no exceptions, not even for founders. two, calls happen on the sofa side, focus happens on the window side. three, no meetings before 10 on Mondays because nobody is a person before 10 on Mondays. four, the bakery downstairs is not a lunch plan, it is a treat, we have discussed this. five, if Pilchard visits he is not allowed on the keyboard, the router, or the windowsill above the bakery fan, he will fall in and become a croissant. six, every Friday we write down one thing that went well, even if the week was a disaster. seven, the plant by the window is called Steve and he must be watered on Wednesdays. eight, nobody is allowed to say 'quick question' unless it is in fact quick. nine, the last person out turns off the heater, the lights, and the kettle. ten, be kind, we are very small.",
+          "perfect, laminating it. Steve the plant is honoured"
+        ],
+        [
+          "Rosalind Achebe wants to meet in person! we've scheduled it for Feb 12, coffee in Merrowdale. she said she just wants to understand the business, no pitch deck needed",
+          "I'm weirdly nervous. she ran 11 bookshops, she'll see through anything fluffy",
+          "can you help me prepare 5 questions to ask her? I want to learn from her even if she never invests",
+          "great, especially the one about what she'd have paid for software like this back then",
+          "unrelated: what's the best way to clean a cast iron pan that I accidentally left soaking overnight? it's rusty now",
+          "steel wool, dry on the hob, oil, heat. ok, it's coming back to life",
+          "also the half marathon is 10 weeks away. I'm at 10k long runs now. can you suggest how to build to 18k by race week without hurting myself?",
+          "ok, about 1 to 1.5k more each week with a down week every third. thanks",
+          "Pilchard has started yelling at the bakery van in the mornings. I'm working from home those mornings now to protect the neighbours"
+        ],
+        [
+          "pricing decision, this one is decided: from January Mossgrain is 49 per store per month, for everyone, existing customers included. we're sending the notice this week so everyone has a full month's warning",
+          "reasoning: Shelfsync is a big jump in value, support is growing, and 39 was below what most shops said they'd pay in those willingness-to-pay chats",
+          "can you help me write the price change email? honest, short, and with a thank-you to early customers",
+          "good. add a line offering a call if anyone wants to talk about it",
+          "random question: how do I stop procrastinating on things I'm scared of, like this email? I wrote it in my head four times",
+          "ok, the 'two minute start' trick. I'll try it",
+          "also unrelated: do you know a good general rule for how long leftover rice is safe in the fridge? my flatmate in my old place used to keep it for a week, which now terrifies me",
+          "yeah, I'm throwing it out after a day from now on",
+          "one more: my sister is asking whether to get her dog insured. what should she look at in general?"
+        ],
+        [
+          "Halden update, several things at once from today's meeting: my day rate goes up to 820 from December, Elif K is now my main contact there instead of Pieter (he's stepping back to focus on the finance side), and the supplier portal is dropped from my scope completely, they're buying an off-the-shelf tool instead",
+          "honestly I'm relieved about the portal, it was going to be a mess",
+          "so for Halden it's just the operations dashboard now, still 2 days a week",
+          "can you redo my weekly status email template for Elif K? she prefers short paragraphs over bullet points, and she wants risks at the top",
+          "good, thanks. she'll like the 'one thing I need from you' line",
+          "random: what's the difference between a stout and a porter? I'm embarrassed to work for a brewery and not know",
+          "ha, so basically historical marketing. Elif K will laugh when I tell her",
+          "also my mum loved the audiobook suggestions, she's now listening to a detective series while gardening",
+          "and I've accepted that the hallway needs a third coat of paint near the door. sigh",
+          "also, totally unrelated, I'm reading an article about community-owned bookshops and I'd love a summary of the argument because I'm too tired to finish it. here's the part I have: In several small towns, residents have responded to the closure of their last bookshop by buying it themselves. The model varies. In some cases a cooperative is formed, with members paying a modest annual fee in exchange for a discount and a vote at the yearly meeting. In others, a charitable trust owns the building while a manager runs the shop day to day. Supporters argue that the arrangement spreads risk and builds loyalty: members who own a share of the shop are more likely to buy their books there rather than online. Critics point out that cooperatives can be slow to make decisions, and that volunteer-heavy staffing is hard to sustain over years. The shops that last, the article suggests, tend to have one paid manager with real authority, a clear sense of what the shop is for, and a membership that is treated as a community rather than a funding source. Several managers said the hardest part was not the money but the meetings.",
+          "ha, 'the hardest part was not the money but the meetings' is very true of everything. thanks. could Mossgrain work for a cooperative shop, do you think, or do they have different needs? like multiple people needing access",
+          "right, mostly permissions and reporting for members. nothing we can't handle. a nice niche to remember"
+        ],
+        [
+          "more Halden news: they've extended my engagement to the end of June. they want me to stay on after the dashboard to help them with the rollout to their distribution team",
+          "it's good for cash flow, it basically funds Mossgrain until summer, which also takes some pressure off the seed question",
+          "can you help me think through how to protect my Mossgrain time while doing this? I'm worried Halden will creep up to 3 days again",
+          "ok: fixed days, written scope, no Slack on Mossgrain days. I'll tell Elif K that directly",
+          "random: is it rude to eat lunch at my desk during a video call if my camera is off? asking for a friend (me)",
+          "fair, mute and enjoy",
+          "can you explain what a Gantt chart is good for and when it's overkill? Elif K loves them",
+          "yeah, for a dashboard rollout with three teams it's probably not overkill. fine",
+          "half marathon long run today: 13k. I cried a little at the end but in a good way"
+        ],
+        [
+          "quiet week. can you explain how to calculate customer lifetime value with basically no churn? the formula breaks when churn is zero",
+          "ok so use a time horizon instead, like 3 or 5 years. that makes sense",
+          "also what's a reasonable way to think about how much to spend to acquire a bookshop? like is it 1 month of revenue or 12?",
+          "ok, I'll stay well under a year's worth until I know more",
+          "random: I'm hosting a small dinner for friends at the new flat. can you suggest a vegetarian main that I can make ahead? I have one hob and a sad oven",
+          "the big pot of chilli it is, with cornbread from the bakery downstairs",
+          "Joanna's pottery business launched! she sold out her first batch of mugs in a day. I'm so proud of her",
+          "can you write a short congratulations card message for her? something funny about mugs",
+          "haha 'you've got a lot on your plate, and also on your mugs' is very dumb, I love it",
+          "Pilchard update: he sat on the keyboard during a Halden call and sent Elif K a message that just said ';;;;;;;'. she replied with a cat emoji. good relationship building",
+          "ok last thing, I'm writing a cover letter for Joanna, she's applying for a part-time ceramics teaching job at the community arts centre to have steady income alongside the pottery. she asked me to polish it. her draft: Dear Hiring Committee, I am writing to apply for the part-time ceramics instructor position. I have been making pottery for eight years, and for the past two years I have taught informal workshops in my home studio for small groups of adults, most of whom had never touched clay before. I love the moment when someone who was nervous at the start of the evening leaves with a wonky bowl and a huge smile. I am patient, organised, and comfortable with mess, which I believe are the three most important qualities in a ceramics teacher. I have recently launched my own small pottery business, which has taught me a great deal about glazes, kilns, and the value of a reliable schedule. I would love the chance to bring this enthusiasm to the arts centre and help more people discover how calming and satisfying working with clay can be. Thank you for your time and consideration. Kind regards, Joanna",
+          "lovely, I like that you kept 'comfortable with mess', that's very her. I'll send it back to her with your edits"
+        ],
+        [
+          "change of plans: we're not going to Libris Fair in February. cancelled. the booth price went up, Elif S can't travel that week for family reasons, and honestly the Shelfsync launch prep needs every hour we have",
+          "I'm a bit sad but it's the right call. we'll try again next year maybe",
+          "can you help me think of cheaper ways to reach the same bookshop owners who'd be at the fair?",
+          "good ideas, especially offering to do a short talk at the regional booksellers' meetup instead",
+          "random: what's the best way to store winter clothes in a small flat? the wardrobe in this place is a joke",
+          "vacuum bags under the bed. Pilchard will hate the noise",
+          "also can you explain what a 'soft launch' is versus a 'hard launch' for software? I want to use the right words with the shops for Shelfsync",
+          "ok, so private beta is our soft launch and March 17 is the hard launch. nice"
+        ],
+        [
+          "first Halden invoice at the new 820 rate went out today for December. felt good",
+          "the dashboard is coming along, I've got the brewing schedule view and the kegs out view working on test data",
+          "can you help me write a short holiday message to all our Mossgrain bookshops? warm, short, maybe a bookish joke",
+          "aww that's sweet, keep the line about 'may your shelves be full and your returns be few'",
+          "I'm going to my mum's for the holidays, three days off from everything. can you give me a tiny checklist to switch off properly? I'm bad at this",
+          "out-of-office on, laptop in a drawer, Elif S has my number for emergencies only. okay",
+          "random: what's a good card game for a family of five that isn't Monopoly? my family turns Monopoly into a blood sport",
+          "ha, I'll try the cooperative one so nobody can win against anyone",
+          "also my mum wants me to help her write her annual holiday letter, the one she sends to about forty relatives and old colleagues. she dictated this on the phone and I typed it badly: Dear all, what a year. The garden did well apart from the slugs, who did even better. I joined a choir in the spring and we sang at the town hall in the summer, I was in the second row so nobody could see me forget the words. Lotte quit her job and moved to the mountains with a dog who eats shoes and a very nice man who makes excellent soup. Oriana moved flats, started running again and is still trying to save the bookshops of the world with her computer programme, she says it's going well and I believe her. My knee is better. I read 31 books, mostly detective stories. I hope you are all well and that the new year brings you health, good neighbours and fewer slugs. With love. can you tidy it up but keep her voice? she would hate it to sound polished",
+          "perfect, you kept the slugs. she'll be thrilled",
+          "also the half marathon long run is 15k now, 3 weeks of building left"
+        ],
+        [
+          "back from the holidays and the Mossgrain numbers are nice: 23 paying bookshops now. four signed in December, two of them because of the regional booksellers' meetup talk",
+          "still zero churn, though the price change hits this month so we'll see",
+          "can you help me write a short welcome email for new shops that sets expectations for onboarding? friendly, not corporate",
+          "good. make the subject line less boring",
+          "random: I ate so much at my mum's that my long run felt like running through soup. how long until my body forgives me?",
+          "ha, a week of normal eating. fine",
+          "also my sister got engaged over the holidays! can you suggest a nice engagement gift idea that's not just money?",
+          "the framed map of where they met is a lovely idea, I'll do that",
+          "and can you explain what a 'cap table' is? Rosalind mentioned it in an email and I'd rather not look clueless on Feb 12"
+        ],
+        [
+          "slow day. can you give me a simple weekly planning template that splits my time between Halden, Mossgrain product, and Mossgrain sales?",
+          "ok, Tuesday and Thursday blocked for Halden, Monday product, Wednesday sales, Friday catch-up. that's basically what I do already but written down helps",
+          "random knowledge thing: why do bookshops put books face-out sometimes and spine-out other times? a customer asked if Mossgrain could track that lol",
+          "makes sense, face-out sells better but takes space. not building that feature though",
+          "also, I finally fixed a bike puncture myself! took 40 minutes and a lot of swearing but it holds",
+          "can you explain how to true a slightly wobbly wheel? or is that a bike shop job",
+          "bike shop job. got it, I know my limits",
+          "the bathroom mould: the landlord finally replaced the extractor fan. it's been a week and no mould. victory",
+          "Pilchard has decided the new fan is a mortal enemy and stares at it for hours"
+        ],
+        [
+          "the podcast sent me their questions in advance. can you help me tighten my draft answers? they're rambly. Q1: how did you get into this? A: I worked in software for years at companies I didn't care about, building features for people I never met, and at some point I realised the only place I felt calm was in bookshops, so I started asking owners what drove them mad, and it was almost always stock, and I thought, well, I can count things, I can build things that count things, so I did. Q2: why are indie bookshops worth saving? A: because they're one of the last places in a town where you can spend an hour without anyone trying to optimise you, and because the people who run them know their customers in a way no algorithm does, they'll put a book in your hands that you didn't know you needed. Q3: what's the hardest part of selling software to bookshops? A: trust, mostly, and time. owners are exhausted, they've been sold things before that didn't work, and switching systems is scary when your whole stock lives in a spreadsheet only you understand. so we go slowly, we show up, we do the boring import for them, and I try to never promise something I can't do. Q4: what's next? A: we're working on a big feature that keeps shops in sync with their distributor, and honestly I'm just trying to keep the lights on and keep the shops we have very happy.",
+          "nice, much tighter. I like that you kept the 'without anyone trying to optimise you' line, that's the one I actually believe",
+          "for Q4 can we make it a bit more concrete without giving dates? I don't want to commit on air",
+          "good. 'keeps their shelves and their distributor's catalogue talking to each other' is perfect",
+          "random: how do I not say 'um' every three words on a podcast? I listened to myself on a voice memo and wanted to hide",
+          "ok, pause instead of filling. slow down. practice with a friend. I'll make Joanna listen",
+          "also do I need a proper microphone or are earbuds fine? the podcast said they'd send a guide",
+          "ok, a cheap USB mic is a big step up. I'll borrow one from Elif S's brother, apparently he does voiceover stuff",
+          "random again: is it ok to drink coffee right before recording? or does it make your voice weird",
+          "water at room temperature, coffee after. fine, but I'll be grumpy"
+        ],
+        [
+          "maid of honour stuff: my sister wants a short toast at the engagement dinner. can you help me fix this draft? I wrote it at midnight. Hi everyone, for those who don't know me I'm the little sister, which means I've spent thirty years being bossed around by the bride, and I'm thrilled that someone else is finally going to share the load. When she first told me about Tomasz, she said he was quiet, kind and terrible at board games, and I thought, finally, someone she can beat at Monopoly without it ending a friendship. Since then I've seen him carry her rucksack up a mountain without complaining, learn to make her favourite soup from our mum's recipe, and take Biscuit on a walk in a storm because she had a cold. That's love, as far as I can tell. It's not grand gestures, it's soup and rucksacks and walks in the rain. So please raise your glasses to my sister and Tomasz: may your hikes be long, your soup be hot, and your Monopoly games be peaceful. Cheers.",
+          "aww, thank you, the edits are lovely. I like that you cut the first joke down, it was a bit much",
+          "should I mention our dad? he passed a few years ago and I don't want to make everyone cry at an engagement dinner",
+          "ok, a light touch, one sentence, like 'Dad would have loved him'. yes. that's right",
+          "how long should a toast like this be? I tend to ramble when nervous",
+          "two minutes max. I'll time it",
+          "random: what's a good way to remember a speech without reading off my phone? I'll be holding a glass",
+          "three key words on a small card. soup, rucksack, rain. nice",
+          "also I need to buy a dress for the dinner and I hate shopping. any tips for shopping efficiently when you hate it?",
+          "decide colour and budget first, two shops max, buy the first one that fits. that's my kind of plan"
+        ],
+        [
+          "a bookshop owner sent us a long support email and I want to reply nicely. can you help me draft a reply? her email: Hello, I hope this is the right address. I've been using your system for a few weeks and I mostly love it, but I have a problem with books that have more than one ISBN. We sell a lot of poetry from small presses, and sometimes the same book arrives with a different ISBN when it's reprinted, and then your system thinks it's two different books, and my counts are wrong. Also, when I scan a book that isn't in the distributor's catalogue at all, like the self-published local history books we get from the historical society, it gives me an error and I have to type everything by hand, which is fine but slow. And one more small thing: the font on the reorder screen is quite small and my reading glasses are always somewhere else. I don't want to be a nuisance. Thank you for making this, it's already saved me hours. Best wishes, Margit",
+          "lovely. please also mention that we can merge the duplicate ISBNs manually for her right now, Elif S can do it in ten minutes, and that we're looking at a proper fix",
+          "and for the self-published books, tell her about the quick-add form, she probably hasn't found it",
+          "great, and the font: tell her there's a zoom setting, and that we'll look at making the default bigger",
+          "perfect, sending it. I'll ask Elif S to call her next week too, since she's handling onboarding for now",
+          "random: is there a good rule for how quickly to reply to customer emails as a tiny company? I feel guilty when it takes a day",
+          "within one working day is fine for a tiny team, and say so on the website. ok, that helps my guilt",
+          "also, can you explain what ISBN-10 vs ISBN-13 is? the shop owners keep asking and I always half explain it",
+          "ok, older books have 10 digits, everything since 2007 has 13, and they can be converted. clear",
+          "unrelated: my bike now makes a clicking noise when I pedal hard. should I worry?"
+        ],
+        [
+          "book club for my friends is at my place next month and I'm the one choosing. can you help me sort my notes into a shortlist? here's my chaotic list: a novel about a lighthouse keeper's daughter that everyone says is slow but beautiful; a short funny book about a family running a failing hotel; a thick historical novel about a shipbuilding town that Joanna says changed her life; a nonfiction book about trees talking to each other; a collection of short stories set in different kitchens; a thriller that someone at the bookshop on Gull Lane recommended because the twist is apparently unguessable; a memoir by a woman who walked across a country after a divorce; a novel told entirely in letters between two pen pals over fifty years; a graphic novel about a cat who runs a library (I need this for obvious reasons). the group: six people, mostly busy, two of them never finish anything over 300 pages, one hates anything sad, and one only reads nonfiction but comes for the wine.",
+          "ok, the hotel one and the letters one are the safest. the cat library graphic novel as a bonus for fun",
+          "can you write me three discussion questions for the letters novel, without spoilers?",
+          "good. question two is nice, about what we'd write to someone for fifty years",
+          "random: what wine goes with a big pot of chilli? asking for the book club",
+          "something fruity and not too fancy. perfect, the corner shop will do",
+          "also my sourdough starter Gerald died. I forgot to feed him for a week. RIP Gerald",
+          "is it possible to revive a starter that smells really bad and has grey liquid on top?",
+          "ok, pour off the liquid, feed it twice a day for a few days, see if it bubbles. Gerald may rise again",
+          "Pilchard has started sleeping on the book club shortlist I printed. I think he's voting for the cat library one"
+        ],
+        [
+          "big team news: we hired Benedikt Ruhl as our first customer success person! he owns onboarding from now on, so Elif S can go back to engineering full time, which she's thrilled about because Shelfsync needs her",
+          "Benedikt is remote, he lives in Brenmouth. he used to work at a library software company so he gets the world",
+          "he starts Monday. can you help me make a first-week plan for him? I want him shadowing two onboarding calls and then running one himself by Friday",
+          "great. add a coffee chat with each of the three private beta shops",
+          "also can you draft a short announcement to our customers introducing Benedikt as their new onboarding contact?",
+          "good, keep the library software line, they'll like that",
+          "random: what's a good way to do a remote welcome for someone when the team is three people? I don't want it to be awkward",
+          "a video call lunch with food delivered to him. cute, doing it",
+          "Elif S's reaction to not doing onboarding anymore was literally 'finally, back to my beautiful pagination bugs'"
+        ],
+        [
+          "January update: the 49 price is live now, and nobody churned! two shops replied saying it's still cheap, one asked for an annual plan",
+          "should I offer annual billing? like 10 months for the price of 12, or is that confusing?",
+          "oh wait I mean pay for 10 get 12. yes. ok, I'll offer it to whoever asks for now, not publish it",
+          "can you write a short reply to the shop that asked for an annual plan?",
+          "good. also Benedikt's first week went really well, he ran his first onboarding solo on Friday and the shop owner sent me a thank you note about him",
+          "random: what's the difference between a cold and the flu? I feel awful and I have a long run planned",
+          "ok, cold, no fever, so an easy walk instead of the long run. responsible me",
+          "half marathon is in 5 weeks. I'm worried the cold will set me back",
+          "and can you remind me of a soup that's good when you're sick and have one hob? not dal, I've had a lot of dal",
+          "ok, while I'm stuck on the sofa with this cold, can you explain a bunch of terms that keep coming up in founder chats so I stop nodding along? here's my list: runway, burn multiple, ARR vs MRR, gross margin for SaaS, CAC payback, net dollar retention, logo churn vs revenue churn, ACV, PLG, sales-led, land and expand, ICP, TAM SAM SOM, bottoms-up market sizing, default alive vs default dead, ramen profitable, and the rule of 40. I know some of these vaguely. I'd like one or two plain sentences each, and if any of them are basically meaningless for a tiny bootstrapped company selling to bookshops, tell me that too, I'd honestly find that reassuring.",
+          "this is great. so for us the ones that matter are runway, MRR, gross margin, churn and default alive. the rest is mostly for people raising big rounds. I feel less stupid now. going back to sleep"
+        ],
+        [
+          "bad news from Halden: Elif K says the ERP migration is slipping by about a month. some data migration issue with their old system",
+          "so annoying, the dashboard is basically ready on test data",
+          "can you help me write a reply to Elif K that is supportive but also makes clear what the knock-on effect is for my work?",
+          "make it shorter. and remove the passive aggressive sentence, I didn't mean it like that",
+          "random: what's a good way to keep momentum on a project that's blocked by someone else? I hate waiting",
+          "ok, use the time for the rollout training materials. good, that's actually useful for the distribution team",
+          "also Pilchard caught a moth today and brought it to my desk during a call. Benedikt saw the whole thing",
+          "can you explain what 'data migration' usually involves, in simple words? I want to understand why it takes so long",
+          "ok, mapping, cleaning, testing, reconciling. I'll be less grumpy about it"
+        ],
+        [
+          "light day. can you recommend how to structure a short internal Mossgrain retro for the three of us? we've never done one",
+          "good, keep it to 45 minutes, what went well, what didn't, one thing to change",
+          "unrelated: is it better to stretch before or after running? I keep hearing both",
+          "ok, dynamic before, static after. noted",
+          "my friend Joanna wants to do a pottery stand at a market and asked how to price mugs. any general rules?",
+          "materials plus time plus a margin, and don't undercut yourself. I'll pass that on, she's way too modest",
+          "also I found a lovely second-hand bookshelf for the Fennick Street office, it fixed the echo a bit",
+          "can you write a funny two-line sign for the office door? something about books and inventory",
+          "haha 'we count books so you don't have to' is good"
+        ],
+        [
+          "prepping for Rosalind on Feb 12. still on, coffee in Merrowdale. she asked me to bring numbers but nothing formal",
+          "can you help me put together a tiny one-page summary of where Mossgrain stands? I'll fill in the numbers myself",
+          "good structure. also can you help me think through what I'd say if she asks whether I want to raise?",
+          "yeah, honest answer: I'm open, not decided, depends on Shelfsync. that's the truth anyway",
+          "random: what's a good thing to wear to a casual investor coffee? I own three jumpers and they all have cat hair on them",
+          "lint roller. right",
+          "also, Shelfsync private beta is going well with the three shops. one bug with out-of-print titles, Elif S is on it",
+          "half marathon long run: 17k, felt strong. the cold is gone",
+          "can you suggest how to taper in the last two weeks before a half?",
+          "and a race-day question while I'm at it, because I'm the kind of person who panics about logistics: the start is at 9, the race village opens at 7:30, I live about 25 minutes away by bike but I obviously don't want to cycle before a half marathon, the bus takes 40 minutes with a change, and my sister has offered to drive me but she's notoriously late for everything including her own birthday party. I need to pick up my bib the day before at a sports shop across town, which closes at 6, and I work at Halden that day. I also have no idea what to eat for breakfast at 6am when my stomach is a nervous wreck, whether to carry a gel or two, whether to wear the new shoes I bought last week or the old ones with 600k on them, and what to do with my keys and phone. please give me a calm, boring checklist so I can stop thinking about it",
+          "brilliant. bus, not sister. old shoes. toast with honey at 6. two gels. bib pickup in my lunch break. checklist printed and stuck to the fridge"
+        ],
+        [
+          "not much today. can you help me write a short thank-you message to the owner of the shop on Gull Lane? she's been the best private beta tester",
+          "add the line about the cake, she'll remember",
+          "random: how do I keep my desk plants alive when I'm away for a long weekend?",
+          "ok, water well and move them away from the window. the snake plant will be fine anyway, it's indestructible",
+          "my sister wants me to be maid of honour. what does that actually involve? I'm a bit scared",
+          "ok, mostly emotional support and some planning. I can do that",
+          "also Benedikt suggested a monthly webinar for shop owners. I think it's a nice idea, we'll see",
+          "can you list some topic ideas for a first webinar for indie bookshop owners about stock management?",
+          "great list, the 'books that never sell' one will be popular",
+          "can you also draft the invitation email for that first webinar? rough details: free, 45 minutes, on a weekday evening after shops close, for any indie bookshop owner, not just our customers. it'll be me and Benedikt. we'll talk about how to spot books that have been sitting too long, what to do with them (returns, discounts, a 'staff picks from the back room' table), and how to decide what to reorder without guessing. there'll be time for questions. we're not going to do a sales pitch, maybe one slide at the end about Mossgrain and that's it. tone: friendly, a bit funny, like a note pinned on the shop noticeboard. no corporate stuff. I'll add the date and the link myself once Benedikt confirms his evenings",
+          "love it, especially 'bring your own tea and your most embarrassing unsold book'. saving it for when we have a date",
+          "ok that's it for now, thanks for keeping all this in your head, mine is full"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 6,
+          "name": "halden-engagement.md",
+          "text": "# Halden Breweries: Fractional CPO Engagement\n\nConsultant: Oriana (founder, Mossgrain)\nMain contact: Pieter Vos, CFO\nOperations contact: Elif Kaya, Operations Manager (Halden HQ, Calvaro)\nCommitment: 2 days per week\nDay rate: €750\nTerm: October through the end of March\n\n## Deliverables\n1. Operations dashboard (brewing schedule, kegs out, distributor orders). Handoff: January 30, after the ERP migration completes.\n2. Supplier portal: requirements and clickable prototype.\n\nInvoicing: monthly, 14 days net.\n"
+        }
+      ],
+      "questions": [
+        { "id": "f5-q01", "cat": "current_fact", "q": "what does Mossgrain sell, and to whom?", "required": ["inventory software", "independent bookshops"] },
+        { "id": "f5-q02", "cat": "current_fact", "q": "which distributor does Mossgrain integrate with?", "required": ["Pagewell"] },
+        { "id": "f5-q03", "cat": "state_change", "q": "what are we charging per store for Mossgrain?", "required": ["€49 per store per month"], "forbidden": ["Mossgrain costs €39 per store per month"] },
+        { "id": "f5-q04", "cat": "state_change", "q": "how many paying bookshops do we have?", "required": ["23"], "forbidden": ["you have 14 paying bookshops", "you have 19 paying bookshops"] },
+        { "id": "f5-q05", "cat": "state_change", "q": "where does the Mossgrain team work from?", "required": ["own office on Fennick Street"], "forbidden": ["the team works out of Brassworks coworking"] },
+        { "id": "f5-q06", "cat": "state_change", "q": "who handles customer onboarding at Mossgrain?", "required": ["Benedikt Ruhl"], "forbidden": ["you do all onboarding yourself", "Elif Sorensen owns onboarding"] },
+        { "id": "f5-q07", "cat": "state_change", "q": "who's my main contact at Halden?", "required": ["Elif Kaya"], "forbidden": ["Pieter Vos is the main contact"] },
+        { "id": "f5-q08", "cat": "state_change", "q": "what am I delivering for Halden at this point?", "required": ["operations dashboard"], "forbidden": ["you are building the supplier portal"] },
+        { "id": "f5-q09", "cat": "correction", "q": "when is the Shelfsync public launch?", "required": ["March 17"], "forbidden": ["Shelfsync launches March 3", "Shelfsync launches March 10"] },
+        { "id": "f5-q10", "cat": "correction", "q": "how many days a week do I work for Halden?", "required": ["2 days a week"], "forbidden": ["you work 3 days a week for Halden"] },
+        { "id": "f5-q11", "cat": "compound", "q": "what's my Halden day rate?", "required": ["€820 per day"], "forbidden": ["the Halden day rate is €750"] },
+        { "id": "f5-q12", "cat": "history", "q": "what did Mossgrain originally charge per store?", "required": ["€39 per store per month"] },
+        { "id": "f5-q13", "cat": "history", "q": "where did Elif S and I work before our current office?", "required": ["Brassworks coworking", "Merrowdale"] },
+        { "id": "f5-q14", "cat": "temporal", "q": "am I still going to Libris Fair?", "required": ["cancelled"], "forbidden": ["you are going to Libris Fair in February"] },
+        { "id": "f5-q15", "cat": "temporal", "q": "have I had my meeting with Rosalind yet?", "required": ["not yet", "February 12"], "forbidden": ["the meeting with Rosalind already happened"] },
+        { "id": "f5-q16", "cat": "conflict_document", "q": "until when does my Halden engagement run?", "required": ["end of June"], "forbidden": ["the engagement ends at the end of March"] },
+        { "id": "f5-q17", "cat": "disambiguation", "q": "where is the Elif from Halden based?", "required": ["Calvaro"], "forbidden": ["she is based in Ostrevik"] },
+        { "id": "f5-q18", "cat": "disambiguation", "q": "what does Elif on my team do?", "required": ["first engineer at Mossgrain"], "forbidden": ["she is Halden's operations manager"] },
+        { "id": "f5-q19", "cat": "multi_hop", "q": "what city does the person who now owns Mossgrain onboarding live in?", "required": ["Brenmouth"], "forbidden": ["they live in Ostrevik"] },
+        { "id": "f5-q20", "cat": "multi_hop", "q": "how much do I bill Halden in a normal week now?", "required": ["€1,640 per week"], "forbidden": ["€1,500 per week", "€2,460 per week"] },
+        { "id": "f5-q21", "cat": "consequence", "q": "what does Elif K's latest news mean for my Halden work?", "required": ["operations dashboard handoff slips", "about a month later than January 30"] },
+        { "id": "f5-q22", "cat": "attribution", "q": "where did I list the original Halden deliverables?", "required": ["halden-engagement.md"] },
+        { "id": "f5-q23", "cat": "negation", "q": "did I decide to raise a seed round?", "required": ["not decided"], "forbidden": ["you decided to raise a seed round in the summer"] },
+        { "id": "f5-q24", "cat": "unknown", "q": "what salary are we paying Benedikt?", "expectUnknown": true },
+        { "id": "f5-q25", "cat": "unknown", "q": "how much is Rosalind thinking of investing?", "expectUnknown": true },
+        { "id": "f5-q26", "cat": "unknown", "q": "who's my contact person at Pagewell?", "expectUnknown": true },
+        { "id": "f5-q27", "cat": "unknown", "q": "what year did I start Mossgrain?", "expectUnknown": true },
+        { "id": "f5-q28", "cat": "synthesis", "q": "draft a three-line update about Mossgrain I can hand Rosalind", "required": ["23 paying bookshops", "€49 per store per month", "Shelfsync launches March 17", "Benedikt Ruhl handles onboarding"], "forbidden": ["14 paying bookshops", "19 paying bookshops", "€39 per store", "Shelfsync launches March 3", "Shelfsync launches March 10"] }
+      ]
+    },
+    {
+      "id": "f6-dario",
+      "length": "long",
+      "sessions": [
+        [
+          "hey. setting you up as my work memory because my notes app is a graveyard. I'm Dario, independent ML consultant, I live in Tessaly and I work from the spare room in my flat, which is also where my bass amp and a drying rack live. very professional",
+          "I have two clients right now. Velta Mutual, an insurance company, where I'm building a claims triage model, basically it ranks incoming claims so the adjusters look at the urgent or complicated ones first. and Northcape Grocers, a regional supermarket chain, where I'm doing demand forecasting for their fresh produce so they stop throwing away half their lettuce",
+          "and then there's my own thing, Gullwing. it's a newsletter analytics tool: if you write a newsletter it tells you which links people actually click, when your readers open, which posts make people unsubscribe, that kind of stuff. it's in private beta. I build the backend, and my friend Sam Lindgren does the design and the frontend. she lives in Brenmouth, we met at a hackathon years ago",
+          "first question, not work: I play bass in a little band with three friends, we rehearse on Wednesdays. we have a gig at a bar in December and our setlist is a mess. how do you order a 40 minute set so the energy doesn't die in the middle?",
+          "ok, open strong, slow one at about minute 15, build to the end, save the singalong for last. makes sense. our drummer will still want to open with the 7 minute instrumental, but I'll show him this",
+          "also, unrelated, I started a sourdough starter yesterday because everyone else has one and I'm weak. how do I know if it's working? it just looks like wet flour",
+          "fine, give it a week. if it smells like socks I'm giving up",
+          "ok one more band thing because the group chat is on fire. our rehearsal room situation: we rent a room in a basement under a tyre shop, every Wednesday from 7 to 10. it's cheap, but it floods a bit when it rains hard, the PA has one working speaker, and the tyre shop guy leaves at 6 so if we forget the key code we're stuck outside. the singer found another place across town, a proper rehearsal studio with drums and amps already there, but it's three times the price and we'd have to book in two hour slots, and the guitarist would have to drive further with the van. the drummer refuses to use someone else's kit because 'the cymbals will be wrong'. the singer says the basement is bad for her voice because of the damp. I don't care that much, I just want to play and not argue about it for a month. can you help me write a short neutral message to the group that lays out both options with pros and cons so we can vote on Wednesday? I'm trying to be the calm one for once",
+          "perfect, neutral and short. I added 'please vote with your heart and your wallet' at the end. we'll see"
+        ],
+        [
+          "Velta details: I bill them 95 euros an hour. my contact there is Sam Reyes, he's head of claims data, he's at Velta's head office in Ostrevik. so yes, two Sams in my life, Sam L for Gullwing and Sam R at Velta. please never mix them up, Sam R would be very confused by questions about button colours",
+          "the Velta data is about four years of claims, roughly a million rows, with adjuster notes as free text. the free text is where all the signal is and also where all the mess is",
+          "can you remind me of the trade-offs between gradient boosting on hand-made features versus fine-tuning a small text model for something like this? I want to explain my choice to Sam R in a non-hand-wavy way",
+          "that's a useful framing. I'll start with boosting plus a few text features as the baseline and only go fancier if the baseline is clearly not enough. Sam R likes things he can explain to the compliance people",
+          "unrelated: what's a good stretch for a stiff neck from staring at a laptop on a kitchen table? my posture is a crime",
+          "chin tucks, ok. I'm doing them right now and I look like a pigeon",
+          "also my dad has knee surgery in a few weeks and he's being stubborn about the physio. any tips on how to convince a 70 year old that the exercises matter? he thinks rest fixes everything",
+          "ok, link it to something he cares about, like his allotment. good. the hospital also sent him a pre-surgery leaflet and he forwarded it to me because he says he can't read the small print. can you make it into a simple list for him? here: Before your operation. Please stop eating solid food six hours before your admission time. You may drink clear fluids, such as water or black tea without milk, up to two hours before. Bring all your current medication in its original packaging. If you take blood thinning medication, you must contact the pre-assessment clinic at least seven days before your operation, as you may need to stop it. Remove all jewellery and nail varnish. Arrange for a responsible adult to collect you and stay with you for the first 24 hours after discharge. You will not be able to drive for at least six weeks. Prepare your home before admission: remove loose rugs, place frequently used items at waist height, and consider a raised toilet seat. Bring loose comfortable clothing and flat shoes with a closed back. Physiotherapy will begin on the day of or the day after your operation and is essential for your recovery.",
+          "great, big font, short lines. I'll print it and stick it on his fridge. and I'll be the responsible adult, apparently"
+        ],
+        [
+          "Northcape details: it's a fixed fee project, 18,000 euros. my contact is Linnea Hult, she's their supply chain lead. very sharp, very dry sense of humour, she once described their old forecasting spreadsheet as 'a crime scene with formulas'",
+          "they have stores all over the region, and the fresh produce waste numbers are scary. they want forecasts per store per product so the ordering team can stop guessing",
+          "SQL question: I need a rolling 7 day average of sales per store and product in Postgres, and the data has missing days when a store didn't sell something. what's the cleanest way to handle that? generate a calendar and left join?",
+          "yeah ok, calendar table cross joined with store-product pairs, left join sales, coalesce to zero. and then the window function. that's what I'd do in pandas too, just wanted a sanity check",
+          "unrelated: my band's guitarist wants us to record a demo in his living room. is that a terrible idea acoustically or can we get away with it? we have one decent mic and a lot of enthusiasm",
+          "ok, blankets on the walls, record the drums last or separately, and lower our expectations. noted",
+          "also, sourdough update: it smells like vinegar and has bubbles. alive. I named it Bassline",
+          "random python thing before I sleep, can you sanity check the logic of this function I wrote for a side experiment? I'm describing it rather than pasting code: it takes a dataframe of daily sales with columns store, product, date and units. first it builds the full calendar of dates between the min and max date. then it makes every combination of store, product and date. then it left joins the real sales and fills missing units with zero. then it sorts by store, product, date and computes a rolling 7 day mean and a rolling 28 day mean of units per store-product. then it computes the ratio of the 7 day mean to the 28 day mean as a 'momentum' feature. finally it drops the first 27 days for each store-product because the 28 day window isn't full yet. my worry is that filling with zero is wrong for products that weren't stocked yet, like a new product that launched halfway through, because then the early zeros look like terrible sales instead of 'not available'",
+          "yes exactly, I need a 'first sale date' per store-product and only fill zeros after that, before that it should be missing, not zero. same for products that were discontinued. ok, that's a real bug, glad I asked. and divide by zero in the ratio when the 28 day mean is zero, I'll guard that too"
+        ],
+        [
+          "uploading the Velta statement of work so you have the official version. it's v1, the one we signed",
+          "the main thing in there: model delivery, the hours cap, and that I need to pass their security review before I get production data access. right now I work on a read-only replica through their VPN",
+          "can you explain what a 'data processing agreement' usually covers? Sam R mentioned I'll need to sign one and I want to understand it before I get the PDF",
+          "ok, what data, why, how long, who else sees it, what happens when we're done. that's reasonable",
+          "unrelated: I'm learning Portuguese because my partner's family is from there and I want to understand the jokes at dinner. currently I understand nothing. how do you get from zero to 'follow a dinner conversation' in a year with 20 minutes a day?",
+          "ok, listening a lot, a tutor once a week, and accept being lost for months. that's honest at least",
+          "also my bike chain keeps slipping when I go uphill. is that the chain or the gears?",
+          "ok, probably a worn chain and maybe the cassette. bike shop it is. while I'm here, my building sent this notice and I want to know if I need to care: Dear residents, the annual inspection of the building's fire safety equipment will take place over three days next month. Technicians will need to access each flat for approximately fifteen minutes to test smoke detectors and inspect the fire door closer on your front door. If you are not home, the building manager will let the technicians in with the master key, accompanied at all times. Please ensure that access to your hallway ceiling is clear. Residents are reminded that bicycles may not be stored in the stairwell or the entrance hall, as these are escape routes. Bicycles found in these areas after the inspection will be removed to the basement storage room. Residents are also reminded that the basement storage room is not a rehearsal space, following recent complaints. Thank you for your cooperation.",
+          "ha, the last line is about me, isn't it. I played bass in the basement exactly once. ok, move the bike out of the hallway, clear the ceiling area, and stop rehearsing in the basement. message received"
+        ],
+        [
+          "Gullwing update: we have 120 beta users now! all free, mostly people from two newsletter-writer communities I'm in",
+          "Sam L is doing all the design and the frontend, I do the backend and the data pipeline. we meet on video every Monday evening, she's got a dog that barks at exactly the wrong moment every call",
+          "can you help me write a short survey for the beta users? I want to know what they'd pay for, what's confusing, and what they open every week. max 6 questions",
+          "good. drop question 4, it's leading",
+          "random: what's the difference between a median and a mean in a way I can explain to newsletter writers? our dashboard shows median open time and people keep asking why it isn't the average",
+          "ha, the 'one billionaire walks into a bar' example. perfect, that's going in the help docs",
+          "also I need to buy a birthday present for my partner and I'm hopeless. she likes ceramics, long walks, and very spicy food. ideas?",
+          "ok, I think I'll do a dinner plus a nice handmade mug from a local potter. for the dinner, I want to cook something really spicy. here's a recipe her aunt sent me, translated badly by an app, can you turn it into something I can follow? 'Take the chicken pieces and make them friends with the garlic, the paprika strong and sweet, the piri piri as much as your courage, lemon and a little wine white. Leave them in the cold one night or at least the afternoon. In the hot pan with oil, put the chicken skin down until it is gold like a coin. Turn. Put the rest of the friends from the bowl. Cover and let it think on small fire half hour. Taste. If it does not burn the mouth, add more piri piri, because you are not cooking for tourists. At the end, the coriander, and serve with potatoes in the oven and a salad for the conscience.'",
+          "this is great, and I love 'a salad for the conscience', I'm keeping that phrase forever. marinate overnight, brown skin side down, cover and simmer 30 minutes, adjust heat, coriander at the end. she's going to cry, and not only from the chilli"
+        ],
+        [
+          "Gullwing plan: public launch is January 15. we'll open signups, start charging after beta, and do a little launch post in the communities",
+          "Sam L is designing the landing page, I'm terrified of writing the copy",
+          "can you help me draft a first version of the landing page headline and three short feature lines? audience: people who write newsletters and are tired of guessing",
+          "much better than mine. 'stop guessing what your readers want' is good, maybe too generic though. can you try something more specific about clicks and unsubscribes?",
+          "ok, 'find out which posts make people click, and which make them leave' is the one",
+          "unrelated: the band's demo is happening Saturday. what's the best way to keep four people focused for a full day of recording? last time we spent 3 hours arguing about a fill",
+          "a schedule with breaks and a rule that arguments get 5 minutes then the song owner decides. I love this, I'm going to be unbearable",
+          "can you also help me make a packing list for the recording day so we don't forget something stupid? here's what's in my head, it's a mess: my bass, the backup bass, spare strings, the tuner that eats batteries, batteries, the DI box, two long cables and one short one, the guitarist's pedal board (his responsibility but he always forgets the power supply), the drummer's whole kit including the snare he refuses to replace, the one decent mic, the borrowed second mic, mic stands, the laptop with the recording software, the audio interface, headphones for everyone (we have three pairs for four people), a power strip or two, gaffer tape, blankets for the walls, snacks that don't crunch loudly, water, coffee, a printed setlist with the song keys, lyrics for the singer even though she says she knows them, and the extension cord from my flat",
+          "perfect, sorted by person, with a 'shared' list. I'll post it in the chat and assign the headphones problem to the guitarist since it's his living room"
+        ],
+        [
+          "Velta: the security review is scheduled for Nov 23. it's a call with their security team where they go through how I store data, my laptop setup, all of that",
+          "I need to have disk encryption, MFA everywhere, and a written note on how I handle the data. I have most of it, the note is the annoying part",
+          "can you help me outline that data handling note? one or two pages, plain language",
+          "great structure. add a section on what happens to the data when the contract ends",
+          "unrelated: my sourdough Bassline produced its first loaf and it was a brick. a delicious brick, but a brick. what went wrong?",
+          "probably underproofed. ok, longer proof, warmer spot. the spare room with the amp is the warmest, so it'll proof next to the bass amp, appropriately",
+          "also the demo recording went fine! we got 4 songs. the drummer opened with the instrumental anyway",
+          "and one more personal thing. my partner wrote a short story for a writing group and wants honest feedback, she said to ask you as well as me because I'm 'useless and biased'. here's the opening: The ferry was late again, which in our town meant it might come tomorrow or it might come at midnight with its lights off, like it was ashamed. My grandmother waited on the pier anyway. She brought a folding chair, a flask of coffee and a bag of oranges, and she sat facing the water with the patience of someone who had waited for worse things than boats. People stopped to talk to her. The baker brought her a pastry. The harbour master, who was technically responsible for the ferry and therefore for her waiting, brought her a blanket and an apology. She accepted the blanket. She did not accept the apology. When the ferry finally arrived, two hours after dark, she folded her chair, gave the last orange to the captain, and said, I knew you'd come, you always do, you just never say when. Then she went home without getting on.",
+          "aww, yes, I love the ending too, the not getting on is the whole story. I'll tell her you said the harbour master line is the funniest bit. and yes, I'm stealing the late ferry for a song, with permission"
+        ],
+        [
+          "wait, I told you 18k for Northcape earlier, it's actually 16k. 18k was my first quote and they negotiated it down. sorry",
+          "so 16k fixed fee, paid half at kickoff, half at the final readout",
+          "can you explain how to handle holidays and promotions in a demand forecast? Linnea warned me that their promo calendar is chaos",
+          "ok, holiday flags, promo flags with lead and lag, and treat big events separately. makes sense. I'll ask them for the promo calendar early",
+          "unrelated: my partner and I are thinking of getting a cat. not decided at all. we're in a third floor flat without a balcony. is that fair on a cat?",
+          "ok, an indoor cat with lots of climbing stuff is fine. we'll keep thinking. she wants a grey one, I want whichever one picks us",
+          "also my dad's surgery date is confirmed, and he's agreed to do the physio. I used your argument about getting back to his allotment faster. it worked"
+        ],
+        [
+          "correction on Velta: I said the security review is Nov 23, it's actually Nov 30. Nov 23 is the internal dry run their security team does without me. so: Nov 30 for the real one",
+          "good, an extra week to write that data handling note",
+          "pandas question: I have a dataframe of claims with a timestamp column in three different formats because of a system migration. what's a sane way to parse them all without silently getting garbage?",
+          "ok, parse each format explicitly with errors set to coerce, then check how many are still null and inspect them. yeah, no magic inference. good",
+          "unrelated: what's a good beginner Portuguese podcast? or general advice on choosing one, since you might not know the specific ones",
+          "fair, slow-speech ones with transcripts. I'll look",
+          "also the band got the December gig confirmed at the bar near the harbour. we're second on the bill, which means we play to the bartender and three people's partners",
+          "can you help me write a short announcement for our band's social page about the gig? also here's the bar's description of the night so the vibe matches: 'Harbour Sessions is our monthly night for local bands who are better than they think and worse than they hope. Two bands, one bar, no cover charge before nine. The kitchen stays open until ten with the fish sandwich that made us almost famous. Please be kind to the sound engineer, he is doing his best with equipment older than some of the musicians. Bands are reminded that encores are permitted only if the audience genuinely asks, and that the bar staff are the final judges of whether that is the case.' I love this bar",
+          "perfect, funny and short, and you kept the bit about being kind to the sound engineer. we'll post it with the seagull poster once the drummer finishes it"
+        ],
+        [
+          "Gullwing pricing decision: once we leave beta it's 12 euros a month per newsletter. one plan, all features. Sam L and I agreed last night",
+          "beta users get two months free after launch as a thank you",
+          "important scheduling thing for me: I have to deliver the Velta model before I can start the actual Northcape forecasting work. I don't have capacity to do both properly at once, so Northcape gets data prep and exploration until Velta is delivered, then the real modelling",
+          "can you help me write a short email to Linnea explaining that sequencing without sounding like Northcape is second priority? because they're not, it's just physics",
+          "good. 'so each of you gets my full attention when it matters' is a nice line",
+          "unrelated: my partner's birthday dinner went great. I made the spiciest thing I could find and she cried from the chilli and said it was perfect. romance",
+          "also can you explain what 'proofing' actually does chemically? I want to understand Bassline better",
+          "ok, yeast making gas, gluten trapping it. so my brick was a gas leak. got it",
+          "here's my sourdough log from the last few days, can you tell me what to change? day 1: fed at 8am, 50g flour 50g water, doubled by 2pm, smelled like yogurt. day 2: fed at 9am, same ratio, only rose by half, flat by evening, flat in the spare room which was cold because I left the window open. day 3: fed at 8am and 8pm, rose nicely next to the amp, bubbles everywhere. day 4: mixed dough at 10am with 100g starter, 500g flour, 350g water, 10g salt, did four sets of stretch and fold every 30 minutes, then left it to rise until 4pm, it grew maybe 30 percent, shaped it, fridge overnight. day 5: baked at 240 with a lid for 20 minutes, without for 25. result: decent crust, tight crumb, slightly sour. I'm happy but I want bigger holes",
+          "ok, so let the bulk rise go longer until it's grown more like 50 to 75 percent, and keep it warm. the cold window day explains a lot. and maybe a little more water once I get better at handling sticky dough. Bassline and I will try again on Sunday"
+        ],
+        [
+          "Northcape kickoff was today in person at their head office. I'm uploading my kickoff notes",
+          "Linnea brought two analysts, both very nice, one of them has been maintaining the crime scene spreadsheet for six years and is very relieved",
+          "the data is three years of point-of-sale data plus a weekly promo calendar. no weather data yet, we left that as an open question",
+          "can you help me make a quick checklist for the first week of data exploration on a retail forecasting project? I want to look at the right things before I fall in love with a model",
+          "great, especially 'check for stores that opened or closed during the period'. that bit me on a project years ago",
+          "unrelated: I want to get better at saying no to friends who ask for free tech help. my cousin wants me to 'just quickly build' an app for his gym. any phrasing that isn't rude?",
+          "ha, 'I'd love to help you figure out what you need, but I can't build it' is good. I'll offer him an hour of advice and that's it",
+          "also my dad's surgery went well, he's home and grumpy, which means he's fine"
+        ],
+        [
+          "ugh, I need to correct my correction on Northcape. it's not 16k. the signed contract says 17,200. when I 'corrected' it to 16k I was looking at the unsigned draft. the final number includes a small data audit they added. so 17,200, I checked the signed PDF twice",
+          "half at kickoff, half at the final readout, that part is right",
+          "can you help me set up a simple way to track my consulting income across both clients? I bill Velta hourly and Northcape is fixed, so it's messy",
+          "ok, one spreadsheet, a row per invoice, a column for client, type (hourly or fixed), hours if hourly, amount, date sent, date paid. simple enough that I'll actually use it",
+          "unrelated: here's a paragraph from a book I'm reading about forecasting and I'm not sure I agree, can you tell me what you think? 'The purpose of a forecast is not to be right. A forecast that is always right is useless, because the world it describes has no uncertainty worth planning for. The purpose of a forecast is to make the decision-maker less wrong than they would have been without it, and to tell them, honestly, how wrong they might still be.' I kind of love it but I also think clients want to be right",
+          "yeah, that's the tension. clients want a number, the honest answer is a number with a range. I'll steal the 'less wrong' line for the Northcape readout",
+          "also the band is rehearsing twice a week now for the gig, my fingers hurt"
+        ],
+        [
+          "lazy Sunday, mostly non-work. my partner and I are planning a trip to see her family in the spring. can you help me learn ten Portuguese phrases that will make her grandmother like me? I'm told food compliments are the way",
+          "ok, 'this is delicious', 'can I have more', 'you're a wonderful cook', 'I'm full but I'll have a little more' (apparently essential), 'thank you for having me'. that's the core curriculum",
+          "can you also explain how Portuguese pronunciation works with all those nasal sounds? I sound like I have a cold",
+          "lol so I do sound like I have a cold, but that's correct. fine",
+          "also Bassline the sourdough produced an actual good loaf! open crumb and everything. proofing next to the amp worked",
+          "random: what's a good way to clean a cast iron pot that's been sitting with burnt beans in it for, let's say, a while?",
+          "boil water in it, scrape, dry on the stove, oil. ok, I'm on it",
+          "and can you recommend how often to restring a bass? I've been playing the same strings for two years and my bandmates say they sound like rubber bands"
+        ],
+        [
+          "Northcape news: Linnea is going on parental leave next week, so Oskar Brandvold is my contact at Northcape until she's back in March. I met him briefly at the kickoff, he seems organised",
+          "Linnea's handing over all her notes to him, and she said I can still email her for anything urgent but she'd prefer I didn't, which is fair, she'll have a newborn",
+          "can you help me write a short congratulations message for Linnea? warm but not cheesy, we've only worked together a few months",
+          "nice. keep the line about the spreadsheet",
+          "and can you draft a short intro email to Oskar, summarising where we are? data exploration ongoing, real modelling after Velta delivery, readout as per the kickoff notes",
+          "good. not too long, he seems like a bullet points person",
+          "unrelated: my bass strings arrived. restringing tonight. is there a trick to not scratching the body with the string ends? I always do",
+          "a cloth under the bridge, coil the ends carefully. ok"
+        ],
+        [
+          "can you review this snippet of my feature engineering logic for the Velta model? it's pseudocode, I just want a second pair of eyes on leakage. for each claim: days since policy start, claim amount bucket, prior claims count in last 2 years, adjuster note length, count of words from an urgent keywords list, whether a police report is attached, region, product type, and final settlement amount. target: whether the claim was escalated within 14 days",
+          "oh no, you're right, final settlement amount is leakage, it's only known at the end. removing it. good catch. and the adjuster note length might also be leakage if the notes are written after escalation. I'll check the timestamps on the notes",
+          "ok, I'll only use notes written within the first 24 hours of the claim. Sam R will be happy, it's also easier to explain",
+          "unrelated: I'm trying to drink less coffee. I'm at 5 cups a day. what's a realistic plan to cut down without becoming a zombie?",
+          "one cup less per week, swap the afternoon one for tea. fine",
+          "also the band's demo got mixed by the guitarist's cousin and it sounds surprisingly decent. we're putting it online next week",
+          "can you write a short, not-cringe description for our band page? we play slightly sad indie rock with too many bass solos, mostly in bars near the harbour",
+          "ha, 'slightly sad indie rock with a bassist who should be stopped' is accurate, my bandmates will love it"
+        ],
+        [
+          "Velta changed the hours cap: Sam R got approval to raise it to 80 hours a month, up from 60, because the data cleaning is bigger than they expected. same 95 an hour",
+          "which is great for my income and slightly terrifying for my evenings",
+          "can you help me plan my week with Velta at up to 80 hours a month plus Northcape data exploration plus Gullwing? I want at least one evening free for band rehearsal and one for my partner",
+          "ok, Velta mornings plus two full days, Northcape two afternoons, Gullwing Monday evening with Sam L and Saturday morning. rehearsal Wednesday, date night Friday. that's tight but it fits",
+          "unrelated: what's a good way to explain precision and recall to an insurance claims manager? Sam R's boss wants to know why I won't just give one accuracy number",
+          "the fishing net analogy. good, catching the fish you want versus not catching too many boots",
+          "also my dad is doing his physio exercises every day and keeps sending me videos of himself doing leg raises. it's adorable",
+          "and here's the physio's exercise sheet he sent me a photo of, can you rewrite it in big simple steps for him? Week 3 to 6 programme. 1. Heel slides: lying on your back, slowly slide the heel of your operated leg towards your bottom, bending the knee as far as comfortable, hold for 5 seconds, slide back. 10 repetitions, 3 times daily. 2. Straight leg raise: lying on your back with the other knee bent, tighten the thigh muscle of the operated leg and lift the straight leg about 20 cm, hold for 5 seconds, lower slowly. 10 repetitions, 3 times daily. 3. Sit to stand: from a firm chair with arms, stand up using your legs as much as possible, sit down slowly. 10 repetitions, twice daily. 4. Step ups: using the bottom stair and holding the banister, step up with the operated leg, then down. 10 repetitions, twice daily. 5. Walking: increase your walking distance gradually each day. Use your stick outdoors until advised otherwise. Stop any exercise that causes sharp pain and contact the clinic.",
+          "perfect, one exercise per line, numbers big. he'll put it next to the TV. and I'll remind him that the stick outdoors is not optional, he's been 'forgetting' it"
+        ],
+        [
+          "quiet day. can you proofread the help doc I wrote for Gullwing? here it is: Understanding your open-time chart. The open-time chart shows when your subscribers open your emails, grouped by hour of the day in your own time zone. Each bar is the number of opens in that hour across your last ten issues. We show the median open time as a vertical line. Why median and not average? Because a few people who open your email three days later would drag the average to a strange time that doesn't match how most of your readers behave. If your chart has two peaks, for example one in the morning and one in the evening, you may have two different groups of readers, and it can be worth testing a send time just before the bigger peak. If your chart is flat, your readers open whenever they like, and send time probably doesn't matter much for you. Note: some email apps open emails automatically to check for spam, which can create a spike right after you send. We try to filter these out, but some may remain.",
+          "thank you, cleaner. I like that you split the 'two peaks' bit into its own paragraph",
+          "also can you write a one-line tooltip for the chart? the current one says 'opens per hour', which is technically true and useless",
+          "'when your readers actually open your emails' is better, yes",
+          "unrelated: I want to try running again after years. is there any sport that's easier on knees for a beginner? my dad's knee surgery has me paranoid",
+          "swimming or cycling. I already bike, so maybe I'll just bike more and swim once a week",
+          "also my partner says if we get a cat, it should be named after a Portuguese pastry. we still haven't decided to get one though"
+        ],
+        [
+          "Gullwing is at 310 beta users now! the help doc and the communities are working. two bigger newsletters joined, one with about forty thousand subscribers",
+          "Sam L is a bit overwhelmed with frontend bug reports, there's a weird layout bug on mobile that she's been fighting for a week",
+          "can you help me write a short update post for the beta community? thank them, mention a few fixes, ask for feedback on the open-time chart",
+          "nice. add a line about the mobile bug, people appreciate honesty",
+          "unrelated: what's a good way to make bread rise faster in a cold flat? the heating in our building is weak and the amp isn't always on",
+          "oven with just the light on. genius",
+          "can you also help me write a short birthday message for my bandmate, the drummer? he turns 35 and he is very insecure about it",
+          "lol 'still the best timekeeper in the band, even if he can't keep track of his own age' is good"
+        ],
+        [
+          "non-work brain dump. my partner and I had a long conversation about where we want to live in five years. she wants to be closer to the sea, I want to be closer to a good bakery, we both want a second bedroom that isn't also a bass amp storage room. can you give us a simple framework for making a big decision like this without it turning into an argument? we're not deciding anything soon, it's just a conversation we keep circling",
+          "the 'list must-haves separately, then compare' idea is good. we'll do it over dinner",
+          "also, statistics question for fun: why does everyone say correlation isn't causation but then still make decisions from correlations? like Northcape will absolutely use my forecast to make decisions without any causal model",
+          "ok, so forecasting doesn't need causation, just stable patterns, but intervention questions do. that's actually a useful distinction for the readout too",
+          "random: the bar for our December gig wants a poster. can you suggest what goes on a small gig poster? we have zero design skills, Sam L is too busy to help",
+          "band name, date, time, venue, a photo or a strong image, and the price. and no more than two fonts. fine",
+          "also Bassline the sourdough has survived a week of neglect. it's tougher than I am",
+          "and can you explain what a p-value actually means in one sentence? I'm doing a guest lecture at a friend's university course next spring and I want to get it right",
+          "ok, 'how surprising the data would be if nothing interesting were going on'. good. my friend sent me the course description so I can pitch the lecture at the right level: 'Applied Data Analysis for Social Scientists. This course introduces students with little or no programming background to the practical analysis of real-world data. Topics include data cleaning, descriptive statistics, visualisation, linear regression, and an introduction to prediction. Students work in small groups on a dataset of their choice and present their findings at the end of the term. The emphasis is on careful reasoning about data rather than on mathematical derivation. Guest lectures from practitioners show how these methods are used outside academia.' so I'm the practitioner. what would you cover in 50 minutes for this crowd? I was thinking: what a forecast is and isn't, a story about leakage, and how to talk to people who use your numbers",
+          "nice, that structure works, and ending with 'the spreadsheet you're replacing is not stupid' is good for social scientists too. I'll keep it anonymous, no client names. lots of time before spring anyway"
+        ],
+        [
+          "small life change: I've started renting a desk at Quayhouse, the coworking place by the old fish market here in Tessaly. working from the spare room was making me weird. I'm there most days now",
+          "the coffee is good, the wifi is fast, and there's a guy who brings his parrot on Thursdays. I'm not making that up",
+          "it also has proper phone booths, which matters for Velta calls, Sam R kept hearing my partner's radio in the background",
+          "can you help me set up a simple routine so I actually leave at a reasonable time? I've noticed with a desk I stay too late",
+          "ok, a hard stop at 6:30 on non-rehearsal days, an end-of-day note with tomorrow's first task. I'll try",
+          "unrelated: what's the etiquette for eating smelly food in a coworking space? someone microwaved fish yesterday and the whole room revolted",
+          "ha, yeah, no fish, no eggs, nothing that announces itself. I'll keep my spicy leftovers for home",
+          "also, Portuguese: I understood a full sentence on a podcast today. it was about the weather, but still"
+        ],
+        [
+          "Northcape changes from today's call with Oskar, all at once: they want the forecast horizon extended from 8 weeks to 12 weeks, they want weekly granularity instead of daily because the ordering team works weekly anyway, and the final readout moves from January 28 to February 4",
+          "the weekly granularity actually makes the problem easier, the 12 week horizon makes it harder. it roughly evens out",
+          "can you help me write a short email to Oskar confirming these changes in writing? I want a paper trail since the kickoff notes now say something else",
+          "good. add that the fee stays the same, since the scope is roughly equal",
+          "unrelated: what's the difference between a weekly forecast made from daily data and one made directly on weekly totals? which is usually better?",
+          "ok, it depends, but aggregating first is usually more stable for noisy products. I'll test both, it's a good experiment",
+          "also our band poster is done. the drummer drew a seagull holding a bass. it's terrible and we love it",
+          "and my partner found a ceramics class for us both on Thursdays. I'll be terrible at it"
+        ],
+        [
+          "Velta delivery change: scrap December 18. Sam R wants the model on January 8 instead, because Velta has an IT change freeze from mid-December to early January and they won't deploy anything during the freeze anyway",
+          "so the delivery is January 8. honestly the extra time is good for the validation",
+          "can you help me make a checklist for handing over an ML model to an insurance client? documentation, monitoring, retraining plan, all of it",
+          "great, add a model card and a section on known failure modes, Sam R's compliance people will ask",
+          "unrelated: my partner's grandmother sent me a video message in Portuguese. I understood 'hello', 'Dario' and 'eat'. progress?",
+          "lol yes I'll take it",
+          "also can you explain the difference between a model card and a datasheet for datasets? I want to do both properly",
+          "ok, model card is about the model and how to use it, datasheet is about where the data came from and its limits. I'll write both"
+        ],
+        [
+          "quiet day at Quayhouse. can you help me write a polite email to a recruiter who keeps offering me full-time jobs? I like being independent, but I want to keep the door open",
+          "nice. 'I'm happily independent for now, but I'd be glad to stay in touch' is exactly right",
+          "also can you give me some ideas for a short talk I'm giving at a local data meetup? topic: lessons from doing ML for boring industries. 15 minutes",
+          "ha, 'the most important feature is usually a date' is a great opener. I'll use the leakage story from Velta, anonymised",
+          "unrelated: my dad wants a tablet for his recovery so he can watch football in bed. what should I look for for someone who is not techy at all?",
+          "big screen, simple setup, and I set it up before giving it to him. yes",
+          "also the parrot at Quayhouse said 'hello' to me today. I feel accepted",
+          "and the ceramics class: I made a bowl that looks like a hat. my partner made a perfect mug. this is my life now"
+        ],
+        [
+          "Gullwing team change: Sam L is going to focus on design only from now on, she's overloaded and design is what she loves. the frontend is going to Ilka Moreau, a freelance frontend developer in Calvaro. Sam L knows her from a previous agency and trusts her",
+          "Ilka starts next week, she'll take over the mobile layout bug first",
+          "can you help me write a short handover checklist from Sam L to Ilka? repo access, design files, the component conventions, the open bugs",
+          "good. add a call where Sam L walks her through the design system",
+          "unrelated: what's a good way to onboard a freelancer remotely when you've never met them? I want Ilka to feel part of the team, even though the team is two people",
+          "ok, a proper welcome call, clear first task, and a weekly check-in. simple",
+          "also my partner says the cat conversation is officially on pause until after the spring trip. fine by me",
+          "and Bassline the sourdough is now about six weeks old. I've given some to Sam R, who turned out to be a bread nerd. our calls now start with crumb photos"
+        ],
+        [
+          "Gullwing launch: we're pushing the public launch. January 15 isn't happening. it's going to be after the Velta delivery, probably sometime in February, no exact date yet. with the Velta change I simply don't have the hours in January, and Ilka needs time to get up to speed",
+          "Sam L is relieved actually, she wanted more time for the landing page",
+          "can you help me write a short note to the beta users about the launch moving, without making it sound like something's wrong?",
+          "nice. 'we'd rather launch it right than launch it on a date' is good",
+          "unrelated: how do I stop feeling guilty about moving a launch date? it's my own product, nobody's angry, but I feel like I failed",
+          "ok, fair point, a date I set myself is a plan, not a promise. I'll try to believe that",
+          "also the first band on the bill for our December gig cancelled, so we're the headliner by accident. 30 people have said they're coming. a triumph in advance",
+          "and can you remind me how to calculate a confidence interval for a proportion? the beta survey has 80 responses and I want to say something sensible"
+        ],
+        [
+          "non-work day. can you explain why my bass sounds muddy in the band mix even though it sounds great alone? our guitarist says I'm 'eating his frequencies'",
+          "ok, cut some low mids, let the kick drum have the very low end, and play a bit less when he's playing chords. the last one hurts my ego",
+          "also, here's a paragraph from the ceramics teacher's handout, I don't understand it: 'Wedge the clay thoroughly to remove air pockets and align the particles. Centre with firm, steady pressure, keeping your elbows braced against your thighs. Do not chase the clay; let the wheel do the work. Open slowly, leaving a base of roughly one centimetre. Pull the walls in three passes, compressing the rim after each pass.' what does 'do not chase the clay' mean?",
+          "ah, so keep my hands still and let the wheel turn the clay under them. that explains why my bowl looks like a hat, I was chasing it",
+          "random: what's a good gift for a teacher at the end of a course? our ceramics teacher has been very patient with me",
+          "a nice card and some good chocolate. I'll write the card, my partner will choose the chocolate",
+          "also my dad is walking without crutches now. he sent me a video of him walking to the allotment. emotional",
+          "Portuguese: I had a two-minute conversation with my tutor about the weather and lunch without English. small win"
+        ],
+        [
+          "Velta security review prep: it's still November 30. I've finished the data handling note and turned on disk encryption and MFA everywhere. Sam R says the security team liked the note in the dry run",
+          "can you do a quick mock interview with me? ask me the kind of questions a security team would ask a freelance contractor before giving them production data access. one at a time",
+          "ok, first answer: my laptop has full-disk encryption, a password manager, MFA on everything, and I don't store Velta data locally, I work on the read-only replica through their VPN",
+          "good feedback. I'll add that I have a screen lock after 5 minutes and that I never use public wifi without the VPN",
+          "next question?",
+          "ok, if a laptop is lost: I report to Sam R and their security team within an hour, wipe remotely, rotate my credentials. I'll write that down",
+          "unrelated: the coworking parrot bit someone today. not me. I'm still accepted",
+          "also, can you give me a quick refresher on what SOC 2 is? the security team mentioned it in passing and I nodded wisely"
+        ],
+        [
+          "Gullwing pricing wobble: Sam L thinks we should charge 15 a month instead of 12, she says 12 looks cheap next to the competition. I'm thinking maybe she's right, but we haven't decided anything. for now the plan is still 12, we'll talk it through properly before launch",
+          "can you give me a balanced list of arguments for 12 versus 15 for a newsletter analytics tool aimed at independent writers? I don't want a sales pitch for either",
+          "useful. the point about independent writers being price-sensitive but also wanting to feel like they're using a serious tool is exactly the tension",
+          "here are some free-text answers from the beta survey about price, can you summarise the themes? 'I'd pay if it saves me an hour a week, honestly that's the bar.' 'Anything under the cost of a nice lunch is fine.' 'I already pay for my email platform, I don't want to pay twice for basically the same thing, but yours is much better at showing clicks.' 'If you charge too little I'll assume you'll shut down in a year.' 'I'd pay more for the unsubscribe insights than for everything else combined.' 'Please do an annual plan, monthly charges stress me out.' 'I'm a student, please have a discount.' 'Price depends on my list size. I have 300 subscribers, I'm not paying the same as someone with 50,000.' 'Just don't make it complicated.' 'Free forever please (joking, mostly).'",
+          "great summary: time saved, trust, unsubscribe insights as the killer feature, annual plan, and list-size fairness. the list-size point is interesting, but we said one plan. I'll bring it to Sam L",
+          "unrelated: my ceramics bowl survived the kiln. it still looks like a hat but now it's a glazed hat. my partner uses it for keys",
+          "also can you explain what 'price anchoring' means? Sam L keeps saying it",
+          "ok, showing a higher price first so the real one feels reasonable. makes sense, a bit sneaky though"
+        ],
+        [
+          "can you help me tighten the outline for my data meetup talk? here's my rough draft: Title: ML for boring industries. 1. Intro: I'm a freelancer, I do ML for insurance and groceries, nobody at parties asks follow-up questions. 2. Boring industries have the best data problems: decades of records, messy systems, migrations, people who've been doing the job for thirty years and know things no dataset knows. 3. Lesson one: the most important feature is usually a date. Seasonality, time since something, time until something. 4. Lesson two: leakage hides in the obvious places. Story about a feature that was only known at the end of the process and made my first model look like a genius. 5. Lesson three: talk to the person who uses the output. The ordering team, the adjusters. They will tell you what they actually do with a number. 6. Lesson four: explainability is not a nice-to-have when someone's job depends on trusting your number. 7. Lesson five: the spreadsheet you're replacing is not stupid, it encodes decades of judgement, read it carefully before mocking it. 8. Close: boring is where the money is and where the users are grateful. Questions.",
+          "much better. merging lessons four and five works, and the 'crime scene with formulas' quote is good, but I should ask Linnea before using it, or maybe just say 'a client' and leave her out",
+          "ok, 'a client' it is. no names, no companies",
+          "can you also suggest one slide with a visual for the leakage story that doesn't need real data?",
+          "ha, a timeline with the feature appearing after the outcome, with a big red arrow. simple, good",
+          "unrelated: what's the best way to keep a bass guitar in good shape in a flat with dry heating in winter? the neck is making weird noises",
+          "humidifier or a damp sponge in a case. ok",
+          "also my partner's family invited us for a week in the spring. the grandmother is apparently already planning the menu"
+        ],
+        [
+          "Gullwing milestone: we're at 450 beta users! a big newsletter mentioned us in a post and we got a wave of signups this week",
+          "Ilka fixed the mobile layout bug that haunted Sam L for weeks, in two days. Sam L sent her flowers",
+          "can you help me write a short thank-you post to the new beta users? welcoming, says what Gullwing does, asks them to tell us what's confusing",
+          "nice. add that we read every reply, because we do",
+          "here's a message from one of the new beta users, can you help me reply? 'Hi, I love the click map but I have a question. When someone forwards my newsletter to a friend and the friend clicks a link, does that count as my subscriber clicking? Because my numbers look too good to be true for one post and I suspect that's what's happening. Also, can I export the data to a spreadsheet? My editor wants to see it and she refuses to log in to anything new. Thanks, and well done, this is the first analytics tool I've actually understood.'",
+          "good reply. yes, forwarded clicks count to the original subscriber right now, we should mention that in the help docs, and export to CSV is there in settings, people never find it",
+          "unrelated: my dad wants to cook more now that he's mobile again. can you suggest five very simple dinners for a man who has only ever made toast and fried eggs?",
+          "ha, pasta with tomato sauce, omelette, a sheet pan thing, soup from a carton made fancy, and rice with whatever. perfect, I'll print it for him"
+        ],
+        [
+          "non-work day, but I want to think through the year ahead. can you help me structure a personal review? I have this rough list of what happened this year: went fully independent, landed Velta and Northcape, built Gullwing with Sam L to a beta people actually like, played my first headline gig (well, it's coming in December), learned enough Portuguese to talk about the weather, made a bowl shaped like a hat, my dad had surgery and recovered, my partner and I didn't get a cat (yet, maybe, not decided), I started working at Quayhouse and stopped talking to myself in the spare room. things I didn't do: exercise regularly, save enough, read fiction, take a proper holiday. I want next year to be less reactive",
+          "ok, three buckets: work, health, people. and one rule per bucket instead of ten goals. I like that",
+          "work rule: no new client until Gullwing launches. health rule: bike or swim three times a week. people rule: one evening a week without screens with my partner. that's it",
+          "can you write that up as a short note I can stick on my monitor at Quayhouse?",
+          "perfect. small enough to actually read",
+          "random: what's a good fiction book for someone who only reads technical books and wants to get back into fiction? general advice is fine if you don't want to recommend titles",
+          "short novels and short stories first, nothing over 300 pages. sensible",
+          "also Bassline had babies, I gave some starter to the parrot's owner at Quayhouse"
+        ],
+        [
+          "can you help me reply to my cousin? he sent this long message about his gym app idea and I promised him an hour of advice. here's what he sent: 'Hey! So I've been thinking more about the app. The idea is that members can book classes, see how busy the gym is in real time, track their workouts, chat with trainers, get personalised meal plans, pay their membership, refer friends for discounts, and see a leaderboard of who's been most often this month. I think it could work for every gym in the country, not just mine. My friend who does marketing says we could get investors. I can put in some money, maybe a few thousand. How long would it take you to build? Like a month? Also do you think we need AI in it? Everyone has AI now.' I love him but oh boy",
+          "ok, yes, start with the one thing his members complain about most, which is probably booking classes, check if an existing booking tool does it already, and forget the leaderboard and the meal plans for now. and AI only if it solves a real problem. kind and honest",
+          "and I'll tell him a month is not realistic for all that, but a booking setup with an existing tool could be done in a week",
+          "unrelated: what's the difference between a VPN and a proxy in plain words? my dad asked after watching a TV ad",
+          "ok, VPN encrypts everything and routes it through a tunnel, a proxy just forwards some traffic. I'll tell him he probably doesn't need either for watching football",
+          "also the coworking parrot has learned to say 'deadline'. I'm not sure who taught it but I have suspicions",
+          "can you suggest a nice way to thank Sam L for all the extra frontend work she did before Ilka joined? she refuses money"
+        ],
+        [
+          "Velta work check-in. I'm at about 62 hours this month, so under the cap. the model is doing well on the validation set, recall on escalated claims is way better than their current rules",
+          "can you help me explain lift charts to Sam R's boss? she doesn't care about AUC, she cares about how many urgent claims the adjusters will catch in their first hour",
+          "great, 'if adjusters review the top 10 percent of claims by our score, they catch X percent of the urgent ones', that's a sentence she'll repeat in meetings",
+          "here's a draft of the model card intro, can you tighten it? 'This model estimates the likelihood that an incoming claim will require escalation within fourteen days of submission. It is intended to help adjusters prioritise their review queue. It is not intended to make decisions about claim approval, denial, or settlement amounts, and must not be used for those purposes. The model uses information available within the first twenty-four hours of a claim, including policy details, claim characteristics, and early adjuster notes. It was trained on four years of historical claims and validated on the most recent six months. Performance may degrade for new product types or regions not represented in the training data, and for claims submitted through channels introduced after the training period.'",
+          "nice. I like that you moved the 'must not be used for' sentence up, compliance will love that",
+          "unrelated: what's a nice way to say goodbye to a coworker who is leaving Quayhouse? the parrot owner is moving to another city. the parrot is going too, I'm devastated",
+          "ha, a card signed by everyone and a bag of the good sunflower seeds for the parrot. yes",
+          "also can you explain what 'concept drift' means in one sentence for the model card?"
+        ],
+        [
+          "quiet day, mostly band stuff. our singer sent this long message in the group chat and I need help responding diplomatically: 'Guys, I've been thinking. We've been playing the same 12 songs for two years. I love them, but I want us to write new stuff before the gig, at least two songs. I also think we should drop the 7 minute instrumental, sorry, I know it's your baby, but people go to the bar during it every time, I can see them leave. And I want us to rehearse with a click track, because we speed up during the choruses and it's starting to sound like a race. I'm not trying to be bossy, I just want us to be better. Can we talk about it on Wednesday?'",
+          "ok, agree with the new songs and the click track, gently support a shorter instrumental instead of dropping it, and say yes to talking Wednesday. the drummer will sulk but he'll live",
+          "can you explain what a click track is and how bands use it live without sounding robotic?",
+          "ok, only the drummer hears it in his headphones, and we use it in rehearsal more than at the gig. that's reasonable",
+          "also can you help me come up with a working title for a new song? it's about waiting for a ferry that never comes. slightly sad indie rock, as usual",
+          "'The Last Ferry Is a Rumour' is very us. the singer will either love it or hate it",
+          "unrelated: my partner and I went to the ceramics class again and I made an actual cup. it leaks, but it's cup-shaped",
+          "Portuguese: my tutor says my accent is 'improving'. I think she's being kind"
+        ],
+        [
+          "Northcape check-in with Oskar. data exploration is done, the 12 week weekly forecast framing is agreed, and the readout is still February 4. I explained again that the real modelling starts after the Velta delivery and he was fine with it",
+          "the data had a fun surprise: two stores changed their product codes in the middle of the period, so for a few months it looks like they stopped selling bananas entirely and started selling a mysterious new fruit",
+          "can you help me write a short data quality note for Oskar listing the issues I found? product code changes, stores that opened during the period, missing promo weeks, and a week where a whole region shows zero sales because of a till outage",
+          "good, add a column for 'how we handled it'",
+          "here's a question from one of Oskar's analysts, can you help me answer clearly? 'If the forecast is weekly, how do we split it into days for deliveries? Our trucks come Monday, Wednesday and Friday, and some stores get a Saturday top-up in summer. Will the model tell us that, or do we need to do it ourselves? And what happens on weeks with a bank holiday, when the Monday delivery moves to Tuesday?'",
+          "ok, the model gives the weekly total, and a simple day-of-week profile per store splits it into delivery days, with a holiday adjustment. that's a nice small add-on, not part of the core model. I'll suggest it",
+          "unrelated: what's a good way to store fresh herbs so they don't die in two days? Northcape would be proud of me reducing waste",
+          "herbs in a glass of water like flowers, in the fridge for some. I'm a changed man"
+        ],
+        [
+          "personal day. my dad called to say he wants to take my mum on a trip in the spring now that his knee is better. he asked me to help them plan. can you give me a simple checklist for planning a trip for two people in their seventies who don't like airports? trains preferred, short walking distances, good food, and my mum needs a hotel with a lift",
+          "great. I'll help them pick a destination they can reach by train in under five hours and book everything with flexible cancellation",
+          "also, could you help me write a short message to my mum? she worried a lot during the surgery and I want to thank her for looking after him. she's not a big texter, so it should be short and warm",
+          "lovely, thank you",
+          "unrelated: what's a good rule of thumb for how many hours of focused work a person can really do in a day? I keep planning 8 and doing 4",
+          "ok, 4 to 5 deep hours is normal, the rest is shallow work. I'll stop planning 8 and feeling guilty",
+          "also the singer loved 'The Last Ferry Is a Rumour'. the drummer hates it, which means it's good",
+          "Bassline the sourdough produced a loaf so good that my partner took a photo of it. it's on the fridge now"
+        ],
+        [
+          "Velta: the security review on November 30 is the next big thing. I did one more mock with you last week and I feel ready. after it, if they approve, I get production data access in December and can finish validation on real recent data before the January 8 delivery",
+          "can you help me write a short agenda I can send Sam R for the review, so nobody is surprised?",
+          "good. add 10 minutes for questions from their side at the end",
+          "unrelated: here's a paragraph from an article about freelancing I found and it annoyed me, can you tell me if I'm being unreasonable? 'Freelancers who charge by the hour are punishing themselves for being efficient. The faster they work, the less they earn. The only rational approach is value-based pricing, where the fee reflects the value delivered to the client rather than the time spent.' I do both and I think it depends",
+          "yeah, ok, hourly is fine for open-ended work like Velta where the scope keeps growing, fixed fee works for clear scope like Northcape. it depends is a legitimate answer for once",
+          "also can you explain the difference between a contractor and an employee for tax purposes in general terms? I know it depends on the country, I just want the concepts",
+          "ok, control, integration, and who carries the risk. I'll ask my accountant about the specifics",
+          "and the parrot's farewell at Quayhouse was very emotional. it said 'deadline' one last time"
+        ],
+        [
+          "Gullwing planning with Sam L and Ilka. launch is still 'after the Velta delivery, probably February', no date yet. price is still the open discussion between 12 and 15, nothing decided, 12 is the working assumption",
+          "Ilka is great. she rebuilt the settings page and the CSV export button is now actually visible",
+          "can you help us write a short internal doc on what 'ready to launch' means for Gullwing? we keep moving the goalposts",
+          "ok: billing works, onboarding takes under 5 minutes, help docs cover the top 10 questions, mobile layout works, and we've tested with 20 beta users who aren't our friends. clear, measurable",
+          "also can you help me write a short message to Sam L asking if she'd like to have equity discussions formalised before launch? we've been doing this as friends but it's becoming a real thing",
+          "good, warm and clear, and it doesn't sound like I'm trying to take something away. thanks",
+          "unrelated: what's a good way to make a small flat feel less cramped in winter when you can't open the windows much? my partner and I are getting cabin fever",
+          "plants, warm lights, rearrange furniture, one clutter-free surface. we'll try the furniture shuffle this weekend"
+        ],
+        [
+          "short one. can you help me draft the end-of-month invoice email for Velta? hours this month, 95 an hour, payment terms as per the SOW",
+          "good, polite, boring, perfect",
+          "and can you give me a quick explanation of what 'net 30' means for my partner? she asked why my clients take so long to pay",
+          "ok, 30 days after the invoice date. she says that's absurd and she's right",
+          "unrelated: a question about the band: how do we split money from gigs fairly when one person drives the van and carries all the gear? our guitarist does all the driving",
+          "ok, cover his fuel first, then split equally. fair",
+          "also, my partner and I did the furniture shuffle. the sofa is now by the window and the flat feels twice as big. why didn't we do this years ago",
+          "Portuguese: I watched a short cartoon in Portuguese without subtitles and understood the plot. it was about a dog. it's a start"
+        ],
+        [
+          "end of a long week. can you give me a quick summary of what I should focus on next week in general terms? I'll fill in specifics: Velta security review prep, Northcape modelling prep, Gullwing launch checklist, band rehearsal twice, ceramics on Thursday, call my dad on Sunday",
+          "nice, simple. I'll put the security review prep on Monday and Tuesday morning when my brain works",
+          "also, here's a poem my partner wrote for her grandmother's birthday, in English, and she wants to know if it's too sentimental. 'You taught me how to fold the dough, / and how to wait for it to rise, / and how to sit with someone slow / and see the world through older eyes. / You never said you loved me, Avó, / you said: eat, eat, you're far too thin, / and every plate was a hello, / and every door you opened, in.' I think it's beautiful but I'm biased",
+          "aww, yes, it's lovely, not too sentimental at all, the last line is perfect. I'll tell her you said the same as me",
+          "unrelated: do you know a good general rule for how often to change the water in a vase? my partner bought flowers for the newly arranged living room",
+          "every two days and trim the stems. ok",
+          "and that's it, I'm going to the pub with the band. thanks for holding my brain together"
+        ]
+      ],
+      "documents": [
+        {
+          "afterSession": 3,
+          "name": "velta-sow-v1.md",
+          "text": "# Velta Mutual: Statement of Work v1\n\nConsultant: Dario (independent ML consultant)\nProject: claims triage model, prioritising incoming claims for adjusters\nVelta stakeholder: Sam Reyes, Head of Claims Data (Ostrevik head office)\nRate: €95 per hour\nMonthly cap: 60 hours\nModel delivery: December 18\nSecurity review: must be passed before production data access\nData access: read-only replica via Velta VPN\nContract end: January 31\nPayment terms: net 30\n"
+        },
+        {
+          "afterSession": 10,
+          "name": "northcape-kickoff-notes.md",
+          "text": "# Northcape Grocers: Kickoff Notes\n\nAttendees: Dario, Linnea Hult (Supply Chain Lead), two analysts\nScope: demand forecasting for fresh produce\nStores in scope: 40\nForecast horizon: 8 weeks\nGranularity: daily\nFinal readout: January 28\nData: three years of point-of-sale data, weekly promo calendar\nOpen questions: holiday effects, whether to add weather data\nSequencing: real modelling starts after Dario's Velta delivery; data exploration before that\n"
+        }
+      ],
+      "questions": [
+        { "id": "f6-q01", "cat": "current_fact", "q": "remind me what Gullwing is", "required": ["newsletter analytics tool"] },
+        { "id": "f6-q02", "cat": "current_fact", "q": "what kind of model am I building for Velta?", "required": ["claims triage model"] },
+        { "id": "f6-q03", "cat": "state_change", "q": "when is the Velta model due?", "required": ["January 8"], "forbidden": ["the Velta model is due December 18"] },
+        { "id": "f6-q04", "cat": "state_change", "q": "who's my contact at Northcape right now?", "required": ["Oskar Brandvold"], "forbidden": ["Linnea Hult is the current contact"] },
+        { "id": "f6-q05", "cat": "state_change", "q": "how many beta users does Gullwing have?", "required": ["450"], "forbidden": ["Gullwing has 120 beta users", "Gullwing has 310 beta users"] },
+        { "id": "f6-q06", "cat": "state_change", "q": "who's building Gullwing's frontend?", "required": ["Ilka Moreau"], "forbidden": ["Sam Lindgren builds the frontend"] },
+        { "id": "f6-q07", "cat": "state_change", "q": "where do I usually work from these days?", "required": ["Quayhouse coworking"], "forbidden": ["you work from the spare room at home"] },
+        { "id": "f6-q08", "cat": "correction", "q": "what's the Northcape fee?", "required": ["€17,200"], "forbidden": ["the Northcape fee is €18,000", "the Northcape fee is €16,000"] },
+        { "id": "f6-q09", "cat": "correction", "q": "when's the Velta security review?", "required": ["November 30"], "forbidden": ["the security review is November 23"] },
+        { "id": "f6-q10", "cat": "compound", "q": "what forecast horizon does Northcape want?", "required": ["12 weeks"], "forbidden": ["the horizon is 8 weeks"] },
+        { "id": "f6-q11", "cat": "compound", "q": "at what granularity am I forecasting for Northcape?", "required": ["weekly"], "forbidden": ["the forecast is daily"] },
+        { "id": "f6-q12", "cat": "history", "q": "what was the original Velta delivery date?", "required": ["December 18"] },
+        { "id": "f6-q13", "cat": "history", "q": "how many beta users did Gullwing have when I first told you about it?", "required": ["120"] },
+        { "id": "f6-q14", "cat": "temporal", "q": "is Gullwing still launching on January 15?", "required": ["postponed", "after the Velta delivery, probably February, no exact date"], "forbidden": ["Gullwing launches January 15"] },
+        { "id": "f6-q15", "cat": "temporal", "q": "which comes first, my Velta delivery or the Northcape readout?", "required": ["Velta delivery January 8 comes first", "Northcape readout February 4"], "forbidden": ["the Northcape readout is January 28"] },
+        { "id": "f6-q16", "cat": "conflict_document", "q": "how many hours a month can I bill Velta?", "required": ["80 hours"], "forbidden": ["the cap is 60 hours a month"] },
+        { "id": "f6-q17", "cat": "disambiguation", "q": "what does Sam at Velta do?", "required": ["Head of Claims Data"], "forbidden": ["he is the Gullwing designer"] },
+        { "id": "f6-q18", "cat": "disambiguation", "q": "where is Sam Lindgren based?", "required": ["Brenmouth"], "forbidden": ["she is based in Ostrevik"] },
+        { "id": "f6-q19", "cat": "multi_hop", "q": "what city is the person who now builds Gullwing's frontend based in?", "required": ["Calvaro"], "forbidden": ["they are based in Brenmouth"] },
+        { "id": "f6-q20", "cat": "multi_hop", "q": "if I max out my Velta hours, how much is that in a month?", "required": ["€7,600"], "forbidden": ["€5,700 a month"] },
+        { "id": "f6-q21", "cat": "consequence", "q": "given what happened with the Velta timeline, what does that do to my Northcape work?", "required": ["real Northcape modelling can't start until Velta is delivered", "not before January 8"] },
+        { "id": "f6-q22", "cat": "attribution", "q": "where did I note how many stores the Northcape forecast covers, and how many?", "required": ["northcape-kickoff-notes.md", "40 stores"] },
+        { "id": "f6-q23", "cat": "negation", "q": "did we settle on charging 15 a month for Gullwing?", "required": ["not decided", "€12 a month is still the working plan"], "forbidden": ["Gullwing costs €15 a month"] },
+        { "id": "f6-q24", "cat": "unknown", "q": "what's Ilka's hourly rate?", "expectUnknown": true },
+        { "id": "f6-q25", "cat": "unknown", "q": "what's Oskar's job title at Northcape?", "expectUnknown": true },
+        { "id": "f6-q26", "cat": "unknown", "q": "which VPN software does Velta make me use?", "expectUnknown": true },
+        { "id": "f6-q27", "cat": "unknown", "q": "how old is Sam Lindgren?", "expectUnknown": true },
+        { "id": "f6-q28", "cat": "synthesis", "q": "write a two-line Gullwing status I can send Sam Lindgren", "required": ["450 beta users", "€12 a month planned after beta", "launch postponed until after the Velta delivery", "Ilka Moreau on frontend"], "forbidden": ["120 beta users", "310 beta users", "launch on January 15", "Gullwing costs €15 a month"] }
+      ]
+    }
+  ]
+}

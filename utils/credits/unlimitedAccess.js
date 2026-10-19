@@ -2,7 +2,22 @@
 
 /**
  * Centralized helper for exempting trusted accounts from usage limits.
- * ONLY emails listed in UNLIMITED_USER_EMAILS are bypassed.
+ *
+ * Two sources, both server-side (2026-10-19):
+ *   1. `user.isUnlimited === true` — a database flag changed ONLY by
+ *      scripts/admin/unlimited-entitlement.js, which writes an
+ *      EntitlementAudit record (who, why, before/after). No route sets it.
+ *   2. UNLIMITED_USER_EMAILS — honoured only for an account whose address is
+ *      VERIFIED (`emailVerified === true`: a completed email link, or Google's
+ *      `email_verified`). Before this, any signup that typed an allowlisted
+ *      address got unlimited credits: the addresses are public (they were
+ *      committed to git history) and signup did not check ownership.
+ *
+ * Matching is exact after trim + lower-case. Provider aliasing (Gmail dots,
+ * "+tag") is deliberately NOT folded: an alias is a different string, so it
+ * simply does not match — it can never widen the grant.
+ *
+ * Nothing here logs an email address.
  */
 
 function normalizeEmail(email) {
@@ -16,39 +31,26 @@ function getUnlimitedEmails() {
     .filter(Boolean);
 }
 
+function allowlistedAndVerified(user) {
+  if (user.emailVerified !== true) return false;
+  const email = normalizeEmail(user.email);
+  return !!email && getUnlimitedEmails().includes(email);
+}
+
 function hasUnlimitedAccess(user) {
   if (!user) return false;
-
-  const email = normalizeEmail(user.email);
-  if (!email) return false;
-
-  // Check env allowlist
-  const allowlist = getUnlimitedEmails();
-  if (allowlist.includes(email)) {
-    console.info("[UnlimitedAccess] allowlisted account", { email });
-    return true;
-  }
-
-  // Check isUnlimited flag on user document (admin-set)
-  if (user.isUnlimited === true) {
-    return true;
-  }
-
-  return false;
+  if (user.isUnlimited === true) return true;
+  return allowlistedAndVerified(user);
 }
 
 /**
  * unlimitedAccessReason — returns a human-readable reason string, or null.
- * Called for logging only. Never returns a falsy value that blocks access.
+ * Called for logging only.
  */
 function unlimitedAccessReason(user) {
   if (!user) return null;
-
-  const email = normalizeEmail(user.email);
-  const allowlist = getUnlimitedEmails();
-
-  if (email && allowlist.includes(email)) return "email_allowlist";
   if (user.isUnlimited === true) return "isUnlimited_flag";
+  if (allowlistedAndVerified(user)) return "email_allowlist_verified";
   return null;
 }
 

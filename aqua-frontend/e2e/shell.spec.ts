@@ -11,7 +11,9 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 async function ensureSignedIn(page: Page) {
-  await page.goto('/');
+  // Relative to baseURL (/aqua/): an absolute '/' is the site root on the real
+  // server (it redirects to the platform's /home), not the app.
+  await page.goto('./');
   const composer = page.getByLabel('Message AQUA');
   const reachable = await composer.isVisible().catch(() => false);
   test.skip(!reachable, 'no authenticated session — set AQUA_E2E_BASE_URL');

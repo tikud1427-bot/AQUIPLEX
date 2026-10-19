@@ -118,6 +118,66 @@ describe('gate ② — the quote must contain the object', () => {
   });
 });
 
+describe("gate ②′ — an inflected literal is GROUNDED to the quote's own words, never relaxed", () => {
+  const JUN = 'Jun is helping me prepare the investor deck.';
+  const jun = (literal) => run(good({
+    subject: 'Jun', predicate: 'task_owner', object: { literal }, objectKind: 'literal',
+    statementText: 'Jun is helping me prepare the investor deck',
+  }), JUN);
+
+  test('the live loss: "help me prepare…" for "helping me prepare…" is admitted, stored as the verbatim span', () => {
+    const r = jun('help me prepare the investor deck');
+    assert.equal(r.outcome, OUTCOME.ADMIT, `${r.gate}: ${r.reason}`);
+    assert.equal(r.claim.object.literal, 'helping me prepare the investor deck');
+    assert.ok('Jun is helping me prepare the investor deck'.includes(r.claim.object.literal), 'the stored object must be verbatim in the quote');
+    assert.deepEqual(r.claim.objectGrounded, { from: 'help me prepare the investor deck', rule: 'inflection' });
+  });
+
+  test('an exact literal is untouched (no grounding record)', () => {
+    const r = jun('prepare the investor deck');
+    assert.equal(r.claim.object.literal, 'prepare the investor deck');
+    assert.equal(r.claim.objectGrounded, undefined);
+  });
+
+  test('STILL REFUSES: a different word, not an inflection ("pitch deck" for "investor deck")', () => {
+    assert.equal(jun('helping me prepare the pitch deck').gate, 2);
+  });
+
+  test('STILL REFUSES: two inflected words', () => {
+    assert.equal(jun('helps me prepares the investor deck').gate, 2);
+  });
+
+  test('STILL REFUSES: an added word, or words out of order', () => {
+    assert.equal(jun('helping me prepare the new investor deck').gate, 2);
+    assert.equal(jun('prepare me helping the investor deck').gate, 2);
+  });
+
+  test('STILL REFUSES: a one-word literal with no exact anchor ("helps" for "helping")', () => {
+    // ("help" alone passes the ORIGINAL gate ② as a substring of "helping";
+    // "helps" is not a substring, so only grounding could admit it — and must not.)
+    assert.equal(jun('helps').gate, 2);
+  });
+
+  test('STILL REFUSES: a fabricated object on a real quote (the attack gate ② exists for)', () => {
+    const r = run(good({ predicate: 'uses', object: { literal: 'Zeta Labs' }, objectKind: 'literal', statementText: 'I run product at Nummo' }));
+    assert.equal(r.gate, 2);
+  });
+
+  test('STILL REFUSES: a quantity is never grounded by inflection', () => {
+    // The same object as a LITERAL would be grounded (one inflected word);
+    // as a quantity it must be refused.
+    const q = 'We have 57 clinic now';
+    assert.equal(run(good({ predicate: 'has_property', object: { literal: '57 clinics now' }, objectKind: 'literal', statementText: q }), q).outcome, OUTCOME.ADMIT);
+    const r = run(good({ predicate: 'has_property', object: { quantity: '57 clinics now' }, objectKind: 'quantity', statementText: q }), q);
+    assert.equal(r.gate, 2);
+  });
+
+  test('negation words must match exactly — "not" is not an inflection of anything', () => {
+    const r = run(good({ subject: 'Jun', predicate: 'task_owner', object: { literal: 'now helping on the deck' }, objectKind: 'literal', statementText: 'Jun is not helping on the deck' }), 'Jun is not helping on the deck');
+    assert.equal(r.gate, 2);
+  });
+});
+
 describe('gate ③ — unknown predicates are PROPOSED, never auto-admitted', () => {
   test('an invented predicate is proposed, not admitted and not discarded', () => {
     // Collapsing propose into admit is the auto-registration this design

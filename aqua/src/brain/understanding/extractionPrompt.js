@@ -237,9 +237,24 @@ export function buildExtractionPrompt(segment, opts = {}) {
     : sentence;
   // NEGATION RETRY (2026-10-06): sent only on a second attempt, by code, after
   // a sentence with an explicit negation cue came back empty (pipeline.js).
-  const user = opts.negationHint
-    ? `${base}\n\nNOTE: this sentence contains a negation and the previous reading returned no claims. Under rule 2 a relation that does NOT hold is still a claim — emit it with polarity "negated", using the predicate whose meaning fits. Return [] only if the sentence is a question, a condition, or says nothing about any subject.`
-    : base;
+  const negationNote = opts.negationHint
+    ? `\n\nNOTE: this sentence contains a negation and the previous reading returned no claims. Under rule 2 a relation that does NOT hold is still a claim — emit it with polarity "negated", using the predicate whose meaning fits. Return [] only if the sentence is a question, a condition, or says nothing about any subject.`
+    : '';
+  // COMPOUND RETRY (2026-10-17): sent only on a second attempt, by code, when a
+  // part of the sentence that states a change produced no claim (pipeline.js).
+  const compound = Array.isArray(opts.compoundHint) ? opts.compoundHint.filter(Boolean) : [];
+  const compoundNote = compound.length
+    ? `\n\nNOTE: this sentence states more than one thing, and the previous reading returned no claim for ${compound.length === 1 ? 'this part' : 'these parts'} of it: ${compound.map(c => `"${c}"`).join('; ')}. Extract the claims of EVERY part of the sentence, including ${compound.length === 1 ? 'that one' : 'those'}, under the same rules (rule 11 for a change).`
+    : '';
+  // ACTOR RETRY (2026-10-18): sent only on a second attempt, by code, when a
+  // named person who acts in the sentence appeared in no claim (pipeline.js).
+  const actors = Array.isArray(opts.actorHint) ? opts.actorHint.filter(Boolean) : [];
+  const actorNote = actors.length
+    ? `
+
+NOTE: the sentence says what ${actors.map(a => `\"${a}\"`).join(' and ')} ${actors.length === 1 ? 'does' : 'do'}, and the previous reading returned no claim about ${actors.length === 1 ? 'them' : 'any of them'}. A person who acts in the sentence is the SUBJECT of their own claim, in addition to any claim about the speaker (\"Kofi is helping me build Atlas\" → Kofi builds Atlas, and self builds Atlas). Extract every claim the sentence states, under the same rules; do not invent a relation the sentence does not state.`
+    : '';
+  const user = `${base}${negationNote}${compoundNote}${actorNote}`;
 
   return { system, user, version: PROMPT_VERSION, nonce };
 }

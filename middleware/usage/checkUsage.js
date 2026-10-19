@@ -58,6 +58,16 @@ function getUid(req) {
  * CheckResult (blocked):
  *   { allowed: false, status: 401|402, error: string, message: string, ...extra }
  */
+/** Wrap fn so it runs at most once; later calls resolve false without running it. */
+function onceOnly(fn) {
+  let done = false;
+  return () => {
+    if (done) return Promise.resolve(false);
+    done = true;
+    return Promise.resolve().then(fn);
+  };
+}
+
 async function checkUsage({ userId, actionType, deductOnEntry = true }) {
   // ── 1. Auth ──────────────────────────────────────────────────────────────
   if (!userId) {
@@ -168,10 +178,13 @@ async function checkUsage({ userId, actionType, deductOnEntry = true }) {
         cost,
         actionType,
         deducted: true,
-        refund: () => {
+        // ONCE per request. Every call used to credit the wallet again, so two
+        // failure paths (or a route handler plus the usageGuard safety net)
+        // refunding the same request minted free credits.
+        refund: onceOnly(() => {
           log.warn(`[checkUsage] REFUND issued userId=${userId} cost=${cost} actionType=${actionType}`);
           return refundCredits(userId, cost, `${actionType}_failed`);
-        },
+        }),
         commit:       () => Promise.resolve(), // already deducted
         balanceAfter: deductResult.balanceAfter,
       },
@@ -194,4 +207,4 @@ async function checkUsage({ userId, actionType, deductOnEntry = true }) {
   };
 }
 
-module.exports = { checkUsage, getUid };
+module.exports = { checkUsage, getUid, onceOnly };

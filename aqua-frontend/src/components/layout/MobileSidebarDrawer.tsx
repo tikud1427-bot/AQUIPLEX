@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Sidebar } from '@/components/sidebar/Sidebar';
@@ -14,6 +15,10 @@ export function MobileSidebarDrawer() {
   const open = useUiStore((s) => s.mobileSidebarOpen);
   const setOpen = useUiStore((s) => s.setMobileSidebarOpen);
   const reduce = useReducedMotion();
+  // Same as ArtifactsPanel (2026-10-17): with the exit animation's delayed
+  // unmount, focus did not return to "Open menu". Capture it before Radix moves
+  // focus in, restore it on close.
+  const returnFocus = useRef<HTMLElement | null>(null);
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -30,7 +35,16 @@ export function MobileSidebarDrawer() {
               />
             </DialogPrimitive.Overlay>
 
-            <DialogPrimitive.Content asChild forceMount aria-describedby={undefined}>
+            <DialogPrimitive.Content
+              asChild
+              forceMount
+              aria-describedby={undefined}
+              onOpenAutoFocus={() => { returnFocus.current = document.activeElement as HTMLElement | null; }}
+              onCloseAutoFocus={(e) => {
+                const el = returnFocus.current;
+                if (el && document.contains(el)) { e.preventDefault(); el.focus(); }
+              }}
+            >
               <motion.div
                 initial={reduce ? false : { x: '-100%' }}
                 animate={{ x: 0 }}

@@ -1,7 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, MessageSquarePlus, Pin, PinOff, RefreshCcw, Trash2 } from 'lucide-react';
-import { forgetAllMemory, forgetMemoryFact, listMemory, memoryTimeline, pinMemoryFact } from '@/api/memory';
+import { ChevronDown, MessageSquarePlus, Pencil, Pin, PinOff, RefreshCcw, Trash2 } from 'lucide-react';
+import {
+  correctClaimValue,
+  forgetAllMemory,
+  forgetClaim,
+  forgetMemoryFact,
+  listCurrentClaims,
+  listMemory,
+  memoryTimeline,
+  pinMemoryFact,
+  type CurrentClaim,
+} from '@/api/memory';
 import { normalizeError } from '@/api/client';
 import { SectionHeader } from '@/components/ui/section-header';
 import { Panel } from '@/components/ui/panel';
@@ -87,6 +97,110 @@ function FactRow({
   );
 }
 
+/* One thing Aqua currently holds — from the canonical World Model, which is what
+   answers when the database is available. Shows where it was learned, and lets
+   the person correct the value or delete it everywhere. */
+function sourceLabel(c: CurrentClaim): string {
+  if (c.sourceKind === 'user_correction') return 'You corrected this';
+  if (c.sourceKind === 'document') return c.sourceName ? `From ${c.sourceName}` : 'From a document you uploaded';
+  return 'From a conversation';
+}
+
+function ClaimRow({
+  claim,
+  onCorrect,
+  onForget,
+}: {
+  claim: CurrentClaim;
+  onCorrect: (id: string, value: string) => Promise<boolean>;
+  onForget: (id: string) => void;
+}) {
+  const [showQuote, setShowQuote] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+  const quote = claim.quote && claim.quote.trim() !== claim.statement.trim() ? claim.quote : null;
+
+  async function save() {
+    if (!value.trim()) return;
+    setSaving(true);
+    const ok = await onCorrect(claim.claimId, value.trim());
+    setSaving(false);
+    if (ok) { setEditing(false); setValue(''); }
+  }
+
+  return (
+    <div className="group/item row-touch border-b border-border/50 py-3 last:border-b-0">
+      <div className="flex items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm leading-relaxed text-foreground">{claim.statement}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-micro text-foreground-secondary/70">
+            <span>{sourceLabel(claim)}</span>
+            {claim.assertedAt && <span>{timeAgo(new Date(claim.assertedAt).getTime())}</span>}
+            {claim.disputed && <span className="text-warning">Conflicts with something else you said</span>}
+            {claim.scheduledFrom && <span>Starts {new Date(claim.scheduledFrom).toLocaleDateString()}</span>}
+            {quote && (
+              <button
+                onClick={() => setShowQuote((v) => !v)}
+                aria-expanded={showQuote}
+                className="tap flex items-center gap-1 rounded text-foreground-secondary/70 underline-offset-2 hover:text-foreground hover:underline"
+              >
+                <ChevronDown className={cn('h-3 w-3 transition-transform', showQuote && 'rotate-180')} />
+                Where Aqua learned this
+              </button>
+            )}
+          </div>
+          {showQuote && quote && (
+            <p className="mt-2 border-l-2 border-border pl-3 text-caption italic leading-relaxed text-foreground-secondary">
+              &ldquo;{quote}&rdquo;
+            </p>
+          )}
+          {editing && (
+            <form
+              className="mt-2 flex flex-wrap items-center gap-2"
+              onSubmit={(e) => { e.preventDefault(); void save(); }}
+            >
+              <input
+                autoFocus
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="What's correct now?"
+                aria-label={`Correct value for: ${claim.statement}`}
+                className="min-w-0 flex-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+              />
+              <Button type="submit" size="sm" disabled={saving || !value.trim()}>
+                {saving ? 'Saving…' : 'Save'}
+              </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => { setEditing(false); setValue(''); }}>
+                Cancel
+              </Button>
+            </form>
+          )}
+        </div>
+
+        <div className="affordance flex shrink-0 items-center gap-0.5">
+          <button
+            onClick={() => setEditing((v) => !v)}
+            className="tap touch-lg flex h-8 w-8 items-center justify-center rounded-md text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground"
+            aria-label={`Correct: ${claim.statement}`}
+            title="Correct this"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => onForget(claim.claimId)}
+            className="tap touch-lg flex h-8 w-8 items-center justify-center rounded-md text-foreground-secondary transition-colors hover:bg-danger/10 hover:text-danger"
+            aria-label={`Delete: ${claim.statement}`}
+            title="Delete this everywhere"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MemoryPage() {
   const navigate = useNavigate();
   const toast = useUiStore((s) => s.toast);
@@ -95,12 +209,24 @@ export default function MemoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [claims, setClaims] = useState<CurrentClaim[]>([]);
+
+  const loadClaims = useCallback(async () => {
+    // What answers now. Without a World Model (or if it is briefly down) the
+    // section is simply absent — the facts below still load.
+    try {
+      const res = await listCurrentClaims();
+      setClaims(res.configured ? res.claims : []);
+    } catch {
+      setClaims([]);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await listMemory();
+      const [res] = await Promise.all([listMemory(), loadClaims()]);
       setFacts(res.facts);
       // The change feed is a bonus, not the page — a failure here must not
       // take down the facts the user actually came for.
@@ -112,7 +238,31 @@ export default function MemoryPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadClaims]);
+
+  async function handleCorrectClaim(id: string, value: string): Promise<boolean> {
+    try {
+      await correctClaimValue(id, value);
+      toast('success', 'Corrected', 'Aqua will use the new value from now on.');
+      await loadClaims();
+      return true;
+    } catch (err) {
+      toast('error', 'Could not correct that', normalizeError(err).message);
+      return false;
+    }
+  }
+
+  async function handleForgetClaim(id: string) {
+    const prev = claims;
+    setClaims((c) => c.filter((x) => x.claimId !== id));
+    try {
+      await forgetClaim(id);
+      toast('success', 'Deleted', 'Aqua will no longer use this anywhere.');
+    } catch (err) {
+      setClaims(prev);
+      toast('error', 'Could not delete that', normalizeError(err).message);
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -192,7 +342,7 @@ export default function MemoryPage() {
     );
   }
 
-  if (facts.length === 0) {
+  if (facts.length === 0 && claims.length === 0) {
     return (
       <CenterNote>
         <p className="text-lg font-semibold text-foreground">AQUA doesn&rsquo;t know anything about you yet.</p>
@@ -219,11 +369,28 @@ export default function MemoryPage() {
           title="What AQUA remembers"
           aside={
             <span className="shrink-0 text-micro tabular-nums text-foreground-secondary">
-              {facts.length} {facts.length === 1 ? 'thing' : 'things'}
+              {facts.length + claims.length} {facts.length + claims.length === 1 ? 'thing' : 'things'}
               {lastLearned ? ` \u00b7 last ${timeAgo(lastLearned)}` : ''}
             </span>
           }
         />
+
+        {claims.length > 0 && (
+          <section className="mb-10" aria-labelledby="knows-now">
+            <h2 id="knows-now" className="mb-1 text-base font-semibold tracking-tight text-foreground">
+              What Aqua knows now
+            </h2>
+            <p className="mb-2 text-body leading-relaxed text-foreground-secondary">
+              This is what Aqua answers from. Each item shows where it learned it. Correct anything that&rsquo;s out of
+              date, or delete it &mdash; the change applies to every conversation.
+            </p>
+            <div>
+              {claims.map((c) => (
+                <ClaimRow key={c.claimId} claim={c} onCorrect={handleCorrectClaim} onForget={handleForgetClaim} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {changes.length > 0 && (
           <Panel className="mb-10">
@@ -239,6 +406,16 @@ export default function MemoryPage() {
               ))}
             </ul>
           </Panel>
+        )}
+
+        {claims.length > 0 && facts.length > 0 && (
+          <div className="mb-4">
+            <h2 className="text-base font-semibold tracking-tight text-foreground">Other notes Aqua keeps</h2>
+            <p className="mt-1 text-body leading-relaxed text-foreground-secondary">
+              Simpler notes from earlier conversations. Aqua only uses one of these when nothing above covers the same
+              thing.
+            </p>
+          </div>
         )}
 
         {grouped.map(([category, list]) => (

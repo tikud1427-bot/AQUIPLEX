@@ -22,6 +22,7 @@ Current status, stated honestly:
 | [IMPLEMENTATION_LOG.md](IMPLEMENTATION_LOG.md) | Changes, root causes, test commands and results |
 | [PILOT_VALIDATION_PLAN.md](PILOT_VALIDATION_PLAN.md) | Interviews → design partners → paid test, with decision rules |
 | [YC_APPLICATION_DRAFT.md](YC_APPLICATION_DRAFT.md) | Fact-checked application prep and live demo script |
+| [RELEASE_MANIFEST_RC_2026-10-17.md](RELEASE_MANIFEST_RC_2026-10-17.md) | Release candidate for production: contents, tests, migrations (none), rollback |
 
 The roughly 70 dated `*.md` reports at the repo root are history. Where they
 disagree with the documents above, the documents above win.

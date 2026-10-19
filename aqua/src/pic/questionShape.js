@@ -683,3 +683,95 @@ export function factAffinity(shape, fact, entityTypes = null, anchored = false, 
 
   return { score: Math.min(1, Math.max(0, score)), lexical, kind, polarityConflict };
 }
+
+/**
+ * The kind of answer a canonical PREDICATE gives about its object. The World
+ * Model typed it at extraction; the prose regexes in `offeredKinds` only guess.
+ */
+const PREDICATE_KIND = Object.freeze({
+  works_at: 'org', member_of: 'org', founded: 'org',
+  located_in: 'place',
+  reports_to: 'person', manages: 'person', knows: 'person', employs: 'person', has_member: 'person',
+  founded_by: 'person', owned_by: 'person',
+  deadline_for: 'time',
+  role_is: 'role',
+  plans_to: 'goal',
+});
+
+/**
+ * CANONICAL CLAIMS THROUGH THE SAME GATE (2026-10-17).
+ *
+ * The canonical lanes (contextEngine/index.js) merged their claims into the
+ * Context Engine's "floor", and the floor is never re-judged. So in the read
+ * production serves with Postgres, NOTHING applied `factAffinity`: a
+ * first-person question anchored on the user's self entity and the structured
+ * lane returned every claim about the user; the graph walked out from the user
+ * and returned the rest. Measured on retrieval-core.v1: of 233 lines returned
+ * to the 32 questions that should get none, 142 came that way and 11 from a
+ * single shared word ("write", "last"); none carried a relevance signal.
+ * "What is my dog's name?" received eight facts about the user's job.
+ *
+ * This is `factAffinity` applied to a claim, plus what the World Model knows
+ * that prose does not:
+ *   · polarity and lifecycle are DATA (claim.polarity; superseded or a closed
+ *     validity = past), not regex guesses;
+ *   · the predicate types the answer ("Where do I work?" → works_at offers an
+ *     org) — credited exactly like a kind match, so only when the question's
+ *     topic is accounted for ("Which bank do I use?" gets no credit from `uses`);
+ *   · `namedAnchor` — the claim was reached from an entity the QUESTION named
+ *     (or a role it resolved, "my mentor"). The self entity never counts: the
+ *     same rule factAffinity states for the legacy lane.
+ *
+ * @param {object} shape  analyseQuestion(query)
+ * @param {object} claim  canonicalReadModel claim or worldModelRepository.claimWithEvidence row
+ * @param {{ namedAnchor?: boolean, predicateMatch?: boolean, semantic?: number|null, now?: number }} [opts]
+ * @returns {{ score:number, pass:boolean, lexical:number, kind:boolean, polarityConflict:boolean }}
+ */
+/**
+ * OVERVIEW REQUESTS (2026-10-17): "What do you know about me?", "Summarise your
+ * understanding of my team" ask for the dossier itself — the one question where
+ * everything about the anchor IS the answer. They carry no topic word, so the
+ * gate made them silent (retrieval-core q138, q140).
+ */
+const OVERVIEW_CUE = /\b(?:what\s+(?:do|did|else\s+do)\s+you\s+know\s+about\s+(?:me|myself|us|my|our)\b|what\s+have\s+i\s+told\s+you|tell\s+me\s+(?:everything\s+)?(?:you\s+know\s+)?about\s+(?:me|myself|my|our)|summar(?:i[sz]e|y\s+of)\s+(?:what\s+you\s+know|your\s+understanding|everything)|your\s+understanding\s+of\s+(?:me|my|our)|remind\s+me\s+(?:of\s+)?(?:everything|what\s+you\s+know))\b/i;
+export function isOverviewRequest(query) {
+  return OVERVIEW_CUE.test(String(query ?? ''));
+}
+
+/** Words that say WHICH one in time ("the next deadline"), never what it is about. */
+const TEMPORAL_MODIFIERS = new Set(['next', 'upcoming', 'latest', 'last', 'previous', 'recent', 'current', 'soon', 'soonest', 'earliest', 'newest', 'today', 'tomorrow', 'week', 'month', 'year']);
+
+export function claimAffinity(shape, claim, { namedAnchor = false, predicateMatch = false, semantic = null, now = Date.now() } = {}) {
+  const statement = String(claim?.statement ?? claim?.statementText ?? '');
+  const o = claim?.object ?? {};
+  const objectLabel = o.kind === 'entity' ? (o.label ?? null) : (o.entity ?? null);
+  const subject = String(claim?.subject ?? '');
+  const selfSubject = claim?.subjectType === 'self' || /^you$/i.test(subject);
+  const entities = [selfSubject ? null : subject, objectLabel].filter(Boolean);
+  const predKind = PREDICATE_KIND[claim?.predicate]
+    ?? (o.kind === 'time' || o.time != null ? 'time' : null);
+  const types = new Map();
+  if (objectLabel && ['org', 'person', 'place', 'time'].includes(predKind)) types.set(objectLabel.toLowerCase(), predKind);
+
+  const validTo = claim?.validTo ? Date.parse(claim.validTo) : NaN;
+  const past = claim?.state === 'superseded' || (Number.isFinite(validTo) && validTo < now);
+  const fact = { statement, entities, polarity: claim?.polarity ?? null, ...(past ? { tense: 'past' } : {}) };
+
+  const base = factAffinity(shape, fact, types, namedAnchor, semantic);
+  let score = base.score;
+
+  // The predicate's kind (role, goal, or a typed object) and an explicit
+  // relation cue in the question are kind evidence — subject to the topic rule.
+  // A NEGATED value of the asked relation keeps half: "NOT: User works at Acme"
+  // is the correction itself for "Where do I work?" (rendered as NOT, so it
+  // cannot be read as current), and it still ranks below the asserted value.
+  const hay = ` ${statement} ${entities.join(' ')} `.toLowerCase();
+  const topic = shape.topicTerms.filter(t => !TEMPORAL_MODIFIERS.has(t));
+  const topicOk = topic.length === 0 || topic.some(t => hasTerm(hay, t));
+  const typedMatch = shape.typed && predKind === shape.expects;
+  if (topicOk && (typedMatch || predicateMatch)) {
+    score = Math.max(score, KIND_CREDIT * (base.polarityConflict ? 0.5 : 1));
+  }
+  score = Math.min(1, Math.max(0, score));
+  return { ...base, score, kind: base.kind || (topicOk && typedMatch), pass: score >= MIN_AFFINITY };
+}

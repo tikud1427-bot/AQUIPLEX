@@ -39,6 +39,10 @@ const { safeNextPath, rememberPostLoginNext, takePostLoginNext } = require("./mi
 const { validateNonce, mintNativeCode, redeemNativeCode } = require("./services/auth/nativeOAuth.service");
 const { establishSession } = require("./services/auth/establishSession.service");
 const { recordProductEvent, engineEventTap } = require("./services/analytics/productEvents");
+const identityPolicy = require("./services/auth/identityPolicy.service");
+const { createAuthHandlers } = require("./services/auth/authRoutes.service");
+const mailer = require("./services/auth/mailer.service");
+const PendingSignup = require("./models/PendingSignup");
 
 // ── Static data ───────────────────────────────────────────────────────────────
 const blogs = require("./blogs");
@@ -145,6 +149,7 @@ const authLimiter = rateLimit({
   message: { error: "Too many attempts. Please try again in a few minutes." },
 });
 
+const READ_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const engineLimiter = rateLimit({
   store: createRateLimitStore({ prefix: "engine" }),
   windowMs: 60 * 1000,
@@ -152,6 +157,23 @@ const engineLimiter = rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "You're sending requests faster than we can answer. Give it a moment." },
+  // Only requests that can spend money count. It used to count EVERY engine
+  // call: one page load makes ~6 reads (conversations, welcome, intro state,
+  // workspaces…), so ordinary browsing exhausted the 30/min and the next chat
+  // message was refused with a 429 (browser e2e, 2026-10-17).
+  skip: (req) => READ_METHODS.has(req.method),
+});
+
+// Reads are cheap but not free: a separate, generous ceiling still sits in
+// front of requireLogin so an unauthenticated flood of GETs is bounded.
+const engineReadLimiter = rateLimit({
+  store: createRateLimitStore({ prefix: "engine-read" }),
+  windowMs: 60 * 1000,
+  limit: 300,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many requests. Give it a moment." },
+  skip: (req) => !READ_METHODS.has(req.method),
 });
 
 // ── Body parsers & static ─────────────────────────────────────────────────────
@@ -349,6 +371,11 @@ app.use(
 // ── Passport ──────────────────────────────────────────────────────────────────
 app.use(passport.initialize());
 app.use(passport.session());
+// A session created before its account's last security change (account
+// claimed, Google linked, password removed) is ended here — see
+// services/auth/identityPolicy.service.js enforceAuthVersion.
+const authVersionGuard = identityPolicy.enforceAuthVersion({ User });
+app.use(authVersionGuard);
 
 // ── CSRF + same-origin (E1/PR-6) ─────────────────────────────────────────────
 // Mounted after the session (both read it) and before every route, so a new
@@ -370,22 +397,41 @@ passport.use(
     },
     async (accessToken, refreshToken, profile, done) => {
       try {
-        const email = profile.emails?.[0]?.value;
-        if (!email) return done(new Error("No email from Google"), null);
-        let user = await User.findOne({ email });
-        if (!user) {
-          user = await new User({ email, password: "google-oauth" }).save();
+        // SECURITY (2026-10-19): an account is found by its Google identity,
+        // never by email alone, and only a Google-VERIFIED address counts. A
+        // password account with the same email is NOT entered automatically —
+        // the person chooses on /auth/link. See identityPolicy.service.js.
+        const decision = await identityPolicy.resolveGoogleLogin({ User }, profile);
+        if (decision.kind === "created") {
           // FIRST RUN. `$locals` is mongoose's per-document scratch space — never
           // persisted, so this marks the request without touching the schema.
           // The callback reads it to send a brand-new account into the product
           // instead of the workspace dashboard. See the redirect note below.
-          user.$locals.justCreated = true;
+          decision.user.$locals.justCreated = true;
+          return done(null, decision.user);
         }
-        return done(null, user);
+        if (decision.kind === "login") return done(null, decision.user);
+        return done(null, false, decision);   // link-required | rejected
       } catch (err) {
         return done(err, null);
       }
     }
+  )
+);
+
+// ── Google linking strategy (signed-in owner links Google) ───────────────────
+// session: false, like google-reauth: it proves possession of a Google
+// identity and never signs anyone in. The route binds it to req.session's
+// account through identityPolicy.linkGoogleToAccount.
+passport.use(
+  "google-link",
+  new GoogleStrategy(
+    {
+      clientID:     process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL:  process.env.GOOGLE_LINK_CALLBACK_URL || "/auth/google/link/callback",
+    },
+    (accessToken, refreshToken, profile, done) => done(null, identityPolicy.googleIdentity(profile))
   )
 );
 
@@ -408,12 +454,12 @@ passport.use(
       callbackURL:  process.env.GOOGLE_REAUTH_CALLBACK_URL || "/auth/google/reauth/callback",
     },
     async (accessToken, refreshToken, profile, done) => {
-      const email = profile.emails?.[0]?.value;
-      if (!email) return done(new Error("No email from Google"), null);
       // Never looked up or created in the database — this proves possession of
       // a Google account, nothing more. The route checks it matches the
-      // signed-in user.
-      return done(null, { email: email.toLowerCase().trim() });
+      // signed-in user. Only a Google-VERIFIED address proves anything.
+      const identity = identityPolicy.googleIdentity(profile);
+      if (!identity.ok) return done(null, false);
+      return done(null, { email: identity.email, googleId: identity.googleId });
     }
   )
 );
@@ -591,6 +637,7 @@ aquaEngine.use((req, res, next) => {
 
 const aquaAccess = [
   engineLimiter,          // before requireLogin: an unauthenticated flood still costs us sockets
+  engineReadLimiter,      // reads: separate, generous ceiling (engineLimiter skips them)
   requireLogin,
   aquaJson,               // the 50 MB upload parser — only for signed-in callers
   (req, res, next) => {
@@ -1291,9 +1338,28 @@ app.get("/resume/:id", requireLogin, async (req, res) => {
 // The target is kept in the session, not in the form or the OAuth URL, so it
 // survives the Google round trip without touching views/login.ejs. Sanitised
 // on the way in and again on the way out — see middleware/redirectTarget.js.
+/** A cost-12 hash of a random secret, made once; compared against when no account password exists. */
+let loginDummyHashPromise = null;
+function loginDummyHash() {
+  if (!loginDummyHashPromise) loginDummyHashPromise = bcrypt.hash(require("crypto").randomBytes(24).toString("hex"), 12);
+  return loginDummyHashPromise;
+}
+
+// Fixed messages for the Google outcomes that end on /login. Keyed, never
+// echoed: the query string cannot inject text into the page.
+const LOGIN_ERRORS = {
+  google_unverified_email: "Google hasn't verified that email address, so it can't be used to sign in.",
+  google_missing_email:    "Google didn't share an email address, so we couldn't sign you in.",
+  google_missing_subject:  "Google sign-in didn't complete. Try again.",
+  google_conflicting_identity: "That email belongs to an account linked to a different Google account.",
+  google_expired:          "That took too long. Sign in with Google again.",
+  google_failed:           "Google sign-in didn't complete. Try again.",
+};
+
 app.get("/login",  redirectIfLoggedIn, (req, res) => {
   rememberPostLoginNext(req, req.query.next, "/home");
-  res.render("login");
+  const error = LOGIN_ERRORS[typeof req.query.error === "string" ? req.query.error : ""] || null;
+  res.render("login", error ? { error } : undefined);
 });
 app.get("/signup", redirectIfLoggedIn, (req, res) => res.render("signup"));
 
@@ -1308,10 +1374,13 @@ app.post("/login", authLimiter, async (req, res) => {
     // not an oracle for which addresses have accounts.
     const invalid = () => res.status(401).render("login", { error: "That email and password don't match an account." });
     const user = await User.findOne({ email: email.toLowerCase().trim() });
-    if (!user) return invalid();
 
-    const isMatch = user.password !== "google-oauth" ? await bcrypt.compare(password, user.password) : false;
-    if (!isMatch) return invalid();
+    // The same bcrypt cost whether or not the account exists (2026-10-19):
+    // returning early for an unknown email answered in ~27 ms against ~877 ms
+    // for a wrong password — the timing said which addresses have accounts.
+    const hasPassword = !!user && user.password !== "google-oauth";
+    const isMatch = await bcrypt.compare(password, hasPassword ? user.password : await loginDummyHash());
+    if (!hasPassword || !isMatch) return invalid();
 
     // Read BEFORE the identity is written so the value is consumed exactly
     // once; "/home" stays the default for every login that did not ask.
@@ -1402,14 +1471,23 @@ app.get(
     // having been set — a different bug than "the app never asked for it".
     console.log("[native oauth] /auth/google/callback: entering, session.id=", req.sessionID,
       "nativeReturn=", keepNativeSessionInfo);
-    return passport.authenticate("google", {
-      failureRedirect: "/login",
-      keepSessionInfo: keepNativeSessionInfo,
+    // Custom callback (2026-10-19): the strategy may decline to sign in because
+    // the address belongs to a password account (link required) or because the
+    // identity claims are unusable (rejected). Neither is an error page.
+    return passport.authenticate("google", (err, user, decision) => {
+      if (err) return next(err);
+      if (!user) {
+        if (decision && decision.kind === "link-required") return authHandlers.startLink(req, res, decision);
+        const reason = decision && decision.kind === "rejected" ? decision.reason : "failed";
+        return res.redirect(`/login?error=google_${encodeURIComponent(reason)}`);
+      }
+      req.logIn(user, { keepSessionInfo: keepNativeSessionInfo }, (loginErr) => (loginErr ? next(loginErr) : next()));
     })(req, res, next);
   },
   async (req, res) => {
     req.session.user   = { _id: req.user._id, email: req.user.email, username: req.user.email.split("@")[0] };
     req.session.userId = req.user._id;
+    identityPolicy.stampSession(req, req.user);
     // Same first-run rule as /signup — a Google account created during THIS
     // round trip is a new user and belongs in the product. A returning one
     // keeps the workspace. Optional chaining because `$locals` is only set on
@@ -1537,6 +1615,7 @@ app.get("/auth/native/complete", authLimiter, async (req, res) => {
       // native completion identically to a normal login.
       req.session.user   = { _id: user._id, email: user.email, username: user.email.split("@")[0] };
       req.session.userId = user._id;
+      identityPolicy.stampSession(req, user);
       req.session.save(() => res.redirect("/aqua"));
     });
   } catch (err) {
@@ -1587,44 +1666,101 @@ app.get(
   },
 );
 
-app.post("/signup", authLimiter, async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const again = (status, error) => res.status(status).render("signup", { error });
-    if (typeof email !== "string" || typeof password !== "string" || !email || !password) {
-      return again(400, "Enter an email and a password.");
+// ── Email/password signup, email verification, Google account linking ───────
+// SECURITY (2026-10-19). /signup used to create a usable account for any
+// address and sign the caller in; Google sign-in then attached to whatever
+// account had that email (pre-account takeover). Now:
+//   POST /signup        creates NO account. It records a pending signup and
+//                       emails a link; the response is identical whether or not
+//                       the address already has an account (no enumeration).
+//                       With no mail transport configured it is switched off
+//                       and Google sign-in remains (fail closed).
+//   POST /verify-email  the link's token PLUS the password chosen at signup →
+//                       the account is created, verified, and signed in. A new
+//                       account still lands in the product (/aqua) and records
+//                       the signup_completed event: see
+//                       services/auth/authRoutes.service.js verifySubmit.
+//   /auth/link          a Google sign-in whose address belongs to a password
+//                       account: the person proves the password, or explicitly
+//                       claims the account with Google.
+// Decisions: services/auth/identityPolicy.service.js.
+
+/** Base for links in email. Never the Host header in production (it is attacker-controlled). */
+function linkBaseUrl(req) {
+  const configured = String(process.env.APP_URL || "").trim().replace(/\/+$/, "");
+  if (configured) return configured;
+  if (process.env.NODE_ENV === "production") throw new Error("APP_URL is required to send sign-in links");
+  return `${req.protocol}://${req.get("host")}`;
+}
+
+/** Sign a user in after /auth/link, on a fresh session (req.logIn regenerates). */
+function finishLinkedLogin(req, res, user, { nativeNonce } = {}) {
+  req.logIn(user, (err) => {
+    if (err) {
+      console.error("[AUTH] sign-in after linking failed:", err.message);
+      return res.redirect("/login?error=google_failed");
     }
+    req.session.user   = { _id: user._id, email: user.email, username: user.email.split("@")[0] };
+    req.session.userId = user._id;
+    identityPolicy.stampSession(req, user);
+    recordProductEvent(user._id, "login", { method: "google" });
+    if (nativeNonce) {
+      // The link page ran in the external browser during the Android leg: hand
+      // the session to the app exactly as /auth/google/callback does.
+      return mintNativeCode(user._id)
+        .then(({ code }) => req.session.save(() =>
+          res.redirect(`/auth/native/return?code=${encodeURIComponent(code)}&nonce=${encodeURIComponent(nativeNonce)}`)))
+        .catch((mintErr) => {
+          console.error("[native oauth] failed to mint handoff code after linking:", mintErr.message);
+          res.redirect("/auth/native/return?error=server_error");
+        });
+    }
+    req.session.save(() => res.redirect("/home"));
+  });
+}
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) return again(400, "That email address doesn't look right.");
-    if (password.length < 6)    return again(400, "Use a password of at least 6 characters.");
-
-    const normalizedEmail = email.toLowerCase().trim();
-    const exists = await User.findOne({ email: normalizedEmail });
-    if (exists) return again(409, "An account with this email already exists. Log in instead.");
-
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const newUser = await new User({ email: normalizedEmail, password: hashedPassword }).save();
-
-    await establishSession(req, newUser);
-    recordProductEvent(newUser._id, "signup_completed", { method: "email" });
-    // ── THE FUNNEL ────────────────────────────────────────────────────────────
-    // A new account goes to the PRODUCT, not to the workspace dashboard.
-    //
-    // The landing page promises "The AI that already understands your work."
-    // Signup then dropped the user on /home — <title>Workspace — Aquiplex</title>,
-    // nineteen links, bundles and usage — and they had to find "Open Aqua" among
-    // them before ever meeting the thing they signed up for. The intro, the
-    // interviewer persona and the understanding card all sit behind that click.
-    //
-    // /home is NOT removed: for a returning user it is a legitimate workspace,
-    // and /login still goes there. Only the first run changes.
-    res.redirect("/aqua");
-  } catch (err) {
-    console.error(err);
-    res.status(500).render("signup", { error: "Something went wrong creating your account. Try again." });
-  }
+const authHandlers = createAuthHandlers({
+  User,
+  PendingSignup,
+  sendMail: mailer.sendMail,
+  mailerAvailable: () => mailer.mailerAvailable() && (process.env.NODE_ENV !== "production" || !!process.env.APP_URL),
+  baseUrl: linkBaseUrl,
+  establishSession,
+  finishLogin: finishLinkedLogin,
+  recordEvent: recordProductEvent,
+  versionGuard: authVersionGuard,
 });
+
+app.post("/signup", authLimiter, authHandlers.signup);
+app.get("/verify-email", authHandlers.verifyForm);
+app.post("/verify-email", authLimiter, authHandlers.verifySubmit);
+app.get("/auth/link", authHandlers.linkForm);
+app.post("/auth/link/password", authLimiter, authHandlers.linkPassword);
+app.post("/auth/link/claim", authLimiter, authHandlers.linkClaim);
+
+// A signed-in owner links Google to their account (explicit, from the product).
+app.get("/auth/google/link", requireLogin, authLimiter, (req, res, next) =>
+  passport.authenticate("google-link", { scope: ["profile", "email"], prompt: "select_account", session: false })(req, res, next));
+
+app.get(
+  "/auth/google/link/callback",
+  requireLogin,
+  passport.authenticate("google-link", { session: false, failureRedirect: "/aqua?googleLink=failed" }),
+  async (req, res) => {
+    try {
+      const result = await identityPolicy.linkGoogleToAccount({ User }, req.session.userId, req.user);
+      if (!result.ok) return res.redirect(`/aqua?googleLink=${encodeURIComponent(result.reason)}`);
+      // Other sessions end (authVersion bumped); this one continues on the new version.
+      authVersionGuard.forget(result.user._id);
+      identityPolicy.stampSession(req, result.user);
+      recordProductEvent(result.user._id, "account_linked", { method: "google-settings" });
+      return req.session.save(() => res.redirect("/aqua?googleLink=ok"));
+    } catch (err) {
+      console.error("[AUTH] google link failed:", err.message);
+      return res.redirect("/aqua?googleLink=failed");
+    }
+  },
+);
 
 app.get("/logout", (req, res) => {
   req.session.destroy(() => {

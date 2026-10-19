@@ -279,3 +279,20 @@ test('teardown: restore disk profile', () => {
   reloadIdentity();
   assert.equal(getIdentityProfile().company.name, 'Aquiplex');
 });
+
+// 2026-10-16 — a founder's "our"/"we" is about THEIR company, not Aquiplex.
+// "Where did you learn our current price?" was routed to Aquiplex's pricing.
+import { detectIdentityIntent as _detectFounder } from '../identityRouter.js';
+test('identity router: first-person plural questions about the user\'s own company are not about Aqua', () => {
+  for (const q of [
+    'Where did you learn our current price?',
+    'What do you think our pricing should be?',
+    'Can you remind us what we charge per clinic?',
+    'How much do we cost compared with competitors, in your view?',
+  ]) {
+    assert.equal(_detectFounder(q).isSelf, false, q);
+  }
+  // Still about Aqua when the question says so.
+  assert.equal(_detectFounder('How much does Aqua cost?').isSelf, true);
+  assert.equal(_detectFounder('What is your pricing?').isSelf, true);
+});

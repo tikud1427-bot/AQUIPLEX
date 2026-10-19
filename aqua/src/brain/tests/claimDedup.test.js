@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 
 import {
   exactKey, subjectPredicateKey, validityOverlaps, sameClaim,
-  contradictionBetween, dedupAndDetect,
+  contradictionBetween, dedupAndDetect, revisionHistoryPredicates,
 } from '../understanding/claimDedup.js';
 
 const claim = (over = {}) => ({
@@ -359,6 +359,64 @@ describe('sole-value revision (D6)', () => {
     const r = dedupAndDetect([rust({ polarity: 'negated', object: { entity: 'Go' } })], [stored('go', 'Go')]);
     assert.deepEqual(r.contradictions.map(c => c.kind), ['polarity']);
   });
+
+  // 2026-10-17, held-out world with the worker run: "We raised our price to $39
+  // per clinic per month" retired "We have 42 paying clinics" — the user's ONLY
+  // other current has_property value. The catch-all attribute holds unrelated
+  // values; only one of the same kind may be the one replaced.
+  describe('has_property: only a value of the same kind can be replaced', () => {
+    const prop = (id, literal, over = {}) => ({ claimId: id, subject: 'You', predicate: 'has_property', object: { literal }, objectKind: 'literal',
+      polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, ...over });
+    const change = literal => prop('new', literal, { revises: true, _persisted: undefined, state: undefined });
+
+    test('a price change does not retire the customer count', () => {
+      const r = dedupAndDetect([change('$39 per clinic per month')], [prop('clinics', '42 paying clinics')]);
+      assert.deepEqual(r.contradictions, []);
+    });
+    test('a price change still revises the price; a count still revises the count', () => {
+      assert.deepEqual(dedupAndDetect([change('$39 per clinic per month')], [prop('p', '$29 per clinic per month')]).contradictions.map(c => c.existing.claimId), ['p']);
+      assert.deepEqual(dedupAndDetect([change('57 paying clinics')], [prop('c', '42 paying clinics')]).contradictions.map(c => c.existing.claimId), ['c']);
+      assert.deepEqual(dedupAndDetect([change('11 months')], [prop('r', '14 months')]).contradictions.map(c => c.existing.claimId), ['r']);
+    });
+    test('with an unrelated value beside the same-kind one, the same-kind one is what changed', () => {
+      const r = dedupAndDetect([change('$39 per clinic per month')], [prop('clinics', '42 paying clinics'), prop('p', '$29 per clinic per month')]);
+      assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['p']);
+      assert.deepEqual(r.ambiguousRevisions, []);
+    });
+    test('free text needs a shared word', () => {
+      assert.deepEqual(dedupAndDetect([change('in progress')], [prop('h', 'on hold')]).contradictions, []);
+    });
+  });
+
+  // 2026-10-17: (Our price, has_property, $29…) and (You, has_property, $39…)
+  // are one attribute under two subjects; nothing compared them.
+  describe('has_property: an attribute named as a subject', () => {
+    const prop = (id, subject, literal, statementText, over = {}) => ({ claimId: id, subject, predicate: 'has_property', object: { literal },
+      objectKind: 'literal', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, statementText, ...over });
+    const raised = prop('new', 'You', '$39 per clinic per month', 'We raised our price to $39 per clinic per month',
+      { revises: true, _persisted: undefined, state: undefined });
+    const oldPrice = prop('p', 'Our price', '$29 per clinic per month', 'Our price is $29 per clinic per month');
+
+    test('the change retires the value held under the subject its own sentence names', () => {
+      const r = dedupAndDetect([raised], [oldPrice, prop('burn', 'Our monthly burn', 'about $38k', 'Our monthly burn is about $38k')]);
+      assert.deepEqual(r.contradictions.map(c => [c.kind, c.existing.claimId]), [['revision', 'p']]);
+    });
+    test('the other direction: the new subject is named in the old sentence', () => {
+      const r = dedupAndDetect([prop('n2', 'Our price', '$39 per clinic per month', 'Our price is now $39 per clinic per month', { revises: true, _persisted: undefined, state: undefined })],
+        [prop('old', 'You', '$29 per clinic per month', 'We charge a price of $29 per clinic per month')]);
+      assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['old']);
+    });
+    test('not without a distinctive shared word ("Standard plan" ≠ "price"), not across value kinds, not unmarked', () => {
+      assert.deepEqual(dedupAndDetect([raised], [prop('doc', 'Standard plan', '$49 per clinic per month', 'Standard plan: $49 per clinic per month')]).contradictions, []);
+      assert.deepEqual(dedupAndDetect([raised], [prop('cnt', 'Our price list', '12 items', 'Our price list has 12 items')]).contradictions, []);
+      assert.deepEqual(dedupAndDetect([{ ...raised, revises: undefined }], [oldPrice]).contradictions, []);
+    });
+    test('two candidates → ambiguous, nothing retired', () => {
+      const r = dedupAndDetect([raised], [oldPrice, prop('p2', 'price', '$25 per clinic per month', 'The price was $25 per clinic per month')]);
+      assert.deepEqual(r.contradictions, []);
+      assert.equal(r.ambiguousRevisions.at(-1).reason, 'attribute-subject');
+    });
+  });
 });
 
 // 2026-10-11: "My biggest client is now Sora Studio" (prompt rule 13) is about a
@@ -418,6 +476,17 @@ describe('blocker resolution (Pass 2)', () => {
     assert.equal(r.claims.find(c => c.claimId === 'new').revises, true, 'marked as a revision so rule 2 retires the older claims');
   });
 
+  // 2026-10-18 (held-out stale case h011): the sentence that named the blocker
+  // yielded two claims; "fixed now" retired only the one that read as pending.
+  test('a claim that names the thing a blocker is retired with its other pending state', () => {
+    const r = dedupAndDetect([status('Google Calendar sync', 'fixed now')], [
+      stored('d1', 'Google Calendar sync', 'has_property', { literal: 'keeps dropping appointments' }),
+      stored('d2', 'Google Calendar sync', 'has_property', { literal: 'biggest blocker' }),
+      stored('d3', 'Google Calendar sync', 'has_property', { literal: 'built on the v3 API' }),
+    ]);
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId).sort(), ['d1', 'd2']);
+  });
+
   test('resolving the blocked TASK itself retires its blockers', () => {
     const r = dedupAndDetect([status('the drone project', 'completed')], history());
     assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['b3']);
@@ -473,5 +542,127 @@ describe('renamed subject revision (Pass 2)', () => {
     const r = dedupAndDetect([moved('planter launch')], [old('own', 'planter launch', 'May 9', 'The planter launch is May 9'),
       old('p', 'You', 'May 4', "We're launching the ceramic planter line on May 4")], FUNC);
     assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['own']);
+  });
+});
+
+// 2026-10-18 — held-out stale cases h009/h024 (responsibility ended under a
+// different predicate) and h003/h051 (a dated plan rescheduled as a deadline).
+describe('cross-predicate revisions', () => {
+  const stored = (id, subject, predicate, object, over = {}) => ({ claimId: id, subject, predicate, object,
+    objectKind: object.entity ? 'entity' : 'literal', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, ...over });
+  const incoming = (subject, predicate, object, over = {}) => ({ claimId: 'new', subject, predicate, object,
+    objectKind: object.entity ? 'entity' : 'literal', polarity: 'asserted', modality: 'fact', ...over });
+
+  test('"Rui has taken over design from Ines" ends Ines\'s design role — not her employment', () => {
+    const r = dedupAndDetect([incoming('Ines', 'task_owner', { literal: 'design' }, { polarity: 'negated', revises: true, statementText: 'Rui has taken over design from Ines' })],
+      [stored('role', 'Ines', 'role_is', { literal: 'leads design' }), stored('job', 'Ines', 'works_at', { entity: 'Brightloop' })]);
+    assert.deepEqual(r.contradictions.map(c => [c.kind, c.existing.claimId]), [['revision', 'role']]);
+  });
+  test('"Kofi is no longer working on Atlas" ends (Kofi, builds, Atlas) and marks the claim a revision', () => {
+    const r = dedupAndDetect([incoming('Kofi', 'task_owner', { literal: 'working on Atlas' }, { polarity: 'negated', statementText: 'Kofi is no longer working on Atlas' })],
+      [stored('b', 'Kofi', 'builds', { entity: 'Atlas' }), stored('o', 'Kofi', 'owns', { literal: 'the mobile app' })]);
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['b']);
+    assert.equal(r.claims.find(c => c.claimId === 'new').revises, true);
+  });
+  test('no end stated, another subject, generic words only, or two candidates → nothing retired', () => {
+    const neg = (lit, text, over = {}) => incoming('Kofi', 'task_owner', { literal: lit }, { polarity: 'negated', statementText: text, ...over });
+    assert.deepEqual(dedupAndDetect([neg('Atlas', 'Kofi does not work on Atlas')], [stored('b', 'Kofi', 'builds', { entity: 'Atlas' })]).contradictions
+      .filter(c => c.kind === 'revision'), [], 'a plain negation is not an ending');
+    assert.deepEqual(dedupAndDetect([neg('working on Atlas', 'Kofi is no longer working on Atlas')], [stored('b', 'Mara', 'builds', { entity: 'Atlas' })]).contradictions, []);
+    assert.deepEqual(dedupAndDetect([neg('the project', 'Kofi is no longer on the project')], [stored('b', 'Kofi', 'builds', { literal: 'the project' })]).contradictions, []);
+    const two = dedupAndDetect([neg('Atlas', 'Kofi no longer works on Atlas')], [stored('b', 'Kofi', 'builds', { entity: 'Atlas' }), stored('o', 'Kofi', 'owns', { literal: 'Atlas onboarding' })]);
+    assert.deepEqual(two.contradictions, []);
+    assert.equal(two.ambiguousRevisions.at(-1).reason, 'responsibility-ended');
+  });
+
+  const plan = stored('plan', 'You', 'plans_to', { literal: 'launch publicly on April 14' }, { modality: 'intent', statementText: "We're planning to launch publicly on April 14." });
+  const moved = over => incoming('public launch', 'deadline_for', { literal: 'May 2' }, { revises: true, statementText: 'We moved the public launch to May 2', ...over });
+  test('a rescheduled launch replaces the dated plan it moves', () => {
+    const r = dedupAndDetect([moved()], [plan, stored('goal', 'You', 'plans_to', { literal: 'reach 100 paying clinics by December' }, { modality: 'intent' })]);
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['plan']);
+  });
+  test('not without `revises`, not for an undated plan, not for a plan the subject does not name', () => {
+    assert.deepEqual(dedupAndDetect([moved({ revises: undefined })], [plan]).contradictions, []);
+    assert.deepEqual(dedupAndDetect([moved()], [stored('p', 'You', 'plans_to', { literal: 'launch publicly soon' }, { modality: 'intent' })]).contradictions, []);
+    assert.deepEqual(dedupAndDetect([moved()], [stored('p', 'You', 'plans_to', { literal: 'hire a designer by April 14' }, { modality: 'intent' })]).contradictions, []);
+  });
+  test('the extra history predicates are requested only when a rule can use them', () => {
+    assert.deepEqual(revisionHistoryPredicates([incoming('Ines', 'task_owner', { literal: 'design' })]), []);
+    assert.ok(revisionHistoryPredicates([incoming('Ines', 'task_owner', { literal: 'design' }, { polarity: 'negated' })]).includes('role_is'));
+    assert.deepEqual(revisionHistoryPredicates([moved()]), ['plans_to']);
+  });
+});
+
+// 2026-10-18: "We cancelled the Porto offsite" → (You, rejected, "Porto offsite")
+// left (You, plans_to, "a team offsite in Porto in June") current.
+describe('plan cancelled', () => {
+  const plan = (id, literal) => ({ claimId: id, subject: 'You', predicate: 'plans_to', object: { literal }, objectKind: 'literal',
+    polarity: 'asserted', modality: 'intent', state: 'active', _persisted: true });
+  const cancel = (literal, text) => ({ claimId: 'new', subject: 'You', predicate: 'rejected', object: { literal }, objectKind: 'literal',
+    polarity: 'asserted', modality: 'fact', statementText: text });
+  test('the cancelled plan is superseded; other plans are kept', () => {
+    const r = dedupAndDetect([cancel('Porto offsite', 'We cancelled the Porto offsite')],
+      [plan('off', 'a team offsite in Porto in June'), plan('hire', 'hire a designer in June')]);
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['off']);
+    assert.equal(r.claims.find(c => c.claimId === 'new').revises, true);
+    assert.ok(revisionHistoryPredicates([cancel('Porto offsite', 'We cancelled the Porto offsite')]).includes('plans_to'));
+  });
+  test('no cancel language, no matching plan, or two matching plans → nothing retired', () => {
+    assert.deepEqual(dedupAndDetect([cancel('Porto offsite', 'We rejected Porto for the offsite')], [plan('off', 'a team offsite in Porto in June')]).contradictions, []);
+    assert.deepEqual(dedupAndDetect([cancel('Berlin offsite', 'We cancelled the Berlin offsite')], [plan('off', 'a team offsite in Porto in June')]).contradictions, []);
+    const two = dedupAndDetect([cancel('the offsite', 'We cancelled the offsite')], [plan('a', 'an offsite in Porto'), plan('b', 'an offsite in Lisbon')]);
+    assert.deepEqual(two.contradictions, []);
+  });
+});
+
+// 2026-10-18: with a CAPPED history, "found nothing" is not evidence. Every
+// exactly-one rule must abstain (ambiguous) instead of concluding "nothing to
+// retire" — or retiring the one candidate it happened to see.
+describe('bounded history: truncation makes exactly-one rules abstain', () => {
+  const t = { subjects: new Set(['ines', 'you']), kindComplete: new Set(), roles: true, text: true };
+  test('zero or one candidate under a cut history → ambiguous, nothing retired', () => {
+    const ended = { claimId: 'n', subject: 'Ines', predicate: 'task_owner', object: { literal: 'design' }, objectKind: 'literal',
+      polarity: 'negated', modality: 'fact', revises: true, statementText: 'Rui has taken over design from Ines' };
+    const r = dedupAndDetect([ended], [], { truncation: t });
+    assert.deepEqual(r.contradictions, []);
+    assert.ok(r.ambiguousRevisions.some(a => /^history-truncated/.test(a.reason)), JSON.stringify(r.ambiguousRevisions));
+    const price = { claimId: 'p', subject: 'You', predicate: 'has_property', object: { literal: '$39 per month' }, objectKind: 'literal',
+      polarity: 'asserted', modality: 'fact', revises: true, statementText: 'The price is now $39 per month' };
+    const one = { claimId: 'o', subject: 'You', predicate: 'has_property', object: { literal: '$29 per month' }, objectKind: 'literal',
+      polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true };
+    const r2 = dedupAndDetect([price], [one], { truncation: t });
+    assert.deepEqual(r2.contradictions, [], 'a cut has_property bucket without kindComplete must not retire its one visible rival');
+    const r3 = dedupAndDetect([price], [one], { truncation: { ...t, kindComplete: new Set(['you']) } });
+    assert.deepEqual(r3.contradictions.map(c => c.existing.claimId), ['o'], 'every same-kind value fetched → decide as usual');
+  });
+  test('no truncation info → unchanged behaviour', () => {
+    const price = { claimId: 'p', subject: 'You', predicate: 'has_property', object: { literal: '$39 per month' }, objectKind: 'literal',
+      polarity: 'asserted', modality: 'fact', revises: true, statementText: 'x' };
+    const one = { claimId: 'o', subject: 'You', predicate: 'has_property', object: { literal: '$29 per month' }, objectKind: 'literal',
+      polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true };
+    assert.deepEqual(dedupAndDetect([price], [one]).contradictions.map(c => c.existing.claimId), ['o']);
+  });
+});
+
+// 2026-10-19: the same sentences, re-recorded, took other shapes.
+describe('cross-predicate revisions — the shapes a second recording produced', () => {
+  const stored = (id, subject, predicate, object, over = {}) => ({ claimId: id, subject, predicate, object,
+    objectKind: object.entity ? 'entity' : 'literal', polarity: 'asserted', modality: 'fact', state: 'active', _persisted: true, ...over });
+  const incoming = (subject, predicate, object, statementText, over = {}) => ({ claimId: 'new', subject, predicate, object,
+    objectKind: object.entity ? 'entity' : 'literal', polarity: 'asserted', modality: 'fact', statementText, ...over });
+  test('"Kofi is no longer working on Atlas" as has_status ends a habit_of "helping me build Atlas"', () => {
+    const r = dedupAndDetect([incoming('Kofi', 'has_status', { literal: 'working on Atlas' }, 'Kofi is no longer working on Atlas', { polarity: 'negated' })],
+      [stored('h', 'Kofi', 'habit_of', { literal: 'helping me build Atlas on weekends' }), stored('j', 'Kofi', 'works_at', { entity: 'Atlas Labs' })]);
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['h']);
+  });
+  test('an ended activity never ends employment, membership or a place', () => {
+    const r = dedupAndDetect([incoming('Kofi', 'task_owner', { literal: 'the Brightloop launch' }, 'Kofi is no longer working on the Brightloop launch', { polarity: 'negated' })],
+      [stored('j', 'Kofi', 'works_at', { entity: 'Brightloop' }), stored('m', 'Kofi', 'member_of', { entity: 'Brightloop' })]);
+    assert.deepEqual(r.contradictions, []);
+  });
+  test('(Porto offsite, has_status, "cancelled") cancels the user\'s plan for it', () => {
+    const r = dedupAndDetect([incoming('Porto offsite', 'has_status', { literal: 'cancelled' }, 'We cancelled the Porto offsite')],
+      [stored('p', 'You', 'plans_to', { literal: 'team offsite in Porto in June' }, { modality: 'intent' }), stored('q', 'You', 'plans_to', { literal: 'hire a designer in June' }, { modality: 'intent' })]);
+    assert.deepEqual(r.contradictions.map(c => c.existing.claimId), ['p']);
   });
 });

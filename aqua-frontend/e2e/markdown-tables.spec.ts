@@ -19,7 +19,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 const CARD_BREAKPOINT_PX = 544; // 34rem — matches the container query in globals.css
 
 async function gotoFixtures(page: Page) {
-  await page.goto('/dev/markdown');
+  await page.goto('./dev/markdown'); // relative to baseURL (/aqua/)
   await expect(page.locator('table.md-table').first()).toBeVisible();
 }
 

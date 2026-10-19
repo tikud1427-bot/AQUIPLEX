@@ -304,7 +304,11 @@ describe('S8 compares in the STORED vocabulary', () => {
     const fs = await import('node:fs'); const url = await import('node:url'); const path = await import('node:path');
     const src = fs.readFileSync(path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '../index.js'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
-    assert.match(src, /dedupAndDetect\(forS8,\s*existing,\s*\{\s*functionalPredicates:\s*singleValuedPredicates\(\),\s*singleObjectPredicates:\s*singleObjectPredicates\(\)/);
+    // 2026-10-18: the options moved into `s8opts` (shared with the eval-only
+    // compare mode) and the bounded history's `truncation` joined them; the
+    // contract pinned here — S8 gets `forS8`, never the raw segment — is the same.
+    assert.match(src, /const s8opts = \{\s*functionalPredicates:\s*singleValuedPredicates\(\),\s*singleObjectPredicates:\s*singleObjectPredicates\(\)\s*\}/);
+    assert.match(src, /dedupAndDetect\(forS8,\s*existing,\s*\{\s*\.\.\.s8opts/);
     assert.doesNotMatch(src, /dedupAndDetect\(segment\.claims/);
   });
 });

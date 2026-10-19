@@ -404,7 +404,25 @@ function renderCanonicalLine(c, { showDates = true, retired = null } = {}) {
   // plans to add cross-border splits", and the answer asserted the plan. A
   // hedged source is labelled so the reading cannot outrank its own words.
   const hedge = HEDGE_RE.test(quote) && !readings.some(r => /^\(?(?:hypothetically|undecided)/.test(r)) ? '(undecided — not decided by the user) ' : '';
-  return `• ${hedge}${[...new Set(readings)].join('; ')}${evidence}${day ? ` [told Aqua on ${day}]` : ''}${flags ? ` (${flags})` : ''}`;
+  return `• ${hedge}${[...new Set(readings)].join('; ')}${evidence} ${sourceTag(c, day)}${flags ? ` (${flags})` : ''}`;
+}
+
+/**
+ * WHERE IT CAME FROM, ALWAYS (2026-10-19). Asked "Where did you learn our
+ * current price?", the answer called the founder's own chat message "internal
+ * pricing information… the later internal note" (live founder journey): the
+ * line carried a quote and, on a one-day session, nothing saying who said it.
+ * Every canonical line now names its source kind; the date is added only when
+ * it informs (see renderItemLine).
+ */
+export function sourceTag(c, day) {
+  const on = day ? ` on ${day}` : '';
+  if (c.sourceType === 'document') {
+    const name = String(c.sourceRef ?? '').match(/^file:(.+):chunk:\d+$/)?.[1];
+    return `[from the user's uploaded file${name ? ` ${name}` : ''}${day ? `, added ${day}` : ''}]`;
+  }
+  if (c.sourceType === 'user_correction') return `[the user corrected this in Aqua's Memory${on}]`;
+  return `[the user told Aqua in conversation${on}]`;
 }
 
 /**

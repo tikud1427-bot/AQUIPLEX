@@ -35,7 +35,7 @@ import { findGaps } from '../memory/memoryReasoner.js';
 import { buildCoverage, COVERAGE_DIMENSIONS } from './coverage.js';
 import { buildCard } from './summary.js';
 import { nodesByType } from '../reasoning/reasoningGraph.js';
-import { getConversationMeta, updateConversationMeta, listConversationIdsForUser } from '../memory/conversationStore.js';
+import { getConversationMeta, updateConversationMeta, listConversationIdsForUser, canAccessConversation } from '../memory/conversationStore.js';
 import { applyCorrection, dismissedEntityIds, isDismissalKey } from './corrections.js';
 import * as memoryEditor from '../memory/memoryEditor.js';
 
@@ -184,7 +184,10 @@ router.post('/intro/complete', (req, res) => {
     return res.status(400).json({ success: false, error: 'No owner: log in, or pass conversationId for the dev fallback.' });
   }
 
-  if (conversationId) {
+  // Only the caller's own conversation is marked (2026-10-16): the id comes
+  // from the request body, and without this check any account could write
+  // this marker onto another account's conversation.
+  if (conversationId && canAccessConversation(req.aquaUserId ?? null, conversationId)) {
     try {
       updateConversationMeta(conversationId, {
         kind: 'understanding_intro',

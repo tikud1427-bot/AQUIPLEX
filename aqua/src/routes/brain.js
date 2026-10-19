@@ -417,6 +417,75 @@ router.post('/claims/:id/correct', guarded(async (req, res) => {
   }
 }));
 
+// ── What Aqua holds NOW, with where it learned it (2026-10-16) ───────────────
+// The Memory page listed the legacy fact store while, with Postgres, answers
+// come from canonical claims — so the screen promising "see what it knows and
+// delete it" showed a different store from the one answering. This is the
+// store that answers: current claims only, each with the sentence it was
+// learned from, the source kind and when it was said.
+function currentItem(c) {
+  const quote = (c.evidence ?? []).map(e => e?.quote).find(q => typeof q === 'string' && q.trim()) ?? null;
+  const loc = (c.evidence ?? []).map(e => e?.locator).find(Boolean) ?? null;
+  const validFrom = c.validFrom ? new Date(c.validFrom) : null;
+  return {
+    claimId: c.claimId,
+    statement: c.statementText ?? c.statement ?? '',
+    quote,
+    sourceKind: c.sourceKind ?? 'conversation',
+    sourceName: loc && typeof loc === 'object' ? (loc.name ?? loc.file ?? loc.fileName ?? null) : null,
+    assertedAt: c.assertedAt ?? null,
+    disputed: c.state === 'disputed',
+    scheduledFrom: validFrom && validFrom.getTime() > Date.now() ? validFrom.toISOString() : null,
+  };
+}
+
+router.get('/current', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  if (!dbConfigured()) return ok(res, ownerId, { configured: false, claims: [] }, { empty: true, kind: 'current' });
+  const { currentWorld } = await import('../core/worldModel/canonicalReadModel.js');
+  const rows = await currentWorld(ownerId, { limit: clampInt(req.query.limit, 120, 1, 160) });
+  const claims = rows.filter(c => c.predicate !== 'unresolved').map(currentItem);
+  ok(res, ownerId, { configured: true, claims }, { empty: claims.length === 0, kind: 'current' });
+}));
+
+router.post('/claims/:id/forget', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  if (!dbConfigured()) return res.status(503).json({ success: false, code: 'WORLD_MODEL_UNAVAILABLE', error: 'Canonical world model is not configured' });
+  const { forgetClaim, MemoryControlUnavailable } = await import('../memory/forget.js');
+  try {
+    const out = await forgetClaim(ownerId, String(req.params.id ?? '').trim());
+    if (!out) return res.status(404).json({ success: false, code: ErrorCodes.NOT_FOUND, error: 'Claim not found' });
+    ok(res, ownerId, { forgotten: out.claimId, archivedClaims: out.claims.length, conversationFacts: out.conversationFacts.length, legacyFacts: out.legacyFacts.length });
+  } catch (err) {
+    if (err instanceof MemoryControlUnavailable) {
+      return res.status(503).json({ success: false, code: 'WORLD_MODEL_UNAVAILABLE', error: err.message });
+    }
+    throw err;
+  }
+}));
+
+router.post('/claims/:id/correct-value', guarded(async (req, res) => {
+  const ownerId = requireOwner(req, res);
+  if (!ownerId) return;
+  if (!dbConfigured()) return res.status(503).json({ success: false, code: 'WORLD_MODEL_UNAVAILABLE', error: 'Canonical world model is not configured' });
+  const value = String(req.body?.value ?? '').trim().slice(0, 500);
+  if (!value) return res.status(400).json({ success: false, code: ErrorCodes.BAD_REQUEST, error: 'value is required' });
+  const { correctClaimValue, MemoryControlUnavailable } = await import('../memory/forget.js');
+  try {
+    const out = await correctClaimValue(ownerId, String(req.params.id ?? '').trim(), value);
+    if (!out) return res.status(404).json({ success: false, code: ErrorCodes.NOT_FOUND, error: 'Claim not found' });
+    ok(res, ownerId, { corrected: out.from, claimId: out.to, statement: out.statementText, legacyFacts: out.legacyFacts.length });
+  } catch (err) {
+    if (err instanceof MemoryControlUnavailable) return res.status(503).json({ success: false, code: 'WORLD_MODEL_UNAVAILABLE', error: err.message });
+    if (/already superseded|archived claim cannot/i.test(String(err?.message ?? ''))) {
+      return res.status(409).json({ success: false, code: 'CLAIM_NOT_CURRENT', error: 'That fact changed since you loaded the page. Refresh and try again.' });
+    }
+    throw err;
+  }
+}));
+
 // ── The home screen's welcome line ───────────────────────────────────────────
 // The SESSION identity only: no ?conversationId fallback, because the line is
 // a statement about a person and an anonymous conversation id is not one.

@@ -126,7 +126,14 @@ await test('unknown proposal → 404', async () => {
 
 // cleanup
 await req('DELETE', `/project/workspace/${wsId}`);
-server.close();
+// Close the keep-alive sockets fetch left open and WAIT for the server, then
+// let the process end on its own. `server.close(); process.exit()` exited while
+// libuv was still closing those handles, which on Windows intermittently
+// aborted the process after every assertion had passed
+// ("Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), src\win\async.c",
+// 2 of 2 directory runs on 2026-10-19).
+server.closeAllConnections?.();
+await new Promise((resolve) => server.close(resolve));
 
 console.log(`\n${passed} passed, ${failed} failed`);
-process.exit(failed ? 1 : 0);
+process.exitCode = failed ? 1 : 0;

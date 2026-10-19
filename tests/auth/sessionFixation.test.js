@@ -68,13 +68,43 @@ describe("routes use it", () => {
     return indexSrc.slice(start, end);
   };
 
-  for (const p of ["/login", "/signup"]) {
-    test(`POST ${p} signs in through establishSession, never by writing the session directly`, () => {
-      const body = routeBody("post", p);
-      assert.match(body, /establishSession\(req,/);
-      assert.doesNotMatch(body, /req\.session\.userId\s*=/);
-    });
-  }
+  test("POST /login signs in through establishSession, never by writing the session directly", () => {
+    const body = routeBody("post", "/login");
+    assert.match(body, /establishSession\(req,/);
+    assert.doesNotMatch(body, /req\.session\.userId\s*=/);
+  });
+
+  // Since 2026-10-19 /signup signs NO ONE in (it only emails a verification
+  // link); the email-signup sign-in happens at POST /verify-email, in
+  // services/auth/authRoutes.service.js verifySubmit.
+  const authRoutesSrc = fs.readFileSync(path.join(__dirname, "..", "..", "services", "auth", "authRoutes.service.js"), "utf8");
+  const fnBody = (name) => {
+    const start = authRoutesSrc.indexOf(`async function ${name}(`);
+    assert.ok(start >= 0, `${name} not found`);
+    return authRoutesSrc.slice(start, authRoutesSrc.indexOf("\n  }\n", start));
+  };
+
+  test("POST /signup and /verify-email are wired to the auth handlers", () => {
+    assert.match(indexSrc, /app\.post\("\/signup", authLimiter, authHandlers\.signup\)/);
+    assert.match(indexSrc, /app\.post\("\/verify-email", authLimiter, authHandlers\.verifySubmit\)/);
+  });
+
+  test("signup never signs anyone in", () => {
+    const body = fnBody("signup");
+    assert.doesNotMatch(body, /establishSession|req\.session\.userId\s*=|req\.logIn/);
+  });
+
+  test("verify-email signs in through establishSession, never by writing the session directly", () => {
+    const body = fnBody("verifySubmit");
+    assert.match(body, /establishSession\(req,/);
+    assert.doesNotMatch(body, /req\.session\.userId\s*=/);
+  });
+
+  test("the session records the account's authVersion (so a later security change can end it)", async () => {
+    const req = fakeReq();
+    await establishSession(req, { ...user, authVersion: 3 });
+    assert.equal(req.session.authVersion, 3);
+  });
 
   test("login gives one answer for unknown email and wrong password", () => {
     const body = routeBody("post", "/login");

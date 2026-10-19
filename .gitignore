@@ -48,3 +48,7 @@ Thumbs.db
 
 # Raw evaluation outputs (run logs, per-answer transcripts, partial checkpoints) — never committed.
 aqua/eval/out/
+
+# The upload tests need this committed fixture (sha256 in its manifest.json);
+# without the exception above, fresh checkouts and CI fail 5 tests (2026-10-19).
+!aqua/src/upload/tests/fixtures/project.tar.gz

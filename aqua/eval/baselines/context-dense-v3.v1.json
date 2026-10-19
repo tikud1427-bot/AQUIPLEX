@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
-  "recordedAt": "2026-10-04T06:28:16.335Z",
+  "recordedAt": "2026-10-18T12:47:07.086Z",
   "node": "v24.19.0",
   "suiteFingerprint": "710ec73456f277f7",
   "caseCount": 200,
-  "note": "Committed 2026-10-04 as a regression gate for the Context Engine with the E7 dense lane (fixture embeddings, provider-free). At recording: recall_at_8 0.8452380952380952, mrr 0.7461876417233562, noise_lines 19. Pins behaviour; claims nothing about live quality (see eval/lift/).\n\nRegenerate with: npm run eval:gate -- context-dense-v3 --update",
+  "note": "Committed 2026-10-04 as a regression gate for the Context Engine with the E7 dense lane (fixture embeddings, provider-free). At recording: recall_at_8 0.8452380952380952, mrr 0.7461876417233562, noise_lines 19. Pins behaviour; claims nothing about live quality (see eval/lift/).\n\nRegenerate with: npm run eval:gate -- context-dense-v3 --update Re-recorded 2026-10-18: mrr 0.7462 -> 0.7459 and ndcg_at_8 0.7410 -> 0.7407 (one tied candidate reordered, about one answer from rank 4 to 5). Cause: retrievalV3 ties are now broken by content before id (lane rows read r.text, which rows do not carry, and the fusion sort used the id); on the canonical path ids are random UUIDs, so id order ranked the same world differently in every database (122 of 200 queries reordered between two seedings).",
   "coverage": {
     "total": 200,
     "executed": 200,
@@ -14,8 +14,8 @@
   },
   "metrics": {
     "recall_at_8": 0.8452380952380952,
-    "mrr": 0.7461876417233562,
-    "ndcg_at_8": 0.7409513346998884,
+    "mrr": 0.7458900226757371,
+    "ndcg_at_8": 0.7406904790401333,
     "top1_correct": 0.6964285714285714,
     "top1_kind": 0.5833333333333334,
     "unknown_honesty": 0.71875,
