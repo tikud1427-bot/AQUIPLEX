@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Check your email — Aquiplex</title>
+  <link rel="icon" href="/logo/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/css/platform.css">
+</head>
+<body class="px-page">
+
+<%- include('partials/nav') %>
+
+<main class="px-auth-wrap">
+  <div class="px-auth-card">
+    <h1>Check your email</h1>
+    <p class="px-auth-sub">
+      If <strong><%= email %></strong> can be used for a new account, we've sent it a link.
+      Open the link and enter the password you just chose to finish creating your account.
+    </p>
+    <p class="px-auth-sub">The link works once and expires in 24 hours. Nothing arrived? Check spam, or sign up again in a few minutes.</p>
+
+    <a href="/auth/google" class="px-auth-google">
+      <img src="https://developers.google.com/identity/images/g-logo.png" alt="">
+      Continue with Google instead
+    </a>
+
+    <p class="px-auth-switch">Already have an account? <a href="/login">Log in</a></p>
+  </div>
+</main>
+
+<script src="/js/sw-cleanup.js" defer></script>
+</body>
+</html>

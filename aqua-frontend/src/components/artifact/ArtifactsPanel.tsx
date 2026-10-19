@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
@@ -149,6 +149,13 @@ export function ArtifactsPanel() {
 
   const totalBytes = items.reduce((s, a) => s + a.totalBytes, 0);
 
+  // Focus goes back to whatever opened the panel (2026-10-17, browser e2e):
+  // with the delayed unmount of the exit animation, Radix's own restore did
+  // not land on the "Open artifacts" button and keyboard users lost their place.
+  // Captured in onOpenAutoFocus — Radix calls it just BEFORE moving focus into
+  // the panel, while the trigger still holds it.
+  const returnFocus = useRef<HTMLElement | null>(null);
+
   return (
     <>
       <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
@@ -163,7 +170,16 @@ export function ArtifactsPanel() {
               />
             </DialogPrimitive.Overlay>
 
-            <DialogPrimitive.Content asChild forceMount aria-describedby={undefined}>
+            <DialogPrimitive.Content
+              asChild
+              forceMount
+              aria-describedby={undefined}
+              onOpenAutoFocus={() => { returnFocus.current = document.activeElement as HTMLElement | null; }}
+              onCloseAutoFocus={(e) => {
+                const el = returnFocus.current;
+                if (el && document.contains(el)) { e.preventDefault(); el.focus(); }
+              }}
+            >
             <motion.aside
               key="artifacts-panel"
               initial={reduce ? false : { x: '100%' }}

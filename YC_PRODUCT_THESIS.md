@@ -23,6 +23,18 @@ the cheap alternatives.
 
 ---
 
+### Update 2026-10-17: what new evidence changed, and what it did not
+
+- **Direction unchanged.** Nothing reproducible contradicts the segment or the problem; there is still no customer evidence either way.
+- **The promise's mechanics now work end to end** on the real app for single-change statements:
+  - a stated change is used later;
+  - every fact shows its source;
+  - correction and deletion hold in every later conversation;
+  - accounts are isolated (founder journey 21/23).
+  - The trust controls are a demonstrated capability, not an aspiration.
+- **The technical moat is still unproven, and the production read path is weaker than the legacy one** on retrieval noise and on staying silent (`PRODUCT_SCORECARD.md` §3a). Lift v4 did not complete.
+- **Implication:** pitch the workflow and the trust controls, not "a better memory architecture". Treat the World Model as an implementation detail until v4 and the noise fix say otherwise.
+
 ## 2. Candidate directions
 
 Scores run from 1 (weak) to 5 (strong). They are judgement calls from repo

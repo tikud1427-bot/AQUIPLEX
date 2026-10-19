@@ -76,33 +76,35 @@ export const GRAPH_SQL = `
 WITH RECURSIVE walk AS (
   SELECT a.id AS entity_id, 0 AS hop, ARRAY[a.id] AS path, a.id AS anchor_id,
          NULL::uuid AS edge_id, NULL::uuid AS claim_id, NULL::text AS predicate,
-         NULL::text AS direction, NULL::text AS edge_state
+         NULL::text AS direction, NULL::text AS edge_state, NULL::text AS label
   FROM unnest($2::uuid[]) AS a(id)
   UNION ALL
   SELECT s.next_id, w.hop + 1, w.path || s.next_id, w.anchor_id,
-         s.edge_id, s.claim_id, s.predicate, s.direction, s.state
+         s.edge_id, s.claim_id, s.predicate, s.direction, s.state, s.next_label
   FROM walk w
   CROSS JOIN LATERAL (
     SELECT x.*
     FROM (
       SELECT e.to_entity_id AS next_id, e.edge_id, e.claim_id, e.predicate,
-             'out'::text AS direction, e.state, e.valid_to, e.updated_at
+             'out'::text AS direction, e.state, e.valid_to, e.updated_at, ne.canonical_label AS next_label
       FROM aqua_edges e
+      LEFT JOIN aqua_entities ne ON ne.owner_id = e.owner_id AND ne.entity_id = e.to_entity_id
       WHERE e.owner_id = $1 AND e.from_entity_id = w.entity_id
         AND e.state = ANY($5::text[])
         AND ($6::text[] IS NULL OR e.predicate = ANY($6::text[]))
         AND ($7::timestamptz IS NULL OR e.valid_to IS NULL OR e.valid_to > $7::timestamptz)
       UNION ALL
       SELECT e.from_entity_id AS next_id, e.edge_id, e.claim_id, e.predicate,
-             'in'::text AS direction, e.state, e.valid_to, e.updated_at
+             'in'::text AS direction, e.state, e.valid_to, e.updated_at, ne.canonical_label AS next_label
       FROM aqua_edges e
+      LEFT JOIN aqua_entities ne ON ne.owner_id = e.owner_id AND ne.entity_id = e.from_entity_id
       WHERE e.owner_id = $1 AND e.to_entity_id = w.entity_id
         AND e.state = ANY($5::text[])
         AND ($6::text[] IS NULL OR e.predicate = ANY($6::text[]))
         AND ($7::timestamptz IS NULL OR e.valid_to IS NULL OR e.valid_to > $7::timestamptz)
     ) x
     WHERE NOT (x.next_id = ANY(w.path))
-    ORDER BY (x.valid_to IS NOT NULL), x.updated_at DESC, x.edge_id
+    ORDER BY (x.valid_to IS NOT NULL), x.updated_at DESC, x.predicate, x.next_label, x.edge_id
     LIMIT $4::int
   ) s
   WHERE w.hop < $3::int
@@ -110,12 +112,12 @@ WITH RECURSIVE walk AS (
 SELECT entity_id, hop, anchor_id, edge_id, claim_id, predicate, direction, edge_state, path
 FROM (
   SELECT DISTINCT ON (entity_id)
-         entity_id, hop, anchor_id, edge_id, claim_id, predicate, direction, edge_state, path
+         entity_id, hop, anchor_id, edge_id, claim_id, predicate, direction, edge_state, path, label
   FROM walk
   WHERE hop > 0
-  ORDER BY entity_id, hop, edge_id
+  ORDER BY entity_id, hop, predicate, edge_id
 ) best
-ORDER BY hop, entity_id
+ORDER BY hop, label, entity_id
 LIMIT $8::int`;
 
 /**

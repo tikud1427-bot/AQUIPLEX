@@ -369,6 +369,11 @@ describe('claim schema — writers are declared, not accidental', () => {
       'src/brain/proactive/repository.js',
       'src/brain/actions/executor.js',
       'src/brain/proactive/proactive.live.test.js',
+      // 2026-10-16 — the canonical graph lane READS aqua_entities (LEFT JOIN) for
+      // a content tie-break: ties on updated_at used to fall to random edge
+      // UUIDs, so the same world chose a different fan-out in every database.
+      // Read-only — graphLane.test.js pins that its SQL has no write statement.
+      'src/core/worldModel/graphLane.js',
     ];
     const stripComments = (src) => src
       .replace(/\/\*[\s\S]*?\*\//g, '')

@@ -32,7 +32,11 @@ const SELF_NOUN     = /\b(aqua|aquiplex)\b/i;
 const SECOND_PERSON = /\b(you|your|yours|yourself)\b/i;
 // First-person redirect ("my", "I") — when present WITHOUT a self-noun and
 // WITHOUT second-person, the question is about the user, not AQUA.
-const FIRST_PERSON  = /\b(my|mine|myself|i['’]?m|i\s+(am|have|want|need))\b/i;
+// Plural first person too (2026-10-16): a founder's "our price", "we charge",
+// "our launch" is about THEIR company. Without it, "Where did you learn our
+// current price?" matched pricing + "you" and was answered from Aquiplex's own
+// profile under a directive to answer "confidently" (live founder journey).
+const FIRST_PERSON  = /\b(my|mine|myself|i['’]?m|i\s+(am|have|want|need)|we|we['’](re|ve|ll)|our|ours|ourselves|us)\b/i;
 
 // ── topic patterns ────────────────────────────────────────────────────────────
 // Each topic name matches a renderer in identityContext.R.

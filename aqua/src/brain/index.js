@@ -65,7 +65,7 @@ import { commitUnderstanding as commitCanonicalUnderstanding, findClaimsForDedup
 import { selectCanonicalRevision } from './reflectionV3/canonicalRevisionVoice.js';
 import { recordRevisionVoice } from '../core/observability.js';
 import { resolveRelationships } from './understanding/relationshipResolver.js';
-import { dedupAndDetect, inStoredVocabulary, isResolutionStatus, RESOLUTION_HISTORY_PREDICATES } from './understanding/claimDedup.js';
+import { dedupAndDetect, inStoredVocabulary, isResolutionStatus, RESOLUTION_HISTORY_PREDICATES, revisionHistoryPredicates, sameAttributeValue } from './understanding/claimDedup.js';
 import { buildCommitPlan } from './understanding/commitPlan.js';
 import { getPool, isConfigured as dbConfigured, isReachable as isDbReachable } from '../core/db/pool.js';
 import * as canonicalReadModel from '../core/worldModel/canonicalReadModel.js';
@@ -108,6 +108,9 @@ const REAL_DEPS = { graph, peekMind, evidenceStore, annotations, getMind, observ
  *                    is reversible.
  * Without Postgres (or with the brain off) there is no canonical model: legacy.
  */
+/** AQUA_S8_HISTORY=compare counters (eval only): bounded vs full S8 history decisions. */
+export const s8HistoryCompare = { segments: 0, diffs: 0, candidates: 0, fullRows: 0, examples: [] };
+
 export function canonicalReadMode(env = process.env) {
   if (!brainEnabled() || !dbConfigured()) return 'legacy';
   const v = String(env.AQUA_CANONICAL_READ ?? '').toLowerCase();
@@ -160,19 +163,34 @@ export async function legacyVetoFor(ownerId) {
   if (!ownerId || !dbConfigured()) return () => false;
   try {
     const p = await getPool();
-    const { rows } = await p.query(`
-      SELECT c.predicate, c.polarity, c.state, c.modality, se.type AS subject_type,
+    // Claims the USER deleted (2026-10-16): their values are retired too, or a
+    // legacy copy filled the "gap" the deletion left and the fact answered
+    // again. Only user-actor archives count; routine archiving does not hide
+    // legacy facts. Read through the declared read model (lifecycle table).
+    const userArchived = await canonicalReadModel.userArchivedClaimIds(ownerId);
+    const { rows: all } = await p.query(`
+      SELECT c.claim_id::text AS claim_id, c.predicate, c.polarity, c.state, c.modality, se.type AS subject_type, lower(se.canonical_label) AS subj,
              lower(COALESCE(oe.canonical_label, c.object_literal, '')) AS val
         FROM aqua_claims c
         JOIN aqua_entities se ON se.entity_id=c.subject_entity_id AND se.owner_id=c.owner_id
         LEFT JOIN aqua_entities oe ON oe.entity_id=c.object_entity_id AND oe.owner_id=c.owner_id
-       WHERE c.owner_id=$1 AND c.state IN ('active','trusted','disputed','superseded')
+       WHERE c.owner_id=$1 AND c.state IN ('active','trusted','disputed','superseded','archived')
        ORDER BY c.asserted_at DESC LIMIT 2000`, [ownerId]);
+    const rows = all.filter(r => r.state !== 'archived' || userArchived.has(r.claim_id));
     const currentSelf = new Set(rows.filter(r => r.subject_type === 'self' && ['active', 'trusted'].includes(r.state)
       && r.polarity === 'asserted' && r.modality === 'fact').map(r => r.predicate));
-    const retired = new Set(rows.filter(r => (r.state === 'superseded' || r.polarity === 'negated') && r.val.length >= 2).map(r => r.val));
+    const retired = new Set(rows.filter(r => (r.state === 'superseded' || r.state === 'archived' || r.polarity === 'negated') && r.val.length >= 2).map(r => r.val));
+    // A person the user deleted a claim ABOUT is retired by name too, so a
+    // legacy "cofounder: Maya" cannot answer after "delete" (2026-10-16).
+    for (const r of rows) if (r.state === 'archived' && r.subject_type !== 'self' && r.subj && r.subj !== 'you' && r.subj.length >= 2) retired.add(r.subj);
+    // A deleted ROLE retires the legacy slot of that name ("co-founder" →
+    // key "cofounder"), whatever value the regex extractor put there.
+    const slot = v => String(v ?? '').toLowerCase().replace(/[^a-z]/g, '');
+    const retiredSlots = new Set(rows.filter(r => r.state === 'archived' && r.subject_type !== 'self')
+      .map(r => slot(r.val)).filter(s => s.length >= 4));
     return ({ key, value } = {}) => {
       if ((LEGACY_KEY_PREDICATES[key] ?? []).some(pr => currentSelf.has(pr))) return true;
+      if (key && retiredSlots.has(slot(key))) return true;
       const vals = (Array.isArray(value) ? value : [value]).map(v => String(v?.name ?? v ?? '').trim().toLowerCase()).filter(Boolean);
       return vals.some(v => retired.has(v));
     };
@@ -352,6 +370,126 @@ export async function forgetWorldModelAll(ownerId, { reason = 'user-forget-all' 
   const lane = evidenceStore.listFacts(ownerId, { limit: 100_000 }).filter(f => !f.archived
     && evidenceStore.evidenceForFact(ownerId, f.id).some(ev => ev.sourceType === 'conversation'));
   return { claims, conversationFacts: archiveConversationFacts(ownerId, lane, reason) };
+}
+
+/**
+ * "Delete this" on ONE canonical claim (the Memory page, 2026-10-16). The
+ * other forget paths start from a legacy fact key; this starts from the claim
+ * the user can actually see answering. The claim is ARCHIVED through the
+ * audited transition (actor 'user'), and the conversation-lane sentences that
+ * state its value leave the evidence lane — the same two stores
+ * forgetWorldModelFact reaches. The legacy fact store is the caller's job
+ * (memory/forget.js forgetClaim), as for every other forget.
+ * Returns null when the claim is not this owner's.
+ */
+export async function forgetWorldModelClaim(ownerId, claimId, { reason = 'user-forget-claim' } = {}) {
+  if (!dbConfigured()) return null;
+  if (!(await isDbReachable())) throw Object.assign(new Error('canonical world model unreachable'), { code: 'WORLD_MODEL_UNAVAILABLE' });
+  let c = null;
+  try { c = await claimWithEvidence(ownerId, claimId); } catch { c = null; }
+  if (!c || c.ownerId !== ownerId) return null;
+  // One sentence usually yields several claims ("My co-founder Maya runs
+  // engineering." → related_to + manages). The page shows the sentence and the
+  // context quotes it; archiving one claim left its sibling quoting the very
+  // sentence the user deleted (live journey 2026-10-16: "Co-founder: Maya"
+  // answered after deletion). Every current claim from that sentence goes.
+  const p = await getPool();
+  const { rows: siblings } = await p.query(`
+    SELECT c.claim_id, COALESCE(oe.canonical_label, c.object_literal) AS val,
+           CASE WHEN se.type = 'self' THEN NULL ELSE se.canonical_label END AS subj
+      FROM aqua_claims c
+      JOIN aqua_entities se ON se.owner_id=c.owner_id AND se.entity_id=c.subject_entity_id
+      LEFT JOIN aqua_entities oe ON oe.owner_id=c.owner_id AND oe.entity_id=c.object_entity_id
+     WHERE c.owner_id=$1 AND c.state = ANY($2::text[])
+       AND (c.statement_norm = (SELECT statement_norm FROM aqua_claims WHERE owner_id=$1 AND claim_id=$3)
+            -- The extractor phrases each claim of one sentence differently
+            -- ("Maya runs engineering" / "My co-founder Maya") and each
+            -- evidence quote is that phrasing; what they share is the SOURCE
+            -- SEGMENT — the same span of what the user said.
+            OR EXISTS (
+              SELECT 1 FROM aqua_claim_evidence ce
+                JOIN aqua_evidence ev ON ev.owner_id=ce.owner_id AND ev.evidence_id=ce.evidence_id
+                JOIN (SELECT ev2.source_id, ev2.quote,
+                             ev2.locator->>'segmentStart' AS s0, ev2.locator->>'segmentEnd' AS s1
+                        FROM aqua_claim_evidence ce2
+                        JOIN aqua_evidence ev2 ON ev2.owner_id=ce2.owner_id AND ev2.evidence_id=ce2.evidence_id
+                       WHERE ce2.owner_id=$1 AND ce2.claim_id=$3) d ON d.source_id = ev.source_id
+               WHERE ce.owner_id=c.owner_id AND ce.claim_id=c.claim_id
+                 AND (ev.quote = d.quote
+                      OR (d.s0 IS NOT NULL AND ev.locator->>'segmentStart' = d.s0
+                          AND ev.locator->>'segmentEnd' = d.s1))))`,
+    [ownerId, FORGETTABLE_CLAIM_STATES, c.claimId]);
+  const value = c.object?.entity ?? c.object?.literal ?? null;
+  // A claim ABOUT someone ("Maya manages engineering") names them as the
+  // subject, and the legacy store keeps exactly that name ("cofounder: Maya").
+  // Values alone left that copy answering, so the person's name counts too.
+  const subject = c.subjectType && c.subjectType !== 'self' && c.subject !== 'You' ? c.subject : null;
+  const values = [...new Set([
+    ...(value == null ? [] : legacyValueStrings(value)),
+    ...(subject ? legacyValueStrings(subject) : []),
+    ...siblings.flatMap(r => [r.val, r.subj].filter(v => v != null).flatMap(v => legacyValueStrings(v))),
+  ])];
+  const ids = [...new Set([c.claimId, ...siblings.map(r => String(r.claim_id))])];
+  const claims = await archiveClaims(ownerId, ids, reason);
+  const facts = values.length
+    ? archiveConversationFacts(ownerId, conversationFactsStating(ownerId, values), reason)
+    : [];
+  return { claimId: c.claimId, statement: c.statementText, values, claims, conversationFacts: facts };
+}
+
+/**
+ * "That's wrong — it's X" on ONE canonical claim (the Memory page, 2026-10-16).
+ * A correction that changes only the sentence keeps the OLD object (the
+ * repository preserves it by default), so the structured lanes and the legacy
+ * veto would go on answering the old value. The new value therefore becomes
+ * the object, as the legacy correction path already does, and the sentence is
+ * the old one with the old value replaced. The old value's conversation-lane
+ * sentences are retired, as for every correction.
+ * Returns null when the claim is not this owner's.
+ */
+/**
+ * Replace the old value in a claim's sentence with the user's corrected value.
+ * The user often retypes the words just before the value ("…is that clinics
+ * churn…" corrected to "clinics not finishing onboarding"), and a plain
+ * replace printed them twice ("clinics clinics not finishing", live journey
+ * 2026-10-18). Words before the old value that the new value starts with are
+ * dropped once.
+ */
+export function substituteValue(sentence, oldValue, newValue) {
+  const m = new RegExp(escapeRe(oldValue), 'i').exec(sentence);
+  if (!m) return sentence;
+  let before = sentence.slice(0, m.index);
+  const after = sentence.slice(m.index + m[0].length);
+  const words = before.trim().split(/\s+/).filter(Boolean).slice(-6);
+  const lower = newValue.toLowerCase();
+  for (let n = words.length; n > 0; n--) {
+    const tail = words.slice(-n).join(' ');
+    if (lower === tail.toLowerCase() || lower.startsWith(`${tail.toLowerCase()} `)) {
+      before = before.replace(new RegExp(`${escapeRe(tail)}\\s*$`), '');
+      break;
+    }
+  }
+  return `${before}${newValue}${after}`;
+}
+
+export async function correctWorldModelClaimValue(ownerId, claimId, newValue, { reason = 'user-correction:memory' } = {}) {
+  const value = String(newValue ?? '').trim();
+  if (!value) throw Object.assign(new Error('a corrected value is required'), { code: 'BAD_REQUEST' });
+  if (!dbConfigured()) return null;
+  if (!(await isDbReachable())) throw Object.assign(new Error('canonical world model unreachable'), { code: 'WORLD_MODEL_UNAVAILABLE' });
+  let c = null;
+  try { c = await claimWithEvidence(ownerId, claimId); } catch { c = null; }
+  if (!c || c.ownerId !== ownerId) return null;
+  const old = c.object?.entity ?? c.object?.literal ?? null;
+  const base = String(c.statementText ?? '').trim();
+  const statementText = old && mentions(base, normValue(old))
+    ? substituteValue(base, String(old), value)
+    : `${base.replace(/[.\s]+$/, '')} — corrected to ${value}.`;
+  const out = await correctWorldModelClaim({
+    ownerId, actor: 'user', claimId: c.claimId, statementText, object: { literal: value }, reason,
+  });
+  const retired = old ? archiveConversationFacts(ownerId, conversationFactsStating(ownerId, legacyValueStrings(old)), reason) : [];
+  return { from: c.claimId, to: out.claimId, statementText, oldValue: old, conversationFacts: retired };
 }
 
 /**
@@ -957,6 +1095,9 @@ export async function assembleContextAsync(ownerId, query, floorRetrieve, opts =
   return result;
 }
 
+export const WORLD_CORE_NOTHING_SELECTED = 'None of the statements above was selected as answering this question. '
+  + 'Anything about the user not stated in this context is unknown: never invent their names, dates, numbers, plans or statuses — say it is not known.';
+
 /** AQUA_WORLD_CORE gate — ON unless explicitly 'off' (the rollback). */
 export function worldCoreEnabled() {
   return String(process.env.AQUA_WORLD_CORE ?? 'on').toLowerCase() !== 'off';
@@ -981,11 +1122,19 @@ async function withWorldCore(ownerId, result, { semanticScores = null, retiredTe
       reading: c => { const u = understoodOf(c); return u ? readingOf(u) : null; },
     });
     const ce = result.stats?.contextEngine;
-    const coreStats = { considered: core.considered, rendered: core.lines.length, omitted: core.omitted, chars: core.chars };
+    const relevanceEmpty = !(result.block && String(result.block).trim());
+    const coreStats = { considered: core.considered, rendered: core.lines.length, omitted: core.omitted, chars: core.chars, relevanceEmpty };
     if (!core.block) return { ...result, stats: { ...result.stats, worldCore: coreStats } };
+    // NOTHING SELECTED (2026-10-17). With the canonical relevance gate, a
+    // question nothing in the World Model answers gets an EMPTY relevance
+    // section — and the "not listed = unknown" footer lives there. The profile
+    // below would then reach the answer model with no statement that none of it
+    // was chosen as the answer ("What is my dog's name?" → the user's job). Said
+    // explicitly here, in the same words as the relevance footer.
+    const coreBlock = relevanceEmpty ? `${core.block}\n${WORLD_CORE_NOTHING_SELECTED}` : core.block;
     return {
       ...result,
-      block: [result.block, core.block].filter(s => s && String(s).trim()).join('\n\n'),
+      block: [result.block, coreBlock].filter(s => s && String(s).trim()).join('\n\n'),
       worldCore: { claimIds: core.claimIds, lines: core.lines },
       stats: { ...result.stats, worldCore: coreStats, ...(ce ? { contextEngine: { ...ce, worldCore: coreStats } } : {}) },
     };
@@ -1197,7 +1346,10 @@ export async function understandTurn(
   // E5/E6 bridge — deliberately opt-in. Extraction and canonical persistence
   // are separate gates so a measured-but-not-promoted extractor can be wired
   // to the real turn path without silently becoming authoritative.
-  if (!e6CommitEnabled() || !result?.readyForS7?.length) return result;
+  // Nothing ready AND nothing completed → nothing to commit or to ledger. A turn
+  // whose segments completed with no committable claim still writes its (empty)
+  // ledger rows below, so a retry cannot re-read it into a different state.
+  if (!e6CommitEnabled() || (!result?.readyForS7?.length && !result?.completedSegments?.length)) return result;
 
   try {
     const allEntities = entityStore?.all?.() ?? [];
@@ -1216,7 +1368,16 @@ export async function understandTurn(
     const actor = `e6:${extractorVersion}`;
 
     const bySegment = new Map();
-    for (const claim of result.readyForS7) {
+    // IDEMPOTENT RETRIES (2026-10-18): every segment that completed extraction is
+    // committed — empty if it yielded nothing ready — so the ledger
+    // (owner, source, segment, extractor version) marks it done. Before, only
+    // segments with a ready claim were ledgered, and a retry's NEW reading of an
+    // empty one committed claims the first application had not.
+    for (const s of result.completedSegments ?? []) {
+      const key = `${s.start}:${s.end}`;
+      if (!bySegment.has(key)) bySegment.set(key, { start: s.start, end: s.end, claims: [] });
+    }
+    for (const claim of result.readyForS7 ?? []) {
       const range = claim.segment ?? {};
       const key = `${range.start}:${range.end}`;
       if (!bySegment.has(key)) bySegment.set(key, { start: range.start, end: range.end, claims: [] });
@@ -1247,8 +1408,11 @@ export async function understandTurn(
       // S8 compares the incoming structured claims with persisted owner-scoped
       // history before S9. The repository supplies history only; it never
       // decides deduplication or contradiction.
-      const existing = await findClaimsForDedup({ ownerId, claims: segment.claims,
-        extraPredicates: segment.claims.some(isResolutionStatus) ? RESOLUTION_HISTORY_PREDICATES : [] });
+      for (const c of segment.claims) c.claimId ??= crypto.randomUUID();
+      const historyArgs = { ownerId, claims: segment.claims.map(inStoredVocabulary), sameKind: sameAttributeValue,
+        extraPredicates: [...(segment.claims.some(isResolutionStatus) ? RESOLUTION_HISTORY_PREDICATES : []),
+          ...revisionHistoryPredicates(segment.claims)] };
+      const existing = await findClaimsForDedup(historyArgs);
       // S8 compares by KEY, and stored claims carry the entity's canonical label
       // ("You") while incoming claims carry the surface text ("I"). Measured on
       // real Postgres: the keys never matched, so history was never consulted —
@@ -1261,9 +1425,25 @@ export async function understandTurn(
       // `incomingClaimId: null` and the contradiction worker — which requires
       // both ids — threw on every one. Contradiction resolution had never run
       // on a real turn. The same id flows on to S7 and the commit plan.
-      for (const c of segment.claims) c.claimId ??= crypto.randomUUID();
       const forS8 = segment.claims.map(inStoredVocabulary);
-      const s8 = dedupAndDetect(forS8, existing, { functionalPredicates: singleValuedPredicates(), singleObjectPredicates: singleObjectPredicates() });
+      const s8opts = { functionalPredicates: singleValuedPredicates(), singleObjectPredicates: singleObjectPredicates() };
+      const s8 = dedupAndDetect(forS8, existing, { ...s8opts, truncation: existing.truncation ?? null });
+      // EQUIVALENCE CHECK (eval only, AQUA_S8_HISTORY=compare): S8 again over the
+      // FULL history; any difference in what it decides is counted (s8HistoryDiff).
+      if (String(process.env.AQUA_S8_HISTORY ?? '').toLowerCase() === 'compare') {
+        const forFull = segment.claims.map(inStoredVocabulary);   // a fresh copy: S8 mutates (revises)
+        const full = dedupAndDetect(forFull, await findClaimsForDedup({ ...historyArgs, mode: "full" }), s8opts);
+        const sig = r => JSON.stringify({
+          c: r.contradictions.map(x => [x.kind, x.incoming.claimId, x.existing.claimId]).sort(),
+          e: r.evidenceAttachments.map(x => [x.targetClaimId, x.claim.claimId]).sort(),
+          a: r.ambiguousRevisions.map(x => [x.claim.claimId, x.reason ?? null]).sort(),
+        });
+        const same = sig(s8) === sig(full);
+        s8HistoryCompare.segments += 1;
+        s8HistoryCompare.candidates += existing.truncation?.candidates ?? existing.length;
+        s8HistoryCompare.fullRows += full.stats.existing;
+        if (!same) { s8HistoryCompare.diffs += 1; s8HistoryCompare.examples.push({ bounded: sig(s8), full: sig(full) }); }
+      }
 
       // S7 receives canonical entity labels for deterministic relationship
       // direction. Persistence later maps those endpoints to Postgres ids; S7

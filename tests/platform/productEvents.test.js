@@ -145,7 +145,11 @@ describe("computeActivation", () => {
 describe("wiring", () => {
   test("signup, login and the engine tap are wired in index.js", () => {
     assert.match(indexSrc, /aquaEngine\.use\(engineEventTap\(\)\)/);
-    assert.match(indexSrc, /recordProductEvent\(newUser\._id, "signup_completed"/);
+    // Email signup completes at /verify-email (2026-10-19): the event is
+    // recorded by the auth handlers, which index.js wires to recordProductEvent.
+    const authRoutesSrc = fs.readFileSync(path.join(ROOT, "services", "auth", "authRoutes.service.js"), "utf8");
+    assert.match(authRoutesSrc, /recordEvent\(result\.user\._id, "signup_completed", \{ method: "email" \}\)/);
+    assert.match(indexSrc, /recordEvent: recordProductEvent/);
     assert.match(indexSrc, /recordProductEvent\(user\._id, "login"/);
     assert.match(indexSrc, /firstRun \? "signup_completed" : "login"/);
   });

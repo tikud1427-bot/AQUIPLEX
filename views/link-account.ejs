@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Link your Google account — Aquiplex</title>
+  <link rel="icon" href="/logo/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/css/platform.css">
+</head>
+<body class="px-page">
+
+<%- include('partials/nav') %>
+
+<main class="px-auth-wrap">
+  <div class="px-auth-card">
+    <h1>You already have an account</h1>
+    <p class="px-auth-sub">
+      <strong><%= email %></strong> already has an Aquiplex account that signs in with a password.
+      We won't connect your Google sign-in to it unless you choose to.
+    </p>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <p class="px-auth-error"><%= error %></p>
+    <% } %>
+
+    <h2 style="font-size:1rem; margin-top:18px;">I know the password</h2>
+    <form action="/auth/link/password" method="POST" class="px-auth-form">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <div>
+        <label class="px-label" for="password">Account password</label>
+        <input class="px-input" id="password" type="password" name="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="px-btn px-btn-primary px-btn-lg" style="width:100%; margin-top:6px;">Link Google and sign in</button>
+    </form>
+
+    <div class="px-auth-divider"><span>or</span></div>
+
+    <h2 style="font-size:1rem;">I don't know the password</h2>
+    <form action="/auth/link/claim" method="POST" class="px-auth-form">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <p class="px-auth-sub">
+        <% if (accountVerified) { %>
+          Google has confirmed you own this address, so you can sign in with Google from now on.
+          Everyone else signed in to this account will be signed out.
+        <% } else { %>
+          This account's email address was never confirmed, so its password may have been set by someone else.
+          Claiming it with Google <strong>removes that password</strong> and signs out everyone else using the account.
+          Check what's in it before you rely on it.
+        <% } %>
+      </p>
+      <label style="display:flex; gap:8px; align-items:flex-start;">
+        <input type="checkbox" name="confirm" value="yes" required>
+        <span>I understand, and I want to sign in to this account with Google.</span>
+      </label>
+      <button type="submit" class="px-btn px-btn-lg" style="width:100%; margin-top:6px;">Claim with Google</button>
+    </form>
+
+    <p class="px-auth-switch"><a href="/login">Back to log in</a></p>
+  </div>
+</main>
+
+<script src="/js/sw-cleanup.js" defer></script>
+</body>
+</html>

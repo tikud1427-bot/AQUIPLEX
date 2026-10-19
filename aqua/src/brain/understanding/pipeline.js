@@ -56,6 +56,126 @@ import { extractSegment } from './extractionClient.js';
 
 /** Explicit negation cues (rule 2's list). Contractions in either apostrophe. */
 const NEGATION_CUE = /\b(not|never|no longer|neither|nor|none|nobody|nothing)\b|n['’]t\b|\banymore\b|\bstopped\b/i;
+
+/**
+ * COMPOUND CHANGES (2026-10-17). "We moved the launch to May 2, and the price is
+ * now $39" is two changes in one sentence. Measured on the real product
+ * (founder journey runs 3 and 4): the extractor returned only one of them —
+ * the price in one run, the date in the other — and the dropped change never
+ * reached memory. Model variance, not a parse error, so it is handled like the
+ * negation retry: CODE checks that every clause stating a change is covered by
+ * some claim, and asks once more, naming the uncovered clause, when one is not.
+ */
+const CHANGE_CUE = /\b(?:moved|move|pushed|postponed|delayed|rescheduled|slipped|brought\s+forward|changed|switched|raised|lowered|increased|decreased|cut|dropped|now|no\s+longer|anymore|instead|replaced|took\s+over|taken\s+over|handed\s+over|cancel(?:l)?ed|called\s+off|hired|fired|left|joined|renamed|actually|correction)\b/i;
+const CLAUSE_SPLIT = /\s*,\s*(?:and|but|while|plus)\s+|\s*;\s*|\s*,\s+(?=(?:we|i|our|the|my|they|he|she|it|also)\b)|\s+and\s+(?=(?:we|i|our|the|my|they|he|she|it|also|then)\b)|\s+and\s+(?=(?:moved|pushed|postponed|delayed|raised|lowered|hired|fired|changed|switched|cancel(?:l)?ed|cut|dropped|renamed|replaced)\b)/i;
+const CLAUSE_STOP = new Set(['the', 'and', 'our', 'now', 'was', 'were', 'has', 'have', 'had', 'are', 'for', 'with', 'from', 'that', 'this', 'its', 'also', 'then', 'just', 'per']);
+const clauseTokens = s => new Set((String(s ?? '').toLowerCase().match(/[\p{L}\p{N}$€£%]+/gu) ?? [])
+  .filter(t => t.length >= 2 && !CLAUSE_STOP.has(t)));
+const claimText = c => {
+  const o = c?.object ?? {};
+  return [c?.statementText, c?.subject, o.entity, o.literal, o.time, o.quantity != null ? String(o.quantity) : null].filter(Boolean).join(' ');
+};
+
+/**
+ * REVISES, BY RULE 11's OWN CUES (2026-10-18). The prompt defines a change by
+ * its language (moved to, now, no longer, switched to, instead of, actually,
+ * correction …) and asks the model to set `revises`. Measured: two recordings of
+ * "We're now at 57 paying clinics" — one set it, one did not, and without it the
+ * old count stayed current (every S8 revision rule requires the flag). Code
+ * applies the same definition to the claim's own span as a backstop; each rule
+ * that reads the flag keeps its own evidence bar (same-kind value, exactly one
+ * rival …). Marked `revisesInferred` so it stays auditable.
+ */
+const RULE11_CUE = /\b(?:moved\s+to|now|no\s+longer|anymore|switched\s+(?:to|from)|changed\s+(?:from|to)|instead\s+of|actually|correction|raised|lowered|increased|decreased|pushed|postponed|delayed|rescheduled|slipped|took\s+over|taken\s+over)\b/i;
+export function inferRevises(claim) {
+  if (!claim || claim.revises === true || (claim.modality ?? 'fact') !== 'fact') return claim;
+  if (!RULE11_CUE.test(String(claim.statementText ?? ''))) return claim;
+  return { ...claim, revises: true, revisesInferred: true };
+}
+
+/**
+ * WHO DID IT (2026-10-18). "Kofi is helping me build Atlas on weekends" came
+ * back as (self, builds, Atlas) only — Kofi, the person doing the work, was
+ * dropped (held-out world; reproduced live on the attribution battery). A
+ * NAMED person who ACTS in the sentence must appear in some claim. Detected by
+ * surface pattern only — a capitalised name directly before an action verb, or
+ * after "by" — and never used to invent a claim: it only makes code ask the
+ * model once more, naming the person; the model decides what (if anything) the
+ * sentence says about them, and every gate still applies.
+ */
+const ACTION_VERB = '(?:helping|helps|helped|building|builds|built|running|runs|ran|leading|leads|led|managing|manages|managed|handling|handles|handled|owning|owns|owned|designing|designs|designed|writing|writes|wrote|working\\s+on|works\\s+on|worked\\s+on|took\\s+over|taking\\s+over|takes\\s+over|is\\s+responsible\\s+for|is\\s+in\\s+charge\\s+of)';
+const NOT_A_NAME = new Set(['I', 'We', 'Our', 'My', 'The', 'This', 'That', 'It', 'He', 'She', 'They', 'You', 'Your', 'Their', 'His', 'Her', 'Who', 'Which', 'Everyone', 'Nobody', 'Someone']);
+const ACTOR_RE = new RegExp(`\\b([A-Z][\\p{Ll}'’-]+(?:\\s[A-Z][\\p{Ll}'’-]+)?)\\s+(?:(?:is|was|has\\s+been|will\\s+be|has|had|now|also|still)\\s+)*${ACTION_VERB}\\b`, 'gu');
+const BY_ACTOR_RE = /\bby\s+([A-Z][\p{Ll}'’-]+(?:\s(?:and|&)\s[A-Z][\p{Ll}'’-]+)?)/gu;
+export function uncoveredActors(text, claims = []) {
+  const names = new Set();
+  for (const m of String(text ?? '').matchAll(ACTOR_RE)) if (!NOT_A_NAME.has(m[1].split(/\s/)[0])) names.add(m[1]);
+  for (const m of String(text ?? '').matchAll(BY_ACTOR_RE)) for (const n of m[1].split(/\s(?:and|&)\s/)) if (!NOT_A_NAME.has(n)) names.add(n);
+  const mentions = (c, name) => {
+    const o = c?.object ?? {};
+    const hay = [c?.subject, o.entity, o.literal].filter(Boolean).join(' ').toLowerCase();
+    return name.toLowerCase().split(/\s+/).every(w => hay.includes(w));
+  };
+  return [...names].filter(n => !(Array.isArray(claims) ? claims : []).some(c => mentions(c, n))).slice(0, 3);
+}
+/** AQUA_E6_ACTOR_RETRY — default decided by measurement (flag registry note). */
+export function actorRetryEnabled() {
+  return String(process.env.AQUA_E6_ACTOR_RETRY ?? 'on').toLowerCase() !== 'off';
+}
+/** Second-reading claims that mention a missing actor and are not already held. */
+export function mergeActorRetry(first = [], second = [], actors = []) {
+  const key = c => JSON.stringify([String(c?.subject ?? '').toLowerCase(), c?.predicate, c?.object, c?.polarity ?? 'asserted']);
+  const held = new Set(first.map(key));
+  const mentionsActor = c => {
+    const o = c?.object ?? {};
+    const hay = [c?.subject, o.entity, o.literal].filter(Boolean).join(' ').toLowerCase();
+    return actors.some(a => a.toLowerCase().split(/\s+/).every(w => hay.includes(w)));
+  };
+  const added = (Array.isArray(second) ? second : []).filter(c => !held.has(key(c)) && mentionsActor(c));
+  return [...first, ...added];
+}
+
+/**
+ * AQUA_E6_COMPOUND_RETRY — OFF unless 'on' (2026-10-18). Measured on 70 live
+ * development sentences (two 30-sentence runs plus 8 earlier): it fired once, on
+ * a false trigger ("Actually" split off as a clause), and recovered nothing —
+ * the real misses were claims extracted and then dropped by validation, after
+ * coverage had already looked complete. No measured benefit, so not on by default.
+ */
+export function compoundRetryEnabled() {
+  return String(process.env.AQUA_E6_COMPOUND_RETRY ?? '').toLowerCase() === 'on';
+}
+
+/** Clauses of a sentence that state a change and that no extracted claim covers. */
+export function uncoveredChangeClauses(text, claims = []) {
+  const clauses = String(text ?? '').replace(/[.!]+\s*$/, '').split(CLAUSE_SPLIT).map(s => s.trim()).filter(s => s.length >= 8);
+  if (clauses.length < 2) return [];
+  const claimSets = (Array.isArray(claims) ? claims : []).map(c => clauseTokens(claimText(c)));
+  return clauses.filter(clause => {
+    if (!CHANGE_CUE.test(clause)) return false;
+    const toks = [...clauseTokens(clause)];
+    if (!toks.length) return false;
+    // Covered when one claim carries at least half of the clause's words.
+    return !claimSets.some(set => toks.filter(t => set.has(t)).length / toks.length >= 0.5);
+  }).slice(0, 4);
+}
+
+const claimKey = c => {
+  const o = c?.object ?? {};
+  return [String(c?.subject ?? '').toLowerCase(), c?.predicate, String(o.entity ?? o.literal ?? o.time ?? o.quantity ?? '').toLowerCase(), c?.polarity ?? 'asserted'].join('|');
+};
+
+/** Second-reading claims that cover a missing clause and are not already held. */
+export function mergeCompoundRetry(first = [], second = [], missing = []) {
+  const held = new Set(first.map(claimKey));
+  const wanted = missing.map(m => [...clauseTokens(m)]);
+  const added = (Array.isArray(second) ? second : []).filter(c => {
+    if (held.has(claimKey(c))) return false;
+    const set = clauseTokens(claimText(c));
+    return wanted.some(toks => toks.length && toks.filter(t => set.has(t)).length / toks.length >= 0.5);
+  });
+  return [...first, ...added];
+}
 import { validateAgainstSegment, resolveSegmentPolarityConflicts, OUTCOME } from './claimValidator.js';
 import { applyTemporal } from './temporalNormaliser.js';
 import { resolveClaimEntities } from './entityResolution.js';
@@ -177,6 +297,12 @@ export async function runUnderstandingPipeline(text, opts = {}) {
 
   const claims = [];
   const proposals = [];
+  // Segments whose extraction COMPLETED (no transport/parse error), with or
+  // without claims. The commit ledgers each one, so a retry after a crash or a
+  // failure elsewhere in the turn never re-reads a segment that already
+  // succeeded (2026-10-18: a second, different reading committed beside — or
+  // instead of — the first). Errored segments are absent and stay retryable.
+  const completedSegments = [];
 
   for (const seg of segments) {
     // ── S2 CANDIDATE GATING ────────────────────────────────────────────────
@@ -214,6 +340,42 @@ export async function runUnderstandingPipeline(text, opts = {}) {
       if (again.cached) stats.cached++; else stats.called++;
       if (!again.error) out = again;
     }
+    // COMPOUND RETRY (2026-10-17) — see CHANGE_CUE. Only when the first reading
+    // was error-free and returned claims, the sentence is not a question, and a
+    // clause stating a change is uncovered. At most one extra call; only claims
+    // that cover a missing clause are taken from it, so the second reading can
+    // never overwrite what the first one extracted.
+    // ACTOR RETRY (2026-10-18) — see ACTOR_RE. Only when the reading was
+    // error-free (with or without claims — an EMPTY reading of "Jun is helping
+    // me prepare the investor deck" is the same loss), the sentence is not a
+    // question, and a named person who acts in it appears in no claim. At most
+    // one extra call; only claims that mention a missing actor are taken from it.
+    if (admitted && actorRetryEnabled() && !out.error && !/\?\s*$/.test(seg.text.trim())) {
+      const actors = uncoveredActors(seg.text, out.claims);
+      if (actors.length) {
+        const again = await extractSegment(seg.text, { ...opts, actorHint: actors });
+        stats.actorRetries = (stats.actorRetries ?? 0) + 1;
+        if (again.cached) stats.cached++; else stats.called++;
+        if (!again.error) {
+          const merged = mergeActorRetry(out.claims, again.claims, actors);
+          stats.actorRecovered = (stats.actorRecovered ?? 0) + (merged.length - out.claims.length);
+          out = { ...out, claims: merged };
+        }
+      }
+    }
+    if (admitted && compoundRetryEnabled() && !out.error && out.claims.length && !/\?\s*$/.test(seg.text.trim())) {
+      const missing = uncoveredChangeClauses(seg.text, out.claims);
+      if (missing.length) {
+        const again = await extractSegment(seg.text, { ...opts, compoundHint: missing });
+        stats.compoundRetries = (stats.compoundRetries ?? 0) + 1;
+        if (again.cached) stats.cached++; else stats.called++;
+        if (!again.error) {
+          const merged = mergeCompoundRetry(out.claims, again.claims, missing);
+          stats.compoundRecovered = (stats.compoundRecovered ?? 0) + (merged.length - out.claims.length);
+          out = { ...out, claims: merged };
+        }
+      }
+    }
     if (out.error) {
       stats.errors++;
       // Kept (bounded) so a durable caller can tell a transport failure — which
@@ -223,6 +385,8 @@ export async function runUnderstandingPipeline(text, opts = {}) {
     }
     if (out.model) models.add(out.model);
     stats.parsed += out.claims.length;
+    out = { ...out, claims: out.claims.map(inferRevises) };
+    stats.revisesInferred = (stats.revisesInferred ?? 0) + out.claims.filter(c => c.revisesInferred).length;
 
     // An unregistered predicate is refused by the S3 contract, which is right
     // — it is not a storable claim. But refusing is not forgetting: S3's own
@@ -304,6 +468,7 @@ export async function runUnderstandingPipeline(text, opts = {}) {
     }
 
     const segAdmitted = [];
+    let segProposed = 0;
     for (const raw of out.claims) {
       // ── S4 CLAIM VALIDATION ──────────────────────────────────────────────
       const v = validateAgainstSegment(raw, seg.text, {
@@ -313,6 +478,7 @@ export async function runUnderstandingPipeline(text, opts = {}) {
       });
       if (v.outcome === OUTCOME.PROPOSE) {
         stats.proposed++;
+        segProposed++;
         proposals.push(v.proposal);
         continue;
       }
@@ -362,6 +528,16 @@ export async function runUnderstandingPipeline(text, opts = {}) {
           polarity: c.polarity ?? null, modality: c.modality ?? null, statementText: c.statementText ?? null,
         });
       }
+    }
+    // COMPLETED = a reading this segment can be final on (see completedSegments):
+    // an empty reading, or one with something that survived validation. A reading
+    // whose EVERY claim was discarded (it asserted what the sentence does not say)
+    // is a failed reading, not a successful empty one — it stays retryable
+    // (2026-10-19: a concurrent retry's invalid reading had ledgered the segment
+    // and blocked the valid one).
+    if (Number.isInteger(seg.start) && Number.isInteger(seg.end)
+        && (out.claims.length === 0 || g8.kept.length > 0 || segProposed > 0)) {
+      completedSegments.push({ start: seg.start, end: seg.end });
     }
     const segClaims = [];
     for (const admitted of g8.kept) {
@@ -426,6 +602,7 @@ export async function runUnderstandingPipeline(text, opts = {}) {
   return {
     claims: resolved,
     proposals,
+    completedSegments,
     // Only claims whose BOTH ends carry ids may reach S7. An ambiguous or
     // provisional end is not an id, and E6/PR-8 refuses to build an edge from
     // a surface string for exactly that reason.

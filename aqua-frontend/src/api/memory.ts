@@ -44,6 +44,39 @@ export async function pinMemoryFact(key: string, pinned: boolean) {
   return data;
 }
 
+/* ── What answers now: the canonical World Model (2026-10-16) ─────────────
+   With a database, Aqua answers from canonical claims, not the fact store
+   above. These read and edit exactly what answers, with where each came from. */
+
+export interface CurrentClaim {
+  claimId: string;
+  statement: string;
+  quote: string | null;
+  sourceKind: string;
+  sourceName: string | null;
+  assertedAt: string | null;
+  disputed: boolean;
+  scheduledFrom: string | null;
+}
+
+export async function listCurrentClaims() {
+  const { data } = await apiClient.get<{ success: boolean; configured: boolean; claims: CurrentClaim[] }>('/brain/current');
+  return data;
+}
+
+export async function forgetClaim(claimId: string) {
+  const { data } = await apiClient.post<{ success: boolean }>(`/brain/claims/${encodeURIComponent(claimId)}/forget`);
+  return data;
+}
+
+export async function correctClaimValue(claimId: string, value: string) {
+  const { data } = await apiClient.post<{ success: boolean; claimId: string; statement: string }>(
+    `/brain/claims/${encodeURIComponent(claimId)}/correct-value`,
+    { value },
+  );
+  return data;
+}
+
 /* ── Legacy conversation-keyed API ────────────────────────────────────────
    Kept because the backend still serves it (it resolves the conversation to
    its owner and returns owner-scoped data anyway). Nothing new should use it. */

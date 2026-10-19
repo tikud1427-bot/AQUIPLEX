@@ -100,7 +100,7 @@ describe('the flag registry matches the source, in both directions', () => {
     assert.equal(new Set(names).size, names.length, 'a flag is registered twice');
   });
 
-  test('the census is what it is — 32 gates, 41 settings, 73 read', () => {
+  test('the census is what it is — 35 gates, 41 settings, 73 read', () => {
     // Pinned as a NUMBER because the audit's figure was wrong and the wrong
     // figure survived into two reports. If this changes, someone added a flag
     // and should say so; if it changes without a registry edit, the tests above
@@ -109,7 +109,11 @@ describe('the flag registry matches the source, in both directions', () => {
     // off until eval/suites/proactive-core is recorded (L14).
     // +1 gate (2026-10-11): AQUA_WORLD_CORE — the current-world section of the
     // answer context, ON by default (=off is the rollback).
-    assert.equal(GATES.length, 32);
+    // +2 gates (2026-10-17): AQUA_CANONICAL_RELEVANCE_GATE (canonical lanes admit only claims
+    // about the question) and AQUA_E6_COMPOUND_RETRY (re-ask for an uncovered change clause),
+    // both ON by default with =off as the rollback.
+    // +1 gate (2026-10-18): AQUA_E6_ACTOR_RETRY — re-ask for a named actor the first reading dropped, ON by default.
+    assert.equal(GATES.length, 35);
     // +2 settings, 0 gates (Sep 30): AQUA_E6_MINT and AQUA_E6_SINGLE_VALUED. Both
     // are SETTINGS because neither opens a subsystem — they tune one stage of an
     // already-gated one.
@@ -130,8 +134,10 @@ describe('the flag registry matches the source, in both directions', () => {
     // +3 settings (2026-10-15, key pools): AQUA_PROVIDER_MAX_KEYS_PER_MODEL,
     // AQUA_PROVIDER_MAX_KEY_ATTEMPTS (per-request key-rotation bounds) and
     // AQUA_PROVIDER_KEY_REJECT_TTL_MS (opt-in expiry of a rejected key).
-    assert.equal(SETTINGS.length, 44);
-    assert.equal(readFromEnv().size, 76);
+    // +1 setting (2026-10-18): AQUA_S8_HISTORY (bounded | full | compare).
+    assert.equal(SETTINGS.length, 45);
+    // +1 (2026-10-18): AQUA_E6_ACTOR_RETRY. AQUA_S8_HISTORY is a setting-like rollback read in the repository (counted below).
+    assert.equal(readFromEnv().size, 80);   // +2 (2026-10-17): the two gates above
   });
 });
 
@@ -158,7 +164,7 @@ describe('the registry records how each gate actually reads its variable', () =>
     // AQUA_PROACTIVE joined 2026-10-06 after its L14 eval (proactive-core suite,
     // baseline recorded) and the live production-path test.
     // AQUA_WORLD_CORE joined 2026-10-11: measured on the World-Model Lift (held-out v3).
-    assert.deepEqual(onByDefault, ['AQUA_BRAIN', 'AQUA_EMBEDDINGS', 'AQUA_PARSE_WORKER', 'AQUA_PIC', 'AQUA_PROACTIVE', 'AQUA_REVISION_VOICE', 'AQUA_WORLD_CORE']);
+    assert.deepEqual(onByDefault, ['AQUA_BRAIN', 'AQUA_CANONICAL_RELEVANCE_GATE', 'AQUA_E6_ACTOR_RETRY', 'AQUA_EMBEDDINGS', 'AQUA_PARSE_WORKER', 'AQUA_PIC', 'AQUA_PROACTIVE', 'AQUA_REVISION_VOICE', 'AQUA_WORLD_CORE']);
   });
 
   test('an overridden gate reports its RAW value, not just the resolved one', () => {
@@ -175,7 +181,7 @@ describe('the registry records how each gate actually reads its variable', () =>
 describe('the boot line is worth printing', () => {
   test('it names the overridden gates, not all 29', () => {
     const line = flagBootLine({ AQUA_E6: 'on' });
-    assert.match(line, /32 gates · 44 settings/);
+    assert.match(line, /35 gates · 45 settings/);
     assert.match(line, /AQUA_E6=on/);
     assert.ok(!line.includes('AQUA_TWIN_V2'), 'a default gate was listed — the line is noise');
   });

@@ -32,6 +32,8 @@ export const EPSILON = 1e-9;
 /** Metrics where a larger number is worse. Everything else is higher-is-better. */
 export const LOWER_IS_BETTER = new Set([
   'noise_lines', 'noisy_queries', 'false_positives',
+  // A current question handed a value the user has since changed (2026-10-17).
+  'stale_leaks',
   // A wrongly-admitted segment costs an extractor call and can mint a bad
   // entity. Fewer is better, and the gate said otherwise: it reported
   // `n_false_admits 17 → 16` as a REGRESSION and blocked on it, which is the
@@ -81,7 +83,7 @@ export const LOWER_IS_BETTER = new Set([
  */
 export const STRUCTURAL = new Set([
   'positives', 'negatives', 'labelled_claims',
-  'answerable_queries', 'silence_queries', 'n_claim_bearing',
+  'answerable_queries', 'silence_queries', 'n_claim_bearing', 'stale_labelled_queries',
 ]);
 
 /**

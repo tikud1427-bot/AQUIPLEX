@@ -185,6 +185,17 @@ describe('2026-10-11 loops — live Postgres', { skip }, () => {
     const lines = plan.block.split('\n').filter(l => l.startsWith('• '));
     const quotes = lines.map(l => l.match(/"([^"]+)"/)?.[1]).filter(Boolean);
     assert.equal(new Set(quotes).size, quotes.length, `a statement rendered twice:\n${plan.block}`);
+
+    // 2026-10-17: nothing in the World Model answers this. The relevance section
+    // is empty, so the profile must say none of it was selected as the answer.
+    // The relevance section may render its UNKNOWN status, never an item.
+    const unknown = await ask(OWNER, "What is my dog's name?");
+    const unknownRelevance = unknown.block.split('── ALSO KNOWN ABOUT THE USER')[0];
+    assert.equal((unknown.items ?? []).length, 0, `the relevance gate admitted something:\n${unknown.block}`);
+    assert.doesNotMatch(unknownRelevance, /^• /m);
+    assert.match(unknown.block, /ALSO KNOWN ABOUT THE USER/);
+    assert.match(unknown.block, /EVIDENCE STATUS: UNKNOWN|None of the statements above was selected as answering this question/);
+    assert.doesNotMatch(plan.block, /None of the statements above was selected/, 'only when the relevance section is empty');
   });
 
   test('rollback and isolation: AQUA_WORLD_CORE=off removes the section; another owner sees none of it', async () => {

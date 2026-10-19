@@ -81,9 +81,25 @@ const userSchema = new mongoose.Schema(
   {
     email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
-    googleId: { type: String, default: null, sparse: true },
+    // Not `sparse` here: the unique partial index below is the real constraint.
+    googleId: { type: String, default: null },
     role: { type: String, default: "user", index: true },
     isUnlimited: { type: Boolean, default: false },
+
+    // ── Identity verification (2026-10-19) ──────────────────────────────────
+    // NO default on purpose: an account created before email ownership was
+    // checked has no value here (undefined = legacy, never verified), which is
+    // what services/auth/identityPolicy.service.js keys its policy on. New
+    // accounts always set it explicitly — a password account only after its
+    // verification link was completed, a Google account only when Google
+    // reported the address as verified.
+    emailVerified:    { type: Boolean },
+    emailVerifiedAt:  { type: Date, default: null },
+    emailVerifiedVia: { type: String, enum: ["email", "google", null], default: null },
+    // Bumped on every security-sensitive change (account claimed, Google
+    // linked, password removed). A session carries the value it was created
+    // with; middleware ends any session whose value is behind.
+    authVersion:      { type: Number, default: 0 },
 
     // ── Wallet ──────────────────────────────────────────────────────────────
     wallet: { type: walletSchema, default: () => ({}) },
@@ -102,9 +118,26 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// One account per Google identity. Partial, because legacy documents carry
+// googleId: null and a plain unique (or sparse) index would collide on them.
+userSchema.index(
+  { googleId: 1 },
+  { unique: true, name: "googleId_unique_partial", partialFilterExpression: { googleId: { $type: "string" } } }
+);
+
 // ── Pre-save: generate referral code ─────────────────────────────────────────
 
 userSchema.pre("save", function () {
+  // Verification belongs to an ADDRESS. If an existing account's email ever
+  // changes, the new address is unproven until verified again — otherwise an
+  // email change could inherit privileges keyed on a verified address
+  // (UNLIMITED_USER_EMAILS). No route changes email today; this keeps it safe
+  // if one is added.
+  if (!this.isNew && this.isModified("email") && !this.isModified("emailVerified")) {
+    this.emailVerified = false;
+    this.emailVerifiedAt = null;
+    this.emailVerifiedVia = null;
+  }
   if (!this.referralCode) {
     this.referralCode = crypto.randomBytes(4).toString("hex").toUpperCase();
   }

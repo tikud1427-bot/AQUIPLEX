@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-18T12:44:46.209Z",
+  "node": "v24.19.0",
+  "suiteFingerprint": "1a53e1f322f5ffa8",
+  "caseCount": 200,
+  "note": "Baseline for context-canonical, re-recorded 2026-10-18 (previous: 2026-10-16). DEVELOPMENT data (retrieval-core.v1, tuned against). Moved by: (1) the canonical relevance gate (pic/questionShape.js claimAffinity; AQUA_CANONICAL_RELEVANCE_GATE, default on) — the canonical lanes had applied no relevance test, so first-person questions received every claim about the user: noise_lines 153 -> 22, unknown_honesty 0.344 -> 0.750, mrr 0.582 -> 0.620, top1 0.536 -> 0.571, recall@8 0.696 -> 0.702; (2) the eval now runs the durable worker (contradiction + consolidation jobs) after ingest, as production does — before, no change or correction was ever applied in this world. Accepted regression: recall_category 0.406 -> 0.375 (1 of 32 semantic-paraphrase queries; the dense lane that serves them in production does not run offline). Measured with AQUA_RETRIEVAL_V3 unset (production .env sets it on: see context-canonical-heldout and the 2026-10-17 report for both rankers). Held-out promotion record: eval/datasets/retrieval-heldout.v1.PROMOTION.md. Regenerate (only with a justification in the PR): AQUA_TEST_DATABASE_URL=<disposable migrated db> npm run eval:gate -- context-canonical --update",
+  "coverage": {
+    "total": 200,
+    "executed": 200,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "recall_at_8": 0.7023809523809523,
+    "mrr": 0.6196003401360544,
+    "ndcg_at_8": 0.6023550774473589,
+    "top1_correct": 0.5714285714285714,
+    "top1_kind": 0.47023809523809523,
+    "unknown_honesty": 0.75,
+    "noise_lines": 22,
+    "noisy_queries": 8,
+    "recall_category": 0.375,
+    "recall_direct": 0.9090909090909091,
+    "recall_multi": 0.7142857142857143,
+    "recall_negation": 0.4,
+    "recall_selfword": 0.875,
+    "recall_superseded": 0.8,
+    "recall_temporal": 0.68,
+    "answerable_queries": 168,
+    "silence_queries": 32,
+    "canonical_coverage": 0.9333
+  }
+}

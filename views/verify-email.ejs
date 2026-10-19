@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="referrer" content="no-referrer">
+  <title>Finish creating your account — Aquiplex</title>
+  <link rel="icon" href="/logo/favicon.ico" sizes="any">
+  <link rel="stylesheet" href="/css/platform.css">
+</head>
+<body class="px-page">
+
+<%- include('partials/nav') %>
+
+<main class="px-auth-wrap">
+  <div class="px-auth-card">
+    <h1>Finish creating your account</h1>
+    <p class="px-auth-sub">Enter the password you chose when you signed up.</p>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <p class="px-auth-error"><%= error %></p>
+    <% } %>
+
+    <% if (token) { %>
+    <form action="/verify-email" method="POST" class="px-auth-form">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>">
+      <input type="hidden" name="token" value="<%= token %>">
+      <div>
+        <label class="px-label" for="password">Password</label>
+        <input class="px-input" id="password" type="password" name="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="px-btn px-btn-primary px-btn-lg" style="width:100%; margin-top:6px;">Create account</button>
+    </form>
+    <% } %>
+
+    <p class="px-auth-switch"><a href="/signup">Sign up again</a> · <a href="/login">Log in</a></p>
+  </div>
+</main>
+
+<script src="/js/sw-cleanup.js" defer></script>
+</body>
+</html>

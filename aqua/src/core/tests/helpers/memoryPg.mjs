@@ -69,6 +69,13 @@ export function createMemoryPg() {
     }
   }
 
+  // btrim(text) — used by 0025's expression index. Postgres semantics: one-arg
+  // btrim strips SPACES only, not all whitespace.
+  db.public.registerFunction({
+    name: 'btrim', args: [DataType.text], returns: DataType.text,
+    implementation: (s) => (s == null ? null : s.replace(/^ +| +$/g, '')),
+  });
+
   const pg = db.adapters.createPg();
 
   /**

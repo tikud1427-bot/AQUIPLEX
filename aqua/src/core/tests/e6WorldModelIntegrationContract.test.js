@@ -17,7 +17,10 @@ const m0011 = readFileSync(path.join(ROOT, 'core/db/migrations/0011_owner_struct
 assert.match(postTurn, /understandTurn:\s*Brain\.understandTurn/);
 assert.match(postTurn, /d\.understandTurn\(\{[^}]*ownerId[^}]*conversationId[^}]*turn[^}]*userMessage/s);
 assert.match(brain, /commitUnderstanding\s+as\s+commitCanonicalUnderstanding/);
-assert.match(brain, /if\s*\(\s*!e6CommitEnabled\(\)\s*\|\|\s*!result\?\.readyForS7\?\.length\s*\)\s*return result/);
+// Returns early only when there is nothing to commit AND no segment to ledger:
+// a segment that read successfully but produced nothing is still ledgered
+// (2026-10-18 idempotency: an empty first reading is final on retry).
+assert.match(brain, /if\s*\(\s*!e6CommitEnabled\(\)\s*\|\|\s*\(\s*!result\?\.readyForS7\?\.length\s*&&\s*!result\?\.completedSegments\?\.length\s*\)\s*\)\s*return result/);
 assert.match(brain, /commitCanonicalUnderstanding\(\{[\s\S]*sourceId,[\s\S]*extractorVersion,[\s\S]*segmentRange:/);
 
 // Canonical persistence must remain transactional and must reserve the durable

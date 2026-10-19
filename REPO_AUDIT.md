@@ -17,9 +17,9 @@ Every finding carries one of three labels:
 | # | Blocker | Evidence | Who can clear it |
 |---|---|---|---|
 | B1 | **Secrets are in public Git history and are still in use.** The GitHub repository `tikud1427-bot/AQUIPLEX` answers anonymous API requests (HTTP 200), so it is **public**. Fourteen secret values in today's `.env` are byte-identical to values in public commits `8da8e11b`, `324a601f`, `0e00ae77` and `6f92e731`, which are still reachable from `origin/main`. | VERIFIED. The comparison script printed key names only (§5). | Founder: rotate the secrets, then make the repo private or rewrite its history. |
-| B2 | **Production lacks the 2026-10-12 hotfix.** `origin/main` is `54c8de96`, the same as the remote. The live site therefore still has two defects: (1) chat accepts a client-supplied `workspaceId`, a cross-account read; (2) "forget" leaves the conversation evidence lane, so deleted facts can still answer. Hotfix branch `hotfix/2026-10-12-auth-memory-safety` (`6dea686e`) fixes both but has not been pushed. | VERIFIED: refs compared. The defects themselves are HISTORICAL, confirmed on 54c8de96 in the 2026-10-12 audit. | Founder: approve push and deploy. |
-| B3 | **Four defects fixed today (§4) also exist on `main`.** They are cross-account memory adoption, session fixation, the bundle IDOR, and anonymous LLM spend. They need porting into the hotfix before it ships. | VERIFIED: the defect code is on HEAD; `index.js` and `ownerResolver.js` are unchanged on main for these lines. | Engineering + founder approval. |
-| B4 | **Production runs on free provider tiers.** It uses Gemini free, Groq per-organisation free quota, OpenRouter `:free`, and NVIDIA trial keys. Capacity has already run out during evaluations, and commercial use of free tiers may breach provider terms. | VERIFIED (model registry). The quota exhaustion is HISTORICAL (validation report, 2026-10-05). | Founder: a paid key on at least one provider. |
+| B2 | **Production lacks the 2026-10-12 hotfix.** `origin/main` is `54c8de96`, the same as the remote. The live site therefore still has two defects: (1) chat accepts a client-supplied `workspaceId`, a cross-account read; (2) "forget" leaves the conversation evidence lane, so deleted facts can still answer. Hotfix branch `hotfix/2026-10-12-auth-memory-safety` (`6dea686e`) fixes both but has not been pushed. | VERIFIED: refs compared. The defects themselves are HISTORICAL, confirmed on 54c8de96 in the 2026-10-12 audit. | Founder: approve push and deploy. **Update 2026-10-17:** a tested release candidate now carries the hotfix plus B3 and later fixes (`RELEASE_MANIFEST_RC_2026-10-17.md`). |
+| B3 | **Defects fixed on this branch also exist on `main`:** cross-account memory adoption, session fixation, the bundle IDOR, anonymous LLM spend, non-idempotent refunds, the message rate limit consumed by reads, extraction lost to brief rate limits, and the cross-account intro marker. | VERIFIED: reproduced against the base code. | **Ported into the RC (2026-10-17): 0 new test failures against production on Linux.** Shipping needs founder approval. |
+| B4 | **Production runs on free provider tiers.** It uses Gemini free, Groq per-organisation free quota, OpenRouter `:free`, and NVIDIA trial keys. Capacity has already run out during evaluations, and commercial use of free tiers may breach provider terms. | VERIFIED (model registry). The quota exhaustion is HISTORICAL (validation report, 2026-10-05). | Founder: a paid key on at least one provider. **Quantified 2026-10-17:** Groq free tier ≈ 10 extractions per minute for the whole product; a single onboarding burst hits it. A paid tier costs an estimated $0.0025 per turn (`PRODUCT_SCORECARD.md` §3c). |
 
 ---
 
@@ -198,3 +198,24 @@ Not run: Playwright e2e, the Android release check, a real-provider Lift, and a 
 8. The platform rate limiters are per instance (memory store) unless a Redis store is configured.
 9. Legacy surfaces (bundles, tools directory, blog, `write`) enlarge the attack surface while serving no user of the chosen product.
 10. About 70 historical root `*.md` reports contradict each other. This audit and the thesis supersede them for current state.
+
+---
+
+## 8. Findings added 2026-10-16/17 (session 2)
+
+| # | Severity | Finding | Status |
+|---|---|---|---|
+| F1 | High (validity) | The eval gate measured only the legacy read path; with a database, its context suites read 0. | **Fixed.** Mode is explicit, the database comes only from `AQUA_TEST_DATABASE_URL`, and the new `context-canonical` gate measures the production read. |
+| F2 | High (product) | The canonical read path (production with Postgres) carries **153 noise lines and 0.34 unknown honesty**, against 18 and 0.72 on the legacy path, over the same 200 queries. | **Measured and gated, not fixed.** This is the main quality gap. |
+| F3 | Medium | Prompts and retrieval were nondeterministic (random UUID tie-breaks), so the same world gave different context and the extraction cache missed. | **Fixed** (content tie-breaks; proven across processes). |
+| F4 | Medium | E10-migrated legacy facts become `extracted / unresolved` claims that no canonical read returns. | **Open.** Matters for any production read-mode switch. |
+| F5 | High (data loss) | Extraction under a brief provider rate limit was dead-lettered after about 30 s, and the user's statement was lost. | **Fixed** (capacity backoff) and in the RC. |
+| F6 | High (trust) | The Memory page showed the legacy store, not what answers; deletion missed sibling claims, subject names and legacy role slots. | **Fixed on this branch** (Memory "What Aqua knows now", per-claim forget/correct, veto). Not in the RC: it depends on the authoritative read mode. |
+| F7 | Medium (billing) | `refund()` minted credits on every call; failed uploads and bundle steps were never refunded. | **Fixed**, in the RC. |
+| F8 | Medium (usability) | Reads exhausted the 30/min message limit, so the next chat message failed. | **Fixed**, in the RC. |
+| F9 | Low (isolation) | `intro/complete` wrote its marker onto any conversation id. | **Fixed**, in the RC. |
+| F10 | Low (a11y) | Duplicate `#aqua-sidebar-search` on phones; focus lost after the artifacts panel or drawer closed. | **Fixed**, in the RC. |
+| F11 | Medium (product) | A compound change ("moved the launch to May 2 **and** the price is now $39") keeps only one of its two changes. | **Open** (extraction quality). |
+| F12 | Low (UI) | Narrow-viewport markdown tables split words and keep headers in stacked layout (dev spec 28/42). | **Open.** |
+| F13 | Process | `main`'s test runner on Windows exits 0 having run nothing. | **Fixed** in the RC (runner ported). |
+

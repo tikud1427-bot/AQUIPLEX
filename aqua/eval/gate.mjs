@@ -58,6 +58,16 @@ process.env.AQUA_DISABLE_MONGO_MIRROR ??= '1';
 import { runSuite } from './core/runner.mjs';
 import { compareToBaseline, gateReport, NOT_GATED } from './core/gate.mjs';
 import { toJSON } from './core/report.mjs';
+import { testDatabaseEnv } from '../src/core/db/testDatabaseEnv.js';
+
+// THE DATABASE IS NEVER INHERITED (2026-10-16). The gate's legacy context
+// suites used to read whatever DATABASE_URL the shell exported: with one, the
+// read mode flipped to canonical and their metrics went to 0; with a developer's
+// real database, a database suite would have written into it. Exactly the
+// runner's rule: Postgres only via AQUA_TEST_DATABASE_URL, else none.
+Object.assign(process.env, testDatabaseEnv(process.env));
+const requireDb = String(process.env.AQUA_GATE_REQUIRE_DB ?? '') === '1';
+const notRun = [];
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SUITES = path.join(HERE, 'suites');
@@ -100,6 +110,20 @@ for (const file of readdirSync(SUITES).filter(f => f.endsWith('.suite.mjs')).sor
   }
   if (named.length && !named.includes(suite.id)) continue;
 
+  // A suite that needs infrastructure (today: Postgres) says so. Missing it is
+  // reported as NOT RUN — never folded into "passed" — and fails the gate when
+  // AQUA_GATE_REQUIRE_DB=1 (CI provides the database, so there it must run).
+  // Checked before the baseline, so missing infrastructure is always visible.
+  if (Array.isArray(suite.requires) && typeof suite.available === 'function') {
+    const avail = await suite.available();
+    if (!avail.ok) {
+      console.log(`\n── gate: ${suite.id} ──\n   NOT RUN — requires ${suite.requires.join(', ')}: ${avail.reason}`);
+      notRun.push(suite.id);
+      if (requireDb) failed = true;
+      continue;
+    }
+  }
+
   if (!existsSync(baselinePath) && !update) {
     console.log(`\n── gate: ${suite.id} ──\n   no baseline — skipped (not a failure)`);
     continue;
@@ -140,7 +164,9 @@ for (const file of readdirSync(SUITES).filter(f => f.endsWith('.suite.mjs')).sor
 }
 
 if (compared === 0) {
-  console.error('\neval:gate — no suites had baselines. Nothing was checked.');
+  console.error(notRun.length
+    ? `\neval:gate — nothing was checked: ${notRun.join(', ')} NOT RUN (missing infrastructure).`
+    : '\neval:gate — no suites had baselines. Nothing was checked.');
   process.exit(1);
 }
 
@@ -152,12 +178,17 @@ if (!update && !named.length) {
     const out = path.join(HERE, 'out');
     mkdirSync(out, { recursive: true });
     writeFileSync(path.join(out, 'gate-summary.json'), `${JSON.stringify({
-      ranAt: new Date().toISOString(), passed: !failed, compared, regressions: regressedSuites,
+      ranAt: new Date().toISOString(), passed: !failed, compared, regressions: regressedSuites, notRun,
     }, null, 2)}\n`);
   } catch { /* the record is best-effort */ }
 }
 
+if (notRun.length) {
+  console.log(`\n⚠ NOT RUN (missing infrastructure): ${notRun.join(', ')}${requireDb ? ' — AQUA_GATE_REQUIRE_DB=1, so this blocks' : ''}`);
+}
 console.log(failed
-  ? '\n✗ eval:gate BLOCKED — a metric moved the wrong way. Fix it, or update the baseline in a PR that explains why.\n'
-  : '\n✓ eval:gate passed\n');
+  ? (regressedSuites.length
+      ? '\n✗ eval:gate BLOCKED — a metric moved the wrong way. Fix it, or update the baseline in a PR that explains why.\n'
+      : '\n✗ eval:gate BLOCKED — a required suite could not run.\n')
+  : `\n✓ eval:gate passed${notRun.length ? ` (${notRun.length} suite(s) NOT RUN — see above)` : ''}\n`);
 process.exit(failed ? 1 : 0);

@@ -186,6 +186,14 @@ describe('contract — refuses what the writer would refuse', () => {
     assert.equal(r.claim.objectKind, 'literal');
     assert.equal(r.claim.objectCoerced, 'entity→literal');
   });
+  // 2026-10-18: "We're now at 57 paying clinics" → has_property {quantity:57,
+  // unit:"paying clinics"} was refused, so the new count never committed.
+  test('a quantity for a literal predicate is coerced to the same text', () => {
+    const r = validateClaim({ ...base, predicate: 'has_property', object: { quantity: 57, unit: 'paying clinics' } });
+    assert.equal(r.ok, true, r.reason);
+    assert.deepEqual(r.claim.object, { literal: '57 paying clinics' });
+    assert.equal(r.claim.objectCoerced, 'quantity→literal');
+  });
   test('the wrong object kind the other way is still refused', () => reject({ predicate: 'works_at', object: { literal: 'Nummo' } }, /object-kind-mismatch/));
   test('two objects — two objects is two claims', () =>
     reject({ object: { entity: 'Nummo', literal: 'Nummo' } }, /ambiguous-object/));

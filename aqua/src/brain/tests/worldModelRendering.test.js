@@ -27,8 +27,21 @@ test('a canonical line carries the World Model\'s reading, the user\'s words and
   const out = assembleContext([
     fact('a', 'Rohan took it over', u('Rohan', 'owns', 'payment integration'), '2026-10-06T10:00:00Z'),
   ], ctx('Who owns the payment integration?'), { limit: 8, charBudget: 1600 });
-  assert.match(out.block, /• Rohan owns payment integration — "Rohan took it over"$/m);
+  assert.match(out.block, /• Rohan owns payment integration — "Rohan took it over" \[the user told Aqua in conversation\]$/m);
   assert.doesNotMatch(out.block, /confidence 0\.66/);
+});
+
+test('every canonical line says WHERE it came from (2026-10-19: the founder\'s chat message was called "an internal note")', () => {
+  const out = assembleContext([
+    fact('a', 'The price is now $39 per clinic per month', u('You', 'has_property', '$39 per clinic per month'), '2026-10-06T10:00:00Z', { sourceType: 'conversation' }),
+    fact('b', 'Standard plan: $49 per clinic per month', u('Standard plan', 'has_property', '$49 per clinic per month'), '2026-10-06T09:00:00Z',
+      { sourceType: 'document', sourceRef: 'file:tidepool_pricing.txt:chunk:0' }),
+    fact('c', 'Our biggest risk is clinics not finishing onboarding', u('You', 'has_property', 'clinics not finishing onboarding'), '2026-10-06T11:00:00Z', { sourceType: 'user_correction' }),
+  ], ctx('Where did you learn our current price?'), { limit: 8, charBudget: 2400 });
+  assert.match(out.block, /"The price is now \$39 per clinic per month" \[the user told Aqua in conversation\]/);
+  assert.match(out.block, /\[from the user's uploaded file tidepool_pricing\.txt\]/);
+  assert.match(out.block, /\[the user corrected this in Aqua's Memory\]/);
+  assert.doesNotMatch(out.block, /internal/i);
 });
 
 test('when-said is shown only when it informs (claims span ≥ 2 days), worded as when it was TOLD', () => {
@@ -36,12 +49,12 @@ test('when-said is shown only when it informs (claims span ≥ 2 days), worded a
     fact('a', 'I work at Ledgerly', u('You', 'works_at', 'Ledgerly'), '2026-10-06T09:00:00Z'),
     fact('b', 'We are based in Pune', u('You', 'located_in', 'Pune'), '2026-10-06T10:00:00Z'),
   ], ctx('Where do I work and where are we based?'), { limit: 8, charBudget: 1600 });
-  assert.doesNotMatch(one.block, /told Aqua|said 20/, 'one day: the date is noise the model quotes as an event date');
+  assert.doesNotMatch(one.block, / on \d{4}-\d{2}-\d{2}\]|said 20/, 'one day: the date is noise the model quotes as an event date');
   const two = assembleContext([
     fact('a', 'I work at Ledgerly', u('You', 'works_at', 'Ledgerly'), '2026-09-01T09:00:00Z'),
     fact('b', 'We are based in Pune', u('You', 'located_in', 'Pune'), '2026-10-06T10:00:00Z'),
   ], ctx('Where do I work and where are we based?'), { limit: 8, charBudget: 1600 });
-  assert.match(two.block, /\[told Aqua on 2026-09-01\]/);
+  assert.match(two.block, /\[the user told Aqua in conversation on 2026-09-01\]/);
 });
 
 test('a claim whose validity CLOSED in the past reads as past, never as current', () => {

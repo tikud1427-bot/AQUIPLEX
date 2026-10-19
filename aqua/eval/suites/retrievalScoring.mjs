@@ -55,7 +55,12 @@ export function scoreQuery(testCase, ranked, KIND_OF) {
     .reduce((s, g, i) => s + g / Math.log2(i + 2), 0);
 
   const top = top8[0] ?? null;
+  // STALE LEAKS (2026-10-17): a CURRENT question that receives a value the user
+  // has since changed or corrected. Only datasets that label `stale` are graded
+  // on it; the product's primary quality metric is the stale-answer rate.
+  const staleLabels = Array.isArray(testCase.stale) ? testCase.stale : null;
   return {
+    ...(staleLabels ? { staleLabelled: true, staleLeak: top8.some(id => staleLabels.includes(id)) } : {}),
     correct: firstHit === 0,
     cat: testCase.cat,
     silence: false,
@@ -97,6 +102,11 @@ export function aggregate(scored) {
 
     ...Object.fromEntries(Object.entries(byCat).sort()
       .map(([cat, v]) => [`recall_${cat}`, ratio(v.hit, v.n)])),
+
+    ...(answerable.some(s => s.staleLabelled) ? {
+      stale_leaks: answerable.filter(s => s.staleLeak).length,
+      stale_labelled_queries: answerable.filter(s => s.staleLabelled).length,
+    } : {}),
 
     answerable_queries: answerable.length,
     silence_queries: silent.length,

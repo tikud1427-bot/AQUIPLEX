@@ -73,7 +73,7 @@ export const REQUESTED_TEMPERATURE = 0;
  * quiet reuse — which is exactly what you want the first time a prompt change
  * is measured.
  */
-export function extractionCacheKey({ segment, promptVersion, modelPin, knownEntities = [], context = null, negationHint = false }) {
+export function extractionCacheKey({ segment, promptVersion, modelPin, knownEntities = [], context = null, negationHint = false, compoundHint = null, actorHint = null }) {
   const h = crypto.createHash('sha256')
     .update(String(promptVersion ?? PROMPT_VERSION)).update('\u0000')
     .update(String(modelPin ?? 'unpinned')).update('\u0000')
@@ -86,6 +86,10 @@ export function extractionCacheKey({ segment, promptVersion, modelPin, knownEnti
   if (conv.length || facts.length) h.update('\u0000').update([...conv, '\u0002', ...facts].join('\u0001'));
   // The negation retry's reminder is in the prompt. Absent → key unchanged.
   if (negationHint) h.update('\u0000negation-hint');
+  // The compound retry names the uncovered clauses in the prompt. Absent → unchanged.
+  if (Array.isArray(compoundHint) && compoundHint.length) h.update('\u0000compound-hint\u0000').update(compoundHint.join('\u0001'));
+  // The actor retry names the people the first reading left out. Absent → unchanged.
+  if (Array.isArray(actorHint) && actorHint.length) h.update('\u0000actor-hint\u0000').update(actorHint.join('\u0001'));
   return h.digest('hex');
 }
 
@@ -120,11 +124,13 @@ export async function extractSegment(segment, opts = {}) {
   const knownEntities = knownNames(opts.knownEntities);
   const context = opts.context ?? null;
   const negationHint = opts.negationHint === true;
-  const key = extractionCacheKey({ segment, promptVersion: PROMPT_VERSION, modelPin, knownEntities, context, negationHint });
+  const compoundHint = Array.isArray(opts.compoundHint) && opts.compoundHint.length ? opts.compoundHint.map(String).slice(0, 4) : null;
+  const actorHint = Array.isArray(opts.actorHint) && opts.actorHint.length ? opts.actorHint.map(String).slice(0, 3) : null;
+  const key = extractionCacheKey({ segment, promptVersion: PROMPT_VERSION, modelPin, knownEntities, context, negationHint, compoundHint, actorHint });
 
   if (cache.has(key)) return { ...cache.get(key), cached: true };
 
-  const prompt = buildExtractionPrompt(segment, { knownEntities, context, negationHint });
+  const prompt = buildExtractionPrompt(segment, { knownEntities, context, negationHint, compoundHint, actorHint });
   const callModel = opts.callModel;
 
   if (typeof callModel !== 'function') {

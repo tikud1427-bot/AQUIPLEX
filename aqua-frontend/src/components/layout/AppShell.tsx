@@ -111,9 +111,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           Skip to conversation
         </a>
 
-        <div className="hidden md:block">
-          <Sidebar collapsed={sidebarCollapsed} />
-        </div>
+        {/* Not mounted on phones (2026-10-17): hidden by CSS it still put a
+            second #aqua-sidebar-search in the DOM beside the drawer's, so the
+            search shortcut (getElementById) focused the invisible one. */}
+        {!isMobile && (
+          <div className="hidden md:block">
+            <Sidebar collapsed={sidebarCollapsed} />
+          </div>
+        )}
         <MobileSidebarDrawer />
 
         <div className="flex min-w-0 flex-1 flex-col">

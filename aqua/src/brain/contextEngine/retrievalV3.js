@@ -46,8 +46,14 @@ export function reciprocalRankFusion(lanes = [], { k = RRF_DEFAULT_K, limit = In
     }
   }
 
+  // Content before id on ties, as in lanesFromCandidates: canonical ids are
+  // random UUIDs, so an id tie-break ranked the same world differently in every
+  // database (2026-10-17: 122 of 200 retrieval-core queries reordered between
+  // two seedings of identical data with AQUA_RETRIEVAL_V3=on).
+  const textOf = v => String(v.candidate?.text ?? v.candidate?.statement ?? '');
   return [...votes.values()]
-    .sort((a, b) => b.rrf - a.rrf || b.laneCount - a.laneCount || String(a.id).localeCompare(String(b.id)))
+    .sort((a, b) => b.rrf - a.rrf || b.laneCount - a.laneCount
+      || textOf(a).localeCompare(textOf(b)) || String(a.id).localeCompare(String(b.id)))
     .slice(0, Math.max(0, limit));
 }
 
@@ -256,7 +262,11 @@ export function lanesFromCandidates(candidates = [], { semanticScores = null, en
     }
   }
 
-  for (const rows of groups.values()) rows.sort((a, b) => b.score - a.score || String(a.id).localeCompare(String(b.id)));
+  // Content before id on ties: canonical ids are random UUIDs (see contextEngine/index.js).
+  // Rows are { id, score, candidate }: the text is on the candidate. Reading
+  // `r.text` compared '' with '' and fell through to the UUID (2026-10-17).
+  const textOf = r => String(r.candidate?.text ?? r.candidate?.statement ?? r.text ?? r.statement ?? '');
+  for (const rows of groups.values()) rows.sort((a, b) => b.score - a.score || textOf(a).localeCompare(textOf(b)) || String(a.id).localeCompare(String(b.id)));
   return [...groups.entries()].map(([name, rows]) => ({ name, rows }));
 }
 

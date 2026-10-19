@@ -20,6 +20,23 @@ on:
 jobs:
   gate:
     runs-on: ubuntu-latest
+    # A disposable Postgres (pgvector) so the canonical read path — the one
+    # production serves with a database — is graded (context-canonical) and the
+    # live-database test suites run instead of skipping. AQUA_GATE_REQUIRE_DB=1
+    # turns "no database" into a failure rather than a quiet NOT RUN.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: aqua
+          POSTGRES_PASSWORD: aqua
+          POSTGRES_DB: aqua_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U aqua" --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      AQUA_TEST_DATABASE_URL: postgresql://aqua:aqua@localhost:5432/aqua_test
+      AQUA_GATE_REQUIRE_DB: '1'
     defaults:
       run:
         working-directory: aqua
@@ -29,6 +46,8 @@ jobs:
         with:
           node-version: 20          # the version the baselines were reproduced on
       - run: npm ci
+      - name: Migrate the disposable test database
+        run: DATABASE_URL="$AQUA_TEST_DATABASE_URL" node src/core/db/cli.mjs
       - name: Test battery
         run: npm test
       - name: Evaluation regression gate

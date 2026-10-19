@@ -22,7 +22,7 @@ import { test, describe, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  backoffMs, BACKOFF_CAP_MS, enqueue, claim, complete, fail,
+  backoffMs, BACKOFF_CAP_MS, enqueue, claim, complete, fail, capacityBackoffMs, retryWaitMs,
   reapStale, queueStats, deadLetters, purgeOwner,
 } from '../jobs/jobQueue.js';
 
@@ -196,5 +196,29 @@ describe('the queue refuses work it cannot make idempotent', () => {
 
   test('an enqueue without an owner is refused (G3)', async () => {
     await assert.rejects(() => enqueue({ kind: 'k', idempotencyKey: 'k' }), /ownerId is required/);
+  });
+});
+
+describe('capacity failures retry on a minutes scale (2026-10-16)', () => {
+  // A rate-limited extraction used to be dead-lettered ~30 s after its first
+  // failure — while a per-minute limit was still in force — and the user's
+  // change was lost for good.
+  test('rate limit / quota / cooling-down errors wait 1, 2, 4, 8 minutes, then the cap', () => {
+    const msg = 'understanding incomplete: 1 segment(s) failed extraction — transport:All Groq keys rate limited or cooling down (next free in 4s)';
+    assert.deepEqual([1, 2, 3, 4, 5, 6].map(n => retryWaitMs(n, msg)),
+      [60_000, 120_000, 240_000, 480_000, 900_000, 900_000]);
+    for (const m of ['429 Too Many Requests', 'quota exceeded', 'Rate limit reached for model', 'tokens per minute (TPM)']) {
+      assert.equal(retryWaitMs(1, m), 60_000, m);
+    }
+  });
+
+  test('five capacity attempts span >= 15 minutes before the dead-letter queue (was ~30 s)', () => {
+    const total = [1, 2, 3, 4].reduce((s, n) => s + capacityBackoffMs(n), 0);
+    assert.ok(total >= 15 * 60_000, String(total));
+  });
+
+  test('every other failure keeps the 2^n-seconds schedule', () => {
+    assert.equal(retryWaitMs(2, 'commit failed: duplicate key'), backoffMs(2));
+    assert.equal(retryWaitMs(3, null), backoffMs(3));
   });
 });

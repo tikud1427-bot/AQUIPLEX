@@ -139,7 +139,7 @@ async function claimRows(p, ownerId, { where = '', params = [], limit = 100, ret
        AND c.state = ANY($${stateParam}::text[])
        ${where}
      GROUP BY c.claim_id, se.canonical_label, oe.canonical_label
-     ORDER BY c.updated_at DESC, c.claim_id DESC
+     ORDER BY c.updated_at DESC, c.statement_norm, c.claim_id DESC
      LIMIT $${limitParam}`;
   return p.query(sql, [ownerId, ...params, states, clampLimit(limit)]).then(r => r.rows);
 }
@@ -160,7 +160,7 @@ export async function listEntities(ownerId, { type = null, minImportance = 0, li
       FROM aqua_entities e
       ${where}
      ORDER BY (e.mention_count * GREATEST(e.confidence_resolution,0.01)) DESC,
-              e.last_seen_at DESC NULLS LAST, e.entity_id
+              e.last_seen_at DESC NULLS LAST, e.canonical_label, e.entity_id
      LIMIT $${params.length + 1}`,
     [...params, clampLimit(limit)]
   );
@@ -308,7 +308,7 @@ export async function findEntities(ownerId, query, { limit = 20, pool = null } =
             OR (length(e.normalized_label) >= 3 AND position(' ' || e.normalized_label || ' ' IN ' ' || $5 || ' ') > 0)
             OR (length(a.normalized) >= 3 AND position(' ' || a.normalized || ' ' IN ' ' || $5 || ' ') > 0)))
          OR ($6::boolean AND e.type = 'self'))
-     ORDER BY match_score DESC, e.mention_count DESC, e.entity_id
+     ORDER BY match_score DESC, e.mention_count DESC, e.canonical_label, e.entity_id
      LIMIT $4`, [owner, lowered, `%${lowered}%`, clampLimit(limit, 20), words, firstPerson]);
   const found = new Map(rows.map(r => [String(r.entity_id), r]));
 
@@ -320,7 +320,7 @@ export async function findEntities(ownerId, query, { limit = 20, pool = null } =
        WHERE e.owner_id=$1 AND e.status='active' AND e.type <> 'self'
          AND (e.normalized_label = ANY($2::text[])
               OR reverse(split_part(reverse(e.normalized_label), ' ', 1)) = ANY($2::text[]))
-       ORDER BY e.mention_count DESC, e.entity_id
+       ORDER BY e.mention_count DESC, e.canonical_label, e.entity_id
        LIMIT $3`, [owner, heads, clampLimit(limit, 20)]);
     for (const r of byHead) if (!found.has(String(r.entity_id))) found.set(String(r.entity_id), r);
   }
@@ -520,6 +520,22 @@ export async function currentWorld(ownerId, { limit = 80, pool = null } = {}) {
 }
 
 /**
+ * Claims the USER deleted (2026-10-16): archived through a transition whose
+ * actor is 'user' (Memory page delete, forget). The legacy veto treats their
+ * values as retired so a legacy copy cannot answer for them; routine archiving
+ * (reflection, E10 rollback) is not included. Owner-scoped, read-only.
+ * @returns {Promise<Set<string>>}
+ */
+export async function userArchivedClaimIds(ownerId, { pool = null } = {}) {
+  const owner = requireOwner(ownerId);
+  const p = await db(pool);
+  const { rows } = await p.query(`
+    SELECT DISTINCT target_id::text AS id FROM aqua_lifecycle_transitions
+     WHERE owner_id=$1 AND target_kind='claim' AND to_state='archived' AND actor='user'`, [owner]);
+  return new Set(rows.map(r => r.id));
+}
+
+/**
  * RETIRED STATEMENTS (2026-10-11): source sentences behind at least one claim
  * that is no longer current (superseded/archived). A sentence can carry a
  * retired claim AND a current one ("My biggest client is a restaurant called
@@ -552,7 +568,7 @@ export async function roleHolders(ownerId, { limit = 64, pool = null } = {}) {
      WHERE c.owner_id=$1 AND c.predicate='related_to' AND c.state=ANY($2::text[])
        AND c.polarity='asserted' AND c.modality='fact' AND c.object_literal IS NOT NULL
        AND (c.valid_to IS NULL OR c.valid_to >= now())
-     ORDER BY c.updated_at DESC, c.claim_id
+     ORDER BY c.updated_at DESC, c.statement_norm, c.claim_id
      LIMIT $3`, [owner, CURRENT_STATES, clampLimit(limit, 64)]);
   return rows.map(r => ({ entityId: String(r.subject_entity_id), label: r.label, role: r.role }));
 }
@@ -600,7 +616,7 @@ export async function searchClaims(ownerId, query, { limit = 32, retrospective =
        AND c.state = ANY($3::text[])
        AND (to_tsvector('simple', coalesce(c.statement_text,'')) @@ to_tsquery('simple',$2)
             OR c.statement_text ILIKE '%' || $5 || '%')
-     ORDER BY rank DESC, c.updated_at DESC, c.claim_id
+     ORDER BY rank DESC, c.updated_at DESC, c.statement_norm, c.claim_id
      LIMIT $4`, [owner, tsq, states, k, q]);
   // Evidence is loaded in one bounded batch to keep citations complete.
   if (!rows.length) return [];
@@ -637,7 +653,7 @@ export async function structuredClaims(ownerId, { entityIds = [], predicates = [
       JOIN aqua_entities se ON se.owner_id=c.owner_id AND se.entity_id=c.subject_entity_id
       LEFT JOIN aqua_entities oe ON oe.owner_id=c.owner_id AND oe.entity_id=c.object_entity_id
      WHERE ${where.join(' AND ')}
-     ORDER BY c.updated_at DESC, c.claim_id
+     ORDER BY c.updated_at DESC, c.statement_norm, c.claim_id
      LIMIT $${params.length}`, params);
   return rows.map(r => claim(r));
 }
@@ -783,7 +799,7 @@ export async function referenceHeadNoun(ownerId, head, { pool = null } = {}) {
       FROM aqua_entities e
      WHERE e.owner_id=$1 AND e.status='active' AND e.type <> 'self'
        AND (e.normalized_label = $2 OR e.normalized_label LIKE '% ' || $2)
-     ORDER BY e.mention_count DESC, e.entity_id
+     ORDER BY e.mention_count DESC, e.canonical_label, e.entity_id
      LIMIT 8`, [owner, h]);
   return rows.map(r => ({ label: r.label, via: `label head "${h}"` }));
 }
@@ -873,8 +889,15 @@ export async function extractionContext(ownerId, { conversationId = null, turn =
   let conversation = [];
   if (conversationId) {
     const prefix = `${conversationId}:turn:`;
-    const { rows } = await p.query(`
-      SELECT DISTINCT ON (c.claim_id) c.claim_id, se.canonical_label AS subject, se.type AS subject_type,
+    // One row per (claim, mentioning turn). This was `DISTINCT ON (c.claim_id)`
+    // with no ORDER BY, so a claim said at turn 1 and restated at turn 31 got an
+    // ARBITRARY one of its turns: whether it fell inside the most-recent window
+    // changed run to run, the extraction prompt changed with it, and identical
+    // turns missed the extraction cache (found 2026-10-17: 13–15 of 46 replayed
+    // held-out requests differed between two runs of the same code). A claim now
+    // ranks by its MOST RECENT mention before this turn.
+    const { rows: mentions } = await p.query(`
+      SELECT DISTINCT c.claim_id, se.canonical_label AS subject, se.type AS subject_type,
              c.predicate, ${value} AS value, c.polarity, s.external_ref
         FROM aqua_claims c
         JOIN aqua_entities se ON se.owner_id = c.owner_id AND se.entity_id = c.subject_entity_id
@@ -883,11 +906,22 @@ export async function extractionContext(ownerId, { conversationId = null, turn =
         JOIN aqua_evidence ev ON ev.owner_id = ce.owner_id AND ev.evidence_id = ce.evidence_id
         JOIN aqua_sources s ON s.owner_id = ev.owner_id AND s.source_id = ev.source_id
        WHERE c.owner_id = $1 AND left(s.external_ref, length($2)) = $2
-         AND c.predicate <> 'unresolved' AND c.state <> 'archived'`, [owner, prefix]);
+         AND c.predicate <> 'unresolved' AND c.state <> 'archived'
+       LIMIT 2000`, [owner, prefix]);
     const turnOf = r => Number.parseInt(String(r.external_ref).slice(prefix.length), 10);
-    conversation = rows
-      .filter(r => Number.isFinite(turnOf(r)) && (!Number.isInteger(turn) || turnOf(r) < turn))
-      .sort((a, b) => turnOf(b) - turnOf(a))
+    const latest = new Map();
+    for (const r of mentions) {
+      const t = turnOf(r);
+      if (!Number.isFinite(t) || (Number.isInteger(turn) && t >= turn)) continue;
+      const k = String(r.claim_id);
+      if (!latest.has(k) || turnOf(latest.get(k)) < t) latest.set(k, r);
+    }
+    conversation = [...latest.values()]
+      // Ties within a turn (one turn yields several claims) are broken by the
+      // rendered line, not by Postgres row order: with a limit, the arbitrary
+      // order chose WHICH claims the extractor saw, so the same turn produced
+      // different prompts run to run (and defeated the extraction cache).
+      .sort((a, b) => (turnOf(b) - turnOf(a)) || line(a).localeCompare(line(b)))
       .slice(0, clampLimit(conversationLimit, 8))
       .map(line);
   }
@@ -898,7 +932,7 @@ export async function extractionContext(ownerId, { conversationId = null, turn =
       JOIN aqua_entities se ON se.owner_id = c.owner_id AND se.entity_id = c.subject_entity_id
       LEFT JOIN aqua_entities oe ON oe.owner_id = c.owner_id AND oe.entity_id = c.object_entity_id
      WHERE c.owner_id = $1 AND c.state = ANY($2::text[]) AND c.predicate <> 'unresolved'
-     ORDER BY c.updated_at DESC, c.claim_id
+     ORDER BY c.updated_at DESC, c.predicate, ${value}, c.claim_id
      LIMIT $3`, [owner, CURRENT_STATES, clampLimit(factLimit, 30)]);
   return { conversation, facts: [...new Set(facts.map(line))] };
 }

@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-10-19T04:51:29.707Z",
+  "node": "v24.19.0",
+  "suiteFingerprint": "5374e3729a9b943a",
+  "caseCount": 82,
+  "note": "Baseline for context-canonical-heldout, re-recorded 2026-10-19 (DEVELOPMENT data since 2026-10-17; promotion record: eval/datasets/retrieval-heldout.v1.PROMOTION.md). The E6 fixture was re-recorded (the actor retry adds a call class; the model's readings changed: Kofi now extracted as subject; the cancellation as (Porto offsite, has_status, cancelled)). With the 2026-10-19 rules (ended activity across activity predicates; cancelled thing as subject) all 10 changes of the world are applied, 0 wrong: stale_leaks 2 -> 1 (h009 remains: a scoring artefact — the sentence also carries a still-current works_at claim and is not quoted), mrr 0.770 -> 0.789 (V2), canonical_coverage 1.0. Known: h117 \"Who won the last World Cup?\" still receives a churn fact on the word \"last\". Regenerate (only with a justification in the PR): AQUA_TEST_DATABASE_URL=<disposable migrated db> npm run eval:gate -- context-canonical-heldout --update",
+  "coverage": {
+    "total": 82,
+    "executed": 82,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "recall_at_8": 0.8928571428571429,
+    "mrr": 0.7892857142857144,
+    "ndcg_at_8": 0.7734801160272456,
+    "top1_correct": 0.7142857142857143,
+    "unknown_honesty": 0.6153846153846154,
+    "noise_lines": 25,
+    "noisy_queries": 10,
+    "recall_change": 0.7777777777777778,
+    "recall_compound": 1,
+    "recall_correction": 1,
+    "recall_current": 1,
+    "recall_history": 1,
+    "recall_multihop": 1,
+    "recall_negation": 1,
+    "recall_paraphrase": 0,
+    "recall_person": 1,
+    "recall_project": 1,
+    "stale_leaks": 1,
+    "stale_labelled_queries": 16,
+    "answerable_queries": 56,
+    "silence_queries": 26,
+    "canonical_coverage": 1
+  }
+}

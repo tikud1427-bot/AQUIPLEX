@@ -38,12 +38,27 @@
  * acts when a cognition PLAN says `broadenOnEmpty`, and no plan exists outside
  * a live turn — inventing one would measure a policy this harness made up.
  * Declared, not skipped silently.
+ *
+ * WHICH READ MODE (2026-10-16)
+ * ----------------------------
+ * This adapter seeds the LEGACY stores (evidence store + reasoning graph) and
+ * measures the LEGACY read: what chat serves when Postgres is absent or
+ * unreachable (`Brain.resolveReadMode()` → 'legacy'). It used to leave the
+ * mode implicit, so a DATABASE_URL in the environment silently flipped
+ * `canonicalOnly` on, emptied the floor, and every metric read 0 — the gate
+ * measured whatever the shell happened to export. The mode is now explicit
+ * (`canonicalOnly: false`) and the call is `assembleContextAsync`, the function
+ * routes/chat.js calls. The canonical read that production serves WITH a
+ * database is measured by `canonicalContextRetrieval.mjs` / `context-canonical`.
  */
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 let engine = null;
+
+/** The read this adapter measures — never inferred from the environment. */
+export const LEGACY_READ = false;
 
 /**
  * Import the engine once, against a private data directory.
@@ -96,8 +111,9 @@ export async function retrieveWithContextEngine(ownerId, query, { limit = 8, sem
     limit: o?.limit ?? limit,
     semanticScores: null,
   });
-  const out = brain.assembleContext(ownerId, query, floorRetrieve, {
+  const out = await brain.assembleContextAsync(ownerId, query, floorRetrieve, {
     limit, semanticScores, activeProjectId: null, retrievalV3Lanes,
+    canonicalOnly: LEGACY_READ,
   });
 
   return {

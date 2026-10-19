@@ -102,8 +102,14 @@ test('signup lands in the PRODUCT, not the workspace dashboard', () => {
   // The landing page promises "The AI that already understands your work" and
   // signup used to drop the user on /home — nineteen links — where they had to
   // find "Open Aqua" before meeting the thing they signed up for.
-  const i = at('app.post("/signup"');
-  const block = SRC.slice(i, i + 2600);
+  // Since 2026-10-19 the account is created when the emailed link is
+  // completed (POST /verify-email → authHandlers.verifySubmit), so that is
+  // where a new email account must land in the product.
+  assert.match(SRC, /app\.post\("\/verify-email", authLimiter, authHandlers\.verifySubmit\)/);
+  const auth = fs.readFileSync(path.join(__dirname, '..', '..', 'services', 'auth', 'authRoutes.service.js'), 'utf8');
+  const i = auth.indexOf('async function verifySubmit(');
+  assert.ok(i > -1, 'verifySubmit not found');
+  const block = auth.slice(i, auth.indexOf('\n  }\n', i));
   assert.match(block, /res\.redirect\("\/aqua"\)/);
   assert.ok(!/res\.redirect\("\/home"\)/.test(block), 'signup still redirects to /home');
 });
@@ -139,4 +145,20 @@ test('the 50 MB JSON parser runs only for signed-in engine calls', () => {
   const def = at('const aquaAccess = [');
   const block = SRC.slice(def, SRC.indexOf('];', def));
   assert.ok(block.indexOf('requireLogin') < block.indexOf('aquaJson'), 'aquaJson must come after requireLogin');
+});
+
+test('the 30/min engine limit counts only requests that can spend money; reads have their own ceiling', () => {
+  // Counting every GET let ordinary browsing exhaust the limit, after which the
+  // next chat message was refused (browser e2e, 2026-10-17).
+  const def = at('const engineLimiter = rateLimit({');
+  const block = SRC.slice(def, SRC.indexOf('});', def));
+  assert.match(block, /limit: 30/);
+  assert.match(block, /skip: \(req\) => READ_METHODS\.has\(req\.method\)/);
+  assert.match(SRC, /const READ_METHODS = new Set\(\["GET", "HEAD", "OPTIONS"\]\)/);
+  const read = SRC.slice(at('const engineReadLimiter = rateLimit({'));
+  assert.match(read.slice(0, 500), /skip: \(req\) => !READ_METHODS\.has\(req\.method\)/);
+  const access = SRC.slice(at('const aquaAccess = ['), SRC.indexOf('];', at('const aquaAccess = [')));
+  // Anchored on the array element: the engineLimiter line's comment also says "requireLogin".
+  assert.ok(access.indexOf('engineReadLimiter') > -1 && access.indexOf('engineReadLimiter') < access.indexOf('\n  requireLogin,'),
+    'the read limiter must also sit before requireLogin');
 });

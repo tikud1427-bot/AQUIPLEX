@@ -50,7 +50,18 @@ rate*) below what generic assistant memory achieves, while staying close to
 World Model gave stale answers 15.2% of the time. Simple retrieval memory scored
 9.1%, and pasting the full history scored 1.0% (`PRODUCT_SCORECARD.md`). The
 long-history test, where Aqua is designed to win, is pre-registered but **not
-yet run**.
+completed**: four attempts died to host sleep or a reboot, and no result exists.
+
+**On the real product (2026-10-17, founder workflow driven end to end):**
+
+- **21 of 23 checks pass.**
+- What a founder says reaches memory in 17–94 s.
+- A changed fact is used in later conversations.
+- Corrections and deletions hold across conversations and stores.
+- Another account sees none of it.
+- Known weakness: one sentence carrying two changes keeps only one of them.
+
+This is one synthetic workflow on our own machine, not user evidence.
 
 ## 5. Why existing alternatives fall short
 
@@ -99,6 +110,7 @@ Verified in the repository:
   - codebase indexing with a call graph and patch/checkpoint editing.
 - The World Model: a Postgres claim store with durable background jobs (extraction, contradiction, embedding, reflection), supersession, disputes, correction and deletion.
 - A two-minute onboarding interview that ends in a correctable "here is what I understood" card.
+- A Memory page showing **what Aqua currently answers from**, with the sentence or file each fact came from. One-click correction and deletion apply in every later conversation and every store, isolated per account (built and verified end to end, 2026-10-17).
 - An evaluation stack:
   - a regression gate (24 gates, passing);
   - held-out Lift experiments with a blind judge;
@@ -120,6 +132,8 @@ Don't describe the prototype as having product-market fit.
 ## 11. Evidence
 
 - **Evaluations:** see `PRODUCT_SCORECARD.md`. Report the v3 numbers as they are. The fixes improved the World Model by 9.6 points, but it does not yet beat simple memory. v4 is pre-registered with a fixed decision rule.
+- **Product workflow (synthetic, ours):** `aqua/scripts/e2e-founder-journey.mjs` on the real app: 21/23 checks; details in `PRODUCT_SCORECARD.md` §3b.
+- **Production read-path benchmark:** the canonical retrieval Aqua serves with a database carries far more irrelevant context than the legacy path (153 against 18 noise lines on 200 queries). It is now gated in CI; the fix is the next engineering priority.
 - **Customer workflows:** none recorded yet. `[Add pilot results here.]`
 
 ## 12. Founders
@@ -153,21 +167,25 @@ From the site's `/founders` page. **Founders to verify and expand.**
 
 ## Live demo script (about 4 minutes, the real product)
 
-Setup: a fresh account on the deployed site (or the local launcher) with a real
-provider key. Use a fictional startup, "Tidepool", and say on camera that it is
-fictional.
+Setup: the deployed release (or the local launcher) with a **paid** extraction
+provider key; on free tiers a stated change can take a minute or more to reach
+memory. Use a fictional startup, "Tidepool", and say on camera that it is
+fictional. Every step below passed in the automated founder journey (run 4).
 
-1. **Sign up, then open the onboarding (20 s).** Point out that Aqua asks what you're working on and states what it can't see (email, chat tools, code hosts).
-2. **Tell it once (60 s).** For example: *"I'm building Tidepool, a scheduling tool for physiotherapy clinics. We charge $49 a month per clinic. Launch is April 15. The backend is Go on Postgres."* Attach a one-page spec. Click **"Show me what you understand"**.
-3. **Verify (30 s).** The card lists what it understood, each item with its source. Correct one item on camera. This is the trust moment.
-4. **Change something (30 s).** In a **new** conversation: *"We moved launch to May 2 and pricing is now $39."*
-5. **The payoff (60 s).** In another **new** conversation: *"Draft a 5-line investor update."* Show that it uses May 2 and $39, not April 15 and $49. Open the Memory page: the old values are marked superseded, with dates and the sentences they came from.
-6. **Delete (20 s).** Delete the pricing fact. Ask *"What do we charge?"* Aqua should say it doesn't know, rather than resurrect $39 or $49.
+1. **Sign up → onboarding (20 s).** Aqua asks what you are working on and says what it cannot see (email, chat tools, code hosts).
+2. **Tell it once (60 s).** *"I'm building Tidepool, a scheduling tool for physiotherapy clinics. My co-founder Maya runs engineering."* Then *"We charge $49 a month per clinic, and our launch is on April 15."* Attach a one-page pricing note. Click **"Show me what you understand"**.
+3. **Where it learned it (30 s).** Open **Memory → What Aqua knows now**. Each item shows its source: a conversation or the uploaded file. Expand "Where Aqua learned this" on one.
+4. **Change one thing (30 s).** In a **new** conversation: *"Update: we moved the launch to May 2."* Say one change per sentence; compound changes are a known weakness. Refresh Memory until the new date is listed.
+5. **The payoff (45 s).** In another **new** conversation: *"Draft a 4-line investor update."* It says May 2, not April 15. Ask *"Where did you learn that?"*: it points to what you told it.
+6. **Correct (30 s).** In Memory, press **Correct** on the biggest-risk item and type the new value. Ask about it in a new conversation: the corrected value answers.
+7. **Delete (25 s).** Delete the co-founder item. Ask *"Who is my co-founder?"* in a new conversation: Aqua says it does not know.
 
-What makes it different: change handling, sources and deletion that holds.
+What makes it different: change handling, visible sources, and corrections and
+deletions that hold in every later conversation.
 
-How it is verified: the Memory page, plus the eval numbers above, shown honestly.
+How it is verified: the Memory page on screen, and the automated journey and
+eval numbers in `PRODUCT_SCORECARD.md`, shown as they are, including the
+weaknesses.
 
-**Rehearse on the deployed build first.** Step 5 depends on extraction quality,
-and that is exactly where the system is weakest. If it fails in rehearsal, say
-so, and show the measured stale rate rather than a cherry-picked run.
+**Rehearse on the deployed build.** If a step fails in rehearsal, say so rather
+than cherry-picking a run.

@@ -30,7 +30,7 @@
  */
 import { assembleContext } from './assembler.js';
 import { tokensOf, scoreCandidate } from './scorer.js';
-import { analyseQuestion, factAffinity, MIN_AFFINITY } from '../../pic/questionShape.js';
+import { analyseQuestion, factAffinity, claimAffinity, isOverviewRequest, MIN_AFFINITY } from '../../pic/questionShape.js';
 import { brainEnabled } from '../worldModel/schema.js';
 import { lanesFromCandidates, reciprocalRankFusion, rerankWithFusion, rerankWithCrossEncoder, rerankWithCrossEncoderAsync } from './retrievalV3.js';
 import { runBoundedRetrievalRounds, runBoundedRetrievalRoundsAsync } from './e8Pipeline.js';
@@ -46,6 +46,8 @@ const metrics = {
   // gate that drops without counting is indistinguishable from a lane that
   // never ran (L13).
   reachGated: 0,
+  // Canonical claims a lane reached that failed the relevance gate (2026-10-17).
+  canonicalGated: 0,
 };
 
 /** V2 assembly is opt-in on top of the read-side switch. */
@@ -137,6 +139,11 @@ export function contextV2Enabled() {
 
 export function retrievalV3Enabled() {
   return brainEnabled() && String(process.env.AQUA_RETRIEVAL_V3 ?? '').toLowerCase() === 'on';
+}
+
+/** AQUA_CANONICAL_RELEVANCE_GATE — ON unless explicitly 'off' (the rollback). */
+export function canonicalRelevanceGateEnabled() {
+  return String(process.env.AQUA_CANONICAL_RELEVANCE_GATE ?? 'on').toLowerCase() !== 'off';
 }
 
 function scoreForCandidate(candidate, ctx) {
@@ -346,19 +353,89 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
   const slotsFor = predicate => planSlots
     .filter(s => (s.predicates ?? []).includes(String(predicate)))
     .map(s => s.id);
-  const add = (claim, lane, score = null, entityIds = []) => {
+
+  // RELEVANCE GATE (2026-10-17). Every canonical claim a lane reaches must be
+  // about the question (pic/questionShape.js claimAffinity — the same rule the
+  // legacy floor applies). Before this, the canonical lanes admitted whatever
+  // they reached, and the assembler counts any structured/graph item as
+  // relevance-backed, so a first-person question with no answer in the store
+  // was handed every claim about the user. The ANCHORS are resolved once:
+  // only an entity the question NAMES (or a role it resolves) is topical; the
+  // self entity is not.
+  const shape = analyseQuestion(query);
+  const predicateHints = predicateHintsForQuery(query);
+  let anchored = [];
+  let roleIds = [];
+  if (laneEnabled(requestedLanes, 'structured') || laneEnabled(requestedLanes, 'graph')) {
+    anchored = await canonicalWM.findEntities(ownerId, query, { limit: 8, pool });
+    // ROLE REFERENCES (2026-10-11): "Where does my mentor work?" names no entity,
+    // so no lane anchored on Sam Patel and his employer never reached the answer.
+    // A role word in the question that names a CURRENT role holder (related_to,
+    // prompt rule 13) anchors on that holder. Owner-scoped, bounded (≤ 8).
+    try { roleIds = roleAnchorsForQuery(query, await canonicalWM.roleHolders(ownerId, { limit: 64, pool })); }
+    catch { roleIds = []; }
+  }
+  const anchorIds = anchored.map(e => String(e.id));
+  // An OVERVIEW request ("What do you know about me?") makes the user — and any
+  // role it names ("my team") — the topic itself, so the self anchor counts.
+  const overview = isOverviewRequest(query);
+  const namedAnchors = new Set([...anchored.filter(e => overview || e.type !== 'self').map(e => String(e.id)), ...roleIds]);
+  const gateOn = canonicalRelevanceGateEnabled();
+  let gated = 0;
+
+  // "IS X STILL TRUE?" (2026-10-17). A question that names a value the World
+  // Model no longer holds as current — "Do I work at Intercom?" against
+  // works_at(self, Intercom) negated/superseded — is answered by that SLOT's
+  // current value (works_at(self, Nummo)). Neither shares a word, so no lane
+  // reached it. Collected here, resolved after the lanes, bounded.
+  const slotQueries = new Map();     // `${subjectId}|${predicate}` → { subject, predicate }
+  const successorIds = new Set();
+  const nowMs = Date.now();
+  const noLongerCurrent = c => c.state === 'superseded' || c.polarity === 'negated'
+    || (c.validTo != null && Date.parse(c.validTo) < nowMs);
+  const noteRetiredValue = (claim) => {
+    if (!gateOn || !claim?.subjectEntityId || !claim.predicate || claim.predicate === 'unresolved') return;
+    const objectNamed = claim.object?.entityId != null && namedAnchors.has(String(claim.object.entityId));
+    const subjectNamed = namedAnchors.has(String(claim.subjectEntityId));
+    // THE MIRROR CASE: a past-tense question naming a value of a slot ("Where
+    // did I work before Nummo?") asks for that slot's HISTORY.
+    if (retrospective) {
+      if (objectNamed && slotQueries.size < 4) slotQueries.set(`${claim.subjectEntityId}|${claim.predicate}`, { subject: String(claim.subjectEntityId), predicate: String(claim.predicate) });
+      return;
+    }
+    if (!noLongerCurrent(claim)) return;
+    // The explicit successor whenever the question named either side of it;
+    // the slot's other current values only when it named the retired VALUE.
+    if ((objectNamed || subjectNamed) && claim.supersededBy && successorIds.size < 4) successorIds.add(String(claim.supersededBy));
+    if (objectNamed && slotQueries.size < 4) slotQueries.set(`${claim.subjectEntityId}|${claim.predicate}`, { subject: String(claim.subjectEntityId), predicate: String(claim.predicate) });
+  };
+
+  const add = (claim, lane, score = null, entityIds = [], { namedAnchor = false, exempt = false } = {}) => {
     if (!claim?.claimId || !claim.statement) return;
     if (claim.state === 'archived') return;
-    if (claim.state === 'superseded' && !retrospective) return;
+    if (claim.state === 'superseded' && !retrospective) { noteRetiredValue(claim); return; }
     if (!laneEnabled(requestedLanes, lane)) return;
     const key = String(claim.claimId);
     if (seen.has(key)) return;
+    if (gateOn && !exempt) {
+      const named = namedAnchor
+        || [claim.subjectEntityId, claim.object?.entityId].some(id => id != null && namedAnchors.has(String(id)));
+      const semantic = lane === 'dense' && Number.isFinite(Number(score)) ? Number(score)
+        : semanticScores instanceof Map && Number.isFinite(semanticScores.get(key)) ? semanticScores.get(key) : null;
+      const affinity = claimAffinity(shape, claim, {
+        namedAnchor: named, predicateMatch: predicateHints.includes(String(claim.predicate)), semantic,
+      });
+      // Not marked seen: another lane may still reach it through a named anchor.
+      if (!affinity.pass) { gated += 1; metrics.canonicalGated += 1; return; }
+    }
+    noteRetiredValue(claim);
     seen.add(key);
     items.push(normFact(key, claim.statement, {
       confidence: claim.confidence?.derived ?? claim.confidence ?? 0.5,
       citations: Array.isArray(claim.evidence) ? claim.evidence : [],
       via: `${lane === 'lexical' ? 'canonical-lexical' : lane}:${score == null ? '' : ` ${Number(score).toFixed(3)}`}`.trim(),
       sourceType: claim.sourceKind ?? 'conversation',
+      sourceRef: claim.sourceExternalRef ?? null,
       entityIds: [...new Set([claim.subjectEntityId, claim.object?.entityId, ...entityIds].filter(Boolean))],
       timestamp: claim.validFrom ?? claim.assertedAt ?? null,
       semanticId: key,
@@ -381,19 +458,7 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
     for (const claim of lexical) add(claim, 'lexical', claim.retrievalScore);
   }
 
-  // ROLE REFERENCES (2026-10-11): "Where does my mentor work?" names no entity,
-  // so no lane anchored on Sam Patel and his employer never reached the answer.
-  // A role word in the question that names a CURRENT role holder (related_to,
-  // prompt rule 13) anchors on that holder. Owner-scoped, bounded (≤ 8).
-  let roleIds = [];
-  if (laneEnabled(requestedLanes, 'structured') || laneEnabled(requestedLanes, 'graph')) {
-    try { roleIds = roleAnchorsForQuery(query, await canonicalWM.roleHolders(ownerId, { limit: 64, pool })); }
-    catch { roleIds = []; }
-  }
-
   if (laneEnabled(requestedLanes, 'structured')) {
-    const anchored = await canonicalWM.findEntities(ownerId, query, { limit: 8, pool });
-    const anchorIds = anchored.map(e => String(e.id));
     if (roleIds.length) {
       // Everything currently known ABOUT the person or organisation the role
       // names — including the role claim itself — whatever the question's cue.
@@ -402,7 +467,6 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
       });
       for (const claim of about) add(claim, 'structured', null, roleIds);
     }
-    const predicateHints = predicateHintsForQuery(query);
     if (!anchorIds.length && !predicateHints.length) {
       // A structured lane without a predicate/entity constraint would be a
       // full-corpus scan masquerading as a retrieval lane. L19/G6 forbid it.
@@ -447,7 +511,9 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
     const slotClaims = await canonicalWM.structuredClaims(ownerId, {
       predicates: wanted, currentOnly: !retrospective, limit: Math.min(limit, 24), pool,
     });
-    for (const claim of slotClaims) add(claim, 'structured');
+    // Exempt from the relevance gate: a required slot is defined by its
+    // predicate, not by the question's words.
+    for (const claim of slotClaims) add(claim, 'structured', null, [], { exempt: true });
   }
 
   if (laneEnabled(requestedLanes, 'dense')) {
@@ -474,7 +540,7 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
   }
 
   if (laneEnabled(requestedLanes, 'graph')) {
-    const anchors = [...new Set([...(await canonicalWM.findEntityIds(ownerId, query, { limit: 8, pool })), ...roleIds])].slice(0, 12);
+    const anchors = [...new Set([...anchorIds, ...roleIds])].slice(0, 12);
     if (anchors.length) {
       const walked = await traverseGraph(pool, ownerId, anchors, {
         maxHops: 2, fanout: 6, maxEntities: 48, retrospective,
@@ -483,7 +549,11 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
         const claimIds = [...new Set(walked.entities.map(x => x.viaClaimId).filter(Boolean))].slice(0, 48);
         const claims = await canonicalWM.readClaims(ownerId, claimIds, { retrospective, pool });
         const byId = new Map(claims.map(c => [String(c.claimId), c]));
-        for (const hop of walked.entities) add(byId.get(String(hop.viaClaimId)), 'graph', 1 / (1 + Number(hop.hop || 0)), hop.path ?? []);
+        // A walk is topical only when it STARTED at an entity the question named.
+        const fromNamed = hop => hop.anchorId != null && namedAnchors.has(String(hop.anchorId));
+        for (const hop of walked.entities) {
+          add(byId.get(String(hop.viaClaimId)), 'graph', 1 / (1 + Number(hop.hop || 0)), hop.path ?? [], { namedAnchor: fromNamed(hop) });
+        }
 
         // NEIGHBOUR FACTS (2026-10-04). The walk returns the EDGE claims
         // ("I run product at Ledgerly") but never what is known ABOUT the
@@ -493,32 +563,69 @@ async function canonicalCandidatesForQuery(deps, ownerId, query, { limit = 24, r
         // and still could not answer. Facts whose subject is a ONE-hop
         // neighbour are added, bounded (8 entities, 16 claims, owner-scoped),
         // and scored below the edges that led to them.
-        const neighbours = [...new Set(walked.entities
-          .filter(x => Number(x.hop || 0) <= 1 && x.entityId && !anchors.includes(x.entityId))
-          .map(x => x.entityId))].slice(0, 8);
+        const oneHop = walked.entities.filter(x => Number(x.hop || 0) <= 1 && x.entityId && !anchors.includes(x.entityId));
+        const neighbours = [...new Set(oneHop.map(x => x.entityId))].slice(0, 8);
+        const namedNeighbours = new Set(oneHop.filter(fromNamed).map(x => String(x.entityId)));
         if (neighbours.length && canonicalWM.structuredClaims) {
           const about = await canonicalWM.structuredClaims(ownerId, {
             entityIds: neighbours, predicates: [], currentOnly: !retrospective, limit: 16, pool,
           });
           for (const claim of about) {
-            if (neighbours.includes(claim.subjectEntityId)) add(claim, 'graph', 0.4, [claim.subjectEntityId]);
+            if (neighbours.includes(claim.subjectEntityId)) {
+              add(claim, 'graph', 0.4, [claim.subjectEntityId], { namedAnchor: namedNeighbours.has(String(claim.subjectEntityId)) });
+            }
           }
         }
       }
     }
   }
 
+  // "IS X STILL TRUE?" — resolution. Superseded claims about a NAMED anchor are
+  // invisible to the current-only lanes above, so one bounded read finds them;
+  // then the successors and the slots' current values join as structured
+  // evidence, exempt from the word gate (their relevance is the retired value's).
+  if (gateOn && namedAnchors.size && laneEnabled(requestedLanes, 'structured')) {
+    try {
+      if (!retrospective) {
+        const touching = await canonicalWM.structuredClaims(ownerId, {
+          entityIds: [...namedAnchors], predicates: [], currentOnly: false, limit: 24, pool,
+        });
+        for (const c of touching) if (c.state === 'superseded') noteRetiredValue(c);
+        if (successorIds.size) {
+          for (const c of await canonicalWM.readClaims(ownerId, [...successorIds], { pool })) {
+            add(c, 'structured', null, [], { exempt: true });
+          }
+        }
+      }
+      // Present tense: the slot's CURRENT asserted values. Past tense: its
+      // history (superseded values included, archived never — lane states).
+      for (const { subject, predicate } of slotQueries.values()) {
+        const values = await canonicalWM.structuredClaims(ownerId, {
+          entityIds: [subject], predicates: [predicate], currentOnly: !retrospective, limit: 6, pool,
+        });
+        values
+          .filter(c => String(c.subjectEntityId) === subject && (retrospective || c.polarity !== 'negated'))
+          .slice(0, 3)
+          .forEach(c => add(c, 'structured', null, [], { exempt: true }));
+      }
+    } catch (err) {
+      console.warn(`[E7] state-slot resolution skipped (non-fatal): ${err?.message ?? err}`);
+    }
+  }
+
   items.sort((a, b) => {
     const sa = Number(a.via?.match(/\s([0-9.]+)$/)?.[1] ?? 0);
     const sb = Number(b.via?.match(/\s([0-9.]+)$/)?.[1] ?? 0);
-    return sb - sa || String(a.id).localeCompare(String(b.id));
+    // Ties broken by content before id: ids are random UUIDs, so an id
+    // tie-break made the same world rank differently in every database.
+    return sb - sa || String(a.text ?? '').localeCompare(String(b.text ?? '')) || String(a.id).localeCompare(String(b.id));
   });
   return {
     items: items.slice(0, Math.max(1, Math.min(64, limit * 4))),
     block: items.slice(0, Math.min(limit, 12)).map(x => `${x.text} [${x.via}]`).join('\n'),
     stats: {
       source: 'canonical', round, slotId: slotId ?? null,
-      claims: items.length,
+      claims: items.length, gated,
       lanes: [...new Set(items.flatMap(x => x.lanes ?? []))],
     },
   };
@@ -578,11 +685,25 @@ async function gatherCanonicalGraphCandidates(deps, ownerId, query, floor, opts)
       try { return await loader(ownerId, id); } catch { return null; }
     }));
     const byClaim = new Map(claims.filter(Boolean).map(c => [String(c.claimId), c]));
+    // Same relevance gate as the canonical lanes (2026-10-17). The anchors here
+    // come from the dense pool, not from the question, so only a walk from a
+    // prior-turn focus entity (a deictic follow-up) counts as named.
+    const shape = analyseQuestion(query);
+    const prior = new Set((Array.isArray(opts.priorEntityIds) ? opts.priorEntityIds : []).map(String));
+    const semantic = opts.semanticScores instanceof Map ? opts.semanticScores : null;
 
     return walked.entities.flatMap(edge => {
       const claim = byClaim.get(String(edge.viaClaimId));
       if (!claim || claim.state === 'archived') return [];
-      if (claim.state === 'superseded' && analyseQuestion(query).currency !== 'past') return [];
+      if (claim.state === 'superseded' && shape.currency !== 'past') return [];
+      if (canonicalRelevanceGateEnabled()) {
+        const sim = semantic?.get(String(claim.claimId));
+        const affinity = claimAffinity(shape, claim, {
+          namedAnchor: edge.anchorId != null && prior.has(String(edge.anchorId)),
+          semantic: Number.isFinite(sim) ? sim : null,
+        });
+        if (!affinity.pass) { metrics.canonicalGated += 1; return []; }
+      }
       return [{
         ...normFact(String(claim.claimId), claim.statementText, {
           confidence: claim.confidence,
@@ -594,6 +715,7 @@ async function gatherCanonicalGraphCandidates(deps, ownerId, query, floor, opts)
           citations: Array.isArray(claim.evidence) ? claim.evidence : [],
           via: `graph:${edge.hop}:${edge.direction}:${edge.predicate ?? 'relationship'}`,
           sourceType: claim.sourceKind ?? 'conversation',
+          sourceRef: claim.sourceExternalRef ?? null,
           entityIds: Array.isArray(edge.path) ? edge.path : [edge.entityId],
           hops: edge.hop,
           timestamp: claim.validFrom ?? claim.assertedAt ?? null,
@@ -829,6 +951,7 @@ function addDenseAblationCandidates(deps, ownerId, floor, byId, opts, laneAllowe
       citations: canonical.evidence ?? [],
       via: `dense: ${sim.toFixed(2)}`,
       sourceType: canonical.sourceKind ?? 'conversation',
+      sourceRef: canonical.sourceExternalRef ?? null,
       entityIds: canonical.subjectEntityId ? [canonical.subjectEntityId] : [],
       hops: null,
       timestamp: canonical.assertedAt ?? null,
@@ -972,6 +1095,9 @@ function normFact(id, text, extra = {}) {
     superseded: !!extra.superseded,
     via: extra.via ?? 'lexical',
     sourceType: extra.sourceType ?? 'document',
+    // Canonical claims: the source's external ref ("file:<name>:chunk:<n>" for an upload),
+    // so the answer context can say WHERE a statement came from.
+    sourceRef: extra.sourceRef ?? null,
     entityIds: extra.entityIds ?? [],
     hops: extra.hops ?? null,
     timestamp: extra.timestamp ?? null,

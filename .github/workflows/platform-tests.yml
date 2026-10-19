@@ -2,6 +2,10 @@
 # launch safety. These live in the root tests/ directory and were never run by
 # eval-gate.yml (which works inside aqua/ and only on aqua/** changes), so
 # security regressions in index.js could merge unnoticed.
+#
+# The account-security tests (takeover, linking, verification tokens,
+# entitlements, the read-only audit) need a real MongoDB and are SKIPPED
+# without one, so CI provides a throwaway mongo service (2026-10-19).
 name: platform-tests
 
 on:
@@ -12,6 +16,17 @@ on:
 jobs:
   platform:
     runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports: ["27017:27017"]
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok'"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      AQUA_TEST_MONGO_URI: mongodb://127.0.0.1:27017/aqua_ci
+      MONGO_URI: ""
+      AQUA_DISABLE_MONGO_MIRROR: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

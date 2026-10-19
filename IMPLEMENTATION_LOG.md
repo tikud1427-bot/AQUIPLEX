@@ -189,3 +189,96 @@ Not run: Playwright e2e, the Android release check, provider-backed evaluations
 6. Deletion gaps from the 2026-10-12 audit: graph nodes, re-derived beliefs, retroactive deletions, two-process JSON stores.
 7. A CSP pass; email verification; a longer minimum password.
 8. Remove the legacy surfaces (bundles, tools directory, blog, write) after a data-retention decision.
+
+---
+
+# Session 2 — 2026-10-16/17
+
+Base: `e64f26cb` (the founder committed session 1 as "final"). Nothing committed,
+pushed or deployed. The machine rebooted twice during the session (Docker and
+the v4 run died with it). Disposable containers only.
+
+## 1. Release candidate (`RELEASE_MANIFEST_RC_2026-10-17.md`)
+
+Built `release/rc-2026-10-16` from hotfix `6dea686e` (parent = production
+`54c8de96`) by selective 3-way apply. Lockfiles are identical to `main` and
+there are no migrations (16 = 16).
+
+**Defect found while testing it:** `main`'s test runner on Windows exited 0
+having run **nothing** (absolute paths exceeded the command line). The runner fix
+was ported. The definitive runs used Linux containers: RC versus production
+3,634 versus 3,592 tests, **0 new failures**.
+
+## 2. Database-configured eval gate
+
+- **Root cause:** with `DATABASE_URL` set, `canonicalReadMode()` returns 'authoritative', so `contextDeps(canonicalOnly=true)` drops the legacy stores the context suites seed. Every metric became 0.
+- **Fixes:**
+  - Legacy suites state their mode (`canonicalOnly: false`) and call `assembleContextAsync`, which is what chat calls. All baselines are unchanged in both modes.
+  - The gate maps Postgres only from `AQUA_TEST_DATABASE_URL`.
+  - Suites declare `requires: ['postgres']`; a missing database prints NOT RUN, and `AQUA_GATE_REQUIRE_DB=1` makes it fail.
+  - CI (`eval-gate.yml`) gets a pgvector service and a migration step.
+- **New suite `context-canonical`** measures the production read with a database. The 60 facts go through `Brain.understandTurn`, replaying a recorded Groq `gpt-oss-120b` fixture. The replay matches requests with nonce and timestamp normalised and list order sorted; it stores normalised requests and fails loudly on a miss. The baseline is recorded as measured.
+- **Production fixes found by building it:**
+  1. **Nondeterministic prompts and retrieval.** Ties on timestamps fell to random UUIDs or row order in the extraction context, the known-entities list, lexical, structured and entity search, the graph fan-out, and the final rank sorts. Content tie-breaks were added. Proven: two processes give identical keys and rankings.
+  2. **E10-migrated claims** (`extracted / unresolved`) are invisible to every canonical read. Documented, not fixed.
+- **Tests:** `eval/tests/readPathParity.test.js` (adapter versus `chat.js` parity; the gate ignores an inherited `DATABASE_URL`; NOT RUN and REQUIRE_DB behaviour); `src/core/tests/extractionContextDeterminism.live.test.js` (fails without the tie-break).
+
+## 3. Primary workflow: the Memory page shows what answers
+
+- **Defect:** with Postgres, answers come from canonical claims, but the Memory page listed the legacy fact store.
+- **Built:**
+  - `GET /brain/current` (current claims with quote, source, date, disputed/scheduled flags);
+  - `POST /brain/claims/:id/forget`;
+  - `POST /brain/claims/:id/correct-value` (the new value becomes the stored *object*; the repository otherwise keeps the old one);
+  - a "What Aqua knows now" section with Correct and Delete.
+- **Deletion completeness**, each from a reproduced failure:
+  - sibling claims from the same source segment are archived;
+  - legacy facts holding the value, or the deleted person's name, are removed;
+  - the legacy slot named by a deleted role (`cofounder`) is cleared;
+  - the veto retires user-deleted values, names and role slots, so re-derived copies cannot answer.
+- **Tests:** `src/memory/tests/forgetClaim.live.test.js` (7 live cases, including cross-account 404s; the veto and sibling cases fail without the fix).
+
+## 4. Defects found by the live founder journey (`aqua/scripts/e2e-founder-journey.mjs`)
+
+| Defect | Root cause | Fix and test |
+|---|---|---|
+| A stated change was permanently lost | Extraction 429 → 2ⁿ-s backoff dead-lettered the job about 30 s after the first failure | Capacity errors back off 1, 2, 4, 8 min, then the cap (`jobQueue.retryWaitMs`); `jobQueue.test.js` |
+| "Where did you learn **our** price?" answered from Aquiplex's profile | The identity router's first-person check was singular only | "we/our/us" count as first person; `identityLayer.test.js` |
+| A deleted fact came back | Sibling claim, subject name, garbage legacy slot | See §3 |
+
+Journey results by run: 17/23, 12/22 (driver not waiting, fixed), 19/23, then **21/23**. The remaining failure is a compound change sentence losing one of its two changes (extraction quality; not tuned).
+
+## 5. Defects found by the browser suite (first time run signed in against the real app)
+
+| Defect | Fix |
+|---|---|
+| Ordinary browsing exhausted the 30/min message limit, and the next chat got a 429 | The limiter counts only spending methods; a separate 300/min read limiter. `launchSafety.test.js` |
+| Duplicate `#aqua-sidebar-search` on phones (the shortcut focused a hidden input) | The desktop sidebar is not mounted on mobile |
+| Focus not returned after the artifacts panel or drawer closed | Capture in `onOpenAutoFocus`, restore in `onCloseAutoFocus` |
+| Specs navigated to absolute `/` (the site root on the real server) | Relative `./`; `e2e/make-session.mjs` + `playwright.local.config.ts` |
+
+**Open:** the markdown-tables spec shows narrow-viewport table rendering defects (28/42).
+
+## 6. Other fixes this session
+
+- **Billing:** `refund()` was not idempotent (every call minted credits); now once-only. `usageGuard` refunds any charged request that ends in 4xx/5xx. `tests/platform/creditRefund.test.js`.
+- **Isolation:** `intro/complete` wrote its marker onto any conversation id. It is now limited to the caller's own conversations. Two fixtures that depended on the cross-account write were corrected to production-shaped ownership.
+
+## 7. Not completed, with reasons
+
+- **Lift v4: no result.** Attempt 3 ran as pre-registered (tree `aadda450`, fresh DB) and died at about 40 minutes when the machine rebooted. The protocol voids crashed runs, and it was not relaunched on battery. Launch kit: `scratchpad/v4run/launch-v4.ps1` or the VM kit.
+- **Not run:** Android Gradle build (no JDK); WebKit browser projects.
+- **Open:** compound-change extraction; canonical-read noise and unknown-honesty; E10 unresolved claims.
+
+## 8. Commands (this session)
+
+| Command | Result |
+|---|---|
+| Per-directory aqua battery, live PG + Redis (`scratchpad/batch-battery.sh`) | 4,392: 4,388 pass, 0 fail, 4 skipped |
+| `npm run test:platform` | 245/246 (local gitignored patches) |
+| `cd aqua-frontend && npx tsc -b && npx vitest run` | clean; 117/117 |
+| `cd aqua && AQUA_TEST_DATABASE_URL=<test db> node eval/gate.mjs` | PASS (incl. `context-canonical`) |
+| `cd aqua && node eval/gate.mjs` (no DB) / with `AQUA_GATE_REQUIRE_DB=1` | PASS with NOT RUN reported / BLOCKED (exit 1), as designed |
+| RC in Linux `node:20` (`scratchpad/linux-battery.sh`) | 3,617/3,634; 0 new failures against production |
+| `node aqua/scripts/e2e-founder-journey.mjs` on the real launcher | 21/23 (run 4) |
+| `npx playwright test -c playwright.local.config.ts` (Chromium, 7 viewports) | shell suite passing except one capacity timeout; markdown-tables 28/42 on dev |

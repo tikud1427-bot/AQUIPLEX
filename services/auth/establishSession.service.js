@@ -31,6 +31,9 @@ function establishSession(req, user) {
       if (err) return reject(err);
       req.session.user   = sessionIdentity(user);
       req.session.userId = user._id;
+      // The account's security version at sign-in; enforceAuthVersion ends the
+      // session once the account's version moves past it (identityPolicy).
+      req.session.authVersion = user.authVersion || 0;
       req.session.save((saveErr) => (saveErr ? reject(saveErr) : resolve()));
     });
   });

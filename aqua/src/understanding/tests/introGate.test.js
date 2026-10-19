@@ -112,3 +112,24 @@ test('gate: no owner still answers, and still offers', async () => {
   assert.equal(body.ownerId, null);
   assert.equal(body.shouldOffer, true);
 });
+
+test('complete: one account cannot write the intro marker onto another account\'s conversation', async () => {
+  const MALLORY = 'gate-mallory';
+  const victim = createConversation({ userId: 'gate-victim' });
+  const { getConversationMeta } = await import('../../memory/conversationStore.js');
+  const res = await fetch(`${base}/understanding/intro/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-test-user': MALLORY },
+    body: JSON.stringify({ conversationId: victim }),
+  });
+  assert.equal(res.status, 200);
+  assert.notEqual(getConversationMeta(victim)?.kind, 'understanding_intro', 'marker landed on a foreign conversation');
+
+  const own = createConversation({ userId: MALLORY });
+  await fetch(`${base}/understanding/intro/complete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-test-user': MALLORY },
+    body: JSON.stringify({ conversationId: own }),
+  });
+  assert.equal(getConversationMeta(own)?.kind, 'understanding_intro', 'the owner\'s own marker must still land');
+});

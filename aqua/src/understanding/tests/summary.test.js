@@ -186,8 +186,10 @@ test('U5: completing the intro returns the card and stops the offer', async () =
 
   // The conversation must exist — updateConversationMeta is a no-op on an
   // unknown id, which is correct: you cannot complete an intro that never
-  // happened. In production the chat pipeline has already created it.
-  getOrCreateConversation('conv-u5');
+  // happened. In production the chat pipeline has already created it — OWNED
+  // by the signed-in user (2026-10-16: the marker only lands on the caller's
+  // own conversation; this fixture used to create an unowned one).
+  getOrCreateConversation('conv-u5', { userId: 'u5-done' });
 
   const done = await post('/understanding/intro/complete', 'u5-done', { conversationId: 'conv-u5' });
   assert.equal(done.status, 200);
@@ -202,7 +204,11 @@ test('U5: completing the intro returns the card and stops the offer', async () =
 test('U5: someone who did the intro is never re-offered it, even at a low score', async () => {
   // Re-offering reads as "you failed". Understanding grows from ordinary
   // conversation afterwards; that is the design, not a fallback.
-  const state = await get('/understanding/intro/state?conversationId=conv-u5', 'u5-nobeliefs');
+  // This account completes its OWN intro with nothing learned (it used to read
+  // the marker another account had written on conv-u5).
+  getOrCreateConversation('conv-u5-nobeliefs', { userId: 'u5-nobeliefs' });
+  await post('/understanding/intro/complete', 'u5-nobeliefs', { conversationId: 'conv-u5-nobeliefs' });
+  const state = await get('/understanding/intro/state?conversationId=conv-u5-nobeliefs', 'u5-nobeliefs');
   assert.equal(state.body.hasIntro, true);
   assert.equal(state.body.shouldOffer, false);
 });
