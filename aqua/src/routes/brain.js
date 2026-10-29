@@ -58,7 +58,7 @@ import { getLedger } from '../pic/picStore.js';
 import * as Brain from '../brain/index.js';
 import { selfEntityEnabled } from '../brain/identity/selfEntity.js';
 import { flagReport } from '../core/flags.js';
-import { ErrorCodes } from './envelope.js';
+import { ErrorCodes, publicErrorMessage } from './envelope.js';
 import { getRevisionFeed } from '../brain/reflectionV3/revisionFeed.js';
 import { claimWithEvidence, correctClaim, readHistory } from '../core/worldModel/worldModelRepository.js';
 import * as Proactive from '../brain/proactive/index.js';
@@ -203,14 +203,14 @@ function guarded(handler) {
         result.catch(err => {
           console.error(`[BRAIN_API] ${req.method} ${req.path} failed:`, err?.stack ?? err?.message ?? err);
           if (!res.headersSent) {
-            res.status(500).json({ success: false, code: ErrorCodes.INTERNAL, error: err?.message ?? 'Internal error' });
+            res.status(500).json({ success: false, code: ErrorCodes.INTERNAL, error: publicErrorMessage(err) });
           }
         });
       }
     } catch (err) {
       console.error(`[BRAIN_API] ${req.method} ${req.path} failed:`, err?.stack ?? err?.message ?? err);
       if (!res.headersSent) {
-        res.status(500).json({ success: false, code: ErrorCodes.INTERNAL, error: err?.message ?? 'Internal error' });
+        res.status(500).json({ success: false, code: ErrorCodes.INTERNAL, error: publicErrorMessage(err) });
       }
     }
   };
@@ -410,10 +410,11 @@ router.post('/claims/:id/correct', guarded(async (req, res) => {
     });
   } catch (error) {
     if (/already superseded/i.test(String(error?.message ?? ''))) {
-      return res.status(409).json({ success: false, code: 'CLAIM_ALREADY_SUPERSEDED', error: error.message, flags: flagState() });
+      return res.status(409).json({ success: false, code: 'CLAIM_ALREADY_SUPERSEDED', error: 'That fact changed since you loaded the page. Refresh and try again.', flags: flagState() });
     }
     const status = /not found|cannot be corrected|object must contain|not belong/i.test(String(error?.message ?? '')) ? 400 : 500;
-    return res.status(status).json({ success: false, code: status === 400 ? ErrorCodes.BAD_REQUEST : ErrorCodes.INTERNAL, error: error?.message ?? 'Correction failed', flags: flagState() });
+    if (status === 500) console.error(`[BRAIN_API] correction failed owner=${ownerId}:`, error?.stack ?? error?.message ?? error);
+    return res.status(status).json({ success: false, code: status === 400 ? ErrorCodes.BAD_REQUEST : ErrorCodes.INTERNAL, error: status === 400 ? (error?.message ?? 'Correction failed') : publicErrorMessage(error), flags: flagState() });
   }
 }));
 
@@ -430,6 +431,11 @@ function currentItem(c) {
   return {
     claimId: c.claimId,
     statement: c.statementText ?? c.statement ?? '',
+    // The part a value correction replaces (correct-value swaps it inside the
+    // statement). Shown pre-filled so the user edits it rather than guessing
+    // its boundaries — "charge $49 a month" typed as "$59 a month" read back as
+    // "We $59 a month per clinic" (live run 2026-10-29). Additive.
+    value: c.object?.kind === 'entity' ? (c.object.label ?? null) : c.object?.kind === 'literal' ? (c.object.value ?? null) : null,
     quote,
     sourceKind: c.sourceKind ?? 'conversation',
     sourceName: loc && typeof loc === 'object' ? (loc.name ?? loc.file ?? loc.fileName ?? null) : null,
@@ -445,8 +451,13 @@ router.get('/current', guarded(async (req, res) => {
   if (!dbConfigured()) return ok(res, ownerId, { configured: false, claims: [] }, { empty: true, kind: 'current' });
   const { currentWorld } = await import('../core/worldModel/canonicalReadModel.js');
   const rows = await currentWorld(ownerId, { limit: clampInt(req.query.limit, 120, 1, 160) });
-  const claims = rows.filter(c => c.predicate !== 'unresolved').map(currentItem);
-  ok(res, ownerId, { configured: true, claims }, { empty: claims.length === 0, kind: 'current' });
+  const { classifySensitivity } = await import('../memory/sensitivity.js');
+  const items = rows.filter(c => c.predicate !== 'unresolved').map(currentItem);
+  // Health and mood claims are not "what Aqua knows now" — they never answer
+  // by default (memory/sensitivity.js) — so they are listed apart, deletable.
+  const claims = items.filter(c => !classifySensitivity(`${c.statement ?? ''} ${c.quote ?? ''}`));
+  const hiddenSensitive = items.filter(c => !claims.includes(c));
+  ok(res, ownerId, { configured: true, claims, hiddenSensitive }, { empty: claims.length === 0, kind: 'current' });
 }));
 
 router.post('/claims/:id/forget', guarded(async (req, res) => {

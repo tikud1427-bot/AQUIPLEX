@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import {
   fetchMind, type MindModel, type CompactBelief, type Dimension,
 } from '@/api/mind';
+import { normalizeError } from '@/api/client';
+import { isDisplayableBelief, isInternalText, stripInternalPrefix } from '@/lib/displayGuard';
 
 /* ────────────────────────────────────────────────────────────────────────
    Mind store — single source for the dashboard.
@@ -44,62 +46,58 @@ function allBeliefs(m: MindModel): CompactBelief[] {
   return DIMENSIONS.flatMap((d) => m[d] ?? []);
 }
 
-/** Composite understanding: confidence mass + dimension coverage + context signals. */
 /**
- * The understanding score is computed SERVER-SIDE (src/understanding/coverage.js)
- * and delivered by GET /api/aqua/understanding.
- *
- * It used to be computed here. That made it invisible to the server, which
- * needs the same number to decide which follow-up question to ask — the brief's
- * stated purpose for confidence. Two implementations of one score is also how
- * the card and the dashboard end up disagreeing about how well AQUA knows you.
- *
- * This wrapper stays so callers keep a single import, and falls back to a local
- * computation only when the server value has not arrived yet (first paint,
- * offline). The fallback uses the identical formula on purpose — a different
- * one would make the number visibly jump when the fetch lands.
+ * How many things the model holds: live beliefs plus goals that are not dropped.
+ * Shown instead of the old composite "understanding %", which blended average
+ * confidence, coverage and counts with weights nothing had validated.
  */
-export function understandingScore(m: MindModel | null, serverScore?: number | null): number {
-  if (typeof serverScore === 'number') return serverScore;
+export function learnedCount(m: MindModel | null): number {
   if (!m) return 0;
-  const beliefs = allBeliefs(m).filter((b) => b.status !== 'archived');
-  if (!beliefs.length && !m.goals.length) return 0;
-
-  const avgConf = beliefs.length
-    ? beliefs.reduce((s, b) => s + b.confidence, 0) / beliefs.length
-    : 0;
-  const coverage = DIMENSIONS.filter((d) => (m[d] ?? []).some((b) => b.status !== 'archived')).length / DIMENSIONS.length;
-  const goalSignal = Math.min(1, m.goals.filter((g) => g.status === 'active' || g.status === 'blocked').length / 3);
-  const depth = Math.min(1, beliefs.reduce((s, b) => s + b.evidenceCount, 0) / 60);
-
-  return Math.round(100 * (0.45 * avgConf + 0.25 * coverage + 0.15 * depth + 0.15 * goalSignal));
+  // Counted by the same rule that decides what the page shows, so the number
+  // never includes rows a person cannot find below it.
+  return allBeliefs(m).filter(isDisplayableBelief).length
+    + m.goals.filter((g) => g.status !== 'abandoned').length;
 }
 
-export function dimensionConfidence(m: MindModel, d: Dimension): { avg: number; count: number } {
-  const list = (m[d] ?? []).filter((b) => b.status !== 'archived');
-  if (!list.length) return { avg: 0, count: 0 };
-  return { avg: list.reduce((s, b) => s + b.confidence, 0) / list.length, count: list.length };
+/** Beliefs shown in a dimension, and the observations behind them (the ring's arc and its shade). */
+export function dimensionEvidence(m: MindModel, d: Dimension): { count: number; observations: number } {
+  const list = (m[d] ?? []).filter(isDisplayableBelief);
+  return { count: list.length, observations: list.reduce((s, b) => s + (b.evidenceCount || 0), 0) };
+}
+
+/** The shown belief a reflection key ("dimension:key") refers to, or null. */
+export function establishedBelief(m: MindModel, dimKey: string): CompactBelief | null {
+  const i = dimKey.indexOf(':');
+  const dim = dimKey.slice(0, i) as Dimension;
+  const key = dimKey.slice(i + 1);
+  const b = (m[dim] ?? []).find((x) => x.key === key);
+  return b && isDisplayableBelief(b) ? b : null;
 }
 
 let learningSeq = 0;
 function diffLearnings(prev: MindModel | null, next: MindModel): Learning[] {
   const out: Learning[] = [];
   const now = Date.now();
-  const push = (kind: Learning['kind'], text: string) =>
-    out.push({ id: `l${now.toString(36)}_${learningSeq++}`, ts: now, kind, text });
+  // A line that would show a raw key, an intent id or a custom_ slug is dropped.
+  const push = (kind: Learning['kind'], text: string) => {
+    if (!isInternalText(text)) out.push({ id: `l${now.toString(36)}_${learningSeq++}`, ts: now, kind, text });
+  };
 
-  const label = (b: CompactBelief) => b.key.replace('tech:', '').replace(/_/g, ' ');
-  const val = (v: unknown) => (v === true ? '' : ` — ${String(typeof v === 'object' ? JSON.stringify(v) : v)}`);
+  const label = (b: CompactBelief) => (b.label ?? stripInternalPrefix(b.key)).toLowerCase();
+  // An object value has no sentence form; it is left out rather than printed as JSON.
+  const val = (v: unknown) => (v === true || v == null || typeof v === 'object' ? '' : ` — ${String(v)}`);
 
-  const prevMap = new Map(prev ? allBeliefs(prev).map((b) => [`${b.dimension}:${b.key}`, b]) : []);
-  for (const b of allBeliefs(next)) {
+  const shown = (m: MindModel) => allBeliefs(m).filter(isDisplayableBelief);
+  const prevMap = new Map(prev ? shown(prev).map((b) => [`${b.dimension}:${b.key}`, b]) : []);
+  for (const b of shown(next)) {
     const p = prevMap.get(`${b.dimension}:${b.key}`);
     if (!p) {
       if (prev) push('new', `Noticed ${label(b)}${val(b.value)}`);
     } else if (JSON.stringify(p.value) !== JSON.stringify(b.value)) {
-      push('shifted', `Updated ${label(b)}: now${val(b.value) || ` ${String(b.value)}`}`);
-    } else if (b.confidence - p.confidence >= 0.04) {
-      push('strengthened', `More confident: ${label(b)} (${Math.round(p.confidence * 100)}% → ${Math.round(b.confidence * 100)}%)`);
+      push('shifted', `Updated ${label(b)}${val(b.value)}`);
+    } else if (b.evidenceCount > p.evidenceCount) {
+      // Was "More confident: x (40% → 55%)" — a change in an uncalibrated number.
+      push('strengthened', `Seen again: ${label(b)}`);
     }
   }
 
@@ -111,10 +109,14 @@ function diffLearnings(prev: MindModel | null, next: MindModel): Learning[] {
     else if (p && p.status !== g.status && g.status === 'blocked') push('goal', `Goal blocked: “${g.title}”`);
   }
 
+  // A promoted key ("knowledge:domain:alpha") is named only through a belief the
+  // page shows; slicing the key itself put "domain:alpha" past the guard.
   const prevPromoted = new Set(prev?.reflections.flatMap((r) => r.promoted) ?? []);
   for (const r of next.reflections) {
     for (const key of r.promoted) {
-      if (!prevPromoted.has(key)) push('promoted', `Established: ${key.split(':').slice(1).join(':').replace(/_/g, ' ')}`);
+      if (prevPromoted.has(key)) continue;
+      const b = establishedBelief(next, key);
+      if (b) push('promoted', `Established: ${label(b)}`);
     }
   }
 
@@ -158,7 +160,7 @@ export const useMindStore = create<MindState>()((set, get) => ({
       set({
         loading: false,
         hasLoadedOnce: true,
-        error: err instanceof Error ? err.message : 'Could not load the mind model.',
+        error: normalizeError(err).message,
       });
     }
   },

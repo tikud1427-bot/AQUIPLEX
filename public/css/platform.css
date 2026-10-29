@@ -590,6 +590,14 @@ body:not(.px-page) .px-nav-mobile { background: #0b0e12; }
 }
 .px-nav-mobile a:not(.px-btn):hover { color: var(--px-text) !important; background: var(--px-surface-2); }
 .px-nav-mobile .px-btn { width: 100%; margin-bottom: 8px; min-height: 44px; }
+
+/* The logged-out primary action names the product on wide screens and
+   shortens on narrow ones so the header never wraps. */
+.px-nav-cta-short { display: none; }
+@media (max-width: 420px) {
+  .px-nav-cta-long { display: none; }
+  .px-nav-cta-short { display: inline; }
+}
 .px-nav-mobile-divider { height: 1px; background: var(--px-line); margin: 12px 0; }
 
 @media (max-width: 860px) {
@@ -644,8 +652,10 @@ body:not(.px-page) .px-footer { --px-bg: #0b0e12; color: #9aa4b2; }
 .px-footer-brand { display: flex; align-items: center; gap: 9px; margin-bottom: 14px; }
 .px-footer-brand img { width: 20px; height: 20px; object-fit: contain; border-radius: 5px; }
 .px-footer-brand span { font-size: 12.5px; font-weight: 600; letter-spacing: 0.14em; color: var(--px-text); }
-.px-footer-tagline { color: var(--px-text-3); max-width: 260px; line-height: 1.55; }
-.px-footer h4 {
+.px-footer-tagline { color: var(--px-text-3); max-width: 300px; line-height: 1.55; margin: 0 0 18px; }
+.px-footer-cta { display: inline-flex; }
+.px-footer h4,
+.px-footer .px-footer-h {
   margin: 0 0 14px;
   font-size: 12px;
   font-weight: 600;
@@ -759,304 +769,409 @@ body:not(.px-page) .px-footer { --px-bg: #0b0e12; color: #9aa4b2; }
 .px-light .px-auth-switch a { color: var(--px-accent) !important; }
 
 /* ═══════════════════════════════════════════════════════════════════
-   LANDING  —  rebuilt Phase 4
-   One narrative, one accent, one signature (the throughline).
-   Rules this block holds itself to:
-     · zero cards, zero shadows, zero borders except the FAQ hairlines
-     · the accent appears in exactly two roles: the throughline, the button
-     · four animated behaviours on the whole page, and no fifth
+   LANDING  —  company → product (2026-10-29)
+   The page has one job: AQUIPLEX (the company) → builds → Aqua AI (the
+   product) → download it. Rules this block holds itself to:
+     · the accent marks only things that belong to Aqua: the product
+       cell, the context thread, "available today", the use numbers
+     · surfaces and hairlines carry structure; no glows, no gradients
+     · one motion on scroll (section entry) plus hover/focus colour
    ═══════════════════════════════════════════════════════════════════ */
 
-/* The landing page separates with space, not rules. `.px-section +
-   .px-section` gives every other view a top border; the throughline
-   does that job here. */
 body.px-lp .px-section + .px-section { border-top: 0; }
 
-/* x-position of the throughline. One custom property, read by the line
-   itself and by the three rest nodes, so they can never disagree.
-   50% resolves against the full-bleed parent in both cases. */
-body.px-lp { --px-thread-x: var(--px-gutter); }
-@media (min-width: 900px) {
-  body.px-lp {
-    --px-thread-x: max(var(--px-gutter), calc(50% - (var(--px-w-content) / 2) + var(--px-gutter)));
-  }
-}
+/* Section rhythm: generous, with a hairline between major sections. */
+.px-lp-sec { padding: clamp(80px, 12vw, 136px) 0; }
+.px-lp-sec + .px-lp-sec { border-top: 1px solid var(--px-line); }
 
-/* ── The throughline ─────────────────────────────────────────────────
-   A hairline running the length of the narrative, carrying one light
-   pass in the reader's direction of travel. It passes behind content
-   and never through type. */
-.px-story { position: relative; }
-.px-thread {
-  position: absolute;
-  top: 0; bottom: 0;
-  left: var(--px-thread-x);
-  width: 1px;
-  background: var(--px-line-strong);
-  pointer-events: none;
-  z-index: 0;
-}
-.px-thread-light {
-  position: absolute;
-  left: 0; top: 0;
-  width: 1px;
-  height: 22vh;
-  background: linear-gradient(180deg, transparent, var(--px-accent), transparent);
-  opacity: 0.9;
-}
-/* Scroll-linked, not scroll-triggered: the light tracks position, so
-   scrolling up moves it up. Zero JS. Where unsupported the light simply
-   rests at the top and nothing is missing but the movement. */
-@supports (animation-timeline: scroll()) {
-  .px-thread-light {
-    animation: px-thread-travel linear both;
-    animation-timeline: scroll(root block);
-  }
-}
-@keyframes px-thread-travel {
-  from { top: 0; }
-  to   { top: calc(100% - 22vh); }
-}
-.px-story > section { position: relative; z-index: 1; }
-
-/* Three rests — the page's structural beats. The line is the only
-   element that knows about all three. */
-.px-beat::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: var(--px-thread-x);
-  width: 7px; height: 7px;
-  margin: -3px 0 0 -3px;
-  border-radius: 50%;
-  background: var(--px-accent);
-  z-index: 2;
-}
-
-/* ── Aqua's voice ────────────────────────────────────────────────────
-   The company speaks in Inter. The product speaks in the serif. Used in
-   exactly three places: the hero artifact, the three demonstrations,
-   and the three opening lines. Framed with corner marks, not a card. */
-.px-voice {
-  position: relative;
-  font-family: var(--px-font-display);
-  font-weight: 400;
-  font-size: var(--px-text-lead);
-  line-height: 1.55;
-  color: var(--px-text);
-  max-width: var(--px-m-voice);
-  padding: 4px 22px;
-  margin: 0;
-}
-.px-voice::before,
-.px-voice::after {
-  position: absolute;
-  font-family: var(--px-font-sans);
-  font-size: var(--px-text-micro);
-  color: var(--px-text-3);
-  line-height: 1;
-}
-.px-voice::before { content: '\231C'; top: 0; left: 0; }
-.px-voice::after  { content: '\231F'; bottom: 0; right: 0; }
-.px-voice-note {
-  font-size: var(--px-text-micro);
-  color: var(--px-text-3);
-  margin: 14px 0 0;
-}
-
-/* ── 1 · Hero ────────────────────────────────────────────────────────
-   The thesis, and one sample of the behaviour. No screenshot. */
-.px-hero { padding: clamp(104px, 16vw, 152px) 0 clamp(56px, 10vw, 88px); }
-.px-hero h1 {
-  font-family: var(--px-font-display);
-  font-size: var(--px-text-h1);
-  font-weight: 500;
-  letter-spacing: -0.025em;
-  line-height: 1.06;
-  max-width: var(--px-m-h1);
-  margin: 0 0 clamp(18px, 3vw, 24px);
-}
-.px-hero-sub {
-  font-size: var(--px-text-lead);
-  line-height: 1.55;
-  color: var(--px-text-2);
-  max-width: var(--px-m-lead);
-  margin: 0 0 clamp(28px, 5vw, 36px);
-}
-.px-hero-ctas {
-  display: flex;
+.px-kicker {
+  display: inline-flex;
   align-items: center;
-  gap: 20px;
-  flex-wrap: wrap;
-  margin-bottom: clamp(48px, 9vw, 72px);
+  gap: 10px;
+  font-size: var(--px-text-micro);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--px-text-3);
+  margin: 0 0 18px;
 }
-/* The only secondary action on the page, and it is a text link. Two
-   buttons of equal weight is a page admitting it has not decided. */
-.px-link {
-  font-size: var(--px-text-body);
-  font-weight: 450;
-  color: var(--px-text-2);
-  border-bottom: 1px solid transparent;
-  transition: color var(--px-t-fast) var(--px-ease), border-color var(--px-t-fast) var(--px-ease);
-}
-.px-link:hover { color: var(--px-text); border-bottom-color: var(--px-line-strong); }
-
-.px-artifact {
-  background: var(--px-surface);
-  border-radius: var(--px-radius-lg);
-  padding: clamp(24px, 5vw, 34px) clamp(20px, 4vw, 32px);
-  max-width: 620px;
+.px-kicker::before {
+  content: '';
+  width: 18px; height: 1px;
+  background: var(--px-accent);
 }
 
-/* ── 2 · The daily tax ───────────────────────────────────────────────
-   The layout is the argument: "again" accumulating down the page. */
-.px-tax-lead {
+.px-lp-head { max-width: 680px; margin-bottom: clamp(40px, 7vw, 64px); }
+.px-lp .px-lp-head h2 {
   font-family: var(--px-font-display);
   font-size: var(--px-text-h2);
   font-weight: 500;
   letter-spacing: -0.02em;
-  line-height: 1.14;
-  max-width: var(--px-m-h2);
-  margin: 0 0 clamp(36px, 6vw, 56px);
+  line-height: 1.12;
+  margin: 0 0 20px;
 }
-.px-tax-list { list-style: none; margin: 0; padding: 0; max-width: 620px; }
-.px-tax-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 0;
+.px-lp-head p:not(.px-kicker) {
   font-size: var(--px-text-lead);
-  color: var(--px-text-2);
-}
-.px-tax-row .px-again {
-  font-size: var(--px-text-caption);
-  color: var(--px-text-3);
-  flex-shrink: 0;
-  opacity: 1;
-  transition: opacity 320ms var(--px-ease);
-}
-.px-tax-close {
-  font-size: var(--px-text-lead);
-  color: var(--px-text-2);
-  margin: clamp(32px, 5vw, 44px) 0 0;
-  max-width: var(--px-m-lead);
-}
-
-/* ── 3 · What it costs ───────────────────────────────────────────────
-   Deliberately less content than the width allows. */
-/* The opening statement is an h2 so the cost beat survives a
-   headline-only reading, and is set identically so the section still
-   reads as three sentences rather than a heading with two notes. */
-.px-cost h2,
-.px-cost p {
-  font-family: var(--px-font-display);
-  font-size: var(--px-text-h3);
-  font-weight: 400;
-  line-height: 1.5;
-  color: var(--px-text);
-  max-width: var(--px-m-lead);
-  margin: 0 0 clamp(20px, 3.5vw, 28px);
-}
-.px-cost p:last-child { margin-bottom: 0; }
-.px-cost h2 { letter-spacing: 0; }
-.px-cost p { color: var(--px-text-2); }
-
-/* ── 4 · The turn ────────────────────────────────────────────────────
-   One sentence. The page stops. */
-.px-turn {
-  min-height: 68vh;
-  display: flex;
-  align-items: center;
-  padding: var(--px-space-sec) 0;
-}
-.px-turn h2 {
-  font-family: var(--px-font-display);
-  font-size: var(--px-text-h1);
-  font-weight: 500;
-  letter-spacing: -0.025em;
-  line-height: 1.06;
-  max-width: var(--px-m-h1);
-  margin: 0;
-}
-
-/* ── 5 · How it understands ──────────────────────────────────────────
-   Three moments, because there are genuinely three. */
-.px-mech { display: grid; gap: clamp(40px, 7vw, 64px); max-width: 640px; }
-.px-mech h3 {
-  font-family: var(--px-font-display);
-  font-size: var(--px-text-h3);
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
-  margin: 0 0 10px;
-}
-.px-mech p {
-  font-size: var(--px-text-body);
   line-height: 1.65;
   color: var(--px-text-2);
-  max-width: var(--px-m-body);
-  margin: 0;
+  max-width: 60ch;
+  margin: 0 0 14px;
+}
+.px-lp-head p:not(.px-kicker):last-child { margin-bottom: 0; }
+
+/* Text links. `.px-link` is a standalone action; `.px-link-inline` sits
+   inside a sentence and must look like a link without hovering. */
+.px-link {
+  font-size: var(--px-text-body);
+  font-weight: 500;
+  color: var(--px-text);
+  border-bottom: 1px solid var(--px-line-strong);
+  padding-bottom: 1px;
+  transition: color var(--px-t-fast) var(--px-ease), border-color var(--px-t-fast) var(--px-ease);
+}
+.px-link:hover { border-bottom-color: var(--px-text); }
+.px-link-arrow::after { content: ' \2192'; }
+.px-link-inline {
+  color: var(--px-text) !important;
+  text-decoration: underline !important;
+  text-decoration-color: var(--px-line-strong) !important;
+  text-underline-offset: 3px;
+}
+.px-link-inline:hover { text-decoration-color: var(--px-text) !important; }
+
+/* ── The download button ─────────────────────────────────────────────
+   Two lines so the destination (Google Play) is visible before the tap. */
+.px-btn.px-dl { gap: 12px; padding: 10px 22px 10px 18px; min-height: 54px; border-radius: var(--px-radius); }
+.px-dl-icon { flex-shrink: 0; }
+.px-dl-label { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.2; text-align: left; }
+.px-dl-label > span:first-child { font-size: 15px; font-weight: 600; }
+.px-dl-sub { font-size: 11.5px; font-weight: 450; opacity: 0.72; letter-spacing: 0.01em; }
+
+/* ── 1 · Hero ──────────────────────────────────────────────────────── */
+.px-hero { padding: calc(60px + clamp(44px, 8vw, 96px)) 0 clamp(64px, 10vw, 104px); }
+.px-hero-grid { display: grid; gap: clamp(56px, 9vw, 72px); align-items: center; }
+.px-lp .px-hero h1 {
+  font-family: var(--px-font-display);
+  font-size: clamp(2.5rem, 7.2vw, 4.75rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.02;
+  max-width: 13ch;
+  margin: 0 0 clamp(20px, 3vw, 28px);
+  text-wrap: balance;
+}
+.px-hero-lead {
+  font-size: clamp(1.0625rem, 1.6vw, 1.1875rem);
+  line-height: 1.6;
+  color: var(--px-text-2);
+  max-width: 44ch;
+  margin: 0 0 clamp(28px, 5vw, 36px);
+}
+.px-hero-lead strong { color: var(--px-text); font-weight: 600; }
+.px-hero-ctas { display: flex; align-items: center; gap: 16px 28px; flex-wrap: wrap; }
+.px-hero-meta {
+  font-size: var(--px-text-caption);
+  color: var(--px-text-3);
+  margin: 22px 0 0;
 }
 
-/* ── 6 · One world, three demonstrations ─────────────────────────────
-   The only multi-column moment on the page, which is what makes it
-   read as deliberate. No cards, no borders, no icons. */
-.px-world { display: grid; gap: clamp(44px, 7vw, 72px); }
-.px-world-label {
+/* The phone: a frame around real product text, built in CSS so it stays
+   sharp, themes with the page, and costs no image bytes. */
+.px-hero-visual { margin: 0; display: flex; flex-direction: column; align-items: center; }
+.px-phone {
+  width: min(100%, 330px);
+  padding: 9px;
+  border-radius: 42px;
+  background: var(--px-surface-2);
+  border: 1px solid var(--px-line-strong);
+  box-shadow: var(--px-shadow-lg);
+}
+.px-phone-screen {
+  min-height: clamp(470px, 52vw, 580px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 34px;
+  background: var(--px-bg);
+  border: 1px solid var(--px-line);
+  overflow: hidden;
+}
+.px-phone-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--px-line);
+  font-size: 13px;
+  font-weight: 600;
+}
+.px-phone-app { display: inline-flex; align-items: center; gap: 8px; }
+.px-phone-app img { border-radius: 5px; }
+.px-phone-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--px-accent); }
+.px-phone-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px 22px;
+}
+.px-phone-body p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--px-text-2); }
+.px-phone-body .px-phone-hi { font-size: 19px; font-weight: 550; letter-spacing: -0.01em; color: var(--px-text); }
+.px-phone-body .px-phone-ask { color: var(--px-text); }
+.px-phone-input {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 14px 16px;
+  padding: 9px 9px 9px 16px;
+  border: 1px solid var(--px-line-strong);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--px-text-3);
+}
+.px-phone-send { width: 26px; height: 26px; border-radius: 50%; background: var(--px-text); opacity: 0.85; }
+.px-hero-visual figcaption {
+  margin-top: 18px;
+  font-size: var(--px-text-micro);
+  color: var(--px-text-3);
+  text-align: center;
+}
+
+/* ── 2 · Company → product ─────────────────────────────────────────── */
+.px-rel { padding: 0 0 clamp(16px, 3vw, 32px); }
+.px-lp .px-rel-title {
   font-size: var(--px-text-micro);
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--px-text-3);
-  margin: 0 0 14px;
+  margin: 0 0 16px;
 }
-.px-world-item p:last-child {
-  font-size: var(--px-text-body);
-  line-height: 1.65;
-  color: var(--px-text-2);
-  max-width: var(--px-m-body);
-  margin: 16px 0 0;
+.px-rel-grid {
+  display: grid;
+  border: 1px solid var(--px-line-strong);
+  border-radius: var(--px-radius-lg);
+  overflow: hidden;
 }
-.px-world-item code {
-  font-family: var(--px-font-mono);
-  font-size: 0.94em;
+.px-rel-cell { padding: clamp(24px, 4vw, 36px); }
+.px-rel-cell.is-product { background: var(--px-surface); box-shadow: inset 0 2px 0 var(--px-accent); }
+.px-rel-role {
+  font-size: var(--px-text-micro);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--px-text-3);
+  margin: 0 0 10px;
 }
+.px-rel-name {
+  font-family: var(--px-font-display);
+  font-size: clamp(1.625rem, 3vw, 2rem);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+  margin: 0 0 10px;
+}
+/* Each cell carries its own mark: the AQUIPLEX logo for the company, the
+   Aqua AI app icon for the product. They are never swapped. */
+.px-rel-name { display: flex; align-items: center; gap: 12px; }
+.px-rel-mark { width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0; }
+.px-rel-desc { font-size: var(--px-text-body); line-height: 1.6; color: var(--px-text-2); margin: 0; max-width: 40ch; }
+/* The connector reads "builds": horizontal on phones, vertical on desktop. */
+.px-rel-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 clamp(24px, 4vw, 36px);
+  font-size: var(--px-text-caption);
+  color: var(--px-text-3);
+  border-top: 1px solid var(--px-line);
+  border-bottom: 1px solid var(--px-line);
+  min-height: 44px;
+}
+.px-rel-link::after { content: '\2193'; color: var(--px-accent-strong); }
 
-/* ── 7 · What it will not claim ──────────────────────────────────────
-   Four promises. Each one is a constraint that already exists in the
-   engine. Trust sections do not animate and do not get a container. */
-.px-promise { display: grid; gap: clamp(32px, 5.5vw, 48px); max-width: 720px; }
-.px-promise h3 {
+/* ── 3 · The problem: the same week, two ways ──────────────────────── */
+.px-split { display: grid; gap: 16px; }
+.px-split-col {
+  border: 1px solid var(--px-line);
+  border-radius: var(--px-radius-lg);
+  padding: clamp(22px, 4vw, 32px);
+}
+.px-split-col.is-aqua { background: var(--px-surface); border-color: var(--px-line-strong); }
+.px-split-label {
+  font-size: var(--px-text-body);
+  font-weight: 600;
+  margin: 0 0 22px;
+}
+.px-split-col:not(.is-aqua) .px-split-label { color: var(--px-text-2); }
+.px-week { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; position: relative; }
+.px-week li { display: grid; grid-template-columns: 40px 1fr; align-items: start; gap: 12px; position: relative; }
+.px-day {
+  font-size: var(--px-text-micro);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--px-text-3);
+  padding-top: 7px;
+}
+.px-chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.px-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 11px;
+  border-radius: var(--px-radius-sm);
+  border: 1px solid var(--px-line-strong);
+  font-size: var(--px-text-caption);
+  line-height: 1.4;
+  color: var(--px-text);
+}
+.px-chip.is-repeat { border-style: dashed; color: var(--px-text-2); }
+.px-chip.is-carry { border-color: color-mix(in srgb, var(--px-accent) 55%, transparent); }
+.px-chip-note { font-size: var(--px-text-caption); color: var(--px-text-3); font-style: italic; }
+/* The context thread: one continuous line through the Aqua week. */
+.px-week.is-thread { padding-left: 18px; }
+.px-week.is-thread::before {
+  content: '';
+  position: absolute;
+  left: 3px; top: 10px; bottom: 10px;
+  width: 1px;
+  background: var(--px-accent);
+  opacity: 0.6;
+}
+.px-week.is-thread li::before {
+  content: '';
+  position: absolute;
+  left: -18px; top: 9px;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--px-accent);
+}
+.px-split-note { margin: 22px 0 0; font-size: var(--px-text-caption); color: var(--px-text-3); }
+
+/* ── 4 · Meet Aqua AI ──────────────────────────────────────────────── */
+.px-uses { list-style: none; margin: 0; padding: 0; display: grid; border-top: 1px solid var(--px-line); }
+.px-use { padding: 28px 0; border-bottom: 1px solid var(--px-line); }
+.px-use-num {
+  display: block;
+  font-family: var(--px-font-mono);
+  font-size: var(--px-text-micro);
+  color: var(--px-accent-strong);
+  margin-bottom: 12px;
+}
+.px-lp .px-use h3 {
+  font-family: var(--px-font-display);
   font-size: var(--px-text-h3);
-  font-weight: 550;
+  font-weight: 500;
   letter-spacing: -0.01em;
   margin: 0 0 8px;
 }
-.px-promise p {
-  font-size: var(--px-text-body);
-  line-height: 1.65;
-  color: var(--px-text-2);
-  max-width: var(--px-m-body);
-  margin: 0;
-}
+.px-use p { font-size: var(--px-text-body); line-height: 1.65; color: var(--px-text-2); margin: 0; max-width: 46ch; }
 
-/* ── 8 · It gets better because you use it ───────────────────────────
-   A time axis told in the product's own opening lines. Not a chart. */
-.px-grow { display: grid; gap: clamp(36px, 6vw, 56px); }
-.px-grow-when {
+.px-showcase { display: grid; gap: 40px; align-items: center; margin-top: clamp(64px, 10vw, 104px); }
+.px-lp .px-showcase-copy h3 {
+  font-family: var(--px-font-display);
+  font-size: clamp(1.5rem, 2.6vw, 1.875rem);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  margin: 0 0 16px;
+}
+.px-showcase-copy p { font-size: var(--px-text-body); line-height: 1.7; color: var(--px-text-2); margin: 0 0 12px; max-width: 46ch; }
+
+.px-mem { margin: 0; }
+.px-mem-panel {
+  background: var(--px-surface);
+  border: 1px solid var(--px-line-strong);
+  border-radius: var(--px-radius-lg);
+  padding: clamp(20px, 4vw, 30px);
+  box-shadow: var(--px-shadow);
+}
+.px-mem-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+.px-mem-eyebrow {
   font-size: var(--px-text-micro);
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--px-text-3);
-  margin: 0 0 12px;
+  margin: 0 0 4px;
 }
+.px-mem-title { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.015em; margin: 0; }
+.px-mem-count { font-size: var(--px-text-micro); color: var(--px-text-3); white-space: nowrap; }
+.px-mem-row { padding: 16px 0; border-top: 1px solid var(--px-line); }
+.px-mem-row:last-child { padding-bottom: 2px; }
+.px-mem-fact { margin: 0 0 8px; font-size: var(--px-text-body); line-height: 1.5; color: var(--px-text); }
+.px-mem-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  font-size: var(--px-text-micro);
+  color: var(--px-text-3);
+}
+.px-mem-meta .is-corrected { color: var(--px-accent-strong); }
+.px-mem-actions { color: var(--px-text-2); white-space: nowrap; }
+.px-mem figcaption { margin-top: 12px; font-size: var(--px-text-micro); color: var(--px-text-3); }
 
-/* ── 9 · Questions ───────────────────────────────────────────────────
-   Native <details>: keyboard-operable, find-in-page discoverable,
-   zero JS. The only hairlines left on the page. */
-.px-faq { max-width: 720px; }
+/* ── 5 · How Aqua helps ────────────────────────────────────────────── */
+.px-how-group + .px-how-group { margin-top: clamp(56px, 8vw, 80px); }
+.px-how-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--px-text-micro);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin: 0 0 24px;
+}
+.px-how-label.is-today { color: var(--px-accent-strong); }
+.px-how-label.is-today::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--px-accent); }
+.px-how-label.is-next { color: var(--px-text-3); }
+.px-how-label.is-next::before { content: ''; width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--px-text-3); }
+.px-how-grid { display: grid; gap: 28px; }
+.px-how-item { padding-top: 20px; border-top: 2px solid var(--px-accent); }
+.px-how-grid.is-next .px-how-item { border-top: 1px dashed var(--px-line-strong); padding-top: 21px; }
+.px-lp .px-how-item h3 { font-size: var(--px-text-lead); font-weight: 600; letter-spacing: -0.01em; margin: 0 0 8px; }
+.px-how-item p { font-size: var(--px-text-body); line-height: 1.65; color: var(--px-text-2); margin: 0; }
+
+/* ── 6 · Control ───────────────────────────────────────────────────── */
+.px-ctrl { display: grid; gap: 32px; }
+.px-lp .px-ctrl-item h3 {
+  font-family: var(--px-font-display);
+  font-size: var(--px-text-h3);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 0 0 8px;
+}
+.px-ctrl-item p { font-size: var(--px-text-body); line-height: 1.65; color: var(--px-text-2); margin: 0; max-width: 46ch; }
+
+/* ── 7 · The company ───────────────────────────────────────────────── */
+.px-lp-sec.px-company { background: var(--px-surface); }
+.px-vm { display: grid; margin: 0 0 clamp(40px, 6vw, 56px); border-top: 1px solid var(--px-line-strong); }
+.px-vm-item { padding: 26px 0; border-bottom: 1px solid var(--px-line); }
+.px-vm dt {
+  font-size: var(--px-text-micro);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--px-text-3);
+  margin-bottom: 10px;
+}
+.px-vm dd {
+  margin: 0;
+  font-family: var(--px-font-display);
+  font-size: clamp(1.5rem, 3.2vw, 2.25rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  max-width: 20ch;
+}
+.px-company-body { max-width: 640px; }
+.px-company-body p { font-size: var(--px-text-lead); line-height: 1.7; color: var(--px-text-2); margin: 0 0 18px; }
+.px-company-body .px-link { display: inline-block; margin-top: 8px; }
+
+/* ── 8 · Questions ─────────────────────────────────────────────────── */
+.px-faq { max-width: 760px; border-top: 1px solid var(--px-line); }
 .px-faq details { border-bottom: 1px solid var(--px-line); }
 .px-faq summary {
   cursor: pointer;
@@ -1065,9 +1180,9 @@ body.px-lp { --px-thread-x: var(--px-gutter); }
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  min-height: 56px;
-  padding: 16px 0;
-  font-size: var(--px-text-body);
+  min-height: 60px;
+  padding: 18px 0;
+  font-size: var(--px-text-lead);
   font-weight: 550;
 }
 .px-faq summary::-webkit-details-marker { display: none; }
@@ -1082,47 +1197,41 @@ body.px-lp { --px-thread-x: var(--px-gutter); }
 .px-faq details[open] summary::after { transform: rotate(45deg); }
 .px-faq details p {
   margin: 0;
-  padding: 0 0 22px;
-  font-size: var(--px-text-caption);
+  padding: 0 0 24px;
+  font-size: var(--px-text-body);
   line-height: 1.7;
   color: var(--px-text-2);
   max-width: var(--px-m-body);
 }
 
-/* ── 10 · Close ──────────────────────────────────────────────────────
-   One action, in the page's own words. */
-.px-close { padding: var(--px-space-story) 0 clamp(80px, 13vw, 120px); }
-.px-close h2 {
+/* ── 9 · Close ─────────────────────────────────────────────────────── */
+.px-close {
+  text-align: center;
+  padding: clamp(96px, 14vw, 160px) 0;
+  border-top: 1px solid var(--px-line);
+}
+/* The Aqua AI app icon, shaped like it sits on a home screen. */
+.px-close-mark { display: block; margin: 0 auto 28px; border-radius: 16px; box-shadow: var(--px-shadow); }
+.px-lp .px-close h2 {
   font-family: var(--px-font-display);
-  font-size: var(--px-text-h2);
+  font-size: clamp(2.25rem, 6vw, 3.75rem);
   font-weight: 500;
-  letter-spacing: -0.02em;
-  line-height: 1.14;
-  max-width: var(--px-m-h2);
-  margin: 0 0 14px;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  margin: 0 0 16px;
 }
 .px-close p {
-  font-size: var(--px-text-caption);
-  color: var(--px-text-3);
-  margin: 0 0 clamp(28px, 5vw, 36px);
+  font-size: var(--px-text-lead);
+  color: var(--px-text-2);
+  max-width: 40ch;
+  margin: 0 auto clamp(28px, 5vw, 40px);
 }
+.px-close-ctas { display: flex; align-items: center; justify-content: center; gap: 16px 28px; flex-wrap: wrap; }
 
-/* ── Narrative rhythm ────────────────────────────────────────────────
-   Story sections get more air than a standard section. The cost section
-   runs long at the top and short at the bottom so the turn arrives
-   sooner than the reader expects. */
-.px-story-sec { padding: var(--px-space-story) 0; }
-.px-story-sec.is-tight-bottom { padding-bottom: var(--px-space-sec); }
-
-/* ── Motion (4 behaviours, counted) ──────────────────────────────────
-   1. throughline light      scroll-linked, above
-   2. section entry          fade + 8px rise, once
-   3. the "again" stagger    §2 only — accumulation is that section's
-                             meaning, so it is the only stagger here
-   4. hover/focus colour     120ms, in the component rules above
-
-   The hidden state is scoped to html.js so the page renders complete
-   when the script does not run. JS only ever ADDS the animation. */
+/* ── Motion ──────────────────────────────────────────────────────────
+   Section entry (fade + 8px rise, once) and hover/focus colour. The
+   hidden state is scoped to html.js so the page renders complete when
+   the script does not run. /about and /delete-account use it too. */
 .px-reveal { opacity: 1; transform: none; }
 html.js .px-reveal {
   opacity: 0;
@@ -1131,35 +1240,40 @@ html.js .px-reveal {
 }
 html.js .px-reveal.in { opacity: 1; transform: none; }
 
-html.js .px-tax-row .px-again { opacity: 0; }
-html.js .px-tax-list.in .px-tax-row .px-again { opacity: 1; }
-html.js .px-tax-list.in .px-tax-row:nth-child(1) .px-again { transition-delay: 60ms; }
-html.js .px-tax-list.in .px-tax-row:nth-child(2) .px-again { transition-delay: 120ms; }
-html.js .px-tax-list.in .px-tax-row:nth-child(3) .px-again { transition-delay: 180ms; }
-html.js .px-tax-list.in .px-tax-row:nth-child(4) .px-again { transition-delay: 240ms; }
-html.js .px-tax-list.in .px-tax-row:nth-child(5) .px-again { transition-delay: 300ms; }
-
 @media (prefers-reduced-motion: reduce) {
   html.js .px-reveal { opacity: 1; transform: none; }
-  html.js .px-tax-row .px-again { opacity: 1; }
-  .px-thread-light { animation: none; top: 0; }
 }
 
 /* ── Breakpoints ─────────────────────────────────────────────────────
-   Two, coordinated. Designed at 375px and given room, not shrunk. */
-@media (min-width: 900px) {
-  .px-world-item {
-    display: grid;
-    grid-template-columns: 5fr 7fr;
-    gap: clamp(24px, 4vw, 48px);
-    align-items: start;
-  }
-  .px-world-item p:last-child { margin-top: 0; }
-  .px-promise { grid-template-columns: 1fr 1fr; gap: clamp(36px, 4vw, 56px) clamp(40px, 5vw, 72px); }
+   Designed at 360px first, then given room. */
+@media (min-width: 640px) {
+  .px-uses { grid-template-columns: 1fr 1fr; column-gap: clamp(32px, 5vw, 64px); }
+  .px-how-grid { grid-template-columns: repeat(3, 1fr); }
+  .px-ctrl { grid-template-columns: repeat(3, 1fr); }
+  .px-vm { grid-template-columns: 1fr 1fr; column-gap: clamp(32px, 5vw, 64px); }
 }
-@media (max-width: 640px) {
-  .px-tax-row { flex-direction: column; align-items: flex-start; gap: 2px; }
-  .px-turn { min-height: 60vh; }
+@media (min-width: 640px) and (max-width: 899px) {
+  /* Three narrow columns read poorly at tablet width. */
+  .px-how-grid, .px-ctrl { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 900px) {
+  .px-hero-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); }
+  .px-rel-grid { grid-template-columns: 1fr auto 1fr; }
+  .px-rel-link {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 24px;
+    border: 0;
+    border-left: 1px solid var(--px-line);
+    border-right: 1px solid var(--px-line);
+  }
+  .px-rel-link::after { content: '\2192'; }
+  .px-split { grid-template-columns: 1fr 1fr; }
+  .px-showcase { grid-template-columns: 5fr 7fr; gap: clamp(48px, 6vw, 88px); }
+}
+@media (max-width: 420px) {
+  .px-hero-ctas .px-dl, .px-close-ctas .px-dl { width: 100%; justify-content: center; }
+  .px-mem-meta { flex-direction: column; gap: 4px; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════

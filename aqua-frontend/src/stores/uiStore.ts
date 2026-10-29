@@ -8,6 +8,10 @@ interface UiState {
   settingsOpen: boolean;
   projectUploadOpen: boolean;
   toasts: ToastItem[];
+  /** Text the composer should take on next render (home-screen threads). Consumed once. */
+  composerSeed: { text: string; nonce: number } | null;
+  seedComposer: (text: string) => void;
+  clearComposerSeed: () => void;
 
   toggleSidebar: () => void;
   /** Explicit set — the ⌘K handler has to OPEN the sidebar, never flip it. */
@@ -28,6 +32,9 @@ export const useUiStore = create<UiState>()(
       settingsOpen: false,
       projectUploadOpen: false,
       toasts: [],
+      composerSeed: null,
+      seedComposer: (text) => set({ composerSeed: { text, nonce: Date.now() } }),
+      clearComposerSeed: () => set({ composerSeed: null }),
 
       toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
       setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),

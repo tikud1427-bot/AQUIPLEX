@@ -15,14 +15,15 @@ import type { MindModel } from '@/api/mind';
       template being filled in, which is precisely the feeling to avoid.
 
    2. THE RING IS THE SIGNATURE, AND IT IS ALREADY OURS. UnderstandingRing —
-      seven arcs, one per cognitive dimension, opacity by confidence — is the
+      seven arcs, one per cognitive dimension, opacity by evidence — is the
       most distinctive object in the product. Introducing a second visual
       language here would make the most important screen the least familiar
       one. It counts up LAST, after the sections it summarises.
 
-   3. CONFIDENCE READS AS LANGUAGE. "fairly sure", with the number small and
-      secondary. A bare 22% next to a section on a first-run screen reads as a
-      scorecard the user is failing.
+   3. NO CONFIDENCE LABEL. Sections used to carry "fairly sure" / "still
+      learning" — words for an average of uncalibrated belief confidences, so
+      a claim of certainty nothing had measured (removed 2026-10-28). The
+      lines themselves, each correctable, are the content.
 
    Everything else stays quiet: existing tokens, existing type scale, no new
    palette. Spend the boldness in one place.
@@ -80,19 +81,14 @@ export function WorldModelCard({
               transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
               className="flex flex-col gap-2 border-t border-[var(--border)] pt-4 first:border-t-0 first:pt-0"
             >
-              <div className="flex items-baseline justify-between gap-4">
-                <h2 className="text-[length:var(--text-micro)] font-medium uppercase tracking-[0.08em] text-[var(--text-secondary)]">
-                  {section.label}
-                </h2>
-                <span className="shrink-0 text-[length:var(--text-micro)] text-[var(--text-secondary)]">
-                  {section.confidenceLabel}
-                </span>
-              </div>
+              <h2 className="text-[length:var(--text-micro)] font-medium uppercase tracking-[0.08em] text-[var(--text-secondary)]">
+                {section.label}
+              </h2>
 
               <ul className="flex flex-col gap-1.5">
                 {section.items.map((item) => (
                   <li key={item.ref} className="group flex items-baseline justify-between gap-3">
-                    <span className="text-[length:var(--text-lead)] leading-snug text-[var(--text)]">
+                    <span className="min-w-0 text-[length:var(--text-lead)] leading-snug text-[var(--text)] [overflow-wrap:anywhere]">
                       {item.text}
                     </span>
                     {/* Correction sits on every line, not behind a settings
@@ -102,7 +98,9 @@ export function WorldModelCard({
                     <button
                       type="button"
                       onClick={() => onCorrect(item.ref, item.text)}
-                      className="shrink-0 rounded px-1.5 py-0.5 text-[length:var(--text-micro)] text-[var(--text-secondary)] opacity-0 transition focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] group-hover:opacity-100"
+                      // hover-reveal: hidden until hover only where a pointer can
+                      // hover. opacity-0 alone left it invisible on every phone.
+                      className="hover-reveal shrink-0 rounded px-1.5 py-0.5 text-[length:var(--text-micro)] text-[var(--text-secondary)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
                     >
                       Not quite
                     </button>
@@ -122,7 +120,7 @@ export function WorldModelCard({
           transition={{ duration: 0.5 }}
           className="flex flex-col items-center gap-3 border-t border-[var(--border)] pt-8"
         >
-          <UnderstandingRing model={mind} serverScore={card.score} />
+          <UnderstandingRing model={mind} />
           <p className="text-[length:var(--text-caption)] text-[var(--text-secondary)]">
             {card.isThin
               /* An honest line for a thin card. Not an apology, and not a

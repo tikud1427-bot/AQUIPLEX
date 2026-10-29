@@ -26,6 +26,9 @@
 import { peekMind } from '../mind/mindStore.js';
 import { getFacts } from './longTermMemory.js';
 import { getIdentity, IDENTITY_FIELDS } from './identity.js';
+import { factLabel, factItems, timelineLabel } from './displayLabels.js';
+import { classifySensitivity } from './sensitivity.js';
+import { failsItsSchema } from './factVisibility.js';
 
 const DAY = 24 * 3600 * 1000;
 const STALE_GOAL_MS = 14 * DAY;
@@ -227,25 +230,44 @@ export function whatChanged(ownerId, { sinceMs = 7 * DAY, limit = 20, now = Date
     const since = now - sinceMs;
     const events = [];
 
+    // Every label here is a sentence a person can read (memory/displayLabels.js):
+    // no raw keys, no internal operation names, no intent ids, and an event
+    // with nothing human to say is left out — never shown as "event" (L11).
+    // Health and mood facts live in the Memory page's hidden section, not here.
     const mind = peekMind(ownerId);
     for (const e of mind?.timeline || []) {
       const at = e.at || e.ts || 0;
       if (at < since) continue;
-      events.push({ at, kind: e.type || 'event', label: itemText(e) || e.summary || e.type || 'event', importance: e.importance ?? null });
+      const label = timelineLabel(e);
+      if (!label || classifySensitivity(String(e.subject ?? ''))) continue;
+      events.push({ at, kind: e.kind ?? e.type ?? 'timeline', label, importance: e.importance ?? null });
     }
 
+    const quote = items => items.map(i => `“${i}”`).join(', ');
     for (const f of getFacts(ownerId, { includeArchived: true })) {
+      if (classifySensitivity(f) || failsItsSchema(f)) continue;
+      const heading = factLabel(f);
+      const now = factItems(f.value);
       for (const h of Array.isArray(f.history) ? f.history : []) {
         const at = h.supersededAt || h.ts || 0;
         if (at < since) continue;
-        events.push({
-          at, kind: 'fact_change',
-          label: `${f.key}: was "${h.value}"${h.reason ? ` (${h.reason})` : ''}`,
-          evidence: { factKey: f.key, revision: h.revision ?? null },
-        });
+        const was = factItems(h.value);
+        let label;
+        if (h.reason === 'collection_merge') {
+          // A collection grew: say what was added, not the operation's name.
+          const added = now.filter(i => !was.some(w => factItems([w, i]).length === 1));
+          if (!added.length) continue;
+          label = `${heading ?? 'Noted'}: added ${quote(added)}`;
+        } else {
+          if (!was.length) continue;
+          label = heading
+            ? `${heading}: changed from ${quote(was)} to ${quote(now)}`
+            : `Changed ${quote(was)} to ${quote(now)}`;
+        }
+        events.push({ at, kind: 'fact_change', label, evidence: { factKey: f.key, revision: h.revision ?? null } });
       }
-      if ((f.createdAt || 0) >= since) {
-        events.push({ at: f.createdAt, kind: 'fact_new', label: `${f.key} = "${f.value}"`, evidence: { factKey: f.key } });
+      if ((f.createdAt || 0) >= since && now.length) {
+        events.push({ at: f.createdAt, kind: 'fact_new', label: heading ? `${heading}: ${now.join(', ')}` : `Noted ${quote(now)}`, evidence: { factKey: f.key } });
       }
     }
 

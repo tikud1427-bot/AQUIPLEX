@@ -45,6 +45,10 @@ import { recallEpisodes } from '../mind/episodeRecall.js';
 import { recallGraphPaths } from '../mind/graphRecall.js';
 import { peekMind } from '../mind/mindStore.js';
 import { conversationExists, getConversationMeta } from '../memory/conversationStore.js';
+import { factLabel, factItems } from '../memory/displayLabels.js';
+import { failsItsSchema } from '../memory/factVisibility.js';
+import { classifySensitivity } from '../memory/sensitivity.js';
+import { getMind, touchMind } from '../mind/mindStore.js';
 
 const router = express.Router();
 
@@ -120,9 +124,36 @@ async function forgetOrRespond(res, fn) {
   }
 }
 
+/**
+ * A fact as the Memory page shows it (2026-10-28): a human `label` (null for a
+ * custom_ fact — its key is a slug of its own value), the value as DISTINCT
+ * `items` (a collection used to render as one run-on string), and its
+ * `sensitivity`. Internal bookkeeping (revision history with operation names,
+ * extractor ids, metadata) stays server-side; GET /memory/fact/:key has it.
+ */
+function presentFact(f) {
+  return {
+    key: f.key, label: factLabel(f), value: f.value, items: factItems(f.value),
+    category: f.category ?? null, confidence: f.confidence, importance: f.importance,
+    sourceMessage: f.sourceMessage, sourceText: f.sourceText,
+    createdAt: f.createdAt, updatedAt: f.updatedAt, ts: f.ts, revision: f.revision,
+    // When the user last said it (a restatement, not a retrieval) — "last
+    // confirmed" is a different time from "learned" (2026-10-28, additive).
+    lastConfirmedAt: f.lastMentionedAt ?? null,
+    status: f.status, pinned: !!f.pinned, retrievalCount: f.retrievalCount ?? 0, lastRetrievedAt: f.lastRetrievedAt ?? null,
+    sensitivity: classifySensitivity(f), sensitivityReviewedAt: f.sensitivityReviewedAt ?? null,
+  };
+}
+
 function factsPayload(ownerId) {
-  const facts = getFacts(ownerId);
-  return { ownerId, factCount: facts.length, facts };
+  // failsItsSchema: "loveit" as a language, "billionaire" as a profession —
+  // stored before those validators were fixed (memory/factVisibility.js).
+  const all = getFacts(ownerId).filter(f => !failsItsSchema(f)).map(presentFact);
+  // Health and mood facts: never in the main list, never in chat (memory/
+  // sensitivity.js) — listed apart so the user can delete or keep them (L5).
+  const facts = all.filter(f => !f.sensitivity);
+  const hiddenSensitive = all.filter(f => f.sensitivity);
+  return { ownerId, factCount: facts.length, facts, hiddenSensitive };
 }
 
 // ── Memory Inspector: explainable per-turn trace (Req 14) ────────────────────
@@ -238,6 +269,71 @@ router.post('/fact/:key/pin', (req, res) => {
   const pinned = req.body?.pinned !== false;
   const result = pinFact(ownerId, req.params.key, pinned);
   respondEdit(res, ownerId, result, ErrorCodes.NOT_FOUND);
+});
+
+/**
+ * POST /memory/fact/:key/keep — "Keep" on a fact in the hidden sensitive
+ * section: it stays stored and stays out of chat; the review is recorded so the
+ * page stops asking. (Delete is DELETE /memory/fact/:key, which forgets it
+ * everywhere.) Only a sensitive fact can be kept this way.
+ */
+router.post('/fact/:key/keep', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return noOwner(res);
+  const fact = getFact(ownerId, req.params.key);
+  const kind = fact ? classifySensitivity(fact) : null;
+  if (!fact || !kind) return fail(res, ErrorCodes.NOT_FOUND, `No hidden fact '${req.params.key}'`);
+  fact.sensitivity = kind;
+  fact.sensitivityReviewedAt = Date.now();
+  touchMind(peekMind(ownerId) ?? getMind(ownerId));
+  ok(res, { ownerId, fact: presentFact(fact) });
+});
+
+/**
+ * POST /memory/fact/:key/confirm — legacy review (mind/legacyReview.js): the
+ * user says a value today's validator rejects is right after all. It is shown
+ * and used again (factVisibility.failsItsSchema respects it). Only a fact the
+ * review flagged can be confirmed this way.
+ */
+router.post('/fact/:key/confirm', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return noOwner(res);
+  const fact = getFact(ownerId, req.params.key);
+  if (!fact || !failsItsSchema(fact)) return fail(res, ErrorCodes.NOT_FOUND, `No fact to confirm for '${req.params.key}'`);
+  fact.userConfirmedAt = Date.now();
+  touchMind(peekMind(ownerId) ?? getMind(ownerId));
+  ok(res, { ownerId, fact: presentFact(fact) });
+});
+
+/**
+ * POST /memory/fact/:key/split-item  { item, parts: string[] } | { item, keep: true }
+ * Legacy review (mind/legacyReview.js `merged_goal_item`): one item of a
+ * collection fact held several goals. Split replaces that item with its parts
+ * through correctFact, so the revision history records before → after; keep
+ * records the decision and the review stops asking. Only an exact existing item.
+ */
+router.post('/fact/:key/split-item', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return noOwner(res);
+  const fact = getFact(ownerId, req.params.key);
+  const item = String(req.body?.item ?? '');
+  const items = Array.isArray(fact?.value) ? fact.value : (fact ? [fact.value] : []);
+  if (!fact || !item || !items.includes(item)) return fail(res, ErrorCodes.NOT_FOUND, 'No such item');
+  if (req.body?.keep === true) {
+    fact.reviewedItems = [...new Set([...(fact.reviewedItems ?? []), item])];
+    touchMind(peekMind(ownerId) ?? getMind(ownerId));
+    return ok(res, { ownerId, fact: presentFact(fact) });
+  }
+  const parts = Array.isArray(req.body?.parts) ? req.body.parts.map(p => String(p ?? '').replace(/\s+/g, ' ').trim()).filter(Boolean) : [];
+  if (parts.length < 2 || parts.length > 6 || parts.some(p => p.length < 3 || p.length > 120)) {
+    return fail(res, ErrorCodes.BAD_REQUEST, 'Give 2 to 6 goals, each 3–120 characters.');
+  }
+  const next = [];
+  for (const v of items.flatMap(v => (v === item ? parts : [v]))) {
+    if (!next.some(x => String(x).toLowerCase() === String(v).toLowerCase())) next.push(v);
+  }
+  const result = correctFact(ownerId, req.params.key, next, { reason: 'user split a merged goal' });
+  respondEdit(res, ownerId, result, ErrorCodes.BAD_REQUEST);
 });
 
 /** POST /memory/fact/:key/archive  { restore?: boolean, force?: boolean, reason? } */

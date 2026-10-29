@@ -1,17 +1,39 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import type { CompactBelief } from '@/api/mind';
-import { ConfidenceBadge } from '@/components/ui/confidence-badge';
+import { ProvenanceBadge } from '@/components/ui/provenance-badge';
 import { Panel } from '@/components/ui/panel';
-import { beliefTitle } from './IdentitySection';
+import { SectionHeader } from '@/components/ui/section-header';
+import { beliefTitle, visibleBeliefs } from './IdentitySection';
 
 /* ── Knowledge — growing proficiency bars ───────────────────────────────── */
 
+/** Below this many real observations the panel is noise, not knowledge — hidden. */
+export const KNOWLEDGE_MIN_ROWS = 3;
+
+export function knowledgeRows(beliefs: CompactBelief[]): CompactBelief[] {
+  // Ordered by what the bars draw — observations — not by uncalibrated confidence.
+  return visibleBeliefs(beliefs)
+    .sort((a, b) => b.evidenceCount - a.evidenceCount || b.updatedAt - a.updatedAt)
+    .slice(0, 8);
+}
+
+/** The Knowledge panel with its header — absent below KNOWLEDGE_MIN_ROWS real observations. */
+export function KnowledgePanel({ beliefs, onSelect }: { beliefs: CompactBelief[]; onSelect: (b: CompactBelief) => void }) {
+  if (knowledgeRows(beliefs).length < KNOWLEDGE_MIN_ROWS) return null;
+  return (
+    <section data-testid="knowledge-panel">
+      <SectionHeader eyebrow="What you know" title="Knowledge" />
+      <KnowledgeSection beliefs={beliefs} onSelect={onSelect} />
+    </section>
+  );
+}
+
 export function KnowledgeSection({ beliefs, onSelect }: { beliefs: CompactBelief[]; onSelect: (b: CompactBelief) => void }) {
   const reduce = useReducedMotion();
-  const rows = beliefs
-    .filter((b) => b.status !== 'archived')
-    .sort((a, b) => b.confidence - a.confidence)
-    .slice(0, 8);
+  const rows = knowledgeRows(beliefs);
+  // Bars compare evidence between rows. Belief confidence is not calibrated,
+  // so it is not printed or drawn as a percentage.
+  const maxEvidence = Math.max(1, ...rows.map((b) => b.evidenceCount));
 
   if (!rows.length) {
     return <p className="text-sm text-foreground-secondary">Skills register here as they show up in real work.</p>;
@@ -25,19 +47,19 @@ export function KnowledgeSection({ beliefs, onSelect }: { beliefs: CompactBelief
             key={b.key}
             onClick={() => onSelect(b)}
             className="group block w-full rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-            aria-label={`${beliefTitle(b)} — ${Math.round(b.confidence * 100)} percent. See why.`}
+            aria-label={`${beliefTitle(b)} — seen ${b.evidenceCount} time${b.evidenceCount === 1 ? '' : 's'}. See why.`}
           >
             <div className="mb-1 flex items-baseline justify-between gap-3">
               <span className="text-sm text-foreground group-hover:text-primary">{beliefTitle(b)}</span>
               <span className="font-mono text-micro tabular-nums text-foreground-secondary">
-                {Math.round(b.confidence * 100)}% · {b.evidenceCount} obs
+                seen {b.evidenceCount}×
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-surface-secondary">
               <motion.div
                 className="h-full rounded-full bg-primary"
                 initial={reduce ? false : { width: 0 }}
-                animate={{ width: `${Math.round(b.confidence * 100)}%` }}
+                animate={{ width: `${Math.round((b.evidenceCount / maxEvidence) * 100)}%` }}
                 transition={{ duration: reduce ? 0 : 0.8, delay: reduce ? 0 : i * 0.05, ease: [0.16, 1, 0.3, 1] }}
               />
             </div>
@@ -50,13 +72,14 @@ export function KnowledgeSection({ beliefs, onSelect }: { beliefs: CompactBelief
 
 /* ── Communication style — inferred position sliders (read-only) ────────── */
 
-interface Axis { left: string; right: string; label: string; position: number | null; confidence: number; belief?: CompactBelief }
+interface Axis { left: string; right: string; label: string; position: number | null; belief?: CompactBelief }
 
 function axisFrom(beliefs: CompactBelief[], key: string, map: Record<string, number>, left: string, right: string, label: string): Axis {
   const b = beliefs.find((x) => x.key === key && x.status !== 'archived');
-  if (!b) return { left, right, label, position: null, confidence: 0 };
-  const pos = map[String(b.value)] ?? 0.5;
-  return { left, right, label, position: pos, confidence: b.confidence, belief: b };
+  // A value the axis has no position for is not drawn at the midpoint as if known.
+  const pos = b ? map[String(b.value)] : undefined;
+  if (!b || pos === undefined) return { left, right, label, position: null };
+  return { left, right, label, position: pos, belief: b };
 }
 
 export function CommunicationSection({ beliefs, decision, onSelect }: {
@@ -81,9 +104,11 @@ export function CommunicationSection({ beliefs, decision, onSelect }: {
           onClick={() => a.belief && onSelect(a.belief)}
           className="block w-full rounded-md text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
         >
-          <div className="mb-1.5 flex items-center justify-between">
+          <div className="mb-1.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <span className="text-sm text-foreground">{a.label}</span>
-            <ConfidenceBadge value={a.confidence} />
+            {/* What the slider's position rests on — stated or inferred, and how
+                often seen. Not a percentage beside a slider. */}
+            <ProvenanceBadge source={a.belief?.source} evidenceCount={a.belief?.evidenceCount} />
           </div>
           <div className="relative h-1.5 rounded-full bg-surface-secondary">
             <motion.span

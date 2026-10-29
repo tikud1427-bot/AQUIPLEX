@@ -49,7 +49,9 @@ export function AttachmentChip({ attachment, onRemove }: { attachment: PendingAt
           {busy && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
           {attachment.stage === 'ready' && <CheckCircle2 className="h-2.5 w-2.5 text-success" />}
           {failed && <XCircle className="h-2.5 w-2.5" />}
-          {busy ? attachment.stageLabel : failed ? (attachment.error?.slice(0, 40) ?? 'Failed') : `${formatBytes(attachment.sizeBytes)}${attachment.pages ? ` · ${attachment.pages}p` : ''}`}
+          {/* The reason is a sentence — in the tooltip and the toast; cut at
+              40 characters it read as "Aqua couldn't read this file. Try ano". */}
+          {busy ? attachment.stageLabel : failed ? "Couldn't read" : `${formatBytes(attachment.sizeBytes)}${attachment.pages ? ` · ${attachment.pages}p` : ''}`}
         </span>
       </div>
 

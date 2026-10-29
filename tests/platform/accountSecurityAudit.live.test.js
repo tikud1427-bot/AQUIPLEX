@@ -38,7 +38,11 @@ describe("read-only account security audit", { skip: MONGO ? false : "needs a TE
     await mongoose.connection.db.dropDatabase();
     const m = (f) => require(path.join(ROOT, "models", f));
     M = { User: m("User.js"), ProductEvent: m("ProductEvent.js"), Payment: m("Payment.js"), Transaction: m("Transaction.js"), EntitlementAudit: m("EntitlementAudit.js") };
-    script = require(path.join(ROOT, "scripts", "admin", "account-security-audit.cjs"));
+    // The SEEDING models build their indexes in the background. Under parallel
+    // load a build could land after the "before" snapshot and read as an audit
+    // write. Wait for them; an index the audit itself built still fails the test.
+    await Promise.all(Object.values(M).map((model) => model.init()));
+    script =require(path.join(ROOT, "scripts", "admin", "account-security-audit.cjs"));
     const t = (iso) => new Date(iso);
 
     // Identity scenarios (legacy accounts: no emailVerified field, as before the fix)

@@ -37,6 +37,7 @@ import { buildCard } from './summary.js';
 import { nodesByType } from '../reasoning/reasoningGraph.js';
 import { getConversationMeta, updateConversationMeta, listConversationIdsForUser, canAccessConversation } from '../memory/conversationStore.js';
 import { applyCorrection, dismissedEntityIds, isDismissalKey } from './corrections.js';
+import { presentBelief } from '../mind/mindPresentation.js';
 import * as memoryEditor from '../memory/memoryEditor.js';
 
 const router = express.Router();
@@ -144,7 +145,9 @@ function projectsFor(ownerId, mind = null) {
 function cardFor(ownerId, mind) {
   const beliefsByDimension = {};
   for (const dim of COVERAGE_DIMENSIONS) {
-    beliefsByDimension[dim] = getBeliefs(mind, { dimension: dim }).filter(b => !isDismissalKey(b.key));
+    // Same visibility rule as GET /mind (mind/mindPresentation.js): no
+    // health/mood, no goal as a profession, no markup "domains".
+    beliefsByDimension[dim] = getBeliefs(mind, { dimension: dim }).filter(b => !isDismissalKey(b.key) && presentBelief(b));
   }
   const goals = Object.values(mind.goals ?? {});
 
@@ -360,7 +363,9 @@ router.get('/', (req, res) => {
     // reading "dismissed:ent:proj:x = true" would be showing the user our
     // filing system instead of their world — and it would drag the coverage
     // score up for knowing nothing.
-    beliefsByDimension[dim] = getBeliefs(mind, { dimension: dim }).filter(b => !isDismissalKey(b.key));
+    // Same visibility rule as GET /mind (mind/mindPresentation.js): no
+    // health/mood, no goal as a profession, no markup "domains".
+    beliefsByDimension[dim] = getBeliefs(mind, { dimension: dim }).filter(b => !isDismissalKey(b.key) && presentBelief(b));
   }
   const goals = Object.values(mind.goals ?? {});
 

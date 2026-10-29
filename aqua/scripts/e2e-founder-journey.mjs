@@ -15,8 +15,22 @@
 //
 //   E2E_BASE (http://127.0.0.1:5055) · E2E_DB (aqua_e2e) · E2E_MONGO_DB (aqua_validation)
 //   E2E_OUT (log file)
+//   E2E_SCRIPT=yc — follow the YC live-demo script (YC_APPLICATION_DRAFT.md,
+//     "Live demo script") word for word: one change per message, its exact
+//     step-4/5 lines, per-step timings, and a leak scan of the fresh account's
+//     Memory and Understanding payloads (2026-10-28).
 import { execSync, execFileSync } from 'node:child_process';
 import { writeFileSync, readFileSync } from 'node:fs';
+const YC = process.env.E2E_SCRIPT === 'yc';
+const steps = [];
+let stepT0 = Date.now();
+/** Close the previous demo step and open the next one; returns the closed step's seconds. */
+function step(name) {
+  const now = Date.now();
+  if (steps.length) steps.at(-1).seconds = Math.round((now - stepT0) / 100) / 10;
+  if (name) steps.push({ name, seconds: null });
+  stepT0 = now;
+}
 /** Verification tokens already used by an earlier signup in this run. */
 const seenTokens = new Set();
 
@@ -28,7 +42,9 @@ const log = [];
 const out = (...a) => { const s = a.join(' '); console.log(s); log.push(s); };
 const checks = [];
 const check = (name, ok, detail = '') => { checks.push({ name, ok }); out(`  CHECK ${ok ? 'PASS' : 'FAIL'} — ${name}${!ok && detail ? ` :: ${detail}` : ''}`); };
-const UNKNOWN_RE = /(don['’]t|do not|not|no|n['’]t) (know|have|record|see|find|mention|been told|stored)|haven['’]t (told|mentioned|shared)|unknown|not sure|no record|not in (my|your)/i;
+// "aware" added 2026-10-20: "I'm not aware of the name of your co-founder" is an
+// abstention the pattern missed (run 2026-10-20 scored it FAIL; the answer was right).
+const UNKNOWN_RE = /(don['’]t|do not|not|no|n['’]t) (know|have|record|see|find|mention|been told|stored|aware)|haven['’]t (told|mentioned|shared)|unknown|not sure|no record|not in (my|your)/i;
 const psql = sql => execSync(`docker exec aqua-test-db psql -U aqua -d ${DB} -At -c "${sql.replace(/"/g, '\\"')}"`).toString().trim();
 const mongo = js => execFileSync('docker', ['exec', 'aqua-test-mongo', 'mongosh', '--quiet', MONGO_DB, '--eval', js]).toString().trim();
 
@@ -86,7 +102,7 @@ function client() {
     }
     return { answer: '', conversationId, raw: {}, failed: true };
   }
-  return { req, signup, chat, latencies };
+  return { req, signup, chat, latencies, session: () => jar.get('aidex_session') ?? null };
 }
 
 // Waits for EVERY pending understanding job — including ones a provider rate
@@ -114,6 +130,7 @@ async function waitForWorker(ownerId, label, maxMinutes = 25) {
 const say = (r, q) => out(`USER: ${q}\nAQUA: ${r.answer.slice(0, 600).replace(/\n/g, ' ')}\n  (${r.ms} ms, memory read=${r.raw?.memory?.readMode ?? '?'})`);
 
 // ── 1. signup ────────────────────────────────────────────────────────────────
+step('1 sign up → onboarding');
 const A = client();
 const email = `founder-${Date.now().toString(36)}@example.test`;
 const su = await A.signup(email);
@@ -123,6 +140,7 @@ check('the verification link + password lands a new account in the product (/aqu
 const OWNER = su.owner;
 
 // ── 2. onboarding interview (the intro uses mode=understanding) ──────────────
+step('2 tell it once (+ pricing note, card)');
 out('\n=== onboarding ===');
 const intro = [
   "I'm building Tidepool, a scheduling tool for physiotherapy clinics. My co-founder Maya runs engineering.",
@@ -149,6 +167,7 @@ check('document upload accepted', up.status === 200, up.text.slice(0, 200));
 await waitForWorker(OWNER, 'onboarding + upload');
 
 // ── 4. Memory: what Aqua knows now, with where it learned it ─────────────────
+step('3 where it learned it (Memory)');
 let cur = await A.req('GET', '/api/aqua/brain/current');
 let claims = cur.json?.claims ?? [];
 out(`\n=== Memory: ${claims.length} current claims ===`);
@@ -158,25 +177,43 @@ check('each listed claim carries the sentence it was learned from', claims.lengt
 check('a document-sourced claim is labelled as coming from the document', claims.some(c => c.sourceKind === 'document'));
 
 // ── 5. a change, in a NEW conversation ───────────────────────────────────────
+step('4 change one thing (new conversation)');
 out('\n=== change (new conversation) ===');
-const ch = await A.chat('Update: we moved the launch to May 2, and the price is now $39 per clinic per month.');
-say(ch, 'Update: we moved the launch to May 2, and the price is now $39 per clinic per month.');
+// The YC script says ONE change per message (compound changes are a known weakness).
+const CHANGE = YC ? 'Update: we moved the launch to May 2.' : 'Update: we moved the launch to May 2, and the price is now $39 per clinic per month.';
+const ch = await A.chat(CHANGE);
+say(ch, CHANGE);
+// What the founder sees on camera: how long until Memory lists the new date.
+const seenT0 = Date.now();
+let changeVisibleS = null;
+for (let i = 0; i < 25 * 12 && changeVisibleS === null; i++) {
+  const c = await A.req('GET', '/api/aqua/brain/current');
+  if ((c.json?.claims ?? []).some(x => /may\s*2\b|2\s*may/i.test(x.statement))) changeVisibleS = Math.round((Date.now() - seenT0) / 1000);
+  else await sleep(5000);
+}
+out(`  [Memory lists May 2 after ${changeVisibleS ?? 'NOT within 25 min'} s]`);
+check('the change reaches Memory ("What Aqua knows now" lists May 2)', changeVisibleS !== null);
 await waitForWorker(OWNER, 'change');
 
 // ── 6. investor update in ANOTHER new conversation ───────────────────────────
+step('5 the payoff (new conversation)');
 out('\n=== investor update (new conversation) ===');
-const iu = await A.chat('Draft a 4-line investor update about where Tidepool stands.');
-say(iu, 'Draft a 4-line investor update about where Tidepool stands.');
+const IU = YC ? 'Draft a 4-line investor update.' : 'Draft a 4-line investor update about where Tidepool stands.';
+const iu = await A.chat(IU);
+say(iu, IU);
 check('investor update uses the NEW launch date (May 2)', /may\s*2\b|2\s*may/i.test(iu.answer), iu.answer.slice(0, 200));
 check('investor update does not present the old launch date as current', !/launch(?:es|ing)?[^.]{0,30}april\s*15/i.test(iu.answer), iu.answer.slice(0, 200));
-check('investor update uses the NEW price ($39)', /\$\s?39/.test(iu.answer), iu.answer.slice(0, 200));
-check('investor update does not present $49 as the current price', !/\$\s?49(?![\d])(?![^.]{0,40}(previous|old|was|from|down|reduced|lowered|changed))/i.test(iu.answer), iu.answer.slice(0, 200));
+if (!YC) check('investor update uses the NEW price ($39)', /\$\s?39/.test(iu.answer), iu.answer.slice(0, 200));
+if (!YC) check('investor update does not present $49 as the current price', !/\$\s?49(?![\d])(?![^.]{0,40}(previous|old|was|from|down|reduced|lowered|changed))/i.test(iu.answer), iu.answer.slice(0, 200));
 
-const src = await A.chat('Where did you learn our current price?');
-say(src, 'Where did you learn our current price?');
+// YC step 5 asks in the SAME conversation as the update ("that" = the date).
+const SRC = YC ? 'Where did you learn that?' : 'Where did you learn our current price?';
+const src = await A.chat(SRC, YC ? iu.conversationId : null);
+say(src, SRC);
 check('asked for provenance, Aqua points at what the founder said (the update)', /update|told|said|mentioned|message|conversation/i.test(src.answer), src.answer.slice(0, 200));
 
 // ── 7. Memory: correct one value, delete another ─────────────────────────────
+step('6 correct');
 cur = await A.req('GET', '/api/aqua/brain/current');
 claims = cur.json?.claims ?? [];
 const risk = claims.find(c => /churn/i.test(c.statement));
@@ -189,6 +226,7 @@ if (risk) {
   out(`correct-value HTTP ${r.status} → ${r.json?.statement ?? r.text.slice(0, 120)}`);
   check('correction accepted', r.status === 200, r.text.slice(0, 200));
 }
+step('7 delete');
 // Cross-account: a second founder cannot delete the first one's claim.
 const B = client();
 const sub = await B.signup(`other-${Date.now().toString(36)}@example.test`);
@@ -213,11 +251,30 @@ check('the deleted co-founder fact does not come back', !/maya/i.test(cf.answer)
 check('Aqua says it does not know, rather than inventing one', UNKNOWN_RE.test(cf.answer), cf.answer.slice(0, 200));
 
 // ── 9. isolation: the second account sees none of it ────────────────────────
+step(null);
 const bCur = await B.req('GET', '/api/aqua/brain/current');
 check('a second account\'s Memory is empty of the first account\'s facts', !(bCur.json?.claims ?? []).some(c => /tidepool|maya|physio/i.test(c.statement)));
 const bAsk = await B.chat('What is Tidepool and what does it cost?');
 say(bAsk, '(other account) What is Tidepool and what does it cost?');
 check('a second account\'s answer does not contain the first account\'s price', !/\$\s?(39|49)/.test(bAsk.answer), bAsk.answer.slice(0, 200));
+
+// ── 10. the fresh account's Memory and Understanding pages carry no internals ─
+// Same rules as aqua/src/routes/tests/uiPayloadContract.test.js (Task 2).
+const ID_FIELDS = new Set(['key', 'id', 'factKey', 'ownerId', 'claimId', 'dimension', 'kind', 'status', 'source', 'category', 'conversationIds', 'activeGoals', 'sourceKind', 'predicate']);
+const LEAKS = [[/\bcustom_/i, 'custom_ key'], [/\b(?:simple[_\s]qa|personal[_\s]info|memory[_\s]recall|memory[_\s]update)\b/i, 'intent id'],
+  [/collection_merge/i, 'operation name'], [/^\s*event\s*$/i, '"event" label'], [/^Domain:/i, '"Domain:" prefix']];
+function leaksIn(node, at = '', acc = []) {
+  if (typeof node === 'string') { for (const [re, why] of LEAKS) if (re.test(node)) acc.push(`${at} = ${JSON.stringify(node.slice(0, 80))} (${why})`); }
+  else if (Array.isArray(node)) node.forEach((v, i) => leaksIn(v, `${at}[${i}]`, acc));
+  else if (node && typeof node === 'object') for (const [k, v] of Object.entries(node)) if (!ID_FIELDS.has(k)) leaksIn(v, `${at}.${k}`, acc);
+  return acc;
+}
+for (const path of ['/api/aqua/memory', '/api/aqua/memory/timeline?days=30&limit=50', '/api/aqua/mind', '/api/aqua/understanding', '/api/aqua/brain/current']) {
+  const r = await A.req('GET', path);
+  const found = r.status === 200 ? leaksIn(r.json) : [`HTTP ${r.status}`];
+  check(`no engine internals in ${path}`, found.length === 0, found.slice(0, 5).join(' | '));
+}
+out(`\nstep timings (s): ${steps.map(x => `${x.name}=${x.seconds}`).join(' · ')}`);
 
 // ── summary ──────────────────────────────────────────────────────────────────
 const lat = [...A.latencies].sort((a, b) => a - b);
@@ -228,3 +285,12 @@ out(`dead understanding jobs: ${psql(`SELECT count(*) FROM aqua_jobs WHERE owner
 out(`claims in canonical store for owner: ${psql(`SELECT state||'='||count(*) FROM aqua_claims WHERE owner_id='${OWNER}' GROUP BY state`).replace(/\n/g, ', ')}`);
 out(`\nSUMMARY ${checks.filter(c => c.ok).length}/${checks.length} checks passed`);
 writeFileSync(process.env.E2E_OUT ?? 'e2e-founder.log', log.join('\n'));
+// E2E_SESSION_OUT: account A's session as a Playwright storageState, so the
+// screenshot step (aqua-frontend/e2e/demo-screens.mjs) sees this fresh account.
+if (process.env.E2E_SESSION_OUT && A.session()) {
+  const host = new URL(BASE).hostname;
+  writeFileSync(process.env.E2E_SESSION_OUT, JSON.stringify({
+    cookies: [{ name: 'aidex_session', value: A.session(), domain: host, path: '/', expires: -1, httpOnly: true, secure: BASE.startsWith('https'), sameSite: 'Lax' }],
+    origins: [],
+  }, null, 2));
+}

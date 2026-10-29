@@ -20,6 +20,8 @@ export interface MessageDiagnostics {
   plan: ChatSuccessResponse['plan'];
   intelligence: ChatSuccessResponse['intelligence'];
   memory: ChatSuccessResponse['memory'];
+  recall?: ChatSuccessResponse['recall'];
+  contextUsed?: ChatSuccessResponse['contextUsed'];
   verification?: ChatSuccessResponse['verification'];
   project?: ChatSuccessResponse['project'];
 }
@@ -59,6 +61,8 @@ export interface UiMessage {
   artifactProgress?: import('./artifact').StreamArtifactProgressEvent;
   /** Only present on completed assistant messages. */
   diagnostics?: MessageDiagnostics;
+  /** A reopened answer's "Context used" (GET /conversations/:id); live answers carry it in diagnostics. */
+  contextUsed?: ChatSuccessResponse['contextUsed'];
   /** Text-file attachments inlined into the outgoing message (user turns only). */
   attachments?: TextAttachment[];
 }

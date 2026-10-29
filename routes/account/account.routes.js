@@ -28,6 +28,7 @@ const {
   REAUTH_MAX_AGE_MS,
 } = require("../../services/account/accountDeletion.service");
 const { endSession } = require("../../services/account/sessionLogout.service");
+const { getPrivacy, setPrivacy } = require("../../services/account/privacySettings.service");
 const { createLogger } = require("../../utils/logger");
 
 const log = createLogger("ACCOUNT_ROUTES");
@@ -212,6 +213,30 @@ router.post("/logout", async (req, res) => {
   }
 
   return res.json({ success: true, hadSession: result.hadSession });
+});
+
+// ── GET/PUT /api/account/privacy ─────────────────────────────────────────────
+// `rememberSensitive` (default false): may AQUA remember health and mood
+// details? Read by the engine on every turn (services/account/privacySettings).
+// CSRF: same enforceSameOrigin() coverage as /logout above.
+
+router.get("/privacy", requireLogin, async (req, res) => {
+  return res.json({ success: true, privacy: await getPrivacy(req.uid) });
+});
+
+router.put("/privacy", requireLogin, async (req, res) => {
+  const v = req.body?.rememberSensitive;
+  if (typeof v !== "boolean") {
+    return res.status(400).json({ success: false, error: "BAD_REQUEST", message: "rememberSensitive must be true or false." });
+  }
+  try {
+    const privacy = await setPrivacy(req.uid, { rememberSensitive: v });
+    log.info(`privacy updated user=${req.uid} rememberSensitive=${privacy.rememberSensitive}`);
+    return res.json({ success: true, privacy });
+  } catch (err) {
+    log.error("PUT /account/privacy error:", err.message);
+    return res.status(500).json({ success: false, error: "PRIVACY_UPDATE_FAILED", message: "We couldn't save that setting. Please try again." });
+  }
 });
 
 module.exports = router;

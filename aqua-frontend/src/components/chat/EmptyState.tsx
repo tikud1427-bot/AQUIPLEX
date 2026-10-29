@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, FolderGit2, MessageSquare, Plus } from 'lucide-react';
+import { ArrowRight, FolderGit2, MessageSquare, Plus, Target, X } from 'lucide-react';
 import { listWorkspaces } from '@/api/project';
 import { useChatStore } from '@/stores/chatStore';
 import { useConversationStore } from '@/stores/conversationStore';
@@ -35,6 +35,34 @@ const FALLBACK_RETURNING = 'Pick up a thread below, or start something new.';
 const FALLBACK_NEW =
   'AQUA reads what you give it once, remembers what matters, and carries it into every conversation after.';
 
+/** What kind of thing a thread is, in words. A kind the screen does not know gets no label. */
+const THREAD_KIND: Record<string, string> = {
+  deadline_at_risk: 'Deadline', deadline_approaching: 'Deadline', blocked: 'Blocked', unblocked: 'Unblocked',
+  completed: 'Finished', completed_elsewhere: 'Finished', focus_changed: 'New focus', decision: 'Decision',
+  open_decision: 'Undecided', goal: 'Goal', legacy_goal: 'Goal', task: 'Task', project: 'Project',
+};
+
+/* Dismissed threads are a per-device convenience: the item is still true, the
+   person just doesn't want it offered here. Ids are hashes of the item, so a
+   changed world brings a changed thread back. Storage may be unavailable
+   (private mode); the screen then simply doesn't remember. */
+const DISMISSED_KEY = 'aqua-home-dismissed';
+function readDismissed(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? '[]');
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+function writeDismissed(ids: string[]) {
+  try {
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(ids.slice(-100)));
+  } catch {
+    /* not remembered — fine */
+  }
+}
+
 function projectName(ws: WorkspaceSummary): string {
   const name = (ws.meta as { name?: unknown } | undefined)?.name;
   return typeof name === 'string' && name.trim() ? name : `Project ${ws.id.slice(0, 8)}`;
@@ -52,9 +80,19 @@ export function EmptyState() {
   const welcomeFailed = useWelcomeStore((s) => s.failed);
   const refreshWelcome = useWelcomeStore((s) => s.refresh);
 
+  const seedComposer = useUiStore((s) => s.seedComposer);
+
   const [projects, setProjects] = useState<WorkspaceSummary[]>([]);
+  const [dismissed, setDismissed] = useState<string[]>(readDismissed);
 
   const hasHistory = conversations.length > 0;
+  const threads = (welcome?.threads ?? []).filter((t) => !dismissed.includes(t.id));
+
+  function dismissThread(id: string) {
+    const next = [...dismissed, id];
+    setDismissed(next);
+    writeDismissed(next);
+  }
 
   // Re-read on open and on return to the window: the server recomputes from
   // the current world each time, and the store keeps the shown line unless
@@ -65,6 +103,14 @@ export function EmptyState() {
     window.addEventListener('focus', onFocus);
     return () => window.removeEventListener('focus', onFocus);
   }, [hasHistory, refreshWelcome]);
+
+  // The sidebar loads the conversation list, but on phones it is not mounted
+  // until opened — so a returning user saw no "Pick up where you left off"
+  // and was greeted as new. Load it here when nothing has loaded it yet.
+  useEffect(() => {
+    const s = useConversationStore.getState();
+    if (!s.items.length && !s.loading) void s.fetchConversations();
+  }, []);
 
   // Projects are enrichment, not content. If they never land, the block
   // simply isn't there.
@@ -114,6 +160,33 @@ export function EmptyState() {
           </p>
         </div>
 
+        {threads.length > 0 && (
+          <Group label="On your plate">
+            {threads.map((t) => (
+              <div key={t.id} className="group/item flex items-center gap-1" data-testid="home-thread">
+                <button
+                  onClick={() => seedComposer(t.prompt)}
+                  className="row-touch flex min-w-0 flex-1 items-center gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-surface-secondary/60"
+                >
+                  <Target className="h-4 w-4 shrink-0 text-foreground-secondary/50" aria-hidden="true" />
+                  <span className="min-w-0 flex-1 text-sm text-foreground [overflow-wrap:anywhere]">{t.text}</span>
+                  {THREAD_KIND[t.kind] && (
+                    <span className="shrink-0 text-micro text-foreground-secondary/60">{THREAD_KIND[t.kind]}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => dismissThread(t.id)}
+                  aria-label={`Don't suggest this: ${t.text}`}
+                  title="Don't suggest this"
+                  className="hover-reveal tap shrink-0 rounded-md p-1.5 text-foreground-secondary/50 hover:bg-surface-secondary/60 hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+          </Group>
+        )}
+
         {recent.length > 0 && (
           <Group label="Pick up where you left off">
             {recent.map((c) => (
@@ -136,7 +209,7 @@ export function EmptyState() {
           </Group>
         )}
 
-        {recent.length === 0 && projects.length === 0 && (
+        {recent.length === 0 && projects.length === 0 && threads.length === 0 && (
           <button
             onClick={() => setProjectUploadOpen(true)}
             className="tap inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"

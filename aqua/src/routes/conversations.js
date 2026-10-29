@@ -17,6 +17,9 @@ import {
 } from '../memory/conversationStore.js';
 import { clearAttachments } from '../upload/attachmentStore.js';
 import { ok, fail, ErrorCodes } from './envelope.js';
+import { resolveContextRefs } from '../memory/contextProvenance.js';
+import { ownerForUser, ownerForConversation } from '../memory/ownerResolver.js';
+import { claimsForProvenance } from '../brain/index.js';
 
 const router = express.Router();
 
@@ -82,13 +85,37 @@ router.get('/', (req, res) => {
 
 // ── Get one conversation ──────────────────────────────────────────────────────
 
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const { id } = req.params;
   if (!assertOwnership(req, res, id)) return;
-  const messages = getConversation(id);
   const meta     = getConversationMeta(id);
+  const messages = await withContextUsed(getConversation(id), meta?.userId ? ownerForUser(meta.userId) : ownerForConversation(id));
   ok(res, { id, meta, messageCount: messages.length, messages });
 });
+
+/**
+ * "Context used" for stored answers (memory/contextProvenance.js): the stored
+ * references are resolved against what the owner's stores hold NOW and never
+ * returned raw. Fail-open per message — history always loads.
+ */
+async function withContextUsed(messages, ownerId) {
+  // Through the Brain facade, the declared database consumer (dbPool.test.js).
+  const readClaims = async (owner, ids) => {
+    const rows = await claimsForProvenance(owner, ids);
+    if (rows === null) throw new Error('no canonical store');
+    return rows;
+  };
+  return Promise.all(messages.map(async m => {
+    if (!m?.contextRefs) return m;
+    const { contextRefs, ...rest } = m;
+    try {
+      const used = await resolveContextRefs(ownerId, contextRefs, { readClaims });
+      return used ? { ...rest, contextUsed: used } : rest;
+    } catch {
+      return rest;
+    }
+  }));
+}
 
 // ── Update conversation metadata (title / pin / archive) ─────────────────────
 // P0 — the server owns these now. The frontend's localStorage overlay becomes

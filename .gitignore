@@ -6,6 +6,11 @@ node_modules/
 .env.*
 !.env.example
 
+# Browser/session auth state written by e2e scripts (holds live session cookies)
+.auth/
+state.json
+*.storageState.json
+
 # Logs
 logs/
 *.log

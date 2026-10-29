@@ -198,12 +198,16 @@ function eligible(c, { modalities = ['fact'] } = {}) {
  * whose closure cannot be matched stays a candidate only while it is current
  * in the canonical model itself.
  */
+/** "migration" / "migrated" / "migrating" → one stem, so a status about the
+ *  noun closes a goal stated with the verb. Closure matching only. */
+const stem = w => (w.length > 4 ? w.replace(/ations?$/, 'ate').replace(/(?:ing|ed|es|e|s)$/, '') : w);
+
 function closedBy(claim, claims, text = objectText(claim)) {
-  const aim = new Set(contentTokens(text));
+  const aim = new Set(contentTokens(text).map(stem));
   if (!aim.size) return null;
   const t = ts(claim);
   const covers = label => {
-    const toks = contentTokens(label);
+    const toks = contentTokens(label).map(stem);
     return toks.length > 0 && toks.every(x => aim.has(x));
   };
   for (const c of claims) {
@@ -591,15 +595,49 @@ export function selectWelcome({ claims = [], legacyGoals = [], history = false, 
     ...intentCandidates(list, now),
   ];
   const rank = (a, b) => (b.score - a.score) || (b.at - a.at) || a.text.localeCompare(b.text);
+  const grounded = (cands) => cands.sort(rank).filter(c => isGrounded(c.text, evidenceTexts(c, list, legacyGoals)));
 
-  const pick = (cands) => cands.sort(rank).find(c => isGrounded(c.text, evidenceTexts(c, list, legacyGoals)));
-  const chosen = pick(canonical);
-  if (chosen) {
-    return envelope({ text: chosen.text, kind: chosen.kind, basis: 'world_model', established: true, evidence: chosen.evidence, subject: chosen.subject });
+  const canon = grounded(canonical);
+  if (canon.length) {
+    const [chosen] = canon;
+    return envelope({ text: chosen.text, kind: chosen.kind, basis: 'world_model', established: true, evidence: chosen.evidence, subject: chosen.subject, threads: threadsFrom(canon) });
   }
-  const legacy = pick(legacyCandidates(legacyGoals, list));
-  if (legacy) {
-    return envelope({ text: legacy.text, kind: legacy.kind, basis: 'legacy_goals', established: true, evidence: legacy.evidence, subject: legacy.subject });
+  const legacy = grounded(legacyCandidates(legacyGoals, list));
+  if (legacy.length) {
+    const [chosen] = legacy;
+    return envelope({ text: chosen.text, kind: chosen.kind, basis: 'legacy_goals', established: true, evidence: chosen.evidence, subject: chosen.subject, threads: threadsFrom(legacy) });
   }
-  return envelope({ text: history ? INVITE_RETURNING : INVITE_NEW, kind: 'invite', basis: 'none', established: false, evidence: [] });
+  return envelope({ text: history ? INVITE_RETURNING : INVITE_NEW, kind: 'invite', basis: 'none', established: false, evidence: [], threads: [] });
+}
+
+/* ── Threads: the runners-up, as places to pick up ───────────────────────────
+   The line above is the single best candidate; the next few distinct ones are
+   offered as entry points on the home screen. Same candidates, same grounding
+   check, same sensitivity filter, same evidence — nothing is generated for
+   them. Distinct means a different subject AND different evidence, so one goal
+   never appears twice in two wordings. `prompt` pre-fills the composer with
+   the user's own words for the thing; it is never sent on their behalf. */
+export const MAX_THREADS = 3;
+
+function threadsFrom(sorted) {
+  const [first, ...rest] = sorted;
+  const seenSubjects = new Set([String(first?.subject ?? '').toLowerCase()]);
+  const seenEvidence = new Set((first?.evidence ?? []).map(e => e.id));
+  const out = [];
+  for (const c of rest) {
+    if (out.length >= MAX_THREADS) break;
+    const subject = clean(c.subject);
+    const key = subject.toLowerCase();
+    if (!subject || seenSubjects.has(key) || c.evidence.some(e => seenEvidence.has(e.id))) continue;
+    seenSubjects.add(key);
+    for (const e of c.evidence) seenEvidence.add(e.id);
+    out.push({
+      id: hash(['thread', c.kind, key, c.evidence.map(e => e.id)]),
+      kind: c.kind,
+      text: c.text,
+      prompt: `About ${subject}: `,
+      evidence: c.evidence,
+    });
+  }
+  return out;
 }

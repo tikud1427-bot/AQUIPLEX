@@ -16,6 +16,19 @@ export interface Welcome {
   worldVersion: string;
   /** Changes when the line itself changes — what the screen keys on. */
   messageId: string;
+  /** Other grounded places to pick up (server: selector.js `threadsFrom`). Absent on older servers. */
+  threads?: WelcomeThread[];
+}
+
+export interface WelcomeThread {
+  /** Stable for the same item in the same world — the dismissal key. */
+  id: string;
+  kind: string;
+  /** One grounded sentence, same templates and checks as the line. */
+  text: string;
+  /** Composer pre-fill in the user's own words. Never sent automatically. */
+  prompt: string;
+  evidence: { source: 'claim' | 'mind_goal'; id: string }[];
 }
 
 /** `history` only chooses between two invitation wordings; it adds no content. */

@@ -2,6 +2,7 @@
 AQUA Candidate Extractor v3.1
 */
 import { MEMORY_SCHEMA, getSchema, CATEGORIES, CONFLICT_POLICIES } from './memorySchema.js';
+import { goalParts } from '../mind/goalText.js';
 
 const log = {
   debug: (msg, ...args) => console.debug(`[AQUA Extractor] ${msg}`, ...args),
@@ -152,9 +153,16 @@ export function extractCandidatesFromSentence(sentence, ctx = {}) {
       if (value === undefined || value === null || value === '') continue;
       if (typeof value === 'string' && value.length < 2) continue;
 
-      candidates.push(makeCandidate(schema, value, sentence, { reason: pattern.reason, confidence: pattern.confidence ?? schema.baseConfidence, ctx }));
+      // A goal capture runs through "and" ("become a billionaire and build a
+      // company people love"), and the collection stored it as ONE item — live
+      // run 2026-10-29. Same split rule as the Mind's goal tracker, so the two
+      // stores never disagree about how many goals were said.
+      const values = schema.key === 'goal' && typeof value === 'string' ? goalParts(value) : [value];
+      for (const v of values) {
+        candidates.push(makeCandidate(schema, v, sentence, { reason: pattern.reason, confidence: pattern.confidence ?? schema.baseConfidence, ctx }));
+      }
       seenKeys.add(schema.key);
-      break; 
+      break;
     }
   }
 

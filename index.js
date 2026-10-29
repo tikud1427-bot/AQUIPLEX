@@ -38,7 +38,9 @@ const { attachCsrfToken, verifyCsrf, enforceSameOrigin, safeEqual } = require(".
 const { safeNextPath, rememberPostLoginNext, takePostLoginNext } = require("./middleware/redirectTarget");
 const { validateNonce, mintNativeCode, redeemNativeCode } = require("./services/auth/nativeOAuth.service");
 const { establishSession } = require("./services/auth/establishSession.service");
+const { googleStrategyOptions } = require("./services/auth/googleOAuthOptions.service");
 const { recordProductEvent, engineEventTap } = require("./services/analytics/productEvents");
+const { attachAquaSettings } = require("./services/account/privacySettings.service");
 const identityPolicy = require("./services/auth/identityPolicy.service");
 const { createAuthHandlers } = require("./services/auth/authRoutes.service");
 const mailer = require("./services/auth/mailer.service");
@@ -63,6 +65,10 @@ async function generateAI(messages, options = {}, useVision = false) {
 app.set("trust proxy", 1);
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+
+// The one public distribution channel for Aqua AI. Every "Download Aqua AI"
+// button in views/ reads this, so the listing URL lives in exactly one place.
+app.locals.PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.aquiplex.aqua";
 
 // ── Razorpay webhook — MUST be raw body, mount BEFORE express.json() ──────────
 const { verifyWebhookSignature, } = require("./services/billing/razorpay.service");
@@ -390,11 +396,8 @@ app.use(verifyCsrf());
 // Configure Google OAuth strategy
 passport.use(
   new GoogleStrategy(
-    {
-      clientID:     process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL:  process.env.GOOGLE_CALLBACK_URL || "/auth/google/callback",
-    },
+    // state + PKCE: a callback is accepted only on the session that started it.
+    googleStrategyOptions("signin", process.env.GOOGLE_CALLBACK_URL || "/auth/google/callback"),
     async (accessToken, refreshToken, profile, done) => {
       try {
         // SECURITY (2026-10-19): an account is found by its Google identity,
@@ -426,11 +429,7 @@ passport.use(
 passport.use(
   "google-link",
   new GoogleStrategy(
-    {
-      clientID:     process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL:  process.env.GOOGLE_LINK_CALLBACK_URL || "/auth/google/link/callback",
-    },
+    googleStrategyOptions("link", process.env.GOOGLE_LINK_CALLBACK_URL || "/auth/google/link/callback"),
     (accessToken, refreshToken, profile, done) => done(null, identityPolicy.googleIdentity(profile))
   )
 );
@@ -448,11 +447,7 @@ passport.use(
 passport.use(
   "google-reauth",
   new GoogleStrategy(
-    {
-      clientID:     process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL:  process.env.GOOGLE_REAUTH_CALLBACK_URL || "/auth/google/reauth/callback",
-    },
+    googleStrategyOptions("reauth", process.env.GOOGLE_REAUTH_CALLBACK_URL || "/auth/google/reauth/callback"),
     async (accessToken, refreshToken, profile, done) => {
       // Never looked up or created in the database — this proves possession of
       // a Google account, nothing more. The route checks it matches the
@@ -644,6 +639,8 @@ const aquaAccess = [
     req.aquaUserId = String(req.session.userId);
     next();
   },
+  // Per-user privacy the engine applies on every turn (rememberSensitive).
+  attachAquaSettings(req => req.aquaUserId),
   aquaEngine,
 ];
 
@@ -758,10 +755,9 @@ app.get("/", (req, res) => {
   return res.redirect("/landing");
 });
 
-app.get("/landing", async (req, res) => {
-  if (req.session && req.session.userId) return res.redirect("/home");
-  res.render("landing");
-});
+// "/" still sends signed-in users to their workspace. /landing itself renders
+// for everyone, so the nav's "Aqua AI" link (/landing#aqua) works signed in too.
+app.get("/landing", (req, res) => res.render("landing"));
 
 app.get("/home", requireLogin, async (req, res) => {
   try {
@@ -1566,9 +1562,12 @@ app.get("/auth/native/return", (req, res) => {
     : null;
 
   return res.render("auth-native-return", {
+    // Reaching this page means the App Link did not open the app, and Chrome
+    // often blocks the script jump below without a tap. "Finishing sign-in…"
+    // left people waiting in the browser while the app stayed signed out.
     message: hadError
       ? "Sign-in didn't finish. Return to the Aqua app and try again."
-      : "Finishing sign-in…",
+      : "You're signed in. Tap Open Aqua App to finish signing in on your phone.",
     deepLink,
   });
 });
@@ -1898,7 +1897,9 @@ app.use((err, req, res, next) => {
   console.error("Unhandled error:", err);
   if (err.code === "LIMIT_FILE_SIZE")        return res.status(400).json({ reply: "⚠️ File too large. Maximum size is 10MB." });
   if (err.message?.includes("not supported")) return res.status(400).json({ reply: `⚠️ ${err.message}` });
-  res.status(500).json({ reply: `⚠️ ${err.message || "Something went wrong. Please try again."}` });
+  // The message is logged above; the response never carries it (stack-level
+  // detail, driver errors with hosts or collection names).
+  res.status(500).json({ reply: "⚠️ Something went wrong. Please try again." });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

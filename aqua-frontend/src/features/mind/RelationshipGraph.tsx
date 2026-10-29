@@ -24,6 +24,11 @@ const W = 760, H = 560, CX = W / 2, CY = H / 2;
 
 interface Positioned extends GraphNode { x: number; y: number; self: boolean }
 
+/** An uploaded file (memory/engine.js rememberFile → an `artifact` node). */
+export function isFileNode(n: GraphNode): boolean {
+  return n.type === 'artifact';
+}
+
 function layout(nodes: GraphNode[]): Positioned[] {
   const self = nodes.find((n) => n.key === 'person:__self__');
   const others = nodes.filter((n) => n.key !== 'person:__self__');
@@ -52,6 +57,10 @@ export function RelationshipGraph() {
   const [error, setError] = useState(false);
   const [hover, setHover] = useState<string | null>(null);
   const [view, setView] = useState({ x: 0, y: 0, k: 1 });
+  // Uploaded files are `artifact` nodes labelled with their raw filenames
+  // (IMG-20260817-WA00…, Screenshot_2026-…). Hidden unless asked for: the map
+  // is about the person's world — people, goals, projects, tech.
+  const [showFiles, setShowFiles] = useState(false);
   const drag = useRef<{ x: number; y: number } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -59,7 +68,9 @@ export function RelationshipGraph() {
     fetchGraph().then((g) => { setNodes(g.nodes); setEdges(g.edges); }).catch(() => setError(true));
   }, []);
 
-  const positioned = useMemo(() => (nodes ? layout(nodes) : []), [nodes]);
+  const fileCount = useMemo(() => (nodes ?? []).filter((n) => isFileNode(n)).length, [nodes]);
+  const shown = useMemo(() => (nodes ?? []).filter((n) => showFiles || !isFileNode(n)), [nodes, showFiles]);
+  const positioned = useMemo(() => (nodes ? layout(shown) : []), [nodes, shown]);
   const posByKey = useMemo(() => new Map(positioned.map((n) => [n.key, n])), [positioned]);
   const neighborhood = useMemo(() => {
     if (!hover) return null;
@@ -85,7 +96,24 @@ export function RelationshipGraph() {
 
   if (error) return <p className="text-sm text-foreground-secondary">The graph couldn’t load — it will return with the next update.</p>;
   if (!nodes) return <Panel className="flex h-72 items-center justify-center text-sm text-foreground-secondary">Mapping relationships…</Panel>;
-  if (positioned.length <= 1) return <p className="text-sm text-foreground-secondary">Mention people, projects and tools — the map draws itself.</p>;
+  const filesToggle = fileCount > 0 && (
+    <button
+      type="button"
+      onClick={() => setShowFiles((v) => !v)}
+      aria-pressed={showFiles}
+      className="rounded-md border border-border px-2 py-0.5 text-micro text-foreground-secondary hover:bg-surface-secondary hover:text-foreground"
+    >
+      {showFiles ? 'Hide files' : `Show files (${fileCount})`}
+    </button>
+  );
+  if (positioned.length <= 1) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-foreground-secondary">Mention people, projects and tools — the map draws itself.</p>
+        {filesToggle}
+      </div>
+    );
+  }
 
   return (
     <Panel className="p-2">
@@ -158,11 +186,14 @@ export function RelationshipGraph() {
       </svg>
       <div className="flex flex-wrap items-center justify-between gap-2 px-3 pb-2 pt-1">
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-micro text-foreground-secondary">
-          {[...new Set(nodes.filter((n) => n.key !== 'person:__self__').map((n) => n.type))].map((t) => (
+          {[...new Set(shown.filter((n) => n.key !== 'person:__self__').map((n) => n.type))].map((t) => (
             <span key={t}>{TYPE_LABEL[t] ?? t}</span>
           ))}
         </div>
-        <span className="text-micro text-foreground-secondary">Scroll to zoom · drag to pan</span>
+        <div className="flex items-center gap-3">
+          {filesToggle}
+          <span className="text-micro text-foreground-secondary">Scroll to zoom · drag to pan</span>
+        </div>
       </div>
     </Panel>
   );

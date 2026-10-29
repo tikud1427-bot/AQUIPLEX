@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { SectionHeader } from '@/components/ui/section-header';
+import { normalizeError } from '@/api/client';
+import { useUiStore } from '@/stores/uiStore';
 import {
   fetchUnderstanding, correctItem, fetchChanges,
   type UnderstandingModel, type UnderstandingChange,
@@ -22,6 +24,7 @@ export function UnderstandingSections() {
   const [model, setModel] = useState<UnderstandingModel | null>(null);
   const [changes, setChanges] = useState<UnderstandingChange[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const toast = useUiStore((s) => s.toast);
 
   const load = () => { fetchUnderstanding().then(setModel).catch(() => setModel(null)); };
   useEffect(load, []);
@@ -34,10 +37,19 @@ export function UnderstandingSections() {
 
   if (!model) return null;
 
-  const dismiss = async (ref: string) => {
+  // The row goes only after the server confirms; a failure says so instead of
+  // vanishing into an unhandled rejection.
+  const dismiss = async (ref: string, label: string) => {
     setBusy(ref);
-    try { await correctItem(ref, { action: 'remove' }); load(); }
-    finally { setBusy(null); }
+    try {
+      await correctItem(ref, { action: 'remove' });
+      toast('success', 'Removed', `Aqua no longer lists “${label}” as yours.`);
+      load();
+    } catch (err) {
+      toast('error', 'Could not remove that', normalizeError(err).message);
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
@@ -48,8 +60,8 @@ export function UnderstandingSections() {
           <ul className="flex flex-col gap-1.5">
             {model.projects.map((p) => (
               <li key={p.ref} className="group flex items-baseline justify-between gap-3">
-                <span className="text-[length:var(--text-body)] text-[var(--text)]">{p.label}</span>
-                <NotQuite onClick={() => dismiss(p.ref)} busy={busy === p.ref} label="Not mine" />
+                <span className="min-w-0 text-[length:var(--text-body)] text-[var(--text)] [overflow-wrap:anywhere]">{p.label}</span>
+                <NotQuite onClick={() => dismiss(p.ref, p.label)} busy={busy === p.ref} label="Not mine" />
               </li>
             ))}
           </ul>
@@ -153,7 +165,10 @@ function NotQuite({ onClick, busy, label = 'Not quite' }: { onClick: () => void;
       type="button"
       onClick={onClick}
       disabled={busy}
-      className="shrink-0 rounded px-1.5 py-0.5 text-[length:var(--text-micro)] text-[var(--text-secondary)] opacity-0 transition focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] group-hover:opacity-100 disabled:opacity-40"
+      aria-label={label}
+      // hover-reveal (globals.css): hover-only where a pointer can hover;
+      // always visible on touch, where opacity-0 made it unreachable.
+      className="hover-reveal shrink-0 rounded px-1.5 py-0.5 text-[length:var(--text-micro)] text-[var(--text-secondary)] focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] disabled:opacity-40"
     >
       {busy ? '…' : label}
     </button>

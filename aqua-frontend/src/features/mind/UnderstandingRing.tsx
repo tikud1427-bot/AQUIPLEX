@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import type { MindModel, Dimension } from '@/api/mind';
-import { DIMENSIONS, dimensionConfidence, understandingScore } from '@/stores/mindStore';
+import { DIMENSIONS, dimensionEvidence, learnedCount } from '@/stores/mindStore';
 import { CountUp } from '@/components/ui/count-up';
 
 /* ────────────────────────────────────────────────────────────────────────
@@ -9,7 +9,7 @@ import { CountUp } from '@/components/ui/count-up';
 
    Not a stock donut. Seven arcs — one per cognitive dimension — assemble
    the circle. Arc length = share of beliefs in that dimension; arc opacity
-   = average confidence there. As AQUA learns, segments appear and deepen:
+   = observations per belief there, relative to the best-evidenced area. As AQUA learns, segments appear and deepen:
    the viewer literally watches understanding assemble. A slow breathing
    scale keeps it alive without noise.
    ──────────────────────────────────────────────────────────────────────── */
@@ -24,20 +24,24 @@ const STROKE = 10;
 const C = 2 * Math.PI * R;
 const GAP = 0.018; // arc gap as fraction of circumference
 
-export function UnderstandingRing({ model, serverScore }: { model: MindModel; serverScore?: number | null }) {
+export function UnderstandingRing({ model }: { model: MindModel }) {
   const reduce = useReducedMotion();
-  // Server value wins — see mindStore.understandingScore. The local formula is
-  // a first-paint fallback only, so the number never jumps when the fetch lands.
-  const score = understandingScore(model, serverScore);
+  // The centre shows a count, not an "understanding %": the old percentage was
+  // a weighted blend of confidences and counts that nothing had validated.
+  const learned = learnedCount(model);
 
   const segments = useMemo(() => {
-    const dims = DIMENSIONS.map((d) => ({ d, ...dimensionConfidence(model, d) }))
+    const dims = DIMENSIONS.map((d) => ({ d, ...dimensionEvidence(model, d) }))
       .filter((x) => x.count > 0);
     const total = dims.reduce((s, x) => s + x.count, 0) || 1;
+    // Shade = observations per belief, relative to the best-evidenced area.
+    // It used to be average confidence, while the caption said "evidence".
+    const depth = (x: { count: number; observations: number }) => x.observations / x.count;
+    const maxDepth = Math.max(1, ...dims.map(depth));
     let offset = 0;
     return dims.map((x) => {
       const frac = Math.max(0.04, x.count / total) ; // every present dimension visible
-      const seg = { d: x.d, avg: x.avg, count: x.count, start: offset, frac };
+      const seg = { d: x.d, avg: depth(x) / maxDepth, count: x.count, start: offset, frac };
       offset += frac;
       return seg;
     });
@@ -53,7 +57,7 @@ export function UnderstandingRing({ model, serverScore }: { model: MindModel; se
         transition={reduce ? undefined : { duration: 6, repeat: Infinity, ease: 'easeInOut' }}
       >
         <svg width={2 * (R + STROKE)} height={2 * (R + STROKE)} viewBox={`0 0 ${2 * (R + STROKE)} ${2 * (R + STROKE)}`} role="img"
-             aria-label={`Overall understanding ${score} percent`}>
+             aria-label={`${learned} thing${learned === 1 ? '' : 's'} learned so far`}>
           <g transform={`translate(${R + STROKE}, ${R + STROKE}) rotate(-90)`}>
             {/* Track */}
             <circle r={R} fill="none" stroke="var(--border)" strokeWidth={STROKE} opacity={0.5} />
@@ -75,7 +79,7 @@ export function UnderstandingRing({ model, serverScore }: { model: MindModel; se
                   animate={{ opacity: 0.25 + s.avg * 0.75, strokeDasharray: `${lenFrac * C} ${C}` }}
                   transition={{ duration: reduce ? 0 : 0.9, delay: reduce ? 0 : 0.15 + i * 0.08, ease: [0.16, 1, 0.3, 1] }}
                 >
-                  <title>{`${DIM_LABEL[s.d]} — ${s.count} belief${s.count === 1 ? '' : 's'}, avg ${Math.round(s.avg * 100)}% confidence`}</title>
+                  <title>{`${DIM_LABEL[s.d]} — ${s.count} thing${s.count === 1 ? '' : 's'} learned`}</title>
                 </motion.circle>
               );
             })}
@@ -83,10 +87,9 @@ export function UnderstandingRing({ model, serverScore }: { model: MindModel; se
         </svg>
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <div className="font-semibold tracking-tight text-foreground" style={{ fontSize: 56, lineHeight: 1 }}>
-            <CountUp value={score} />
-            <span className="ml-0.5 align-top text-xl text-foreground-secondary">%</span>
+            <CountUp value={learned} />
           </div>
-          <div className="mt-1 text-micro uppercase tracking-[0.16em] text-foreground-secondary">understanding</div>
+          <div className="mt-1 text-micro uppercase tracking-[0.16em] text-foreground-secondary">things learned</div>
         </div>
       </motion.div>
 
@@ -97,7 +100,7 @@ export function UnderstandingRing({ model, serverScore }: { model: MindModel; se
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-foreground-secondary">
           Built from <span className="font-medium tabular-nums text-foreground">{model.turnCount}</span> observed turns.
-          Each arc is one dimension of the model; its depth is Aqua’s confidence there.
+          Each arc is one area of the model, sized by how much Aqua has learned there; fainter arcs rest on less evidence.
           This model evolves automatically with every conversation.
         </p>
         <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-1 md:justify-start">

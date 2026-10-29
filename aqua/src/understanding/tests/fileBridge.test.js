@@ -242,6 +242,14 @@ test('U3: goals route through trackGoals, never written directly', () => {
 test('U3: fileBridge is pure — it cannot reach a store', async () => {
   const src = fs.readFileSync(new URL('../fileBridge.js', import.meta.url), 'utf8');
   const imports = [...src.matchAll(/^import\s[^;]*?from\s+['"]([^'"]+)['"]/gm)].map(m => m[1]);
-  assert.deepEqual(imports, ['../mind/mindSchema.js'],
-    'the translator must import the schema and nothing else');
+  assert.deepEqual(imports, ['../mind/mindSchema.js', './domainTopics.js'],
+    'the translator must import the schema and the (pure) domain-topic rule, nothing else');
+  const rule = fs.readFileSync(new URL('../domainTopics.js', import.meta.url), 'utf8');
+  assert.equal(/^import\s/m.test(rule), false, 'domainTopics.js imports nothing, so it cannot reach a store either');
+});
+
+test('a maths PDF’s LaTeX tokens never become knowledge domains (2026-10-28)', () => {
+  const uko = { topics: ['alpha', 'frac', 'beta', 'gamma', 'tan', 'bar', 'x', 'linear algebra'].map(topic => ({ topic, weight: 0.9 })) };
+  const keys = toSignals(uko, { sourceLabel: 'calc.pdf' }).filter(s => s.key.startsWith('domain:')).map(s => s.key);
+  assert.deepEqual(keys, ['domain:linear_algebra']);
 });

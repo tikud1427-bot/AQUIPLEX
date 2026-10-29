@@ -63,6 +63,23 @@ export function Composer() {
     el.style.height = `${Math.min(el.scrollHeight, 240)}px`;
   }, []);
 
+  // A home-screen thread pre-fills the box; the user finishes and sends it.
+  // Never overwrites something they are already typing.
+  const composerSeed = useUiStore((s) => s.composerSeed);
+  const clearComposerSeed = useUiStore((s) => s.clearComposerSeed);
+  useEffect(() => {
+    if (!composerSeed) return;
+    clearComposerSeed();
+    setText((cur) => (cur.trim() ? cur : composerSeed.text));
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+      autoResize();
+    });
+  }, [composerSeed, clearComposerSeed, autoResize]);
+
   const onDrop = useCallback((accepted: File[]) => void addFiles(accepted), [addFiles]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({

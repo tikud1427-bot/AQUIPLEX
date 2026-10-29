@@ -5,6 +5,7 @@ import { getConversation } from '@/api/conversations';
 import { listArtifacts, getArtifact } from '@/api/artifacts';
 import { useArtifactsStore } from './artifactsStore';
 import { normalizeError, isCancel } from '@/api/client';
+import { userErrorMessage } from '@/lib/userError';
 import { refreshMind } from './mindStore';
 import { refreshWallet } from './walletStore';
 import { useUiStore } from './uiStore';
@@ -72,6 +73,8 @@ function toDiagnostics(res: ChatSuccessResponse): MessageDiagnostics {
     plan: res.plan,
     intelligence: res.intelligence,
     memory: res.memory,
+    recall: res.recall,
+    contextUsed: res.contextUsed,
     verification: res.verification,
     project: res.project,
   };
@@ -349,7 +352,8 @@ export const useChatStore = create<ChatState>((set, get) => {
             finishTurn(payload);
           },
           onError: (e) => {
-            serverError = e.message ?? e.error;
+            // Rendered in the bubble: a sentence, never a router chain or stack.
+            serverError = userErrorMessage(e.message ?? e.error, 'Aqua could not finish that answer. Please try again.');
             serverErrorCode = e.code;
             serverErrorUpgradeUrl = e.upgradeUrl;
           },
@@ -545,6 +549,7 @@ export const useChatStore = create<ChatState>((set, get) => {
           content: m.content,
           ts: m.ts,
           status: 'complete',
+          ...(m.contextUsed ? { contextUsed: m.contextUsed } : {}),
         }));
         set({ messages, loadingHistory: false });
 

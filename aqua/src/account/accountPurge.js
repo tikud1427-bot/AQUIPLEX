@@ -43,6 +43,8 @@ import { purgeOwner as purgeFileIndex } from '../files/fileSearchIndex.js';
 import { purgeOwner as purgeReasoningGraph } from '../reasoning/reasoningGraph.js';
 import { purgeOwner as purgePic } from '../pic/picStore.js';
 import { purgeOwner as purgeBrain } from '../brain/index.js';
+// Episodic recall's forget list (hashed phrases) is about this person too.
+import { purgeOwner as purgeRecallRedactions } from '../memory/recallRedactions.js';
 // E5/PR-6 — the claim shadow path writes owner-scoped rows to Postgres. It
 // no-ops when DATABASE_URL is absent rather than reporting an erasure failure
 // for a database the deployment never had.
@@ -223,6 +225,7 @@ export async function purgeOwnerData({ userId } = {}) {
 
   // ── 7. In-process Inspector traces (never persisted, but hold fact values) ─
   report.traces = step(report, 'traces', () => purgeTracesForOwner(ownerId)) ?? 0;
+  report.recallRedactions = step(report, 'recallRedactions', () => purgeRecallRedactions(ownerId)) ?? 0;
 
   console.log(
     `[ACCOUNT] Purged engine data owner=${ownerId} conversations=${report.conversations} ` +

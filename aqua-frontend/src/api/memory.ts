@@ -36,6 +36,26 @@ export async function forgetAllMemory() {
   return data;
 }
 
+/** "Keep" on a hidden sensitive fact: stays stored, stays out of chat, marked reviewed. */
+export async function keepSensitiveFact(key: string) {
+  const { data } = await apiClient.post<{ success: boolean; ownerId: string; fact?: MemoryFact }>(
+    `/memory/fact/${encodeURIComponent(key)}/keep`,
+  );
+  return data;
+}
+
+/** Legacy review: "it's right" on a value today's validator rejects. */
+export async function confirmMemoryFact(key: string) {
+  const { data } = await apiClient.post<{ success: boolean }>(`/memory/fact/${encodeURIComponent(key)}/confirm`);
+  return data;
+}
+
+/** Legacy review: one collection item held several goals — split it, or keep it. */
+export async function splitMemoryItem(key: string, body: { item: string; parts: string[] } | { item: string; keep: true }) {
+  const { data } = await apiClient.post<{ success: boolean }>(`/memory/fact/${encodeURIComponent(key)}/split-item`, body);
+  return data;
+}
+
 export async function pinMemoryFact(key: string, pinned: boolean) {
   const { data } = await apiClient.post<{ success: boolean; ownerId: string; fact?: MemoryFact }>(
     `/memory/fact/${encodeURIComponent(key)}/pin`,
@@ -51,6 +71,8 @@ export async function pinMemoryFact(key: string, pinned: boolean) {
 export interface CurrentClaim {
   claimId: string;
   statement: string;
+  /** The part a value correction replaces; pre-filled in the correction box. Absent on older servers. */
+  value?: string | null;
   quote: string | null;
   sourceKind: string;
   sourceName: string | null;
