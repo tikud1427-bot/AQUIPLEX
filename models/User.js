@@ -111,6 +111,14 @@ const userSchema = new mongoose.Schema(
     billingEmail: { type: String, default: null },
     phone:        { type: String, default: null },
 
+    // ── Privacy (2026-10-28) ────────────────────────────────────────────────
+    // Off by default: AQUA neither stores health and mood details as memory
+    // nor brings them into replies (aqua/src/memory/sensitivity.js). On: they
+    // are kept, tagged, and used only when the user is talking about that topic.
+    privacy: {
+      rememberSensitive: { type: Boolean, default: false },
+    },
+
     // ── Referral (keep for future) ──────────────────────────────────────────
     referralCode: { type: String, default: null, unique: true, sparse: true },
     referredBy:   { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },

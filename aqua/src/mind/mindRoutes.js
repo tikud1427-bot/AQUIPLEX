@@ -15,6 +15,9 @@
  *   DELETE /mind/beliefs/:dim/:key        — delete one belief
  *   PATCH  /mind/goals/:id                — edit goal (status/priority/title)
  *   DELETE /mind/goals/:id                — delete goal
+ *   POST   /mind/goals/:id/split          — legacy review: split a merged goal / keep it
+ *   GET    /mind/review                   — legacy records to review (read-only)
+ *   POST   /mind/beliefs/:dim/:key/review — legacy review: "it's right"
  *   GET    /mind/graph                    — nodes+edges (?around=nodeKey)
  *   GET    /mind/reflections              — reflection history
  *   DELETE /mind                          — erase the entire cognitive model
@@ -25,13 +28,16 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { resolveMindOwner, peekMind, getMind, deleteMind, exportMind, mindStats } from './mindStore.js';
-import { getBeliefs, explainBelief, correctBelief, lockBelief, markTemporary, deleteBelief } from './beliefEngine.js';
+import { getBeliefs, correctBelief, lockBelief, markTemporary, deleteBelief } from './beliefEngine.js';
 import { getActiveGoals } from './goalTracker.js';
 import { getEpisodes } from './episodeTracker.js';
+import { presentBeliefs, presentGoals, presentEpisodes, presentWorking, presentPredictions, presentTimeline, presentExplanation } from './mindPresentation.js';
 import { neighborhood } from './relationshipGraph.js';
 import { recentTimeline } from './timeline.js';
 import { currentFocus } from './workingMemory.js';
-import { beliefKey, GOAL_STATUS } from './mindSchema.js';
+import { beliefKey, GOAL_STATUS, createGoal } from './mindSchema.js';
+import { reviewCandidates } from './legacyReview.js';
+import { getFacts } from '../memory/longTermMemory.js';
 import { touchMind, deleteItem } from './mindStore.js';
 
 const router = express.Router();
@@ -81,19 +87,22 @@ router.get('/', (req, res) => {
     turnCount: mind.turnCount,
     createdAt: mind.createdAt,
     updatedAt: mind.updatedAt,
-    identity:      getBeliefs(mind, { dimension: 'identity' }).map(compactBelief),
-    personality:   getBeliefs(mind, { dimension: 'personality' }).map(compactBelief),
-    communication: getBeliefs(mind, { dimension: 'communication' }).map(compactBelief),
-    preferences:   getBeliefs(mind, { dimension: 'preferences' }).map(compactBelief),
-    knowledge:     getBeliefs(mind, { dimension: 'knowledge' }).map(compactBelief),
-    behavior:      getBeliefs(mind, { dimension: 'behavior' }).map(compactBelief),
-    decision:      getBeliefs(mind, { dimension: 'decision' }).map(compactBelief),
-    goals: Object.values(mind.goals).sort((a, b) => b.lastMentionedAt - a.lastMentionedAt),
+    // What a person may see (mind/mindPresentation.js): no intent ids, no
+    // markup "domains", no goal as a profession, no health/mood beliefs, and
+    // evidence lines from real evidence.
+    identity:      presentBeliefs(getBeliefs(mind, { dimension: 'identity' })),
+    personality:   presentBeliefs(getBeliefs(mind, { dimension: 'personality' })),
+    communication: presentBeliefs(getBeliefs(mind, { dimension: 'communication' })),
+    preferences:   presentBeliefs(getBeliefs(mind, { dimension: 'preferences' })),
+    knowledge:     presentBeliefs(getBeliefs(mind, { dimension: 'knowledge' })),
+    behavior:      presentBeliefs(getBeliefs(mind, { dimension: 'behavior' })),
+    decision:      presentBeliefs(getBeliefs(mind, { dimension: 'decision' })),
+    goals: presentGoals(Object.values(mind.goals).sort((a, b) => b.lastMentionedAt - a.lastMentionedAt)),
     activeGoals: getActiveGoals(mind, 10).map(g => g.id),
-    episodes: getEpisodes(mind, { limit: 10 }),
-    working: { ...mind.working, focusRanked: currentFocus(mind, 8) },
-    predictions: mind.predictions,
-    timeline: recentTimeline(mind, 30),
+    episodes: presentEpisodes(getEpisodes(mind, { limit: 10 })),
+    working: presentWorking(mind.working, currentFocus(mind, 8)),
+    predictions: presentPredictions(mind.predictions),
+    timeline: presentTimeline(recentTimeline(mind, 30)),
     graph: {
       nodeCount: Object.keys(mind.graph.nodes).length,
       edgeCount: Object.keys(mind.graph.edges).length,
@@ -137,7 +146,7 @@ router.get('/beliefs/:dim/:key', (req, res) => {
   if (!mind) return;
   const belief = mind.beliefs[beliefKey(req.params.dim, req.params.key)];
   if (!belief) return res.status(404).json({ success: false, error: 'Belief not found' });
-  res.json({ success: true, belief, explanation: explainBelief(belief) }); // Layer 17
+  res.json({ success: true, belief, explanation: presentExplanation(belief) }); // Layer 17, in words
 });
 
 router.patch('/beliefs/:dim/:key', (req, res) => {
@@ -191,6 +200,69 @@ router.patch('/goals/:id', (req, res) => {
   goal.privacy.source = 'correction';
   touchMind(mind);
   res.json({ success: true, goal });
+});
+
+/**
+ * POST /mind/goals/:id/split  { parts: string[] }  |  { keep: true }
+ * Legacy review (legacyReview.js). Split: each part becomes its own goal,
+ * inheriting the original's dates, mentions and projects; the original is not
+ * deleted — it is marked abandoned with `splitInto` and a history entry, so its
+ * evidence survives (export) and nothing reads it as current. Keep: the user
+ * says it is one goal; the review stops asking. Parts are the user's to edit,
+ * so they are validated, not required to match the suggestion.
+ */
+router.post('/goals/:id/split', (req, res) => {
+  const mind = requireMind(req, res);
+  if (!mind) return;
+  const goal = mind.goals[req.params.id];
+  if (!goal || goal.splitInto) return res.status(404).json({ success: false, error: 'Goal not found' });
+  const now = Date.now();
+  if (req.body?.keep === true) {
+    goal.reviewedAt = now;
+    goal.history.push({ status: goal.status, at: now, reason: 'user kept as one goal' });
+    touchMind(mind);
+    return res.json({ success: true, goal });
+  }
+  const parts = Array.isArray(req.body?.parts) ? req.body.parts.map(p => String(p ?? '').replace(/\s+/g, ' ').trim()) : [];
+  if (parts.length < 2 || parts.length > 6 || parts.some(p => p.length < 3 || p.length > 120) || new Set(parts.map(p => p.toLowerCase())).size !== parts.length) {
+    return res.status(400).json({ success: false, error: 'Give 2 to 6 different goals, each 3–120 characters.' });
+  }
+  const created = parts.map(title => {
+    const g = createGoal({ title, source: 'correction', confidence: goal.confidence });
+    Object.assign(g, {
+      status: goal.status === GOAL_STATUS.STALE ? GOAL_STATUS.ACTIVE : goal.status,
+      mentions: goal.mentions, createdAt: goal.createdAt, lastMentionedAt: goal.lastMentionedAt,
+      relatedProjects: [...(goal.relatedProjects ?? [])], deadline: null,
+      history: [{ status: 'split', at: now, reason: `split by user from goal ${goal.id}` }],
+    });
+    mind.goals[g.id] = g;
+    return g;
+  });
+  goal.history.push({ status: goal.status, at: now, reason: `split by user into ${created.map(g => g.id).join(', ')}` });
+  goal.status = GOAL_STATUS.ABANDONED;
+  goal.splitInto = created.map(g => g.id);
+  goal.updatedAt = now;
+  touchMind(mind);
+  res.json({ success: true, goals: created, original: goal.id });
+});
+
+/** GET /mind/review — legacy records the user should look at (legacyReview.js). Read-only. */
+router.get('/review', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No mind owner' });
+  const candidates = reviewCandidates({ mind: peekMind(ownerId), facts: getFacts(ownerId) });
+  res.json({ success: true, candidates });
+});
+
+/** POST /mind/beliefs/:dim/:key/review — "it's right": stop flagging it; show and use it as stated. */
+router.post('/beliefs/:dim/:key/review', (req, res) => {
+  const mind = requireMind(req, res);
+  if (!mind) return;
+  const belief = mind.beliefs[beliefKey(req.params.dim, req.params.key)];
+  if (!belief) return res.status(404).json({ success: false, error: 'Belief not found' });
+  belief.reviewedAt = Date.now();
+  touchMind(mind);
+  res.json({ success: true, belief: compactBelief(belief) });
 });
 
 router.delete('/goals/:id', (req, res) => {

@@ -37,6 +37,7 @@
  * decision.
  */
 import { DIMENSIONS } from '../mind/mindSchema.js';
+import { isMarkupTopic } from './domainTopics.js';
 
 /** A term must recur to count as something the person WORKS with. */
 const MIN_ENTITY_COUNT = 2;
@@ -117,8 +118,13 @@ export function toSignals(uko, { sourceLabel = null } = {}) {
   // ── What the document is ABOUT ────────────────────────────────────────────
   // Topics carry a weight from the enrichment pipeline; only the ones it was
   // reasonably sure of become beliefs.
+  // A maths PDF's "topics" were LaTeX commands (alpha, frac, tan, bar) and each
+  // became a domain belief. Markup and symbols are never a domain — dropped
+  // BEFORE the cap, or five of them crowd out the one real topic. A topic
+  // outside the domain vocabulary is shown only once a second source confirms
+  // it (mind/mindPresentation.js).
   const topics = (uko.topics ?? [])
-    .filter(t => t && t.topic && Number(t.weight ?? 0) >= 0.5)
+    .filter(t => t && t.topic && Number(t.weight ?? 0) >= 0.5 && !isMarkupTopic(t.topic))
     .sort((a, b) => (b.weight ?? 0) - (a.weight ?? 0))
     .slice(0, MAX_TOPIC_BELIEFS);
 

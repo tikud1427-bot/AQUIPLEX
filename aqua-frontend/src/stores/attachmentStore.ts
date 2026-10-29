@@ -13,6 +13,7 @@ import { create } from 'zustand';
 import { uploadUnified, deleteConversationAttachment, type ServerAttachment, type UploadWorkspaceResult } from '@/api/upload';
 import { classifyFile, readAsBase64, MAX_BYTES_BY_KIND, type UploadKind } from '@/utils/uploadKinds';
 import { normalizeError } from '@/api/client';
+import { userErrorMessage } from '@/lib/userError';
 import { useChatStore } from './chatStore';
 import { useUploadStore } from './uploadStore';
 import { useUiStore } from './uiStore';
@@ -46,6 +47,9 @@ interface AttachmentState {
   remove: (localId: string) => Promise<void>;
   clearForNewConversation: () => void;
 }
+
+/** A parser's own exception text is not a reason a person can act on. */
+const FILE_FAILED = "Aqua couldn't read this file. Try another format, or upload it again.";
 
 const STAGE_LABEL: Record<UploadKind, string> = {
   repository: 'Extracting & indexing…',
@@ -133,8 +137,8 @@ export const useAttachmentStore = create<AttachmentState>((set, get) => ({
           const match = accepted.find((a) => a.localId === it.localId);
           if (!match) return it;
           const result = res.results.find((r) => r.name === it.name);
-          if (!result) return { ...it, stage: 'error', stageLabel: 'Failed', error: 'No result returned for this file' };
-          if (result.status === 'failed') return { ...it, stage: 'error', stageLabel: 'Failed', error: result.error };
+          if (!result) return { ...it, stage: 'error', stageLabel: 'Failed', error: FILE_FAILED };
+          if (result.status === 'failed') return { ...it, stage: 'error', stageLabel: 'Failed', error: userErrorMessage(result.error, FILE_FAILED) };
           const attachment = res.attachments.find((a: ServerAttachment) => a.id === result.attachmentId);
           return {
             ...it,
@@ -155,7 +159,7 @@ export const useAttachmentStore = create<AttachmentState>((set, get) => ({
       }
 
       const failures = res.results.filter((r) => r.status === 'failed');
-      for (const f of failures) toast('error', `${f.name} failed`, f.error);
+      for (const f of failures) toast('error', `Couldn't read ${f.name}`, userErrorMessage(f.error, FILE_FAILED));
     } catch (err) {
       const message = normalizeError(err).message;
       set((s) => ({

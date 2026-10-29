@@ -5,6 +5,9 @@ Semantic retrieval engine with multi-dimensional scoring, context budgeting,
 and grouped prompt injection.
 */
 import { getFacts, touchRetrieved } from './longTermMemory.js';
+import { sensitivePolicy, withheld } from './sensitivity.js';
+import { FACT_LABELS } from './displayLabels.js';
+import { failsItsSchema } from './factVisibility.js';
 import { getSchema, getSchemaByCategory, getWordIndex, CATEGORIES, SEMANTIC_CONCEPTS, CATEGORY_ALIASES } from './memorySchema.js';
 
 // ── Recall trigger detection ──────────────────────────────────────────────────
@@ -186,9 +189,25 @@ function scoreRelevance(fact, query, ctx) {
   return { score, intentScore };
 }
 
+/** The question is about, or for, the person asking. */
+const PERSONAL_REFERENCE = /\b(?:i|i'?m|i'?ve|i'?d|i'?ll|me|my|mine|myself|we|we'?re|we'?ve|our|ours|us|ourselves)\b/i;
+
 // ── Public retrieval API ──────────────────────────────────────────────────────
-export function retrieveRelevantFacts(ownerId, query, limit = 15, { trace = null, semanticScores = null } = {}) {
-  const allFacts = getFacts(ownerId);
+export function retrieveRelevantFacts(ownerId, query, limit = 15, { trace = null, semanticScores = null, sensitive = null } = {}) {
+  // Sensitive categories (2026-10-28): health and mood facts leave BEFORE
+  // scoring. They used to rank like any fact — a custom_ fallback fact scores
+  // importance 4 × 15 + confidence 0.7 × 20 = 74 on base alone, above the
+  // generic-query threshold of 50 — so they rode along on every turn, and each
+  // ride raised retrievalCount (the Memory page's "Used 233×").
+  const policy = sensitive ?? sensitivePolicy();
+  const stored = getFacts(ownerId);
+  const visible = stored.filter(f => !withheld(f, policy));
+  if (trace) trace.sensitiveWithheld = stored.length - visible.length;
+  // A value its own schema rejects today ("profession: billionaire", written
+  // before that validator was fixed) is hidden from the Memory page — and must
+  // not reach the answer either, or the model is still told a goal is a job.
+  // Stored and forgettable as before; only its use stops.
+  const allFacts = visible.filter(f => !failsItsSchema(f));
   if (!allFacts.length) return [];
 
   const isRecall = isMemoryQuery(query);
@@ -218,8 +237,17 @@ export function retrieveRelevantFacts(ownerId, query, limit = 15, { trace = null
   const hasDirectedIntent =
     (categoryFilter && categoryFilter.size > 0) || semanticConcepts.size > 0;
 
+  // Impersonal-query gate (2026-10-29): a generic question that never refers
+  // to the user ("At sea level, what temperature does water boil at?") used to
+  // carry the whole profile — importance alone clears threshold 50 — so every
+  // factual question handed the model the user's job and goals (live run,
+  // CONTEXT_VALIDATION_2026-10-29.md, V7). With no personal reference only facts
+  // the question itself names survive. Anything with I/my/we/our ("help me plan
+  // my week") keeps the profile as before.
+  const impersonal = !isRecall && !hasDirectedIntent && !PERSONAL_REFERENCE.test(query);
+
   const filtered = scored.filter((x) =>
-    x.score >= threshold && (!hasDirectedIntent || x.intentScore > 0));
+    x.score >= threshold && (!hasDirectedIntent || x.intentScore > 0) && (!impersonal || x.intentScore > 0));
   
   if (filtered.length > 0) {
     console.log(`[MEM_RETRIEVER] MEMORY_RETRIEVED owner=${ownerId} count=${filtered.length} topScore=${filtered[0].score}`);
@@ -243,15 +271,6 @@ export function retrieveRelevantFacts(ownerId, query, limit = 15, { trace = null
 }
 
 // ── Prompt formatting & Grouping ──────────────────────────────────────────────
-const FACT_LABELS = {
-  name: 'Name', age: 'Age', birthday: 'Birthday', gender: 'Gender', ethnicity: 'Ethnicity',
-  city: 'City', country: 'Country', profession: 'Profession', company: 'Company', 
-  years_experience: 'Years of Experience', pets: 'Pets', favorite_language: 'Favorite Programming Language',
-  least_favorite_language: 'Disliked Languages', favorite_color: 'Favorite Color', 
-  favorite_food: 'Favorite Food', disliked_food: 'Disliked Food', languages: 'Programming Languages',
-  favorite_editor: 'Favorite Editor', favorite_os: 'Operating System', hobbies: 'Hobbies', goal: 'Goals',
-  spouse: 'Spouse', children: 'Children', frameworks: 'Frameworks', hardware: 'Hardware',
-};
 
 const CATEGORY_LABELS = {
   [CATEGORIES.IDENTITY]: 'Identity', [CATEGORIES.LOCATION]: 'Location',
@@ -265,12 +284,23 @@ const CATEGORY_LABELS = {
   [CATEGORIES.CUSTOM]: 'Other Details',
 };
 
+/**
+ * The exact line a fact contributes to the prompt, or null when the formatter
+ * leaves it out. Shared with the "Context used" disclosure (routes/chat.js) so
+ * that list can only name what the model was actually given — retrieval
+ * returns facts from 0.5 confidence, the prompt only from 0.55.
+ */
+export function factPromptLine(f) {
+  if (!f || f.value === undefined || f.value === null || (f.confidence || 0) < 0.55) return null;
+  return `- ${FACT_LABELS[f.key] || String(f.key).replace(/_/g, ' ')}: ${formatValue(f.value)}`;
+}
+
 export function formatFactsForPrompt(facts) {
   if (!facts || !facts.length) return '';
 
   const grouped = new Map();
   for (const fact of facts) {
-    if (fact.value === undefined || fact.value === null || (fact.confidence || 0) < 0.55) continue;
+    if (factPromptLine(fact) === null) continue;
     const cat = fact.category || CATEGORIES.CUSTOM;
     if (!grouped.has(cat)) grouped.set(cat, []);
     grouped.get(cat).push(fact);
@@ -282,11 +312,7 @@ export function formatFactsForPrompt(facts) {
   for (const [cat, catFacts] of grouped.entries()) {
     const catLabel = CATEGORY_LABELS[cat] || cat;
     lines.push(`\n### ${catLabel}`);
-    for (const f of catFacts) {
-      const label = FACT_LABELS[f.key] || f.key.replace(/_/g, ' ');
-      const value = formatValue(f.value);
-      lines.push(`- ${label}: ${value}`);
-    }
+    for (const f of catFacts) lines.push(factPromptLine(f));
   }
 
   console.log(`[MEM_RETRIEVER] MEMORY_GROUPED categories=${Array.from(grouped.keys()).join(',')}`);

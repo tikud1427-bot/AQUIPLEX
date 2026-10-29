@@ -200,6 +200,27 @@ export async function legacyVetoFor(ownerId) {
   }
 }
 
+/**
+ * The World Model's "this was later changed" notes for episodic recall
+ * (memory/episodicRecall.js): superseded claims' verbatim quotes → the current
+ * statement. [] when no canonical store is configured. Throws on a database
+ * error; recall catches it and quotes without notes.
+ */
+export async function supersessionNotesFor(ownerId) {
+  if (!ownerId || !dbConfigured()) return [];
+  return canonicalReadModel.supersessionNotes(ownerId);
+}
+
+/**
+ * Claims by id, history included, for "Context used" on a reopened answer
+ * (memory/contextProvenance.js). Archived (forgotten) claims are not returned.
+ * null when no canonical store is configured; throws on a database error.
+ */
+export async function claimsForProvenance(ownerId, claimIds) {
+  if (!ownerId || !dbConfigured()) return null;
+  return canonicalReadModel.readClaims(ownerId, claimIds, { retrospective: true });
+}
+
 // ── USER FORGET / CORRECT REACHES THE WORLD MODEL (audit 2026-10-12) ─────────
 // What the user sees and edits on the Memory page is the legacy fact store.
 // What answers is (a) the canonical World Model by default, and (b) the
@@ -489,7 +510,7 @@ export async function correctWorldModelClaimValue(ownerId, claimId, newValue, { 
     ownerId, actor: 'user', claimId: c.claimId, statementText, object: { literal: value }, reason,
   });
   const retired = old ? archiveConversationFacts(ownerId, conversationFactsStating(ownerId, legacyValueStrings(old)), reason) : [];
-  return { from: c.claimId, to: out.claimId, statementText, oldValue: old, conversationFacts: retired };
+  return { from: c.claimId, to: out.claimId, statementText, oldStatement: base || null, oldValue: old, conversationFacts: retired };
 }
 
 /**

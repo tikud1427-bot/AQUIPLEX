@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import type { ApiError } from '@/types';
 import { loginWithReturn } from './routes';
+import { userErrorMessage } from '@/lib/userError';
 
 export const API_BASE_URL = (import.meta.env.VITE_API_URL ?? '/api/aqua').replace(/\/+$/, '');
 
@@ -54,7 +55,7 @@ export function normalizeError(err: unknown): ApiError {
       const body = e.response.data as { error?: string; message?: string; requestId?: string; conversationId?: string };
       return {
         // Guards send { error: CODE, message: "human sentence" } — show the sentence.
-        message: body?.message ?? body?.error ?? `Request failed (${e.response.status})`,
+        message: userErrorMessage(body?.message ?? body?.error),
         status: e.response.status,
         requestId: body?.requestId,
         conversationId: body?.conversationId,
@@ -66,8 +67,8 @@ export function normalizeError(err: unknown): ApiError {
     if (!navigator.onLine) {
       return { message: "You're offline. Check your connection and try again." };
     }
-    return { message: 'Could not reach AQUA. Is the backend running?' };
+    return { message: 'Could not reach Aqua. Check your connection and try again.' };
   }
-  if (err instanceof Error) return { message: err.message };
+  if (err instanceof Error) return { message: userErrorMessage(err.message) };
   return { message: 'Something went wrong.' };
 }

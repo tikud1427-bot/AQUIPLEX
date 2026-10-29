@@ -98,6 +98,16 @@ export interface ChatSuccessResponse {
     facts: Array<{ key: string; value: string }>;
   };
 
+  /** What Aqua knew about the user and injected for this answer (server:
+   *  routes/chat.js contextUsedItems). Absent when nothing was used. */
+  contextUsed?: ContextUsedPayload;
+
+  /** Earlier conversations this answer quoted the user from (server:
+   *  memory/episodicRecall.js). Absent when nothing was recalled. */
+  recall?: {
+    excerpts: Array<{ conversationId: string; title: string | null; date: string | null; changed: boolean }>;
+  };
+
   plan: {
     complexity: 'low' | 'medium' | 'high' | string;
     multiStep: boolean;
@@ -230,6 +240,23 @@ export interface ServerMessage {
   role: 'user' | 'assistant';
   content: string;
   ts: number;
+  /** Stored answers only: what the answer used, resolved against the stores now (server: memory/contextProvenance.js). */
+  contextUsed?: ContextUsedPayload;
+}
+
+/**
+ * "Context used" — live (routes/chat.js contextUsedItems) or for a reopened
+ * answer (memory/contextProvenance.js). `changed`: the item is no longer what the
+ * model read. `removed` / `unavailable`: items used then, since forgotten / not
+ * readable now — counted, never shown.
+ */
+export interface ContextUsedPayload {
+  items: Array<
+    | { kind: 'claim'; id: string; key?: undefined; label?: undefined; text: string; disputed: boolean; changed?: boolean; /** what a value correction replaces */ value?: string | null }
+    | { kind: 'fact'; key: string; id?: undefined; label: string | null; text: string; disputed?: undefined; changed?: boolean }
+  >;
+  removed?: number;
+  unavailable?: number;
 }
 
 export interface ConversationMeta {
@@ -290,6 +317,8 @@ export interface MemoryFact {
   createdAt?: number;
   updatedAt?: number;
   ts?: number;
+  /** When the user last said it again (server: lastMentionedAt). Not a retrieval time. */
+  lastConfirmedAt?: number | null;
   /** Bumped on every correction — a fact at revision 3 has been revised twice. */
   revision?: number;
   status?: 'active' | 'archived';
@@ -298,6 +327,13 @@ export interface MemoryFact {
   retrievalCount?: number;
   lastRetrievedAt?: number | null;
   isCorrection?: boolean;
+  /** Human heading from the server; null = none (a custom_ fact's key is a slug of its value). */
+  label?: string | null;
+  /** The value as distinct items — a collection renders as a list. */
+  items?: string[];
+  /** 'health' | 'mood' when the fact is a sensitive detail (never used in chat by default). */
+  sensitivity?: 'health' | 'mood' | null;
+  sensitivityReviewedAt?: number | null;
 }
 
 export interface ListFactsResponse {
@@ -313,6 +349,8 @@ export interface ListMemoryResponse {
   ownerId: string;
   factCount: number;
   facts: MemoryFact[];
+  /** Health and mood details, kept out of chat and listed apart (Delete / Keep). */
+  hiddenSensitive?: MemoryFact[];
 }
 
 /** One entry in the GET /memory/timeline "what changed" feed. */

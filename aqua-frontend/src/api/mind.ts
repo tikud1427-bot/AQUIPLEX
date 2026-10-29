@@ -16,8 +16,12 @@ export interface CompactBelief {
   status: 'active' | 'archived' | 'locked';
   locked: boolean;
   temporary: boolean;
-  source: 'inference' | 'explicit' | 'correction' | 'fact_bridge';
+  source: 'inference' | 'explicit' | 'correction' | 'fact_bridge' | 'reflection';
   updatedAt: number;
+  /** Human label from the server (e.g. a knowledge domain without its "domain:" key prefix). */
+  label?: string;
+  /** What actually supports this belief, in words; absent = show no evidence line. */
+  evidenceText?: string | null;
 }
 
 export interface Goal {
@@ -170,6 +174,34 @@ export async function updateGoal(id: string, patch: Partial<Pick<Goal, 'status' 
 
 export async function deleteGoal(id: string) {
   const { data } = await apiClient.delete<{ success: boolean }>(`/mind/goals/${encodeURIComponent(id)}`);
+  return data;
+}
+
+/* ── Legacy review (server: mind/legacyReview.js). Candidates only; every
+   change is the user's choice. ─────────────────────────────────────────── */
+
+export type ReviewCandidate =
+  | { id: string; kind: 'merged_goal'; goalId: string; title: string; parts: string[] }
+  | { id: string; kind: 'merged_goal_item'; key: string; item: string; parts: string[] }
+  | { id: string; kind: 'fact_fails_schema'; key: string; label: string | null; value: string; aspiration: boolean; learnedFrom: string | null }
+  | { id: string; kind: 'role_is_aspiration'; dimension: string; key: string; value: string };
+
+export async function fetchReview(): Promise<ReviewCandidate[]> {
+  const { data } = await apiClient.get<{ success: true; candidates: ReviewCandidate[] }>('/mind/review');
+  return Array.isArray(data.candidates) ? data.candidates : [];
+}
+
+/** Split a merged goal into `parts`, or `keep` it as one. */
+export async function splitGoal(id: string, body: { parts: string[] } | { keep: true }) {
+  const { data } = await apiClient.post<{ success: boolean }>(`/mind/goals/${encodeURIComponent(id)}/split`, body);
+  return data;
+}
+
+/** "It's right" on a flagged belief. */
+export async function confirmBelief(dimension: string, key: string) {
+  const { data } = await apiClient.post<{ success: boolean }>(
+    `/mind/beliefs/${encodeURIComponent(dimension)}/${encodeURIComponent(key)}/review`,
+  );
   return data;
 }
 

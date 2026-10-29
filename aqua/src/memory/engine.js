@@ -30,6 +30,7 @@ import { getIdentity, hasIdentity, formatIdentityBlock, isIdentityQuery, answerI
 import { mindObserve, mindContext, mindAfterTurn } from '../mind/index.js';
 import { getMind, peekMind, touchMind, deleteItem } from '../mind/mindStore.js';
 import { forgetInBackground, retireSupersededInBackground } from './forget.js';
+import { classifySensitivity, classifyText, sensitivePolicy, scrubSensitiveLines } from './sensitivity.js';
 import { upsertNode, upsertEdge, SELF_KEY } from '../mind/relationshipGraph.js';
 import { recallGraphPaths, formatGraphRecall } from '../mind/graphRecall.js';
 import { recallEpisodes, formatEpisodeRecall, isPastRecallQuery, latestEpisode } from '../mind/episodeRecall.js';
@@ -131,7 +132,13 @@ export function purgeTracesForOwner(ownerId) {
 export function memoryObserve(ownerId, {
   userMessage = '', taskType = 'conversation',
   workspaceId = null, conversationId = null, userId = null, requestId = null,
+  // Sensitive categories (memory/sensitivity.js). `extractMessage` is the turn
+  // with health/mood sentences removed when the user has not opted in: facts
+  // and the Mind learn only from it. Forget and correction still read the
+  // whole message — "forget that I'm bored" must work.
+  extractMessage = null, rememberSensitive = false,
 } = {}) {
+  const learnFrom = extractMessage ?? userMessage;
   const trace = beginTrace(requestId, { ownerId, userId, conversationId });
   if (!ownerId) {
     trace.notes.push('owner_null_memory_disabled');
@@ -144,16 +151,23 @@ export function memoryObserve(ownerId, {
   const previous = new Map(getFacts(ownerId).map(f => [f.key, { value: f.value, sourceText: f.sourceText }]));
   try {
     // 1. Extract (parser → candidates → normalize → dedupe → resolve-vs-stored)
-    const { facts, report } = extractFactsWithReport(userMessage, ownerId);
-    extractedFacts = facts;
-    trace.extracted = facts.map(f => ({ key: f.key, value: f.value, confidence: f.confidence, action: f.action, category: f.category }));
+    const { facts, report } = learnFrom ? extractFactsWithReport(learnFrom, ownerId) : { facts: [], report: { duplicates: 0, rejected: 0 } };
+    // Opted in: kept, and tagged so every read path and the Memory page know.
+    // Not opted in: a sensitive fact the sentence filter missed is dropped here.
+    extractedFacts = facts.flatMap(f => {
+      const kind = classifySensitivity(f);
+      if (!kind) return [f];
+      if (!rememberSensitive) { trace.notes.push(`sensitive_not_stored:${kind}`); return []; }
+      return [{ ...f, sensitivity: kind }];
+    });
+    trace.extracted = extractedFacts.map(f => ({ key: f.key, value: f.value, confidence: f.confidence, action: f.action, category: f.category }));
     trace.duplicates = report.duplicates;
     trace.rejectedCount = report.rejected;
 
     // 2. Store through the ONE conflict-resolving fact layer.
     //    conversationId travels as PROVENANCE only — never as the key.
-    if (facts.length) {
-      storeFacts(ownerId, facts.map(f => ({ ...f, sourceConversation: conversationId })), { trace });
+    if (extractedFacts.length) {
+      storeFacts(ownerId, extractedFacts.map(f => ({ ...f, sourceConversation: conversationId })), { trace });
     }
 
     // 3. Explicit forget
@@ -170,7 +184,10 @@ export function memoryObserve(ownerId, {
 
     // 4. Explicit correction ("actually my X is now Y")
     const updateResult = detectMemoryUpdate(userMessage);
-    if (updateResult.isUpdate) {
+    const updateKind = updateResult.isUpdate ? classifyText(`my ${updateResult.key.replace(/_/g, ' ')} is ${updateResult.value}`) : null;
+    if (updateResult.isUpdate && updateKind && !rememberSensitive) {
+      trace.notes.push(`sensitive_not_stored:${updateKind}`);
+    } else if (updateResult.isUpdate) {
       storeFact(ownerId, {
         key: updateResult.key, value: updateResult.value,
         confidence: 0.95, importance: 9,
@@ -192,7 +209,7 @@ export function memoryObserve(ownerId, {
   }
 
   // 5. Cognitive observation — same turn, same facts, no re-parse
-  const mindDiag = mindObserve(ownerId, { userMessage, taskType, extractedFacts, workspaceId, conversationId });
+  const mindDiag = mindObserve(ownerId, { userMessage: learnFrom, taskType, extractedFacts, workspaceId, conversationId });
   trace.mind = mindDiag;
 
   // 6. Phase 2 — refresh this owner's fact vectors for semantic retrieval.
@@ -237,7 +254,11 @@ export function memoryRetrieve(ownerId, {
   // attribute, or has retired/negated that exact value) is vetoed. The Mind,
   // legacy graph and episode lanes stay out, as under a full flip.
   legacyVeto = null,
+  // Sensitive categories: the turn's read policy (memory/sensitivity.js
+  // sensitivePolicy). Absent = nothing sensitive is allowed (L11).
+  sensitive = null,
 } = {}) {
+  const policy = sensitive ?? sensitivePolicy();
   const vetoed = item => (typeof legacyVeto === 'function' ? Boolean(legacyVeto(item)) : false);
   const mindLanes = legacyUserMemory === true;
   const trace = (requestId && traces.get(requestId)) || makeTrace({ ownerId });
@@ -278,7 +299,7 @@ export function memoryRetrieve(ownerId, {
   let factBlock = '';
   let relevantFacts = [];
   try {
-    relevantFacts = legacyUserMemory ? retrieveRelevantFacts(ownerId, query, factLimit, { trace, semanticScores }).filter(f => !vetoed(f)) : [];
+    relevantFacts = legacyUserMemory ? retrieveRelevantFacts(ownerId, query, factLimit, { trace, semanticScores, sensitive: policy }).filter(f => !vetoed(f)) : [];
     factBlock = formatFactsForPrompt(relevantFacts);
     trace.retrieved = relevantFacts.map(f => ({ key: f.key, value: f.value }));
   } catch (err) {
@@ -377,7 +398,11 @@ export function memoryRetrieve(ownerId, {
   // counts: resuming work implies the active workspace/files matter).
   const fileBlock = retrieveFileMemory(ownerId, query, taskType, trace, { force: continuing });
 
-  const block = [identityBlock, factBlock, cognitive.block, graphBlock, episodeBlock, fileChunkBlock, fileBlock].filter(Boolean).join('\n\n');
+  // Backstop for every lane above (Mind beliefs, graph, episodes, file recall):
+  // a line about health or mood the policy withholds never leaves this function.
+  const scrubbed = scrubSensitiveLines([identityBlock, factBlock, cognitive.block, graphBlock, episodeBlock, fileChunkBlock, fileBlock].filter(Boolean).join('\n\n'), policy);
+  const block = scrubbed.block;
+  if (scrubbed.removed) trace.notes.push(`sensitive_withheld_lines:${scrubbed.removed}`);
   trace.injectedTokens = estimateTokens(block);
 
   // Phase F — retrieval quality/latency metrics (fail-open, never throws).

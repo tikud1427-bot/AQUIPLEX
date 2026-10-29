@@ -14,6 +14,7 @@ import { createEpisode, createTimelineEvent, STATUS } from './mindSchema.js';
 import { touchMind } from './mindStore.js';
 import { pushTimeline } from './timeline.js';
 import { currentFocus } from './workingMemory.js';
+import { intentLabel } from '../memory/displayLabels.js';
 
 const EPISODE_IDLE_CLOSE_MS = 5 * 24 * 3600 * 1000; // quiet 5 days → close
 const OUTCOME_RE = /\b(shipped|launched|completed|fixed it|solved|it works now|resolved|merged|deployed)\b/i;
@@ -24,10 +25,13 @@ function activeEpisode(mind) {
     .sort((a, b) => b.lastActivityAt - a.lastActivityAt)[0] || null;
 }
 
+// Themes are shown to the person (Understanding → Timeline), so they are built
+// from human labels: "Working on simple qa + memory recall" named the engine's
+// routing, not the person's work (2026-10-28). Routing-only turns open no arc.
 function themeFor(mind, taskType) {
-  const focus = currentFocus(mind, 2).map(f => f.topic).filter(t => !t.startsWith('workspace:'));
+  const focus = [...new Set(currentFocus(mind, 4).map(f => intentLabel(f.topic)).filter(Boolean))].slice(0, 2);
   if (focus.length) return focus.join(' + ');
-  return taskType !== 'conversation' ? taskType : null;
+  return intentLabel(taskType);
 }
 
 /**

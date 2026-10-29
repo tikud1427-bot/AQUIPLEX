@@ -1,26 +1,25 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { Lock } from 'lucide-react';
 import type { CompactBelief } from '@/api/mind';
-import { ConfidenceBadge } from '@/components/ui/confidence-badge';
+import { ProvenanceBadge } from '@/components/ui/provenance-badge';
 import { Panel } from '@/components/ui/panel';
 import { timeAgo } from '@/lib/format';
+import { beliefBasis, isDisplayableBelief, isInternalText, stripInternalPrefix } from '@/lib/displayGuard';
 
-const IDENTITY_BLURB: Record<string, string> = {
-  founder: 'Talks about the company, users and fundraising like an owner.',
-  engineer: 'Lives in code, debugging and implementation detail.',
-  systems_thinker: 'Reaches for architecture and module boundaries first.',
-  builder: 'Ships things — workspaces, prototypes, releases.',
-  long_term_planner: 'Plans in roadmaps and milestones, not just next steps.',
-  researcher: 'Digs for evidence before deciding.',
-  creative: 'Explores ideas laterally before converging.',
-  minimalist: 'Consistently strips things back to the essential.',
-  profession: 'Stated role, confirmed by how they actually work.',
-  organization: 'The company at the center of their work.',
-};
+/* The line under each card used to be a fixed sentence per key —
+   "Profession: Stated role, confirmed by how they actually work." shown under
+   a goal that had leaked into the profession slot, confirmed by nothing. It is
+   now the server's account of the belief's real evidence, or nothing.
+   The corner badge used to be a confidence percentage; it now says whether the
+   person stated this or Aqua inferred it (lib/displayGuard.ts beliefBasis). */
 
 export function beliefTitle(b: CompactBelief): string {
-  const base = b.key.replace('tech:', '').replace(/_/g, ' ');
-  return base.charAt(0).toUpperCase() + base.slice(1);
+  return b.label && !isInternalText(b.label) ? b.label : stripInternalPrefix(b.key);
+}
+
+/** Beliefs a person may see (the server already filters; this is the guard). */
+export function visibleBeliefs(beliefs: CompactBelief[]): CompactBelief[] {
+  return beliefs.filter(isDisplayableBelief);
 }
 
 export function beliefValueText(b: CompactBelief): string | null {
@@ -32,35 +31,28 @@ export function beliefValueText(b: CompactBelief): string | null {
 export function BeliefCard({ belief, onSelect }: { belief: CompactBelief; onSelect: (b: CompactBelief) => void }) {
   const reduce = useReducedMotion();
   const value = beliefValueText(belief);
-  const blurb = IDENTITY_BLURB[belief.key] ?? `Inferred from ${belief.evidenceCount} observation${belief.evidenceCount === 1 ? '' : 's'}.`;
+  const blurb = belief.evidenceText ?? null;
+  const basis = beliefBasis(belief);
 
   return (
     <motion.button
       layout={!reduce}
       onClick={() => onSelect(belief)}
-      className="text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 rounded-xl"
+      className="rounded-xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
       whileHover={reduce ? undefined : { y: -2 }}
       transition={{ type: 'spring', stiffness: 320, damping: 26 }}
-      aria-label={`${beliefTitle(belief)} — ${Math.round(belief.confidence * 100)} percent confidence. See why.`}
+      aria-label={`${beliefTitle(belief)}${basis ? ` — ${basis.label.toLowerCase()}` : ''}. See why.`}
     >
       <Panel className="h-full transition-colors hover:border-primary/40">
         <div className="flex items-start justify-between gap-2">
-          <div className="text-sm font-semibold text-foreground">
+          <div className="min-w-0 text-sm font-semibold text-foreground [overflow-wrap:anywhere]">
             {beliefTitle(belief)}
             {belief.locked && <Lock className="ml-1.5 inline h-3 w-3 text-foreground-secondary" aria-label="Pinned" />}
           </div>
-          {/* Key micro-moment: confidence animates when it changes */}
-          <motion.div
-            key={Math.round(belief.confidence * 100)}
-            initial={reduce ? false : { scale: 1.25, opacity: 0.4 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-          >
-            <ConfidenceBadge value={belief.confidence} />
-          </motion.div>
+          <ProvenanceBadge source={belief.source} />
         </div>
-        {value && <div className="mt-1 truncate text-sm text-foreground-secondary">{value}</div>}
-        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-foreground-secondary">{blurb}</p>
+        {value && <div className="mt-1 line-clamp-2 text-sm text-foreground-secondary [overflow-wrap:anywhere]">{value}</div>}
+        {blurb && <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-foreground-secondary">{blurb}</p>}
         <div className="mt-3 text-micro text-foreground-secondary/80">Updated {timeAgo(belief.updatedAt)}</div>
       </Panel>
     </motion.button>
@@ -68,7 +60,7 @@ export function BeliefCard({ belief, onSelect }: { belief: CompactBelief; onSele
 }
 
 export function IdentitySection({ beliefs, onSelect }: { beliefs: CompactBelief[]; onSelect: (b: CompactBelief) => void }) {
-  const visible = beliefs.filter((b) => b.status !== 'archived').slice(0, 8);
+  const visible = visibleBeliefs(beliefs).slice(0, 8);
   if (!visible.length) {
     return <p className="text-sm text-foreground-secondary">Identity forms as you talk — nothing inferred yet.</p>;
   }

@@ -269,3 +269,34 @@ export async function clearLocalAppData(): Promise<void> {
     }
   } catch { /* SW unavailable */ }
 }
+
+/* ── Privacy (2026-10-28) ──────────────────────────────────────────────────
+   rememberSensitive: may AQUA remember health and mood details? Off by
+   default. GET/PUT /api/account/privacy (routes/account/account.routes.js). */
+
+export interface PrivacySettings {
+  rememberSensitive: boolean;
+}
+
+export async function getPrivacy(): Promise<PrivacySettings> {
+  const res = await fetch('/api/account/privacy', {
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+    cache: 'no-store',
+  });
+  if (!res.ok) throw new Error(`Couldn't load privacy settings (HTTP ${res.status}).`);
+  const body = (await res.json()) as { privacy?: PrivacySettings };
+  return { rememberSensitive: body.privacy?.rememberSensitive === true };
+}
+
+export async function setPrivacy(patch: PrivacySettings): Promise<PrivacySettings> {
+  const res = await fetch('/api/account/privacy', {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: jsonHeaders,
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(`Couldn't save that setting (HTTP ${res.status}).`);
+  const body = (await res.json()) as { privacy?: PrivacySettings };
+  return { rememberSensitive: body.privacy?.rememberSensitive === true };
+}

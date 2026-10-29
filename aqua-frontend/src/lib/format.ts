@@ -14,12 +14,6 @@ export function timeAgo(ts?: number | null): string {
   return `${Math.round(m / 1440)}d ago`;
 }
 
-export function confidenceTone(c: number) {
-  if (c >= 0.75) return 'text-success';
-  if (c >= 0.5) return 'text-foreground';
-  return 'text-foreground-secondary';
-}
-
 /** Staleness → opacity: fresh 1.0, fades toward 0.35 over maxAgeMs. */
 export function staleOpacity(lastSeenAt: number, maxAgeMs = 5 * 24 * 3600 * 1000): number {
   const age = Date.now() - lastSeenAt;

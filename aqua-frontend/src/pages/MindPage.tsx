@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
 import { MessageSquarePlus, RefreshCcw } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { CompactBelief } from '@/api/mind';
 import { useMindStore } from '@/stores/mindStore';
 import { SectionHeader } from '@/components/ui/section-header';
 import { UnderstandingSections } from '@/features/understanding/UnderstandingSections';
 import { UnderstandingRing } from '@/features/mind/UnderstandingRing';
 import { IdentitySection } from '@/features/mind/IdentitySection';
-import { GoalsSection, WorkingMemorySection, PredictionsSection } from '@/features/mind/NowSections';
-import { KnowledgeSection, CommunicationSection } from '@/features/mind/ModelSections';
+import { GoalsSection, WorkingMemorySection } from '@/features/mind/NowSections';
+import { KnowledgePanel, CommunicationSection } from '@/features/mind/ModelSections';
 import { LearningFeed, MindTimeline, EvolutionHeatmap } from '@/features/mind/StorySections';
 import { RelationshipGraph } from '@/features/mind/RelationshipGraph';
 import { BeliefDrawer } from '@/features/mind/BeliefDrawer';
@@ -46,7 +46,7 @@ export default function MindPage() {
     return (
       <CenterNote>
         <p className="text-foreground">The mind model couldn’t load.</p>
-        <p className="mt-1 text-sm text-foreground-secondary">{error}</p>
+        <p className="mt-1 text-sm text-foreground-secondary [overflow-wrap:anywhere]">{error}</p>
         <button
           onClick={() => void refresh()}
           className="mt-4 inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-surface-secondary"
@@ -88,33 +88,32 @@ export default function MindPage() {
         {/* 02 — What Aqua learned (the magic — kept high on the page) */}
         <section className="mb-14">
           <SectionHeader eyebrow="Live" title="What Aqua learned recently" />
-          <LearningFeed learnings={learnings} reflections={model.reflections} />
+          <LearningFeed learnings={learnings} model={model} />
         </section>
 
+        <SectionIndex />
+
         {/* 03 — Identity */}
-        <section className="mb-14">
+        <section id="identity" className="mb-14 scroll-mt-6">
           <SectionHeader eyebrow="Who you are" title="Identity" />
           <IdentitySection beliefs={model.identity} onSelect={setSelected} />
         </section>
 
         {/* 04 — Goals */}
-        <section className="mb-14">
+        <section id="goals" className="mb-14 scroll-mt-6">
           <SectionHeader eyebrow="Direction" title="Current goals" />
           <GoalsSection goals={model.goals} />
         </section>
 
         {/* 05 — Working memory */}
-        <section className="mb-14">
+        <section id="now" className="mb-14 scroll-mt-6">
           <SectionHeader eyebrow="Right now" title="Aqua’s attention" />
           <WorkingMemorySection model={model} />
         </section>
 
         {/* 06+07 — Knowledge / Communication */}
         <div className="mb-14 grid grid-cols-1 gap-10 lg:grid-cols-2">
-          <section>
-            <SectionHeader eyebrow="What you know" title="Knowledge" />
-            <KnowledgeSection beliefs={model.knowledge} onSelect={setSelected} />
-          </section>
+          <KnowledgePanel beliefs={model.knowledge} onSelect={setSelected} />
           <section>
             <SectionHeader eyebrow="How to talk to you" title="Communication style" />
             <CommunicationSection beliefs={model.communication} decision={model.decision} onSelect={setSelected} />
@@ -124,24 +123,18 @@ export default function MindPage() {
         {/* 07b — UUS: projects, provenance, and what is still unknown. All three
             come from data the read model already returns; nothing new is
             tracked to render them. */}
-        <div className="mb-14 flex flex-col gap-14">
+        <div id="world" className="mb-14 flex scroll-mt-6 flex-col gap-14">
           <UnderstandingSections />
         </div>
 
-        {/* 08 — Predictions */}
-        <section className="mb-14">
-          <SectionHeader eyebrow="Forecast" title="What Aqua expects next" />
-          <PredictionsSection predictions={model.predictions} />
-        </section>
-
         {/* 09 — Relationships */}
-        <section className="mb-14">
+        <section id="map" className="mb-14 scroll-mt-6">
           <SectionHeader eyebrow="Connected knowledge" title="Your world, mapped" />
           <RelationshipGraph />
         </section>
 
         {/* 10+11 — Timeline / Evolution */}
-        <div className="mb-14 grid grid-cols-1 gap-10 lg:grid-cols-2">
+        <div id="timeline" className="mb-14 grid scroll-mt-6 grid-cols-1 gap-10 lg:grid-cols-2">
           <section>
             <SectionHeader eyebrow="The story so far" title="Timeline" />
             <MindTimeline timeline={model.timeline} />
@@ -153,7 +146,7 @@ export default function MindPage() {
         </div>
 
         {/* 12 — Privacy */}
-        <section className="mb-10">
+        <section id="privacy" className="mb-10 scroll-mt-6">
           <SectionHeader eyebrow="Yours" title="Privacy & control" />
           <PrivacyPanel model={model} />
         </section>
@@ -165,6 +158,53 @@ export default function MindPage() {
 
       <BeliefDrawer belief={selected} onClose={() => setSelected(null)} />
     </div>
+  );
+}
+
+/* The page's index (2026-10-28). One destination in the sidebar, and every
+   part of it one tap away — /mind#goals, /mind#timeline etc. are deep links,
+   so nothing that used to be reachable moved. */
+const SECTIONS = [
+  { id: 'identity', label: 'Identity' },
+  { id: 'goals', label: 'Goals' },
+  { id: 'now', label: 'Right now' },
+  { id: 'world', label: 'Projects & sources' },
+  { id: 'map', label: 'Map' },
+  { id: 'timeline', label: 'Timeline' },
+  { id: 'privacy', label: 'Privacy' },
+] as const;
+
+function goTo(id: string, smooth = true) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  el.scrollIntoView?.({ behavior: smooth && !reduce ? 'smooth' : 'auto', block: 'start' });
+  history.replaceState(history.state, '', `#${id}`);
+}
+
+function SectionIndex() {
+  const { hash } = useLocation();
+  // Arriving on a deep link: jump once the sections exist.
+  useEffect(() => {
+    const id = hash.replace(/^#/, '');
+    if (SECTIONS.some((s) => s.id === id)) requestAnimationFrame(() => goTo(id, false));
+  }, [hash]);
+  return (
+    <nav aria-label="Sections" className="-mx-4 mb-12 overflow-x-auto px-4 md:mx-0 md:px-0">
+      <ul className="flex w-max gap-1.5">
+        {SECTIONS.map((s) => (
+          <li key={s.id}>
+            <a
+              href={`#${s.id}`}
+              onClick={(e) => { e.preventDefault(); goTo(s.id); }}
+              className="tap inline-block whitespace-nowrap rounded-full border border-border px-3 py-1 text-caption text-foreground-secondary transition-colors hover:bg-surface-secondary hover:text-foreground"
+            >
+              {s.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
 

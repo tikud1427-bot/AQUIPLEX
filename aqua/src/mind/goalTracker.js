@@ -10,6 +10,9 @@
 import { createGoal, GOAL_STATUS, CAPS, createTimelineEvent } from './mindSchema.js';
 import { touchMind } from './mindStore.js';
 import { pushTimeline } from './timeline.js';
+import { splitCoordinated, listContinuation, isGoalLike, goalSimilarity, splitGoalTitle } from './goalText.js';
+
+export { goalSimilarity, splitGoalTitle };
 
 /* ──────────────────────────────────────────────────────────────────────────
    GOAL DETECTION
@@ -50,77 +53,24 @@ import { pushTimeline } from './timeline.js';
    outcome verb now gets in, and a conversational one is turned away by name.
    ────────────────────────────────────────────────────────────────────────── */
 
-// Detection: explicit goal statements + working-toward phrasing.
+// Detection: explicit goal statements + working-toward phrasing. Global: a
+// message can state several goals in separate sentences, and every one counts
+// ("I want to launch the beta. I also want to hire a designer.").
 const GOAL_PATTERNS = [
-  // "my/our goal is …", "the goal here is …", "my objective is …"
-  /\b(?:my|our|the)\s+(?:main\s+|primary\s+|current\s+)?(?:goal|objective|aim|mission|target)\b[^.!?;]{0,20}?\s+is\s+(?:to\s+)?(.{4,90}?)(?:[.,;!](?!\d)|$)/i,
+  // "my/our goal is …", "the goal here is …", "my goals are …"
+  /\b(?:my|our|the)\s+(?:main\s+|primary\s+|current\s+)?(?:goal|objective|aim|mission|target)s?\b[^.!?;]{0,20}?\s+(?:is|are)\s+(?:to\s+)?(.{4,90}?)(?:[.,;!](?!\d)|$)/gi,
   // "my top priority this quarter is …"
-  /\b(?:my|our)\s+(?:top\s+|main\s+|biggest\s+|number one\s+)?priority\b[^.!?;]{0,24}?\s+is\s+(?:to\s+)?(.{4,90}?)(?:[.,;!](?!\d)|$)/i,
+  /\b(?:my|our)\s+(?:top\s+|main\s+|biggest\s+|number one\s+)?priority\b[^.!?;]{0,24}?\s+is\s+(?:to\s+)?(.{4,90}?)(?:[.,;!](?!\d)|$)/gi,
   // "I'm trying to …", "we're aiming to …", and the bare participle form
-  /\b(?:(?:i|we)(?:'m|'re| am| are)\s+)?(?:trying|aiming|planning|hoping|looking|pushing|working)\s+(?:to|toward|towards)\s+(.{4,90}?)(?:[.,;!](?!\d)|$)/i,
-  // "I want to …", "I'd like to …", "I need to …" — and the we/plural forms
-  /\b(?:i|we)(?:'d)?\s+(?:want|need|plan|intend|would like|just want)\s+to\s+(?:finally\s+|eventually\s+)?(.{4,90}?)(?:[.,;!](?!\d)|$)/i,
-  /\b(?:i|we)'d\s+like\s+to\s+(.{4,90}?)(?:[.,;!](?!\d)|$)/i,
+  /\b(?:(?:i|we)(?:'m|'re| am| are)\s+)?(?:trying|aiming|planning|hoping|looking|pushing|working)\s+(?:to|toward|towards)\s+(.{4,90}?)(?:[.,;!](?!\d)|$)/gi,
+  // "I want to …", "I'd like to …", "I need to …", "I also want to …" — and the we/plural forms
+  /\b(?:i|we)(?:'d)?\s+(?:also\s+)?(?:want|need|plan|intend|would like|just want)\s+to\s+(?:finally\s+|eventually\s+)?(.{4,90}?)(?:[.,;!](?!\d)|$)/gi,
+  /\b(?:i|we)'d\s+(?:also\s+)?like\s+to\s+(.{4,90}?)(?:[.,;!](?!\d)|$)/gi,
 ];
-
-/**
- * Head verbs that make a capture a REQUEST rather than an intention.
- *
- * "I want to know how this works" and "I need to check the logs" are things
- * the user wants from this turn, not things they are working toward. They must
- * never reach the card, so they are named explicitly rather than excluded by
- * an allowlist that would also drop every outcome verb nobody thought of.
- */
-const NOT_A_GOAL_HEAD = new Set([
-  'know', 'understand', 'see', 'ask', 'hear', 'check', 'find', 'look',
-  'read', 'say', 'tell', 'talk', 'discuss', 'confirm', 'clarify', 'explain',
-  'remember', 'show', 'compare', 'review', 'double-check', 'verify', 'figure',
-]);
-
-/** Tokens that carry no goal. A capture made ENTIRELY of these is noise —
- *  "do it", "get more", "be better". Checked per-token rather than against the
- *  whole string, because the contentless case is usually two words, not one. */
-const CONTENTLESS = new Set((
-  'it,this,that,them,thing,things,stuff,something,anything,more,less,better,' +
-  'faster,best,out,up,down,go,going,be,do,doing,get,getting,make,making,work,on'
-).split(','));
-
-/**
- * A capture is a goal unless it reads as a request or is empty of content.
- * Kept strict on purpose: goals are the heaviest term in the understanding
- * score and the most visible line on the card.
- */
-function isGoalLike(capture) {
-  const v = String(capture ?? '').trim();
-  if (v.length < 4 || v.length > 90) return false;
-  if (v.endsWith('?')) return false;                 // a question is not a plan
-  const tokens = v.toLowerCase().split(/\s+/).map(t => t.replace(/[^\p{L}\p{N}-]/gu, '')).filter(Boolean);
-  if (!tokens.length) return false;
-  if (NOT_A_GOAL_HEAD.has(tokens[0])) return false;
-  if (tokens.every(t => CONTENTLESS.has(t))) return false;
-  return true;
-}
 
 const DONE_RE    = /\b(finished|completed|shipped|launched|released|done with|we shipped|it'?s live|merged)\b/i;
 const BLOCKED_RE = /\b(blocked (on|by)|stuck on|can'?t proceed|waiting (on|for))\b/i;
 const PROGRESS_RE = /\b(made progress|almost (done|there)|halfway|nearly (done|finished)|good progress)\b/i;
-
-const STOPWORDS = new Set(['the','a','an','to','of','for','and','or','in','on','with','our','my','it','this','that','be','is','are']);
-
-function tokenize(s) {
-  return (s || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/)
-    .filter(w => w.length > 2 && !STOPWORDS.has(w));
-}
-
-/** Jaccard-ish token overlap — good enough for goal re-mention matching. */
-export function goalSimilarity(a, b) {
-  const ta = new Set(tokenize(a));
-  const tb = new Set(tokenize(b));
-  if (!ta.size || !tb.size) return 0;
-  let inter = 0;
-  for (const w of ta) if (tb.has(w)) inter++;
-  return inter / Math.min(ta.size, tb.size);
-}
 
 const MATCH_THRESHOLD = 0.5;
 
@@ -135,15 +85,56 @@ function findMatch(mind, title) {
 }
 
 export function detectGoalTitles(text) {
-  const titles = [];
+  const src = String(text ?? '');
+  const found = [];   // [{ at, title }] — ordered by position in the message
   for (const p of GOAL_PATTERNS) {
-    const m = text.match(p);
-    if (!m?.[1]) continue;
-    const title = m[1].trim().replace(/\s+/g, ' ');
+    for (const m of src.matchAll(p)) {
+      if (!m[1]) continue;
+      const captureEnd = m.index + m[0].length - (/[.,;!]$/.test(m[0]) ? 1 : 0);
+      const pieces = [...splitCoordinated(m[1]), ...listContinuation(src, captureEnd)];
+      pieces.forEach((piece, i) => found.push({ at: m.index + i, title: piece.replace(/\s+/g, ' ').trim() }));
+    }
+  }
+  const titles = [];
+  for (const { title } of found.sort((a, b) => a.at - b.at)) {
     if (!isGoalLike(title)) continue;
+    // Two patterns can capture the same statement ("I'm planning to …" and
+    // "I plan to …" forms) — one goal, the first wording.
+    if (titles.some(t => t === title || goalSimilarity(t, title) >= 0.9)) continue;
     titles.push(title);
   }
-  return [...new Set(titles)];
+  return titles;
+}
+
+/* ── Status cues ──────────────────────────────────────────────────────────────
+   A status change is only ever applied to a goal the message is ABOUT. Until
+   2026-10-28 an unmatched cue fell back to "the most recently mentioned active
+   goal", so "I finished lunch" completed "become a billionaire", and "I haven't
+   shipped it yet" completed whatever was discussed last. A cue that is
+   negated ("haven't finished"), hedged ("almost done") or conditional ("once
+   we've launched") is not a status change at all. Silence never completes
+   anything. */
+const CUE_NEGATED = /\b(?:not|never|no|yet to|haven'?t|hasn'?t|hadn'?t|didn'?t|isn'?t|wasn'?t|aren'?t|won'?t|can'?t|almost|nearly|once|when|after|if|until|before|hope(?:fully)?|will|should|might|could)\b[^.!?]{0,24}$/i;
+
+function cueApplies(re, message) {
+  const m = re.exec(message);
+  if (!m) return false;
+  return !CUE_NEGATED.test(message.slice(Math.max(0, m.index - 40), m.index));
+}
+
+/** The goal this message is about: a goal named this turn, else one whose words the message uses. */
+function referencedGoal(mind, titles, message) {
+  for (const t of titles) {
+    const g = findMatch(mind, t);
+    if (g) return g;
+  }
+  let best = null, bestScore = 0;
+  for (const g of Object.values(mind.goals)) {
+    if (g.status !== GOAL_STATUS.ACTIVE && g.status !== GOAL_STATUS.BLOCKED && g.status !== GOAL_STATUS.STALE) continue;
+    const s = goalSimilarity(g.title, message);
+    if (s > bestScore || (s === bestScore && best && g.lastMentionedAt > best.lastMentionedAt)) { bestScore = s; best = g; }
+  }
+  return bestScore >= MATCH_THRESHOLD ? best : null;
 }
 
 /**
@@ -158,7 +149,10 @@ export function trackGoals(mind, { userMessage = '', extractedFacts = [], conver
 
   const titles = detectGoalTitles(userMessage);
   for (const f of extractedFacts) {
-    if (f.key === 'goal' && typeof f.value === 'string') titles.push(f.value);
+    if (f.key !== 'goal' || typeof f.value !== 'string') continue;
+    for (const piece of splitCoordinated(f.value.trim())) {
+      if (isGoalLike(piece) && !titles.some(t => goalSimilarity(t, piece) >= 0.9)) titles.push(piece);
+    }
   }
 
   for (const title of titles) {
@@ -182,19 +176,10 @@ export function trackGoals(mind, { userMessage = '', extractedFacts = [], conver
     }
   }
 
-  // Status cues → most relevant active goal (mentioned-title match first,
-  // else most recently mentioned active goal — conversation continuity).
-  const cueTarget = () => {
-    for (const t of titles) {
-      const g = findMatch(mind, t);
-      if (g) return g;
-    }
-    return Object.values(mind.goals)
-      .filter(g => g.status === GOAL_STATUS.ACTIVE || g.status === GOAL_STATUS.BLOCKED)
-      .sort((a, b) => b.lastMentionedAt - a.lastMentionedAt)[0] || null;
-  };
+  // Status cues → only the goal this message names (see "Status cues" above).
+  const cueTarget = () => referencedGoal(mind, titles, userMessage);
 
-  if (DONE_RE.test(userMessage)) {
+  if (cueApplies(DONE_RE, userMessage)) {
     const g = cueTarget();
     if (g && g.status !== GOAL_STATUS.COMPLETED) {
       g.history.push({ status: g.status, at: now, reason: 'completion cue' });
@@ -204,7 +189,7 @@ export function trackGoals(mind, { userMessage = '', extractedFacts = [], conver
       pushTimeline(mind, createTimelineEvent({ kind: 'goal_completed', subject: g.title, importance: 7 }));
       changed.push(g);
     }
-  } else if (BLOCKED_RE.test(userMessage)) {
+  } else if (cueApplies(BLOCKED_RE, userMessage)) {
     const g = cueTarget();
     if (g && g.status === GOAL_STATUS.ACTIVE) {
       g.history.push({ status: g.status, at: now, reason: 'blocked cue' });

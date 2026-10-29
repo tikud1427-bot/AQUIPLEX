@@ -470,3 +470,67 @@ describe('phrasing helpers', () => {
     assert.equal(r.kind, 'invite');
   });
 });
+
+describe('K — threads: the runners-up as places to pick up (2026-10-28)', () => {
+  test('a substantial world yields distinct, grounded threads beside the line', () => {
+    const claims = [
+      claim('builds', 'Aquiplex', { ago: 6, evidence: 2 }),
+      intent('launch the beta', { ago: 2, evidence: 3 }),
+      intent('hire a designer', { ago: 3 }),
+      claim('task_owner', 'pricing page', { ago: 1 }),
+    ];
+    const w = pick({ claims, history: true });
+    assert.ok(w.threads.length >= 2 && w.threads.length <= 3, JSON.stringify(w.threads));
+    const ids = new Set(claims.map(c => c.claimId));
+    for (const t of w.threads) {
+      assert.notEqual(t.text, w.text, 'the line is not repeated as a thread');
+      assert.ok(t.evidence.length && t.evidence.every(e => ids.has(e.id)), 'every thread cites real claims');
+      assert.ok(isGrounded(t.text, citedText(t, claims)), `grounded: ${t.text}`);
+      assert.match(t.prompt, /^About .+: $/);
+      assert.ok(!w.evidence.some(e => t.evidence.some(x => x.id === e.id)), 'no evidence shared with the line');
+    }
+    assert.equal(new Set(w.threads.map(t => t.id)).size, w.threads.length);
+  });
+
+  test('a new or sparse user gets no threads, never filler', () => {
+    assert.deepEqual(pick({ claims: [] }).threads, []);
+    assert.deepEqual(pick({ claims: [], history: true }).threads, []);
+    assert.deepEqual(pick({ claims: [intent('launch the beta', { ago: 2 })] }).threads, []);
+  });
+
+  test('sensitive, inferred, finished or low-confidence items never become threads', () => {
+    const claims = [
+      intent('launch the beta', { ago: 2, evidence: 3 }),
+      intent('become a billionaire', { ago: 1, evidence: 5 }),
+      intent('learn Rust', { ago: 1, extractor: 'reflection:pattern' }),
+      intent('rewrite the docs', { ago: 1, conf: 0.2 }),
+      intent('migrate the database', { ago: 4 }),
+      claim('has_status', 'done', { subject: 'database migration', ago: 1 }),
+    ];
+    const w = pick({ claims });
+    const all = [w.text, ...w.threads.map(t => t.text)].join(' | ');
+    assert.doesNotMatch(all, /billionaire|Rust|docs|toward migrating/i, all);
+    // The finished one is reported as finished, not as ongoing work.
+    assert.match(all, /migration is done/);
+  });
+
+  test('threads are stable for an unchanged world', () => {
+    const claims = [intent('launch the beta', { id: 'k1', ago: 2 }), intent('hire a designer', { id: 'k2', ago: 3 })];
+    assert.deepEqual(pick({ claims }).threads, pick({ claims }).threads);
+  });
+
+  test('legacy-goal users get threads from their established goals only', () => {
+    const goals = [
+      { id: 'g1', title: 'launch the beta', status: 'active', mentions: 3, confidence: 0.75, lastMentionedAt: 2 },
+      { id: 'g2', title: 'hire a designer', status: 'active', mentions: 2, confidence: 0.65, lastMentionedAt: 1 },
+      { id: 'g3', title: 'learn piano', status: 'active', mentions: 1, confidence: 0.55, lastMentionedAt: 3 },
+      { id: 'g4', title: 'ship the app', status: 'completed', mentions: 4, confidence: 0.9, lastMentionedAt: 4 },
+    ];
+    const w = pick({ claims: [], legacyGoals: goals });
+    assert.equal(w.basis, 'legacy_goals');
+    const all = [w.text, ...w.threads.map(t => t.text)].join(' | ');
+    assert.match(all, /beta/);
+    assert.match(all, /designer/);
+    assert.doesNotMatch(all, /piano|ship the app/);
+  });
+});

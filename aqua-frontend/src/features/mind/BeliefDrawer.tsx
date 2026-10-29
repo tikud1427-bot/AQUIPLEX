@@ -3,50 +3,85 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { X, Lock, LockOpen, Hourglass, Trash2, Check } from 'lucide-react';
 import type { CompactBelief, BeliefExplanation } from '@/api/mind';
 import { explainBelief, correctBelief, setBeliefLock, setBeliefTemporary, deleteBelief } from '@/api/mind';
+import { normalizeError } from '@/api/client';
 import { useMindStore } from '@/stores/mindStore';
-import { ConfidenceBadge } from '@/components/ui/confidence-badge';
+import { useUiStore } from '@/stores/uiStore';
+import { ProvenanceBadge } from '@/components/ui/provenance-badge';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { timeAgo } from '@/lib/format';
+import { dimensionLabel } from '@/lib/displayGuard';
 import { beliefTitle, beliefValueText } from './IdentitySection';
 
 /* Explainability (why Aqua believes this) + corrections (change it) in one
-   panel. Every mutation is optimistic through the store, so confidence
-   visibly changes the instant you act. */
+   panel. A change is shown only once the server has made it: a failed save
+   says so in the drawer, and "Forget" asks first and closes only on success. */
 
 export function BeliefDrawer({ belief, onClose }: { belief: CompactBelief | null; onClose: () => void }) {
   const reduce = useReducedMotion();
   const applyBelief = useMindStore((s) => s.applyBelief);
   const removeBelief = useMindStore((s) => s.removeBelief);
+  const toast = useUiStore((s) => s.toast);
 
   const [explanation, setExplanation] = useState<BeliefExplanation | null>(null);
+  const [explainFailed, setExplainFailed] = useState(false);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmForget, setConfirmForget] = useState(false);
 
   useEffect(() => {
     setExplanation(null);
+    setExplainFailed(false);
     setSaved(false);
+    setError(null);
     if (!belief) return;
     setDraft(beliefValueText(belief) ?? '');
-    explainBelief(belief.dimension, belief.key).then(setExplanation).catch(() => setExplanation(null));
+    explainBelief(belief.dimension, belief.key)
+      .then(setExplanation)
+      .catch(() => { setExplanation(null); setExplainFailed(true); });
   }, [belief]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    // The confirm dialog handles its own Escape; it must not also close the drawer.
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !confirmForget && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [onClose, confirmForget]);
 
-  const run = async (fn: () => Promise<CompactBelief | void>, close = false) => {
+  const run = async (fn: () => Promise<CompactBelief>) => {
     if (!belief || busy) return;
     setBusy(true);
+    setError(null);
     try {
-      const updated = await fn();
-      if (updated) { applyBelief(updated); setSaved(true); setTimeout(() => setSaved(false), 1400); }
-      if (close) onClose();
+      applyBelief(await fn());
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1400);
+    } catch (err) {
+      setError(normalizeError(err).message);
     } finally {
       setBusy(false);
     }
   };
+
+  const forget = async () => {
+    if (!belief) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await deleteBelief(belief.dimension, belief.key);
+      if (res?.success === false) throw new Error('Aqua could not forget this. Nothing was changed.');
+      removeBelief(belief.dimension, belief.key);
+      toast('success', 'Forgotten', `Aqua no longer holds “${beliefTitle(belief)}”.`);
+      onClose();
+    } catch (err) {
+      setError(normalizeError(err).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const dimension = belief ? dimensionLabel(belief.dimension) : null;
 
   return (
     <AnimatePresence>
@@ -69,15 +104,15 @@ export function BeliefDrawer({ belief, onClose }: { belief: CompactBelief | null
             transition={{ type: 'spring', stiffness: 300, damping: 32 }}
           >
             <header className="flex items-start justify-between gap-3 border-b border-border p-5">
-              <div>
-                <div className="text-micro uppercase tracking-[0.16em] text-foreground-secondary">{belief.dimension}</div>
-                <h3 className="mt-1 text-lg font-semibold text-foreground">{beliefTitle(belief)}</h3>
-                <div className="mt-1.5 flex items-center gap-2">
-                  <ConfidenceBadge value={belief.confidence} />
+              <div className="min-w-0">
+                {dimension && <div className="text-micro uppercase tracking-[0.16em] text-foreground-secondary">{dimension}</div>}
+                <h3 className="mt-1 text-lg font-semibold text-foreground [overflow-wrap:anywhere]">{beliefTitle(belief)}</h3>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <ProvenanceBadge source={belief.source} evidenceCount={belief.evidenceCount} />
                   <span className="text-xs text-foreground-secondary">Updated {timeAgo(belief.updatedAt)}</span>
                 </div>
               </div>
-              <button onClick={onClose} className="rounded-lg p-2 text-foreground-secondary hover:bg-surface-secondary" aria-label="Close">
+              <button onClick={onClose} className="rounded-lg p-2 text-foreground-secondary hover:bg-surface-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60" aria-label="Close">
                 <X className="h-4 w-4" />
               </button>
             </header>
@@ -101,7 +136,9 @@ export function BeliefDrawer({ belief, onClose }: { belief: CompactBelief | null
                     )}
                   </>
                 ) : (
-                  <p className="text-sm text-foreground-secondary">Tracing evidence…</p>
+                  <p className="text-sm text-foreground-secondary">
+                    {explainFailed ? 'The evidence couldn’t load right now. You can still correct or forget this.' : 'Tracing evidence…'}
+                  </p>
                 )}
               </section>
 
@@ -109,22 +146,30 @@ export function BeliefDrawer({ belief, onClose }: { belief: CompactBelief | null
               <section>
                 <div className="mb-2 text-micro font-medium uppercase tracking-[0.14em] text-foreground-secondary">Correct it</div>
                 <p className="mb-2 text-xs text-foreground-secondary">Your word outranks inference. Aqua learns from the correction.</p>
-                <div className="flex gap-2">
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => { e.preventDefault(); if (draft.trim()) void run(() => correctBelief(belief.dimension, belief.key, draft.trim())); }}
+                >
                   <input
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     placeholder="What’s actually true?"
+                    aria-label={`Correct ${beliefTitle(belief)}`}
                     className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-foreground-secondary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                   />
                   <button
+                    type="submit"
                     disabled={busy || !draft.trim()}
-                    onClick={() => run(() => correctBelief(belief.dimension, belief.key, draft.trim()))}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2"
                   >
                     {saved ? <Check className="h-4 w-4" /> : null}{saved ? 'Saved' : 'Save'}
                   </button>
-                </div>
+                </form>
               </section>
+
+              {error && (
+                <p role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{error}</p>
+              )}
 
               {/* Control */}
               <section>
@@ -133,31 +178,41 @@ export function BeliefDrawer({ belief, onClose }: { belief: CompactBelief | null
                   <button
                     disabled={busy}
                     onClick={() => run(() => setBeliefLock(belief.dimension, belief.key, !belief.locked))}
-                    className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-surface-secondary"
+                    className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-sm text-foreground hover:bg-surface-secondary disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                   >
-                    {belief.locked ? <LockOpen className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                    {belief.locked ? <LockOpen className="h-4 w-4 shrink-0" /> : <Lock className="h-4 w-4 shrink-0" />}
                     {belief.locked ? 'Unpin — allow it to evolve again' : 'Pin — never changed by inference'}
                   </button>
                   <button
                     disabled={busy}
                     onClick={() => run(() => setBeliefTemporary(belief.dimension, belief.key, !belief.temporary))}
-                    className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-foreground hover:bg-surface-secondary"
+                    className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-left text-sm text-foreground hover:bg-surface-secondary disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
                   >
-                    <Hourglass className="h-4 w-4" />
+                    <Hourglass className="h-4 w-4 shrink-0" />
                     {belief.temporary ? 'Keep — allow it to become permanent' : 'Mark temporary — never made permanent'}
                   </button>
                   <button
                     disabled={busy}
-                    onClick={() => run(async () => { await deleteBelief(belief.dimension, belief.key); removeBelief(belief.dimension, belief.key); }, true)}
-                    className="flex items-center gap-2 rounded-lg border border-danger/40 px-3 py-2 text-sm text-danger hover:bg-danger/10"
+                    onClick={() => setConfirmForget(true)}
+                    className="flex items-center gap-2 rounded-lg border border-danger/40 px-3 py-2 text-left text-sm text-danger hover:bg-danger/10 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-danger/60"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-4 w-4 shrink-0" />
                     Forget this entirely
                   </button>
                 </div>
               </section>
             </div>
           </motion.aside>
+
+          <ConfirmDialog
+            open={confirmForget}
+            onOpenChange={setConfirmForget}
+            title={`Forget “${beliefTitle(belief)}”?`}
+            description="Aqua stops using it and removes it from your model. This can’t be undone."
+            confirmLabel="Forget it"
+            destructive
+            onConfirm={() => void forget()}
+          />
         </>
       )}
     </AnimatePresence>

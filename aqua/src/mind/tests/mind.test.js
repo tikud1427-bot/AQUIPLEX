@@ -295,9 +295,14 @@ test('predictions: deadline + blocker + goal produce ranked ephemeral forecasts'
 
 test('reflection: promotes established, archives decayed (never deletes), respects locks', () => {
   const mind = freshMind();
-  // Establishment candidate: strong repeated evidence
-  for (let i = 0; i < 10; i++) {
+  // Establishment candidate: the user said it, and it was seen again.
+  observeSignal(mind, { dimension: DIMENSIONS.PREFERENCES, key: 'design_style', value: 'minimal', strength: 0.9, explicit: true });
+  for (let i = 0; i < 3; i++) {
     observeSignal(mind, { dimension: DIMENSIONS.PREFERENCES, key: 'design_style', value: 'minimal', strength: 0.9 });
+  }
+  // Inference repeated ten times: strong, but never permanent (2026-10-28).
+  for (let i = 0; i < 10; i++) {
+    observeSignal(mind, { dimension: DIMENSIONS.PREFERENCES, key: 'verbosity', value: 'concise', strength: 0.9 });
   }
   // Weak stale belief → decays to archive
   observeSignal(mind, { dimension: DIMENSIONS.KNOWLEDGE, key: 'tech:php', value: 'working_knowledge', strength: 0.3 });
@@ -314,6 +319,10 @@ test('reflection: promotes established, archives decayed (never deletes), respec
   const report = reflect(mind);
 
   assert.ok(report.promoted.includes(beliefKey(DIMENSIONS.PREFERENCES, 'design_style')));
+  const inferred = mind.beliefs[beliefKey(DIMENSIONS.PREFERENCES, 'verbosity')];
+  assert.ok(inferred.confidence >= 0.8 && inferred.evidenceCount >= 3, 'clears the old numeric bar');
+  assert.ok(!report.promoted.includes(beliefKey(DIMENSIONS.PREFERENCES, 'verbosity')), 'repetition alone does not make an inference permanent');
+  assert.equal(inferred.established, false);
   assert.equal(weak.status, STATUS.ARCHIVED, 'archived, not deleted');
   assert.ok(mind.beliefs[beliefKey(DIMENSIONS.KNOWLEDGE, 'tech:php')], 'belief object still exists');
   assert.equal(locked.confidence, lockedConf, 'locked exempt from decay');
@@ -430,4 +439,24 @@ test('facade: mindContext never creates minds (peek semantics)', () => {
   const { block } = mindContext('user:ghost', { query: 'x' });
   assert.equal(block, '');
   assert.equal(exportMind('user:ghost'), null, 'no mind materialized by a read');
+});
+
+test('reflection: an inference promoted under the old rule loses only the permanence flag (2026-10-29)', () => {
+  const mind = freshMind();
+  for (let i = 0; i < 6; i++) observeSignal(mind, { dimension: DIMENSIONS.PREFERENCES, key: 'tone', value: 'blunt', strength: 0.9 });
+  const b = mind.beliefs[beliefKey(DIMENSIONS.PREFERENCES, 'tone')];
+  b.established = true;                       // as the old rule left it
+  const { value, evidenceCount, confidence } = b;
+  const report = reflect(mind);
+  assert.equal(b.established, false);
+  assert.deepEqual(report.unsettled, [beliefKey(DIMENSIONS.PREFERENCES, 'tone')]);
+  assert.equal(b.value, value);
+  assert.equal(b.evidenceCount, evidenceCount);
+  assert.ok(b.confidence <= confidence && b.status !== 'archived', 'kept, not archived');
+  // A stated belief keeps its flag.
+  observeSignal(mind, { dimension: DIMENSIONS.IDENTITY, key: 'founder', value: true, strength: 0.9, explicit: true });
+  const s = mind.beliefs[beliefKey(DIMENSIONS.IDENTITY, 'founder')];
+  s.established = true;
+  reflect(mind);
+  assert.equal(s.established, true);
 });

@@ -14,8 +14,15 @@
  * BEFORE the legacy copy is touched, so the user is never told a memory is
  * gone while the copy that answers is still there; retrying is safe
  * (archiving is idempotent).
+ *
+ * A fourth place (2026-10-20): episodic recall quotes the user's past messages
+ * verbatim, and the messages themselves stay in the conversation store. Each
+ * path below therefore also tells recallRedactions what may never be quoted
+ * again — after the World Model step succeeds, so a failed forget redacts
+ * nothing it did not also retire.
  */
 import { getFact, getFacts, deleteFact, clearFacts } from './longTermMemory.js';
+import { redactPhrases, redactAllBefore } from './recallRedactions.js';
 
 export class MemoryControlUnavailable extends Error {
   constructor(message = 'Memory is temporarily unavailable — nothing was changed. Please try again.') {
@@ -41,6 +48,7 @@ export async function forgetFact(ownerId, key) {
   if (!fact) return null;
   const Brain = await brain();
   const worldModel = await guarded(() => Brain.forgetWorldModelFact(ownerId, { key, value: fact.value }));
+  redactPhrases(ownerId, Brain.legacyValueStrings(fact.value));
   deleteFact(ownerId, key);
   logControl('FORGET', ownerId, key, worldModel);
   return { key, worldModel };
@@ -57,6 +65,7 @@ export async function forgetClaim(ownerId, claimId) {
   const Brain = await brain();
   const worldModel = await guarded(() => Brain.forgetWorldModelClaim(ownerId, claimId));
   if (!worldModel) return null;
+  redactPhrases(ownerId, [...worldModel.values, worldModel.statement].filter(Boolean));
   const legacy = [];
   // A deleted ROLE ("Maya — my co-founder") also clears the legacy slot named
   // by that role, whatever it holds: the regex extractor filled "cofounder"
@@ -85,6 +94,8 @@ export async function correctClaimValue(ownerId, claimId, newValue) {
   const worldModel = await guarded(() => Brain.correctWorldModelClaimValue(ownerId, claimId, newValue));
   if (!worldModel) return null;
   const old = worldModel.oldValue == null ? [] : Brain.legacyValueStrings(worldModel.oldValue);
+  // The old sentence was wrong: recall must not quote it against the correction.
+  redactPhrases(ownerId, [...old, worldModel.oldStatement].filter(Boolean));
   const legacy = [];
   for (const fact of getFacts(ownerId, { includeArchived: true })) {
     if (Brain.legacyValueStrings(fact.value).some(h => old.includes(h))) { deleteFact(ownerId, fact.key); legacy.push(fact.key); }
@@ -97,6 +108,7 @@ export async function correctClaimValue(ownerId, claimId, newValue) {
 export async function forgetAllFacts(ownerId) {
   const Brain = await brain();
   const worldModel = await guarded(() => Brain.forgetWorldModelAll(ownerId));
+  redactAllBefore(ownerId, Date.now());
   clearFacts(ownerId);
   logControl('FORGET_ALL', ownerId, '*', worldModel);
   return { worldModel };
@@ -111,6 +123,8 @@ export async function correctFactEverywhere(ownerId, key, oldValue, newValue) {
   if (oldValue == null || String(oldValue) === String(newValue)) return { worldModel: null };
   const Brain = await brain();
   const worldModel = await guarded(() => Brain.correctWorldModelFact(ownerId, { key, oldValue, newValue }));
+  const fresh = new Set(Brain.legacyValueStrings(newValue));
+  redactPhrases(ownerId, Brain.legacyValueStrings(oldValue).filter(v => !fresh.has(v)));
   logControl('CORRECT', ownerId, key, worldModel);
   return { worldModel };
 }
@@ -126,6 +140,11 @@ export async function worldModelWritable() {
  * in the observation step.
  */
 export function forgetInBackground(ownerId, key, value) {
+  // Synchronous and first: the reply to "forget my city" is generated in this
+  // same turn, and it must not quote the city back. No brain import needed —
+  // the value strings are the same normalisation legacyValueStrings applies.
+  try { redactPhrases(ownerId, valueStrings(value)); }
+  catch (err) { console.warn(`[MEMORY] recall redaction failed owner=${ownerId} key=${key}: ${err?.message ?? err}`); }
   brain()
     .then(Brain => Brain.forgetWorldModelFact(ownerId, { key, value }, { reason: 'user-forget-chat' }))
     .then(r => logControl('FORGET_CHAT', ownerId, key, r))
@@ -141,6 +160,17 @@ export function retireSupersededInBackground(ownerId, key, previous) {
     .then(Brain => Brain.retireSupersededStatement(ownerId, { oldValue: previous.value, sourceText: previous.sourceText }))
     .then(ids => { if (ids.length) console.log(`[MEMORY] SUPERSEDED owner=${ownerId} key=${key} conversationFacts=${ids.length}`); })
     .catch(err => console.warn(`[MEMORY] superseded statement not retired owner=${ownerId} key=${key}: ${err?.message ?? err}`));
+}
+
+/** Same strings as brain/index.js legacyValueStrings (string, list, or {name|value|label}); kept here to avoid a sync brain import. */
+function valueStrings(value) {
+  const out = [];
+  const add = v => { const n = String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); if (n.length >= 2) out.push(n); };
+  for (const v of (Array.isArray(value) ? value : [value])) {
+    if (v && typeof v === 'object') { add(v.name); add(v.value); add(v.label); }
+    else add(v);
+  }
+  return [...new Set(out)];
 }
 
 /** "co-founder" / "Co Founder" / "cofounder" → "cofounder": a legacy key and a role value compare equal. */

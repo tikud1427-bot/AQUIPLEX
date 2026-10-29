@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, Brain, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Switch } from '@/components/ui/switch';
 import { forgetAllMemory, listMemory } from '@/api/memory';
+import { getPrivacy, setPrivacy } from '@/api/account';
 import { useUiStore } from '@/stores/uiStore';
 
 /**
@@ -25,13 +27,30 @@ export function MemoryTab() {
   const [count, setCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirmClear, setConfirmClear] = useState(false);
+  // null until loaded: the switch stays disabled rather than showing a guess.
+  const [rememberSensitive, setRememberSensitive] = useState<boolean | null>(null);
 
   useEffect(() => {
     listMemory()
       .then((res) => setCount(res.factCount))
       .catch(() => setCount(null))
       .finally(() => setLoading(false));
+    getPrivacy()
+      .then((p) => setRememberSensitive(p.rememberSensitive))
+      .catch(() => setRememberSensitive(null));
   }, []);
+
+  async function handleSensitiveToggle(next: boolean) {
+    const prev = rememberSensitive;
+    setRememberSensitive(next);
+    try {
+      const saved = await setPrivacy({ rememberSensitive: next });
+      setRememberSensitive(saved.rememberSensitive);
+    } catch {
+      setRememberSensitive(prev);
+      toast('error', 'Could not save that setting', 'Check your connection and try again.');
+    }
+  }
 
   function openMemory() {
     setSettingsOpen(false);
@@ -75,6 +94,23 @@ export function MemoryTab() {
       <Button size="sm" variant="secondary" onClick={openMemory}>
         Open memory <ArrowRight className="h-3.5 w-3.5" />
       </Button>
+
+      <div className="flex items-start justify-between gap-4 border-t border-border pt-4">
+        <div>
+          <p id="remember-sensitive-label" className="text-sm font-medium text-foreground">
+            Let AQUA remember health and mood details (off by default)
+          </p>
+          <p className="mt-1 text-caption leading-relaxed text-foreground-secondary">
+            When on, AQUA keeps them and uses them only when you&rsquo;re talking about that topic.
+          </p>
+        </div>
+        <Switch
+          aria-labelledby="remember-sensitive-label"
+          checked={rememberSensitive === true}
+          disabled={rememberSensitive === null}
+          onCheckedChange={(v) => void handleSensitiveToggle(v)}
+        />
+      </div>
 
       <div className="border-t border-border pt-4">
         <p className="text-caption leading-relaxed text-foreground-secondary">

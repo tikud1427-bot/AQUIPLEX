@@ -188,14 +188,18 @@ export function getConversation(id) {
  * Append a message to a conversation.
  * Auto-creates if missing (defensive — shouldn't normally happen).
  */
-export function addMessage(id, role, content) {
+export function addMessage(id, role, content, extra = null) {
   if (!store.has(id)) {
     console.warn(`[STORE] addMessage: conversation ${id} not found — auto-creating`);
     store.set(id, { messages: [], meta: { autoCreated: true, createdAt: Date.now() } });
   }
 
   const conv = store.get(id);
-  conv.messages.push({ role, content, ts: Date.now() });
+  // extra: only contextRefs today (memory/contextProvenance.js) — references,
+  // never personal text, so forget/correct have nothing new to chase.
+  const msg = { role, content, ts: Date.now() };
+  if (Array.isArray(extra?.contextRefs) && extra.contextRefs.length) msg.contextRefs = extra.contextRefs;
+  conv.messages.push(msg);
   conv.meta.updatedAt = Date.now();
 
   // Safety valve ONLY (was a silent 200-message rolling delete — see header).

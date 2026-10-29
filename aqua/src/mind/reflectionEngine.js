@@ -16,7 +16,7 @@
  * chat.
  */
 import { DIMENSION_DYNAMICS, DIMENSIONS, STATUS, GOAL_STATUS, CAPS, createTimelineEvent } from './mindSchema.js';
-import { decay, isEstablished, isArchiveCandidate } from './confidence.js';
+import { decay, isEstablished, isStatedBelief, isArchiveCandidate } from './confidence.js';
 import { touchMind, deleteItem } from './mindStore.js';
 import { pushTimeline } from './timeline.js';
 import { decayWorkingMemory } from './workingMemory.js';
@@ -65,6 +65,14 @@ export function reflect(mind) {
     // Promotion first (evidence accumulated since last reflection), then decay.
     // b.established is a one-way flag: "became permanent knowledge" is
     // reported exactly once, whenever the bar was crossed between reflections.
+    // Promoted under the pre-2026-10-28 rule (repetition alone) while it is
+    // only an inference: the flag is derived, so it is re-derived — the belief,
+    // its value and its evidence are untouched; it simply decays like any
+    // inference again. Recorded in the report, never silent.
+    if (b.established && !isStatedBelief(b)) {
+      b.established = false;
+      (report.unsettled ??= []).push(bk);
+    }
     if (!b.established && isEstablished(b)) {
       b.established = true;
       report.promoted.push(bk);

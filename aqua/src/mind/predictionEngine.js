@@ -10,6 +10,7 @@ import { CAPS, GOAL_STATUS } from './mindSchema.js';
 import { currentFocus } from './workingMemory.js';
 import { getActiveGoals } from './goalTracker.js';
 import { touchMind } from './mindStore.js';
+import { intentLabel } from '../memory/displayLabels.js';
 
 const clamp = (x) => Math.min(0.97, Math.max(0.05, x));
 
@@ -56,11 +57,13 @@ export function rebuildPredictions(mind, { taskType = 'conversation', workspaceI
   }
 
   // 5. Focus topics → likely subject matter (skip internal workspace: markers)
-  const topicFocus = focus.filter(f => !f.topic.startsWith('workspace:'));
+  // Internal intent ids (simple_qa, personal_info…) are routing, not subject
+  // matter: "Next questions likely about: simple_qa" reached the page.
+  const topicFocus = focus.filter(f => intentLabel(f.topic));
   if (topicFocus.length) {
     const top = topicFocus[0];
     preds.push({
-      label: `Next questions likely about: ${top.topic}`,
+      label: `Next questions likely about: ${intentLabel(top.topic)}`,
       probability: clamp(0.35 + Math.min(0.4, top.weight / 10)),
       basis: 'dominant working-memory focus',
     });

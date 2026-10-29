@@ -3,12 +3,17 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { BrainCircuit, Download, Trash2, Lock, Hourglass, Eye } from 'lucide-react';
 import type { MindModel } from '@/api/mind';
 import { exportMindUrl, eraseMind } from '@/api/mind';
-import { useMindStore, DIMENSIONS } from '@/stores/mindStore';
+import { useMindStore, DIMENSIONS, learnedCount } from '@/stores/mindStore';
+import { useUiStore } from '@/stores/uiStore';
+import { normalizeError } from '@/api/client';
+import { isDisplayableBelief } from '@/lib/displayGuard';
 import { Panel } from '@/components/ui/panel';
 
 /* ── Reflection — watch Aqua think (plays when a reflection lands) ───────── */
 
-const STEPS = ['Reviewing what changed…', 'Updating beliefs…', 'Adjusting confidence…', 'Archiving what went stale…', 'Refreshing predictions…'];
+// Plays when the page sees a reflection that already ran, so it is narrated in
+// the past tense, and only with what reflection does (reflectionEngine.js).
+const STEPS = ['Reviewed what changed', 'Updated what it understands', 'Set aside what went stale'];
 
 export function ReflectionOverlay() {
   const reduce = useReducedMotion();
@@ -42,7 +47,7 @@ export function ReflectionOverlay() {
             >
               <BrainCircuit className="h-4 w-4" />
             </motion.span>
-            <span className="text-sm font-medium text-foreground">Aqua is reflecting</span>
+            <span className="text-sm font-medium text-foreground">Aqua reflected</span>
             <span className="hidden text-sm text-foreground-secondary sm:inline">
               <AnimatePresence mode="wait">
                 <motion.span
@@ -65,23 +70,38 @@ export function ReflectionOverlay() {
 
 export function PrivacyPanel({ model }: { model: MindModel }) {
   const clear = useMindStore((s) => s.clear);
+  const toast = useUiStore((s) => s.toast);
   const [confirming, setConfirming] = useState(false);
   const [erasing, setErasing] = useState(false);
 
-  const beliefs = DIMENSIONS.flatMap((d) => model[d] ?? []);
-  const permanent = beliefs.filter((b) => !b.temporary && b.status !== 'archived').length;
+  // Counted by the page's own visibility rule, so "Remembered" matches the hero
+  // count and the cards above instead of including rows nobody can see.
+  const beliefs = DIMENSIONS.flatMap((d) => model[d] ?? []).filter(isDisplayableBelief);
+  const permanent = beliefs.filter((b) => !b.temporary).length;
   const temporary = beliefs.filter((b) => b.temporary).length;
   const pinned = beliefs.filter((b) => b.locked).length;
 
+  // The page empties only after the server says it erased. A failure used to
+  // be an unhandled rejection: the buttons reset and nothing said it failed.
   const erase = async () => {
     setErasing(true);
-    try { await eraseMind(); clear(); } finally { setErasing(false); setConfirming(false); }
+    try {
+      const res = await eraseMind();
+      if (res?.success === false) throw new Error('Aqua could not delete the model. Nothing was changed.');
+      clear();
+      toast('success', 'Model deleted', 'Aqua starts building its understanding again from your next conversation.');
+    } catch (err) {
+      toast('error', 'Could not delete the model', normalizeError(err).message);
+    } finally {
+      setErasing(false);
+      setConfirming(false);
+    }
   };
 
   return (
     <Panel className="p-5">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat icon={<Eye className="h-3.5 w-3.5" />} label="Remembered" value={beliefs.length + model.goals.length} />
+        <Stat icon={<Eye className="h-3.5 w-3.5" />} label="Remembered" value={learnedCount(model)} />
         <Stat icon={<BrainCircuit className="h-3.5 w-3.5" />} label="Permanent" value={permanent} />
         <Stat icon={<Hourglass className="h-3.5 w-3.5" />} label="Temporary" value={temporary} />
         <Stat icon={<Lock className="h-3.5 w-3.5" />} label="Pinned by you" value={pinned} />

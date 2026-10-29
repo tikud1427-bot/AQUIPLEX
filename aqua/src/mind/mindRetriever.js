@@ -19,11 +19,26 @@ import { getActiveGoals } from './goalTracker.js';
 import { currentFocus } from './workingMemory.js';
 import { neighborhood, SELF_KEY } from './relationshipGraph.js';
 import { estimateTokens } from '../core/tokenManager.js';
+import { isAspirationalRole } from '../memory/displayLabels.js';
 
 const DEFAULT_BUDGET_TOKENS = 450;
 const MIN_CONF_TO_SHOW = 0.45;
 
 function conf(c) { return `${Math.round(c * 100)}%`; }
+
+/**
+ * How the model should hold a belief: something the user said, or something
+ * observed about them. Until 2026-10-28 both read "(62%)", so an inferred
+ * trait reached the answer model looking exactly like a stated fact.
+ */
+const STATED = new Set(['explicit', 'correction', 'user']);
+function basis(b) {
+  return STATED.has(b.privacy?.source) ? 'user said' : `inferred, ${conf(b.confidence)}`;
+}
+
+/** A goal stored as a role ("profession: billionaire") is not who the user is — never tell the model it is. */
+const ROLE_KEYS = new Set(['profession', 'role', 'job_title']);
+const usableBelief = b => b.reviewedAt || b.privacy?.source === 'correction' || !(ROLE_KEYS.has(b.key) && isAspirationalRole(b.value));
 
 function line(parts) { return parts.filter(Boolean).join(' '); }
 
@@ -39,9 +54,9 @@ export function retrieveCognitiveContext(mind, { query = '', taskType = 'convers
 
   // ── 1. Identity & personality (always relevant, tiny) ──────────────────────
   const identity = getBeliefs(mind, { dimension: DIMENSIONS.IDENTITY, minConfidence: MIN_CONF_TO_SHOW })
-    .filter(b => b.status !== STATUS.ARCHIVED).slice(0, 4);
+    .filter(b => b.status !== STATUS.ARCHIVED && usableBelief(b)).slice(0, 4);
   if (identity.length) {
-    const traits = identity.map(b => `${b.key.replace(/_/g, ' ')}${typeof b.value === 'string' && b.value !== 'true' ? `: ${b.value}` : ''} (${conf(b.confidence)})`);
+    const traits = identity.map(b => `${b.key.replace(/_/g, ' ')}${typeof b.value === 'string' && b.value !== 'true' ? `: ${b.value}` : ''} (${basis(b)})`);
     sections.push(`Identity: ${traits.join(', ')}.`);
     used.identity = identity.length;
   }
@@ -69,7 +84,7 @@ export function retrieveCognitiveContext(mind, { query = '', taskType = 'convers
     .slice(0, 4)
     .map(x => x.b);
   if (prefLike.length) {
-    sections.push(`Preferences: ${prefLike.map(b => `${b.key.replace(/_/g, ' ')}=${JSON.stringify(b.value)} (${conf(b.confidence)})`).join('; ')}.`);
+    sections.push(`Preferences: ${prefLike.map(b => `${b.key.replace(/_/g, ' ')}=${JSON.stringify(b.value)} (${basis(b)})`).join('; ')}.`);
     used.preferences = prefLike.length;
   }
 

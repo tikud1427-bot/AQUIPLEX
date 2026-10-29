@@ -536,6 +536,56 @@ export async function userArchivedClaimIds(ownerId, { pool = null } = {}) {
 }
 
 /**
+ * SUPERSESSION NOTES (2026-10-20): for each claim the World Model retired by a
+ * later change, the verbatim words it came from and the statement that is
+ * current now. Episodic recall (memory/episodicRecall.js) quotes the user's old
+ * messages; this is how a quote of "the launch is May 2" gets "since changed:
+ * the launch moved to May 9" beside it, even when the message that changed it
+ * shares no word with the question. Chains are followed to their current end
+ * (bounded hops); a chain that ends in a user deletion yields no note — that
+ * value was forgotten, not changed. Owner-scoped, bounded.
+ */
+export async function supersessionNotes(ownerId, { limit = 300, pool = null } = {}) {
+  const owner = requireOwner(ownerId);
+  const p = await db(pool);
+  const { rows: old } = await p.query(`
+    SELECT c.claim_id::text AS id, c.superseded_by::text AS next, c.statement_text, ev.quote
+      FROM aqua_claims c
+      LEFT JOIN aqua_claim_evidence ce ON ce.owner_id=c.owner_id AND ce.claim_id=c.claim_id
+      LEFT JOIN aqua_evidence ev ON ev.owner_id=ce.owner_id AND ev.evidence_id=ce.evidence_id
+     WHERE c.owner_id=$1 AND c.state='superseded'
+     ORDER BY c.updated_at DESC
+     LIMIT $2`, [owner, Math.min(1000, clampLimit(limit, 300))]);
+  if (!old.length) return [];
+  const byId = new Map();
+  let frontier = [...new Set(old.map(r => r.next).filter(Boolean))];
+  for (let hop = 0; hop < 6 && frontier.length; hop++) {
+    const { rows } = await p.query(`
+      SELECT claim_id::text AS id, state, superseded_by::text AS next, statement_text, asserted_at
+        FROM aqua_claims WHERE owner_id=$1 AND claim_id::text = ANY($2::text[])`, [owner, frontier]);
+    for (const r of rows) byId.set(r.id, r);
+    frontier = [...new Set(rows.filter(r => r.state === 'superseded' && r.next && !byId.has(r.next)).map(r => r.next))];
+  }
+  const current = id => {
+    for (let seen = 0, r = byId.get(id); r && seen < 8; seen++) {
+      if (r.state !== 'superseded') return r;
+      r = byId.get(r.next);
+    }
+    return null;
+  };
+  const notes = new Map();
+  for (const r of old) {
+    const now = current(r.next);
+    if (!now || now.state === 'archived' || !CURRENT_STATES.includes(now.state)) continue;
+    const key = r.id;
+    const n = notes.get(key) ?? { claimId: r.id, quotes: new Set(), now: now.statement_text, nowAssertedAt: now.asserted_at };
+    for (const q of [r.quote, r.statement_text]) if (q && String(q).trim().length >= 8) n.quotes.add(String(q).trim());
+    notes.set(key, n);
+  }
+  return [...notes.values()].map(n => ({ ...n, quotes: [...n.quotes] })).filter(n => n.quotes.length && n.now);
+}
+
+/**
  * RETIRED STATEMENTS (2026-10-11): source sentences behind at least one claim
  * that is no longer current (superseded/archived). A sentence can carry a
  * retired claim AND a current one ("My biggest client is a restaurant called

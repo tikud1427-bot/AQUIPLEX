@@ -324,6 +324,27 @@ public class MainActivity extends BridgeActivity {
         return true;
     }
 
+    /**
+     * The WebView writes cookies to disk lazily (on a timer), and nothing in
+     * Capacitor flushes them for this app. A session cookie set by a login or
+     * by /auth/native/complete, followed by the app being backgrounded and
+     * killed before that write, came back logged out on the next launch.
+     * Flushing persists only what the WebView's own cookie jar already holds.
+     */
+    private static void persistCookies() {
+        try {
+            CookieManager.getInstance().flush();
+        } catch (RuntimeException ignored) {
+            // No WebView provider (e.g. being updated): nothing to persist.
+        }
+    }
+
+    @Override
+    public void onPause() {
+        persistCookies();
+        super.onPause();
+    }
+
     @Override
     protected void onNewIntent(Intent intent) {
         setIntent(intent);
@@ -362,6 +383,8 @@ public class MainActivity extends BridgeActivity {
             Uri parsed = Uri.parse(url);
             if (PRODUCTION_HOST.equalsIgnoreCase(parsed.getHost()) && parsed.getPath() != null) {
                 if (parsed.getPath().equals(AQUA_PATH) || parsed.getPath().startsWith(AQUA_PATH + "/")) {
+                    // Covers the cookie just set by a login or native handoff redirect.
+                    persistCookies();
                     view.post(MainActivity.this::finishLaunchOverlay);
                 }
             }

@@ -4,6 +4,8 @@ import { AlertCircle, ArrowRightCircle, CircleSlash, FolderGit2, Paperclip, Penc
 import { MarkdownRenderer } from '@/components/markdown/MarkdownRenderer';
 import { ThinkingIndicator } from './ThinkingIndicator';
 import { SourceCards } from './SourceCards';
+import { RecallSources } from './RecallSources';
+import { ContextUsed } from './ContextUsed';
 import { MessageActions } from './MessageActions';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { ResponseConfidence } from './ResponseConfidence';
@@ -75,6 +77,7 @@ export const MessageBubble = memo(function MessageBubble({
   const retryLastMessage = useChatStore((s) => s.retryLastMessage);
   const continueGeneration = useChatStore((s) => s.continueGeneration);
   const generating = useChatStore((s) => s.generating);
+  const currentConversationId = useChatStore((s) => s.conversationId);
   const developerMode = useSettingsStore((s) => s.developerMode);
 
   const isUser = message.role === 'user';
@@ -213,6 +216,15 @@ export const MessageBubble = memo(function MessageBubble({
             </div>
 
             <SourceCards sources={message.sources} />
+
+            {!isStreaming && <RecallSources recall={message.diagnostics?.recall} currentConversationId={currentConversationId} />}
+
+            {!isStreaming && (
+              <ContextUsed
+                contextUsed={message.diagnostics?.contextUsed ?? message.contextUsed}
+                onRegenerate={isLast && !generating ? () => regenerate(message.id) : undefined}
+              />
+            )}
 
             {message.patch && !isStreaming && <PatchCard patch={message.patch} messageId={message.id} />}
 

@@ -54,6 +54,19 @@ const STATUS_FOR_CODE = Object.freeze({
   [ErrorCodes.INTERNAL]:      500,
 });
 
+/**
+ * The sentence a person sees when a request fails inside the engine
+ * (2026-10-28). `err.message` belongs in the log line, never the response: the
+ * router's reads "All providers exhausted | task=simple_qa | chain=groq:…",
+ * upstream bodies can quote part of an API key, and a database error names
+ * tables and hosts. The chat bubble rendered whichever arrived.
+ */
+export function publicErrorMessage(err) {
+  return err?.retryable === true
+    ? 'Aqua is busy right now. Please try again in a moment.'
+    : 'Aqua could not finish that request. Please try again.';
+}
+
 /** Success envelope. `data` is spread onto the envelope, matching the
  *  existing `{ success: true, ...payload }` convention exactly. */
 export function ok(res, data = {}) {

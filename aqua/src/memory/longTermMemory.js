@@ -102,6 +102,10 @@ function upgradeFact(fact, ownerId) {
     retrievalCount: fact.retrievalCount ?? 0,   // times retrieval injected it
     lastRetrievedAt: fact.lastRetrievedAt ?? null,
     pinned: fact.pinned ?? false,               // exempt from archive, floor-8 importance
+    // memory/sensitivity.js: 'health' | 'mood' | null. Tagged at write (opt-in)
+    // or by scripts/backfill-sensitivity.mjs; reads also classify untagged text.
+    sensitivity: fact.sensitivity ?? null,
+    sensitivityReviewedAt: fact.sensitivityReviewedAt ?? null,   // "Keep" on the Memory page
   };
 }
 

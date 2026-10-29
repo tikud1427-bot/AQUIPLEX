@@ -1,13 +1,15 @@
-import { motion, useReducedMotion, AnimatePresence } from 'framer-motion';
 import { CircleDot, OctagonPause, CheckCircle2, Clock3, HelpCircle, Lightbulb, ShieldAlert } from 'lucide-react';
-import type { Goal, MindModel, Prediction } from '@/api/mind';
-import { ConfidenceBadge } from '@/components/ui/confidence-badge';
+import type { Goal, MindModel } from '@/api/mind';
 import { Panel } from '@/components/ui/panel';
 import { staleOpacity, timeAgo } from '@/lib/format';
+import { isInternalTopic } from '@/lib/displayGuard';
 
 /* ── Goals ──────────────────────────────────────────────────────────────── */
 
-const GOAL_STATUS_META: Record<Goal['status'], { label: string; icon: React.ReactNode; tone: string }> = {
+/** aqua/src/mind/mindSchema.js createGoal — the value every goal starts with. */
+const DEFAULT_GOAL_PRIORITY = 5;
+
+const GOAL_STATUS_META: Partial<Record<string, { label: string; icon: React.ReactNode; tone: string }>> = {
   active:    { label: 'Active',    icon: <CircleDot className="h-3.5 w-3.5" />,     tone: 'text-primary' },
   blocked:   { label: 'Blocked',   icon: <OctagonPause className="h-3.5 w-3.5" />,  tone: 'text-warning' },
   completed: { label: 'Completed', icon: <CheckCircle2 className="h-3.5 w-3.5" />,  tone: 'text-success' },
@@ -16,7 +18,6 @@ const GOAL_STATUS_META: Record<Goal['status'], { label: string; icon: React.Reac
 };
 
 export function GoalsSection({ goals }: { goals: Goal[] }) {
-  const reduce = useReducedMotion();
   const shown = [...goals]
     .sort((a, b) => Number(b.status === 'active' || b.status === 'blocked') - Number(a.status === 'active' || a.status === 'blocked')
       || b.lastMentionedAt - a.lastMentionedAt)
@@ -34,24 +35,21 @@ export function GoalsSection({ goals }: { goals: Goal[] }) {
           <Panel key={g.id}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-foreground">{g.title}</div>
-                <div className={`mt-1 inline-flex items-center gap-1.5 text-xs ${meta.tone}`}>
-                  {meta.icon}{meta.label}
-                  <span className="text-foreground-secondary">· priority {g.priority}</span>
+                <div className="line-clamp-2 text-sm font-semibold text-foreground [overflow-wrap:anywhere]" title={g.title}>{g.title}</div>
+                {/* Status is shown only when the page knows it. Priority only
+                    when someone set it: every goal is created at 5 (mindSchema
+                    createGoal), so "priority 5" said nothing about the goal. */}
+                <div className="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs">
+                  {meta && <span className={`inline-flex items-center gap-1.5 ${meta.tone}`}>{meta.icon}{meta.label}</span>}
+                  {g.priority !== DEFAULT_GOAL_PRIORITY && <span className="text-foreground-secondary">· priority {g.priority}</span>}
                   {g.deadline && <span className="text-foreground-secondary">· due {new Date(g.deadline).toLocaleDateString()}</span>}
                 </div>
               </div>
-              <ConfidenceBadge value={g.confidence} />
-            </div>
-
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-surface-secondary" role="progressbar"
-                 aria-valuenow={Math.round(g.progress * 100)} aria-valuemin={0} aria-valuemax={100}>
-              <motion.div
-                className={`h-full rounded-full ${g.status === 'completed' ? 'bg-success' : 'bg-primary'}`}
-                initial={reduce ? false : { width: 0 }}
-                animate={{ width: `${Math.max(3, Math.round(g.progress * 100))}%` }}
-                transition={{ duration: reduce ? 0 : 0.7, ease: [0.16, 1, 0.3, 1] }}
-              />
+              {/* A count, not a percentage: goal "progress" is a +0.2-per-phrase
+                  heuristic and goal confidence is a constant, so neither is shown. */}
+              <span className="shrink-0 text-xs tabular-nums text-foreground-secondary">
+                mentioned {g.mentions}×
+              </span>
             </div>
 
             {(g.blockers.length > 0 || g.dependencies.length > 0) && (
@@ -94,7 +92,8 @@ function WorkingList({ icon, title, items }: { icon: React.ReactNode; title: str
 
 export function WorkingMemorySection({ model }: { model: MindModel }) {
   const w = model.working;
-  const focus = (w.focusRanked ?? []).filter((f) => !f.topic.startsWith('workspace:')).slice(0, 6);
+  // Routing ids ("simple_qa", "personal_info") are the engine's, not the person's focus.
+  const focus = (w.focusRanked ?? []).filter((f) => !isInternalTopic(f.topic)).slice(0, 6);
   const maxW = Math.max(1, ...focus.map((f) => f.weight));
   const empty = !focus.length && !w.blockers.length && !w.deadlines.length && !w.recentDiscoveries.length && !w.openQuestions.length;
 
@@ -132,39 +131,9 @@ export function WorkingMemorySection({ model }: { model: MindModel }) {
   );
 }
 
-/* ── Predictions — forecasts, not memory ────────────────────────────────── */
-
-export function PredictionsSection({ predictions }: { predictions: Prediction[] }) {
-  const reduce = useReducedMotion();
-  if (!predictions.length) {
-    return <p className="text-sm text-foreground-secondary">Forecasts appear once Aqua sees where you’re heading.</p>;
-  }
-  return (
-    <div className="space-y-2">
-      <AnimatePresence initial={false}>
-        {predictions.map((p, i) => (
-          <motion.div
-            key={p.label}
-            initial={reduce ? false : { opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ delay: reduce ? 0 : i * 0.05 }}
-          >
-            <Panel className="flex items-center justify-between gap-4 py-3">
-              <div className="min-w-0">
-                <div className="truncate text-sm text-foreground">{p.label}</div>
-                <div className="mt-0.5 text-micro text-foreground-secondary">{p.basis}</div>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <div className="hidden h-1 w-24 overflow-hidden rounded-full bg-surface-secondary sm:block">
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${Math.round(p.probability * 100)}%` }} />
-                </div>
-                <span className="font-mono text-sm tabular-nums text-foreground">{Math.round(p.probability * 100)}%</span>
-              </div>
-            </Panel>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-    </div>
-  );
-}
+/* Predictions are not on the page (2026-10-28). Each was a template with a
+   fixed score: "Likely to continue debugging this issue" (0.7), "Next
+   questions likely about: …" (0.6). The ones grounded in something real —
+   a deadline, a blocker, an active goal — repeat what Goals and Aqua's
+   attention already show, and the rest claim to know what the person will do
+   next with nothing measured behind it. GET /mind still returns them. */

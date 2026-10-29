@@ -47,8 +47,27 @@ export function decay(confidence, decayRate, staleMs, { established = false } = 
   return Math.max(floor, clamp01(confidence - decayRate * weeks));
 }
 
+/**
+ * Sources that are the user's own word (or their own documents). Anything
+ * else — task-type signals, behavioural patterns, reflection — is an
+ * inference, however often it repeats.
+ */
+const STATED_SOURCES = new Set(['explicit', 'correction', 'fact_bridge', 'user']);
+
+/**
+ * "Established" is permanent knowledge: it is announced as learned and gets a
+ * decay floor. Until 2026-10-28 any belief qualified at 0.8 confidence and 3
+ * observations, so an inferred trait became permanent by repetition alone
+ * (ten "simple_qa" turns in a session). An inference stays usable — and
+ * labelled as inferred — but keeps decaying unless it is seen again.
+ */
+export function isStatedBelief(belief) {
+  return STATED_SOURCES.has(belief?.privacy?.source)
+    || (belief?.evidence ?? []).some(e => e?.explicit || e?.correction);
+}
+
 export function isEstablished(belief) {
-  return (belief.confidence >= PROMOTE_AT) && (belief.evidenceCount >= PROMOTE_MIN_EVIDENCE);
+  return isStatedBelief(belief) && (belief.confidence >= PROMOTE_AT) && (belief.evidenceCount >= PROMOTE_MIN_EVIDENCE);
 }
 
 export function isArchiveCandidate(belief) {

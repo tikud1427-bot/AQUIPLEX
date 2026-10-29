@@ -59,6 +59,9 @@ import { generateText, generateTextStream } from '../providers/router.js';
 import { buildSystemPrompt }      from '../core/promptBuilder.js';
 import { buildContextWindow, estimateTokens } from '../core/tokenManager.js';
 import { classifyTask }           from '../core/classifier.js';
+import { factLabel, factItems }   from '../memory/displayLabels.js';
+import { factPromptLine }         from '../memory/memoryRetriever.js';
+import { contextRefs }            from '../memory/contextProvenance.js';
 import { uusEnabled }             from '../understanding/flags.js';
 import { UNDERSTANDING_TASK, classifyForMode, isInterviewTurn } from '../understanding/interviewMode.js';
 import { directive as interviewSteer } from '../understanding/interview.js';
@@ -91,6 +94,8 @@ import {
   canAccessConversation,
 } from '../memory/conversationStore.js';
 import { resolveOwner, memoryObserve, memoryRetrieve, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
+import { recallEnabled, recallForTurn } from '../memory/episodicRecall.js';
+import { sensitivePolicy, redactSensitiveSentences, scrubSensitiveLines, classifyText } from '../memory/sensitivity.js';
 import * as Brain from '../brain/index.js';
 import { proactiveDirectiveForTurn } from '../brain/proactive/index.js';
 import { scorePairs as crossEncoderScorePairs } from '../brain/contextEngine/crossEncoderLocal.js';
@@ -107,7 +112,7 @@ import { editArtifact } from '../artifacts/editEngine.js';
 import { publicManifest, composeArtifactEditSummary } from '../artifacts/engine.js';
 import { listArtifacts as listStoredArtifacts } from '../artifacts/artifactStore.js';
 import '../artifacts/engine.js';               // side-effect: registers the 'artifact' agent on load (Artifact Engine P1)
-import { ErrorCodes } from './envelope.js';
+import { ErrorCodes, publicErrorMessage } from './envelope.js';
 import { createTurnLedger, recordTurnCost } from '../core/costAccounting.js';
 import { defer } from '../core/jobs/jobRegistry.js';
 import { authorizedWorkspaceId } from '../project/workspaceAccess.js';
@@ -392,12 +397,22 @@ const REPO_INTENT_RE = /\b(repo(sitory)?|codebase|this project|the project|archi
  * provider calls. Both call sites (`await prepareTurn(...)`) are inside
  * async handlers in this file — no external caller exists.
  */
-export async function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, ctx, requestId, onStage = () => {}, skipReasoningPass = false, mode = null }) {
+export async function prepareTurn({ userMessage, workspaceId, conversationId, userId = null, ctx, requestId, onStage = () => {}, skipReasoningPass = false, mode = null, rememberSensitive = false }) {
   // ── 1. Resolve the ONE memory owner (unified engine) ────────────────────────
   // Platform user identity when present (cross-conversation, cross-device),
   // else this conversation as a dev/standalone fallback (adopted into the
   // user's memory on first login). Null disables memory entirely.
   const memoryOwner = resolveOwner({ userId, conversationId });
+  // ── 1a. Sensitive categories (memory/sensitivity.js, 2026-10-28) ────────────
+  // Health and mood: not stored unless the user opted in (`rememberSensitive`,
+  // the account's privacy setting), and never injected unless opted in AND this
+  // message is itself about that topic. `memoryWriteMessage` is what every
+  // memory writer of this turn sees; the conversation itself is untouched.
+  const sensitive = sensitivePolicy({ rememberSensitive, message: userMessage });
+  const writeView = rememberSensitive ? { text: userMessage, removed: [] } : redactSensitiveSentences(userMessage);
+  if (writeView.removed.length) {
+    console.log(`[SENSITIVE] not stored owner=${memoryOwner} sentences=${writeView.removed.length} kinds=${[...new Set(writeView.removed)].join(',')} req=${requestId}`);
+  }
   // ── Phase 2 — semantic retrieval: start the query embedding NOW so its
   // network round-trip overlaps the synchronous prep below (classify,
   // orchestrate, observe). Awaited only at the retrieval seam. Fail-open:
@@ -461,6 +476,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   onStage('memory', 'Checking memory…');
   const observed = memoryObserve(memoryOwner, {
     userMessage, taskType, workspaceId, conversationId, userId, requestId,
+    extractMessage: writeView.text, rememberSensitive,
   });
   const extractedFacts = observed.extractedFacts;
   logMemoryEvent(ctx, 'EXTRACTED', extractedFacts.map(f => `${f.key}=${f.value}`));
@@ -544,9 +560,12 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     fileChunks: await fileChunksP,           // Phase D: uploaded-content chunks ([] if unavailable)
     legacyUserMemory: readMode === 'legacy' ? true : readMode === 'authoritative' ? 'gapfill' : false,
     legacyVeto: readMode === 'authoritative' ? await Brain.legacyVetoFor(memoryOwner) : null,
+    sensitive,
   });
   const relevantFacts = retrieved.relevantFacts;
   const memoryBlock   = retrieved.block;
+  let sensitiveWithheld = (retrieved.trace?.sensitiveWithheld ?? 0)
+    + (retrieved.trace?.notes ?? []).filter(n => n.startsWith('sensitive_withheld_lines:')).reduce((n, s) => n + Number(s.split(':')[1] || 0), 0);
   if (relevantFacts.length) {
     logMemoryEvent(ctx, 'RETRIEVED', relevantFacts.map(f => `${f.key}=${f.value}`));
     logMemoryEvent(ctx, 'INJECTED',  relevantFacts.map(f => f.key));
@@ -644,8 +663,15 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
           } : {}),
         })
       : floorRetrieve(memoryOwner, userMessage, { limit: 8 });
-    knowledgeContext = knowledge.block;
-    knowledgeItems   = knowledge.items;
+    // Sensitive categories: the conversation evidence lane and the canonical
+    // World Model answer here, outside memoryRetrieve — same rule, same policy.
+    const scrubbedKnowledge = scrubSensitiveLines(knowledge.block, sensitive);
+    knowledgeContext = scrubbedKnowledge.block;
+    knowledgeItems   = (knowledge.items ?? []).filter(i => {
+      const kind = classifyText([i.text, i.statement, i.label, i.snippet, i.content].filter(v => typeof v === 'string').join(' '));
+      return !kind || sensitive.allows(kind);
+    });
+    sensitiveWithheld += scrubbedKnowledge.removed + ((knowledge.items ?? []).length - knowledgeItems.length);
     knowledgeStats   = knowledge.stats ?? {};
     if (knowledgeContext) {
       const ce = knowledge.stats?.contextEngine;
@@ -700,6 +726,33 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   console.log(formatSearchDecisionLog(webSearchCap, search));
   const searchContext = search?.contextBlock ?? '';
 
+  // ── 5d². Episodic recall — the user's own words from earlier conversations ──
+  // The World Model above is what Aqua UNDERSTOOD; this is what the user SAID,
+  // verbatim and dated, matched to this message (memory/episodicRecall.js).
+  // Extraction is lossy and late; quotes are neither. The window is computed
+  // here (it was step 7) so recall never repeats a message the model already
+  // sees. Supersession notes come from the World Model only on a canonical
+  // read. Health and mood sentences follow this turn's sensitive policy, like
+  // every other lane. Fail-open: an empty block leaves the prompt as it was.
+  const history    = getConversation(conversationId);
+  const ctxBudget  = computeContextBudget(plan.complexity, orchestration.budget.maxContextTokens);
+  const window     = buildContextWindow(history, ctxBudget);
+  let recall = { block: '', excerpts: [], stats: null };
+  if (memoryOwner && !identityIntent.isSelf && !isInterviewTurn(mode) && recallEnabled()) {
+    recall = await recallForTurn({
+      ownerId: memoryOwner, userId, conversationId, query: userMessage,
+      excludeFromIndex: history.length - window.length,
+      notesFor: readMode !== 'legacy' ? Brain.supersessionNotesFor : null,
+      sensitive,
+    });
+    const rs = recall.stats ?? {};
+    console.log(`[RECALL] owner=${memoryOwner} excerpts=${recall.excerpts.length} candidates=${rs.candidates ?? 0} matched=${rs.matched ?? 0} followUps=${rs.followUps ?? 0} annotated=${rs.annotated ?? 0} redacted=${rs.redactedSentences ?? 0} ms=${rs.ms ?? 0}${rs.error ? ` error=${rs.error}` : ''}`);
+  }
+  // Backstop over the formatted block, as for the knowledge lane above.
+  const scrubbedRecall = scrubSensitiveLines(recall.block, sensitive);
+  sensitiveWithheld += scrubbedRecall.removed;
+  const recallContext = scrubbedRecall.block;
+
   // ── 5e. Evidence context (Phase 0, audit F1) ────────────────────────────────
   // THE GROUNDING CONTRACT: everything that grounded THIS turn's draft,
   // assembled once, carried in prep, and handed to any post-generation
@@ -707,7 +760,11 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // than the drafter will "correct" grounded multimodal answers into
   // "I cannot watch videos" — the root cause of the overwrite bug.
   const evidenceContext = composeEvidenceContext({
-    attachmentContext, projectContext, knowledgeContext, memoryBlock, searchContext,
+    attachmentContext, projectContext,
+    // Reviewers must see the quotes the drafter answered from, or they
+    // "correct" a grounded answer (the F1 overwrite bug).
+    knowledgeContext: [knowledgeContext, recallContext].filter(Boolean).join('\n\n'),
+    memoryBlock, searchContext,
   });
 
   // ── 6. Build system prompt ────────────────────────────────────────────────────
@@ -729,7 +786,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   }
   // Attachment context rides the projectContext slot — same injection point,
   // same budget handling in promptBuilder, no signature change.
-  const combinedContext = [attachmentContext, projectContext, knowledgeContext].filter(Boolean).join('\n\n');
+  const combinedContext = [attachmentContext, projectContext, knowledgeContext, recallContext].filter(Boolean).join('\n\n');
   // CIE directive rides the SAME channel the Phase-4 reasoning directive
   // already owns — appended after it, never replacing it. Empty when CIE is
   // off or the style is 'fast', keeping casual traffic byte-identical.
@@ -754,15 +811,18 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   const reasoningDirective = [reasoning.directive, cognition.directive, interviewDirective, revisionDirective, proactiveDirective].filter(Boolean).join('\n');
   const { prompt: systemPrompt, modules: promptModules } = buildSystemPrompt(taskType, memoryBlock, reasoningDirective, combinedContext, intelligence.synthesis.text, identityIntent, searchContext);
 
-  // ── 7. Build context window (short-term message history) ─────────────────────
-  const history    = getConversation(conversationId);
-  const ctxBudget  = computeContextBudget(plan.complexity, orchestration.budget.maxContextTokens);
-  const window     = buildContextWindow(history, ctxBudget);
+  // ── 7. Context window (short-term message history; computed at 5d²) ─────────
   const { messages, stats: contextStats } = optimizeContext([...window, { role: 'user', content: userMessage }]);
 
   const promptTokens = estimateTokens(systemPrompt + messages.map(m => m.content).join(' '));
+  if (sensitiveWithheld) {
+    console.log(`[SENSITIVE] withheld from context owner=${memoryOwner} lines=${sensitiveWithheld} optedIn=${sensitive.rememberSensitive} topic=${sensitive.topic ?? 'none'} req=${requestId}`);
+  }
 
   return {
+    // What every post-turn memory writer may see (sensitive sentences removed
+    // unless opted in) — runPostTurn takes these, never the raw turn.
+    memoryWriteMessage: writeView.text, rememberSensitive: !!rememberSensitive, sensitiveWithheld,
     taskType, confidence, labels,
     identityIntent,
     orchestration, plan, reasoning, intelligence,
@@ -770,6 +830,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!memoryBlock, contextUsed: cognitive.used },
     projectContext, projectFiles,
     knowledgeContext, knowledgeItems, knowledgeStats,
+    recall: { excerpts: recall.excerpts, stats: recall.stats },
     readState,
     cognition: { plan: cognition.plan, directiveApplied: !!cognition.directive },
     search,
@@ -778,6 +839,20 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     attachments: conversationAttachments.map(a => ({ id: a.id, name: a.name, kind: a.kind })),
     systemPrompt, promptModules,
     messages, contextStats, promptTokens,
+  };
+}
+
+/**
+ * The turn as the post-turn memory writers (evidence lane, World Model / E6,
+ * Digital Twin) may see it: health and mood sentences removed from BOTH sides
+ * unless the user opted in — conversation ingest reads the answer too, and an
+ * answer can restate what the user said.
+ */
+export function memoryWriteTurn(prep, finalAnswer) {
+  if (prep?.rememberSensitive) return { userMessage: prep.memoryWriteMessage, assistantMessage: finalAnswer };
+  return {
+    userMessage: prep?.memoryWriteMessage ?? '',
+    assistantMessage: redactSensitiveSentences(finalAnswer).text,
   };
 }
 
@@ -862,6 +937,51 @@ export function worldModelClaimRefs(items, max = 12) {
     }));
 }
 
+/**
+ * CONTEXT USED (2026-10-28) — what Aqua knew about the user that was put in
+ * front of the model for THIS answer, in the user's terms, for the optional
+ * "Context used" disclosure under the answer. Only items that were actually
+ * injected: the facts memoryRetrieve returned (already relevance-gated,
+ * sensitivity-filtered and schema-checked) and the canonical claims the
+ * context engine assembled. Each carries what the client needs to forget or
+ * correct it — a fact key or a claim id — and nothing internal (no scores,
+ * lanes or slot ids). Labels follow the Memory page's rules
+ * (memory/displayLabels.js): a custom_ key has no heading, only its value.
+ *
+ * Checked against the FINAL system prompt, not just the retrieval output
+ * (2026-10-29): a fact is listed only if its exact prompt line is in the
+ * prompt (retrieval returns facts from 0.5 confidence, the formatter injects
+ * from 0.55), and a claim only if the knowledge block that renders it is.
+ * No prompt (a branch that built none) → nothing listed. Fail closed: the
+ * list may understate (superseded history lines are not listed), never
+ * overstate.
+ */
+export function contextUsedItems(relevantFacts = [], knowledgeItems = [], { systemPrompt = '', knowledgeContext = '', max = 8 } = {}) {
+  const out = [];
+  if (typeof systemPrompt !== 'string' || !systemPrompt) return out;
+  const seen = new Set();
+  const push = item => {
+    const k = item.text.toLowerCase();
+    if (!item.text || seen.has(k) || out.length >= max) return;
+    seen.add(k);
+    out.push(item);
+  };
+  const claimsInPrompt = typeof knowledgeContext === 'string' && knowledgeContext.trim() !== '' && systemPrompt.includes(knowledgeContext.trim());
+  for (const i of claimsInPrompt && Array.isArray(knowledgeItems) ? knowledgeItems : []) {
+    if (i?.kind !== 'fact' || !CLAIM_ID_RE.test(String(i.id ?? '')) || i.superseded) continue;
+    const text = String(i.statement ?? '').replace(/\s+/g, ' ').trim().slice(0, 280);
+    if (text) push({ kind: 'claim', id: String(i.id), text, disputed: !!i.disputed, value: i.understood?.object ?? null });
+  }
+  for (const f of Array.isArray(relevantFacts) ? relevantFacts : []) {
+    if (!f?.key || typeof f.key !== 'string') continue;
+    const line = factPromptLine(f);
+    if (!line || !systemPrompt.includes(line)) continue;
+    const text = factItems(f.value).join(', ').slice(0, 280);
+    if (text) push({ kind: 'fact', key: f.key, label: factLabel(f), text });
+  }
+  return out;
+}
+
 function buildResponsePayload({
   requestId, conversationId, isNew, result, finalAnswer, taskType, confidence,
   promptModules, prep, orchestration, plan, reasoning, intelligence, verification,
@@ -933,6 +1053,28 @@ function buildResponsePayload({
       const claims = worldModelClaimRefs(prep?.knowledgeItems);
       return claims.length ? { worldModel: { claims } } : {};
     })(),
+
+    // CONTEXT USED (2026-10-28): see contextUsedItems. Absent when nothing
+    // about the user was injected, so trivial answers carry no disclosure.
+    ...(() => {
+      const items = contextUsedItems(relevantFacts, prep?.knowledgeItems, { systemPrompt: prep?.systemPrompt, knowledgeContext: prep?.knowledgeContext });
+      return items.length ? { contextUsed: { items } } : {};
+    })(),
+
+    // RECALL SOURCES (2026-10-20): the earlier conversations this answer
+    // quoted the user from — where to look, never the quoted text itself
+    // (the client already has the user's own conversations). Absent when
+    // nothing was recalled.
+    ...(prep?.recall?.excerpts?.length ? {
+      recall: {
+        excerpts: prep.recall.excerpts.slice(0, 12).map(e => ({
+          conversationId: e.conversationId,
+          title: e.title ?? null,
+          date: Number.isFinite(e.ts) ? new Date(e.ts).toISOString() : null,
+          changed: !!e.changes?.length,
+        })),
+      },
+    } : {}),
 
     plan: {
       complexity:           plan.complexity,
@@ -1097,6 +1239,7 @@ router.post('/', async (req, res) => {
       mode,
       userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId,
       skipReasoningPass: !!(artifactWork.create || artifactWork.edit),
+      rememberSensitive: req.aquaSettings?.rememberSensitive === true,
     });
     const {
       taskType, confidence, orchestration, plan, reasoning, intelligence,
@@ -1199,7 +1342,9 @@ router.post('/', async (req, res) => {
 
     // ── 9. Persist messages ──────────────────────────────────────────────────────
     addMessage(conversationId, 'user',      userMessage);
-    addMessage(conversationId, 'assistant', finalAnswer);
+    addMessage(conversationId, 'assistant', finalAnswer, {
+      contextRefs: contextRefs(contextUsedItems(relevantFacts, prep?.knowledgeItems, { systemPrompt: prep?.systemPrompt, knowledgeContext: prep?.knowledgeContext })),
+    });
 
     // ── 9b-9d. Post-turn understanding — Mind post-turn, world-model ingest,
     //          Digital Twin, cadence-gated Reflection V2. Extracted to ONE
@@ -1208,8 +1353,7 @@ router.post('/', async (req, res) => {
     runPostTurn({
       ownerId: prep.memoryOwner,
       conversationId,
-      userMessage,
-      assistantMessage: finalAnswer,
+      ...memoryWriteTurn(prep, finalAnswer),
       taskType,
       workspaceId,
     });
@@ -1261,12 +1405,13 @@ router.post('/', async (req, res) => {
       code:           retryable ? ErrorCodes.UNAVAILABLE : ErrorCodes.INTERNAL,
       requestId,
       conversationId,
-      error:          err?.message ?? 'Internal server error',
+      // The router's message and the per-provider errors stay in the log
+      // above; the browser gets a sentence and the shape of the attempts.
+      error:          publicErrorMessage(err),
       retryable,
       errorType:      err?.type ?? null,
       retryAfterMs:   retryable ? (err.retryAfterMs ?? 2000) : null,
-      providerErrors: err?.providerErrors ?? null,
-      fallbackChain:  (err?.attempts ?? ctx.attempts).map(a => ({ provider: a.provider, outcome: a.outcome, reason: a.reason ?? a.type })),
+      fallbackChain:  (err?.attempts ?? ctx.attempts).map(a => ({ outcome: a.outcome, reason: a.reason ?? a.type })),
     });
   }
 });
@@ -1381,6 +1526,7 @@ router.post('/stream', async (req, res) => {
       userMessage, workspaceId, conversationId, userId: req.aquaUserId ?? null, ctx, requestId,
       onStage: (id, label) => send('stage', { id, label }),
       skipReasoningPass: !!(artifactWork.create || artifactWork.edit),
+      rememberSensitive: req.aquaSettings?.rememberSensitive === true,
     });
     const {
       taskType, confidence, orchestration, plan, reasoning, intelligence,
@@ -1534,7 +1680,9 @@ router.post('/stream', async (req, res) => {
 
     // ── 9. Persist the visible turn before terminalizing the stream ─────────────
     addMessage(conversationId, 'user',      userMessage);
-    addMessage(conversationId, 'assistant', finalAnswer);
+    addMessage(conversationId, 'assistant', finalAnswer, {
+      contextRefs: contextRefs(contextUsedItems(relevantFacts, prep?.knowledgeItems, { systemPrompt: prep?.systemPrompt, knowledgeContext: prep?.knowledgeContext })),
+    });
 
     // ── 10. Build + send the terminal response BEFORE non-critical post-turn
     // work. Verification is already complete at this point; nothing that follows
@@ -1581,8 +1729,7 @@ router.post('/stream', async (req, res) => {
         runPostTurn({
           ownerId: prep.memoryOwner,
           conversationId,
-          userMessage,
-          assistantMessage: finalAnswer,
+          ...memoryWriteTurn(prep, finalAnswer),
           taskType,
           workspaceId,
         });
@@ -1604,11 +1751,11 @@ router.post('/stream', async (req, res) => {
       ctx.attempts ??= [];
       logCompletion(ctx, { error: err });
       send('error', {
-        error:         err?.message ?? 'Internal server error',
+        error:         publicErrorMessage(err),
         recoverable:   true,
         requestId,
         conversationId,
-        fallbackChain: ctx.attempts.map(a => ({ provider: a.provider, outcome: a.outcome })),
+        fallbackChain: ctx.attempts.map(a => ({ outcome: a.outcome })),
       });
     }
   } finally {

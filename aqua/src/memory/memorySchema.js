@@ -4,6 +4,8 @@ AQUA Memory Schema v3.2
 Single source of truth for every extractable memory type.
 Added: Semantic concepts, category aliases, and pre-indexed word graph.
 */
+import { isAspirationalRole } from './displayLabels.js';
+
 export const CATEGORIES = Object.freeze({
   IDENTITY: 'identity', LOCATION: 'location', WORK: 'work', EDUCATION: 'education',
   FAMILY: 'family', PETS: 'pets', PREFERENCES: 'preferences', TECHNOLOGY: 'technology',
@@ -68,7 +70,21 @@ const normalizeCity = normalizeCountry;
 // ── Validators ────────────────────────────────────────────────────────────────
 const validateName = (v) => typeof v === 'string' && v.length >= 2 && v.length <= 60 && /^[A-Za-zÀ-ÿ\s'-]+$/.test(v);
 const validateShort = (min, max) => (v) => typeof v === 'string' && v.length >= min && v.length <= max;
-const validateLanguage = (v) => typeof v === 'string' && v.length > 1;
+// A language slot holds a PROGRAMMING LANGUAGE. "I hate X" / "I love X" are
+// the patterns that fill it, and they match any word: the validator accepted
+// anything over one character, so "I hate mondays" stored
+// least_favorite_language=mondays, "I hate it, I love it" filled BOTH slots
+// with "it", and production showed "Least favorite language = loveit"
+// (2026-10-28). Closed vocabulary, compared after normalizeLanguage.
+const PROGRAMMING_LANGUAGES = new Set([
+  'javascript', 'typescript', 'python', 'java', 'kotlin', 'swift', 'objective-c', 'c', 'c++', 'c#', 'f#',
+  'go', 'rust', 'ruby', 'php', 'perl', 'scala', 'clojure', 'haskell', 'elixir', 'erlang', 'ocaml', 'elm',
+  'dart', 'lua', 'r', 'julia', 'matlab', 'fortran', 'cobol', 'pascal', 'delphi', 'zig', 'nim', 'crystal',
+  'groovy', 'bash', 'shell', 'powershell', 'sql', 'plsql', 'solidity', 'assembly', 'vb', 'visual basic',
+  'vba', 'lisp', 'scheme', 'racket', 'prolog', 'coffeescript', 'html', 'css', 'sass', 'scss', 'webassembly',
+  'wasm', 'apex', 'abap', 'hack', 'mojo', 'gleam', 'carbon', 'verilog', 'vhdl', 'smalltalk', 'tcl', 'awk',
+]);
+const validateLanguage = (v) => typeof v === 'string' && PROGRAMMING_LANGUAGES.has(v.trim().toLowerCase());
 const validateFramework = (v) => typeof v === 'string' && v.length > 1;
 const validateEditor = (v) => typeof v === 'string' && v.length > 1;
 const validateOS = (v) => typeof v === 'string' && v.length > 1;
@@ -82,6 +98,11 @@ const validateWords = (min, max) => (v) => {
   const words = (v || '').split(/\s+/).filter(Boolean);
   return words.length >= min && words.length <= max;
 };
+// "I am a billionaire" / "I'm a future founder" state a GOAL, not a job. The
+// i_am_a pattern stored profession=billionaire, the Mind promoted it as an
+// explicit declaration, and Understanding showed "Profession: billionaire 90%"
+// (2026-10-28). An aspiration may never fill the profession slot.
+const validateProfession = (v) => validateWords(1, 6)(v) && !isAspirationalRole(v);
 
 // ── Schema entries ────────────────────────────────────────────────────────────
 export const MEMORY_SCHEMA = [
@@ -191,7 +212,7 @@ export const MEMORY_SCHEMA = [
       // engineer at X". Guard rejects intensity idioms ("I'm a bit tired").
       { regex: /i(?:'m| am) (?:a|an) ([A-Za-z][A-Za-z\s-]{2,30}?)(?:\s+(?:at|for|in|and|who|based|working)\b|\s*[,.!?]|$)/i, group: 1, reason: 'i_am_a', confidence: 0.85,
         transform: (m) => { const v = m[1].trim(); return /^(bit|little|fan|big|huge|great|good|real|total|complete|proud|happy|new)\b/i.test(v) ? null : v; } },
-    ], normalizer: normalizeTrim, validator: validateWords(1, 6), multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 8, baseConfidence: 0.9, retrievalHints: ['job', 'work', 'role'] },
+    ], normalizer: normalizeTrim, validator: validateProfession, multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 8, baseConfidence: 0.9, retrievalHints: ['job', 'work', 'role'] },
   { category: CATEGORIES.WORK, key: 'workplace', aliases: ['company', 'employer', 'organization'], patterns: [
       { regex: /i work (?:as [A-Za-z\s'-]+? )?(?:at|for) ([A-Za-z][A-Za-z0-9\s&.'-]+?)(?:\s*[,.!?]|$)/i, group: 1, reason: 'work_at' },
       { regex: /i(?:'m| am) (?:a|an) [A-Za-z\s-]+? at ([A-Za-z][A-Za-z0-9\s&.'-]+?)(?:\s*[,.!?]|$)/i, group: 1, reason: 'role_at_org', confidence: 0.85 },
