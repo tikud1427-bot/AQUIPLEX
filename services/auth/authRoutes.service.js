@@ -57,7 +57,13 @@ function createAuthHandlers(deps) {
       }
       const invalid = policy.signupInputError(email, password);
       if (invalid) return again(400, invalid);
-      await startSignupSafely({ email, password }, req);
+      const result = await startSignupSafely({ email, password }, req);
+      // The provider refused the message (reason logged by the mailer). Saying
+      // "check your email" would be false. Safe to say: an existing account
+      // gets a mail too, so a failure is not tied to whether the address exists.
+      if (result && result.delivered === false && !result.capped) {
+        return again(503, "We couldn't send the confirmation email just now. Try again in a few minutes, or continue with Google.");
+      }
       return res.status(200).render("signup-check-email", { email: policy.normalizeEmail(email) });
     } catch (err) {
       console.error(`[AUTH] signup failed: ${err.message}`);

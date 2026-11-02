@@ -136,4 +136,142 @@ describe("mailer", () => {
     global.fetch = async () => ({ ok: false, status: 500 }); console.error = () => {};
     try { assert.equal(await m.sendMail({ to: "a@example.test", subject: "s", text: "t" }), false); } finally { global.fetch = realFetch; console.error = realErr; }
   }));
+
+  // Resend's documented error bodies: { statusCode, name, message }.
+  const RESEND = "re_test_key";
+  const capture = async (fn) => {
+    const out = []; const e = console.error, l = console.log;
+    console.error = (s) => out.push(String(s)); console.log = (s) => out.push(String(s));
+    try { return { value: await fn(), log: out.join("\n") }; } finally { console.error = e; console.log = l; }
+  };
+  const withFetch = async (impl, fn) => { const real = global.fetch; global.fetch = impl; try { return await fn(); } finally { global.fetch = real; } };
+
+  test("Resend rejects an unverified sender domain: false, and the log carries Resend's reason and what to fix", () => withEnv({ MAIL_TRANSPORT: "resend", RESEND_API_KEY: RESEND, MAIL_FROM: "Aquiplex <no-reply@aquiplex.example>" }, async () => {
+    const m = fresh();
+    const { value, log } = await withFetch(async () => ({ ok: false, status: 403, json: async () => ({ statusCode: 403, name: "validation_error", message: "The aquiplex.example domain is not verified. Please, add and verify your domain on https://resend.com/domains" }) }),
+      () => capture(() => m.sendMail({ to: "founder@example.test", subject: "s", text: "secret-link-token" })));
+    assert.equal(value, false);
+    assert.match(log, /responded 403 \(validation_error: The aquiplex\.example domain is not verified/);
+    assert.match(log, /MAIL_FROM domain is not verified in Resend/);
+    assert.doesNotMatch(log, /founder@example\.test/, "recipient must be masked");
+    assert.doesNotMatch(log, /secret-link-token/, "the message body (which holds the link) must never be logged");
+    assert.doesNotMatch(log, new RegExp(RESEND), "the API key must never be logged");
+  }));
+
+  test("Resend rejects the API key: false, logged as a key problem", () => withEnv({ MAIL_TRANSPORT: "resend", RESEND_API_KEY: RESEND, MAIL_FROM: "x@aquiplex.example" }, async () => {
+    const m = fresh();
+    const { value, log } = await withFetch(async () => ({ ok: false, status: 401, json: async () => ({ name: "missing_api_key", message: "Missing API key in the authorization header" }) }),
+      () => capture(() => m.sendMail({ to: "a@example.test", subject: "s", text: "t" })));
+    assert.equal(value, false);
+    assert.match(log, /401 \(missing_api_key/);
+    assert.match(log, /RESEND_API_KEY/);
+  }));
+
+  test("addresses inside a provider message are masked too (testing-mode refusal names the account owner)", () => withEnv({ MAIL_TRANSPORT: "resend", RESEND_API_KEY: RESEND, MAIL_FROM: "x@aquiplex.example" }, async () => {
+    const m = fresh();
+    const { log } = await withFetch(async () => ({ ok: false, status: 403, json: async () => ({ name: "validation_error", message: "You can only send testing emails to your own email address (owner@company.test)." }) }),
+      () => capture(() => m.sendMail({ to: "a@example.test", subject: "s", text: "t" })));
+    assert.doesNotMatch(log, /owner@company\.test/);
+    assert.match(log, /o\*\*\*@company\.test/);
+  }));
+
+  test("network failure or timeout: false, never thrown; the request carries a timeout signal", () => withEnv({ MAIL_TRANSPORT: "resend", RESEND_API_KEY: RESEND, MAIL_FROM: "x@aquiplex.example" }, async () => {
+    const m = fresh(); let signal;
+    const { value, log } = await withFetch(async (url, init) => { signal = init.signal; throw Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" }); },
+      () => capture(() => m.sendMail({ to: "a@example.test", subject: "s", text: "t" })));
+    assert.equal(value, false);
+    assert.ok(signal, "fetch to Resend must have a timeout");
+    assert.match(log, /send failed .*timeout/);
+  }));
+
+  test("a delivered message logs the Resend id (and only a masked recipient)", () => withEnv({ MAIL_TRANSPORT: "resend", RESEND_API_KEY: RESEND, MAIL_FROM: "x@aquiplex.example" }, async () => {
+    const m = fresh();
+    const { value, log } = await withFetch(async () => ({ ok: true, status: 200, json: async () => ({ id: "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794" }) }),
+      () => capture(() => m.sendMail({ to: "founder@example.test", subject: "s", text: "link-xyz" })));
+    assert.equal(value, true);
+    assert.match(log, /\[MAIL\] sent to=f\*\*\*@example\.test id=49a3999c/);
+    assert.doesNotMatch(log, /link-xyz|founder@example\.test/);
+  }));
+});
+
+describe("mailer status — actionable diagnostics, never secret values", () => {
+  const mailerPath = path.join(ROOT, "services", "auth", "mailer.service.js");
+  const fresh = () => { delete require.cache[require.resolve(mailerPath)]; return require(mailerPath); };
+  const ALL = ["MAIL_TRANSPORT", "RESEND_API_KEY", "MAIL_FROM", "APP_URL", "NODE_ENV"];
+  const withEnv = async (env, fn) => {
+    const saved = {};
+    for (const k of ALL) { saved[k] = process.env[k]; delete process.env[k]; if (env[k] !== undefined) process.env[k] = env[k]; }
+    try { return await fn(); } finally { for (const k of ALL) { if (saved[k] === undefined) delete process.env[k]; else process.env[k] = saved[k]; } }
+  };
+  const PROD_OK = { NODE_ENV: "production", MAIL_TRANSPORT: "resend", RESEND_API_KEY: "re_live_secret_value", MAIL_FROM: "Aquiplex <no-reply@aquiplex.com>", APP_URL: "https://aquiplex.com" };
+
+  test("production, fully configured: ready", () => withEnv(PROD_OK, () => {
+    const s = fresh().mailerStatus();
+    assert.deepEqual([s.ready, s.transport, s.problems, s.warnings], [true, "resend", [], []]);
+  }));
+
+  test("production with nothing set (the reported outage): not ready, and each missing variable is named", () => withEnv({ NODE_ENV: "production" }, () => {
+    const s = fresh().mailerStatus();
+    assert.equal(s.ready, false);
+    assert.match(s.problems.join("\n"), /MAIL_TRANSPORT is not set/);
+    assert.match(s.problems.join("\n"), /APP_URL is not set/);
+  }));
+
+  for (const [missing, re] of [["RESEND_API_KEY", /RESEND_API_KEY is not set/], ["MAIL_FROM", /MAIL_FROM is not set/], ["APP_URL", /APP_URL is not set/]]) {
+    test(`production without ${missing}: not ready, named`, () => withEnv({ ...PROD_OK, [missing]: undefined }, () => {
+      const s = fresh().mailerStatus();
+      assert.equal(s.ready, false);
+      assert.match(s.problems.join("\n"), re);
+    }));
+  }
+
+  test("production with MAIL_TRANSPORT=log: not ready (links would be logged)", () => withEnv({ ...PROD_OK, MAIL_TRANSPORT: "log" }, () => {
+    const s = fresh().mailerStatus();
+    assert.equal(s.ready, false);
+    assert.match(s.problems.join("\n"), /refused when NODE_ENV=production/);
+  }));
+
+  test("an unknown transport, a malformed MAIL_FROM or a relative APP_URL: not ready", () => withEnv({ ...PROD_OK, MAIL_TRANSPORT: "smtp" }, async () => {
+    assert.match(fresh().mailerStatus().problems.join(), /"smtp" is not supported/);
+    await withEnv({ ...PROD_OK, MAIL_FROM: "no-reply" }, () => assert.match(fresh().mailerStatus().problems.join(), /MAIL_FROM is not an address/));
+    await withEnv({ ...PROD_OK, APP_URL: "aquiplex.com" }, () => assert.match(fresh().mailerStatus().problems.join(), /APP_URL must be an absolute URL/));
+  }));
+
+  test("a key that does not look like a Resend key is a warning, not a block", () => withEnv({ ...PROD_OK, RESEND_API_KEY: "sk-something" }, () => {
+    const s = fresh().mailerStatus();
+    assert.equal(s.ready, true);
+    assert.match(s.warnings.join(), /does not start with "re_"/);
+  }));
+
+  test("development with MAIL_TRANSPORT=log: ready, APP_URL optional", () => withEnv({ NODE_ENV: "development", MAIL_TRANSPORT: "log" }, () => {
+    const s = fresh().mailerStatus();
+    assert.deepEqual([s.ready, s.transport], [true, "log"]);
+  }));
+
+  test("the startup line names what is missing and never prints the API key", () => withEnv({ ...PROD_OK, MAIL_FROM: undefined }, () => {
+    const out = []; const e = console.error, l = console.log, w = console.warn;
+    console.error = console.log = console.warn = (s) => out.push(String(s));
+    try { fresh().logMailerStatus(); } finally { console.error = e; console.log = l; console.warn = w; }
+    const log = out.join("\n");
+    assert.match(log, /Email signup: OFF/);
+    assert.match(log, /MAIL_FROM is not set/);
+    assert.doesNotMatch(log, /re_live_secret_value/);
+  }));
+
+  test("the request-path warning is throttled", () => withEnv({ NODE_ENV: "production" }, () => {
+    const m = fresh(); const e = console.error; console.error = () => {};
+    try {
+      assert.equal(m.warnUnavailable(undefined, 1_000_000_000), true);
+      assert.equal(m.warnUnavailable(undefined, 1_000_000_000 + 60_000), false);
+      assert.equal(m.warnUnavailable(undefined, 1_000_000_000 + 11 * 60_000), true);
+    } finally { console.error = e; }
+  }));
+
+  test("index.js gates /signup on mailerStatus().ready (transport + APP_URL in production), and startup reports it", () => {
+    const i = at("const authHandlers = createAuthHandlers({");
+    const block = SRC.slice(i, i + 800);
+    assert.match(block, /mailer\.mailerStatus\(\)/);
+    assert.match(block, /return status\.ready;/);
+    assert.match(fs.readFileSync(path.join(ROOT, "utils", "startup.js"), "utf8"), /mailer\.service"\)\.logMailerStatus\(\)/);
+  });
 });

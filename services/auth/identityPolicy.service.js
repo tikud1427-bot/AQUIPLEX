@@ -209,6 +209,12 @@ function signupInputError(email, password) {
  * Start an email/password signup. Always resolves { sent: true } for valid
  * input — whether the address is new, already has an account, or has hit the
  * hourly cap — so the response never reveals which addresses exist.
+ *
+ * `delivered: false` (not capped) means the mail provider refused the message.
+ * Both branches send mail through the same provider, so that outcome says
+ * nothing about whether the address has an account and the caller may report
+ * it. The record is removed: an undeliverable attempt must not use up the
+ * hourly cap or leave a token nobody received.
  */
 async function startSignup({ User, PendingSignup, sendMail, baseUrl }, { email, password }) {
   const address = normalizeEmail(email);
@@ -225,17 +231,18 @@ async function startSignup({ User, PendingSignup, sendMail, baseUrl }, { email, 
   if (existing) {
     // Recorded as an already-used marker so notices count toward the hourly cap
     // (kept for the hour the cap looks back over, then removed by the TTL index).
-    await PendingSignup.create({ email: address, passwordHash: "-", tokenHash: hashToken(newToken()), expiresAt: new Date(Date.now() + 60 * 60 * 1000), usedAt: new Date() });
+    const marker = await PendingSignup.create({ email: address, passwordHash: "-", tokenHash: hashToken(newToken()), expiresAt: new Date(Date.now() + 60 * 60 * 1000), usedAt: new Date() });
     const delivered = await sendMail({
       to: address,
       subject: "Someone tried to create an Aquiplex account with this address",
       text: `An account already exists for this email address.\n\nLog in: ${baseUrl}/login\n\nIf this wasn't you, you can ignore this message — nothing has changed.`,
     });
+    if (!delivered) await PendingSignup.deleteOne({ _id: marker._id });
     return { sent: true, delivered };
   }
 
   const token = newToken();
-  await PendingSignup.create({
+  const pending = await PendingSignup.create({
     email: address,
     passwordHash,
     tokenHash: hashToken(token),
@@ -246,6 +253,7 @@ async function startSignup({ User, PendingSignup, sendMail, baseUrl }, { email, 
     subject: "Confirm your email to finish creating your Aquiplex account",
     text: `Open this link and enter the password you chose to finish creating your account:\n\n${baseUrl}/verify-email?token=${token}\n\nThe link works once and expires in 24 hours. If you didn't sign up, ignore this message.`,
   });
+  if (!delivered) await PendingSignup.deleteOne({ _id: pending._id });
   return { sent: true, delivered };
 }
 

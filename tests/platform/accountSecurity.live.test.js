@@ -31,7 +31,7 @@ const ROOT = path.join(__dirname, "..", "..");
 
 let mongoose, express, session, bcrypt, Passport;
 let User, PendingSignup, policy, mailer, createAuthHandlers, establishSession;
-let server, base, mails = [], mailerOn = true;
+let server, base, mails = [], mailerOn = true, mailRefusal = null;
 
 function profile(sub, email, verified = true) {
   return { id: sub, emails: [{ value: email, verified }] };
@@ -76,7 +76,9 @@ describe("account security — signup, verification, Google linking", { skip }, 
     mailer = require(path.join(ROOT, "services", "auth", "mailer.service.js"));
     ({ createAuthHandlers } = require(path.join(ROOT, "services", "auth", "authRoutes.service.js")));
     ({ establishSession } = require(path.join(ROOT, "services", "auth", "establishSession.service.js")));
-    mailer._setTransportForTests(async (m) => { mails.push(m); });
+    // mailRefusal: the provider refuses the message, as Resend does for a bad
+    // key or an unverified sender domain.
+    mailer._setTransportForTests(async (m) => { if (mailRefusal) throw new Error(mailRefusal); mails.push(m); });
 
     const passport = new Passport();
     passport.serializeUser((u, done) => done(null, String(u._id)));
@@ -85,6 +87,8 @@ describe("account security — signup, verification, Google linking", { skip }, 
     const app = express();
     app.set("view engine", "ejs");
     app.set("views", path.join(ROOT, "views"));
+    // The shared nav partial reads this (index.js sets it the same way).
+    app.locals.PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.aquiplex.aqua";
     app.use(express.urlencoded({ extended: false }));
     app.use(session({ secret: "test-only", resave: false, saveUninitialized: true }));
     app.use(passport.initialize());
@@ -142,7 +146,7 @@ describe("account security — signup, verification, Google linking", { skip }, 
 
   beforeEach(async () => {
     await User.deleteMany({}); await PendingSignup.deleteMany({});
-    mails = []; mailerOn = true;
+    mails = []; mailerOn = true; mailRefusal = null;
   });
 
   // ── Takeover ───────────────────────────────────────────────────────────────
@@ -402,6 +406,78 @@ describe("account security — signup, verification, Google linking", { skip }, 
     assert.equal(r.status, 503);
     assert.match(r.text, /Continue with Google/);
     assert.equal(await PendingSignup.countDocuments({}), 0);
+  });
+
+  // ── Delivery failures ──────────────────────────────────────────────────────
+
+  const quietly = async (fn) => { const e = console.error; console.error = () => {}; try { return await fn(); } finally { console.error = e; } };
+
+  test("DELIVERY FAILURE: the provider refuses the mail → no 'check your email', nothing usable is left stored", async () => {
+    mailRefusal = "mail provider responded 403 (validation_error: domain is not verified)";
+    const a = agent();
+    const r = await quietly(() => a.post("/signup", { email: "nomail@example.test", password: "chosen-pw-123" }));
+    assert.equal(r.status, 503);
+    assert.match(r.text, /couldn&#39;t send the confirmation email|couldn't send the confirmation email/);
+    assert.doesNotMatch(r.text, /Check your email/);
+    assert.equal(await PendingSignup.countDocuments({}), 0, "an undelivered token was kept");
+    assert.equal(await User.countDocuments({}), 0);
+    assert.equal(await a.whoami(), null);
+  });
+
+  test("DELIVERY FAILURE does not enumerate: a new and an existing address get the same failure answer", async () => {
+    await User.create({ email: "exists@example.test", password: "h", emailVerified: true });
+    mailRefusal = "mail provider responded 403";
+    const a = await quietly(() => agent().post("/signup", { email: "exists@example.test", password: "chosen-pw-123" }));
+    const b = await quietly(() => agent().post("/signup", { email: "fresh@example.test", password: "chosen-pw-123" }));
+    assert.equal(a.status, b.status);
+    const norm = (t) => t.replace(/(exists|fresh)@example\.test/g, "EMAIL");
+    assert.equal(norm(a.text), norm(b.text));
+  });
+
+  test("failed deliveries do not use up the hourly cap: once the provider recovers, signup works", async () => {
+    mailRefusal = "mail provider responded 403";
+    for (let i = 0; i < 4; i++) await quietly(() => agent().post("/signup", { email: "retry@example.test", password: "chosen-pw-123" }));
+    mailRefusal = null;
+    const a = agent();
+    const r = await a.post("/signup", { email: "retry@example.test", password: "chosen-pw-123" });
+    assert.equal(r.status, 200);
+    assert.match(r.text, /Check your email/);
+    const token = tokenFrom(mails.at(-1));
+    assert.equal((await a.post("/verify-email", { token, password: "chosen-pw-123" })).location, "/aqua");
+    assert.equal((await User.findOne({ email: "retry@example.test" })).emailVerified, true);
+  });
+
+  test("EXPIRED LINK → signing up again sends a fresh link that works; the old one stays dead", async () => {
+    await agent().post("/signup", { email: "again@example.test", password: "chosen-pw-123" });
+    const oldToken = tokenFrom(mails[0]);
+    await PendingSignup.updateOne({ email: "again@example.test" }, { $set: { expiresAt: new Date(Date.now() - 1000) } });
+    assert.match((await agent().post("/verify-email", { token: oldToken, password: "chosen-pw-123" })).text, /expired/);
+    const a = agent();
+    await a.post("/signup", { email: "again@example.test", password: "chosen-pw-456" });
+    const newToken = tokenFrom(mails.at(-1));
+    assert.notEqual(newToken, oldToken);
+    assert.equal((await a.post("/verify-email", { token: newToken, password: "chosen-pw-456" })).location, "/aqua");
+    const u = await User.findOne({ email: "again@example.test" });
+    assert.equal(await bcrypt.compare("chosen-pw-456", u.password), true, "the account carries the password of the link that was completed");
+    assert.equal((await agent().post("/verify-email", { token: oldToken, password: "chosen-pw-123" })).status, 400);
+  });
+
+  test("MONGODB UNAVAILABLE during signup / verification: a generic 500, no 'check your email', no session", async () => {
+    const down = () => { throw new Error("connection <monitor> to 10.0.0.1:27017 closed"); };
+    const deadModel = new Proxy({}, { get: () => down });
+    const h = createAuthHandlers({
+      User: deadModel, PendingSignup: deadModel, sendMail: async () => true, mailerAvailable: () => true,
+      baseUrl: () => "https://app.test", establishSession, finishLogin: () => {},
+    });
+    const render = () => { const res = { statusCode: 200, status(c) { this.statusCode = c; return this; }, render(view, locals) { this.view = view; this.locals = locals; return this; }, set() { return this; }, redirect(l) { this.location = l; return this; } }; return res; };
+    const s = render();
+    await quietly(() => h.signup({ body: { email: "db@example.test", password: "chosen-pw-123" } }, s));
+    assert.deepEqual([s.statusCode, s.view], [500, "signup"]);
+    assert.doesNotMatch(s.locals.error, /10\.0\.0\.1|27017/, "driver detail leaked to the page");
+    const v = render(); const req = { body: { token: "x".repeat(43), password: "chosen-pw-123" }, session: {} };
+    await quietly(() => h.verifySubmit(req, v));
+    assert.deepEqual([v.statusCode, v.view, v.location], [500, "verify-email", undefined]);
+    assert.equal(req.session.userId, undefined);
   });
 
   test("weak input is refused before anything is stored", async () => {

@@ -167,6 +167,10 @@ async function runStartupChecks() {
   console.log(`RAZORPAY_WEBHOOK_SECRET: ${process.env.RAZORPAY_WEBHOOK_SECRET ? "✅ OK" : "❌ MISSING"}`);
   console.log(`APP_URL:                 ${process.env.APP_URL || "⚠️  not set"}`);
 
+  // Email signup is optional (Google sign-in works without it), so a missing
+  // mail setup is reported, not fatal — but reported with what to set.
+  require("../services/auth/mailer.service").logMailerStatus();
+
   // 3. Database index self-healing
   await fixPaymentIndexes();
   await fixWebhookLogIndexes();

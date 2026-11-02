@@ -1722,7 +1722,13 @@ const authHandlers = createAuthHandlers({
   User,
   PendingSignup,
   sendMail: mailer.sendMail,
-  mailerAvailable: () => mailer.mailerAvailable() && (process.env.NODE_ENV !== "production" || !!process.env.APP_URL),
+  // Ready = a transport, plus APP_URL in production. When not, the server log
+  // says exactly what to set (throttled); the page only offers Google.
+  mailerAvailable: () => {
+    const status = mailer.mailerStatus();
+    if (!status.ready) mailer.warnUnavailable(status);
+    return status.ready;
+  },
   baseUrl: linkBaseUrl,
   establishSession,
   finishLogin: finishLinkedLogin,
