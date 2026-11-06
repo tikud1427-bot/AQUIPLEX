@@ -1,0 +1,500 @@
+{
+ "id": "semantic-recall-live-cosines.v1",
+ "source": "eval/semantic-recall-live/runs/live-2026-11-05/result.json",
+ "sourceSha256": "756b7cebe4b298e861b027508c1847176cad4d5a64a30d38988bbf77df32db7b",
+ "model": "gemini-embedding-001",
+ "dim": 768,
+ "config": "production (no task type)",
+ "note": "Synthetic, fictional sentences (dataset.v1.json) and the REAL gemini-embedding-001 cosines measured 2026-11-05 (production config). Extracted unchanged; used for offline ranking regression only.",
+ "passages": [
+  {
+   "id": "f1",
+   "day": 1,
+   "text": "We closed a seed round of $3M led by Larkspur Ventures."
+  },
+  {
+   "id": "f2",
+   "day": 3,
+   "text": "Two angel investors joined the cap table last week."
+  },
+  {
+   "id": "f3",
+   "day": 20,
+   "text": "We are starting conversations for our Series A next quarter."
+  },
+  {
+   "id": "g1",
+   "day": 2,
+   "text": "My goal is to finish the Oakridge half marathon."
+  },
+  {
+   "id": "g2",
+   "day": 30,
+   "text": "I crossed the finish line at Oakridge in under two hours!"
+  },
+  {
+   "id": "g3",
+   "day": 5,
+   "text": "I want to get my pilot's licence by summer."
+  },
+  {
+   "id": "g4",
+   "day": 40,
+   "text": "I gave up on the pilot's licence; the lessons were too expensive."
+  },
+  {
+   "id": "h1",
+   "day": 4,
+   "text": "Our office is in Leeds, near the station."
+  },
+  {
+   "id": "h2",
+   "day": 35,
+   "text": "We moved the office to Bristol in March."
+  },
+  {
+   "id": "h3",
+   "day": 6,
+   "text": "Priya leads our design team."
+  },
+  {
+   "id": "h4",
+   "day": 38,
+   "text": "Priya left the company; Tomas now runs design."
+  },
+  {
+   "id": "p1",
+   "day": 7,
+   "text": "The product launch is planned for May 12."
+  },
+  {
+   "id": "p2",
+   "day": 33,
+   "text": "The launch slipped to June 2 because of a supplier delay."
+  },
+  {
+   "id": "k1",
+   "day": 8,
+   "text": "I bought a release valve for the boiler."
+  },
+  {
+   "id": "k2",
+   "day": 9,
+   "text": "The round table in the kitchen needs a new leg."
+  },
+  {
+   "id": "k3",
+   "day": 10,
+   "text": "The goal posts at the park were repainted."
+  },
+  {
+   "id": "u1",
+   "day": 11,
+   "text": "I baked sourdough bread this morning."
+  },
+  {
+   "id": "u2",
+   "day": 12,
+   "text": "The weather was sunny all weekend."
+  },
+  {
+   "id": "u3",
+   "day": 13,
+   "text": "I repainted the garden fence blue."
+  },
+  {
+   "id": "u4",
+   "day": 14,
+   "text": "My cat sleeps on the windowsill most afternoons."
+  },
+  {
+   "id": "u5",
+   "day": 15,
+   "text": "I watched a documentary about volcanoes."
+  },
+  {
+   "id": "u6",
+   "day": 16,
+   "text": "The train was ten minutes late today."
+  },
+  {
+   "id": "u7",
+   "day": 17,
+   "text": "I'm learning a few chords on the ukulele."
+  },
+  {
+   "id": "u8",
+   "day": 18,
+   "text": "We planted tomatoes in the backyard."
+  }
+ ],
+ "queries": [
+  {
+   "id": "Q1",
+   "kind": "paraphrase",
+   "text": "How is fundraising going?",
+   "relevant": [
+    "f1",
+    "f2",
+    "f3"
+   ],
+   "current": null,
+   "trap": null,
+   "cosine": {
+    "f1": 0.5876,
+    "f2": 0.608,
+    "f3": 0.6716,
+    "g1": 0.5695,
+    "g2": 0.5208,
+    "g3": 0.5236,
+    "g4": 0.4826,
+    "h1": 0.4757,
+    "h2": 0.5141,
+    "h3": 0.4801,
+    "h4": 0.4901,
+    "p1": 0.5719,
+    "p2": 0.5747,
+    "k1": 0.5013,
+    "k2": 0.5044,
+    "k3": 0.4946,
+    "u1": 0.4868,
+    "u2": 0.496,
+    "u3": 0.4482,
+    "u4": 0.4702,
+    "u5": 0.4767,
+    "u6": 0.5035,
+    "u7": 0.5127,
+    "u8": 0.4731
+   }
+  },
+  {
+   "id": "Q2",
+   "kind": "investment-terms",
+   "text": "Who has put money into the company?",
+   "relevant": [
+    "f1",
+    "f2"
+   ],
+   "current": null,
+   "trap": null,
+   "cosine": {
+    "f1": 0.5868,
+    "f2": 0.6749,
+    "f3": 0.6018,
+    "g1": 0.483,
+    "g2": 0.444,
+    "g3": 0.5081,
+    "g4": 0.5133,
+    "h1": 0.5191,
+    "h2": 0.5147,
+    "h3": 0.4854,
+    "h4": 0.4859,
+    "p1": 0.5198,
+    "p2": 0.5252,
+    "k1": 0.5019,
+    "k2": 0.5026,
+    "k3": 0.4755,
+    "u1": 0.4393,
+    "u2": 0.4806,
+    "u3": 0.4554,
+    "u4": 0.4847,
+    "u5": 0.479,
+    "u6": 0.4795,
+    "u7": 0.4785,
+    "u8": 0.5022
+   }
+  },
+  {
+   "id": "Q3",
+   "kind": "goal-achieved",
+   "text": "Did I complete the race I was training for?",
+   "relevant": [
+    "g1",
+    "g2"
+   ],
+   "current": "g2",
+   "trap": null,
+   "cosine": {
+    "f1": 0.51,
+    "f2": 0.5016,
+    "f3": 0.4794,
+    "g1": 0.6528,
+    "g2": 0.6286,
+    "g3": 0.5557,
+    "g4": 0.5208,
+    "h1": 0.4575,
+    "h2": 0.5003,
+    "h3": 0.4334,
+    "h4": 0.4914,
+    "p1": 0.5062,
+    "p2": 0.535,
+    "k1": 0.5359,
+    "k2": 0.4943,
+    "k3": 0.5447,
+    "u1": 0.5389,
+    "u2": 0.574,
+    "u3": 0.5574,
+    "u4": 0.5036,
+    "u5": 0.5472,
+    "u6": 0.5798,
+    "u7": 0.5103,
+    "u8": 0.5165
+   }
+  },
+  {
+   "id": "Q4",
+   "kind": "goal-abandoned",
+   "text": "Am I still working toward flying planes?",
+   "relevant": [
+    "g3",
+    "g4"
+   ],
+   "current": "g4",
+   "trap": null,
+   "cosine": {
+    "f1": 0.4969,
+    "f2": 0.5324,
+    "f3": 0.559,
+    "g1": 0.5995,
+    "g2": 0.5237,
+    "g3": 0.735,
+    "g4": 0.6361,
+    "h1": 0.4971,
+    "h2": 0.5198,
+    "h3": 0.476,
+    "h4": 0.5385,
+    "p1": 0.5511,
+    "p2": 0.5255,
+    "k1": 0.5303,
+    "k2": 0.5194,
+    "k3": 0.5413,
+    "u1": 0.5494,
+    "u2": 0.5499,
+    "u3": 0.5632,
+    "u4": 0.5606,
+    "u5": 0.5563,
+    "u6": 0.568,
+    "u7": 0.6034,
+    "u8": 0.5583
+   }
+  },
+  {
+   "id": "Q5",
+   "kind": "historical-current",
+   "text": "Where is our office now?",
+   "relevant": [
+    "h1",
+    "h2"
+   ],
+   "current": "h2",
+   "trap": null,
+   "cosine": {
+    "f1": 0.5335,
+    "f2": 0.5269,
+    "f3": 0.5744,
+    "g1": 0.449,
+    "g2": 0.4566,
+    "g3": 0.4882,
+    "g4": 0.4674,
+    "h1": 0.7022,
+    "h2": 0.7326,
+    "h3": 0.5311,
+    "h4": 0.5573,
+    "p1": 0.5464,
+    "p2": 0.509,
+    "k1": 0.4766,
+    "k2": 0.5266,
+    "k3": 0.5172,
+    "u1": 0.461,
+    "u2": 0.5077,
+    "u3": 0.4847,
+    "u4": 0.4941,
+    "u5": 0.4558,
+    "u6": 0.5025,
+    "u7": 0.4593,
+    "u8": 0.5313
+   }
+  },
+  {
+   "id": "Q6",
+   "kind": "historical-current",
+   "text": "Who is in charge of design?",
+   "relevant": [
+    "h3",
+    "h4"
+   ],
+   "current": "h4",
+   "trap": null,
+   "cosine": {
+    "f1": 0.4816,
+    "f2": 0.5178,
+    "f3": 0.4964,
+    "g1": 0.4532,
+    "g2": 0.4322,
+    "g3": 0.4844,
+    "g4": 0.4522,
+    "h1": 0.5055,
+    "h2": 0.5144,
+    "h3": 0.6947,
+    "h4": 0.6602,
+    "p1": 0.5273,
+    "p2": 0.5285,
+    "k1": 0.4598,
+    "k2": 0.5139,
+    "k3": 0.5031,
+    "u1": 0.4625,
+    "u2": 0.4491,
+    "u3": 0.4806,
+    "u4": 0.4869,
+    "u5": 0.4774,
+    "u6": 0.4951,
+    "u7": 0.4721,
+    "u8": 0.4611
+   }
+  },
+  {
+   "id": "Q7",
+   "kind": "keyword-trap",
+   "text": "When is the release date?",
+   "relevant": [
+    "p1",
+    "p2"
+   ],
+   "current": "p2",
+   "trap": "k1",
+   "cosine": {
+    "f1": 0.5148,
+    "f2": 0.5017,
+    "f3": 0.5458,
+    "g1": 0.4835,
+    "g2": 0.46,
+    "g3": 0.5077,
+    "g4": 0.4582,
+    "h1": 0.4839,
+    "h2": 0.5078,
+    "h3": 0.4919,
+    "h4": 0.4775,
+    "p1": 0.6748,
+    "p2": 0.6182,
+    "k1": 0.5419,
+    "k2": 0.4817,
+    "k3": 0.478,
+    "u1": 0.4447,
+    "u2": 0.5082,
+    "u3": 0.4521,
+    "u4": 0.4635,
+    "u5": 0.4574,
+    "u6": 0.5265,
+    "u7": 0.4417,
+    "u8": 0.4801
+   }
+  },
+  {
+   "id": "Q8",
+   "kind": "unrelated",
+   "text": "What is my blood pressure?",
+   "relevant": [],
+   "current": null,
+   "trap": null,
+   "cosine": {
+    "f1": 0.4524,
+    "f2": 0.4874,
+    "f3": 0.489,
+    "g1": 0.5008,
+    "g2": 0.4953,
+    "g3": 0.496,
+    "g4": 0.4526,
+    "h1": 0.4557,
+    "h2": 0.4459,
+    "h3": 0.4412,
+    "h4": 0.4298,
+    "p1": 0.4727,
+    "p2": 0.4636,
+    "k1": 0.547,
+    "k2": 0.4474,
+    "k3": 0.4672,
+    "u1": 0.4942,
+    "u2": 0.4931,
+    "u3": 0.4935,
+    "u4": 0.4932,
+    "u5": 0.4906,
+    "u6": 0.5119,
+    "u7": 0.4849,
+    "u8": 0.5007
+   }
+  },
+  {
+   "id": "Q9",
+   "kind": "keyword",
+   "text": "Tell me about the Series A.",
+   "relevant": [
+    "f3"
+   ],
+   "current": null,
+   "trap": null,
+   "cosine": {
+    "f1": 0.5858,
+    "f2": 0.5397,
+    "f3": 0.7098,
+    "g1": 0.4826,
+    "g2": 0.4868,
+    "g3": 0.5251,
+    "g4": 0.5057,
+    "h1": 0.495,
+    "h2": 0.4932,
+    "h3": 0.5173,
+    "h4": 0.5021,
+    "p1": 0.5926,
+    "p2": 0.5315,
+    "k1": 0.5112,
+    "k2": 0.4989,
+    "k3": 0.4752,
+    "u1": 0.4638,
+    "u2": 0.4925,
+    "u3": 0.44,
+    "u4": 0.4838,
+    "u5": 0.479,
+    "u6": 0.5165,
+    "u7": 0.5029,
+    "u8": 0.4711
+   }
+  },
+  {
+   "id": "Q10",
+   "kind": "keyword+semantic",
+   "text": "How did the half marathon go?",
+   "relevant": [
+    "g1",
+    "g2"
+   ],
+   "current": "g2",
+   "trap": "k3",
+   "cosine": {
+    "f1": 0.5111,
+    "f2": 0.5342,
+    "f3": 0.5066,
+    "g1": 0.7023,
+    "g2": 0.6905,
+    "g3": 0.4998,
+    "g4": 0.5162,
+    "h1": 0.4346,
+    "h2": 0.5156,
+    "h3": 0.4401,
+    "h4": 0.5221,
+    "p1": 0.4956,
+    "p2": 0.5464,
+    "k1": 0.5289,
+    "k2": 0.5042,
+    "k3": 0.5417,
+    "u1": 0.5528,
+    "u2": 0.5691,
+    "u3": 0.5234,
+    "u4": 0.4708,
+    "u5": 0.5271,
+    "u6": 0.5816,
+    "u7": 0.5146,
+    "u8": 0.533
+   }
+  }
+ ]
+}

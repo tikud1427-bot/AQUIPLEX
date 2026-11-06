@@ -141,7 +141,7 @@ export function isAspirationalRole(value) {
 
 // ── Change feed ──────────────────────────────────────────────────────────────
 const TIMELINE_VERB = Object.freeze({
-  goal_created: 'Started working toward', goal_completed: 'Completed',
+  goal_created: 'Started working toward', goal_completed: 'Completed', goal_abandoned: 'Stopped working toward',
   episode_opened: 'Began', episode_closed: 'Wrapped up',
   belief_established: 'Understanding settled:', reflection: 'Reflected on',
 });
@@ -165,4 +165,60 @@ export function timelineLabel(e) {
   const subject = cleanInternalTitle(raw);
   if (!subject) return null;
   return `${verb} ${subject.replace(/^working on\s+/i, '')}`;
+}
+
+// ── "Since changed" — one marker across the prompt (2026-11-02) ─────────────
+/**
+ * The user's later word on a fact, beside it (memory/factChange.js): the
+ * value is what was true before, their words are the latest. The same marker
+ * the cognitive model's goals and the recall quotes use, so every block of the
+ * prompt says "this changed" the same way (profile, identity, cognitive model).
+ */
+export function laterWordNote(lw) {
+  if (!lw?.text) return '';
+  // Uncertain: may have changed, may not ("We sold the Civic" on MY car) — the value stands.
+  if (lw.kind === 'uncertain') return ` (uncertain whether still current — they said: "${String(lw.text).slice(0, 160)}")`;
+  return ` (since changed — they said: "${String(lw.text).slice(0, 160)}")`;
+}
+
+/**
+ * Something a record names has since changed (memory/propagation.js `review`):
+ * the uncertainty marker, with the change in the user's words — or, for an edit
+ * made on the Memory or Understanding page, what they did there (it is not
+ * something they said). `phrase` is the text inside the parentheses, for blocks
+ * that carry their own (the evidence lane).
+ */
+export function reviewPhrase(r) {
+  if (!r?.text) return '';
+  const said = r.source && r.source !== 'conversation' ? String(r.text).slice(0, 180) : `they later said: "${String(r.text).slice(0, 160)}"`;
+  return `uncertain whether still current — ${said}`;
+}
+export function reviewNote(r, { item = null } = {}) {
+  if (!r?.text) return '';
+  // A goal whose target the user now holds (propagation.js reachedTarget): possibly
+  // achieved, not confirmed — the user's words beside it, never a completion.
+  if (r.kind === 'target_reached') {
+    const said = r.source && r.source !== 'conversation' ? String(r.text).slice(0, 180) : `they said: "${String(r.text).slice(0, 160)}"`;
+    return ` (may already be achieved — ${said}; not confirmed)`;
+  }
+  if (item == null && (!r.source || r.source === 'conversation')) return laterWordNote({ kind: 'uncertain', text: r.text });
+  const what = item == null ? '' : ` "${String(item).slice(0, 80)}" is`;
+  return ` (uncertain whether${what} still current — ${r.source && r.source !== 'conversation' ? String(r.text).slice(0, 180) : `they said: "${String(r.text).slice(0, 160)}"`})`;
+}
+
+/** One rule for every authoritative block: a "since changed" line is history; the user's words beside it are current. */
+/**
+ * One rule for every uncertainty marker, in every block that can carry one
+ * (profile, identity, cognitive model, recall) — 2026-11-05. The Cloudflare
+ * Mistral run settled "uncertain whether still current" as "no longer relevant":
+ * the marker said what it was, nothing said what to do with it.
+ */
+export const UNCERTAIN_RULE = 'An "uncertain" note means the user was unsure, or something related changed: it has neither ended nor been confirmed, and "may already be achieved" is not confirmed either. Do not settle it either way on your own — if it matters to the answer, say what is unclear or ask. A change to one thing does not end the other things that mention it.';
+export const SINCE_CHANGED_RULE = `Values listed are current; "(previously: …)" is what they replaced; "No longer current" lines were true before and are not now. A line marked "since changed" changed but its new value was not given — say so rather than guess; "uncertain" may or may not still hold. ${UNCERTAIN_RULE}`;
+
+/** A value the user stated unsure ("I think I work at Halcyon Labs"): candidateExtractor hedgeOf. */
+export function hedgeNote(f) {
+  if (!f?.metadata?.hedged) return '';
+  const said = String(f.sourceText || f.sourceMessage || '').trim();
+  return said ? ` (uncertain — they said: "${said.slice(0, 160)}")` : ' (uncertain — the user was not sure)';
 }

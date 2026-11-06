@@ -215,6 +215,17 @@ function scheduleSave(ownerId = null) {
 }
 loadFromDisk();
 
+/**
+ * Write this owner's mind to disk NOW (synchronous, atomic, merged with the
+ * file like any flush). memory/propagation.js calls it before touching another
+ * store: a change is durable in this file before anything acts on it, so after
+ * a crash the other store can lag the record of the change, never lead it.
+ */
+export function flushMind(ownerId = null) {
+  scheduleSave(ownerId);
+  _writer.flush();
+}
+
 /** Schema v1 → v2: facts + files live INSIDE the mind (single store). */
 function upgradeMind(mind) {
   if (!mind) return mind;
@@ -348,6 +359,7 @@ export function deleteMind(ownerId) {
   try {
     clearNamespace(ownerId);
     clearNamespace(`files:${ownerId}`);
+    clearNamespace(`recall:${ownerId}`);   // semantic episodic recall (memory/semanticRecall.js)
   } catch { /* non-fatal */ }
   return existed;
 }

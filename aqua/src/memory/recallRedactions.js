@@ -32,7 +32,11 @@ const TOO_COMMON = new Set(('a an the and or but if of in on at to for with from
   + 'am i me my we our us you your it its this that he she his her they them their not no yes so as do '
   + 'did does have has had will would can could should may might must just now then than there here').split(' '));
 
-/** Map<ownerId, { forgetAllAt: number|null, phrases: Map<hash, { n, at }> }> */
+/** Map<ownerId, { forgetAllAt: number|null, phrases: Map<hash, { n, at }>, rev: number }> — rev is in-memory only. */
+// PROCESS-WIDE revision (2026-11-06): every change to any owner's list takes the
+// next value, so a stamp is never reused — not even by an owner whose record was
+// purged and recreated (a per-record counter restarted at 0 and could repeat).
+let REVISION = 0;
 const store = new Map();
 const writer = createDebouncedWriter(FILE);
 
@@ -73,7 +77,7 @@ function hashPhrase(ownerId, ws) {
 
 function recordFor(ownerId) {
   let rec = store.get(ownerId);
-  if (!rec) { rec = { forgetAllAt: null, phrases: new Map() }; store.set(ownerId, rec); }
+  if (!rec) { rec = { forgetAllAt: null, phrases: new Map(), rev: 0 }; store.set(ownerId, rec); }
   return rec;
 }
 
@@ -100,7 +104,7 @@ export function redactPhrases(ownerId, phrases, { at = Date.now() } = {}) {
     if (!rec.phrases.has(h)) { rec.phrases.set(h, { n: ws.length, at }); added++; }
   }
   while (rec.phrases.size > MAX_PHRASES_PER_OWNER) rec.phrases.delete(rec.phrases.keys().next().value);
-  if (added) persist();
+  if (added) { rec.rev = ++REVISION; persist(); }
   return added;
 }
 
@@ -109,6 +113,7 @@ export function redactAllBefore(ownerId, at = Date.now()) {
   if (!ownerId) return;
   const rec = recordFor(ownerId);
   rec.forgetAllAt = Math.max(rec.forgetAllAt ?? 0, at);
+  rec.rev = ++REVISION;
   persist();
 }
 
@@ -125,6 +130,9 @@ export function redactionsFor(ownerId) {
   const lengths = [...new Set([...rec.phrases.values()].map(v => v.n))].sort((a, b) => a - b);
   return {
     active: true,
+    // Changes whenever this owner's forget list does (in-memory, per process): lets
+    // recall cache text it has already cleaned (episodicRecall.js forgetClean).
+    stamp: `${ownerId}#${rec.rev ?? 0}`,
     isRedacted(sentence, ts = null) {
       if (rec.forgetAllAt != null && Number.isFinite(ts) && ts <= rec.forgetAllAt) return true;
       if (!rec.phrases.size) return false;
