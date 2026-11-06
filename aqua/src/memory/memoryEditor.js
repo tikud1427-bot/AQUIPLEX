@@ -33,6 +33,7 @@ import {
 } from './longTermMemory.js';
 import { RESOLUTION_ACTIONS } from './memoryResolver.js';
 import { resolveCanonicalKey } from './memoryExtractor.js';
+import { withTransitions } from './propagation.js';
 
 const CONF_CEIL = 0.98;          // matches consolidationEngine's ceiling
 const MIN_STORE_CONF = 0.5;      // longTermMemory MIN_CONF — below is rejected
@@ -64,14 +65,16 @@ function factView(f) {
  * full confidence — the user said so. History via storeResolved's CORRECTION
  * branch, exactly as if detectMemoryUpdate had caught it in chat.
  */
-export function correctFact(ownerId, key, value, { reason = 'user_correction', sourceText = '', importance = null } = {}) {
+export function correctFact(ownerId, key, value, { reason = 'user_correction', sourceText = '', importance = null, source = 'memory_page' } = {}) {
   if (!ownerId || !key || value === undefined || value === null || value === '') {
     return fail('ownerId, key and value are required');
   }
   try {
     const canonical = resolveCanonicalKey(String(key));
     const existing = getFact(ownerId, canonical);
-    storeResolved(ownerId, {
+    // One lifecycle with a correction said in chat (memory/propagation.js): the
+    // Mind, the evidence lane and what names the old value follow this edit too.
+    withTransitions(ownerId, [canonical], () => storeResolved(ownerId, {
       key: canonical, value, normalizedValue: value,
       confidence: 0.95,
       importance: importance ?? existing?.importance ?? 8,
@@ -79,7 +82,7 @@ export function correctFact(ownerId, key, value, { reason = 'user_correction', s
       sourceText: sourceText || `edited:${reason}`,
       ts: Date.now(),
       action: RESOLUTION_ACTIONS.CORRECTION, reason,
-    });
+    }), { source, kind: 'corrected' });
     const after = getFact(ownerId, canonical);
     recordMemoryRevision(ownerId, canonical, { before: existing?.value ?? null, after: after?.value ?? value, reason });
     console.log(`[MEMEDIT] CORRECT owner=${ownerId} key=${canonical}`);
@@ -95,14 +98,14 @@ export function correctFact(ownerId, key, value, { reason = 'user_correction', s
  * confidence against an established value (the store's rule, not bypassed),
  * no pin. Use correctFact for user-asserted truth.
  */
-export function replaceFact(ownerId, key, value, { reason = 'replace', confidence = 0.9, sourceText = '' } = {}) {
+export function replaceFact(ownerId, key, value, { reason = 'replace', confidence = 0.9, sourceText = '', source = 'memory_page' } = {}) {
   if (!ownerId || !key || value === undefined || value === null || value === '') {
     return fail('ownerId, key and value are required');
   }
   try {
     const canonical = resolveCanonicalKey(String(key));
     const existing = getFact(ownerId, canonical);
-    storeResolved(ownerId, {
+    withTransitions(ownerId, [canonical], () => storeResolved(ownerId, {
       key: canonical, value, normalizedValue: value,
       confidence: Math.max(MIN_STORE_CONF, Math.min(1, confidence)),
       importance: existing?.importance ?? 6,
@@ -110,7 +113,7 @@ export function replaceFact(ownerId, key, value, { reason = 'replace', confidenc
       sourceText: sourceText || `edited:${reason}`,
       ts: Date.now(),
       action: RESOLUTION_ACTIONS.OVERWRITE, reason,
-    });
+    }), { source, kind: 'changed' });
     const after = getFact(ownerId, canonical);
     recordMemoryRevision(ownerId, canonical, { before: existing?.value ?? null, after: after?.value ?? value, reason });
     console.log(`[MEMEDIT] REPLACE owner=${ownerId} key=${canonical}`);
@@ -147,11 +150,14 @@ export function archiveFact(ownerId, key, { reason = 'manual_archive', force = f
     if (!fact) return fail(`Fact '${key}' not found`);
     if (fact.status === 'archived') return { ok: true, key, fact: factView(fact), unchanged: true };
     if (fact.pinned && !force) return fail(`Fact '${key}' is pinned (archive-exempt); pass force to override`);
-    fact.history = buildRevisionHistory(fact, reason);
-    fact.status = 'archived';
-    fact.archivedAt = Date.now();
-    fact.updatedAt = Date.now();
-    touchMind(mind);
+    // Out of the active memory everywhere it answers from (memory/propagation.js), not only here.
+    withTransitions(ownerId, [key], () => {
+      fact.history = buildRevisionHistory(fact, reason);
+      fact.status = 'archived';
+      fact.archivedAt = Date.now();
+      fact.updatedAt = Date.now();
+      touchMind(mind);
+    }, { kind: 'archived' });
     recordMemoryRevision(ownerId, key, { before: 'active', after: 'archived', reason });
     console.log(`[MEMEDIT] ARCHIVE owner=${ownerId} key=${key}`);
     return { ok: true, key, fact: factView(fact) };
@@ -166,10 +172,13 @@ export function restoreFact(ownerId, key, { reason = 'manual_restore' } = {}) {
     const fact = mind?.facts?.[key];
     if (!fact) return fail(`Fact '${key}' not found`);
     if (fact.status !== 'archived') return { ok: true, key, fact: factView(fact), unchanged: true };
-    fact.status = 'active';
-    delete fact.archivedAt;
-    fact.updatedAt = Date.now();
-    touchMind(mind);
+    // The archive's transition stops holding: the Mind copies and retired sentences come back.
+    withTransitions(ownerId, [key], () => {
+      fact.status = 'active';
+      delete fact.archivedAt;
+      fact.updatedAt = Date.now();
+      touchMind(mind);
+    });
     recordMemoryRevision(ownerId, key, { before: 'archived', after: 'active', reason });
     console.log(`[MEMEDIT] RESTORE owner=${ownerId} key=${key}`);
     return { ok: true, key, fact: factView(fact) };
@@ -221,14 +230,16 @@ export function mergeFacts(ownerId, keys = [], { intoKey = null, reason = 'manua
     survivor.revision = (survivor.revision || 1) + 1;
     survivor.updatedAt = now;
 
-    for (const loser of losers) {
-      loser.history = buildRevisionHistory(loser, `merged_into:${survivor.key}`);
-      loser.status = 'archived';
-      loser.supersededBy = survivor.key;
-      loser.archivedAt = now;
-      loser.updatedAt = now;
-      recordMemoryRevision(ownerId, loser.key, { before: 'active', after: `merged_into:${survivor.key}`, reason });
-    }
+    withTransitions(ownerId, absorbedKeys, () => {
+      for (const loser of losers) {
+        loser.history = buildRevisionHistory(loser, `merged_into:${survivor.key}`);
+        loser.status = 'archived';
+        loser.supersededBy = survivor.key;
+        loser.archivedAt = now;
+        loser.updatedAt = now;
+        recordMemoryRevision(ownerId, loser.key, { before: 'active', after: `merged_into:${survivor.key}`, reason });
+      }
+    }, { kind: 'merged' });
     touchMind(mind);
     recordMemoryRevision(ownerId, survivor.key, {
       before: { absorbed: absorbedKeys }, after: { supportCount: survivor.supportCount }, reason,
@@ -273,7 +284,7 @@ export function splitFact(ownerId, key, parts = [], { reason = 'manual_split' } 
     const now = Date.now();
     for (const p of prepared) {
       const exists = !!mind.facts[p.key];
-      storeResolved(ownerId, {
+      withTransitions(ownerId, [p.key], () => storeResolved(ownerId, {
         key: p.key, value: p.value, normalizedValue: p.value,
         confidence: Math.max(MIN_STORE_CONF, source.confidence || 0.5),
         importance: p.importance ?? source.importance ?? 5,
@@ -284,16 +295,18 @@ export function splitFact(ownerId, key, parts = [], { reason = 'manual_split' } 
         ts: now,
         action: exists ? RESOLUTION_ACTIONS.OVERWRITE : RESOLUTION_ACTIONS.STORE_NEW,
         reason: `split_from:${key}`,
-      });
+      }), { kind: 'changed' });
       recordMemoryRevision(ownerId, p.key, { before: null, after: p.value, reason: `split_from:${key}` });
     }
 
-    source.history = buildRevisionHistory(source, reason);
-    source.status = 'archived';
-    source.splitInto = prepared.map(p => p.key);
-    source.archivedAt = now;
-    source.updatedAt = now;
-    touchMind(mind);
+    withTransitions(ownerId, [key], () => {
+      source.history = buildRevisionHistory(source, reason);
+      source.status = 'archived';
+      source.splitInto = prepared.map(p => p.key);
+      source.archivedAt = now;
+      source.updatedAt = now;
+      touchMind(mind);
+    }, { kind: 'split' });
     recordMemoryRevision(ownerId, key, { before: 'active', after: `split_into:${source.splitInto.join(',')}`, reason });
     console.log(`[MEMEDIT] SPLIT owner=${ownerId} key=${key} into=${source.splitInto.join(',')}`);
     return { ok: true, source: factView(source), parts: source.splitInto.map(k => factView(getFact(ownerId, k))) };

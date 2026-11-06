@@ -51,6 +51,19 @@ function resolveOne(ownerId, candidate) {
     };
   }
 
+  // ── A hedged statement never replaces a confirmed value (2026-11-05) ───
+  // "I think I work at Halcyon Labs" after "I work at Fintrail": the user is
+  // unsure, so nothing changed — no overwrite, no transition, nothing flagged.
+  // Their words stay quotable in recall.
+  if (candidate.hedged && !existing.metadata?.hedged && !(candidate.multiValue || schema?.multiValue)
+    && normalizeForCompare(existing.value) !== normalizeForCompare(candidate.normalizedValue)) {
+    return {
+      ...candidate,
+      action: RESOLUTION_ACTIONS.REJECT_LOW_CONF,
+      reason: 'hedged_keeps_confirmed',
+    };
+  }
+
   // ── Explicit correction → unconditional overwrite ───────────────────────
   if (candidate.isCorrection) {
     return {

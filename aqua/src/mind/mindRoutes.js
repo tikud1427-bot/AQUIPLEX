@@ -37,8 +37,25 @@ import { recentTimeline } from './timeline.js';
 import { currentFocus } from './workingMemory.js';
 import { beliefKey, GOAL_STATUS, createGoal } from './mindSchema.js';
 import { reviewCandidates } from './legacyReview.js';
-import { getFacts } from '../memory/longTermMemory.js';
+import { getFacts, getFact as getLegacyFact } from '../memory/longTermMemory.js';
 import { touchMind, deleteItem } from './mindStore.js';
+import { FACT_TO_BELIEF } from './observers.js';
+import { correctFact } from '../memory/memoryEditor.js';
+import { reconcileMind, propagationStatus } from '../memory/propagation.js';
+import { forgetGoal } from '../memory/forget.js';
+
+/**
+ * The fact a belief is bridged from (observers.js FACT_TO_BELIEF): editing
+ * "organization" on the Understanding page is editing the workplace fact, or the
+ * page and the profile would hold two current values for one thing.
+ */
+function bridgedFactKey(dim, key) {
+  for (const [factKey, map] of Object.entries(FACT_TO_BELIEF)) {
+    const sig = map ? map({ key: factKey, value: '' }) : null;
+    if (sig && sig.dimension === dim && sig.key === key) return factKey;
+  }
+  return null;
+}
 
 const router = express.Router();
 const __dir = path.dirname(fileURLToPath(import.meta.url));
@@ -154,6 +171,12 @@ router.patch('/beliefs/:dim/:key', (req, res) => {
   if (!mind) return;
   const { value } = req.body ?? {};
   if (value === undefined) return res.status(400).json({ success: false, error: 'value is required' });
+  const factKey = bridgedFactKey(req.params.dim, req.params.key);
+  // Through the fact store's lifecycle (memory/propagation.js) when the belief is
+  // a copy of a fact: one correction, every copy, the old value as history.
+  if (factKey && value !== null && value !== '' && getLegacyFact(mind.ownerId ?? ownerOf(req), factKey)) {
+    correctFact(mind.ownerId ?? ownerOf(req), factKey, value, { reason: 'understanding_page_correction', source: 'understanding_card' });
+  }
   const belief = correctBelief(mind, req.params.dim, req.params.key, value);
   res.json({ success: true, belief: compactBelief(belief) });
 });
@@ -199,6 +222,8 @@ router.patch('/goals/:id', (req, res) => {
   goal.updatedAt = Date.now();
   goal.privacy.source = 'correction';
   touchMind(mind);
+  // A goal marked done or dropped here closes in the profile's goal list too.
+  if (status) reconcileMind(mind.ownerId ?? ownerOf(req));
   res.json({ success: true, goal });
 });
 
@@ -246,6 +271,17 @@ router.post('/goals/:id/split', (req, res) => {
   res.json({ success: true, goals: created, original: goal.id });
 });
 
+/**
+ * GET /mind/propagation — this owner's change lifecycle (memory/propagation.js):
+ * changes whose evidence-lane step is pending or dead-lettered, and why. The
+ * diagnostics surface for an incomplete update; owner-scoped, read-only.
+ */
+router.get('/propagation', (req, res) => {
+  const ownerId = ownerOf(req);
+  if (!ownerId) return res.status(400).json({ success: false, error: 'No mind owner' });
+  res.json({ success: true, ...propagationStatus(ownerId) });
+});
+
 /** GET /mind/review — legacy records the user should look at (legacyReview.js). Read-only. */
 router.get('/review', (req, res) => {
   const ownerId = ownerOf(req);
@@ -265,12 +301,17 @@ router.post('/beliefs/:dim/:key/review', (req, res) => {
   res.json({ success: true, belief: compactBelief(belief) });
 });
 
-router.delete('/goals/:id', (req, res) => {
+router.delete('/goals/:id', async (req, res) => {
   const mind = requireMind(req, res);
   if (!mind) return;
   if (!mind.goals[req.params.id]) return res.status(404).json({ success: false, error: 'Goal not found' });
-  deleteItem(mind, 'goals', req.params.id);
-  touchMind(mind);
+  // Forgotten everywhere it is held (memory/forget.js forgetGoal), not only here.
+  try {
+    await forgetGoal(mind.ownerId ?? ownerOf(req), req.params.id);
+  } catch (err) {
+    if (err?.code === 'WORLD_MODEL_UNAVAILABLE') return res.status(503).json({ success: false, error: err.message });
+    throw err;
+  }
   res.json({ success: true, deleted: req.params.id });
 });
 

@@ -6,8 +6,9 @@ and grouped prompt injection.
 */
 import { getFacts, touchRetrieved } from './longTermMemory.js';
 import { sensitivePolicy, withheld } from './sensitivity.js';
-import { FACT_LABELS } from './displayLabels.js';
+import { FACT_LABELS, laterWordNote, reviewNote, hedgeNote, SINCE_CHANGED_RULE } from './displayLabels.js';
 import { failsItsSchema } from './factVisibility.js';
+import { corrects } from '../understanding/stateTransition.js';
 import { getSchema, getSchemaByCategory, getWordIndex, CATEGORIES, SEMANTIC_CONCEPTS, CATEGORY_ALIASES } from './memorySchema.js';
 
 // ── Recall trigger detection ──────────────────────────────────────────────────
@@ -103,6 +104,24 @@ function detectKeyIntent(query) {
 /** An explicit per-key hint outranks the coarse category filter (500). */
 const HINT_WEIGHT = 600;
 
+/**
+ * A retrieval hint matches a WORD of the query, not a substring (2026-10-29).
+ * `includes` let `age` fire on "language", `son` on "person", `os` on "most",
+ * `work` on "network" — 38 of 265 eval queries earned the +600 hint for a key
+ * they never named, enough to put an unrelated fact in the prompt. Exact
+ * words, no plural forms: on those queries every plural-only match was the
+ * verb "works" ("Explain how OAuth works"), never a noun plural.
+ */
+const hintRes = new Map();
+function hintMatches(qLower, hint) {
+  const h = String(hint).toLowerCase();
+  if (!hintRes.has(h)) {
+    const esc = h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    hintRes.set(h, new RegExp(`(?:^|[^\\p{L}\\p{N}])${esc}(?:$|[^\\p{L}\\p{N}])`, 'u'));
+  }
+  return hintRes.get(h).test(qLower);
+}
+
 const SEM_FLOOR  = 0.55;   // cosine below this = no semantic signal
 const SEM_WEIGHT = 700;    // (cosine - floor) * weight → boost
 
@@ -162,7 +181,7 @@ function scoreRelevance(fact, query, ctx) {
   const schema = getSchema(fact.key);
   if (schema?.retrievalHints) {
     for (const hint of schema.retrievalHints) {
-      if (qLower.includes(hint.toLowerCase())) {
+      if (hintMatches(qLower, hint)) {
         score += HINT_WEIGHT;
         intentScore += HINT_WEIGHT;
         break;
@@ -290,10 +309,62 @@ const CATEGORY_LABELS = {
  * that list can only name what the model was actually given — retrieval
  * returns facts from 0.5 confidence, the prompt only from 0.55.
  */
+const labelOf = key => FACT_LABELS[key] || String(key).replace(/^custom_/, 'custom ').replace(/_/g, ' ');
+
+/**
+ * CURRENT STATE, NOT A NOTE (2026-11-02). A fact's line carries its current
+ * value; a value it replaced is named as `(previously: …)`; a narrower value
+ * has its own line ("day rate (new clients): 720 euros"); an ENDED fact is not
+ * current at all and is listed under "No longer current" (historyPromptLine).
+ * A note remains only where the store does not know the new value
+ * ("since changed") or whether it changed ("uncertain").
+ */
 export function factPromptLine(f) {
-  if (!f || f.value === undefined || f.value === null || (f.confidence || 0) < 0.55) return null;
-  return `- ${FACT_LABELS[f.key] || String(f.key).replace(/_/g, ' ')}: ${formatValue(f.value)}`;
+  if (!f || f.value === undefined || f.value === null || (f.confidence || 0) < 0.55 || f.ended) return null;
+  if (Array.isArray(f.value) && !f.value.length) return null;
+  const label = f.scopeOf ? `${labelOf(f.scopeOf)} (${f.scope})` : labelOf(f.key);
+  const value = formatValue(f.value);
+  // The value this one replaced: a later-word transition, or any revision
+  // the conflict resolver wrote — never a collection merge, which replaces
+  // nothing, and never a CORRECTION: "Actually, my city is now Porto" says
+  // Lisbon was wrong, not that it was true before (forgetEverywhere.test.js).
+  const last = f.transitions?.at(-1);
+  const rev = Array.isArray(f.history) ? f.history.at(-1) : null;
+  // A correction made on the Memory page is one too (memory/propagation.js kind).
+  const wasCorrection = corrects(f.sourceText ?? f.sourceMessage ?? '') || last?.kind === 'corrected';
+  const before = wasCorrection ? null
+    : last && formatValue(last.to) === value ? last.from
+    : rev && rev.reason !== 'collection_merge' && !String(rev.reason ?? '').startsWith('later_word:end')
+      // An item retired from a collection is history of THAT item ("No longer current"), not a replaced list.
+      && !(Array.isArray(f.value) && (f.retiredItems ?? []).length && String(rev.reason ?? '').startsWith('later_word:')) && rev.value != null && formatValue(rev.value) !== value ? rev.value : null;
+  const previously = before != null && formatValue(before) ? ` (previously: ${formatValue(before)})` : '';
+  return `- ${label}: ${value}${previously}${laterWordNote(f.laterWord)}${reviewNotes(f)}${f.laterWord?.text ? '' : hedgeNote(f)}`;
 }
+
+/**
+ * Something this fact names has since changed (memory/propagation.js): the
+ * user's sentence beside it, "uncertain whether still current" — never closed.
+ * A collection names the item it is about.
+ */
+function reviewNotes(f) {
+  if (f.laterWord?.text || !f.reviews?.length) return '';
+  const r = f.reviews.at(-1);
+  return reviewNote(r, { item: r.item });
+}
+
+/** What WAS true: an ended fact, or items a collection no longer holds. [] when nothing ended. */
+export function historyPromptLines(f) {
+  if (!f || (f.confidence || 0) < 0.55) return [];
+  const said = t => ` — they said: "${String(t).slice(0, 140)}"`;
+  const out = [];
+  // Done, not merely gone: an achieved goal or resolved item says so (2026-11-04).
+  const how = kind => (kind === 'resolved' ? ' (achieved)' : '');
+  if (f.ended) out.push(`- ${labelOf(f.key)}: ${formatValue(f.value)}${how(f.ended.kind)}${said(f.ended.text)}`);
+  for (const r of f.retiredItems ?? []) out.push(`- ${labelOf(f.key)}: ${formatValue(r.item)}${how(r.kind)}${said(r.text)}`);
+  return out.slice(-3);
+}
+
+export { laterWordNote, SINCE_CHANGED_RULE };
 
 export function formatFactsForPrompt(facts) {
   if (!facts || !facts.length) return '';
@@ -305,8 +376,9 @@ export function formatFactsForPrompt(facts) {
     if (!grouped.has(cat)) grouped.set(cat, []);
     grouped.get(cat).push(fact);
   }
+  const history = facts.flatMap(historyPromptLines);
 
-  if (grouped.size === 0) return '';
+  if (grouped.size === 0 && !history.length) return '';
 
   const lines = [];
   for (const [cat, catFacts] of grouped.entries()) {
@@ -314,6 +386,8 @@ export function formatFactsForPrompt(facts) {
     lines.push(`\n### ${catLabel}`);
     for (const f of catFacts) lines.push(factPromptLine(f));
   }
+  if (history.length) lines.push('\n### No longer current', ...history);
+  const marked = history.length || facts.some(f => f.laterWord?.text || f.metadata?.hedged || f.reviews?.length || (factPromptLine(f) ?? '').includes('(previously:'));
 
   console.log(`[MEM_RETRIEVER] MEMORY_GROUPED categories=${Array.from(grouped.keys()).join(',')}`);
   console.log(`[MEM_RETRIEVER] MEMORY_SUMMARIZED facts=${facts.length} groups=${grouped.size}`);
@@ -328,6 +402,7 @@ export function formatFactsForPrompt(facts) {
     '- Use this memory naturally to personalize responses.',
     '- Do not narrate "I remember that..." unless explicitly asked.',
     '- If asked about these topics, rely on this profile.',
+    ...(marked ? [`- ${SINCE_CHANGED_RULE}`] : []),
     '--- END PROFILE ---',
   ].join('\n');
 }
@@ -335,6 +410,9 @@ export function formatFactsForPrompt(facts) {
 function formatValue(v) {
   if (v === null || v === undefined) return '';
   if (Array.isArray(v)) {
+    // Items that hold commas ("a warm, formal tone (for emails)") are kept
+    // apart with "; " so two preferences never read as one.
+    const sep = v.some(item => typeof item === 'string' && item.includes(',')) ? '; ' : ', ';
     return v.map((item) => {
       if (typeof item === 'object' && item !== null) {
         const parts = [];
@@ -344,7 +422,7 @@ function formatValue(v) {
         return parts.length ? parts.join(' ') : JSON.stringify(item);
       }
       return String(item);
-    }).join(', ');
+    }).join(sep);
   }
   if (typeof v === 'object') return JSON.stringify(v);
   return String(v);

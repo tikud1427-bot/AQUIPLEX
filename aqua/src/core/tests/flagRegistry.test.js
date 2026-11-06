@@ -114,11 +114,12 @@ describe('the flag registry matches the source, in both directions', () => {
     // both ON by default with =off as the rollback.
     // +1 gate (2026-10-18): AQUA_E6_ACTOR_RETRY — re-ask for a named actor the first reading dropped, ON by default.
     // +1 gate (2026-10-20): AQUA_EPISODIC_RECALL — the user's own matching past messages in the answer context, ON by default.
+    // +1 gate (2026-11-05): AQUA_MIND_RELEVANCE — question-aware cognitive-block selection, OFF by default since 2026-11-06.
     // +1 gate (2026-11-05): AQUA_ANSWER_SCAFFOLD_GUARD — reasoning stages kept out of the reply layout, ON by default.
     // +1 gate (2026-11-05): AQUA_SEMANTIC_RECALL — semantic episodic recall, OFF by default.
     // +1 gate (2026-11-05): AQUA_RECALL_FOLLOWUP_V2 — follow-up relevance v2, OFF by default.
-    // +1 gate (2026-11-05): AQUA_MIND_RELEVANCE — question-aware cognitive-block selection, OFF by default since 2026-11-06.
-    assert.equal(GATES.length, 40);
+    // +1 gate (2026-11-06): AQUA_PROPAGATION — change propagation, OFF by default (only "on" enables it).
+    assert.equal(GATES.length, 41);
     // +2 settings, 0 gates (Sep 30): AQUA_E6_MINT and AQUA_E6_SINGLE_VALUED. Both
     // are SETTINGS because neither opens a subsystem — they tune one stage of an
     // already-gated one.
@@ -140,9 +141,11 @@ describe('the flag registry matches the source, in both directions', () => {
     // AQUA_PROVIDER_MAX_KEY_ATTEMPTS (per-request key-rotation bounds) and
     // AQUA_PROVIDER_KEY_REJECT_TTL_MS (opt-in expiry of a rejected key).
     // +1 setting (2026-10-18): AQUA_S8_HISTORY (bounded | full | compare).
-    assert.equal(SETTINGS.length, 47);   // +1 (2026-10-20): AQUA_RECALL_ALL_CHARS; +1 (2026-11-05): AQUA_EMBEDDING_API_KEY
+    assert.equal(SETTINGS.length, 48);   // +1 (2026-10-20): AQUA_RECALL_ALL_CHARS; +1 (2026-11-05): AQUA_EMBEDDING_API_KEY; +1 (2026-11-06): AQUA_PROPAGATION_CRASH_AT (test seam)
     // +1 (2026-10-18): AQUA_E6_ACTOR_RETRY. AQUA_S8_HISTORY is a setting-like rollback read in the repository (counted below).
-    assert.equal(readFromEnv().size, 87);   // +2 (2026-10-17): the two gates above; +2 (2026-10-20) AQUA_EPISODIC_RECALL, AQUA_RECALL_ALL_CHARS; +1 (2026-11-05) AQUA_ANSWER_SCAFFOLD_GUARD; +3 (2026-11-05) AQUA_SEMANTIC_RECALL, AQUA_RECALL_FOLLOWUP_V2, AQUA_EMBEDDING_API_KEY; +1 (2026-11-05) AQUA_MIND_RELEVANCE
+    // +2 (2026-10-17): the two gates above; +2 (2026-10-20) AQUA_EPISODIC_RECALL, AQUA_RECALL_ALL_CHARS;
+    // +3 (2026-11-05): AQUA_MIND_RELEVANCE, AQUA_ANSWER_SCAFFOLD_GUARD, AQUA_SEMANTIC_RECALL.
+    assert.equal(readFromEnv().size, 89);   // +1 (2026-11-05): AQUA_EMBEDDING_API_KEY (setting); +1 (2026-11-05): AQUA_RECALL_FOLLOWUP_V2; +2 (2026-11-06): AQUA_PROPAGATION, AQUA_PROPAGATION_CRASH_AT
   });
 });
 
@@ -171,6 +174,8 @@ describe('the registry records how each gate actually reads its variable', () =>
     // AQUA_WORLD_CORE joined 2026-10-11: measured on the World-Model Lift (held-out v3).
     // AQUA_MIND_RELEVANCE left 2026-11-06: OFF by default until related-phrase matching exists (mindRelevanceDefault.test.js).
     // AQUA_ANSWER_SCAFFOLD_GUARD joined 2026-11-05 (scaffoldGuard.test.js); =off is the rollback.
+    // AQUA_PROPAGATION (registered 2026-11-06) is deliberately NOT here: it was ON by default in
+    // memory/propagation.js and is now OFF by default — only exactly "on" enables it.
     assert.deepEqual(onByDefault, ['AQUA_ANSWER_SCAFFOLD_GUARD', 'AQUA_BRAIN', 'AQUA_CANONICAL_RELEVANCE_GATE', 'AQUA_E6_ACTOR_RETRY', 'AQUA_EMBEDDINGS', 'AQUA_EPISODIC_RECALL', 'AQUA_PARSE_WORKER', 'AQUA_PIC', 'AQUA_PROACTIVE', 'AQUA_REVISION_VOICE', 'AQUA_WORLD_CORE']);
   });
 
@@ -188,7 +193,7 @@ describe('the registry records how each gate actually reads its variable', () =>
 describe('the boot line is worth printing', () => {
   test('it names the overridden gates, not all 29', () => {
     const line = flagBootLine({ AQUA_E6: 'on' });
-    assert.match(line, /40 gates · 47 settings/);   // +1 (2026-11-05): AQUA_ANSWER_SCAFFOLD_GUARD; +2 gates +1 setting (2026-11-05): semantic recall, follow-up V2, embedding key; +1 gate (2026-11-05): Mind relevance
+    assert.match(line, /41 gates · 48 settings/);   // +3 (2026-11-05): AQUA_MIND_RELEVANCE, AQUA_ANSWER_SCAFFOLD_GUARD, AQUA_SEMANTIC_RECALL
     assert.match(line, /AQUA_E6=on/);
     assert.ok(!line.includes('AQUA_TWIN_V2'), 'a default gate was listed — the line is noise');
   });

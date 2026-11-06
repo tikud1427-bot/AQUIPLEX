@@ -42,6 +42,7 @@ import { getMirrorStatus } from "./src/core/mongoMirror.js";
 import { recordBoot, assessDurability, formatDurabilityReport } from "./src/core/durability.js";
 import understandingRoute from "./src/understanding/understandingRoutes.js";
 import { runStartupValidation } from "./src/core/startupValidation.js";
+import { startPropagationSweeper } from "./src/memory/propagation.js";
 import { migrateLegacyMemory }  from "./src/memory/migrate.js";
 import { migrateIdentity }      from "./src/memory/identityMigration.js";
 import { fail, ErrorCodes } from "./src/routes/envelope.js";
@@ -72,6 +73,10 @@ migrateIdentity();
 // Validate model registry + provider keys once at mount. Never throws —
 // misconfigured providers are disabled with a warning, engine still mounts.
 runStartupValidation();
+// One change, every store (src/memory/propagation.js): finish what a crash, a
+// restart or a failed step left pending — without waiting for the user's next message.
+// DEFAULT OFF: starts only when AQUA_PROPAGATION=on (startPropagationSweeper checks it).
+startPropagationSweeper();
 
 // ── Understanding-loop flag report (Phase 1) ─────────────────────────────────
 // Most of the Brain switches default OFF in code, so which understanding

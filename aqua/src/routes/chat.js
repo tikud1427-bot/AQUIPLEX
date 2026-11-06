@@ -93,8 +93,8 @@ import {
   conversationExists,
   canAccessConversation,
 } from '../memory/conversationStore.js';
-import { resolveOwner, memoryObserve, memoryRetrieve, getMemoryTrace, semanticFactScores, semanticFileChunks } from '../memory/engine.js';
-import { recallEnabled, recallForTurn } from '../memory/episodicRecall.js';
+import { resolveOwner, memoryObserve, memoryRetrieve, getMemoryTrace, semanticFactScores, semanticFileChunks, legacySupersessionNotes, uncertaintyNotes } from '../memory/engine.js';
+import { recallEnabled, recallForTurn, startRecallQueryVector } from '../memory/episodicRecall.js';
 import { sensitivePolicy, redactSensitiveSentences, scrubSensitiveLines, classifyText } from '../memory/sensitivity.js';
 import * as Brain from '../brain/index.js';
 import { proactiveDirectiveForTurn } from '../brain/proactive/index.js';
@@ -425,6 +425,14 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // Phase D — file content recall: same seam, same contract. Resolves to []
   // when embeddings are unavailable or no uploaded content matches.
   const fileChunksP = semanticFileChunks(memoryOwner, userMessage);
+  // Semantic episodic recall (memory/semanticRecall.js): its query vector, on the
+  // DEDICATED credential, started here so the round trip overlaps the turn; recall
+  // (step 5d) reuses it. Started only under recall's own conditions and only when
+  // recall is certain to rank — never a call the turn would not have made. null
+  // when not started; resolves to null on any failure (keyword recall then).
+  const recallQueryVecP = memoryOwner && !isInterviewTurn(mode) && recallEnabled() && !detectIdentityIntent(userMessage).isSelf
+    ? startRecallQueryVector({ userId, conversationId, query: userMessage })
+    : null;
   // ── 2. Classify (once — result passed to router, no double classification) ──
   onStage('classify', 'Understanding your request…');
   // Mark the intro conversation so the first-run gate can tell an account that
@@ -731,8 +739,9 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   // verbatim and dated, matched to this message (memory/episodicRecall.js).
   // Extraction is lossy and late; quotes are neither. The window is computed
   // here (it was step 7) so recall never repeats a message the model already
-  // sees. Supersession notes come from the World Model only on a canonical
-  // read. Health and mood sentences follow this turn's sensitive policy, like
+  // sees. Supersession notes come from the World Model on a canonical read and
+  // from the fact store's version history on a legacy one (2026-10-29).
+  // Health and mood sentences follow this turn's sensitive policy, like
   // every other lane. Fail-open: an empty block leaves the prompt as it was.
   const history    = getConversation(conversationId);
   const ctxBudget  = computeContextBudget(plan.complexity, orchestration.budget.maxContextTokens);
@@ -742,11 +751,13 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     recall = await recallForTurn({
       ownerId: memoryOwner, userId, conversationId, query: userMessage,
       excludeFromIndex: history.length - window.length,
-      notesFor: readMode !== 'legacy' ? Brain.supersessionNotesFor : null,
+      queryVector: recallQueryVecP ?? undefined,
+      // Uncertainty notes come from the Mind, the same store in either read mode (legacy includes them).
+      notesFor: readMode !== 'legacy' ? async o => [...(await Brain.supersessionNotesFor(o)), ...uncertaintyNotes(o)] : legacySupersessionNotes,
       sensitive,
     });
     const rs = recall.stats ?? {};
-    console.log(`[RECALL] owner=${memoryOwner} excerpts=${recall.excerpts.length} candidates=${rs.candidates ?? 0} matched=${rs.matched ?? 0} followUps=${rs.followUps ?? 0} annotated=${rs.annotated ?? 0} redacted=${rs.redactedSentences ?? 0} ms=${rs.ms ?? 0}${rs.error ? ` error=${rs.error}` : ''}`);
+    console.log(`[RECALL] owner=${memoryOwner} excerpts=${recall.excerpts.length} candidates=${rs.candidates ?? 0} matched=${rs.matched ?? 0} followUps=${rs.followUps ?? 0} annotated=${rs.annotated ?? 0} redacted=${rs.redactedSentences ?? 0} ms=${rs.ms ?? 0} mode=${rs.mode ?? '-'}${rs.semantic ? ` semanticOnly=${rs.semanticOnly ?? 0} semanticMs=${rs.semantic.queryMs ?? '-'}${rs.semantic.timedOut ? ' semanticTimeout' : ''}` : ''}${rs.error ? ` error=${rs.error}` : ''}`);
   }
   // Backstop over the formatted block, as for the knowledge lane above.
   const scrubbedRecall = scrubSensitiveLines(recall.block, sensitive);

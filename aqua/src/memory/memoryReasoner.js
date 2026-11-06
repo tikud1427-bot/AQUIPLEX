@@ -150,7 +150,8 @@ export function findGaps(ownerId, { now = Date.now() } = {}) {
     try {
       const identity = getIdentity(ownerId) || {};
       identityMissing = IDENTITY_FIELDS
-        .filter(f => CORE.has(f.canonical) && !identity[f.canonical])
+        // An ended field ("I no longer work at Hartwell") is unknown NOW.
+        .filter(f => CORE.has(f.canonical) && (!identity[f.canonical] || identity[f.canonical].ended))
         .map(f => f.canonical);
     } catch { /* identity lane fails open */ }
 

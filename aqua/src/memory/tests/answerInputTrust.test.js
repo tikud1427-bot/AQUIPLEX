@@ -52,10 +52,9 @@ test('an impersonal factual question carries no profile; a personal one still do
   ltm.storeFact(owner, { key: 'city', value: 'Pune', confidence: 0.9, importance: 6, ts: Date.now() });
   assert.deepEqual(retriever.retrieveRelevantFacts(owner, 'At sea level, what temperature does water boil at in Celsius?', 10), []);
   assert.deepEqual(retriever.retrieveRelevantFacts(owner, 'Explain photosynthesis in simple terms', 10), []);
-  // KNOWN LIMITATION (pre-existing keyword index, not this gate): "works" in
-  // "how X works" reads as the WORK category, so it counts as naming the
-  // user's profession. Pinned so a fix is visible, not to endorse it.
-  assert.deepEqual(retriever.retrieveRelevantFacts(owner, 'Explain how photosynthesis works', 10).map(f => f.key), ['profession']);
+  // Was a pinned KNOWN LIMITATION: the profession hint `work` matched "works"
+  // as a substring. Hints now match whole words (2026-10-29).
+  assert.deepEqual(retriever.retrieveRelevantFacts(owner, 'Explain how photosynthesis works', 10), []);
   // A question that names a stored thing still gets it, even impersonally.
   assert.deepEqual(retriever.retrieveRelevantFacts(owner, 'Is Tidepool a good name for a scheduling app?', 10).map(f => f.key), ['project']);
   // Any personal reference keeps the profile, as before.
@@ -83,4 +82,33 @@ test('an aspirational role belief never reaches the model as identity', () => {
   const { block } = mindRetriever.retrieveCognitiveContext(mind, { query: 'what should I study?' });
   assert.doesNotMatch(block, /billionaire/);
   assert.match(block, /student/);
+});
+
+test('a retrieval hint matches a word of the question, never part of one', () => {
+  // `age` fired on "language", `son` on "person", `os` on "most": the +600
+  // hint put the age / child / OS fact in front of questions about none of them.
+  const owner = 'trust-hint-words';
+  ltm.storeFact(owner, { key: 'age', value: 31, confidence: 0.9, importance: 6, ts: Date.now() });
+  ltm.storeFact(owner, { key: 'favorite_language', value: 'Rust', confidence: 0.9, importance: 6, ts: Date.now() });
+  const keys = q => retriever.retrieveRelevantFacts(owner, q, 10).map(f => f.key);
+  assert.ok(!keys('Which language do I prefer?').includes('age'), JSON.stringify(keys('Which language do I prefer?')));
+  assert.ok(keys('Which language do I prefer?').includes('favorite_language'));
+  assert.ok(keys('How old am I? What is my age?').includes('age'), 'the whole word still matches');
+});
+
+test('the Mind block never tells the model a classifier routing id is the user\'s focus', () => {
+  // "Current state: focus: personal_info, simple_qa, creative_writing" reached
+  // the prompt (2026-10-29): the classifier's label for a MESSAGE, presented
+  // as what the user is working on.
+  const mind = mindSchema.createEmptyMind('trust-focus');
+  const now = Date.now();
+  mind.working.focus = [
+    { topic: 'simple_qa', weight: 5, lastSeenAt: now },
+    { topic: 'personal_info', weight: 4, lastSeenAt: now },
+    { topic: 'coding', weight: 3, lastSeenAt: now },
+    { topic: 'postgres', weight: 2, lastSeenAt: now },
+  ];
+  const { block } = mindRetriever.retrieveCognitiveContext(mind, { query: 'help me plan my week' });
+  assert.doesNotMatch(block, /simple_qa|personal_info/);
+  assert.match(block, /focus: writing code, postgres/);
 });

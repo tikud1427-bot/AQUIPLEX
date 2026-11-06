@@ -167,6 +167,8 @@ export function storeFact(ownerId, fact, { trace = null } = {}) {
   const { isCorrection, action: _drop2, ...persistableFact } = fact;
   const upgraded = upgradeFact(persistableFact, ownerId);
   upgraded.history = history;
+  // The record of earlier changes (memory/propagation.js) belongs to the fact, not to one value of it.
+  if (existing?.transitions?.length) upgraded.transitions = existing.transitions;
   // Phase A: an explicit correction is the user saying "remember this" —
   // pin it (archive-exempt, importance floor). Pins survive later overwrites.
   upgraded.pinned = upgraded.pinned || !!existing?.pinned || !!isCorrection;
@@ -200,6 +202,10 @@ export function storeResolved(ownerId, resolved, { trace = null } = {}) {
     case RESOLUTION_ACTIONS.DUPLICATE: {
       if (existing) {
         reinforce(existing, now);
+        // Restated as it was: the earlier later-word is no longer the last word.
+        if (existing.laterWord) { (existing.laterWords ??= []).push(existing.laterWord); delete existing.laterWord; }
+        // Restated without a hedge: the user now says it plainly — confirmed.
+        if (existing.metadata?.hedged && !resolved.metadata?.hedged) delete existing.metadata.hedged;
         touchMind(mind);
       }
       return;
@@ -215,6 +221,7 @@ export function storeResolved(ownerId, resolved, { trace = null } = {}) {
       const history = existing ? buildVersionHistory(existing, 'collection_merge') : [];
       const upgraded = upgradeFact({ ...resolved, value: merged, normalizedValue: merged }, ownerId);
       upgraded.history = history;
+      if (existing?.transitions?.length) upgraded.transitions = existing.transitions;
       upgraded.revision = (existing?.revision || 0) + 1;
       upgraded.createdAt = existing?.createdAt || now;
       upgraded.lastMentionedAt = now;
@@ -229,6 +236,7 @@ export function storeResolved(ownerId, resolved, { trace = null } = {}) {
       const history = existing ? buildVersionHistory(existing, resolved.reason) : [];
       const upgraded = upgradeFact(resolved, ownerId);
       upgraded.history = history;
+      if (existing?.transitions?.length) upgraded.transitions = existing.transitions;
       upgraded.revision = (existing?.revision || 0) + 1;
       upgraded.createdAt = existing?.createdAt || now;
       upgraded.lastMentionedAt = now;
@@ -289,6 +297,92 @@ export function touchRetrieved(ownerId, keys = []) {
     touched = true;
   }
   if (touched) touchMind(mind);
+}
+
+/**
+ * The user's later word on a fact (memory/factChange.js laterWordsOnFacts):
+ * their own sentence that ended, resolved or changed it, with when and which.
+ * The value is NOT changed — it stays as what was true before — and earlier
+ * later-words are kept in `laterWords`. A new value for the key (correction,
+ * overwrite, merge) replaces the whole fact and so clears it; restating the
+ * same value clears it too (storeResolved DUPLICATE).
+ * @returns {boolean} whether anything changed
+ */
+export function noteLaterWord(ownerId, key, { text, kind, at = Date.now() } = {}) {
+  const mind = factsOf(ownerId, { create: false });
+  const fact = mind?.facts?.[key];
+  if (!fact || !text || fact.laterWord?.text === text) return false;
+  if (fact.laterWord) (fact.laterWords ??= []).push(fact.laterWord);
+  if (fact.laterWords?.length > 10) fact.laterWords.splice(0, fact.laterWords.length - 10);
+  fact.laterWord = { text: String(text).slice(0, 200), kind, at };
+  touchMind(mind);
+  return true;
+}
+
+/**
+ * Apply a resolved later word (memory/factChange.js resolveCurrentState) to
+ * the CURRENT state, keeping everything that was true before:
+ *   replace  value ← the user's new value; the old one is a revision in
+ *            `history` (buildVersionHistory) and a `transitions` entry
+ *            {from, to, kind, text, at}
+ *   end      the fact is kept with `ended` = {text, kind, at} (not current);
+ *            for a collection only the linked item retires, to `retiredItems`
+ *   scoped   a separate fact `<key>__<scope>` holds the narrower value; the
+ *            broader fact is untouched
+ * Provenance: `sourceText` is the user's sentence; confidence of a replaced
+ * value is that of an explicit statement (0.9).
+ * @returns {string|null} the key written, or null when nothing changed
+ */
+export function applyCurrentState(ownerId, key, resolved, { text, kind, item = null, at = Date.now() } = {}) {
+  const mind = factsOf(ownerId, { create: false });
+  const fact = mind?.facts?.[key];
+  if (!fact || !resolved) return null;
+  const transition = (from, to) => { (fact.transitions ??= []).push({ from, to, kind, text, at }); if (fact.transitions.length > 10) fact.transitions.shift(); };
+  if (resolved.action === 'replace' && !Array.isArray(fact.value)) {
+    const from = fact.value;
+    fact.history = buildVersionHistory(fact, `later_word:${kind}`);
+    fact.value = resolved.value;
+    fact.normalizedValue = resolved.value;
+    fact.sourceText = text;
+    fact.sourceMessage = text;
+    fact.ts = at;
+    fact.updatedAt = at;
+    fact.lastMentionedAt = at;
+    fact.revision = (fact.revision || 1) + 1;
+    fact.confidence = Math.max(fact.confidence ?? 0, 0.9);
+    delete fact.laterWord;
+    delete fact.ended;
+    transition(from, resolved.value);
+  } else if (resolved.action === 'end') {
+    if (Array.isArray(fact.value) && item != null) {
+      fact.history = buildVersionHistory(fact, `later_word:${kind}`);
+      fact.value = fact.value.filter(v => v !== item);
+      (fact.retiredItems ??= []).push({ item, text, kind, at });
+      if (!fact.value.length) fact.ended = { text, kind, at };
+    } else {
+      fact.history = buildVersionHistory(fact, `later_word:${kind}`);
+      fact.ended = { text, kind, at };
+    }
+    delete fact.laterWord;
+    fact.updatedAt = at;
+  } else if (resolved.action === 'scoped') {
+    const slug = String(resolved.scope).toLowerCase().replace(/^(?:for|with|to|on|only)\s+/, '').replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 30);
+    const scopedKey = `${key}__${slug}`;
+    const existing = mind.facts[scopedKey];
+    mind.facts[scopedKey] = {
+      ...(existing ?? {}), id: `${ownerId}:${scopedKey}`, key: scopedKey, category: fact.category, value: resolved.value, normalizedValue: resolved.value,
+      scope: resolved.scope.replace(/^(?:only\s+)?(?:for|with|to|on)\s+/i, ''), scopeOf: key,
+      confidence: 0.9, importance: fact.importance ?? 6, sourceText: text, sourceMessage: text, ts: at, createdAt: existing?.createdAt ?? at, updatedAt: at,
+      lastMentionedAt: at, revision: (existing?.revision || 0) + 1, history: existing ? buildVersionHistory(existing, `later_word:${kind}`) : [],
+      supportCount: 1, status: 'active',
+    };
+    touchMind(mind);
+    return scopedKey;
+  } else {
+    return null;
+  }
+  touchMind(mind);
+  return key;
 }
 
 export function getFact(ownerId, key) {

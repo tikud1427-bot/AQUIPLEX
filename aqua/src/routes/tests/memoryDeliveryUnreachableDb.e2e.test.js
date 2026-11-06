@@ -99,8 +99,14 @@ test('every stored user fact reaches the model input (systemPrompt) — nothing 
   // what is STORED so the check can never pass vacuously.
   assert.ok(stored.length >= 2, `fixture stored ${stored.length} legacy facts — fix the fixture, do not weaken this`);
   const sp = String(prep.systemPrompt);
-  for (const f of stored) assert.ok(sp.includes(String(f.value)), `stored fact ${f.key}=${f.value} missing from the prompt`);
-  assert.equal(prep.relevantFacts.length, stored.length, 'retrieval delivered the facts (was NO_MEMORIES)');
+  // Every RANKED fact reaches the prompt, and the facts this question asks about are ranked.
+  // (2026-11-04: "Razorpay is our main competitor" is now extracted as a fact; it is not
+  // relevant to "where do I work and who is my co-founder?" and is ranked when asked about —
+  // so "every stored fact" was a proxy that only held while that sentence extracted nothing.)
+  for (const f of prep.relevantFacts) assert.ok(sp.includes(String(f.value)), `ranked fact ${f.key}=${f.value} missing from the prompt`);
+  for (const key of ['name', 'cofounder']) assert.ok(prep.relevantFacts.some(f => f.key === key), `stored ${key} not ranked for a question about it`);
+  for (const f of stored.filter(x => ['name', 'cofounder'].includes(x.key))) assert.ok(sp.includes(String([].concat(f.value)[0])), `stored fact ${f.key}=${f.value} missing from the prompt`);
+  assert.ok(prep.relevantFacts.length >= 2, 'retrieval delivered the facts (was NO_MEMORIES)');
   assert.match(String(prep.knowledgeContext), /co-founder Dev/, 'the PIC floor answers when canonical lanes cannot (was facts=0 entities=0 timeline=0)');
 });
 

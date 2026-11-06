@@ -8,6 +8,8 @@ import { deduplicateIntraMessage } from './duplicateDetector.js';
 import { resolveCandidates, RESOLUTION_ACTIONS } from './memoryResolver.js';
 import { detectCorrection, CORRECTION_PHRASES } from './memoryConflictResolver.js';
 import { getSchema, getWordIndex } from './memorySchema.js';
+import { onto } from './factChange.js';
+import { getFacts } from './longTermMemory.js';
 
 export { detectCorrection, CORRECTION_PHRASES } from './memoryConflictResolver.js';
 
@@ -101,10 +103,11 @@ export function extractFactsWithReport(message, ownerId = null) {
   report.duplicates += duplicates.length;
   log.debug(`Deduplicated: ${unique.length} unique, ${duplicates.length} duplicates`);
 
-  // 5. Resolve against stored facts
+  // 5. Resolve against stored facts — a free-text CHANGE ("my supervisor is
+  //    now…", "my new accountant is…") first lands on the fact it changes.
   let toStore = unique;
   if (ownerId) {
-    const resolved = resolveCandidates(ownerId, unique);
+    const resolved = resolveCandidates(ownerId, onto(unique, getFacts(ownerId)));
     toStore = [];
     for (const r of resolved) {
       console.log(`[EXTRACTOR] PROMOTION key=${r.key} action=${r.action} reason=${r.reason}${r.previousValue !== undefined ? ` previous=${JSON.stringify(r.previousValue)}` : ''}`);
@@ -183,6 +186,9 @@ function toLegacyFact(resolved) {
     sourceText: (resolved.rawText || '').slice(0, 200), ts: resolved.ts || Date.now(), isCorrection: !!resolved.isCorrection,
     category: resolved.category, normalizedValue: resolved.normalizedValue, sentence: resolved.sentence,
     reason: resolved.reason, action: resolved.action, previousValue: resolved.previousValue, _isDuplicate: resolved._isDuplicate,
+    // The extraction pattern that matched ("goal_is", "my_company") and the clause it read —
+    // `reason` above is the conflict resolver's. Clause: the sensitivity check reads it, not the whole sentence.
+    pattern: resolved.pattern ?? null, clause: resolved.clause ?? null,
     // Memory Confidence Engine (Phase 6): self-contained provenance, carried
     // through longTermMemory's upgradeFact() metadata passthrough.
     metadata: {
@@ -190,6 +196,8 @@ function toLegacyFact(resolved) {
       entityType: resolved.category,
       sourceSentence: resolved.sentence,
       confidence: resolved.confidence,
+      // The user said it unsure ("I think…"): kept as uncertain, shown as such (candidateExtractor hedgeOf).
+      ...(resolved.hedged ? { hedged: true } : {}),
     },
   };
 }

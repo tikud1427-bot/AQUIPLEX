@@ -23,6 +23,13 @@
  */
 import { getFact, getFacts, deleteFact, clearFacts } from './longTermMemory.js';
 import { redactPhrases, redactAllBefore } from './recallRedactions.js';
+import { releaseAfterForget, forgetValueInMind } from './propagation.js';
+import { peekMind, touchMind, deleteItem } from '../mind/mindStore.js';
+import { goalSimilarity } from '../mind/goalText.js';
+
+// What a forgotten fact's changes set elsewhere (memory/propagation.js: review
+// notes quoting the user, ended graph edges) goes with it. Never fails a forget.
+const release = ownerId => releaseAfterForget(ownerId).catch(err => console.warn(`[MEMORY] propagation release failed owner=${ownerId}: ${err?.message ?? err}`));
 
 export class MemoryControlUnavailable extends Error {
   constructor(message = 'Memory is temporarily unavailable — nothing was changed. Please try again.') {
@@ -50,6 +57,9 @@ export async function forgetFact(ownerId, key) {
   const worldModel = await guarded(() => Brain.forgetWorldModelFact(ownerId, { key, value: fact.value }));
   redactPhrases(ownerId, Brain.legacyValueStrings(fact.value));
   deleteFact(ownerId, key);
+  // PRIVACY CLEANUP, not propagation: runs whatever AQUA_PROPAGATION says (as the chat-path forget does).
+  forgetValueInMind(ownerId, key, fact.value);
+  await release(ownerId);
   logControl('FORGET', ownerId, key, worldModel);
   return { key, worldModel };
 }
@@ -79,6 +89,7 @@ export async function forgetClaim(ownerId, claimId) {
       legacy.push(fact.key);
     }
   }
+  if (legacy.length) await release(ownerId);
   logControl('FORGET_CLAIM', ownerId, claimId, worldModel);
   return { ...worldModel, legacyFacts: legacy };
 }
@@ -100,8 +111,54 @@ export async function correctClaimValue(ownerId, claimId, newValue) {
   for (const fact of getFacts(ownerId, { includeArchived: true })) {
     if (Brain.legacyValueStrings(fact.value).some(h => old.includes(h))) { deleteFact(ownerId, fact.key); legacy.push(fact.key); }
   }
+  if (legacy.length) await release(ownerId);
   logControl('CORRECT_CLAIM', ownerId, claimId, { corrected: [worldModel], conversationFacts: worldModel.conversationFacts });
   return { ...worldModel, legacyFacts: legacy };
+}
+
+/**
+ * Forget one GOAL everywhere (Understanding page delete, 2026-11-02). A goal is
+ * held as a Mind goal and as an item of the legacy `goal` fact, and stated in
+ * the conversation lane; deleting only the Mind goal left the legacy item in
+ * the profile ("Goals: …") and the sentence answering. Same order as forgetFact:
+ * World Model first (fails closed), then recall redactions, then the copies.
+ * A forget keeps no copy: the item leaves the fact's value, its history and its
+ * retired items. Returns null when the owner has no such goal.
+ */
+export async function forgetGoal(ownerId, goalId) {
+  const mind = peekMind(ownerId);
+  const goal = mind?.goals?.[goalId];
+  if (!goal) return null;
+  const Brain = await brain();
+  const worldModel = await guarded(() => Brain.forgetWorldModelFact(ownerId, { key: 'goal', value: goal.title }));
+  redactPhrases(ownerId, Brain.legacyValueStrings(goal.title));
+  const same = v => typeof v === 'string' && goalSimilarity(v, goal.title) >= 0.8;
+  const legacy = [];
+  for (const key of ['goal', 'goals']) {
+    const f = mind.facts?.[key];
+    if (!f) continue;
+    const items = Array.isArray(f.value) ? f.value : [f.value];
+    if (!items.some(same) && !(f.retiredItems ?? []).some(r => same(r.item))) continue;
+    const rest = items.filter(v => !same(v));
+    if (!rest.length) { deleteFact(ownerId, key); legacy.push(key); continue; }
+    f.value = Array.isArray(f.value) ? rest : rest[0];
+    f.normalizedValue = f.value;
+    f.history = (f.history ?? []).map(h => ({ ...h, value: Array.isArray(h.value) ? h.value.filter(v => !same(v)) : h.value })).filter(h => !same(h.value));
+    f.retiredItems = (f.retiredItems ?? []).filter(r => !same(r.item));
+    f.transitions = (f.transitions ?? []).filter(t => !same(t.from) && !same(t.to));
+    f.updatedAt = Date.now();
+    legacy.push(key);
+  }
+  deleteItem(mind, 'goals', goalId);
+  for (const [k, n] of Object.entries(mind.graph?.nodes ?? {})) {
+    if (n?.type !== 'goal' || !same(n.label)) continue;
+    delete mind.graph.nodes[k];
+    for (const [ek, e] of Object.entries(mind.graph.edges ?? {})) if (e.from === k || e.to === k) delete mind.graph.edges[ek];
+  }
+  touchMind(mind);
+  await release(ownerId);
+  logControl('FORGET_GOAL', ownerId, goalId, worldModel);
+  return { goalId, legacyFacts: legacy, worldModel };
 }
 
 /** Forget every fact the user told Aqua (uploaded documents are managed separately). */
@@ -110,6 +167,7 @@ export async function forgetAllFacts(ownerId) {
   const worldModel = await guarded(() => Brain.forgetWorldModelAll(ownerId));
   redactAllBefore(ownerId, Date.now());
   clearFacts(ownerId);
+  await release(ownerId);
   logControl('FORGET_ALL', ownerId, '*', worldModel);
   return { worldModel };
 }

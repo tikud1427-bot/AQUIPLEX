@@ -92,6 +92,8 @@ function loadFromDisk() {
 }
 
 const _writer = createDebouncedWriter(STORE_FILE);
+/** Write pending changes to disk now (synchronous, atomic) — memory/propagation.js stamps a change done only after this. */
+export function flushEvidence() { _writer.flush(); }
 function scheduleSave() {
   _writer.schedule(() => {
     const data = {};

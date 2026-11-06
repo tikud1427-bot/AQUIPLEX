@@ -24,12 +24,15 @@
  */
 import { resolveOwner, isUserOwner } from './ownerResolver.js';
 import { extractFactsWithReport, detectMemoryUpdate, detectForget, resolveCanonicalKey } from './memoryExtractor.js';
-import { storeFacts, storeFact, deleteFact, getFacts } from './longTermMemory.js';
+import { storeFacts, storeFact, deleteFact, getFacts, noteLaterWord, applyCurrentState } from './longTermMemory.js';
+import { detectFactChanges, laterWordsOnFacts, resolveCurrentState, preferenceSupersedes } from './factChange.js';
+import { subjectShared } from '../understanding/stateTransition.js';
 import { retrieveRelevantFacts, formatFactsForPrompt } from './memoryRetriever.js';
 import { getIdentity, hasIdentity, formatIdentityBlock, isIdentityQuery, answerIdentityQuery } from './identity.js';
 import { mindObserve, mindContext, mindAfterTurn } from '../mind/index.js';
 import { getMind, peekMind, touchMind, deleteItem } from '../mind/mindStore.js';
 import { forgetInBackground, retireSupersededInBackground } from './forget.js';
+import { propagationEnabled, recordTransitions, reconcileMind, propagateToEvidenceInBackground, releaseAfterForget, forgetValueInMind, notePronounReferents } from './propagation.js';
 import { classifySensitivity, classifyText, sensitivePolicy, scrubSensitiveLines } from './sensitivity.js';
 import { upsertNode, upsertEdge, SELF_KEY } from '../mind/relationshipGraph.js';
 import { recallGraphPaths, formatGraphRecall } from '../mind/graphRecall.js';
@@ -148,7 +151,8 @@ export function memoryObserve(ownerId, {
   let extractedFacts = [];
   // What each fact said before this turn — a value this turn REPLACES has its
   // old sentence retired from the conversation lane below (step 4b).
-  const previous = new Map(getFacts(ownerId).map(f => [f.key, { value: f.value, sourceText: f.sourceText }]));
+  const previous = new Map(getFacts(ownerId).map(f => [f.key, { value: Array.isArray(f.value) ? [...f.value] : f.value, sourceText: f.sourceText, ended: !!f.ended, status: f.status }]));
+  const turnStart = Date.now();
   try {
     // 1. Extract (parser → candidates → normalize → dedupe → resolve-vs-stored)
     const { facts, report } = learnFrom ? extractFactsWithReport(learnFrom, ownerId) : { facts: [], report: { duplicates: 0, rejected: 0 } };
@@ -170,6 +174,22 @@ export function memoryObserve(ownerId, {
       storeFacts(ownerId, extractedFacts.map(f => ({ ...f, sourceConversation: conversationId })), { trace });
     }
 
+    // 2b. A preference stated anew about the same thing, in the same context,
+    //     retires the earlier one to history (memory/factChange.js
+    //     preferenceSupersedes) — the collection merge kept both as current.
+    const pref = getFacts(ownerId).find(f => f.key === 'preference');
+    const prefBefore = previous.get('preference')?.value;
+    if (pref && Array.isArray(pref.value) && prefBefore != null) {
+      const old = [].concat(prefBefore);
+      for (const added of pref.value.filter(v => !old.includes(v))) {
+        for (const o of old) {
+          if (!getFacts(ownerId).find(f => f.key === 'preference')?.value?.includes?.(o) || !preferenceSupersedes(added, o)) continue;
+          applyCurrentState(ownerId, 'preference', { action: 'end' }, { text: String(learnFrom).slice(0, 200), kind: 'changed', item: o });
+          trace.notes.push('preference_superseded');
+        }
+      }
+    }
+
     // 3. Explicit forget
     const forgetResult = detectForget(userMessage);
     if (forgetResult.isForget && forgetResult.hint) {
@@ -179,6 +199,10 @@ export function memoryObserve(ownerId, {
       // The same statement also lives in the World Model — forget it there too
       // (background: a chat turn never waits on, or fails for, this).
       if (deleted && forgotten) forgetInBackground(ownerId, hintKey, forgotten.value);
+      // PRIVACY CLEANUP, not propagation (2026-11-06): the forgotten value also leaves the
+      // Mind's copies (bridged belief, graph edge) whatever AQUA_PROPAGATION says — the
+      // same as the Memory-page forget (forget.js forgetFact). Records no transition.
+      if (deleted && forgotten) forgetValueInMind(ownerId, hintKey, forgotten.value);
       trace.forget = { hint: forgetResult.hint, key: hintKey, deleted };
     }
 
@@ -195,13 +219,61 @@ export function memoryObserve(ownerId, {
       }, { trace });
       trace.correction = { key: updateResult.key, value: updateResult.value };
     }
+    // 4a. A date change stated without "my X is" ("The thesis deadline moved to
+    //     June 13") lands on the ONE free-text fact it names (memory/factChange.js).
+    for (const change of detectFactChanges(learnFrom, getFacts(ownerId))) {
+      storeFact(ownerId, { key: change.key, category: change.category, value: change.value, confidence: 0.9, importance: 7,
+        sourceText: change.sentence.slice(0, 200), ts: Date.now(), isCorrection: true, extractor: 'free_text_change' }, { trace });
+      trace.correction ??= { key: change.key, value: change.value };
+      trace.notes.push(`free_text_change:${change.key}`);
+    }
+
+    // 4c. The user's later word on a stored fact that this turn did not
+    //     re-value, resolved to the CURRENT state (memory/factChange.js
+    //     resolveCurrentState): "our new loan officer is Kim Alvarez" replaces
+    //     the contact, "I no longer work at Hartwell" ends the workplace, "720
+    //     euros for new clients" becomes its own narrower fact. The previous
+    //     value stays in the fact's history and transitions. Only when the new
+    //     value is not stated, or the ending may not be the user's own, does
+    //     the fact keep a note instead. Only facts that existed before this
+    //     turn — a fact this message stated is being set, not updated.
+    const unchanged = getFacts(ownerId).filter(f => previous.has(f.key) && JSON.stringify(previous.get(f.key).value) === JSON.stringify(f.value));
+    for (const lw of laterWordsOnFacts(learnFrom, unchanged)) {
+      const fact = unchanged.find(f => f.key === lw.key);
+      const r = resolveCurrentState(lw, fact);
+      // A collection ends item by item: the one the clause is about.
+      const item = Array.isArray(fact.value)
+        ? [...fact.value].sort((a, b) => subjectShared(lw.clause, String(b)).length - subjectShared(lw.clause, String(a)).length)[0] : null;
+      const written = r.action === 'replace' || r.action === 'end' || r.action === 'scoped'
+        ? applyCurrentState(ownerId, lw.key, r.action === 'replace' && Array.isArray(fact.value) ? null : r, { text: lw.text, kind: lw.kind, item })
+        : null;
+      if (written) {
+        trace.notes.push(`current_state:${written}:${r.action}`);
+        trace.correction ??= { key: written, value: r.value ?? null };
+        for (const extra of r.also ?? []) {
+          const target = getFacts(ownerId).find(f => f.key === extra.key);
+          if (target) applyCurrentState(ownerId, extra.key, { action: 'replace', value: extra.value }, { text: lw.text, kind: lw.kind });
+          else storeFact(ownerId, { key: extra.key, value: extra.value, confidence: 0.9, importance: 7, sourceText: lw.text, ts: Date.now() }, { trace });
+        }
+      } else if (noteLaterWord(ownerId, lw.key, { ...lw, kind: r.action === 'uncertain' ? 'uncertain' : lw.kind })) {
+        trace.notes.push(`later_word:${lw.key}:${r.action === 'uncertain' ? 'uncertain' : lw.kind}`);
+      }
+    }
 
     // 4b. A replaced value must stop answering on a legacy/degraded read too:
     //     the sentence that stated it still sits in the conversation lane,
     //     which nothing else revises. Background — never on the turn's path.
-    for (const f of getFacts(ownerId)) {
-      const before = previous.get(f.key);
-      if (before && JSON.stringify(before.value) !== JSON.stringify(f.value)) retireSupersededInBackground(ownerId, f.key, before);
+    //     With propagation on, the change is recorded once as a transition on
+    //     the fact (memory/propagation.js) and every store takes it from there,
+    //     the evidence lane included (step 5b).
+    if (propagationEnabled()) {
+      const changed = recordTransitions(ownerId, previous, { text: learnFrom, turnStart, conversationId, requestId });
+      if (changed.length) trace.notes.push(...changed.map(t => `transition:${t.key}:${t.kind}`));
+    } else {
+      for (const f of getFacts(ownerId)) {
+        const before = previous.get(f.key);
+        if (before && JSON.stringify(before.value) !== JSON.stringify(f.value)) retireSupersededInBackground(ownerId, f.key, before);
+      }
     }
   } catch (err) {
     console.warn('[MEMORY] fact observation failed (non-fatal):', err.message);
@@ -211,6 +283,20 @@ export function memoryObserve(ownerId, {
   // 5. Cognitive observation — same turn, same facts, no re-parse
   const mindDiag = mindObserve(ownerId, { userMessage: learnFrom, taskType, extractedFacts, workspaceId, conversationId });
   trace.mind = mindDiag;
+
+  // 5b. One change, every store (memory/propagation.js): the Mind's beliefs,
+  //     graph and the things that name a changed value agree with the facts —
+  //     after the Mind observed this turn, so what it just learned is included.
+  //     Reconciliation, run every turn: a step that failed earlier, or a copy
+  //     the two-process merge brought back, is repaired here. The evidence lane
+  //     follows in the background (retried on later turns until it succeeds).
+  if (propagationEnabled()) {
+    notePronounReferents(ownerId, { userMessage: learnFrom, conversationId, turnStart });
+    const r = reconcileMind(ownerId);
+    if (r.beliefs || r.edges || r.flagged || r.cleared) trace.notes.push(`propagated:beliefs=${r.beliefs},edges=${r.edges},flagged=${r.flagged},cleared=${r.cleared}`);
+    if (trace.forget?.deleted) releaseAfterForget(ownerId).catch(() => {});
+    else propagateToEvidenceInBackground(ownerId);
+  }
 
   // 6. Phase 2 — refresh this owner's fact vectors for semantic retrieval.
   //    Fire-and-forget (NOT awaited): never adds latency to the response path,
@@ -300,6 +386,14 @@ export function memoryRetrieve(ownerId, {
   let relevantFacts = [];
   try {
     relevantFacts = legacyUserMemory ? retrieveRelevantFacts(ownerId, query, factLimit, { trace, semanticScores, sensitive: policy }).filter(f => !vetoed(f)) : [];
+    // A stated preference about HOW to answer applies whatever the question
+    // is: "I prefer detailed explanations" was stored and never reached "Explain
+    // how a mortgage works", which shares none of its words (dev, 2026-11-02).
+    // The one key, never a sensitive one, never a vetoed one.
+    if (legacyUserMemory && !relevantFacts.some(f => f.key === 'preference')) {
+      const pref = getFacts(ownerId).find(f => f.key === 'preference' && !f.sensitivity && !vetoed(f));
+      if (pref) relevantFacts.push(pref);
+    }
     factBlock = formatFactsForPrompt(relevantFacts);
     trace.retrieved = relevantFacts.map(f => ({ key: f.key, value: f.value }));
   } catch (err) {
@@ -311,8 +405,22 @@ export function memoryRetrieve(ownerId, {
   const identityTokens = estimateTokens(identityBlock);
   const factTokens = estimateTokens(factBlock);
   const cognitiveBudget = Math.max(MIN_COGNITIVE_BUDGET, budgetTokens - identityTokens - factTokens);
+  // The fact store's account of what changed travels to the cognitive model,
+  // so its beliefs agree with the identity card and profile — one prompt, one
+  // account. `laterWords`: a belief with that value carries the same note.
+  // `retired`: values that are no longer current (ended, or replaced by a new
+  // value) — a belief holding one is not shown as who the user is now.
+  const facts = getFacts(ownerId);
+  const laterWords = facts.filter(f => f.laterWord?.text && typeof f.value === 'string')
+    .map(f => ({ value: f.value, text: f.laterWord.text, kind: f.laterWord.kind }));
+  const retired = [
+    ...facts.filter(f => f.ended && typeof f.value === 'string').map(f => f.value),
+    // …unless it is the value again ("back at Fintrail"): transitions now outlive later changes.
+    ...facts.flatMap(f => (f.transitions ?? []).map(t => t.from).filter(v => typeof v === 'string' && ![].concat(f.ended ? [] : f.value).some(c => String(c).toLowerCase() === v.toLowerCase()))),
+    ...facts.flatMap(f => (f.retiredItems ?? []).map(r => r.item)).filter(v => typeof v === 'string'),
+  ];
   const cognitive = mindLanes
-    ? mindContext(ownerId, { query, taskType, budgetTokens: cognitiveBudget })
+    ? mindContext(ownerId, { query, taskType, budgetTokens: cognitiveBudget, laterWords, retired })
     : { block: '', used: {} };
   trace.cognitiveUsed = cognitive.used || {};
 
@@ -423,6 +531,60 @@ export function memoryRetrieve(ownerId, {
   } catch { /* non-fatal */ }
 
   return { block, relevantFacts, cognitiveUsed: cognitive.used || {}, trace };
+}
+
+/**
+ * "Since changed" notes for episodic recall on a LEGACY read (2026-10-29), in
+ * the shape Brain.supersessionNotesFor gives on a canonical one: the sentence
+ * that stated each replaced value, and the sentence that replaced it. Built
+ * from the fact store's own version history, so a quoted "My thesis is due on
+ * May 30" carries "now: The thesis deadline moved to June 13" even when recall
+ * ranked only the first. Sensitive facts are left out (recall applies the
+ * turn's policy to what it quotes, not to notes).
+ */
+export function legacySupersessionNotes(ownerId) {
+  if (!ownerId) return [];
+  const notes = [];
+  for (const f of getFacts(ownerId)) {
+    if (f.sensitivity) continue;
+    // A later word (memory/factChange.js): the sentence that stated the fact
+    // is quoted with the user's later words beside it, as the profile shows it.
+    if (f.laterWord?.text && f.sourceText) notes.push({ key: f.key, quotes: [String(f.sourceText).trim()], now: f.laterWord.text });
+    // Ended (memory/longTermMemory.js applyCurrentState): the sentence that stated it, and the one that ended it.
+    if (f.ended?.text && f.sourceText && f.ended.text !== f.sourceText) notes.push({ key: f.key, quotes: [String(f.sourceText).trim()], now: f.ended.text });
+    if (!Array.isArray(f.history) || !f.history.length) continue;
+    const now = String(f.sourceText || f.sourceMessage || '').trim();
+    // Not a revision a collection MERGE wrote: adding a second goal does not change the first.
+    const quotes = f.history.filter(h => h.reason !== 'collection_merge').map(h => String(h.sourceMessage ?? '').trim()).filter(q => q && q !== now);
+    if (now && quotes.length) notes.push({ key: f.key, quotes, now });
+  }
+  return [...notes, ...uncertaintyNotes(ownerId)];
+}
+
+/**
+ * The same uncertainty the profile and cognitive model show, for the recall
+ * quotes that state the record (2026-11-05): a goal, deadline, blocker or list
+ * item flagged by memory/propagation.js. The Cloudflare Mistral run quoted
+ * "I'm leading the Atlas migration…" bare, under "a newer statement replaces an
+ * older one", and the answer settled it as ended. Independent of the read mode:
+ * the Mind is the same store either way. Sensitive facts are left out.
+ */
+export function uncertaintyNotes(ownerId) {
+  if (!ownerId) return [];
+  const mind = peekMind(ownerId);
+  if (!mind) return [];
+  const notes = [];
+  const add = (quote, r) => {
+    const q = String(quote ?? '').trim();
+    if (q.length >= 8 && r?.text) notes.push({ quotes: [q], now: r.text, kind: r.kind === 'target_reached' ? 'target_reached' : 'uncertain' });
+  };
+  for (const g of Object.values(mind.goals ?? {})) if (g.review && !g.changedBy) add(g.title, g.review);
+  for (const d of [...(mind.working?.deadlines ?? []), ...(mind.working?.blockers ?? [])]) add(d.label ?? d.text, d.review);
+  for (const f of Object.values(mind.facts ?? {})) {
+    if (!f || f.sensitivity || f.laterWord?.text) continue;
+    for (const r of f.reviews ?? []) add(r.item ?? f.sourceText, r);
+  }
+  return notes;
 }
 
 // ── Post-turn ────────────────────────────────────────────────────────────────

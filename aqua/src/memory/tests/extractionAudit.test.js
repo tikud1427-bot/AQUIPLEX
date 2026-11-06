@@ -160,3 +160,15 @@ test('structural — long_term_memory_extraction removed from orchestrator', () 
   const orchIdx = chat.indexOf('orchestrate({');
   assert.ok(obsIdx > 0 && orchIdx > 0 && obsIdx < orchIdx, 'memoryObserve must run before orchestrate');
 });
+
+// ── Identity: an adjective after "I'm" is not a name (2026-10-29) ─────────────
+// "I'm colorblind, so charts with red and green confuse me." stored
+// name=Colorblind and OVERWROTE "Oskar" (Lift v3 persona replayed through the
+// legacy read); the prompt then presented it as user-stated and authoritative.
+test('identity — "I\'m <lowercase word>" in a capitalised sentence is not a name', () => {
+  assertNoKey("I'm colorblind, so charts with red and green confuse me.", 'name');
+  assertNoKey("I'm vegetarian.", 'name');
+  assertNoKey("I'm diabetic and I run every morning.", 'name');
+  assertFact("Hej, I'm Oskar, I'm in my last year of a bachelor's at KTH.", 'name', 'Oskar');
+  assertFact("hi i'm chhanda", 'name', 'Chhanda'); // no capitals anywhere: no casing evidence
+});

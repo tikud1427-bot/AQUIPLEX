@@ -30,6 +30,7 @@
  *                               retrieval + migration to reason about identity)
  */
 import { getFact } from './longTermMemory.js';
+import { laterWordNote, hedgeNote, SINCE_CHANGED_RULE } from './displayLabels.js';
 
 // ── Canonical field map ───────────────────────────────────────────────────────
 // canonical : the stable public field name on the Identity object
@@ -79,6 +80,15 @@ export function getIdentity(ownerId) {
     if (!fact || fact.value === null || fact.value === undefined) continue;
     if (fact.value === '' || (Array.isArray(fact.value) && fact.value.length === 0)) continue;
     if ((fact.confidence ?? 1) < MIN_IDENTITY_CONF) continue;
+    // Ended ("I no longer work at Hartwell"): not who the user IS. The card
+    // says so in place — "none current (previously: Hartwell Bank …)" — rather
+    // than dropping the field: the profile does not repeat identity keys, so
+    // a dropped field left the authoritative block silent about it.
+    if (fact.ended) {
+      identity[field.canonical] = { value: null, previous: fact.value, ended: fact.ended, confidence: fact.confidence ?? 1,
+        updatedAt: fact.updatedAt ?? 0, factKey: field.factKey, kind: field.kind, label: field.label };
+      continue;
+    }
     identity[field.canonical] = {
       value: fact.value,
       confidence: fact.confidence ?? 1,
@@ -86,6 +96,10 @@ export function getIdentity(ownerId) {
       factKey: field.factKey,
       kind: field.kind,
       label: field.label,
+      // The user's later word on it ("I resigned from Hartwell"): same fact, same note as the profile.
+      ...(fact.laterWord?.text ? { laterWord: fact.laterWord } : {}),
+      // Said unsure ("I think I work at…"): authoritative only as what they said.
+      ...(fact.metadata?.hedged ? { hedge: hedgeNote(fact) } : {}),
     };
   }
   return identity;
@@ -132,9 +146,14 @@ export function formatIdentityBlock(identity, { fields = null } = {}) {
     if (wanted && !wanted.has(canonical)) continue;
     const entry = identity[canonical];
     if (!entry) continue;
-    lines.push(`- ${entry.label}: ${displayValue(canonical, entry.value)}`);
+    if (entry.ended) {
+      lines.push(`- ${entry.label}: none current (previously: ${displayValue(canonical, entry.previous)} — they said: "${String(entry.ended.text).slice(0, 140)}")`);
+      continue;
+    }
+    lines.push(`- ${entry.label}: ${displayValue(canonical, entry.value)}${laterWordNote(entry.laterWord)}${entry.laterWord?.text ? '' : (entry.hedge ?? '')}`);
   }
   if (!lines.length) return '';
+  const changed = order.some(c => (!wanted || wanted.has(c)) && (identity[c]?.laterWord?.text || identity[c]?.hedge));
 
   return [
     '--- IDENTITY (user-stated, authoritative — this is who the user is) ---',
@@ -142,6 +161,7 @@ export function formatIdentityBlock(identity, { fields = null } = {}) {
     'These are durable, user-confirmed identity facts. Answer questions about the',
     "user's name, role, company, and location directly and confidently from this —",
     'never claim you do not know them.',
+    ...(changed ? [SINCE_CHANGED_RULE] : []),
     '--- END IDENTITY ---',
   ].join('\n');
 }

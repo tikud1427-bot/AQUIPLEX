@@ -69,6 +69,18 @@ const normalizeCity = normalizeCountry;
 
 // ── Validators ────────────────────────────────────────────────────────────────
 const validateName = (v) => typeof v === 'string' && v.length >= 2 && v.length <= 60 && /^[A-Za-zÀ-ÿ\s'-]+$/.test(v);
+// "I'm X" names the user only when X is written as a name (2026-10-29). The
+// stop-list cannot enumerate every adjective: "I'm colorblind, so charts with
+// red and green confuse me" stored name=Colorblind, OVERWRITING "Oskar", and
+// the prompt then called it user-stated and authoritative. A writer who
+// capitalises nothing gives no casing evidence ("hi i'm chhanda"), so there
+// the stop-list alone decides, as before.
+const introName = (m) => {
+  const value = String(m[1] ?? '').trim();
+  const written = /\p{Lu}/u.test(value[0] ?? '');
+  const caseless = !/\p{Lu}/u.test(String(m.input ?? ''));
+  return written || caseless ? value : null;
+};
 const validateShort = (min, max) => (v) => typeof v === 'string' && v.length >= min && v.length <= max;
 // A language slot holds a PROGRAMMING LANGUAGE. "I hate X" / "I love X" are
 // the patterns that fill it, and they match any word: the validator accepted
@@ -131,7 +143,8 @@ export const MEMORY_SCHEMA = [
       // name tokens; each SUBSEQUENT token is guarded against connectors/
       // prepositions so "I'm Chhanda from Assam" still stops at "Chhanda" and
       // never absorbs "from Assam".
-      { regex: /\bi(?:'m| am) (?!(?:a|an|the|from|in|at|on|going|trying|planning|hoping|aiming|not|no|so|just|also|very|really|now|currently|actually|here|there|sure|fine|okay|ok|well|still|good|great|glad|happy|sad|sorry|tired|busy|free|back|ready|done|new|old|late|early|lost|stuck|confused|curious|interested|afraid|excited|serious|right|wrong|kidding|joking|all|too|quite|pretty|almost|about|only|way|kind|sort)\b)(?!\w*ing\b)([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{2,}(?:\s(?!(?:and|but|from|in|at|by|with|for|to|of|on|as|is|who|the|a|an)\b)[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,3})(?:\s*[,.!?]|$|\s+(?:and|but|from|in|at|by|who|is|the|of)\b)/i, group: 1, reason: 'intro' },
+      { regex: /\bi(?:'m| am) (?!(?:a|an|the|from|in|at|on|going|trying|planning|hoping|aiming|not|no|so|just|also|very|really|now|currently|actually|here|there|sure|fine|okay|ok|well|still|good|great|glad|happy|sad|sorry|tired|busy|free|back|ready|done|new|old|late|early|lost|stuck|confused|curious|interested|afraid|excited|serious|right|wrong|kidding|joking|all|too|quite|pretty|almost|about|only|way|kind|sort)\b)(?!\w*ing\b)([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{2,}(?:\s(?!(?:and|but|from|in|at|by|with|for|to|of|on|as|is|who|the|a|an)\b)[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,3})(?:\s*[,.!?]|$|\s+(?:and|but|from|in|at|by|who|is|the|of)\b)/i, group: 1, reason: 'intro',
+        transform: introName },
       { regex: /^(?:hi|hey|hello|yo|greetings)?[,!.\s]*this is ([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]{2,}(?:\s(?!(?:and|from|at|the|a|an|of|who|is)\b)[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'-]+){0,3})(?:\s*[,.!?]|$|\s+(?:and|from|at|who|is)\b)/i, group: 1, reason: 'this_is', confidence: 0.85 },
     ], normalizer: normalizeName, validator: validateName, multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 10, baseConfidence: 0.98, retrievalHints: ['name', 'called', 'who am i'] },
   // v4 (Cognitive Identity): preferred_name is a DISTINCT field from the legal
@@ -217,6 +230,17 @@ export const MEMORY_SCHEMA = [
       { regex: /i work (?:as [A-Za-z\s'-]+? )?(?:at|for) ([A-Za-z][A-Za-z0-9\s&.'-]+?)(?:\s*[,.!?]|$)/i, group: 1, reason: 'work_at' },
       { regex: /i(?:'m| am) (?:a|an) [A-Za-z\s-]+? at ([A-Za-z][A-Za-z0-9\s&.'-]+?)(?:\s*[,.!?]|$)/i, group: 1, reason: 'role_at_org', confidence: 0.85 },
       { regex: /i(?:'m| am) (?:employed at|working at|based at) ([A-Z][A-Za-z0-9\s&'-]+?)(?:\s*[,.]|$)/i, group: 1, reason: 'employed_at' },
+      // "My company is Northbeam" is the organisation the user belongs to — the
+      // identity card's Company — not something they are building. It sat in the
+      // project patterns, so "Actually, my company is Northbeam" filed Northbeam
+      // as a project and left the workplace saying Fintrail (2026-11-04). What a
+      // founder builds is still a project: "I founded / I'm building / my startup
+      // is". The name must be written as one (capitalised), which keeps "my
+      // company is hiring" and "my company is small" out.
+      { regex: /\b[Mm]y (?:company|employer|workplace|firm)(?: is|'s)(?: called| named)? ([A-Z][A-Za-z0-9&.'-]*(?:\s+(?:[A-Z0-9][A-Za-z0-9&.'-]*|&|of|and)){0,4})/, group: 1, reason: 'my_company', confidence: 0.9,
+        transform: (m) => m[1].replace(/\s+(?:and|of|&)$/i, '').replace(/[.]+$/, '').trim() || null },
+      // Appositive: "My company, Northbeam, is based in Denver" (the city is the company's, not the user's).
+      { regex: /\b[Mm]y (?:company|employer|firm),\s+([A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Z0-9][A-Za-z0-9&.'-]*){0,3}),/, group: 1, reason: 'my_company_appositive', confidence: 0.88 },
     ], normalizer: normalizeTrim, validator: validateWords(1, 8), multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 7, baseConfidence: 0.88, retrievalHints: ['workplace', 'company', 'employer'] },
   { category: CATEGORIES.IDENTITY, key: 'relationship_status', aliases: ['marital_status'], patterns: [
       { regex: /my (?:wife|husband|spouse) (?:is |'s )?[A-ZÀ-ÿ]/i, reason: 'has_spouse', transform: () => 'married' },
@@ -330,8 +354,10 @@ export const MEMORY_SCHEMA = [
   // produced ZERO candidates — no schema keys existed for any of them.
   { category: CATEGORIES.PROJECTS, key: 'project', aliases: ['projects', 'startup', 'product'], patterns: [
       { regex: /i(?:'m| am) (?:building|working on|developing|creating|making|shipping) ([A-Za-zÀ-ÿ0-9][\w .'-]{1,40}?)(?:\s*[,.!?]|$|\s+(?:with|using|for|in|and|that|which|to)\b)/i, group: 1, reason: 'building', confidence: 0.9,
-        transform: (m) => m[1].replace(/^(?:a|an|the|my|our|this|that|some)\s+/i, '').trim() || null },
-      { regex: /my (?:startup|project|company|product|app|platform|saas) is (?:called |named )?([A-Za-zÀ-ÿ0-9][\w .'-]{1,40}?)(?:\s*[,.!?]|$|\s+(?:and|which|that)\b)/i, group: 1, reason: 'my_project', confidence: 0.92 },
+        // "an app called Tidepool" → "Tidepool": the name is what follows "called".
+        transform: (m) => m[1].replace(/^(?:a|an|the|my|our|this|that|some)\s+/i, '').replace(/^(?:[\w-]+\s+){0,2}(?:called|named)\s+/i, '').trim() || null },
+      // `company` moved to workplace (above); "our product is called X" is the same claim as "my product is X".
+      { regex: /(?:my|our) (?:startup|project|product|app|platform|saas) is (?:called |named )?([A-Za-zÀ-ÿ0-9][\w .'-]{1,40}?)(?:\s*[,.!?]|$|\s+(?:and|which|that)\b)/i, group: 1, reason: 'my_project', confidence: 0.92 },
       // `at`/`for` added to the boundary set. Without them, "I run product at
       // Nummo" captured the whole phrase "product at Nummo" as a project name,
       // which then rendered on the understanding card as something the user was
@@ -354,7 +380,21 @@ export const MEMORY_SCHEMA = [
         transform: (m) => ({ profession: m[1] ? 'Co-founder' : 'Founder', workplace: m[2].trim() }) },
     ], normalizer: normalizeTrim, validator: () => true, multiValue: false, conflictPolicy: CONFLICT_POLICIES.OVERWRITE, importance: 8, baseConfidence: 0.9, retrievalHints: ['founded', 'founder'] },
   { category: CATEGORIES.PREFERENCES, key: 'preference', aliases: ['prefers'], patterns: [
-      { regex: /i prefer ([\w][\w\s,'&.-]{2,60}?)(?:\s+(?:over|to|rather|instead)\b|\s*[,.!?]|$)/i, group: 1, reason: 'prefer', confidence: 0.88 },
+      // PREFERENCES AS SAID (2026-11-02). The capture stopped at the first comma
+      // ("I prefer long, detailed answers" → "long"), missed "I NOW prefer",
+      // and dropped the context the preference holds in ("For emails, I prefer
+      // a warm tone" → "a warm"). It now runs to the end of the clause, keeps a
+      // scope ("(for emails)"), and a one-time wish — "this time", "right now",
+      // "today" — is not a stable preference at all.
+      { regex: /(?:\b(for|when|in|on|at|with)\s+([\w\s'-]{2,30}?),\s+)?\bi\s+(?:now\s+|really\s+|also\s+|generally\s+|usually\s+|still\s+|actually\s+)*prefer\s+([\w][^.!?;]{2,80}?)(?=\s+(?:over|rather than|instead of)\b|\s*[.!?;]|$)/i, group: 3, reason: 'prefer', confidence: 0.88,
+        transform: (m) => {
+          if (/\b(?:this time|right now|today|tonight|for now|at the moment|for this (?:one|answer|chat|conversation))\b/i.test(m.input ?? '')) return null;
+          let v = m[3].trim();
+          let scope = m[1] ? `${m[1]} ${m[2].trim()}` : null;
+          const tail = v.match(/\s+((?:for|when|in|on|at|with)\s+(?:emails?|meetings?|work|code|coding|reports?|slides?|weekends?|mornings?|evenings?|travel|calls?|presentations?|[\w-]+ (?:projects?|clients?|emails?|reports?)))$/i);
+          if (!scope && tail) { scope = tail[1]; v = v.slice(0, -tail[0].length).trim(); }
+          return scope ? `${v} (${scope.toLowerCase()})` : v;
+        } },
       { regex: /i always use ([\w][\w\s.'#+-]{1,40}?)(?:\s*[,.!?]|$|\s+(?:for|when|because)\b)/i, group: 1, reason: 'always_use', confidence: 0.9 },
     ], normalizer: normalizeTrim, validator: validateShort(2, 70), multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 7, baseConfidence: 0.88, retrievalHints: ['prefer', 'preference', 'always use'] },
   { category: CATEGORIES.PREFERENCES, key: 'likes', patterns: [
@@ -363,7 +403,7 @@ export const MEMORY_SCHEMA = [
     ], normalizer: normalizeLower, validator: validateShort(3, 50), multiValue: true, conflictPolicy: CONFLICT_POLICIES.MERGE_COLLECTION, importance: 4, baseConfidence: 0.75, retrievalHints: ['like', 'love', 'enjoy'] },
 
   { category: CATEGORIES.GOALS, key: 'goal', aliases: ['goals', 'ambitions'], patterns: [
-      { regex: /my (?:goal|ambition|dream) is (?:to )?(.+?)(?:\s*[,.]|$)/i, group: 1, reason: 'goal_is' },
+      { regex: /(?:my|our) (?:goal|ambition|dream) is (?:to )?(.+?)(?:\s*[,.](?!\d)|$)/i, group: 1, reason: 'goal_is' },   // not the comma in "10,000"
       // v3 (Extraction Audit): the ONLY goal pattern was "my goal is" — every
       // natural phrasing produced zero candidates. Verb-anchored so "I want
       // to know the time" stays out while durable ambitions land.
