@@ -29,8 +29,10 @@
 import { transition } from './knowledgeLifecycle.js';
 import { reasoningBoost } from './reasoningFeedback.js';
 import {
-  analyseQuestion, factAffinity, statementPolarity, MIN_AFFINITY,
+  analyseQuestion, factAffinity, statementPolarity, MIN_AFFINITY, contentTerms, hasAcronym,
 } from './questionShape.js';
+import { continues, specificityOver, stem, tokens as transitionTokens } from '../understanding/stateTransition.js';
+import { reviewPhrase } from '../memory/displayLabels.js';
 
 const TEMPORAL_CUE = /\b(when|before|after|timeline|first|then|earlier|later|history|sequence|order of|chronolog)\b/i;
 
@@ -172,6 +174,9 @@ const MAX_SELF_ANCHORED = 5;
  */
 const POLARITY_LANE_SCAN = 200;
 
+/** Lane 7 (continuation): facts added per question. It reads Lane 5's scan — one bounded read per turn. */
+const MAX_CONTINUATIONS = 2;
+
 /**
  * Cosine below which the dense lane will not even propose a candidate.
  *
@@ -291,7 +296,41 @@ export function retrieveKnowledge(deps, ownerId, query, { limit = 8, charBudget 
   //
   // This CANNOT suppress the self-anchored results — those arrive via lane 3's
   // `about` hop, which never consults the haystack. Pinned by a test.
+  // The owner's newest facts, read at most once per turn: Lanes 1b, 5 and 7
+  // scan the same bounded window.
+  let scanned = null;
+  const scanFacts = () => (scanned ??= ES.listFacts(ownerId, { limit: POLARITY_LANE_SCAN }));
+
   const rawHits = ER.retrieveGroundedFacts(ES, ownerId, query, { limit: limit * 2 });
+
+  // ── Lane 1b: the question's words in another form ───────────────────────
+  //
+  // Lane 1 matches substrings of the question's own words, so "What's blocking
+  // the round now?" could not propose "Now the main blocker is that the
+  // investor wants a board seat", and a two-letter "TA" is dropped before
+  // matching at all (vocabulary-continuity.dev.v1). The frozen lexical
+  // retriever is asked again with the words' stems (only where a stem differs
+  // and keeps five letters), and an acronym is found AS WRITTEN in the bounded
+  // scan. Everything proposed here faces the same gate: the gate's word
+  // boundary is what keeps "block" from "blockchain".
+  {
+    const seen = new Set(rawHits.map(h => h.fact.id));
+    const words = contentTerms(query);
+    const bases = [...new Set(words.map(stem))].filter(b => b.length >= 5 && !words.includes(b));
+    if (bases.length) {
+      for (const h of ER.retrieveGroundedFacts(ES, ownerId, bases.join(' '), { limit: limit * 2 })) {
+        if (!seen.has(h.fact.id)) { seen.add(h.fact.id); rawHits.push(h); }
+      }
+    }
+    if (shape.acronyms?.length) {
+      for (const fact of scanFacts()) {
+        if (seen.has(fact.id) || fact.archived || !shape.acronyms.some(a => hasAcronym(fact.statement, a))) continue;
+        seen.add(fact.id);
+        const evidence = ES.evidenceForFact(ownerId, fact.id);
+        rawHits.push({ fact, evidence, citations: evidence.map(deps.formatCitation), confidence: fact.confidence, score: fact.confidence ?? 0.5 });
+      }
+    }
+  }
   const factHits = selfLabel
     ? rawHits.filter(h => earnedBeyondSelf(query, h?.fact, selfLabel))
     : rawHits;
@@ -454,7 +493,7 @@ export function retrieveKnowledge(deps, ownerId, query, { limit = 8, charBudget 
   const polarityCandidates = [];
   let polarityScanned = 0;
   if (shape.polarity === 'negated') {
-    for (const fact of ES.listFacts(ownerId, { limit: POLARITY_LANE_SCAN })) {
+    for (const fact of scanFacts()) {
       polarityScanned++;
       if (statementPolarity(fact) !== 'negated') continue;
       if (seenFactIds.has(fact.id)) continue;
@@ -658,7 +697,87 @@ export function retrieveKnowledge(deps, ownerId, query, { limit = 8, charBudget 
     admitted.push({ ...h, score: s, feedbackBoost: boost, relevance: rel });
   }
 
-  const scored = admitted.sort((a, b) => b.score - a.score).slice(0, limit);
+  const ranked = admitted.sort((a, b) => b.score - a.score).slice(0, limit);
+
+  // ── Lane 7: continuation — the later word on an admitted fact ──────────────
+  //
+  // "Is anything still blocking the San Antonio opening?" admits "Now the San
+  // Antonio opening is blocked by a zoning permit" on its words. "The zoning
+  // permit came through" shares none of them, so no lane above proposes it and
+  // the block reads as if the blocker stood (dev sets 2026-11-02, ranked: the
+  // old statement without its later one on 20.4% of change questions).
+  //
+  // This lane does not widen what the QUESTION reaches — it runs after the
+  // gate, only from facts the gate admitted, and an unanswerable question that
+  // admitted nothing gets nothing. It follows an admitted fact to a LATER fact
+  // that continues it (understanding/stateTransition.js: announces a
+  // transition and shares a specific word that is not the question's own, or
+  // was stored as `continues` it). At most MAX_CONTINUATIONS, newest first per
+  // fact. Nothing is hidden: both are rendered, oldest → newest, under the
+  // order note, and the earlier one stays answerable for "what was it before".
+  // Scans like Lane 5, and counts it.
+  const continuation = [];
+  let continuationScanned = 0;
+  if (ranked.length) {
+    const pool = scanFacts().filter(f => !f.archived && !f.supersededBy && typeof f.statement === 'string');
+    continuationScanned = pool.length;
+    const specific = specificityOver(pool.map(f => f.statement));
+    const exclude = new Set(transitionTokens(query));
+    const later = (f, h) => (f.createdAt ?? 0) > (h.fact.createdAt ?? 0);
+    const linked = (f, h, opts) => f.continues === h.fact.id || !!continues(f.statement, h.fact.statement, opts);
+    // EVERY admitted fact a later one continues, not the first: the Context
+    // Engine re-selects, and a continuation tied to one predecessor that lost
+    // its seat there had nothing left to sit beside.
+    const continuedBy = (f, opts) => ranked.filter(h => h.fact.id !== f.id && later(f, h) && linked(f, h, opts)).map(h => h.fact.id);
+    const taken = new Set(ranked.map(h => h.fact.id));
+    // A later word ANOTHER lane already admitted is tagged, not added: the
+    // Context Engine seats a continuation beside what it continues
+    // (assembler.js), and an untagged one competes on the question's words
+    // alone — which is how "the zoning permit came through", admitted here
+    // lexically, still lost its seat. Between two ADMITTED facts the question's
+    // words count as shared subject ("Berlin Marathon" in "training for the
+    // Berlin Marathon" → "pulling out of the Berlin Marathon"): excluding them
+    // guards against reaching new facts on the question's say-so, and nothing
+    // new is reached here.
+    for (const other of ranked) {
+      const of = continuedBy(other.fact, { specific });
+      if (of.length) other.continuationOf = of;
+    }
+    // THE LATER WORD RANKS ABOVE WHAT IT CONTINUES (2026-11-02). The block
+    // tells the model "the later one is the current state"; the ranker did
+    // not apply that rule. "Growth is my top priority this quarter" matched
+    // both words of "What is my top priority?" and "Growth is no longer the
+    // priority — retention is" one, so the replaced value led the block
+    // (capture-core supersede-priority). Oldest first, so a chain carries
+    // (A → B → C). Not for a question about the past: there the earlier
+    // statement IS the answer.
+    if (shape.currency !== 'past') {
+      const byId = new Map(ranked.map(h => [h.fact.id, h]));
+      for (const other of [...ranked].sort((a, b) => (a.fact.createdAt ?? 0) - (b.fact.createdAt ?? 0))) {
+        const over = Math.max(-Infinity, ...(other.continuationOf ?? []).map(id => byId.get(id)?.score ?? -Infinity));
+        if (over >= other.score) other.score = over + 1e-3;
+      }
+      ranked.sort((a, b) => b.score - a.score);
+    }
+    for (const h of ranked) {
+      if (continuation.length >= MAX_CONTINUATIONS) break;
+      for (const f of pool) {
+        if (taken.has(f.id) || !later(f, h)) continue;
+        const shared = f.continues === h.fact.id ? [] : continues(f.statement, h.fact.statement, { specific, exclude });
+        if (!shared) continue;
+        taken.add(f.id);
+        const evidence = ES.evidenceForFact(ownerId, f.id);
+        continuation.push({
+          fact: f, evidence, citations: evidence.map(deps.formatCitation), confidence: f.confidence,
+          // Ranked with what it continues; its relevance IS that fact's.
+          score: h.score, relevance: h.relevance, feedbackBoost: 0, continuationOf: continuedBy(f, { specific, exclude }),
+          via: shared.length ? `continuation: later on "${shared[0]}"` : 'continuation: stored link',
+        });
+        break;
+      }
+    }
+  }
+  const scored = [...ranked, ...continuation];
 
   // ── Lane 4: timeline, only when the question is temporal ───────────────────
   let timelineEvents = [];
@@ -677,7 +796,12 @@ export function retrieveKnowledge(deps, ownerId, query, { limit = 8, charBudget 
       id: h.fact.id, statement: h.fact.statement,
       confidence: h.fact.confidence,
       trusted: !!h.fact.trusted, disputed: !!h.fact.disputed, stale: !!h.fact.stale,
+      ...(h.fact.review?.text ? { review: h.fact.review } : {}),
       citations: h.citations, via: h.via ?? 'lexical', score: round3(h.score),
+      // When it was said or added — the Context Engine orders by it (assembler renderBlock).
+      timestamp: h.fact.createdAt ?? null,
+      // The earlier admitted facts this one is the later word on (Lane 7).
+      ...(h.continuationOf ? { continuationOf: h.continuationOf } : {}),
     })),
     ...entityMatches.map(em => ({
       kind: 'entity', epistemic: 'derived',
@@ -702,6 +826,8 @@ export function retrieveKnowledge(deps, ownerId, query, { limit = 8, charBudget 
     // question is not negated, which is what makes the lane's cost auditable
     // rather than amortised into a duration nobody reads.
     polarityScanned,
+    continuationFacts: continuation.length,
+    continuationScanned,
     timelineEvents: timelineEvents.length,
     reusedSignals: scored.filter(h => h.feedbackBoost !== 0).length,
     durationMs: Date.now() - started,
@@ -738,9 +864,19 @@ function renderBlock({ scored, entityMatches, timelineEvents, charBudget }) {
     : 'verified across your files';
   const lines = [`── CONNECTED KNOWLEDGE (${scope}) ──`];
 
-  for (const h of scored) {
+  // OLDEST → NEWEST WHEN IT SAYS SOMETHING (2026-10-29): the same rule as the
+  // Context Engine's block (brain/contextEngine/assembler.js renderBlock). In
+  // relevance order and undated, "plays on Saturdays" and "switched to Sundays"
+  // read as a dispute, not an update. Facts said on one day keep relevance order.
+  // Ordered, not dated: a printed date was quoted back as the event's date.
+  const day = h => { const d = h.fact.createdAt ? new Date(h.fact.createdAt) : null; return d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null; };
+  const spansDays = new Set(scored.map(day).filter(Boolean)).size >= 2;
+  const ordered = spansDays ? [...scored].sort((a, b) => (a.fact.createdAt ?? 0) - (b.fact.createdAt ?? 0)) : scored;
+  if (spansDays) lines.push('Statements below are listed oldest → newest. When two statements about the same thing conflict, the later one is the current state unless it is marked disputed.');
+  for (const h of ordered) {
     const cite = h.citations?.[0] ? ` [${h.citations[0]}]` : '';
-    const flags = [h.fact.trusted && 'trusted', h.fact.disputed && 'disputed — treat as contested', h.fact.stale && 'stale']
+    const flags = [h.fact.trusted && 'trusted', h.fact.disputed && 'disputed — treat as contested', h.fact.stale && 'stale',
+      h.fact.review?.text && reviewPhrase(h.fact.review)]
       .filter(Boolean).join(', ');
     lines.push(`• ${h.fact.statement}${cite} (confidence ${fmt(h.fact.confidence)}${flags ? `; ${flags}` : ''})`);
   }

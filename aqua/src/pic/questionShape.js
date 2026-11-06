@@ -56,8 +56,11 @@
  * those instead of the surface — `offeredKinds` already prefers a typed entity
  * from the graph over its own regex, so that path is a swap, not a rewrite.
  *
- * Pure. No I/O, no state, no imports.
+ * Pure. No I/O, no state. One import: the shared pure stemmer and acronym
+ * reader (understanding/stateTransition.js), so "blocker"/"blocking" are one
+ * word here and in recall alike.
  */
+import { stem, acronymsIn } from '../understanding/stateTransition.js';
 
 /**
  * Category nouns → the kind of answer a question containing them expects.
@@ -222,6 +225,12 @@ const SELF_TOKEN_RE = /(?:^|[^\p{L}])(?:i|i'?m|i'?ve|i'?d|my|mine|myself|me)(?:[
 /** …and asking it as a QUESTION. A statement is not a request for retrieval. */
 const INTERROGATIVE = /^(?:so\s+|and\s+|but\s+|ok(?:ay)?[,\s]+|hey[,\s]+)*(?:what|when|where|which|who|whom|whose|why|how|is|are|was|were|do|does|did|can|could|should|would|will|have|has|had|am|remind|tell)\b/i;
 
+/** "Can you run…", "would you please write…": the verb a request asks AQUA to perform. */
+const ADDRESSED_VERB = /^(?:(?:so|and|but|ok(?:ay)?|hey|please)[,\s]+)*(?:can|could|will|would|won'?t|wouldn'?t|do|did|should|shall)\s+you\s+(?:please\s+|just\s+|also\s+|quickly\s+|maybe\s+)?(\p{L}+)/iu;
+
+/** "my own" / "your own" …: the intensifier, not the verb (see analyseQuestion). */
+const POSSESSIVE_OWN = /\b(?:my|your|our|his|her|its|their)\s+own\b/giu;
+
 /** Tokens of substance, ≥3 chars, stopwords removed. */
 export function contentTerms(text) {
   return [...new Set((String(text ?? '').toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? [])
@@ -274,6 +283,24 @@ export function analyseQuestion(query) {
   // See WORK_VERB: the verb sense types the answer; it must not also be matched
   // as a word, or every NOUN `work` in the store becomes a perfect answer.
   if (WORK_VERB.test(q)) shape.terms = shape.terms.filter(t => !WORK_WORD.test(t));
+  // The ASSISTANT'S verb (2026-10-29). In "Can you run your tests?" `run` is
+  // what AQUA is asked to do, not something the user does, so it matches
+  // nothing the user said: it handed "I run product at Nummo" to a request
+  // about the assistant (dev q147; q136, q149 on `write`). The objects stay
+  // terms — "Can you write me a python script?" may still reach Python.
+  const addressed = q.match(ADDRESSED_VERB);
+  if (addressed) {
+    shape.addressedVerb = addressed[1].toLowerCase();
+    shape.terms = shape.terms.filter(t => t !== shape.addressedVerb);
+  }
+  // POSSESSIVE "own" (2026-11-06). After my / your / our / his / her / its /
+  // their, "own" is an intensifier ("your own bug" = your bug), not the verb
+  // OWN. Kept as a term, it handed "I no longer own the parser" to "Can you fix
+  // your own bug?" (dev q143) once the assistant's verb left the terms. Only an
+  // `own` that EVERY time follows a possessive goes: "Who owns the parser?",
+  // "Do I own the parser?", "What do I no longer own?" keep it.
+  const owns = q.match(/\bown\b/giu)?.length ?? 0;
+  if (owns && owns === (q.match(POSSESSIVE_OWN)?.length ?? 0)) shape.terms = shape.terms.filter(t => t !== 'own');
 
   // Expectation. A category noun is more specific than the interrogative that
   // introduces it ("what is my company" is an org question, not a thing
@@ -294,7 +321,16 @@ export function analyseQuestion(query) {
   // question looked like it was about a subject the store had never heard of,
   // and the engine went silent on the one question the self-anchor was built
   // for. A word that types the answer is never also a topic.
+  //
+  // EXCEPT THE POSSESSOR (2026-10-29). In "my partner's birthday" only
+  // `birthday` types the answer; `partner` says WHOSE birthday — the topic.
+  // Recording both as cues left no topic at all, so kind alone could answer,
+  // and every claim with a person-shaped object was handed to a question the
+  // store cannot answer (dev q163: six unrelated claims). A possessed noun
+  // stays a topic term; "my manager's email" still reaches a known manager
+  // through the role anchor.
   for (const [noun, kind] of Object.entries(CATEGORY_NOUNS)) {
+    if (new RegExp(`\\b${noun}(?:'s|’s|s'|s’)\\s+[\\p{L}\\p{N}]`, 'u').test(lower)) continue;
     if (new RegExp(`\\b${noun}s?\\b`).test(lower)) {
       if (!shape.typed) { shape.expects = kind; shape.typed = true; }
       cues.add(noun);
@@ -339,6 +375,9 @@ export function analyseQuestion(query) {
    */
   shape.cues = [...cues];
   shape.topicTerms = shape.terms.filter(t => ![...cues].some(c => c.startsWith(t) || t.startsWith(c)));
+  // Upper-case acronyms as written ("TA", "CEO"), not already a 3+-letter
+  // term's lower-case twin. Matched case-sensitively (factAffinity).
+  shape.acronyms = acronymsIn(q).filter(a => !shape.terms.includes(a.toLowerCase()));
 
   return shape;
 }
@@ -542,7 +581,26 @@ function hasTerm(haystack, term) {
     : '';
   const t = escapeRe(term);
   const tail = term.length >= 4 ? '(?:e?[sd]|ing|ed|ion|s)?' : '';
-  return new RegExp(`(?:^|[^\\p{L}\\p{N}])(?:${t}${tail}${ies})(?:[^\\p{L}\\p{N}]|$)`, 'u').test(haystack);
+  // THE SAME WORD IN ANOTHER FORM (2026-11-02). The suffixes above only ever
+  // APPEND, so "What's blocking the round?" could not see "the blocker is a
+  // board seat". The term's stem (understanding/stateTransition.js, which
+  // folds -ing/-ed/-s and an agent -er) is tried with its inflections, only
+  // when at least five letters remain: "late" never reaches "later", and the
+  // word boundary keeps "block" out of "blockchain" and "ship" out of
+  // "relationship" (vocabulary-continuity.dev.v1 controls).
+  const base = stem(term);
+  const forms = base !== term && base.length >= 5 ? `|${escapeRe(base)}(?:ers?|ing|ed|e?s|e)?` : '';
+  return new RegExp(`(?:^|[^\\p{L}\\p{N}])(?:${t}${tail}${ies}${forms})(?:[^\\p{L}\\p{N}]|$)`, 'u').test(haystack);
+}
+
+/**
+ * An acronym from the question, matched AS WRITTEN: upper case, whole word, in
+ * the statement itself. Case is the signal — "the US" must not match "visited
+ * us" — and it is never expanded ("Who is my TA?" must not reach "tax
+ * advisor"). A clock time's "3 PM" is not the acronym PM.
+ */
+export function hasAcronym(statement, acr) {
+  return new RegExp(`(?<![\\p{L}\\p{N}]|\\d\\s)${acr}(?![\\p{L}\\p{N}])`, 'u').test(String(statement ?? ''));
 }
 const escapeRe = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -586,8 +644,16 @@ const ANCHOR_CREDIT = 0.6;
  */
 export function factAffinity(shape, fact, entityTypes = null, anchored = false, semantic = null) {
   const hay = ` ${String(fact?.statement ?? '')} ${(fact?.entities ?? []).join(' ')} `.toLowerCase();
-  const lexical = shape.terms.length
-    ? shape.terms.filter(t => hasTerm(hay, t)).length / shape.terms.length
+  // A WHEN word alone is not a match (2026-10-29): "Where did I holiday last
+  // summer?" matched "I switched from Python to Go last year" on `last`. When
+  // the question has a substantive term, at least one of those must match.
+  // Acronyms (2-letter ones never become `terms`) count as terms of their own.
+  const acronyms = shape.acronyms ?? [];
+  const matched = [...shape.terms.filter(t => hasTerm(hay, t)), ...acronyms.filter(a => hasAcronym(fact?.statement, a))];
+  const termCount = shape.terms.length + acronyms.length;
+  const substantive = termCount > shape.terms.filter(t => TEMPORAL_MODIFIERS.has(t)).length;
+  const lexical = termCount && (!substantive || matched.some(t => !TEMPORAL_MODIFIERS.has(t)))
+    ? matched.length / termCount
     : 0;
 
   const kinds = offeredKinds(fact, entityTypes);
@@ -619,8 +685,12 @@ export function factAffinity(shape, fact, entityTypes = null, anchored = false, 
   // so it was measured and declined.
   const sem = typeof semantic === 'number' ? semantic : null;
 
-  const topicSupported = shape.topicTerms.length === 0
-    || shape.topicTerms.some(t => hasTerm(hay, t));
+  // The same rule for the topic: `last` in "…last summer" accounts for nothing.
+  const topicTerms = shape.topicTerms.some(t => !TEMPORAL_MODIFIERS.has(t))
+    ? shape.topicTerms.filter(t => !TEMPORAL_MODIFIERS.has(t))
+    : shape.topicTerms;
+  const topicSupported = topicTerms.length === 0
+    || topicTerms.some(t => hasTerm(hay, t));
   const kindStrength = shape.typed && topicSupported ? (kinds.get(shape.expects) ?? 0) : 0;
   const kind = kindStrength > 0;
 

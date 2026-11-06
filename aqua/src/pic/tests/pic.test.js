@@ -404,6 +404,25 @@ describe('retrieval intelligence', () => {
     assert.deepEqual(RI.retrieveKnowledge(DEPS, OWNER, '').items, []);
     assert.deepEqual(RI.retrieveKnowledge(DEPS, 'user:ghost', 'anything').items, []);
   });
+
+  test('facts said on different days are listed oldest → newest (not dated) and carry their time to the Context Engine', () => {
+    // 2026-10-29: undated and in relevance order, a change read as a dispute.
+    const plan = seedUKO('plan.pdf');
+    const at = (statement, ts) => {
+      const ev = ES.saveEvidence(OWNER, createEvidence({ sourceFileId: plan.id, sourceFileName: 'plan.pdf', sourceType: 'document',
+        parser: 'test', extractionMethod: 'text-layer', location: { page: 1 }, snippet: statement }));
+      const fact = { ...createFact({ statement, entities: ['Kestrel'], evidence: [ev.id], confidence: 0.9 }), createdAt: ts };
+      ES.saveFact(OWNER, fact, { sourceFileId: plan.id });
+    };
+    at('The Kestrel launch moved to March 20', Date.UTC(2026, 8, 8));
+    at('The Kestrel launch is on February 2', Date.UTC(2026, 8, 1));
+    rebuildOwnerGraph({ evidenceStore: ES, ukoStore: US }, OWNER);
+    const out = RI.retrieveKnowledge(DEPS, OWNER, 'When is the Kestrel launch?');
+    assert.ok(out.block.indexOf('February 2') < out.block.indexOf('March 20'), out.block);
+    assert.match(out.block, /listed oldest → newest/);
+    assert.doesNotMatch(out.block, /2026-09-01/, 'ordered, not dated');
+    assert.ok(out.items.filter(i => i.kind === 'fact').every(i => typeof i.timestamp === 'number'));
+  });
 });
 
 // ═══ 6. Knowledge Health + Maintenance ═══════════════════════════════════════

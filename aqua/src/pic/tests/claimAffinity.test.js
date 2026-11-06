@@ -77,3 +77,33 @@ describe('claimAffinity — canonical relevance gate', () => {
     assert.equal(gate('Who owns the calendar sync?', repoShape).pass, true);
   });
 });
+
+describe('claimAffinity — possessors and when-words (2026-10-29)', () => {
+  const hired = claim('I hired two engineers in July.', 'employs', { kind: 'entity', label: 'two engineers' });
+  const standup = claim('I run the weekly standup', 'manages', { kind: 'entity', label: 'weekly standup' });
+
+  test('a possessed category noun is the topic, not a typing cue ("my partner\'s birthday")', () => {
+    // Both `partner` and `birthday` were typing cues, so the question had no
+    // topic left and kind alone answered it: every person-shaped claim passed.
+    const shape = analyseQuestion("What is my partner's birthday?");
+    assert.equal(shape.expects, 'time');
+    assert.deepEqual(shape.topicTerms, ['partner']);
+    assert.equal(gate("What is my partner's birthday?", hired).pass, false);
+    assert.equal(gate("What is my partner's birthday?", standup).pass, false);
+  });
+
+  test('a possessor the store knows still answers through its name', () => {
+    const maya = claim('Maya is my partner', 'related_to', { kind: 'entity', label: 'Maya' }, { subject: 'Maya', subjectType: 'person' });
+    assert.equal(gate("What is my partner's job?", maya).pass, true);
+    // Not possessive: `partner` still types the answer as a person.
+    assert.equal(analyseQuestion('Who is my partner?').expects, 'person');
+  });
+
+  test('a when-word alone earns no lexical credit ("Where did I holiday last summer?")', () => {
+    const moved = claim('I switched from Python to Go last year.', 'uses', { kind: 'entity', label: 'Go' });
+    assert.equal(gate('Where did I holiday last summer?', moved).pass, false);
+    // A substantive match alongside the when-word still counts.
+    const trip = claim('I spent last summer hiking in Norway', 'visited', { kind: 'entity', label: 'Norway' });
+    assert.equal(gate('Where did I go hiking last summer?', trip).pass, true);
+  });
+});
