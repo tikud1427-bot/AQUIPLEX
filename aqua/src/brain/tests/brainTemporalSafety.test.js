@@ -89,13 +89,28 @@ for (const tentative of ['Maybe the zoning permit will be approved soon.', 'The 
   });
 }
 
-// KNOWN GAP (outside this commit): a speculative later sentence that NAMES the
-// entity ("Maybe the San Antonio zoning permit will be approved soon.") is stored
-// as an ordinary fact and PIC Lane 7 (pic/retrievalIntelligence.js, via
-// stateTransition.continues) ranks it above the blocker like a resolution. The
-// fix is one guard in stateTransition.continues; it changes committed C1/C5 code
-// and is held for separate approval.
-test.todo('a speculative later sentence that names the entity does not outrank the blocker (Lane 7)');
+// A speculative later sentence that NAMES the entity is stored as an ordinary fact;
+// PIC Lane 7 (pic/retrievalIntelligence.js) used to link it through
+// stateTransition.continues and rank it above the blocker like a resolution.
+// continues() refuses a hedge (2026-11-06), so the blocker keeps first place —
+// while a stated outcome, named or not, is still the later word.
+const topFor = q => String((ask(q).items ?? [])[0]?.statement ?? '');
+for (const tentative of ['Maybe the San Antonio zoning permit will be approved soon.', 'The San Antonio zoning permit might be approved.']) {
+  test(`naming the entity does not make a hedge a resolution ("${tentative}")`, () => {
+    blocker();
+    say(tentative, 12);
+    assert.ok(factFor(/San Antonio zoning permit/), 'control: stored as an ordinary fact');
+    assert.match(topFor('Is anything still blocking the San Antonio opening?'), /blocked by a zoning permit/, 'the blocker ranks above the hedge');
+    assert.ok(!factFor(/blocked by a zoning permit/).supersededBy);
+  });
+}
+for (const outcome of ['The San Antonio zoning permit was approved.', 'The zoning permit came through.']) {
+  test(`a stated outcome is still the later word ("${outcome}")`, () => {
+    blocker();
+    say(outcome, 12);
+    assert.match(topFor('Is anything still blocking the San Antonio opening?'), /approved|came through/);
+  });
+}
 
 test('a continuation keeps its provenance: conversation evidence, its own time, its own turn', () => {
   blocker();

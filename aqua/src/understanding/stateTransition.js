@@ -347,9 +347,23 @@ function namesIn(text) {
  * being about the same thing) — one word for a strong continuation, two
  * otherwise. Returns the shared words, or null.
  */
+/**
+ * Hedges that speculative() leaves to its callers ("could be approved next month",
+ * "hopefully gets approved", "should come through"). Used ONLY to decide that a
+ * sentence does not continue another — so it can only ever link less. A stated
+ * failure ("could not get the permit") or a past regret ("should have filed") is
+ * not a hedge.
+ */
+const CONTINUATION_HEDGE = /\b(?:could|should|would)\b(?!\s*(?:not|n['’]?t|have)\b)|\bhopefully\b|\b(?:un)?likely\b|\bexpect(?:s|ed|ing)?\s+(?:it\s+|that\s+|them\s+)?to\b|\bfingers\s+crossed\b/i;
+
 export function continues(later, earlier, opts = {}) {
   const tr = transitionOf(later);
   if (!tr.marked) return null;
+  // A sentence that only CONSIDERS a change continues nothing (2026-11-06):
+  // "Maybe the San Antonio zoning permit will be approved soon." read as a
+  // resolution ("approved"), and PIC Lane 7 ranked it above the blocker it named
+  // for "is anything still blocking it?". A hedge is not a later fact.
+  if (speculative(later) || CONTINUATION_HEDGE.test(String(later ?? ''))) return null;
   const shared = sharedSubject(later, earlier, opts);
   if (shared.length >= 2 || (shared.length === 1 && strongContinuation(tr, transitionOf(earlier)))) return shared;
   // A state that ENDED, about the same NAMED thing: "I resigned from Hartwell"

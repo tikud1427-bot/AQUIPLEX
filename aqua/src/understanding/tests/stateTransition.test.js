@@ -178,3 +178,24 @@ describe('changeKind: a later word only when it is a stated fact (2026-11-02)', 
     assert.equal(speculative('Imran will be the engineering lead from now on.'), false);
   });
 });
+
+describe('a hedge continues nothing (2026-11-06)', () => {
+  const BLOCKER = 'Now the San Antonio opening is blocked by a zoning permit.';
+  test('speculative later statements, with or without the entity, do not continue the blocker', () => {
+    for (const s of ['Maybe the San Antonio zoning permit will be approved soon.', 'The San Antonio zoning permit might be approved.',
+      'The San Antonio zoning permit could be approved next month.', 'Hopefully the San Antonio zoning permit gets approved.',
+      'The San Antonio zoning permit should come through.', 'Maybe the zoning permit will be approved soon.']) {
+      assert.equal(continues(s, BLOCKER), null, s);
+    }
+  });
+  test('genuine outcomes and confirmed corrections still do', () => {
+    for (const s of ['The San Antonio zoning permit was approved.', 'The zoning permit came through.',
+      'Actually, the zoning permit is fine; it is the parking permit that is pending.', 'Correction: the zoning permit was approved in March, not April.']) {
+      assert.ok(continues(s, BLOCKER), s);
+    }
+  });
+  test('a stated failure or a past regret is not mistaken for a hedge', () => {
+    assert.ok(continues("We couldn't wait any longer, so the San Antonio zoning permit was withdrawn.", BLOCKER), 'a stated failure is not a hedge');
+    assert.ok(continues('We should have filed earlier, but the San Antonio zoning permit was approved.', BLOCKER), 'a past regret beside a stated outcome');
+  });
+});
