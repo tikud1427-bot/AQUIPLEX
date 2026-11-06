@@ -145,6 +145,7 @@ export function neighborhood(mind, startKey, depth = 2, maxNodes = 12) {
     const next = [];
     for (const key of frontier) {
       for (const edge of Object.values(g.edges)) {
+        if (edge.endedAt) continue;   // ended by a change the user stated (memory/propagation.js)
         const other = edge.from === key ? edge.to : edge.to === key ? edge.from : null;
         if (!other) continue;
         seenE.push(edge);

@@ -365,13 +365,18 @@ test('retrieval: rich mind → compact block with identity/goals/state/predictio
   updateWorkingMemory(mind, { userMessage: 'blocked on deploy pipeline', taskType: 'debugging', hints: { tech: ['docker'] } });
   rebuildPredictions(mind, { taskType: 'debugging' });
 
-  const { block, used } = retrieveCognitiveContext(mind, { query: 'help me fix the docker deploy', taskType: 'debugging' });
+  // 2026-11-05 (question-aware selection, cognitiveRelevance.test.js): a goal rides
+  // along when the question is about it; one the question never touches stays out.
+  const { block, used } = retrieveCognitiveContext(mind, { query: 'help me fix the docker deploy for the investor demo', taskType: 'debugging' });
   assert.match(block, /COGNITIVE MODEL/);
   assert.match(block, /founder/);
   assert.match(block, /investor demo/);
   assert.match(block, /blocked on/i);
   assert.ok(used.identity > 0 && used.goals > 0 && used.working > 0);
   assert.match(block, /treat as a hunch/, 'uncertainty guidance present');
+  const unrelated = retrieveCognitiveContext(mind, { query: 'help me fix the docker deploy', taskType: 'debugging' });
+  assert.doesNotMatch(unrelated.block, /investor demo/, 'a goal the question does not touch stays out');
+  assert.match(unrelated.block, /blocked on: deploy pipeline/, 'the blocker it does touch stays in');
 });
 
 test('retrieval: budget enforcement trims tail sections', () => {

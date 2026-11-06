@@ -92,6 +92,8 @@ export const GATES = Object.freeze([
   { name: 'AQUA_GRAPH', subsystem: 'orchestrator', dflt: 'off', reads: ON,
     note: 'gates POST /chat graph path AND POST /intelligence/orchestrate' },
   { name: 'AQUA_GRAPH_STRICT_TYPES', subsystem: 'reasoning', dflt: 'off', reads: ONE },
+  { name: 'AQUA_MIND_RELEVANCE', subsystem: 'mind', dflt: 'on', reads: "!== 'off'", inverted: true,
+    note: 'question-aware goals/deadlines/predictions in the cognitive block (mindRetriever questionScope). ON by default; =off is the rollback' },
   { name: 'AQUA_MIND_VIEW', subsystem: 'mind', dflt: 'off', reads: ONE },
   { name: 'AQUA_PARSE_WORKER', subsystem: 'upload', dflt: 'on', reads: "!== 'off'", inverted: true,
     note: 'ON by default' },

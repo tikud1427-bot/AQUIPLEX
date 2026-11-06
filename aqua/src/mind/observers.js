@@ -20,6 +20,7 @@
  */
 import { DIMENSIONS } from './mindSchema.js';
 import { uusEnabled } from '../understanding/flags.js';
+import { clauseWith } from '../understanding/stateTransition.js';
 
 // ── 1. Task-type → trait mapping ──────────────────────────────────────────────
 const TASK_TRAIT_MAP = {
@@ -72,7 +73,9 @@ const TECH_POST = new RegExp(
 // `go` to `python`, because `learn` sits between them.
 const TECH_JOIN = /^\s*(?:[+,/&]|and|or)\s*$/i;
 const FOUNDER_HINTS = /\b((?:my|our) (?:startup|company|cofounder|co-founder|investors?|product|platform|users|customers)|fundrais|pitch deck|investor (?:demo|meeting|pitch|update)|mvp|go.to.market|runway)\b/i;
-const DEADLINE_RE   = /\b(by|before|due|deadline|ship(ping)? (by|on)|launch(ing)? (by|on))\s+(tomorrow|tonight|today|this week|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|jun(e)?|jul(y)?|aug(ust)?|sep(tember)?|oct(ober)?|nov(ember)?|dec(ember)?|\d)/i;
+const DEADLINE_RE   = /\b(by|before|due(?: on)?|deadline|ship(ping)? (by|on)|launch(ing)? (by|on))\s+(?:(?:tomorrow|tonight|today|this week|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b\.?|\d)/i;
+// (The month names end at a word boundary since 2026-11-02: "before deciding"
+// was a deadline of "before dec", and "mar" would have matched "marathon".)
 const REJECT_FLASHY = /\b(too (flashy|busy|cluttered|noisy|much)|less is more|keep it (simple|clean|minimal)|simpler|cleaner|minimal(ist)?)\b/i;
 const WANTS_DETAIL  = /\b(explain in detail|deep dive|step by step|walk me through|thorough(ly)?|comprehensive)\b/i;
 const WANTS_BRIEF   = /\b(tl;?dr|be brief|short answer|quick(ly)? (answer|version)|just tell me|no fluff|concise)\b/i;
@@ -133,7 +136,7 @@ function techMentions(text) {
 }
 
 // ── 3. Fact bridge: schema facts → belief signals ─────────────────────────────
-const FACT_TO_BELIEF = {
+export const FACT_TO_BELIEF = {
   favorite_language:  (f) => ({ dimension: DIMENSIONS.PREFERENCES, key: 'primary_language',  value: f.value, strength: 0.9 }),
   languages:          (f) => ({ dimension: DIMENSIONS.KNOWLEDGE,   key: 'languages',          value: f.value, strength: 0.7 }),
   favorite_framework: (f) => ({ dimension: DIMENSIONS.PREFERENCES, key: 'frameworks',         value: f.value, strength: 0.8 }),
@@ -190,7 +193,8 @@ const EXPLICIT_MIN_CONFIDENCE = 0.8;
 function isExplicitDeclaration(fact) {
   return fact?.extractor === 'schema'
     && Number(fact?.confidence ?? 0) >= EXPLICIT_MIN_CONFIDENCE
-    && !fact?._isDuplicate;
+    && !fact?._isDuplicate
+    && !fact?.metadata?.hedged;   // "I think…" is not a declaration (candidateExtractor hedgeOf)
 }
 
 /**
@@ -222,10 +226,14 @@ export function observeTurn({ userMessage = '', taskType = 'conversation', extra
   } else if (len > 900) {
     signals.push({ dimension: DIMENSIONS.COMMUNICATION, key: 'message_style', value: 'detailed', strength: 0.3, note: `long message (${len} chars)`, conversationId });
   }
+  // A one-time ask ("just give me a short answer THIS TIME, I'm in a rush") is
+  // weak evidence of a lasting preference, not the preference (2026-11-02):
+  // it still counts, at a strength one request cannot turn into a belief.
+  const once = /\b(?:this time|right now|today|for now|in a (?:rush|hurry))\b/i.test(text);
   if (WANTS_BRIEF.test(text)) {
-    signals.push({ dimension: DIMENSIONS.COMMUNICATION, key: 'response_length', value: 'brief', strength: 0.75, note: 'asked for brevity', conversationId });
+    signals.push({ dimension: DIMENSIONS.COMMUNICATION, key: 'response_length', value: 'brief', strength: once ? 0.15 : 0.75, note: once ? 'asked for brevity once' : 'asked for brevity', conversationId });
   } else if (WANTS_DETAIL.test(text)) {
-    signals.push({ dimension: DIMENSIONS.COMMUNICATION, key: 'response_length', value: 'detailed', strength: 0.7, note: 'asked for depth', conversationId });
+    signals.push({ dimension: DIMENSIONS.COMMUNICATION, key: 'response_length', value: 'detailed', strength: once ? 0.15 : 0.7, note: once ? 'asked for depth once' : 'asked for depth', conversationId });
   }
 
   // 4. implicit design preference (the "rejects flashy UI" case, Layer 3)
@@ -252,8 +260,36 @@ export function observeTurn({ userMessage = '', taskType = 'conversation', extra
   }
 
   // 7. deadline hints → workingMemory (not a belief)
+  //
+  // THE WHOLE DATE, AND ONLY DATES (2026-11-02). The label was the regex match
+  // itself, which ends at the date's FIRST token: "launch on November 18"
+  // became "deadline: launch on November", "due December 15" became "due
+  // Dec". And a clock time matched the `\d` alternative, so "no study plan
+  // before 6 am" and "anything before 10 am is a no" became "deadline: before
+  // 6" and "deadline: before 1" — told to the answer model as the user's
+  // current state (dev sets: every one of 79 deadline lines named no date).
+  // The label now runs on through the day number (and year); a time of day,
+  // or a bare number that is not one, is not a deadline. And it is the user's
+  // CLAUSE, not the matched words: "deadline: due on February 14" did not say
+  // what was due — to the answer model, or to the later message that moves it
+  // ("my proposal deadline was extended to March 7", workingMemory.js).
   const dl = text.match(DEADLINE_RE);
-  if (dl) hints.deadlines.push({ label: dl[0].slice(0, 80), ts: null, source: 'message' });
+  if (dl) {
+    const rest = text.slice(dl.index + dl[0].length);
+    const dayFirst = /\d$/.test(dl[0]);
+    const tail = (dayFirst
+      ? rest.match(/^\d*(?:st|nd|rd|th)?(?:\s+(?:of\s+)?[a-z]+)?/i)
+      : rest.match(/^[a-z]*(?:\.(?=\s+\d))?(?:\s+\d{1,2}(?:st|nd|rd|th)?\b(?!\s*(?:am|pm|a\.m|p\.m|:))(?:,?\s+\d{4})?)?/i))?.[0] ?? '';
+    let label = clauseWith(text, `${dl[0]}${tail}`.toLowerCase());
+    // "I'm leading the Atlas migration at Fintrail; it's due on March 3" kept
+    // "it's due on March 3" — what is due was lost, to the answer model and to a
+    // later change that names it (memory/propagation.js). A clause that opens on
+    // a pronoun keeps the clause it refers to.
+    if (/^(?:it|it's|it’s|this|that|they|they're|these|those)\b/i.test(label)) label = clauseWith(text.replace(/;\s+/g, ', '), `${dl[0]}${tail}`.toLowerCase(), 120);
+    const clock = dayFirst && /^\d*(?:\s*(?:am|pm|a\.m|p\.m|o'?clock)\b|:\d)/i.test(rest);
+    const bareNumber = dayFirst && !/^\d*(?:st|nd|rd|th)?\s*(?:of\s+)?(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(rest);
+    if (!clock && !bareNumber) hints.deadlines.push({ label, ts: null, source: 'message' });
+  }
 
   // 8. FACT BRIDGE — reuse the proven extractor output as high-quality evidence
   const explicitAllowed = uusEnabled();

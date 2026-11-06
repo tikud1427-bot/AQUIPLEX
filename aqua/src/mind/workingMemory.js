@@ -8,6 +8,7 @@
  */
 import { CAPS } from './mindSchema.js';
 import { touchMind } from './mindStore.js';
+import { transitionOf, closes, datesIn, partAbout, clauseWith, speculative } from '../understanding/stateTransition.js';
 
 const FOCUS_HALF_LIFE_MS = 36 * 3600 * 1000;   // focus weight halves every 36h
 const LIST_TTL_MS        = 7 * 24 * 3600 * 1000; // blockers/discoveries/questions expire after 7d
@@ -27,6 +28,68 @@ function upsertList(list, text, now, cap) {
   if (hit) { hit.lastSeenAt = now; hit.count = (hit.count || 1) + 1; return; }
   list.push({ text: text.trim().slice(0, 100), addedAt: now, lastSeenAt: now, count: 1 });
   if (list.length > cap) list.splice(0, list.length - cap);
+}
+
+const HISTORY_CAP = 20;
+const clip = (s, n = 160) => { const t = String(s ?? '').replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
+const keep = (list, item) => { list.push(item); if (list.length > HISTORY_CAP) list.splice(0, list.length - HISTORY_CAP); };
+
+/**
+ * THE USER'S LATER WORDS ON WHAT IS ON THEIR PLATE (2026-11-02).
+ *
+ * Working memory only ever ADDED: a blocker left after seven days unmentioned,
+ * a deadline after fourteen, whatever the user said meanwhile. So "blocked on:
+ * a zoning permit" was the user's "Current state" after "the zoning permit came
+ * through", "deadline: launch on November" after "the launch moved to December
+ * 9", and "Likely needs unblocking on: Apple's review" after "Apple approved
+ * the app" — in every turn's prompt (dev sets: 8 of 36 users). And an OPEN
+ * blocker the user kept reporting ("still no word from the city") expired on
+ * the same clock.
+ *
+ * Applied before this turn's own additions, only on the user's own words:
+ *   · a message that CLOSES a listed blocker (resolution or ending, not negated
+ *     or hedged — understanding/stateTransition.js `closes`) and shares a
+ *     subject word with it moves it to `resolvedBlockers`, with when and what;
+ *   · "still no word on …" keeps a listed blocker open;
+ *   · a message that changes, corrects, ends or closes a listed deadline's
+ *     subject retires it to `pastDeadlines`; when it names a new date, that
+ *     clause, in the user's words, is the deadline now.
+ * Nothing is inferred into the state and nothing is deleted: the history
+ * lists keep every retired item with the message that retired it.
+ */
+function applyLaterWords(w, userMessage, now) {
+  const text = String(userMessage ?? '');
+  if (!text.trim() || !transitionOf(text).marked) return;
+
+  // Each item is judged on the part of the message ABOUT it: in "the cabinets
+  // arrived, but now the electrician is the bottleneck" the arrival closes the
+  // cabinets, not the electrician.
+  for (const b of [...w.blockers]) {
+    const about = partAbout(text, b.text);
+    if (!about || speculative(about)) continue;
+    const closing = closes(about);
+    if (!closing && transitionOf(about).stillOpen) { b.lastSeenAt = now; continue; }
+    if (!closing) continue;
+    w.blockers.splice(w.blockers.indexOf(b), 1);
+    keep(w.resolvedBlockers ??= [], { ...b, resolvedAt: now, resolvedBy: clip(text) });
+  }
+
+  for (const d of [...w.deadlines]) {
+    const about = partAbout(text, d.label);
+    if (!about || speculative(about)) continue;
+    const tr = transitionOf(about);
+    const closing = closes(about);
+    const dates = datesIn(about);
+    // A change that names no date and closes nothing ("now", "update") says
+    // nothing about WHEN — the deadline stands.
+    if (!closing && !((tr.changes || tr.corrects) && dates.length)) continue;
+    w.deadlines.splice(w.deadlines.indexOf(d), 1);
+    keep(w.pastDeadlines ??= [], { ...d, supersededAt: now, supersededBy: clip(text) });
+    if (dates.length && !closing) {
+      const label = clauseWith(about, dates[0]);
+      if (!w.deadlines.some(x => x.label === label)) w.deadlines.push({ label, ts: null, source: 'update', addedAt: now });
+    }
+  }
 }
 
 /**
@@ -60,6 +123,9 @@ export function updateWorkingMemory(mind, { userMessage = '', taskType = 'conver
     .slice(0, CAPS.WORKING_FOCUS)
     .map(({ _w, ...f }) => f);
 
+  // The user's later words on what is already listed, before this turn adds.
+  applyLaterWords(w, userMessage, now);
+
   // Deadlines from observer hints
   for (const d of hints.deadlines || []) {
     if (!w.deadlines.some(x => x.label === d.label)) {
@@ -73,8 +139,11 @@ export function updateWorkingMemory(mind, { userMessage = '', taskType = 'conver
   if (b?.[1]) upsertList(w.blockers, b[1], now, CAPS.WORKING_LIST);
   const d = userMessage.match(DISCOVERY_RE);
   if (d?.[2]) upsertList(w.recentDiscoveries, d[2], now, CAPS.WORKING_LIST);
+  // The user's clause, not the capture: `.{0,10}` after the cue ate into the
+  // next word, and "open question: hat.." / "ull overhaul" reached the prompt
+  // as the user's current state (dev sets, 2026-11-02).
   const q = userMessage.match(QUESTION_RE);
-  if (q?.[1]) upsertList(w.openQuestions, q[1], now, CAPS.WORKING_LIST);
+  if (q?.[1]) upsertList(w.openQuestions, clauseWith(userMessage, q[0].toLowerCase().slice(0, 20), 100), now, CAPS.WORKING_LIST);
 
   w.updatedAt = now;
   touchMind(mind);

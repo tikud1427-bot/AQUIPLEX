@@ -11,6 +11,8 @@ import { createGoal, GOAL_STATUS, CAPS, createTimelineEvent } from './mindSchema
 import { touchMind } from './mindStore.js';
 import { pushTimeline } from './timeline.js';
 import { splitCoordinated, listContinuation, isGoalLike, goalSimilarity, splitGoalTitle } from './goalText.js';
+import { transitionOf, closeKind, datesIn, subjectShared, partAbout, speculative, achieves, whenSaid, reportsDone } from '../understanding/stateTransition.js';
+import { splitClauses } from '../memory/sentenceParser.js';
 
 export { goalSimilarity, splitGoalTitle };
 
@@ -151,7 +153,10 @@ export function trackGoals(mind, { userMessage = '', extractedFacts = [], conver
   for (const f of extractedFacts) {
     if (f.key !== 'goal' || typeof f.value !== 'string') continue;
     for (const piece of splitCoordinated(f.value.trim())) {
-      if (isGoalLike(piece) && !titles.some(t => goalSimilarity(t, piece) >= 0.9)) titles.push(piece);
+      // A goal the user STATED ("My goal is to read twenty books") is a goal whatever its verb;
+      // the head filter exists for goals inferred from remarks ("I want to read about…").
+      const stated = f.pattern === 'goal_is' && piece.length >= 4 && piece.length <= 90 && !piece.endsWith('?');
+      if ((isGoalLike(piece) || stated) && !titles.some(t => goalSimilarity(t, piece) >= 0.9)) titles.push(piece);
     }
   }
 
@@ -163,6 +168,8 @@ export function trackGoals(mind, { userMessage = '', extractedFacts = [], conver
       existing.updatedAt = now;
       existing.confidence = Math.min(1, existing.confidence + 0.1);
       if (existing.status === GOAL_STATUS.STALE) existing.status = GOAL_STATUS.ACTIVE;
+      // Restated as it was: whatever changed it earlier is no longer the last word.
+      if (existing.changedBy) delete existing.changedBy;
       if (workspaceId && !existing.relatedProjects.includes(workspaceId)) existing.relatedProjects.push(workspaceId);
       changed.push(existing);
     } else {
@@ -179,10 +186,18 @@ export function trackGoals(mind, { userMessage = '', extractedFacts = [], conver
   // Status cues → only the goal this message names (see "Status cues" above).
   const cueTarget = () => referencedGoal(mind, titles, userMessage);
 
-  if (cueApplies(DONE_RE, userMessage)) {
-    const g = cueTarget();
+  // A completion cue counts only as the user reporting their own thing done, whole
+  // (stateTransition.reportsDone) — the keyword alone completed a goal for
+  // "Our competitor launched their product" and "I finished the first draft".
+  if (cueApplies(DONE_RE, userMessage) && splitClauses(userMessage).some(c => reportsDone(c, DONE_RE))) {
+    // The goal named in this same message ("…ship v2 — and we shipped it"); otherwise only a
+    // goal the achievement reader says was done (what was done to what: "I finished my third
+    // swimming lesson" is not "learn to swim"), never one found by shared words alone.
+    const read = titles.length ? null : achievedGoal(mind, userMessage, titles, changed);
+    const g = titles.length ? cueTarget() : read?.g ?? null;
     if (g && g.status !== GOAL_STATUS.COMPLETED) {
       g.history.push({ status: g.status, at: now, reason: 'completion cue' });
+      if (read) g.achievedBy = { text: userMessage.replace(/\s+/g, ' ').trim().slice(0, 160), clause: read.clause.slice(0, 160), at: now, when: whenSaid(read.clause) };
       g.status = GOAL_STATUS.COMPLETED;
       g.progress = 1;
       g.updatedAt = now;
@@ -210,8 +225,119 @@ export function trackGoals(mind, { userMessage = '', extractedFacts = [], conver
     }
   }
 
+  laterWordOnGoals(mind, userMessage, titles, now, changed);
+
   if (changed.length) touchMind(mind);
   return changed;
+}
+
+/* ── The user's later word on a goal (2026-11-02) ─────────────────────────────
+   Completion knew only "finished/shipped/launched…", so "The new driving
+   licence arrived" left "renew my driving licence before it expires in March"
+   an active goal, and "I changed my goal: a half marathon instead" left "run a
+   marathon" one — each told to the answer model as what the user is working
+   toward (dev sets: 6 of 36 users). Applied only when the message is about
+   ONE goal — two shared subject words, or one distinctive word (5+ letters)
+   no other open goal shares — and only on the user's own words:
+     · a resolution ("arrived", "came through", "sorted"), not negated → COMPLETED;
+     · an ending ("gave up", "cancelled", "no longer") → ABANDONED;
+     · a change ("changed my goal", or a NEW date for the same thing:
+       "Shipping slips to April 20" for "ship the first batch on March 3") →
+       the goal stays, carrying the message as `changedBy`; the title is never
+       rewritten (that would be inventing the new goal's wording).
+   Every change is recorded in the goal's history. */
+const GOAL_CHANGE_RE = /\b(?:changed|switched|changing|switching)\s+(?:my|our)\s+(?:goal|target|plan|priority|focus)\b|\b(?:goal|target|plan|priority) is now\b|\binstead of\b/i;
+const OPEN = new Set([GOAL_STATUS.ACTIVE, GOAL_STATUS.BLOCKED, GOAL_STATUS.STALE]);
+
+/** The message names a date and the goal a DIFFERENT one: "slips to April 20" for "… on March 3". */
+const reschedules = (message, title) => {
+  const now = datesIn(message), was = datesIn(title);
+  return now.length > 0 && was.length > 0 && !now.some(d => was.includes(d));
+};
+
+function goalTheMessageIsAbout(mind, message) {
+  const open = Object.values(mind.goals).filter(g => OPEN.has(g.status));
+  const hits = open.map(g => ({ g, shared: subjectShared(message, g.title) })).filter(h => h.shared.length);
+  const two = hits.filter(h => h.shared.length >= 2);
+  if (two.length === 1) return two[0].g;
+  if (two.length > 1) return null;   // ambiguous: touch nothing
+  if (hits.length !== 1) return null;
+  // One shared word: distinctive (5+ letters), or any word when the message
+  // gives the same thing a new date — the pair of dates is the evidence.
+  return hits[0].shared[0].length >= 5 || reschedules(message, hits[0].g.title) ? hits[0].g : null;
+}
+
+/**
+ * ACHIEVED (2026-11-04): the user reports the goal's outcome done — "I finally
+ * ran the half marathon", "I got the promotion", "We closed our seed round" —
+ * read per clause by the shared reader (understanding/stateTransition.js
+ * achieves: the user as subject, a past form of the goal's verb or a completion
+ * verb, the goal's object, not negated / planned / partial / sarcastic). Only
+ * when ONE open goal is the best match; a tie touches nothing. The goal is
+ * completed with the user's words and when they said it happened
+ * (`achievedBy`); its title and history stay. The profile's goal list follows
+ * through memory/propagation.js reconcileGoals.
+ */
+function achievedGoal(mind, message, titles, changed) {
+  const open = Object.values(mind.goals).filter(g => OPEN.has(g.status) && !(changed.includes(g) && titles.some(t => goalSimilarity(t, g.title) >= MATCH_THRESHOLD)));
+  let best = null, tie = false;
+  for (const clause of splitClauses(message)) {
+    for (const g of open) {
+      const a = achieves(clause, g.title);
+      if (!a) continue;
+      if (!best || a.coverage > best.a.coverage) { best = { g, a, clause }; tie = false; }
+      else if (a.coverage === best.a.coverage && best.g !== g) tie = true;
+    }
+  }
+  return best && !tie ? best : null;
+}
+
+function laterWordOnGoals(mind, message, titles, now, changed) {
+  const text = String(message ?? '');
+  const won = achievedGoal(mind, text, titles, changed);
+  if (won) {
+    const { g, clause } = won;
+    const clip = text.replace(/\s+/g, ' ').trim().slice(0, 160);
+    g.history.push({ status: g.status, at: now, reason: `achieved by the user: ${clip}` });
+    g.status = GOAL_STATUS.COMPLETED;
+    g.progress = 1;
+    g.achievedBy = { text: clip, clause: clause.slice(0, 160), at: now, when: whenSaid(clause) };
+    g.updatedAt = now;
+    pushTimeline(mind, createTimelineEvent({ kind: 'goal_completed', subject: g.title, importance: 7 }));
+    if (!changed.includes(g)) changed.push(g);
+    return;
+  }
+  const tr = transitionOf(text);
+  if (!tr.marked) return;
+  const g = goalTheMessageIsAbout(mind, text);
+  // A goal this very message stated is being set, not updated.
+  if (!g || (changed.includes(g) && titles.some(t => goalSimilarity(t, g.title) >= MATCH_THRESHOLD))) return;
+  const clip = text.replace(/\s+/g, ' ').trim().slice(0, 160);
+  // Read only the part of the message about this goal: in "Shipping slips to
+  // April 20, and Boxwell is out", "is out" ends Boxwell, not the shipping.
+  const about = partAbout(text, g.title);
+  // "I might switch my goal to…", "if the knee heals I'll…": considered, not done.
+  if (speculative(about)) return;
+  const kind = closeKind(about);
+  if (kind) {
+    const status = kind === 'resolved' ? GOAL_STATUS.COMPLETED : GOAL_STATUS.ABANDONED;
+    if (g.status === status) return;
+    g.history.push({ status: g.status, at: now, reason: `${kind} by the user: ${clip}` });
+    g.status = status;
+    if (status === GOAL_STATUS.COMPLETED) g.progress = 1;
+    g.updatedAt = now;
+    pushTimeline(mind, createTimelineEvent({ kind: status === GOAL_STATUS.COMPLETED ? 'goal_completed' : 'goal_abandoned', subject: g.title, importance: 7 }));
+    if (!changed.includes(g)) changed.push(g);
+    return;
+  }
+  const aboutTr = transitionOf(about);
+  if (!(aboutTr.changes || aboutTr.corrects)) return;
+  if (!GOAL_CHANGE_RE.test(about) && !reschedules(about, g.title)) return;
+  g.history.push({ status: g.status, at: now, reason: `changed by the user: ${clip}` });
+  g.changedBy = { text: clip, at: now };
+  g.updatedAt = now;
+  g.lastMentionedAt = now;
+  if (!changed.includes(g)) changed.push(g);
 }
 
 export function getActiveGoals(mind, limit = 5) {

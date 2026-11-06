@@ -21,9 +21,11 @@ export function rebuildPredictions(mind, { taskType = 'conversation', workspaceI
   const w = mind.working;
 
   // 1. Deadline pressure → prep/delivery help
-  if (w.deadlines.length) {
+  // A deadline that names something since changed is uncertain (memory/propagation.js): not predicted from.
+  const deadline = w.deadlines.filter(d => !d.review).at(-1);
+  if (deadline) {
     preds.push({
-      label: `Likely preparing for: ${w.deadlines[w.deadlines.length - 1].label}`,
+      label: `Likely preparing for: ${deadline.label}`,
       probability: clamp(0.6 + 0.1 * w.deadlines.length),
       basis: 'active deadline in working memory',
     });
@@ -48,7 +50,10 @@ export function rebuildPredictions(mind, { taskType = 'conversation', workspaceI
   }
 
   // 4. Goal gravity — high-priority active goals attract related asks
-  for (const g of goals.slice(0, 2)) {
+  // Not from a plan the user has since changed: "Likely working toward: run a
+  // marathon" after "I changed my goal: a half marathon" is a forecast built on
+  // what is no longer true (goalTracker laterWordOnGoals).
+  for (const g of goals.filter(x => !x.changedBy && !x.review).slice(0, 2)) {
     preds.push({
       label: `Likely working toward: ${g.title}`,
       probability: clamp(0.4 + 0.05 * g.mentions + 0.03 * g.priority),

@@ -48,6 +48,7 @@ function buildAdjacency(graph) {
   };
   for (const edge of Object.values(graph.edges || {})) {
     if (!graph.nodes?.[edge.from] || !graph.nodes?.[edge.to]) continue;
+    if (edge.endedAt) continue;   // no longer holds (memory/propagation.js): not a current path
     push(edge.from, { edge, otherKey: edge.to, dir: 'out' });
     push(edge.to,   { edge, otherKey: edge.from, dir: 'in' });
   }
@@ -74,6 +75,22 @@ function renderPath(nodes, edges) {
 }
 
 /**
+ * Goal nodes the user has since closed or changed (2026-11-02). The `targets`
+ * edge is written when a goal appears and never removed — history — but
+ * walking it after "the new driving licence arrived" rendered "renew my
+ * driving licence … ←targets— user" as a current relation. Such a node is not
+ * a seed or a step; the edge stays in the graph. Fact-bridge goal nodes carry
+ * the title cut to 60 characters, hence the prefix comparison.
+ */
+function retiredGoal(mind) {
+  const titles = Object.values(mind?.goals ?? {})
+    .filter(g => g?.title && (g.status === 'completed' || g.status === 'abandoned' || g.changedBy))
+    .map(g => String(g.title).trim().toLowerCase());
+  if (!titles.length) return () => false;
+  return node => node?.type === 'goal' && titles.some(t => t.startsWith(String(node.label).trim().toLowerCase()));
+}
+
+/**
  * @param {object} mind
  * @param {string} query
  * @param {{ maxHops?: number, maxPaths?: number }} opts
@@ -86,10 +103,12 @@ export function recallGraphPaths(mind, query, { maxHops = MAX_HOPS_DEFAULT, maxP
     const tokens = queryTokens(query);
     if (!tokens.size) return [];
 
+    const retired = retiredGoal(mind);
+
     // 1. Seeds
     const seeds = [];
     for (const node of Object.values(graph.nodes)) {
-      if (!node?.label || node.key === 'self' || node.type === 'self') continue;
+      if (!node?.label || node.key === 'self' || node.type === 'self' || retired(node)) continue;
       const strength = seedStrength(node.label, tokens);
       if (strength > 0) seeds.push({ node, strength });
     }
@@ -112,7 +131,7 @@ export function recallGraphPaths(mind, query, { maxHops = MAX_HOPS_DEFAULT, maxP
           for (const step of adj.get(tail.key) || []) {
             if (p.nodes.some(n => n.key === step.otherKey)) continue; // no cycles
             const otherNode = graph.nodes[step.otherKey];
-            if (!otherNode || otherNode.key === 'self') continue;
+            if (!otherNode || otherNode.key === 'self' || retired(otherNode)) continue;
             const ext = {
               nodes: [...p.nodes, otherNode],
               edges: [...p.edges, step],
