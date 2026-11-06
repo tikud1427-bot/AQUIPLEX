@@ -94,3 +94,34 @@ export function parseMessage(message) {
     ts,
   };
 }
+/**
+ * CLAUSES (2026-11-04). One sentence can state several facts: "My manager is
+ * Priya Rao and my accountant is Lena Ortiz", "I live in Austin and I work at
+ * Northbeam". Extraction read a sentence as one statement, so the first
+ * pattern's value ran on through the second fact ("Priya Rao and my accountant
+ * is Lena Ortiz") and the second was never seen.
+ *
+ * A clause boundary is a coordinator or a comma FOLLOWED BY A NEW SUBJECT —
+ * my / our / I / I'm / we / he / she / they / his / her / their. A name is not
+ * a subject, so "Johnson and Johnson", "Black & Decker" and "Tom and Jerry"
+ * stay whole; "a founder and a software engineer" stays one clause (no subject
+ * after "and"). A clause must keep at least three words, or it is not split.
+ */
+const CLAUSE_BOUNDARY = /(?:,\s*(?:and|but|while)\s+|\s+(?:and|but|while)\s+|;\s*|,\s+)(?=(?:my|our|his|her|their|i|i'm|i've|i'd|we|we're|he|she|they)\b)/gi;
+export function splitClauses(sentence) {
+  const s = String(sentence ?? '').trim();
+  if (!s) return [];
+  const parts = [];
+  let last = 0;
+  for (const m of s.matchAll(CLAUSE_BOUNDARY)) {
+    const head = s.slice(last, m.index).trim();
+    const rest = s.slice(m.index + m[0].length);
+    if (head.split(/\s+/).length < 3 || rest.trim().split(/\s+/).length < 3) continue;
+    // "When I write emails, I prefer a warm tone": the first part qualifies the second.
+    if (/^,\s+$/.test(m[0]) && /^(?:when|whenever|if|for|in|on|at|with|because|since|although|though|while|after|before|once|unless|as)\b/i.test(s.slice(last).trim())) continue;
+    parts.push(head);
+    last = m.index + m[0].length;
+  }
+  parts.push(s.slice(last).trim());
+  return parts.filter(Boolean);
+}
