@@ -57,6 +57,8 @@ const AUTO = "on|off|auto";
  * thing a reader guesses wrong.
  */
 export const GATES = Object.freeze([
+  { name: 'AQUA_ANSWER_SCAFFOLD_GUARD', subsystem: 'intelligence', dflt: 'on', reads: "!== 'off'", inverted: true,
+    note: 'reasoning directives say the stages are for thinking, not the reply layout (reasoningStrategy/synthesizer). ON by default; =off restores the previous text' },
   { name: 'AQUA_BRAIN', subsystem: 'brain', dflt: 'on', reads: "!== 'off'", inverted: true,
     note: 'master kill switch — ON by default, set to off to disable' },
   { name: 'AQUA_BRAIN_INGEST', subsystem: 'brain', dflt: 'off', reads: ON },

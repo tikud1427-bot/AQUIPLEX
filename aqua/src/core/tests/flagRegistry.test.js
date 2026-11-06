@@ -114,7 +114,8 @@ describe('the flag registry matches the source, in both directions', () => {
     // both ON by default with =off as the rollback.
     // +1 gate (2026-10-18): AQUA_E6_ACTOR_RETRY — re-ask for a named actor the first reading dropped, ON by default.
     // +1 gate (2026-10-20): AQUA_EPISODIC_RECALL — the user's own matching past messages in the answer context, ON by default.
-    assert.equal(GATES.length, 36);
+    // +1 gate (2026-11-05): AQUA_ANSWER_SCAFFOLD_GUARD — reasoning stages kept out of the reply layout, ON by default.
+    assert.equal(GATES.length, 37);
     // +2 settings, 0 gates (Sep 30): AQUA_E6_MINT and AQUA_E6_SINGLE_VALUED. Both
     // are SETTINGS because neither opens a subsystem — they tune one stage of an
     // already-gated one.
@@ -138,7 +139,7 @@ describe('the flag registry matches the source, in both directions', () => {
     // +1 setting (2026-10-18): AQUA_S8_HISTORY (bounded | full | compare).
     assert.equal(SETTINGS.length, 46);   // +1 (2026-10-20): AQUA_RECALL_ALL_CHARS
     // +1 (2026-10-18): AQUA_E6_ACTOR_RETRY. AQUA_S8_HISTORY is a setting-like rollback read in the repository (counted below).
-    assert.equal(readFromEnv().size, 82);   // +2 (2026-10-17): the two gates above; +2 (2026-10-20) AQUA_EPISODIC_RECALL, AQUA_RECALL_ALL_CHARS
+    assert.equal(readFromEnv().size, 83);   // +2 (2026-10-17): the two gates above; +2 (2026-10-20) AQUA_EPISODIC_RECALL, AQUA_RECALL_ALL_CHARS; +1 (2026-11-05) AQUA_ANSWER_SCAFFOLD_GUARD
   });
 });
 
@@ -165,7 +166,8 @@ describe('the registry records how each gate actually reads its variable', () =>
     // AQUA_PROACTIVE joined 2026-10-06 after its L14 eval (proactive-core suite,
     // baseline recorded) and the live production-path test.
     // AQUA_WORLD_CORE joined 2026-10-11: measured on the World-Model Lift (held-out v3).
-    assert.deepEqual(onByDefault, ['AQUA_BRAIN', 'AQUA_CANONICAL_RELEVANCE_GATE', 'AQUA_E6_ACTOR_RETRY', 'AQUA_EMBEDDINGS', 'AQUA_EPISODIC_RECALL', 'AQUA_PARSE_WORKER', 'AQUA_PIC', 'AQUA_PROACTIVE', 'AQUA_REVISION_VOICE', 'AQUA_WORLD_CORE']);
+    // AQUA_ANSWER_SCAFFOLD_GUARD joined 2026-11-05 (scaffoldGuard.test.js); =off is the rollback.
+    assert.deepEqual(onByDefault, ['AQUA_ANSWER_SCAFFOLD_GUARD', 'AQUA_BRAIN', 'AQUA_CANONICAL_RELEVANCE_GATE', 'AQUA_E6_ACTOR_RETRY', 'AQUA_EMBEDDINGS', 'AQUA_EPISODIC_RECALL', 'AQUA_PARSE_WORKER', 'AQUA_PIC', 'AQUA_PROACTIVE', 'AQUA_REVISION_VOICE', 'AQUA_WORLD_CORE']);
   });
 
   test('an overridden gate reports its RAW value, not just the resolved one', () => {
@@ -182,7 +184,7 @@ describe('the registry records how each gate actually reads its variable', () =>
 describe('the boot line is worth printing', () => {
   test('it names the overridden gates, not all 29', () => {
     const line = flagBootLine({ AQUA_E6: 'on' });
-    assert.match(line, /36 gates · 46 settings/);
+    assert.match(line, /37 gates · 46 settings/);   // +1 (2026-11-05): AQUA_ANSWER_SCAFFOLD_GUARD
     assert.match(line, /AQUA_E6=on/);
     assert.ok(!line.includes('AQUA_TWIN_V2'), 'a default gate was listed — the line is noise');
   });

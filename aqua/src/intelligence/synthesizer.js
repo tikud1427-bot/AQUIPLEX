@@ -19,6 +19,7 @@
  *
  * Deterministic: pure string templating, no LLM calls.
  */
+import { scaffoldGuardEnabled } from '../core/reasoningStrategy.js';
 
 /**
  * @param {{ plan: object, reasoning: object, critic: object, taskType: string, analysis?: string }} input
@@ -51,8 +52,10 @@ export function synthesize({ plan, reasoning, critic, taskType, analysis = '' })
       analysis.trim(),
     );
   } else {
+    // The stage names were copied into replies as headings (2026-11-05, core/reasoningStrategy.js
+    // scaffoldGuardEnabled): they are named as thinking aids, not the reply's layout.
     lines.push(
-      `Work through these stages internally before answering: ${stageNames}.`,
+      `Work through these stages internally before answering: ${stageNames}.${scaffoldGuardEnabled() ? ' These stages are for your own thinking — do not use their names as headings, numbered steps or sections in the reply.' : ''}`,
       `Keep in mind: ${reasoning.checklist.join('; ')}.`,
     );
   }

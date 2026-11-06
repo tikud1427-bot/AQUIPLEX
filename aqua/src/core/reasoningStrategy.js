@@ -23,6 +23,19 @@ const DIRECTIVES = {
  */
 export function getReasoningStrategy(taskType, complexity) {
   if (complexity === 'high')   return { mode: 'reflective', directive: DIRECTIVES.reflective };
-  if (complexity === 'medium') return { mode: 'stepwise',   directive: DIRECTIVES.stepwise };
+  if (complexity === 'medium') return { mode: 'stepwise',   directive: scaffoldGuardEnabled() ? STEPWISE_GUARDED : DIRECTIVES.stepwise };
   return { mode: 'direct', directive: '' };
 }
+
+/**
+ * The reasoning is asked for; the template is not (2026-11-05). With the
+ * synthesizer's stage line ("Understand → Approach → Check → Final") beside it,
+ * "Show the key reasoning" came back as a reply laid out under those stage
+ * names (Cloudflare Mistral run, HEAD q04/q05/q11). Reasoning and structure the
+ * content needs stay; labelled stages do not. AQUA_ANSWER_SCAFFOLD_GUARD=off
+ * restores the previous directive byte for byte.
+ */
+export function scaffoldGuardEnabled() {
+  return String(process.env.AQUA_ANSWER_SCAFFOLD_GUARD ?? 'on').toLowerCase() !== 'off';
+}
+const STEPWISE_GUARDED = 'Work through this step-by-step before giving your final answer. Show the key reasoning, not just the conclusion — in plain sentences, or in the structure the content itself needs, not as a template of labelled stages.';
