@@ -69,6 +69,43 @@
 import { createEvidence, createFact } from '../../files/evidence.js';
 import { readFidelity, isRequest, isInformationRequest } from './claimFidelity.js';
 import { isAboutSpeakersWorld } from './selfDeclaration.js';
+import { transitionOf, continues, specificityOver, speculative } from '../../understanding/stateTransition.js';
+
+/** How many of the owner's newest facts a continuity check reads. */
+export const CONTINUITY_SCAN = 200;
+
+/**
+ * ENTITY CONTINUITY (2026-11-02). A sentence that names no entity but
+ * announces a transition on the subject of an earlier fact continues that
+ * fact: "The zoning permit came through." after "Now the San Antonio opening
+ * is blocked by a zoning permit." The entity rule below dropped every such
+ * resolution while keeping the blocker it resolved, so the evidence lane could
+ * only ever show the problem (dev sets: "came through", "the audit is done",
+ * "the roof is repaired" — none were stored).
+ *
+ * Narrow on purpose (stateTransition.continues): the sentence must read as a
+ * transition and share two specific words with an earlier fact — or one, when
+ * it corrects, or closes an open state ("blocked", "waiting on"). It inherits
+ * that fact's entities — the continuity IS the reference — and records
+ * `continues: <fact id>`. The statement is the user's own sentence, at the
+ * same capped confidence as every conversational fact; nothing is inferred
+ * into it and nothing earlier is superseded.
+ */
+function continuityFor(sentence, priorPool) {
+  if (!transitionOf(sentence).marked) return null;
+  // A sentence that only CONSIDERS a change is not a later fact (stateTransition
+  // speculative): "Maybe the zoning permit will be approved soon." read as a
+  // resolution ("approved") and was stored as one, ranked above the blocker for
+  // "is anything still blocking it?" (2026-11-06). It continues nothing.
+  if (speculative(sentence)) return null;
+  const pool = priorPool();
+  if (!pool.facts.length) return null;
+  for (const p of pool.facts) {
+    const shared = continues(sentence, p.statement, { specific: pool.specific() });
+    if (shared) return { id: p.id, entities: Array.isArray(p.entities) ? p.entities : [], shared };
+  }
+  return null;
+}
 
 /** Conversational claims never reach document-grade confidence. */
 export const CONVERSATION_FACT_CONFIDENCE = 0.6;
@@ -162,6 +199,8 @@ export function turnSourceId(conversationId, turn) {
  * @param {number}   [opts.minEntities=1]           see decision 2 above
  * @param {number}   [opts.maxFacts=MAX_FACTS_PER_TURN]
  * @param {number}   [opts.confidence=CONVERSATION_FACT_CONFIDENCE]
+ * @param {Function} [opts.priorFacts]  () → the owner's earlier facts, newest first; read only
+ *                                      for a sentence with no entity (see ENTITY CONTINUITY)
  * @returns {{ facts: Array, evidence: Array, sourceId: string|null, skipped: string|null }}
  */
 export function buildConversationFacts(args, opts) {
@@ -175,6 +214,7 @@ export function buildConversationFacts(args, opts) {
     minEntities = 1,
     maxFacts = MAX_FACTS_PER_TURN,
     confidence = CONVERSATION_FACT_CONFIDENCE,
+    priorFacts = null,
   } = opts ?? {};
 
   const empty = (skipped) => ({ facts: [], evidence: [], sourceId: null, skipped });
@@ -185,7 +225,21 @@ export function buildConversationFacts(args, opts) {
   // A turn whose ONLY subject is the speaker is the whole point of U1 — it is
   // the shape of nearly every "getting to know you" answer. Before this, such
   // a turn returned `no-entities` and wrote nothing at all.
-  if (!surfaces.size && !selfCanonical) return empty('no-entities');
+  if (!surfaces.size && !selfCanonical && typeof priorFacts !== 'function') return empty('no-entities');
+
+  // Read once, and only if some sentence needs it.
+  let pool = null;
+  const priorPool = () => {
+    if (!pool) {
+      let facts = [];
+      // This turn's own facts are excluded: re-ingesting a turn must not make
+      // a sentence "continue" its own stored copy.
+      try { facts = (priorFacts?.() ?? []).filter(f => typeof f?.statement === 'string' && !String(f.id).startsWith(`${sourceId}:`)); } catch { /* fail-open */ }
+      let specific = null;
+      pool = { facts, specific: () => (specific ??= specificityOver(facts.map(f => f.statement))) };
+    }
+    return pool;
+  };
 
   const text = includeAssistant
     ? `${userMessage}\n${assistantMessage}`.trim()
@@ -201,8 +255,14 @@ export function buildConversationFacts(args, opts) {
 
   for (let i = 0; i < sentences.length && facts.length < maxFacts; i++) {
     const sentence = sentences[i];
-    const named = entitiesNamedIn(sentence, surfaces, selfCanonical);
-    if (named.length < minEntities) continue;
+    let named = entitiesNamedIn(sentence, surfaces, selfCanonical);
+    let continued = null;
+    if (named.length < minEntities) {
+      if (typeof priorFacts !== 'function' || isRequest(sentence) || isInformationRequest(sentence)) continue;
+      continued = continuityFor(sentence, priorPool);
+      if (!continued) continue;
+      named = continued.entities;
+    }
 
     // A REQUEST IS NOT EVIDENCE ABOUT THE USER'S WORLD.
     //
@@ -279,6 +339,7 @@ export function buildConversationFacts(args, opts) {
     fact.modality = fid.modality;
     fact.tense    = fid.tense;
     if (fid.time) fact.time = fid.time;
+    if (continued) fact.continues = continued.id;
     // Derived id — see IDENTITY / IDEMPOTENCE above. Everything else about
     // the object stays exactly as the canonical constructor produced it.
     fact.id = `${sourceId}:fact:${i}`;

@@ -38,8 +38,11 @@
  */
 import { scoreCandidate, rankedDimensions, tokensOf } from './scorer.js';
 import { round3 } from '../worldModel/schema.js';
+import { reviewPhrase } from '../../memory/displayLabels.js';
 
 const RELATIVE_FLOOR = 0.3;
+/** Later statements seated beside the fact they continue (see 2b). */
+const MAX_COMPANIONS = 2;
 const DEFAULTS = {
   limit: 8,
   charBudget: 1600,
@@ -123,7 +126,12 @@ export function assembleContext(candidates, ctx, opts = {}) {
   // model read fewer. For production-sized budgets the fixed overhead is now
   // reserved up front, so every selected item is rendered. Tiny budgets (unit
   // fixtures < 800) keep the old arithmetic.
-  const overhead = blockOverhead(contextEpistemicState(cfg.queryPlan), candidates.some(c => c.understood));
+  // The order note is printed whenever dated FACTS are listed — legacy floor
+  // facts too since 2026-10-29 (renderBlock). Reserving it only for canonical
+  // claims let a legacy block overflow, and renderBlock cuts from the END of a
+  // chronological list: the NEWEST statement was the one dropped ("the launch
+  // is December 16, not December 9", dev v3 h1-q01, 2026-11-02).
+  const overhead = blockOverhead(contextEpistemicState(cfg.queryPlan), candidates.some(c => c.understood || (c.kind === 'fact' && dayOf(saidAt(c)))));
   const reserve = cfg.charBudget >= 800;
   const itemBudget = reserve ? cfg.charBudget - overhead : cfg.charBudget;
   const slotBudget = buildSlotBudget(cfg.queryPlan, cfg.charBudget);
@@ -213,6 +221,61 @@ export function assembleContext(candidates, ctx, opts = {}) {
   }
   for (const c of pool) dropped.push({ id: c.id, reason: exhaustedEligible ? 'below-threshold' : 'limit', score: c.score });
 
+  // 2b. A LATER WORD SITS BESIDE WHAT IT CONTINUES (2026-11-02). PIC Lane 7
+  // tags a fact that resolves, corrects or re-reports an admitted one
+  // (`continuationOf`). Scored on the question's words it loses: "The zoning
+  // permit came through" shares none with "Is anything still blocking the San
+  // Antonio opening?", so the relative floor or the relevance rule dropped it
+  // and the block showed the blocker alone. Its relevance is the selected
+  // fact's, so it is seated next to it — like a duplicate's reading joins its
+  // twin — at most MAX_COMPANIONS, and only while what it continues is
+  // selected. When the budget is full it displaces the LOWEST-scoring selected
+  // fact that nothing depends on (not what it continues, not another
+  // companion): a correction of a selected fact is worth more than the weakest
+  // relevance pick ("December 16, not December 9" lost to "my goal is 50,000
+  // users", dev v3 h1-q01). Rendered oldest → newest under the order note.
+  const companionIds = new Set();
+  const selectedIds = new Set(selected.map(s => s.id));
+  const predecessorsOf = c => (Array.isArray(c.continuationOf) ? c.continuationOf : []);
+  const continuations = scored.filter(c => c.kind === 'fact' && predecessorsOf(c).length).sort((a, b) => b.score - a.score);
+  const costOf = c => renderLength(c) + (reserve ? 1 : 0);
+  // Never displaced: a companion, what any companion (or the incoming one)
+  // continues, and a selected fact that itself continues another selected one.
+  const makeRoom = (need, incoming) => {
+    const held = new Set(predecessorsOf(incoming));
+    for (const s of selected) if (companionIds.has(s.id)) predecessorsOf(s).forEach(id => held.add(id));
+    const evictable = selected
+      .filter(s => s.kind === 'fact' && !held.has(s.id) && !companionIds.has(s.id) && !predecessorsOf(s).some(id => selectedIds.has(id)))
+      .sort((a, b) => (a.effectiveScore ?? a.score) - (b.effectiveScore ?? b.score));
+    let freed = 0;
+    const out = [];
+    for (const s of evictable) { if (freed >= need) break; out.push(s); freed += costOf(s); }
+    if (freed < need) return false;
+    for (const s of out) {
+      selected.splice(selected.indexOf(s), 1);
+      selectedIds.delete(s.id);
+      usedChars -= costOf(s);
+      dropped.push({ id: s.id, reason: 'displaced-by-continuation', score: s.score });
+    }
+    return true;
+  };
+  for (let added = true; added && companionIds.size < MAX_COMPANIONS;) {
+    added = false;
+    for (const c of continuations) {
+      if (companionIds.size >= MAX_COMPANIONS) break;
+      if (selectedIds.has(c.id) || !predecessorsOf(c).some(id => selectedIds.has(id))) continue;
+      if (selected.some(s => normText(s.text) === normText(c.text))) continue;
+      const cost = costOf(c);
+      if (usedChars + cost > itemBudget && !makeRoom(usedChars + cost - itemBudget, c)) continue;
+      selected.push({ ...c, effectiveScore: c.score, companionOf: predecessorsOf(c).filter(id => selectedIds.has(id)) });
+      selectedIds.add(c.id);
+      companionIds.add(c.id);
+      usedChars += cost;
+      added = true;
+    }
+  }
+  if (companionIds.size) for (let i = dropped.length - 1; i >= 0; i--) if (companionIds.has(dropped[i].id)) dropped.splice(i, 1);
+
   // 3. Render + structured items (PIC-shaped) + observability stats.
   const items = selected.map(c => toItem(c));
   const epistemic = contextEpistemicState(cfg.queryPlan);
@@ -236,6 +299,7 @@ export function assembleContext(candidates, ctx, opts = {}) {
       provenancePreserved: true,
       candidates: candidates.length,
       selected: selected.length,
+      continuations: companionIds.size,
       dropped: dropped.length,
       dropReasons: tally(dropped.map(d => d.reason)),
       usedChars,
@@ -347,6 +411,8 @@ const subjectLabel = s => {
   return t.replace(/^(my|our)\s+/i, "User's ");
 };
 const dayOf = t => { const d = t ? new Date(t) : null; return d && !Number.isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : null; };
+/** When a fact was said: a canonical claim's assertedAt, a legacy fact's createdAt (as `timestamp`). */
+const saidAt = c => (c.understood ? c.assertedAt : c.timestamp) ?? null;
 
 /**
  * A CANONICAL fact line (2026-10-06): the World Model's reading first, then the
@@ -444,8 +510,12 @@ function renderItemLine(c, opts = {}) {
   }
   const label = citationLabel(c.citations?.[0]);
   const cite = label ? ` [${label}]` : '';
+  // Legacy lines are ORDERED by when they were said but carry no date: printed
+  // "(said 2026-09-15)" was quoted back as the date of the event in 4 of 109
+  // dev answers (2026-10-29), the failure the canonical rule above describes.
   const flags = [c.trusted && 'trusted', c.disputed && 'disputed — treat as contested', c.stale && 'stale',
     c.superseded && 'no longer current — past only',
+    c.review?.text && reviewPhrase(c.review),
     c.lifecycleLabel && `lifecycle ${c.lifecycleLabel}`]
     .filter(Boolean).join(', ');
   return `• ${c.text}${cite} (confidence ${fmt(c.confidence)}${flags ? `; ${flags}` : ''})`;
@@ -498,13 +568,22 @@ function renderBlock(selected, charBudget, epistemic = { state: 'sufficient', mi
   // chronological for the World Model's dated claims, so the answer model can
   // see which of two statements about the same thing came later — the one
   // thing lexical memory's "[turn N]" lines told it and these lines did not.
-  // Undated items (legacy floor, entities) keep their relevance order, first.
-  const dated = selected.filter(c => c.kind === 'fact' && c.understood && dayOf(c.assertedAt));
+  // Undated items (entities) keep their relevance order, first.
+  //
+  // LEGACY FACTS TOO (2026-10-29). Production serves the legacy read, whose
+  // evidence lines were left undated in relevance order: "Juliette plays hockey
+  // on Saturday mornings" above "Juliette switched to swimming, Sundays", with
+  // nothing saying which came later — and the footer's "disputed items must be
+  // presented as contested" turned an update into "her practice time is
+  // disputed" (dev v3, 3 of 12 wrong answers on the legacy read). A floor fact
+  // carries when it was said (its createdAt); it is ordered like a World-Model
+  // claim, under the same note (not dated: see renderItemLine).
+  const dated = selected.filter(c => c.kind === 'fact' && dayOf(saidAt(c)));
   const undated = selected.filter(c => !dated.includes(c));
-  const ordered = [...undated, ...[...dated].sort((a, b) => new Date(a.assertedAt) - new Date(b.assertedAt))];
+  const ordered = [...undated, ...[...dated].sort((a, b) => new Date(saidAt(a)) - new Date(saidAt(b)))];
   if (dated.length > 1) lines.push(ORDER_NOTE);
   // Selection budgeted the LONGER (dated) line, so dropping dates never overflows.
-  const showDates = new Set(dated.map(c => dayOf(c.assertedAt))).size >= 2;
+  const showDates = new Set(dated.map(c => dayOf(saidAt(c)))).size >= 2;
   for (const c of ordered) lines.push(renderItemLine(c, { showDates, retired }));
   lines.push(BLOCK_FOOTER);
 

@@ -112,3 +112,19 @@ test('legacy (non-canonical) facts render exactly as before', () => {
     ctx('Which city?'), { limit: 8 });
   assert.match(out.block, /• City: Lisbon \(confidence 0\.80\)/);
 });
+
+test('legacy facts that say WHEN they were said are listed oldest → newest (not dated), so an update is not a dispute', () => {
+  // The legacy read (what production serves) listed "plays on Saturdays" above
+  // "switched to Sundays" in relevance order with no date, and the answer
+  // called the practice time disputed (2026-10-29, dev v3 legacy replay).
+  const legacy = (id, text, timestamp, turn) => ({ id, kind: 'fact', text, confidence: 0.6, entityIds: ['e-kid'], via: 'lexical',
+    lanes: ['lexical'], citations: [`Conversation c-${turn} · ¶1`], timestamp });
+  const out = assembleContext([
+    legacy('new', 'Maya switched to swimming; practice is on Sunday afternoons.', Date.UTC(2026, 8, 8), 2),
+    legacy('old', 'My daughter Maya plays football on Saturday mornings.', Date.UTC(2026, 8, 1), 1),
+  ], ctx('When does Maya have practice?'), { limit: 8, charBudget: 1600 });
+  assert.match(out.block, /listed oldest → newest/);
+  assert.ok(out.block.indexOf('Saturday mornings') < out.block.indexOf('Sunday afternoons'), out.block);
+  assert.doesNotMatch(out.block, /2026-09-0[18]/, 'ordered, not dated: a printed date was quoted back as the event date');
+  assert.match(out.block, /never invent/, 'the footer still fits');
+});

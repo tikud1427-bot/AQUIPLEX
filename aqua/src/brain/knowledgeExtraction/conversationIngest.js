@@ -56,7 +56,7 @@ import { resolveEntities } from '../../reasoning/entityResolver.js';
 import { buildRelationships } from '../../reasoning/relationshipEngine.js';
 import { registerNodeType } from '../../reasoning/typeRegistry.js';
 import { brainEnabled } from '../worldModel/schema.js';
-import { buildConversationFacts } from './conversationFacts.js';
+import { buildConversationFacts, CONTINUITY_SCAN } from './conversationFacts.js';
 import { extractConversationEntities, knownEntitiesFor } from './conversationEntities.js';
 import { SELF_GRAPH_ID, SELF_LABEL, SELF_KIND, selfEntityEnabled } from '../identity/selfEntity.js';
 import { uusEnabled } from '../../understanding/flags.js';
@@ -185,7 +185,10 @@ export function ingestConversationTurn(deps, {
       // attach to would resolve into a stray entity called "You".
       selfText: (uusEnabled() && selfEntityEnabled()) ? userMessage : null,
     });
-    if (!rawEntities.length) {
+    // A turn with no entity can still CONTINUE an earlier fact ("The zoning
+    // permit came through." — conversationFacts.js, ENTITY CONTINUITY), so with
+    // fact ingest on it goes on to step 3c; every entity step below is a no-op.
+    if (!rawEntities.length && !(factIngestEnabled() && deps.evidenceStore)) {
       metrics.turns += 1; metrics.conversationsSeen += 1;
       return { ok: true, entities: 0, relationships: 0 };
     }
@@ -289,6 +292,9 @@ export function ingestConversationTurn(deps, {
         const ES = deps.evidenceStore;
         const built = buildConversationFacts(
           { conversationId, turn, userMessage, assistantMessage, entities },
+          // Entity continuity (conversationFacts.js): read only when a
+          // sentence names no entity, and only this owner's facts.
+          { priorFacts: () => ES.listFacts(ownerId, { limit: CONTINUITY_SCAN }).filter(f => !f.archived) },
         );
         for (const fact of built.facts) {
           // Evidence first: saveEvidence dedupes on content checksum, so the
@@ -325,8 +331,12 @@ export function ingestConversationTurn(deps, {
           // `about` edges are what Lane 3 and the Context Engine hop across.
           // Without them the fact is in the store but off the graph paths that
           // reach it, which is half the gap and the easier half to miss.
-          for (const name of fact.entities ?? []) {
-            const entityId = entityNodeByName.get(String(name).toLowerCase());
+          // A continuing fact names no entity of its own turn; it is about what
+          // the fact it continues is about, so it gets that fact's `about` edges.
+          const inherited = fact.continues
+            ? G.neighbors(ownerId, `fact:${fact.continues}`, { type: 'entity', edgeType: 'about' }).map(({ node }) => node.id)
+            : [];
+          for (const entityId of new Set([...(fact.entities ?? []).map(n => entityNodeByName.get(String(n).toLowerCase())), ...inherited])) {
             if (!entityId) continue;
             G.addEdge(ownerId, {
               from: `fact:${fact.id}`, to: entityId, type: 'about',

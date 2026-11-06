@@ -774,12 +774,13 @@ function gatherCandidates(deps, ownerId, query, floor, opts) {
         // candidates were previously relabelled as lexical here, making RRF
         // unable to see the independent dense vote it was designed to fuse.
         lanes,
-        trusted: it.trusted, disputed: it.disputed, stale: it.stale, superseded: it.superseded,
+        trusted: it.trusted, disputed: it.disputed, stale: it.stale, superseded: it.superseded, review: it.review ?? null,
         via: it.via, sourceType: it.sourceType ?? 'document',
         entityIds: Array.isArray(it.entityIds) ? it.entityIds : [],
         timestamp: it.timestamp ?? null, semanticId: it.id, slotIds: it.slotIds ?? [],
         predicate: it.predicate ?? null,
         understood: it.understood ?? null, assertedAt: it.assertedAt ?? null,
+        continuationOf: Array.isArray(it.continuationOf) ? it.continuationOf : [],
       }));
     } else if (it.kind === 'entity') {
       byId.set(`entity:${it.nodeId}`, normEntity(it.nodeId, it.entity, {
@@ -1093,6 +1094,7 @@ function normFact(id, text, extra = {}) {
     citations: extra.citations ?? [],
     trusted: !!extra.trusted, disputed: !!extra.disputed, stale: !!extra.stale,
     superseded: !!extra.superseded,
+    review: extra.review ?? null,
     via: extra.via ?? 'lexical',
     sourceType: extra.sourceType ?? 'document',
     // Canonical claims: the source's external ref ("file:<name>:chunk:<n>" for an upload),
@@ -1110,6 +1112,8 @@ function normFact(id, text, extra = {}) {
     // was said. Legacy facts have neither and render exactly as before.
     understood: extra.understood ?? null,
     assertedAt: extra.assertedAt ?? null,
+    // PIC Lane 7: the facts this one is the later word on (assembler seats it beside them).
+    continuationOf: Array.isArray(extra.continuationOf) ? [...extra.continuationOf] : [],
     epistemic: 'observed',
   };
 }

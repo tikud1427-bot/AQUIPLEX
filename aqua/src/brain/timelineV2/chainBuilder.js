@@ -76,6 +76,7 @@ const STAGE_OF_EVENT = Object.freeze({
   belief_established: 'decision',
   episode_opened:   'build',
   goal_completed:   'outcome',
+  goal_abandoned:   'outcome',
 });
 
 /**
