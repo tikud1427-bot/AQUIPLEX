@@ -33,8 +33,11 @@ import { stem } from '../understanding/stateTransition.js';
  * Profile, identity and recall are not selected here and are untouched.
  * AQUA_MIND_RELEVANCE=off restores the previous selection (rollback).
  */
+// OFF by default (2026-11-06) until related-phrase matching exists: lexical selection
+// dropped goals asked about in other words ("21 km race", "career" — test.todo in
+// cognitiveRelevanceSynonyms.test.js). Only exactly "on" enables it.
 export function mindRelevanceEnabled() {
-  return String(process.env.AQUA_MIND_RELEVANCE ?? 'on').toLowerCase() !== 'off';
+  return String(process.env.AQUA_MIND_RELEVANCE ?? '').trim().toLowerCase() === 'on';
 }
 const BROAD_CUE = /\b(?:focus|prioriti[sz]e|priorit(?:y|ies)|plan(?:s|ning)?|should\s+i|what(?:'s|\s+is)\s+next|next\s+steps?|on\s+my\s+plate|to-?do|this\s+(?:week|month|quarter|year)|today|tomorrow|advice|advise|recommend|suggest(?:ion)?s?|goals?|deadlines?|working\s+(?:on|toward)|busy|schedule|progress|catch\s+me\s+up|overview|summar(?:y|i[sz]e))\b/i;
 export function questionScope(query) {

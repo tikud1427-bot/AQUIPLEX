@@ -374,7 +374,12 @@ test('retrieval: rich mind → compact block with identity/goals/state/predictio
   assert.match(block, /blocked on/i);
   assert.ok(used.identity > 0 && used.goals > 0 && used.working > 0);
   assert.match(block, /treat as a hunch/, 'uncertainty guidance present');
-  const unrelated = retrieveCognitiveContext(mind, { query: 'help me fix the docker deploy', taskType: 'debugging' });
+  // Question-aware selection is OFF by default (2026-11-06): the targeted check runs with it on.
+  const was = process.env.AQUA_MIND_RELEVANCE;
+  process.env.AQUA_MIND_RELEVANCE = 'on';
+  let unrelated;
+  try { unrelated = retrieveCognitiveContext(mind, { query: 'help me fix the docker deploy', taskType: 'debugging' }); }
+  finally { if (was == null) delete process.env.AQUA_MIND_RELEVANCE; else process.env.AQUA_MIND_RELEVANCE = was; }
   assert.doesNotMatch(unrelated.block, /investor demo/, 'a goal the question does not touch stays out');
   assert.match(unrelated.block, /blocked on: deploy pipeline/, 'the blocker it does touch stays in');
 });

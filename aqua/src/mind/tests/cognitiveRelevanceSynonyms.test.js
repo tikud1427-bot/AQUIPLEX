@@ -16,6 +16,8 @@ import assert from 'node:assert/strict';
 import { createEmptyMind } from '../mindSchema.js';
 import { trackGoals } from '../goalTracker.js';
 import { updateWorkingMemory } from '../workingMemory.js';
+// Question-aware selection is OFF by default (2026-11-06); these cases describe it ON.
+process.env.AQUA_MIND_RELEVANCE = 'on';
 import { retrieveCognitiveContext } from '../mindRetriever.js';
 
 function mind() {

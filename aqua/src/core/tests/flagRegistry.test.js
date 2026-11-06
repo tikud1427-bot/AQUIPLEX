@@ -117,7 +117,7 @@ describe('the flag registry matches the source, in both directions', () => {
     // +1 gate (2026-11-05): AQUA_ANSWER_SCAFFOLD_GUARD — reasoning stages kept out of the reply layout, ON by default.
     // +1 gate (2026-11-05): AQUA_SEMANTIC_RECALL — semantic episodic recall, OFF by default.
     // +1 gate (2026-11-05): AQUA_RECALL_FOLLOWUP_V2 — follow-up relevance v2, OFF by default.
-    // +1 gate (2026-11-05): AQUA_MIND_RELEVANCE — question-aware cognitive-block selection, ON by default.
+    // +1 gate (2026-11-05): AQUA_MIND_RELEVANCE — question-aware cognitive-block selection, OFF by default since 2026-11-06.
     assert.equal(GATES.length, 40);
     // +2 settings, 0 gates (Sep 30): AQUA_E6_MINT and AQUA_E6_SINGLE_VALUED. Both
     // are SETTINGS because neither opens a subsystem — they tune one stage of an
@@ -169,9 +169,9 @@ describe('the registry records how each gate actually reads its variable', () =>
     // AQUA_PROACTIVE joined 2026-10-06 after its L14 eval (proactive-core suite,
     // baseline recorded) and the live production-path test.
     // AQUA_WORLD_CORE joined 2026-10-11: measured on the World-Model Lift (held-out v3).
-    // AQUA_MIND_RELEVANCE joined 2026-11-05 (cognitiveRelevance.test.js); =off is the rollback.
+    // AQUA_MIND_RELEVANCE left 2026-11-06: OFF by default until related-phrase matching exists (mindRelevanceDefault.test.js).
     // AQUA_ANSWER_SCAFFOLD_GUARD joined 2026-11-05 (scaffoldGuard.test.js); =off is the rollback.
-    assert.deepEqual(onByDefault, ['AQUA_ANSWER_SCAFFOLD_GUARD', 'AQUA_BRAIN', 'AQUA_CANONICAL_RELEVANCE_GATE', 'AQUA_E6_ACTOR_RETRY', 'AQUA_EMBEDDINGS', 'AQUA_EPISODIC_RECALL', 'AQUA_MIND_RELEVANCE', 'AQUA_PARSE_WORKER', 'AQUA_PIC', 'AQUA_PROACTIVE', 'AQUA_REVISION_VOICE', 'AQUA_WORLD_CORE']);
+    assert.deepEqual(onByDefault, ['AQUA_ANSWER_SCAFFOLD_GUARD', 'AQUA_BRAIN', 'AQUA_CANONICAL_RELEVANCE_GATE', 'AQUA_E6_ACTOR_RETRY', 'AQUA_EMBEDDINGS', 'AQUA_EPISODIC_RECALL', 'AQUA_PARSE_WORKER', 'AQUA_PIC', 'AQUA_PROACTIVE', 'AQUA_REVISION_VOICE', 'AQUA_WORLD_CORE']);
   });
 
   test('an overridden gate reports its RAW value, not just the resolved one', () => {
