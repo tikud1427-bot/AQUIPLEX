@@ -1,0 +1,2110 @@
+{
+  "dataset": "semantic-recall-live.v2",
+  "datasetSha256": "02bfd915125b3d0e7695637a7ec094b6213b6f12f900187e9823407780c6ec2f",
+  "codeSha256": "30bb15c6191ccc90696591b90949d48a6cfb77162d8e033de127840c0c6c35b7",
+  "model": "gemini-embedding-001",
+  "dim": 768,
+  "dryRun": false,
+  "oracle": false,
+  "defaults": {
+    "minCosine": 0.58,
+    "band": 0.1,
+    "smallPool": 8,
+    "keywordHalf": 1.5,
+    "keywordSupport": 0.15,
+    "weights": {
+      "keyword": 0.35,
+      "semantic": 0.6,
+      "recency": 0.05
+    },
+    "indexPerCall": 64,
+    "maxVectors": 450,
+    "queryTimeoutMs": 1500,
+    "indexFromFraction": 0.5
+  },
+  "criteria": {
+    "C1": {
+      "what": "relevant recall: relevant passages selected / all relevant (answerable questions)",
+      "min": 0.9
+    },
+    "C2": {
+      "what": "excluded passages selected (traps, someone else's fact, other meaning)",
+      "max": 0
+    },
+    "C3": {
+      "what": "share of selected passages that are neither relevant nor excluded",
+      "max": 0.2
+    },
+    "C4": {
+      "what": "unrelated questions (A7, B7, C3) select nothing",
+      "all": true
+    },
+    "C5": {
+      "what": "right memory ranked first (hybrid hit@1), answerable questions",
+      "min": 0.8
+    },
+    "C6": {
+      "what": "questions with an old and a current statement: all relevant (old and current) selected",
+      "min": 0.8
+    },
+    "C7": {
+      "what": "semantic-favoured questions: all relevant selected",
+      "min": 0.8
+    },
+    "C8": {
+      "what": "keyword-favoured questions (A5, B6): all relevant selected",
+      "min": 1
+    },
+    "C9": {
+      "what": "questions where keyword-only selects a relevant passage that hybrid misses",
+      "max": 0
+    },
+    "C10": {
+      "what": "small-pool user (ines, < 8 vectors): pool is \"small\"; C1, C2 all relevant selected; C3 nothing",
+      "all": true
+    },
+    "C11": {
+      "what": "provider failure (500, 429, 401, timeout) falls back to the keyword result",
+      "min": 4
+    }
+  },
+  "startedAt": "2026-11-05T16:47:49.276Z",
+  "requests": [
+    {
+      "n": 1,
+      "inputs": 35,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 2715,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 2,
+      "inputs": 19,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 1709,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 3,
+      "inputs": 1,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 554,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 4,
+      "inputs": 1,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 555,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 5,
+      "inputs": 1,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 615,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 6,
+      "inputs": 1,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 818,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 7,
+      "inputs": 1,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 717,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    }
+  ],
+  "singleLatencyMs": [
+    {
+      "question": "A1",
+      "ms": 554,
+      "ok": true
+    },
+    {
+      "question": "A2",
+      "ms": 555,
+      "ok": true
+    },
+    {
+      "question": "A3",
+      "ms": 615,
+      "ok": true
+    },
+    {
+      "question": "A4",
+      "ms": 819,
+      "ok": true
+    },
+    {
+      "question": "A5",
+      "ms": 717,
+      "ok": true
+    }
+  ],
+  "stoppedOn": null,
+  "fallback": [
+    {
+      "failure": "http 500",
+      "sameAsKeyword": true
+    },
+    {
+      "failure": "http 429",
+      "sameAsKeyword": true
+    },
+    {
+      "failure": "http 401",
+      "sameAsKeyword": true
+    },
+    {
+      "failure": "timeout",
+      "sameAsKeyword": true
+    }
+  ],
+  "perQuestion": [
+    {
+      "id": "A1",
+      "user": "mara",
+      "kind": "different-terminology",
+      "favours": "semantic",
+      "text": "How much money are we going through each month?",
+      "relevant": [
+        "a3",
+        "a7"
+      ],
+      "excluded": [
+        "a14"
+      ],
+      "current": "a7",
+      "cosine": {
+        "a1": 0.5111,
+        "a2": 0.5445,
+        "a3": 0.7394,
+        "a4": 0.539,
+        "a13": 0.4977,
+        "a14": 0.6245,
+        "a15": 0.5458,
+        "a16": 0.4673,
+        "a5": 0.479,
+        "a6": 0.5325,
+        "a7": 0.7449,
+        "a8": 0.5294,
+        "a9": 0.5065,
+        "a10": 0.4996,
+        "a11": 0.5375
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "a3",
+          "a7",
+          "a6"
+        ],
+        "top": [
+          {
+            "id": "a3",
+            "score": 0.7845,
+            "parts": {
+              "semantic": 0.5845,
+              "keyword": 0.1999,
+              "recency": 0
+            },
+            "cosine": 0.7394,
+            "z": 0.9742,
+            "admitted": true,
+            "why": "match"
+          },
+          {
+            "id": "a7",
+            "score": 0.65,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0,
+              "recency": 0.05
+            },
+            "cosine": 0.7449,
+            "z": 1,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "a6",
+            "score": 0.0696,
+            "parts": {
+              "semantic": 0,
+              "keyword": 0.0264,
+              "recency": 0.0432
+            },
+            "cosine": 0.5325,
+            "z": 0,
+            "admitted": false,
+            "why": "match"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [
+          "a3",
+          "a6"
+        ],
+        "mrr": 1,
+        "selected": [
+          "a3",
+          "a6"
+        ]
+      },
+      "semantic": {
+        "rank": [
+          "a7",
+          "a3",
+          "a14",
+          "a15",
+          "a2",
+          "a4"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "a3",
+        "a7"
+      ],
+      "relevantSelected": [
+        "a3",
+        "a7"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": false
+    },
+    {
+      "id": "A2",
+      "user": "mara",
+      "kind": "goal-achieved",
+      "favours": "both",
+      "text": "Did we ever find someone to lead our sales team?",
+      "relevant": [
+        "a2",
+        "a6"
+      ],
+      "excluded": [
+        "a13"
+      ],
+      "current": "a6",
+      "cosine": {
+        "a1": 0.5681,
+        "a2": 0.7265,
+        "a3": 0.565,
+        "a4": 0.5163,
+        "a13": 0.552,
+        "a14": 0.5132,
+        "a15": 0.4986,
+        "a16": 0.5138,
+        "a5": 0.5341,
+        "a6": 0.7155,
+        "a7": 0.606,
+        "a8": 0.5796,
+        "a9": 0.5422,
+        "a10": 0.5279,
+        "a11": 0.5508
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "a2",
+          "a6",
+          "a8",
+          "a13"
+        ],
+        "top": [
+          {
+            "id": "a2",
+            "score": 0.7812,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0.1812,
+              "recency": 0
+            },
+            "cosine": 0.7265,
+            "z": 1,
+            "admitted": true,
+            "why": "match"
+          },
+          {
+            "id": "a6",
+            "score": 0.753,
+            "parts": {
+              "semantic": 0.5627,
+              "keyword": 0.1486,
+              "recency": 0.0417
+            },
+            "cosine": 0.7155,
+            "z": 0.9379,
+            "admitted": true,
+            "why": "match"
+          },
+          {
+            "id": "a8",
+            "score": 0.0829,
+            "parts": {
+              "semantic": 0,
+              "keyword": 0.0329,
+              "recency": 0.05
+            },
+            "cosine": 0.5796,
+            "z": 0.1643,
+            "admitted": false,
+            "why": "match"
+          },
+          {
+            "id": "a13",
+            "score": 0.0337,
+            "parts": {
+              "semantic": 0,
+              "keyword": 0.0254,
+              "recency": 0.0083
+            },
+            "cosine": 0.552,
+            "z": 0.0071,
+            "admitted": false,
+            "why": "match"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [
+          "a8",
+          "a2",
+          "a13",
+          "a6"
+        ],
+        "mrr": 0.5,
+        "selected": [
+          "a2",
+          "a13",
+          "a6",
+          "a8"
+        ]
+      },
+      "semantic": {
+        "rank": [
+          "a2",
+          "a6",
+          "a7",
+          "a8",
+          "a1",
+          "a3"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "a2",
+        "a13",
+        "a6"
+      ],
+      "relevantSelected": [
+        "a2",
+        "a6"
+      ],
+      "excludedSelected": [
+        "a13"
+      ],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": false
+    },
+    {
+      "id": "A3",
+      "user": "mara",
+      "kind": "abandoned-project",
+      "favours": "both",
+      "text": "Is the phone app still in development?",
+      "relevant": [
+        "a4",
+        "a5"
+      ],
+      "excluded": [],
+      "current": "a5",
+      "cosine": {
+        "a1": 0.5014,
+        "a2": 0.5202,
+        "a3": 0.5384,
+        "a4": 0.5969,
+        "a13": 0.4817,
+        "a14": 0.5082,
+        "a15": 0.4646,
+        "a16": 0.4643,
+        "a5": 0.6364,
+        "a6": 0.4938,
+        "a7": 0.5467,
+        "a8": 0.5353,
+        "a9": 0.4909,
+        "a10": 0.522,
+        "a11": 0.5344
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "a5",
+          "a4"
+        ],
+        "top": [
+          {
+            "id": "a5",
+            "score": 0.8424,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0.1924,
+              "recency": 0.05
+            },
+            "cosine": 0.6364,
+            "z": 1,
+            "admitted": true,
+            "why": "match"
+          },
+          {
+            "id": "a4",
+            "score": 0.5269,
+            "parts": {
+              "semantic": 0.3959,
+              "keyword": 0.131,
+              "recency": 0
+            },
+            "cosine": 0.5969,
+            "z": 0.6598,
+            "admitted": true,
+            "why": "match"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [
+          "a4",
+          "a5"
+        ],
+        "mrr": 1,
+        "selected": [
+          "a4",
+          "a5"
+        ]
+      },
+      "semantic": {
+        "rank": [
+          "a5",
+          "a4",
+          "a7",
+          "a3",
+          "a8",
+          "a11"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "a4",
+        "a5"
+      ],
+      "relevantSelected": [
+        "a4",
+        "a5"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": true
+    },
+    {
+      "id": "A4",
+      "user": "mara",
+      "kind": "uncertain-then-contradicted",
+      "favours": "semantic",
+      "text": "Are we relocating the company?",
+      "relevant": [
+        "a8",
+        "a10"
+      ],
+      "excluded": [],
+      "current": "a10",
+      "cosine": {
+        "a1": 0.5316,
+        "a2": 0.6146,
+        "a3": 0.5782,
+        "a4": 0.5752,
+        "a13": 0.5251,
+        "a14": 0.5004,
+        "a15": 0.5521,
+        "a16": 0.4948,
+        "a5": 0.5562,
+        "a6": 0.6103,
+        "a7": 0.5958,
+        "a8": 0.726,
+        "a9": 0.5161,
+        "a10": 0.6276,
+        "a11": 0.5599
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "a8",
+          "a10"
+        ],
+        "top": [
+          {
+            "id": "a8",
+            "score": 0.6,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0,
+              "recency": 0
+            },
+            "cosine": 0.726,
+            "z": 1,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "a10",
+            "score": 0.2946,
+            "parts": {
+              "semantic": 0.2446,
+              "keyword": 0,
+              "recency": 0.05
+            },
+            "cosine": 0.6276,
+            "z": 0.4077,
+            "admitted": true,
+            "why": "semantic"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [],
+        "mrr": 0,
+        "selected": []
+      },
+      "semantic": {
+        "rank": [
+          "a8",
+          "a10",
+          "a2",
+          "a6",
+          "a7",
+          "a3"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "a8",
+        "a10"
+      ],
+      "relevantSelected": [
+        "a8",
+        "a10"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": false
+    },
+    {
+      "id": "A5",
+      "user": "mara",
+      "kind": "exact-identifier",
+      "favours": "keyword",
+      "text": "What's the status of invoice QB-2291?",
+      "relevant": [
+        "a11"
+      ],
+      "excluded": [],
+      "current": null,
+      "cosine": {
+        "a1": 0.5303,
+        "a2": 0.5423,
+        "a3": 0.5383,
+        "a4": 0.5149,
+        "a13": 0.5237,
+        "a14": 0.5379,
+        "a15": 0.5333,
+        "a16": 0.4985,
+        "a5": 0.4908,
+        "a6": 0.5316,
+        "a7": 0.5512,
+        "a8": 0.4928,
+        "a9": 0.5367,
+        "a10": 0.4561,
+        "a11": 0.8268
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "a11"
+        ],
+        "top": [
+          {
+            "id": "a11",
+            "score": 0.8883,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0.2883,
+              "recency": 0
+            },
+            "cosine": 0.8268,
+            "z": 1,
+            "admitted": true,
+            "why": "match"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [
+          "a11"
+        ],
+        "mrr": 1,
+        "selected": [
+          "a11"
+        ]
+      },
+      "semantic": {
+        "rank": [
+          "a11",
+          "a7",
+          "a2",
+          "a3",
+          "a14",
+          "a9"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "a11"
+      ],
+      "relevantSelected": [
+        "a11"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": null
+    },
+    {
+      "id": "A6",
+      "user": "mara",
+      "kind": "across-conversations",
+      "favours": "semantic",
+      "text": "How are things going with our biggest client?",
+      "relevant": [
+        "a1",
+        "a9"
+      ],
+      "excluded": [],
+      "current": "a9",
+      "cosine": {
+        "a1": 0.5993,
+        "a2": 0.5818,
+        "a3": 0.5932,
+        "a4": 0.5156,
+        "a13": 0.4958,
+        "a14": 0.5443,
+        "a15": 0.5415,
+        "a16": 0.4728,
+        "a5": 0.4982,
+        "a6": 0.569,
+        "a7": 0.6159,
+        "a8": 0.5671,
+        "a9": 0.5574,
+        "a10": 0.5157,
+        "a11": 0.5917
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "a7",
+          "a1",
+          "a11",
+          "a3",
+          "a2"
+        ],
+        "top": [
+          {
+            "id": "a7",
+            "score": 0.6279,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0,
+              "recency": 0.0279
+            },
+            "cosine": 0.6159,
+            "z": 1,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "a1",
+            "score": 0.4299,
+            "parts": {
+              "semantic": 0.4299,
+              "keyword": 0,
+              "recency": 0
+            },
+            "cosine": 0.5993,
+            "z": 0.7165,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "a11",
+            "score": 0.4015,
+            "parts": {
+              "semantic": 0.3515,
+              "keyword": 0,
+              "recency": 0.05
+            },
+            "cosine": 0.5917,
+            "z": 0.5859,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "a3",
+            "score": 0.3699,
+            "parts": {
+              "semantic": 0.3676,
+              "keyword": 0,
+              "recency": 0.0023
+            },
+            "cosine": 0.5932,
+            "z": 0.6126,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "a2",
+            "score": 0.2509,
+            "parts": {
+              "semantic": 0.2498,
+              "keyword": 0,
+              "recency": 0.0012
+            },
+            "cosine": 0.5818,
+            "z": 0.4163,
+            "admitted": true,
+            "why": "semantic"
+          }
+        ],
+        "mrr": 0.5,
+        "hit1": false
+      },
+      "keyword": {
+        "rank": [],
+        "mrr": 0,
+        "selected": []
+      },
+      "semantic": {
+        "rank": [
+          "a7",
+          "a1",
+          "a3",
+          "a11",
+          "a2",
+          "a6"
+        ],
+        "mrr": 0.5
+      },
+      "selected": [
+        "a1",
+        "a2",
+        "a3",
+        "a13",
+        "a6",
+        "a7",
+        "a9",
+        "a11"
+      ],
+      "relevantSelected": [
+        "a1",
+        "a9"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [
+        "a2",
+        "a3",
+        "a13",
+        "a6",
+        "a7",
+        "a11"
+      ],
+      "lostVsKeyword": [],
+      "currentFirst": false
+    },
+    {
+      "id": "A7",
+      "user": "mara",
+      "kind": "unrelated",
+      "favours": "none",
+      "text": "What is the capital of Australia?",
+      "relevant": [],
+      "excluded": [
+        "*"
+      ],
+      "current": null,
+      "cosine": {
+        "a1": 0.4118,
+        "a2": 0.4364,
+        "a3": 0.4329,
+        "a4": 0.4631,
+        "a13": 0.4119,
+        "a14": 0.4381,
+        "a15": 0.439,
+        "a16": 0.4275,
+        "a5": 0.4129,
+        "a6": 0.4658,
+        "a7": 0.4106,
+        "a8": 0.466,
+        "a9": 0.4016,
+        "a10": 0.4846,
+        "a11": 0.4345
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [],
+        "top": [],
+        "mrr": null,
+        "hit1": null
+      },
+      "keyword": {
+        "rank": [],
+        "mrr": null,
+        "selected": []
+      },
+      "semantic": {
+        "rank": [
+          "a10",
+          "a8",
+          "a6",
+          "a4",
+          "a15",
+          "a14"
+        ],
+        "mrr": null
+      },
+      "selected": [],
+      "relevantSelected": [],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": null
+    },
+    {
+      "id": "A8",
+      "user": "mara",
+      "kind": "shared-rare-words",
+      "favours": "both",
+      "text": "Did the tax rules change for printed books?",
+      "relevant": [
+        "a13"
+      ],
+      "excluded": [
+        "a2",
+        "a6"
+      ],
+      "current": null,
+      "cosine": {
+        "a1": 0.5099,
+        "a2": 0.478,
+        "a3": 0.4952,
+        "a4": 0.5062,
+        "a13": 0.9173,
+        "a14": 0.5481,
+        "a15": 0.4691,
+        "a16": 0.497,
+        "a5": 0.5466,
+        "a6": 0.4848,
+        "a7": 0.5174,
+        "a8": 0.4971,
+        "a9": 0.5544,
+        "a10": 0.4941,
+        "a11": 0.5039
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "a13",
+          "a9",
+          "a1"
+        ],
+        "top": [
+          {
+            "id": "a13",
+            "score": 0.9113,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0.3049,
+              "recency": 0.0064
+            },
+            "cosine": 0.9173,
+            "z": 1,
+            "admitted": true,
+            "why": "match"
+          },
+          {
+            "id": "a9",
+            "score": 0.0762,
+            "parts": {
+              "semantic": 0,
+              "keyword": 0.0262,
+              "recency": 0.05
+            },
+            "cosine": 0.5544,
+            "z": 0.1222,
+            "admitted": false,
+            "why": "match"
+          },
+          {
+            "id": "a1",
+            "score": 0.0262,
+            "parts": {
+              "semantic": 0,
+              "keyword": 0.0262,
+              "recency": 0
+            },
+            "cosine": 0.5099,
+            "z": 0.0146,
+            "admitted": false,
+            "why": "match"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [
+          "a13",
+          "a9",
+          "a1"
+        ],
+        "mrr": 1,
+        "selected": [
+          "a13"
+        ]
+      },
+      "semantic": {
+        "rank": [
+          "a13",
+          "a9",
+          "a14",
+          "a5",
+          "a7",
+          "a1"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "a13"
+      ],
+      "relevantSelected": [
+        "a13"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": null
+    },
+    {
+      "id": "B1",
+      "user": "dev",
+      "kind": "historical-current",
+      "favours": "semantic",
+      "text": "Which subjects am I responsible for at school?",
+      "relevant": [
+        "b1",
+        "b4"
+      ],
+      "excluded": [
+        "b14"
+      ],
+      "current": "b4",
+      "cosine": {
+        "b1": 0.6303,
+        "b2": 0.5453,
+        "b3": 0.5875,
+        "b10": 0.515,
+        "b11": 0.5569,
+        "b12": 0.5229,
+        "b13": 0.4682,
+        "b14": 0.5819,
+        "b4": 0.6776,
+        "b5": 0.5131,
+        "b6": 0.5222,
+        "b7": 0.6452,
+        "b8": 0.4967,
+        "b9": 0.5196
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "b4",
+          "b7",
+          "b1",
+          "b3",
+          "b14",
+          "b11"
+        ],
+        "top": [
+          {
+            "id": "b4",
+            "score": 0.625,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0,
+              "recency": 0.025
+            },
+            "cosine": 0.6776,
+            "z": 1,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "b7",
+            "score": 0.5032,
+            "parts": {
+              "semantic": 0.4532,
+              "keyword": 0,
+              "recency": 0.05
+            },
+            "cosine": 0.6452,
+            "z": 0.7553,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "b1",
+            "score": 0.3853,
+            "parts": {
+              "semantic": 0.3853,
+              "keyword": 0,
+              "recency": 0
+            },
+            "cosine": 0.6303,
+            "z": 0.6422,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "b3",
+            "score": 0.1944,
+            "parts": {
+              "semantic": 0.1915,
+              "keyword": 0,
+              "recency": 0.0029
+            },
+            "cosine": 0.5875,
+            "z": 0.3192,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "b14",
+            "score": 0.1822,
+            "parts": {
+              "semantic": 0.166,
+              "keyword": 0,
+              "recency": 0.0162
+            },
+            "cosine": 0.5819,
+            "z": 0.2767,
+            "admitted": true,
+            "why": "semantic"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [
+          "b11"
+        ],
+        "mrr": 0,
+        "selected": [
+          "b11"
+        ]
+      },
+      "semantic": {
+        "rank": [
+          "b4",
+          "b7",
+          "b1",
+          "b3",
+          "b14",
+          "b11"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "b1",
+        "b3",
+        "b4",
+        "b7"
+      ],
+      "relevantSelected": [
+        "b1",
+        "b4"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [
+        "b3",
+        "b7"
+      ],
+      "lostVsKeyword": [],
+      "currentFirst": true
+    },
+    {
+      "id": "B2",
+      "user": "dev",
+      "kind": "achieved-and-corrected",
+      "favours": "semantic",
+      "text": "How did my race go?",
+      "relevant": [
+        "b2",
+        "b5",
+        "b8"
+      ],
+      "excluded": [
+        "b10"
+      ],
+      "current": "b8",
+      "cosine": {
+        "b1": 0.4738,
+        "b2": 0.5607,
+        "b3": 0.4557,
+        "b10": 0.5135,
+        "b11": 0.496,
+        "b12": 0.4831,
+        "b13": 0.498,
+        "b14": 0.4883,
+        "b4": 0.4925,
+        "b5": 0.6605,
+        "b6": 0.4878,
+        "b7": 0.4677,
+        "b8": 0.6025,
+        "b9": 0.5915
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "b5",
+          "b8",
+          "b9"
+        ],
+        "top": [
+          {
+            "id": "b5",
+            "score": 0.6,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0,
+              "recency": 0
+            },
+            "cosine": 0.6605,
+            "z": 1,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "b8",
+            "score": 0.4329,
+            "parts": {
+              "semantic": 0.3885,
+              "keyword": 0,
+              "recency": 0.0444
+            },
+            "cosine": 0.6025,
+            "z": 0.6474,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "b9",
+            "score": 0.3982,
+            "parts": {
+              "semantic": 0.3482,
+              "keyword": 0,
+              "recency": 0.05
+            },
+            "cosine": 0.5915,
+            "z": 0.5803,
+            "admitted": true,
+            "why": "semantic"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [],
+        "mrr": 0,
+        "selected": []
+      },
+      "semantic": {
+        "rank": [
+          "b5",
+          "b8",
+          "b9",
+          "b2",
+          "b10",
+          "b13"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "b5",
+        "b8",
+        "b9"
+      ],
+      "relevantSelected": [
+        "b5",
+        "b8"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [
+        "b9"
+      ],
+      "lostVsKeyword": [],
+      "currentFirst": false
+    },
+    {
+      "id": "B3",
+      "user": "dev",
+      "kind": "abandoned-project",
+      "favours": "semantic",
+      "text": "Am I still writing that book?",
+      "relevant": [
+        "b3",
+        "b6"
+      ],
+      "excluded": [
+        "b12"
+      ],
+      "current": "b6",
+      "cosine": {
+        "b1": 0.5003,
+        "b2": 0.5615,
+        "b3": 0.6379,
+        "b10": 0.4905,
+        "b11": 0.5308,
+        "b12": 0.5151,
+        "b13": 0.4814,
+        "b14": 0.5177,
+        "b4": 0.5257,
+        "b5": 0.5266,
+        "b6": 0.6313,
+        "b7": 0.5114,
+        "b8": 0.5533,
+        "b9": 0.6177
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "b3",
+          "b6",
+          "b9"
+        ],
+        "top": [
+          {
+            "id": "b3",
+            "score": 0.8099,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0.2099,
+              "recency": 0
+            },
+            "cosine": 0.6379,
+            "z": 1,
+            "admitted": true,
+            "why": "match"
+          },
+          {
+            "id": "b6",
+            "score": 0.5945,
+            "parts": {
+              "semantic": 0.5645,
+              "keyword": 0,
+              "recency": 0.03
+            },
+            "cosine": 0.6313,
+            "z": 0.9409,
+            "admitted": true,
+            "why": "semantic"
+          },
+          {
+            "id": "b9",
+            "score": 0.5412,
+            "parts": {
+              "semantic": 0.4912,
+              "keyword": 0,
+              "recency": 0.05
+            },
+            "cosine": 0.6177,
+            "z": 0.8186,
+            "admitted": true,
+            "why": "semantic"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [
+          "b3"
+        ],
+        "mrr": 1,
+        "selected": [
+          "b3"
+        ]
+      },
+      "semantic": {
+        "rank": [
+          "b3",
+          "b6",
+          "b9",
+          "b2",
+          "b8",
+          "b11"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "b3",
+        "b6",
+        "b9"
+      ],
+      "relevantSelected": [
+        "b3",
+        "b6"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [
+        "b9"
+      ],
+      "lostVsKeyword": [],
+      "currentFirst": false
+    },
+    {
+      "id": "B4",
+      "user": "dev",
+      "kind": "paraphrase-future",
+      "favours": "semantic",
+      "text": "Am I getting promoted at work?",
+      "relevant": [
+        "b7"
+      ],
+      "excluded": [
+        "b14"
+      ],
+      "current": null,
+      "cosine": {
+        "b1": 0.5307,
+        "b2": 0.5627,
+        "b3": 0.5617,
+        "b10": 0.5157,
+        "b11": 0.5033,
+        "b12": 0.4914,
+        "b13": 0.4564,
+        "b14": 0.5518,
+        "b4": 0.5692,
+        "b5": 0.5345,
+        "b6": 0.5149,
+        "b7": 0.6527,
+        "b8": 0.5119,
+        "b9": 0.5703
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "b7"
+        ],
+        "top": [
+          {
+            "id": "b7",
+            "score": 0.6,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0,
+              "recency": 0
+            },
+            "cosine": 0.6527,
+            "z": 1,
+            "admitted": true,
+            "why": "semantic"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [],
+        "mrr": 0,
+        "selected": []
+      },
+      "semantic": {
+        "rank": [
+          "b7",
+          "b9",
+          "b4",
+          "b2",
+          "b3",
+          "b14"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "b7"
+      ],
+      "relevantSelected": [
+        "b7"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": null
+    },
+    {
+      "id": "B5",
+      "user": "dev",
+      "kind": "uncertain",
+      "favours": "both",
+      "text": "Have I signed up for a half marathon?",
+      "relevant": [
+        "b9"
+      ],
+      "excluded": [],
+      "current": null,
+      "cosine": {
+        "b1": 0.4782,
+        "b2": 0.6738,
+        "b3": 0.5162,
+        "b10": 0.5262,
+        "b11": 0.5143,
+        "b12": 0.5061,
+        "b13": 0.511,
+        "b14": 0.5629,
+        "b4": 0.5136,
+        "b5": 0.6346,
+        "b6": 0.4947,
+        "b7": 0.5385,
+        "b8": 0.633,
+        "b9": 0.7532
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "b9",
+          "b2"
+        ],
+        "top": [
+          {
+            "id": "b9",
+            "score": 0.907,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0.257,
+              "recency": 0.05
+            },
+            "cosine": 0.7532,
+            "z": 1,
+            "admitted": true,
+            "why": "match"
+          },
+          {
+            "id": "b2",
+            "score": 0.3901,
+            "parts": {
+              "semantic": 0.3901,
+              "keyword": 0,
+              "recency": 0
+            },
+            "cosine": 0.6738,
+            "z": 0.6502,
+            "admitted": true,
+            "why": "semantic"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [
+          "b9"
+        ],
+        "mrr": 1,
+        "selected": [
+          "b9"
+        ]
+      },
+      "semantic": {
+        "rank": [
+          "b9",
+          "b2",
+          "b5",
+          "b8",
+          "b14",
+          "b7"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "b2",
+        "b5",
+        "b8",
+        "b9"
+      ],
+      "relevantSelected": [
+        "b9"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [
+        "b2",
+        "b5",
+        "b8"
+      ],
+      "lostVsKeyword": [],
+      "currentFirst": null
+    },
+    {
+      "id": "B6",
+      "user": "dev",
+      "kind": "keyword-trap-inverse",
+      "favours": "keyword",
+      "text": "Who runs the bakery?",
+      "relevant": [
+        "b10"
+      ],
+      "excluded": [
+        "b2",
+        "b5"
+      ],
+      "current": null,
+      "cosine": {
+        "b1": 0.4918,
+        "b2": 0.5092,
+        "b3": 0.4615,
+        "b10": 0.7462,
+        "b11": 0.5318,
+        "b12": 0.4821,
+        "b13": 0.4776,
+        "b14": 0.489,
+        "b4": 0.5032,
+        "b5": 0.5376,
+        "b6": 0.4589,
+        "b7": 0.5312,
+        "b8": 0.4889,
+        "b9": 0.5047
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "b10"
+        ],
+        "top": [
+          {
+            "id": "b10",
+            "score": 0.8681,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0.2681,
+              "recency": 0
+            },
+            "cosine": 0.7462,
+            "z": 1,
+            "admitted": true,
+            "why": "match"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [
+          "b10"
+        ],
+        "mrr": 1,
+        "selected": [
+          "b10"
+        ]
+      },
+      "semantic": {
+        "rank": [
+          "b10",
+          "b5",
+          "b11",
+          "b7",
+          "b2",
+          "b9"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "b10"
+      ],
+      "relevantSelected": [
+        "b10"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": null
+    },
+    {
+      "id": "B7",
+      "user": "dev",
+      "kind": "unrelated",
+      "favours": "none",
+      "text": "What is my favourite film?",
+      "relevant": [],
+      "excluded": [
+        "*"
+      ],
+      "current": null,
+      "cosine": {
+        "b1": 0.4744,
+        "b2": 0.4867,
+        "b3": 0.4686,
+        "b10": 0.5044,
+        "b11": 0.441,
+        "b12": 0.5442,
+        "b13": 0.4636,
+        "b14": 0.4547,
+        "b4": 0.4681,
+        "b5": 0.5196,
+        "b6": 0.4223,
+        "b7": 0.4623,
+        "b8": 0.4858,
+        "b9": 0.4723
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [],
+        "top": [],
+        "mrr": null,
+        "hit1": null
+      },
+      "keyword": {
+        "rank": [],
+        "mrr": null,
+        "selected": []
+      },
+      "semantic": {
+        "rank": [
+          "b12",
+          "b5",
+          "b10",
+          "b2",
+          "b8",
+          "b1"
+        ],
+        "mrr": null
+      },
+      "selected": [],
+      "relevantSelected": [],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": null
+    },
+    {
+      "id": "B8",
+      "user": "dev",
+      "kind": "different-terminology",
+      "favours": "semantic",
+      "text": "What's our dog called?",
+      "relevant": [
+        "b13"
+      ],
+      "excluded": [],
+      "current": null,
+      "cosine": {
+        "b1": 0.4827,
+        "b2": 0.5271,
+        "b3": 0.4967,
+        "b10": 0.5352,
+        "b11": 0.5203,
+        "b12": 0.4818,
+        "b13": 0.6412,
+        "b14": 0.5352,
+        "b4": 0.4692,
+        "b5": 0.5167,
+        "b6": 0.4687,
+        "b7": 0.5025,
+        "b8": 0.5246,
+        "b9": 0.519
+      },
+      "pool": "contrast",
+      "hybrid": {
+        "rank": [
+          "b13"
+        ],
+        "top": [
+          {
+            "id": "b13",
+            "score": 0.6,
+            "parts": {
+              "semantic": 0.6,
+              "keyword": 0,
+              "recency": 0
+            },
+            "cosine": 0.6412,
+            "z": 1,
+            "admitted": true,
+            "why": "semantic"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [],
+        "mrr": 0,
+        "selected": []
+      },
+      "semantic": {
+        "rank": [
+          "b13",
+          "b10",
+          "b14",
+          "b2",
+          "b8",
+          "b11"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "b13"
+      ],
+      "relevantSelected": [
+        "b13"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": null
+    },
+    {
+      "id": "C1",
+      "user": "ines",
+      "kind": "small-pool-achieved",
+      "favours": "both",
+      "text": "Did I manage to learn sailing?",
+      "relevant": [
+        "c2",
+        "c3"
+      ],
+      "excluded": [],
+      "current": "c3",
+      "cosine": {
+        "c1": 0.5102,
+        "c2": 0.7832,
+        "c4": 0.5504,
+        "c5": 0.4563,
+        "c3": 0.7773,
+        "c6": 0.5906
+      },
+      "pool": "small",
+      "hybrid": {
+        "rank": [
+          "c2",
+          "c3"
+        ],
+        "top": [
+          {
+            "id": "c2",
+            "score": 0.3984,
+            "parts": {
+              "semantic": 0.2903,
+              "keyword": 0.1082,
+              "recency": 0
+            },
+            "cosine": 0.7832,
+            "z": 0.4838,
+            "admitted": true,
+            "why": "match"
+          },
+          {
+            "id": "c3",
+            "score": 0.3964,
+            "parts": {
+              "semantic": 0.2819,
+              "keyword": 0.0645,
+              "recency": 0.05
+            },
+            "cosine": 0.7773,
+            "z": 0.4698,
+            "admitted": true,
+            "why": "match"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [
+          "c2",
+          "c3"
+        ],
+        "mrr": 1,
+        "selected": [
+          "c2",
+          "c3"
+        ]
+      },
+      "semantic": {
+        "rank": [
+          "c2",
+          "c3",
+          "c6",
+          "c4",
+          "c1",
+          "c5"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "c2",
+        "c3"
+      ],
+      "relevantSelected": [
+        "c2",
+        "c3"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": false
+    },
+    {
+      "id": "C2",
+      "user": "ines",
+      "kind": "small-pool-paraphrase",
+      "favours": "semantic",
+      "text": "Where do I help out at weekends?",
+      "relevant": [
+        "c1"
+      ],
+      "excluded": [],
+      "current": null,
+      "cosine": {
+        "c1": 0.7501,
+        "c2": 0.5327,
+        "c4": 0.5158,
+        "c5": 0.556,
+        "c3": 0.5503,
+        "c6": 0.5286
+      },
+      "pool": "small",
+      "hybrid": {
+        "rank": [
+          "c1"
+        ],
+        "top": [
+          {
+            "id": "c1",
+            "score": 0.2431,
+            "parts": {
+              "semantic": 0.2431,
+              "keyword": 0,
+              "recency": 0
+            },
+            "cosine": 0.7501,
+            "z": 0.4051,
+            "admitted": true,
+            "why": "semantic"
+          }
+        ],
+        "mrr": 1,
+        "hit1": true
+      },
+      "keyword": {
+        "rank": [],
+        "mrr": 0,
+        "selected": []
+      },
+      "semantic": {
+        "rank": [
+          "c1",
+          "c5",
+          "c3",
+          "c2",
+          "c6",
+          "c4"
+        ],
+        "mrr": 1
+      },
+      "selected": [
+        "c1"
+      ],
+      "relevantSelected": [
+        "c1"
+      ],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": null
+    },
+    {
+      "id": "C3",
+      "user": "ines",
+      "kind": "small-pool-unrelated",
+      "favours": "none",
+      "text": "When does my train to Glasgow leave?",
+      "relevant": [],
+      "excluded": [
+        "*"
+      ],
+      "current": null,
+      "cosine": {
+        "c1": 0.4994,
+        "c2": 0.5179,
+        "c4": 0.4473,
+        "c5": 0.5102,
+        "c3": 0.4813,
+        "c6": 0.4472
+      },
+      "pool": "small",
+      "hybrid": {
+        "rank": [],
+        "top": [],
+        "mrr": null,
+        "hit1": null
+      },
+      "keyword": {
+        "rank": [],
+        "mrr": null,
+        "selected": []
+      },
+      "semantic": {
+        "rank": [
+          "c2",
+          "c5",
+          "c1",
+          "c3",
+          "c4",
+          "c6"
+        ],
+        "mrr": null
+      },
+      "selected": [],
+      "relevantSelected": [],
+      "excludedSelected": [],
+      "otherSelected": [],
+      "lostVsKeyword": [],
+      "currentFirst": null
+    }
+  ],
+  "evaluation": {
+    "metrics": {
+      "C1": 0.962,
+      "C2": 1,
+      "C3": 0.333,
+      "C4": true,
+      "C5": 0.938,
+      "C6": 0.889,
+      "C7": 0.889,
+      "C8": 1,
+      "C9": 0,
+      "C10": true,
+      "C11": 4
+    },
+    "pass": {
+      "C1": true,
+      "C2": false,
+      "C3": false,
+      "C4": true,
+      "C5": true,
+      "C6": true,
+      "C7": true,
+      "C8": true,
+      "C9": true,
+      "C10": true,
+      "C11": true
+    },
+    "detail": {
+      "excludedSelected": [
+        "A2:a13"
+      ],
+      "lostVsKeyword": [],
+      "relevant": "25/26",
+      "otherSelected": "13/39"
+    },
+    "informational": {
+      "mrr": {
+        "keyword": 0.531,
+        "semantic": 0.969,
+        "hybrid": 0.969
+      },
+      "currentFirst": "2/9"
+    }
+  },
+  "finishedAt": "2026-11-05T16:47:57.326Z",
+  "requestCount": 7
+}

@@ -1,0 +1,64 @@
+{
+  "id": "answer-lifecycle.dev.v1",
+  "status": "DEVELOPMENT — authored 2026-11-04 for the model-independent answer harness (scripts/answer-eval-harness.mjs). No answers were generated against it in this mission.",
+  "criteria": {
+    "current": "the answer gives the current value (`include`) and never presents a retired value (`notCurrent`) as current — a retired value may appear only in a sentence that marks it as past",
+    "historical": "the answer gives the earlier value (`include`)",
+    "goal_status": "the answer gives the goal's status: achieved goals are not presented as open (`notOpen`), open goals are named (`include`)",
+    "uncertain_dependency": "the answer neither asserts nor dismisses a record that depends on a changed fact: it names it and hedges or asks (`hedge`)",
+    "personal_context": "the answer uses at least one relevant personal fact (`include`)",
+    "unsupported": "the answer names no person, organisation or value absent from the context and the question (scored on every answer)",
+    "abstention": "the answer says it does not know (`abstain`) and invents no value"
+  },
+  "lives": {
+    "job": [
+      "I'm a data analyst at Fintrail.",
+      "My goal is to get promoted to senior analyst.",
+      "My goal is to run a half marathon in October.",
+      "I'm leading the Atlas migration at Fintrail; it's due on March 3.",
+      "---",
+      "I now work at Northbeam as a senior analyst.",
+      "I finally ran the half marathon."
+    ],
+    "people": [
+      "I work at Northbeam.",
+      "My manager is Priya Rao and my accountant is Lena Ortiz.",
+      "---",
+      "Actually, my company is Halcyon Labs.",
+      "Our biggest client is Meridian Health."
+    ],
+    "goals": [
+      "My goal is to pass the CFA Level 1 exam.",
+      "My goal is to learn Spanish this year.",
+      "---",
+      "I passed my CFA exam!",
+      "I didn't get to practice Spanish this week."
+    ]
+  },
+  "questions": [
+    { "id": "q01", "life": "job", "ask": "Where do I work now?", "category": "current", "include": [["Northbeam"]], "notCurrent": ["Fintrail"],
+      "examples": { "good": "You work at Northbeam as a senior analyst; before that you were at Fintrail.", "bad": "You work at Fintrail as a data analyst." } },
+    { "id": "q02", "life": "job", "ask": "Where did I work before my current job?", "category": "historical", "include": [["Fintrail"]],
+      "examples": { "good": "Before Northbeam you worked at Fintrail.", "bad": "As far as I know you've only worked at Northbeam." } },
+    { "id": "q03", "life": "job", "ask": "How is my half marathon goal going?", "category": "goal_status", "notOpen": ["half marathon"], "include": [["ran", "completed", "achieved", "done", "finished", "congrat"]],
+      "examples": { "good": "You did it — you ran the half marathon. Congratulations!", "bad": "You're still training for the half marathon; keep at it." } },
+    { "id": "q04", "life": "job", "ask": "Is the Atlas migration still on my plate?", "category": "uncertain_dependency", "include": [["Atlas"]], "hedge": true,
+      "examples": { "good": "You mentioned leading the Atlas migration at Fintrail, but you've since moved to Northbeam — is that still yours?", "bad": "Yes, the Atlas migration is due on March 3." } },
+    { "id": "q05", "life": "job", "ask": "What should I focus on at work this month?", "category": "personal_context", "include": [["Northbeam", "senior analyst"]],
+      "examples": { "good": "As a new senior analyst at Northbeam, focus on learning the team's data stack.", "bad": "Focus on whatever your manager says is important." } },
+    { "id": "q06", "life": "job", "ask": "What's my manager's name?", "category": "abstention", "abstain": true,
+      "examples": { "good": "You haven't told me who your manager is.", "bad": "Your manager is Daniel Ross." } },
+    { "id": "q07", "life": "people", "ask": "What company do I work for?", "category": "current", "include": [["Halcyon Labs"]], "notCurrent": ["Northbeam"],
+      "examples": { "good": "You work at Halcyon Labs.", "bad": "You work at Northbeam." } },
+    { "id": "q08", "life": "people", "ask": "Who is my accountant?", "category": "current", "include": [["Lena Ortiz"]], "notCurrent": ["Priya Rao"],
+      "examples": { "good": "Your accountant is Lena Ortiz.", "bad": "Your accountant is Priya Rao and Lena Ortiz." } },
+    { "id": "q09", "life": "people", "ask": "Who is our biggest client?", "category": "current", "include": [["Meridian Health"]],
+      "examples": { "good": "Your biggest client is Meridian Health.", "bad": "I don't know your clients." } },
+    { "id": "q10", "life": "people", "ask": "What's my accountant's phone number?", "category": "abstention", "abstain": true,
+      "examples": { "good": "I don't have Lena Ortiz's phone number — you haven't shared it.", "bad": "Lena Ortiz's number is 555-0142." } },
+    { "id": "q11", "life": "goals", "ask": "Which of my goals are still open?", "category": "goal_status", "include": [["Spanish"]], "notOpen": ["CFA"],
+      "examples": { "good": "Learning Spanish is still open; you've already passed the CFA exam.", "bad": "Both are open: passing the CFA Level 1 exam and learning Spanish." } },
+    { "id": "q12", "life": "goals", "ask": "Did I pass the CFA?", "category": "goal_status", "include": [["yes", "passed", "you did"]], "notOpen": ["CFA"],
+      "examples": { "good": "Yes — you passed your CFA exam.", "bad": "Not yet; you're still preparing for the CFA Level 1 exam." } }
+  ]
+}

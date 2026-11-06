@@ -1,0 +1,2547 @@
+{
+  "dataset": "semantic-recall-live.v1",
+  "model": "gemini-embedding-001",
+  "dim": 768,
+  "dryRun": false,
+  "oracle": false,
+  "weights": {
+    "keyword": 0.5,
+    "semantic": 0.45,
+    "recency": 0.05
+  },
+  "startedAt": "2026-11-05T07:55:34.039Z",
+  "requests": [
+    {
+      "n": 1,
+      "label": "production:batch",
+      "inputs": 24,
+      "taskType": null,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 2618,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 2,
+      "label": "production:batch",
+      "inputs": 10,
+      "taskType": null,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 1340,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 3,
+      "label": "taskType:RETRIEVAL_DOCUMENT",
+      "inputs": 24,
+      "taskType": "RETRIEVAL_DOCUMENT",
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 1729,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 4,
+      "label": "taskType:RETRIEVAL_QUERY",
+      "inputs": 10,
+      "taskType": "RETRIEVAL_QUERY",
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 621,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 5,
+      "label": "production:single",
+      "inputs": 1,
+      "taskType": null,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 699,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 6,
+      "label": "production:single",
+      "inputs": 1,
+      "taskType": null,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 608,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 7,
+      "label": "production:single",
+      "inputs": 1,
+      "taskType": null,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 623,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 8,
+      "label": "production:single",
+      "inputs": 1,
+      "taskType": null,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 685,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    },
+    {
+      "n": 9,
+      "label": "production:single",
+      "inputs": 1,
+      "taskType": null,
+      "model": "gemini-embedding-001",
+      "dim": 768,
+      "ms": 642,
+      "ok": true,
+      "usage": null,
+      "error": null,
+      "responseKeys": [
+        "sdkHttpResponse",
+        "embeddings"
+      ]
+    }
+  ],
+  "singleLatencyMs": [
+    {
+      "query": "Q1",
+      "ms": 699,
+      "ok": true
+    },
+    {
+      "query": "Q2",
+      "ms": 608,
+      "ok": true
+    },
+    {
+      "query": "Q3",
+      "ms": 623,
+      "ok": true
+    },
+    {
+      "query": "Q4",
+      "ms": 685,
+      "ok": true
+    },
+    {
+      "query": "Q5",
+      "ms": 642,
+      "ok": true
+    }
+  ],
+  "stoppedOn": null,
+  "production": {
+    "label": "production config (no task type)",
+    "relevantCosine": {
+      "n": 18,
+      "min": 0.5868,
+      "p50": 0.6748,
+      "max": 0.735
+    },
+    "unrelatedCosine": {
+      "n": 222,
+      "min": 0.4298,
+      "p50": 0.5016,
+      "max": 0.6034
+    },
+    "sweep": [
+      {
+        "t": 0.4,
+        "precision": 0.075,
+        "recall": 1,
+        "f1": 0.14,
+        "fp": 222
+      },
+      {
+        "t": 0.425,
+        "precision": 0.075,
+        "recall": 1,
+        "f1": 0.14,
+        "fp": 222
+      },
+      {
+        "t": 0.45,
+        "precision": 0.08,
+        "recall": 1,
+        "f1": 0.149,
+        "fp": 206
+      },
+      {
+        "t": 0.475,
+        "precision": 0.092,
+        "recall": 1,
+        "f1": 0.169,
+        "fp": 177
+      },
+      {
+        "t": 0.5,
+        "precision": 0.135,
+        "recall": 1,
+        "f1": 0.238,
+        "fp": 115
+      },
+      {
+        "t": 0.525,
+        "precision": 0.237,
+        "recall": 1,
+        "f1": 0.383,
+        "fp": 58
+      },
+      {
+        "t": 0.55,
+        "precision": 0.429,
+        "recall": 1,
+        "f1": 0.6,
+        "fp": 24
+      },
+      {
+        "t": 0.575,
+        "precision": 0.72,
+        "recall": 1,
+        "f1": 0.837,
+        "fp": 7
+      },
+      {
+        "t": 0.6,
+        "precision": 0.889,
+        "recall": 0.889,
+        "f1": 0.889,
+        "fp": 2,
+        "atEdge": null
+      },
+      {
+        "t": 0.625,
+        "precision": 1,
+        "recall": 0.778,
+        "f1": 0.875,
+        "fp": 0
+      },
+      {
+        "t": 0.65,
+        "precision": 1,
+        "recall": 0.667,
+        "f1": 0.8,
+        "fp": 0
+      },
+      {
+        "t": 0.675,
+        "precision": 1,
+        "recall": 0.389,
+        "f1": 0.56,
+        "fp": 0
+      },
+      {
+        "t": 0.7,
+        "precision": 1,
+        "recall": 0.278,
+        "f1": 0.435,
+        "fp": 0
+      },
+      {
+        "t": 0.725,
+        "precision": 1,
+        "recall": 0.111,
+        "f1": 0.2,
+        "fp": 0
+      },
+      {
+        "t": 0.75,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.775,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.8,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.825,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.85,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.875,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.9,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      }
+    ],
+    "bestThreshold": {
+      "t": 0.6,
+      "precision": 0.889,
+      "recall": 0.889,
+      "f1": 0.889,
+      "fp": 2,
+      "atEdge": null
+    },
+    "currentThreshold": 0.62,
+    "mrr": {
+      "keyword": 0.444,
+      "semantic": 1,
+      "hybrid": 0.778
+    },
+    "hit1": {
+      "keyword": 4,
+      "semantic": 9,
+      "hybrid": 5
+    },
+    "perQuery": [
+      {
+        "id": "Q1",
+        "kind": "paraphrase",
+        "text": "How is fundraising going?",
+        "relevant": [
+          "f1",
+          "f2",
+          "f3"
+        ],
+        "cosine": {
+          "f1": 0.5876,
+          "f2": 0.608,
+          "f3": 0.6716,
+          "g1": 0.5695,
+          "g2": 0.5208,
+          "g3": 0.5236,
+          "g4": 0.4826,
+          "h1": 0.4757,
+          "h2": 0.5141,
+          "h3": 0.4801,
+          "h4": 0.4901,
+          "p1": 0.5719,
+          "p2": 0.5747,
+          "k1": 0.5013,
+          "k2": 0.5044,
+          "k3": 0.4946,
+          "u1": 0.4868,
+          "u2": 0.496,
+          "u3": 0.4482,
+          "u4": 0.4702,
+          "u5": 0.4767,
+          "u6": 0.5035,
+          "u7": 0.5127,
+          "u8": 0.4731
+        },
+        "keyword": {
+          "rank": [],
+          "hit1": false,
+          "hit3": false,
+          "mrr": 0
+        },
+        "semantic": {
+          "rank": [
+            "f3",
+            "f2",
+            "f1",
+            "p2",
+            "p1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "f3"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1,
+          "components": [
+            {
+              "id": "f3",
+              "score": 0.0611,
+              "keyword": 0,
+              "semantic": 0.0611,
+              "recency": 0,
+              "cosine": 0.6716,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "f3"
+        ],
+        "currentFirst": null,
+        "bothQuoted": null,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "f3"
+        ]
+      },
+      {
+        "id": "Q2",
+        "kind": "investment-terms",
+        "text": "Who has put money into the company?",
+        "relevant": [
+          "f1",
+          "f2"
+        ],
+        "cosine": {
+          "f1": 0.5868,
+          "f2": 0.6749,
+          "f3": 0.6018,
+          "g1": 0.483,
+          "g2": 0.444,
+          "g3": 0.5081,
+          "g4": 0.5133,
+          "h1": 0.5191,
+          "h2": 0.5147,
+          "h3": 0.4854,
+          "h4": 0.4859,
+          "p1": 0.5198,
+          "p2": 0.5252,
+          "k1": 0.5019,
+          "k2": 0.5026,
+          "k3": 0.4755,
+          "u1": 0.4393,
+          "u2": 0.4806,
+          "u3": 0.4554,
+          "u4": 0.4847,
+          "u5": 0.479,
+          "u6": 0.4795,
+          "u7": 0.4785,
+          "u8": 0.5022
+        },
+        "keyword": {
+          "rank": [
+            "h4"
+          ],
+          "hit1": false,
+          "hit3": false,
+          "mrr": 0
+        },
+        "semantic": {
+          "rank": [
+            "f2",
+            "f3",
+            "f1",
+            "p2",
+            "p1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "h4",
+            "f2"
+          ],
+          "hit1": false,
+          "hit3": true,
+          "mrr": 0.5,
+          "components": [
+            {
+              "id": "h4",
+              "score": 0.55,
+              "keyword": 0.5,
+              "semantic": 0,
+              "recency": 0.05,
+              "cosine": 0.4859,
+              "why": "match"
+            },
+            {
+              "id": "f2",
+              "score": 0.065,
+              "keyword": 0,
+              "semantic": 0.065,
+              "recency": 0,
+              "cosine": 0.6749,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "h4"
+        ],
+        "currentFirst": null,
+        "bothQuoted": null,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "f2"
+        ]
+      },
+      {
+        "id": "Q3",
+        "kind": "goal-achieved",
+        "text": "Did I complete the race I was training for?",
+        "relevant": [
+          "g1",
+          "g2"
+        ],
+        "cosine": {
+          "f1": 0.51,
+          "f2": 0.5016,
+          "f3": 0.4794,
+          "g1": 0.6528,
+          "g2": 0.6286,
+          "g3": 0.5557,
+          "g4": 0.5208,
+          "h1": 0.4575,
+          "h2": 0.5003,
+          "h3": 0.4334,
+          "h4": 0.4914,
+          "p1": 0.5062,
+          "p2": 0.535,
+          "k1": 0.5359,
+          "k2": 0.4943,
+          "k3": 0.5447,
+          "u1": 0.5389,
+          "u2": 0.574,
+          "u3": 0.5574,
+          "u4": 0.5036,
+          "u5": 0.5472,
+          "u6": 0.5798,
+          "u7": 0.5103,
+          "u8": 0.5165
+        },
+        "keyword": {
+          "rank": [
+            "u6"
+          ],
+          "hit1": false,
+          "hit3": false,
+          "mrr": 0
+        },
+        "semantic": {
+          "rank": [
+            "g1",
+            "g2",
+            "u6",
+            "u2",
+            "u3"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "u6",
+            "g2",
+            "g1"
+          ],
+          "hit1": false,
+          "hit3": true,
+          "mrr": 0.5,
+          "components": [
+            {
+              "id": "u6",
+              "score": 0.525,
+              "keyword": 0.5,
+              "semantic": 0,
+              "recency": 0.025,
+              "cosine": 0.5798,
+              "why": "match"
+            },
+            {
+              "id": "g2",
+              "score": 0.0602,
+              "keyword": 0,
+              "semantic": 0.0102,
+              "recency": 0.05,
+              "cosine": 0.6286,
+              "why": "semantic"
+            },
+            {
+              "id": "g1",
+              "score": 0.0388,
+              "keyword": 0,
+              "semantic": 0.0388,
+              "recency": 0,
+              "cosine": 0.6528,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "u6"
+        ],
+        "currentFirst": true,
+        "bothQuoted": false,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "g1",
+          "g2"
+        ]
+      },
+      {
+        "id": "Q4",
+        "kind": "goal-abandoned",
+        "text": "Am I still working toward flying planes?",
+        "relevant": [
+          "g3",
+          "g4"
+        ],
+        "cosine": {
+          "f1": 0.4969,
+          "f2": 0.5324,
+          "f3": 0.559,
+          "g1": 0.5995,
+          "g2": 0.5237,
+          "g3": 0.735,
+          "g4": 0.6361,
+          "h1": 0.4971,
+          "h2": 0.5198,
+          "h3": 0.476,
+          "h4": 0.5385,
+          "p1": 0.5511,
+          "p2": 0.5255,
+          "k1": 0.5303,
+          "k2": 0.5194,
+          "k3": 0.5413,
+          "u1": 0.5494,
+          "u2": 0.5499,
+          "u3": 0.5632,
+          "u4": 0.5606,
+          "u5": 0.5563,
+          "u6": 0.568,
+          "u7": 0.6034,
+          "u8": 0.5583
+        },
+        "keyword": {
+          "rank": [
+            "p1"
+          ],
+          "hit1": false,
+          "hit3": false,
+          "mrr": 0
+        },
+        "semantic": {
+          "rank": [
+            "g3",
+            "g4",
+            "u7",
+            "g1",
+            "u6"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "p1",
+            "g3",
+            "g4"
+          ],
+          "hit1": false,
+          "hit3": true,
+          "mrr": 0.5,
+          "components": [
+            {
+              "id": "p1",
+              "score": 0.5029,
+              "keyword": 0.5,
+              "semantic": 0,
+              "recency": 0.0029,
+              "cosine": 0.5511,
+              "why": "match"
+            },
+            {
+              "id": "g3",
+              "score": 0.1362,
+              "keyword": 0,
+              "semantic": 0.1362,
+              "recency": 0,
+              "cosine": 0.735,
+              "why": "semantic"
+            },
+            {
+              "id": "g4",
+              "score": 0.0691,
+              "keyword": 0,
+              "semantic": 0.0191,
+              "recency": 0.05,
+              "cosine": 0.6361,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "p1",
+          "p2"
+        ],
+        "currentFirst": false,
+        "bothQuoted": false,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "g3",
+          "g4"
+        ]
+      },
+      {
+        "id": "Q5",
+        "kind": "historical-current",
+        "text": "Where is our office now?",
+        "relevant": [
+          "h1",
+          "h2"
+        ],
+        "cosine": {
+          "f1": 0.5335,
+          "f2": 0.5269,
+          "f3": 0.5744,
+          "g1": 0.449,
+          "g2": 0.4566,
+          "g3": 0.4882,
+          "g4": 0.4674,
+          "h1": 0.7022,
+          "h2": 0.7326,
+          "h3": 0.5311,
+          "h4": 0.5573,
+          "p1": 0.5464,
+          "p2": 0.509,
+          "k1": 0.4766,
+          "k2": 0.5266,
+          "k3": 0.5172,
+          "u1": 0.461,
+          "u2": 0.5077,
+          "u3": 0.4847,
+          "u4": 0.4941,
+          "u5": 0.4558,
+          "u6": 0.5025,
+          "u7": 0.4593,
+          "u8": 0.5313
+        },
+        "keyword": {
+          "rank": [
+            "h2",
+            "h1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "semantic": {
+          "rank": [
+            "h2",
+            "h1",
+            "f3",
+            "h4",
+            "p1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "h2",
+            "h1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1,
+          "components": [
+            {
+              "id": "h2",
+              "score": 0.6833,
+              "keyword": 0.5,
+              "semantic": 0.1333,
+              "recency": 0.05,
+              "cosine": 0.7326,
+              "why": "match"
+            },
+            {
+              "id": "h1",
+              "score": 0.5973,
+              "keyword": 0.5,
+              "semantic": 0.0973,
+              "recency": 0,
+              "cosine": 0.7022,
+              "why": "match"
+            }
+          ]
+        },
+        "selected": [
+          "h1",
+          "h2"
+        ],
+        "currentFirst": true,
+        "bothQuoted": true,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "h1",
+          "h2"
+        ]
+      },
+      {
+        "id": "Q6",
+        "kind": "historical-current",
+        "text": "Who is in charge of design?",
+        "relevant": [
+          "h3",
+          "h4"
+        ],
+        "cosine": {
+          "f1": 0.4816,
+          "f2": 0.5178,
+          "f3": 0.4964,
+          "g1": 0.4532,
+          "g2": 0.4322,
+          "g3": 0.4844,
+          "g4": 0.4522,
+          "h1": 0.5055,
+          "h2": 0.5144,
+          "h3": 0.6947,
+          "h4": 0.6602,
+          "p1": 0.5273,
+          "p2": 0.5285,
+          "k1": 0.4598,
+          "k2": 0.5139,
+          "k3": 0.5031,
+          "u1": 0.4625,
+          "u2": 0.4491,
+          "u3": 0.4806,
+          "u4": 0.4869,
+          "u5": 0.4774,
+          "u6": 0.4951,
+          "u7": 0.4721,
+          "u8": 0.4611
+        },
+        "keyword": {
+          "rank": [
+            "h3",
+            "h4"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "semantic": {
+          "rank": [
+            "h3",
+            "h4",
+            "p2",
+            "p1",
+            "f2"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "h3",
+            "h4"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1,
+          "components": [
+            {
+              "id": "h3",
+              "score": 0.5885,
+              "keyword": 0.5,
+              "semantic": 0.0885,
+              "recency": 0,
+              "cosine": 0.6947,
+              "why": "match"
+            },
+            {
+              "id": "h4",
+              "score": 0.5202,
+              "keyword": 0.4226,
+              "semantic": 0.0476,
+              "recency": 0.05,
+              "cosine": 0.6602,
+              "why": "match"
+            }
+          ]
+        },
+        "selected": [
+          "h3",
+          "h4"
+        ],
+        "currentFirst": false,
+        "bothQuoted": true,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "h3",
+          "h4"
+        ]
+      },
+      {
+        "id": "Q7",
+        "kind": "keyword-trap",
+        "text": "When is the release date?",
+        "relevant": [
+          "p1",
+          "p2"
+        ],
+        "cosine": {
+          "f1": 0.5148,
+          "f2": 0.5017,
+          "f3": 0.5458,
+          "g1": 0.4835,
+          "g2": 0.46,
+          "g3": 0.5077,
+          "g4": 0.4582,
+          "h1": 0.4839,
+          "h2": 0.5078,
+          "h3": 0.4919,
+          "h4": 0.4775,
+          "p1": 0.6748,
+          "p2": 0.6182,
+          "k1": 0.5419,
+          "k2": 0.4817,
+          "k3": 0.478,
+          "u1": 0.4447,
+          "u2": 0.5082,
+          "u3": 0.4521,
+          "u4": 0.4635,
+          "u5": 0.4574,
+          "u6": 0.5265,
+          "u7": 0.4417,
+          "u8": 0.4801
+        },
+        "keyword": {
+          "rank": [
+            "k1"
+          ],
+          "hit1": false,
+          "hit3": false,
+          "mrr": 0
+        },
+        "semantic": {
+          "rank": [
+            "p1",
+            "p2",
+            "f3",
+            "k1",
+            "u6"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "k1",
+            "p1"
+          ],
+          "hit1": false,
+          "hit3": true,
+          "mrr": 0.5,
+          "components": [
+            {
+              "id": "k1",
+              "score": 0.55,
+              "keyword": 0.5,
+              "semantic": 0,
+              "recency": 0.05,
+              "cosine": 0.5419,
+              "why": "match"
+            },
+            {
+              "id": "p1",
+              "score": 0.0649,
+              "keyword": 0,
+              "semantic": 0.0649,
+              "recency": 0,
+              "cosine": 0.6748,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "k1"
+        ],
+        "currentFirst": false,
+        "bothQuoted": false,
+        "trapAboveRelevant": {
+          "keyword": true,
+          "hybrid": true
+        },
+        "aboveFloor": [
+          "p1"
+        ]
+      },
+      {
+        "id": "Q8",
+        "kind": "unrelated",
+        "text": "What is my blood pressure?",
+        "relevant": [],
+        "cosine": {
+          "f1": 0.4524,
+          "f2": 0.4874,
+          "f3": 0.489,
+          "g1": 0.5008,
+          "g2": 0.4953,
+          "g3": 0.496,
+          "g4": 0.4526,
+          "h1": 0.4557,
+          "h2": 0.4459,
+          "h3": 0.4412,
+          "h4": 0.4298,
+          "p1": 0.4727,
+          "p2": 0.4636,
+          "k1": 0.547,
+          "k2": 0.4474,
+          "k3": 0.4672,
+          "u1": 0.4942,
+          "u2": 0.4931,
+          "u3": 0.4935,
+          "u4": 0.4932,
+          "u5": 0.4906,
+          "u6": 0.5119,
+          "u7": 0.4849,
+          "u8": 0.5007
+        },
+        "keyword": {
+          "rank": [],
+          "hit1": null,
+          "hit3": null,
+          "mrr": null,
+          "falsePositives": []
+        },
+        "semantic": {
+          "rank": [
+            "k1",
+            "u6",
+            "g1",
+            "u8",
+            "g3"
+          ],
+          "hit1": null,
+          "hit3": null,
+          "mrr": null,
+          "falsePositives": [
+            "k1",
+            "u6",
+            "g1"
+          ]
+        },
+        "hybrid": {
+          "rank": [],
+          "hit1": null,
+          "hit3": null,
+          "mrr": null,
+          "falsePositives": [],
+          "components": []
+        },
+        "selected": [],
+        "currentFirst": null,
+        "bothQuoted": null,
+        "trapAboveRelevant": null,
+        "aboveFloor": []
+      },
+      {
+        "id": "Q9",
+        "kind": "keyword",
+        "text": "Tell me about the Series A.",
+        "relevant": [
+          "f3"
+        ],
+        "cosine": {
+          "f1": 0.5858,
+          "f2": 0.5397,
+          "f3": 0.7098,
+          "g1": 0.4826,
+          "g2": 0.4868,
+          "g3": 0.5251,
+          "g4": 0.5057,
+          "h1": 0.495,
+          "h2": 0.4932,
+          "h3": 0.5173,
+          "h4": 0.5021,
+          "p1": 0.5926,
+          "p2": 0.5315,
+          "k1": 0.5112,
+          "k2": 0.4989,
+          "k3": 0.4752,
+          "u1": 0.4638,
+          "u2": 0.4925,
+          "u3": 0.44,
+          "u4": 0.4838,
+          "u5": 0.479,
+          "u6": 0.5165,
+          "u7": 0.5029,
+          "u8": 0.4711
+        },
+        "keyword": {
+          "rank": [
+            "f3"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "semantic": {
+          "rank": [
+            "f3",
+            "p1",
+            "f1",
+            "f2",
+            "p2"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "f3"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1,
+          "components": [
+            {
+              "id": "f3",
+              "score": 0.6063,
+              "keyword": 0.5,
+              "semantic": 0.1063,
+              "recency": 0,
+              "cosine": 0.7098,
+              "why": "match"
+            }
+          ]
+        },
+        "selected": [
+          "f3"
+        ],
+        "currentFirst": null,
+        "bothQuoted": null,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "f3"
+        ]
+      },
+      {
+        "id": "Q10",
+        "kind": "keyword+semantic",
+        "text": "How did the half marathon go?",
+        "relevant": [
+          "g1",
+          "g2"
+        ],
+        "cosine": {
+          "f1": 0.5111,
+          "f2": 0.5342,
+          "f3": 0.5066,
+          "g1": 0.7023,
+          "g2": 0.6905,
+          "g3": 0.4998,
+          "g4": 0.5162,
+          "h1": 0.4346,
+          "h2": 0.5156,
+          "h3": 0.4401,
+          "h4": 0.5221,
+          "p1": 0.4956,
+          "p2": 0.5464,
+          "k1": 0.5289,
+          "k2": 0.5042,
+          "k3": 0.5417,
+          "u1": 0.5528,
+          "u2": 0.5691,
+          "u3": 0.5234,
+          "u4": 0.4708,
+          "u5": 0.5271,
+          "u6": 0.5816,
+          "u7": 0.5146,
+          "u8": 0.533
+        },
+        "keyword": {
+          "rank": [
+            "g1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "semantic": {
+          "rank": [
+            "g1",
+            "g2",
+            "u6",
+            "u2",
+            "u1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "g1",
+            "g2"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1,
+          "components": [
+            {
+              "id": "g1",
+              "score": 0.5975,
+              "keyword": 0.5,
+              "semantic": 0.0975,
+              "recency": 0,
+              "cosine": 0.7023,
+              "why": "match"
+            },
+            {
+              "id": "g2",
+              "score": 0.1335,
+              "keyword": 0,
+              "semantic": 0.0835,
+              "recency": 0.05,
+              "cosine": 0.6905,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "g1",
+          "g2"
+        ],
+        "currentFirst": false,
+        "bothQuoted": true,
+        "trapAboveRelevant": {
+          "keyword": false,
+          "hybrid": false
+        },
+        "aboveFloor": [
+          "g1",
+          "g2"
+        ]
+      }
+    ]
+  },
+  "taskType": {
+    "label": "RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY",
+    "relevantCosine": {
+      "n": 18,
+      "min": 0.6448,
+      "p50": 0.697,
+      "max": 0.7443
+    },
+    "unrelatedCosine": {
+      "n": 222,
+      "min": 0.4819,
+      "p50": 0.553,
+      "max": 0.6763
+    },
+    "sweep": [
+      {
+        "t": 0.4,
+        "precision": 0.075,
+        "recall": 1,
+        "f1": 0.14,
+        "fp": 222
+      },
+      {
+        "t": 0.425,
+        "precision": 0.075,
+        "recall": 1,
+        "f1": 0.14,
+        "fp": 222
+      },
+      {
+        "t": 0.45,
+        "precision": 0.075,
+        "recall": 1,
+        "f1": 0.14,
+        "fp": 222
+      },
+      {
+        "t": 0.475,
+        "precision": 0.075,
+        "recall": 1,
+        "f1": 0.14,
+        "fp": 222
+      },
+      {
+        "t": 0.5,
+        "precision": 0.077,
+        "recall": 1,
+        "f1": 0.142,
+        "fp": 217
+      },
+      {
+        "t": 0.525,
+        "precision": 0.09,
+        "recall": 1,
+        "f1": 0.166,
+        "fp": 181
+      },
+      {
+        "t": 0.55,
+        "precision": 0.135,
+        "recall": 1,
+        "f1": 0.238,
+        "fp": 115
+      },
+      {
+        "t": 0.575,
+        "precision": 0.25,
+        "recall": 1,
+        "f1": 0.4,
+        "fp": 54
+      },
+      {
+        "t": 0.6,
+        "precision": 0.486,
+        "recall": 1,
+        "f1": 0.655,
+        "fp": 19
+      },
+      {
+        "t": 0.625,
+        "precision": 0.783,
+        "recall": 1,
+        "f1": 0.878,
+        "fp": 5
+      },
+      {
+        "t": 0.65,
+        "precision": 0.941,
+        "recall": 0.889,
+        "f1": 0.914,
+        "fp": 1,
+        "atEdge": null
+      },
+      {
+        "t": 0.675,
+        "precision": 0.933,
+        "recall": 0.778,
+        "f1": 0.848,
+        "fp": 1
+      },
+      {
+        "t": 0.7,
+        "precision": 1,
+        "recall": 0.444,
+        "f1": 0.615,
+        "fp": 0
+      },
+      {
+        "t": 0.725,
+        "precision": 1,
+        "recall": 0.389,
+        "f1": 0.56,
+        "fp": 0
+      },
+      {
+        "t": 0.75,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.775,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.8,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.825,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.85,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.875,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      },
+      {
+        "t": 0.9,
+        "precision": 1,
+        "recall": 0,
+        "f1": 0,
+        "fp": 0
+      }
+    ],
+    "bestThreshold": {
+      "t": 0.65,
+      "precision": 0.941,
+      "recall": 0.889,
+      "f1": 0.914,
+      "fp": 1,
+      "atEdge": null
+    },
+    "currentThreshold": 0.62,
+    "mrr": {
+      "keyword": 0.444,
+      "semantic": 1,
+      "hybrid": 0.759
+    },
+    "hit1": {
+      "keyword": 4,
+      "semantic": 9,
+      "hybrid": 5
+    },
+    "perQuery": [
+      {
+        "id": "Q1",
+        "kind": "paraphrase",
+        "text": "How is fundraising going?",
+        "relevant": [
+          "f1",
+          "f2",
+          "f3"
+        ],
+        "cosine": {
+          "f1": 0.6648,
+          "f2": 0.6448,
+          "f3": 0.7257,
+          "g1": 0.6239,
+          "g2": 0.584,
+          "g3": 0.5719,
+          "g4": 0.525,
+          "h1": 0.5552,
+          "h2": 0.5761,
+          "h3": 0.5472,
+          "h4": 0.5804,
+          "p1": 0.6007,
+          "p2": 0.6005,
+          "k1": 0.5364,
+          "k2": 0.5532,
+          "k3": 0.532,
+          "u1": 0.5569,
+          "u2": 0.5515,
+          "u3": 0.5055,
+          "u4": 0.5217,
+          "u5": 0.5307,
+          "u6": 0.554,
+          "u7": 0.5654,
+          "u8": 0.531
+        },
+        "keyword": {
+          "rank": [],
+          "hit1": false,
+          "hit3": false,
+          "mrr": 0
+        },
+        "semantic": {
+          "rank": [
+            "f3",
+            "f1",
+            "f2",
+            "g1",
+            "p1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "f3",
+            "f1",
+            "f2",
+            "g1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1,
+          "components": [
+            {
+              "id": "f3",
+              "score": 0.1752,
+              "keyword": 0,
+              "semantic": 0.1252,
+              "recency": 0.05,
+              "cosine": 0.7257,
+              "why": "semantic"
+            },
+            {
+              "id": "f1",
+              "score": 0.0531,
+              "keyword": 0,
+              "semantic": 0.0531,
+              "recency": 0,
+              "cosine": 0.6648,
+              "why": "semantic"
+            },
+            {
+              "id": "f2",
+              "score": 0.0346,
+              "keyword": 0,
+              "semantic": 0.0294,
+              "recency": 0.0053,
+              "cosine": 0.6448,
+              "why": "semantic"
+            },
+            {
+              "id": "g1",
+              "score": 0.0073,
+              "keyword": 0,
+              "semantic": 0.0046,
+              "recency": 0.0026,
+              "cosine": 0.6239,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "f1",
+          "f3"
+        ],
+        "currentFirst": null,
+        "bothQuoted": null,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "f1",
+          "f2",
+          "f3",
+          "g1"
+        ]
+      },
+      {
+        "id": "Q2",
+        "kind": "investment-terms",
+        "text": "Who has put money into the company?",
+        "relevant": [
+          "f1",
+          "f2"
+        ],
+        "cosine": {
+          "f1": 0.681,
+          "f2": 0.6924,
+          "f3": 0.6763,
+          "g1": 0.5386,
+          "g2": 0.5104,
+          "g3": 0.5507,
+          "g4": 0.5453,
+          "h1": 0.5796,
+          "h2": 0.5818,
+          "h3": 0.5583,
+          "h4": 0.5634,
+          "p1": 0.5626,
+          "p2": 0.5495,
+          "k1": 0.5363,
+          "k2": 0.5272,
+          "k3": 0.5013,
+          "u1": 0.519,
+          "u2": 0.5191,
+          "u3": 0.5021,
+          "u4": 0.5287,
+          "u5": 0.5318,
+          "u6": 0.5147,
+          "u7": 0.5269,
+          "u8": 0.5377
+        },
+        "keyword": {
+          "rank": [
+            "h4"
+          ],
+          "hit1": false,
+          "hit3": false,
+          "mrr": 0
+        },
+        "semantic": {
+          "rank": [
+            "f2",
+            "f1",
+            "f3",
+            "h2",
+            "h1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "h4",
+            "f3",
+            "f2",
+            "f1"
+          ],
+          "hit1": false,
+          "hit3": true,
+          "mrr": 0.333,
+          "components": [
+            {
+              "id": "h4",
+              "score": 0.55,
+              "keyword": 0.5,
+              "semantic": 0,
+              "recency": 0.05,
+              "cosine": 0.5634,
+              "why": "match"
+            },
+            {
+              "id": "f3",
+              "score": 0.0923,
+              "keyword": 0,
+              "semantic": 0.0667,
+              "recency": 0.0257,
+              "cosine": 0.6763,
+              "why": "semantic"
+            },
+            {
+              "id": "f2",
+              "score": 0.0884,
+              "keyword": 0,
+              "semantic": 0.0857,
+              "recency": 0.0027,
+              "cosine": 0.6924,
+              "why": "semantic"
+            },
+            {
+              "id": "f1",
+              "score": 0.0722,
+              "keyword": 0,
+              "semantic": 0.0722,
+              "recency": 0,
+              "cosine": 0.681,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "h4"
+        ],
+        "currentFirst": null,
+        "bothQuoted": null,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "f1",
+          "f2",
+          "f3"
+        ]
+      },
+      {
+        "id": "Q3",
+        "kind": "goal-achieved",
+        "text": "Did I complete the race I was training for?",
+        "relevant": [
+          "g1",
+          "g2"
+        ],
+        "cosine": {
+          "f1": 0.5738,
+          "f2": 0.535,
+          "f3": 0.5391,
+          "g1": 0.6815,
+          "g2": 0.678,
+          "g3": 0.5929,
+          "g4": 0.5547,
+          "h1": 0.516,
+          "h2": 0.5445,
+          "h3": 0.5047,
+          "h4": 0.5485,
+          "p1": 0.5353,
+          "p2": 0.5477,
+          "k1": 0.553,
+          "k2": 0.536,
+          "k3": 0.5704,
+          "u1": 0.6021,
+          "u2": 0.6111,
+          "u3": 0.5883,
+          "u4": 0.5394,
+          "u5": 0.5973,
+          "u6": 0.6043,
+          "u7": 0.5592,
+          "u8": 0.5681
+        },
+        "keyword": {
+          "rank": [
+            "u6"
+          ],
+          "hit1": false,
+          "hit3": false,
+          "mrr": 0
+        },
+        "semantic": {
+          "rank": [
+            "g1",
+            "g2",
+            "u2",
+            "u6",
+            "u1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "u6",
+            "g2",
+            "g1"
+          ],
+          "hit1": false,
+          "hit3": true,
+          "mrr": 0.5,
+          "components": [
+            {
+              "id": "u6",
+              "score": 0.525,
+              "keyword": 0.5,
+              "semantic": 0,
+              "recency": 0.025,
+              "cosine": 0.6043,
+              "why": "match"
+            },
+            {
+              "id": "g2",
+              "score": 0.1187,
+              "keyword": 0,
+              "semantic": 0.0687,
+              "recency": 0.05,
+              "cosine": 0.678,
+              "why": "semantic"
+            },
+            {
+              "id": "g1",
+              "score": 0.0728,
+              "keyword": 0,
+              "semantic": 0.0728,
+              "recency": 0,
+              "cosine": 0.6815,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "u6"
+        ],
+        "currentFirst": true,
+        "bothQuoted": false,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "g1",
+          "g2"
+        ]
+      },
+      {
+        "id": "Q4",
+        "kind": "goal-abandoned",
+        "text": "Am I still working toward flying planes?",
+        "relevant": [
+          "g3",
+          "g4"
+        ],
+        "cosine": {
+          "f1": 0.5792,
+          "f2": 0.5858,
+          "f3": 0.6192,
+          "g1": 0.6398,
+          "g2": 0.5927,
+          "g3": 0.7443,
+          "g4": 0.6583,
+          "h1": 0.5577,
+          "h2": 0.5716,
+          "h3": 0.5451,
+          "h4": 0.588,
+          "p1": 0.5845,
+          "p2": 0.5703,
+          "k1": 0.5589,
+          "k2": 0.5575,
+          "k3": 0.567,
+          "u1": 0.6167,
+          "u2": 0.5827,
+          "u3": 0.5851,
+          "u4": 0.5746,
+          "u5": 0.6082,
+          "u6": 0.5942,
+          "u7": 0.6408,
+          "u8": 0.5863
+        },
+        "keyword": {
+          "rank": [
+            "p1"
+          ],
+          "hit1": false,
+          "hit3": false,
+          "mrr": 0
+        },
+        "semantic": {
+          "rank": [
+            "g3",
+            "g4",
+            "u7",
+            "g1",
+            "f3"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "p1",
+            "g3",
+            "g4",
+            "u7",
+            "g1"
+          ],
+          "hit1": false,
+          "hit3": true,
+          "mrr": 0.5,
+          "components": [
+            {
+              "id": "p1",
+              "score": 0.5066,
+              "keyword": 0.5,
+              "semantic": 0,
+              "recency": 0.0066,
+              "cosine": 0.5845,
+              "why": "match"
+            },
+            {
+              "id": "g3",
+              "score": 0.1511,
+              "keyword": 0,
+              "semantic": 0.1472,
+              "recency": 0.0039,
+              "cosine": 0.7443,
+              "why": "semantic"
+            },
+            {
+              "id": "g4",
+              "score": 0.0954,
+              "keyword": 0,
+              "semantic": 0.0454,
+              "recency": 0.05,
+              "cosine": 0.6583,
+              "why": "semantic"
+            },
+            {
+              "id": "u7",
+              "score": 0.0444,
+              "keyword": 0,
+              "semantic": 0.0246,
+              "recency": 0.0197,
+              "cosine": 0.6408,
+              "why": "semantic"
+            },
+            {
+              "id": "g1",
+              "score": 0.0234,
+              "keyword": 0,
+              "semantic": 0.0234,
+              "recency": 0,
+              "cosine": 0.6398,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "p1",
+          "p2"
+        ],
+        "currentFirst": false,
+        "bothQuoted": false,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "g1",
+          "g3",
+          "g4",
+          "u7"
+        ]
+      },
+      {
+        "id": "Q5",
+        "kind": "historical-current",
+        "text": "Where is our office now?",
+        "relevant": [
+          "h1",
+          "h2"
+        ],
+        "cosine": {
+          "f1": 0.5785,
+          "f2": 0.553,
+          "f3": 0.613,
+          "g1": 0.5412,
+          "g2": 0.5324,
+          "g3": 0.5596,
+          "g4": 0.5275,
+          "h1": 0.7343,
+          "h2": 0.7413,
+          "h3": 0.5763,
+          "h4": 0.6165,
+          "p1": 0.5696,
+          "p2": 0.5316,
+          "k1": 0.5164,
+          "k2": 0.5681,
+          "k3": 0.5449,
+          "u1": 0.5435,
+          "u2": 0.5382,
+          "u3": 0.5398,
+          "u4": 0.5588,
+          "u5": 0.5323,
+          "u6": 0.545,
+          "u7": 0.5455,
+          "u8": 0.5759
+        },
+        "keyword": {
+          "rank": [
+            "h2",
+            "h1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "semantic": {
+          "rank": [
+            "h2",
+            "h1",
+            "h4",
+            "f3",
+            "f1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "h2",
+            "h1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1,
+          "components": [
+            {
+              "id": "h2",
+              "score": 0.6936,
+              "keyword": 0.5,
+              "semantic": 0.1436,
+              "recency": 0.05,
+              "cosine": 0.7413,
+              "why": "match"
+            },
+            {
+              "id": "h1",
+              "score": 0.6354,
+              "keyword": 0.5,
+              "semantic": 0.1354,
+              "recency": 0,
+              "cosine": 0.7343,
+              "why": "match"
+            }
+          ]
+        },
+        "selected": [
+          "h1",
+          "h2"
+        ],
+        "currentFirst": true,
+        "bothQuoted": true,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "h1",
+          "h2"
+        ]
+      },
+      {
+        "id": "Q6",
+        "kind": "historical-current",
+        "text": "Who is in charge of design?",
+        "relevant": [
+          "h3",
+          "h4"
+        ],
+        "cosine": {
+          "f1": 0.5734,
+          "f2": 0.5622,
+          "f3": 0.5918,
+          "g1": 0.5217,
+          "g2": 0.498,
+          "g3": 0.5487,
+          "g4": 0.5005,
+          "h1": 0.5841,
+          "h2": 0.5723,
+          "h3": 0.7335,
+          "h4": 0.7326,
+          "p1": 0.5859,
+          "p2": 0.5732,
+          "k1": 0.5005,
+          "k2": 0.5485,
+          "k3": 0.5288,
+          "u1": 0.5376,
+          "u2": 0.5024,
+          "u3": 0.5215,
+          "u4": 0.5455,
+          "u5": 0.5215,
+          "u6": 0.533,
+          "u7": 0.5394,
+          "u8": 0.5134
+        },
+        "keyword": {
+          "rank": [
+            "h3",
+            "h4"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "semantic": {
+          "rank": [
+            "h3",
+            "h4",
+            "f3",
+            "p1",
+            "h1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "h3",
+            "h4"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1,
+          "components": [
+            {
+              "id": "h3",
+              "score": 0.6344,
+              "keyword": 0.5,
+              "semantic": 0.1344,
+              "recency": 0,
+              "cosine": 0.7335,
+              "why": "match"
+            },
+            {
+              "id": "h4",
+              "score": 0.606,
+              "keyword": 0.4226,
+              "semantic": 0.1333,
+              "recency": 0.05,
+              "cosine": 0.7326,
+              "why": "match"
+            }
+          ]
+        },
+        "selected": [
+          "h3",
+          "h4"
+        ],
+        "currentFirst": false,
+        "bothQuoted": true,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "h3",
+          "h4"
+        ]
+      },
+      {
+        "id": "Q7",
+        "kind": "keyword-trap",
+        "text": "When is the release date?",
+        "relevant": [
+          "p1",
+          "p2"
+        ],
+        "cosine": {
+          "f1": 0.58,
+          "f2": 0.5498,
+          "f3": 0.6192,
+          "g1": 0.5713,
+          "g2": 0.5448,
+          "g3": 0.5827,
+          "g4": 0.5187,
+          "h1": 0.5432,
+          "h2": 0.5672,
+          "h3": 0.5442,
+          "h4": 0.5566,
+          "p1": 0.6852,
+          "p2": 0.6448,
+          "k1": 0.5675,
+          "k2": 0.5344,
+          "k3": 0.5247,
+          "u1": 0.5529,
+          "u2": 0.5424,
+          "u3": 0.5167,
+          "u4": 0.526,
+          "u5": 0.5449,
+          "u6": 0.5834,
+          "u7": 0.5636,
+          "u8": 0.538
+        },
+        "keyword": {
+          "rank": [
+            "k1"
+          ],
+          "hit1": false,
+          "hit3": false,
+          "mrr": 0
+        },
+        "semantic": {
+          "rank": [
+            "p1",
+            "p2",
+            "f3",
+            "u6",
+            "g3"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "k1",
+            "p2",
+            "p1"
+          ],
+          "hit1": false,
+          "hit3": true,
+          "mrr": 0.5,
+          "components": [
+            {
+              "id": "k1",
+              "score": 0.5019,
+              "keyword": 0.5,
+              "semantic": 0,
+              "recency": 0.0019,
+              "cosine": 0.5675,
+              "why": "match"
+            },
+            {
+              "id": "p2",
+              "score": 0.0794,
+              "keyword": 0,
+              "semantic": 0.0294,
+              "recency": 0.05,
+              "cosine": 0.6448,
+              "why": "semantic"
+            },
+            {
+              "id": "p1",
+              "score": 0.0772,
+              "keyword": 0,
+              "semantic": 0.0772,
+              "recency": 0,
+              "cosine": 0.6852,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "k1"
+        ],
+        "currentFirst": true,
+        "bothQuoted": false,
+        "trapAboveRelevant": {
+          "keyword": true,
+          "hybrid": true
+        },
+        "aboveFloor": [
+          "p1",
+          "p2"
+        ]
+      },
+      {
+        "id": "Q8",
+        "kind": "unrelated",
+        "text": "What is my blood pressure?",
+        "relevant": [],
+        "cosine": {
+          "f1": 0.5472,
+          "f2": 0.5198,
+          "f3": 0.5502,
+          "g1": 0.5412,
+          "g2": 0.5443,
+          "g3": 0.5191,
+          "g4": 0.4844,
+          "h1": 0.5225,
+          "h2": 0.5121,
+          "h3": 0.5125,
+          "h4": 0.4928,
+          "p1": 0.5335,
+          "p2": 0.5174,
+          "k1": 0.5617,
+          "k2": 0.4819,
+          "k3": 0.4823,
+          "u1": 0.5315,
+          "u2": 0.5325,
+          "u3": 0.5164,
+          "u4": 0.5091,
+          "u5": 0.5226,
+          "u6": 0.5319,
+          "u7": 0.5255,
+          "u8": 0.5138
+        },
+        "keyword": {
+          "rank": [],
+          "hit1": null,
+          "hit3": null,
+          "mrr": null,
+          "falsePositives": []
+        },
+        "semantic": {
+          "rank": [
+            "k1",
+            "f3",
+            "f1",
+            "g2",
+            "g1"
+          ],
+          "hit1": null,
+          "hit3": null,
+          "mrr": null,
+          "falsePositives": [
+            "k1",
+            "f3",
+            "f1"
+          ]
+        },
+        "hybrid": {
+          "rank": [],
+          "hit1": null,
+          "hit3": null,
+          "mrr": null,
+          "falsePositives": [],
+          "components": []
+        },
+        "selected": [],
+        "currentFirst": null,
+        "bothQuoted": null,
+        "trapAboveRelevant": null,
+        "aboveFloor": []
+      },
+      {
+        "id": "Q9",
+        "kind": "keyword",
+        "text": "Tell me about the Series A.",
+        "relevant": [
+          "f3"
+        ],
+        "cosine": {
+          "f1": 0.6423,
+          "f2": 0.6015,
+          "f3": 0.733,
+          "g1": 0.5537,
+          "g2": 0.5582,
+          "g3": 0.5943,
+          "g4": 0.562,
+          "h1": 0.5645,
+          "h2": 0.5655,
+          "h3": 0.5699,
+          "h4": 0.5838,
+          "p1": 0.6264,
+          "p2": 0.5757,
+          "k1": 0.57,
+          "k2": 0.5542,
+          "k3": 0.5307,
+          "u1": 0.559,
+          "u2": 0.5483,
+          "u3": 0.514,
+          "u4": 0.5559,
+          "u5": 0.5557,
+          "u6": 0.5759,
+          "u7": 0.5804,
+          "u8": 0.5543
+        },
+        "keyword": {
+          "rank": [
+            "f3"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "semantic": {
+          "rank": [
+            "f3",
+            "f1",
+            "p1",
+            "f2",
+            "g3"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "f3",
+            "f1",
+            "p1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1,
+          "components": [
+            {
+              "id": "f3",
+              "score": 0.6838,
+              "keyword": 0.5,
+              "semantic": 0.1338,
+              "recency": 0.05,
+              "cosine": 0.733,
+              "why": "match"
+            },
+            {
+              "id": "f1",
+              "score": 0.0264,
+              "keyword": 0,
+              "semantic": 0.0264,
+              "recency": 0,
+              "cosine": 0.6423,
+              "why": "semantic"
+            },
+            {
+              "id": "p1",
+              "score": 0.0234,
+              "keyword": 0,
+              "semantic": 0.0076,
+              "recency": 0.0158,
+              "cosine": 0.6264,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "f3"
+        ],
+        "currentFirst": null,
+        "bothQuoted": null,
+        "trapAboveRelevant": null,
+        "aboveFloor": [
+          "f1",
+          "f3",
+          "p1"
+        ]
+      },
+      {
+        "id": "Q10",
+        "kind": "keyword+semantic",
+        "text": "How did the half marathon go?",
+        "relevant": [
+          "g1",
+          "g2"
+        ],
+        "cosine": {
+          "f1": 0.5746,
+          "f2": 0.5538,
+          "f3": 0.5712,
+          "g1": 0.697,
+          "g2": 0.7055,
+          "g3": 0.5286,
+          "g4": 0.5384,
+          "h1": 0.5153,
+          "h2": 0.5572,
+          "h3": 0.5162,
+          "h4": 0.5806,
+          "p1": 0.5476,
+          "p2": 0.5767,
+          "k1": 0.5317,
+          "k2": 0.5294,
+          "k3": 0.5576,
+          "u1": 0.5791,
+          "u2": 0.6227,
+          "u3": 0.5544,
+          "u4": 0.5166,
+          "u5": 0.5546,
+          "u6": 0.5983,
+          "u7": 0.5451,
+          "u8": 0.5641
+        },
+        "keyword": {
+          "rank": [
+            "g1"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "semantic": {
+          "rank": [
+            "g2",
+            "g1",
+            "u2",
+            "u6",
+            "h4"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1
+        },
+        "hybrid": {
+          "rank": [
+            "g1",
+            "g2",
+            "u2"
+          ],
+          "hit1": true,
+          "hit3": true,
+          "mrr": 1,
+          "components": [
+            {
+              "id": "g1",
+              "score": 0.5912,
+              "keyword": 0.5,
+              "semantic": 0.0912,
+              "recency": 0,
+              "cosine": 0.697,
+              "why": "match"
+            },
+            {
+              "id": "g2",
+              "score": 0.1513,
+              "keyword": 0,
+              "semantic": 0.1013,
+              "recency": 0.05,
+              "cosine": 0.7055,
+              "why": "semantic"
+            },
+            {
+              "id": "u2",
+              "score": 0.0211,
+              "keyword": 0,
+              "semantic": 0.0032,
+              "recency": 0.0179,
+              "cosine": 0.6227,
+              "why": "semantic"
+            }
+          ]
+        },
+        "selected": [
+          "g1",
+          "g2"
+        ],
+        "currentFirst": false,
+        "bothQuoted": true,
+        "trapAboveRelevant": {
+          "keyword": false,
+          "hybrid": false
+        },
+        "aboveFloor": [
+          "g1",
+          "g2",
+          "u2"
+        ]
+      }
+    ]
+  },
+  "fallback": [
+    {
+      "failure": "http 500",
+      "sameAsKeyword": true,
+      "mode": "ranked"
+    },
+    {
+      "failure": "http 429",
+      "sameAsKeyword": true,
+      "mode": "ranked"
+    },
+    {
+      "failure": "http 401",
+      "sameAsKeyword": true,
+      "mode": "ranked"
+    },
+    {
+      "failure": "timeout",
+      "sameAsKeyword": true,
+      "mode": "ranked"
+    }
+  ],
+  "finishedAt": "2026-11-05T07:55:43.864Z",
+  "requestCount": 9
+}

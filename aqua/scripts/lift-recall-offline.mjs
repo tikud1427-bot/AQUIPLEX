@@ -53,7 +53,6 @@ const PARTIAL = OUT.replace(/\.json$/, '.partial.json');
 
 const L = await import('../eval/lift/liftCore.mjs');
 const { recallForTurn } = await import('../src/memory/episodicRecall.js');
-const { deriveTitle } = await import('../src/memory/conversationStore.js');
 const { generateNvidia } = await import('../src/providers/nvidia.js');
 const { makeJudge } = await import('../eval/lift/liftJudge.mjs');
 
@@ -89,29 +88,9 @@ function flat(p) {
   return out;
 }
 
-// Each session is its own conversation, a week apart, a minute per turn.
-const T0 = Date.UTC(2026, 8, 1);
-function conversationsFor(p) {
-  const m = new Map();
-  p.sessions.forEach((turns, s) => {
-    m.set(`${p.id}-s${s + 1}`, {
-      meta: { userId: p.id, title: deriveTitle(turns[0]), createdAt: T0 + s * 7 * 86_400_000 },
-      messages: turns.map((content, i) => ({ role: 'user', content, ts: T0 + s * 7 * 86_400_000 + i * 60_000 })),
-    });
-  });
-  return m;
-}
+// Each session is its own conversation; documents attach to the session they followed.
+const { conversationsFor, attachmentsFor } = await import('../eval/lift/liftRecall.mjs');
 const convCache = new Map();
-/** The persona's documents, attached to the conversation (session) they followed, uploaded just after it. */
-function attachmentsFor(p) {
-  const by = new Map();
-  for (const d of p.documents ?? []) {
-    const id = `${p.id}-s${d.afterSession}`;
-    const ts = T0 + (d.afterSession - 1) * 7 * 86_400_000 + 23 * 3_600_000;
-    by.set(id, [...(by.get(id) ?? []), { id: d.name, name: d.name, content: d.text, uploadedAt: ts }]);
-  }
-  return id => by.get(id) ?? [];
-}
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 async function withRetry(fn, label, tries = 9) {

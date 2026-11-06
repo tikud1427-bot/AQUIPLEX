@@ -1,0 +1,22 @@
+{
+  "id": "profile-consistency-labels.dev.v1",
+  "authoredAt": "2026-11-02",
+  "status": "DEVELOPMENT labels, written before the profile change.",
+  "semantics": "As answer-intelligence-labels.dev.v1, plus `stillCurrent`: a value that must stay presented as CURRENT in the memory block — present, on a line with no 'since changed' note (negated / speculative / future controls).",
+  "labels": {
+    "p01-q1": { "stale": ["employed at hartwell bank"], "staleValue": ["hartwell bank"], "current": ["resigned from hartwell"] },
+    "p01-q2": { "historical": true, "current": ["hartwell bank"] },
+    "p02-q1": { "stale": ["2012 honda civic"], "staleValue": ["honda civic"], "current": ["bought a used tesla"] },
+    "p03-q1": { "stale": ["i live in leeds"], "staleValue": ["leeds"], "current": ["relocated to bristol"] },
+    "p04-q1": { "stale": ["my biggest client is oakline"], "staleValue": ["oakline"], "current": ["mellow is my biggest client"] },
+    "p05-q1": { "stale": ["derek shaw at lone star bank"], "staleValue": ["derek shaw"], "current": ["new loan officer is kim alvarez"] },
+    "p06-q1": { "stale": ["my day rate is 650 euros"], "staleValue": ["650 euros"], "current": ["720 euros for new clients"] },
+    "p07-q1": { "current": ["haven't left hartwell"], "stillCurrent": ["hartwell bank"] },
+    "p08-q1": { "current": ["thinking about selling the civic"], "stillCurrent": ["honda civic"] },
+    "p09-q1": { "current": ["i live in leeds"], "stillCurrent": ["leeds"] },
+    "p10-q1": { "stale": ["goal is to pass the cfa"], "staleValue": ["pass the cfa level 1 exam"], "current": ["passed the cfa level 1"] },
+    "p11-q1": { "stale": ["prefer long, detailed answers"], "staleValue": ["long, detailed"], "current": ["prefer short bullet-point"] },
+    "p12-q1": { "stale": ["blocked waiting on the fda letter"], "staleValue": ["blocked on: the fda letter"], "current": ["fda letter arrived"] },
+    "p12-q2": { "stale": ["launch date is march 3"], "staleValue": ["march 3"], "current": ["launch moved to april 14"] }
+  }
+}

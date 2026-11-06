@@ -35,14 +35,17 @@ describe('the Context Engine earns nothing over the lane it wraps', () => {
     }
   });
 
-  test('RECORDED: it is still slightly BEHIND on ordering, and carries two more noise lines', () => {
+  test('RECORDED: it is still slightly BEHIND on ordering; since Oct 29 it carries no extra noise', () => {
     // Parity on recall is the ceiling the note already recorded for a CE that
     // re-ranks what the floor hands it. Ordering is worse because the floor's
     // own relevance score is not one of the ten dimensions.
     for (const m of ['mrr', 'ndcg_at_8', 'top1_kind']) {
       assert.ok(CE[m] < FLOOR[m], `${m}: CE ${CE[m]} no longer below floor ${FLOOR[m]} — the floor-relevance signal may have landed; re-run the separation measurement`);
     }
-    assert.ok(CE.noise_lines > FLOOR.noise_lines);
+    // It carried two more noise lines (18 vs 16) until the Oct 29 shape fixes
+    // (possessor topic, when-word credit) removed the extra lines from both:
+    // 9 and 9.
+    assert.equal(CE.noise_lines, FLOOR.noise_lines);
     assert.equal(CE.unknown_honesty, FLOOR.unknown_honesty);
   });
 
@@ -84,9 +87,12 @@ describe('the Context Engine earns nothing over the lane it wraps', () => {
 });
 
 describe('the residual noise is E6-blocked, not a gate defect', () => {
-  test('RECORDED: 16 noise lines survive at the floor', () => {
-    assert.equal(FLOOR.noise_lines, 16);
-    assert.ok(FLOOR.unknown_honesty < 0.75);
+  test('RECORDED: 6 noise lines survive at the floor (16 before Oct 29, 9 after the shape fixes)', () => {
+    // 9 → 6: requests addressed to AQUA ("Can you run your tests?") no longer
+    // match the user's facts on the assistant's verb (pic/questionShape.js).
+    assert.equal(FLOOR.noise_lines, 6);
+    // Still short of full silence: six of 32 no-answer questions get a line.
+    assert.ok(FLOOR.unknown_honesty < 0.85);
   });
 
   test('CLOSED: the noisy questions are SHAPE-IDENTICAL to ones that must answer', () => {
@@ -110,7 +116,17 @@ describe('the residual noise is E6-blocked, not a gate defect', () => {
     // problem. It needs claims typed by predicate, which is E6, which is
     // provider-blocked. Recording it here so the next person does not spend a
     // session rediscovering that the shapes are the same.
-    assert.ok(FLOOR.unknown_honesty >= 0.71,
+    //
+    // OCT 29 CORRECTION: the first of the three was mis-read, not
+    // indistinguishable. In "my partner's birthday" the possessive marks
+    // `partner` as WHOSE birthday — the topic — and only `birthday` types the
+    // answer. Read that way it is expects=time topic=[partner], no longer the
+    // co-founder shape, and it goes silent while "Who is my co-founder?" still
+    // answers (honesty 0.719 → 0.781, recall@8 unchanged). The other residue
+    // ("Can you run your tests?" pulling "I run product") was lexical too: the
+    // verb after "can you" is the ASSISTANT's, and dropping it from the terms
+    // silenced q147 and q149 (0.781 → 0.813, recall@8 unchanged).
+    assert.ok(FLOOR.unknown_honesty >= 0.81,
       'unknown_honesty moved — if it ROSE without E6, something distinguishes these shapes after all');
   });
 });

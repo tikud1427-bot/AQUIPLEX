@@ -1,0 +1,546 @@
+{
+  "rubric": "answer-rubric.v2",
+  "provenance": "Written 2026-11-05 AFTER the Cloudflare Mistral primary run had been read. The added criteria therefore are not blind: scores of that run under v2 are diagnostic, not confirmatory. Only a run graded with this frozen file on answers produced after the freeze (or the independent held-out set) is confirmatory.",
+  "results": [
+    {
+      "id": "q09",
+      "category": "current",
+      "checks": {
+        "include": true,
+        "supported": true
+      },
+      "claims": {},
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q09",
+      "category": "current",
+      "checks": {
+        "include": true,
+        "supported": true
+      },
+      "claims": {},
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "DEV"
+    },
+    {
+      "id": "q04",
+      "category": "uncertain_dependency",
+      "checks": {
+        "include": true,
+        "uncertaintyKept": false,
+        "hedge": false,
+        "supported": true
+      },
+      "claims": {
+        "uncertain:Atlas": [
+          {
+            "status": "historical",
+            "text": "You mentioned leading the Atlas migration at Fintrail, which was due on March 3."
+          },
+          {
+            "status": "asserted",
+            "text": "There's no mention of the Atlas migration after your role change."
+          },
+          {
+            "status": "inferred",
+            "text": "Given that you've changed roles and there's no mention of the Atlas migration in your current role, it's likely that the Atlas migration is no longer your responsibility."
+          },
+          {
+            "status": "inferred",
+            "text": "So, the Atlas migration is likely no longer on your plate."
+          }
+        ]
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": true,
+      "pass": false,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q04",
+      "category": "uncertain_dependency",
+      "checks": {
+        "include": true,
+        "uncertaintyKept": false,
+        "hedge": true,
+        "supported": true
+      },
+      "claims": {
+        "uncertain:Atlas": [
+          {
+            "status": "uncertain",
+            "text": "It's uncertain whether the Atlas migration is still on your plate."
+          },
+          {
+            "status": "asserted",
+            "text": "You mentioned leading the Atlas migration at Fintrail, with a deadline of March 3."
+          }
+        ]
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": false,
+      "condition": "DEV"
+    },
+    {
+      "id": "q10",
+      "category": "abstention",
+      "checks": {
+        "abstain": true,
+        "supported": true
+      },
+      "claims": {},
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q10",
+      "category": "abstention",
+      "checks": {
+        "abstain": true,
+        "supported": true
+      },
+      "claims": {},
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "DEV"
+    },
+    {
+      "id": "q02",
+      "category": "historical",
+      "checks": {
+        "include": true,
+        "supported": true
+      },
+      "claims": {},
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "DEV"
+    },
+    {
+      "id": "q02",
+      "category": "historical",
+      "checks": {
+        "include": true,
+        "supported": true
+      },
+      "claims": {},
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q11",
+      "category": "goal_status",
+      "checks": {
+        "include": true,
+        "notOpen": true,
+        "supported": true
+      },
+      "claims": {
+        "notOpen:CFA": [
+          {
+            "status": "done",
+            "text": "You also mentioned that you passed your CFA Level 1 exam, so that goal is no longer open."
+          }
+        ]
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "DEV"
+    },
+    {
+      "id": "q11",
+      "category": "goal_status",
+      "checks": {
+        "include": true,
+        "notOpen": true,
+        "supported": true
+      },
+      "claims": {
+        "notOpen:CFA": [
+          {
+            "status": "asserted",
+            "text": "Pass the CFA Level 1 exam."
+          },
+          {
+            "status": "done",
+            "text": "You mentioned on September 8, 2026, that you passed your CFA exam."
+          },
+          {
+            "status": "done",
+            "text": "This goal is complete."
+          }
+        ]
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": true,
+      "pass": true,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q06",
+      "category": "abstention",
+      "checks": {
+        "abstain": true,
+        "supported": true
+      },
+      "claims": {},
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q06",
+      "category": "abstention",
+      "checks": {
+        "abstain": true,
+        "supported": true
+      },
+      "claims": {},
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "DEV"
+    },
+    {
+      "id": "q01",
+      "category": "current",
+      "checks": {
+        "include": true,
+        "notCurrent": true,
+        "supported": true
+      },
+      "claims": {
+        "notCurrent:Fintrail": []
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q01",
+      "category": "current",
+      "checks": {
+        "include": true,
+        "notCurrent": true,
+        "supported": true
+      },
+      "claims": {
+        "notCurrent:Fintrail": []
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "DEV"
+    },
+    {
+      "id": "q12",
+      "category": "goal_status",
+      "checks": {
+        "include": true,
+        "notOpen": true,
+        "supported": true
+      },
+      "claims": {
+        "notOpen:CFA": [
+          {
+            "status": "done",
+            "text": "You passed the CFA Level 1 exam."
+          }
+        ]
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q12",
+      "category": "goal_status",
+      "checks": {
+        "include": true,
+        "notOpen": true,
+        "supported": true
+      },
+      "claims": {
+        "notOpen:CFA": [
+          {
+            "status": "done",
+            "text": "Yes, you passed the CFA Level 1 exam."
+          }
+        ]
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "DEV"
+    },
+    {
+      "id": "q05",
+      "category": "personal_context",
+      "checks": {
+        "include": true,
+        "notCurrent": false,
+        "reachedGoal": true,
+        "uncertaintyKept": true,
+        "supported": true
+      },
+      "claims": {
+        "notCurrent:Fintrail": [
+          {
+            "status": "uncertain",
+            "text": "Additionally, you mentioned leading the Atlas migration at Fintrail, but this might no longer be relevant since you have changed jobs."
+          },
+          {
+            "status": "uncertain",
+            "text": "This could involve ongoing projects from your previous role at Fintrail that you need to hand off, or new initiatives at Northbeam that require your attention."
+          }
+        ],
+        "reachedGoal:promot": [
+          {
+            "status": "uncertain",
+            "text": "Your previous goal was to get promoted to a senior analyst, which you may have already achieved."
+          }
+        ],
+        "uncertain:Atlas": [
+          {
+            "status": "uncertain",
+            "text": "Additionally, you mentioned leading the Atlas migration at Fintrail, but this might no longer be relevant since you have changed jobs."
+          }
+        ]
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [
+        "Skill",
+        "Development",
+        "Team",
+        "Collaboration",
+        "Performance",
+        "Metrics",
+        "Feedback",
+        "Improvement"
+      ],
+      "scaffold": false,
+      "pass": false,
+      "condition": "DEV"
+    },
+    {
+      "id": "q05",
+      "category": "personal_context",
+      "checks": {
+        "include": true,
+        "notCurrent": false,
+        "reachedGoal": false,
+        "uncertaintyKept": false,
+        "supported": true
+      },
+      "claims": {
+        "notCurrent:Fintrail": [
+          {
+            "status": "asserted",
+            "text": "You are a data analyst at Fintrail."
+          },
+          {
+            "status": "inferred",
+            "text": "The Atlas migration is likely a critical project for Fintrail, given that you are leading it."
+          }
+        ],
+        "reachedGoal:promot": [
+          {
+            "status": "asserted",
+            "text": "Your active goals include getting promoted to senior analyst and leading the Atlas migration project, which is due on March 3."
+          },
+          {
+            "status": "asserted",
+            "text": "Align tasks with your goal of getting promoted to senior analyst."
+          },
+          {
+            "status": "asserted",
+            "text": "Leading a significant migration project like Atlas can demonstrate your capabilities and leadership skills, which are crucial for a promotion to senior analyst."
+          },
+          {
+            "status": "done",
+            "text": "This will not only ensure that the project is completed on time but also position you well for a promotion to senior analyst."
+          }
+        ],
+        "uncertain:Atlas": [
+          {
+            "status": "asserted",
+            "text": "Your active goals include getting promoted to senior analyst and leading the Atlas migration project, which is due on March 3."
+          },
+          {
+            "status": "asserted",
+            "text": "The Atlas migration project is due on March 3, which is this month."
+          },
+          {
+            "status": "asserted",
+            "text": "Leading a significant migration project like Atlas can demonstrate your capabilities and leadership skills, which are crucial for a promotion to senior analyst."
+          },
+          {
+            "status": "inferred",
+            "text": "The Atlas migration is likely a critical project for Fintrail, given that you are leading it."
+          },
+          {
+            "status": "asserted",
+            "text": "Given the deadline and the potential impact on your career goals, you should focus on the Atlas migration project this month."
+          },
+          {
+            "status": "done",
+            "text": "This will not only ensure that the project is completed on time but also position you well for a promotion to senior analyst."
+          }
+        ]
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [
+        "Deadlines",
+        "Importance"
+      ],
+      "scaffold": true,
+      "pass": false,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q07",
+      "category": "current",
+      "checks": {
+        "include": true,
+        "notCurrent": true,
+        "supported": true
+      },
+      "claims": {
+        "notCurrent:Northbeam": []
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "DEV"
+    },
+    {
+      "id": "q07",
+      "category": "current",
+      "checks": {
+        "include": true,
+        "notCurrent": true,
+        "supported": true
+      },
+      "claims": {
+        "notCurrent:Northbeam": []
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q08",
+      "category": "current",
+      "checks": {
+        "include": true,
+        "notCurrent": true,
+        "supported": true
+      },
+      "claims": {
+        "notCurrent:Priya Rao": []
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "DEV"
+    },
+    {
+      "id": "q08",
+      "category": "current",
+      "checks": {
+        "include": true,
+        "notCurrent": true,
+        "supported": true
+      },
+      "claims": {
+        "notCurrent:Priya Rao": []
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "HEAD"
+    },
+    {
+      "id": "q03",
+      "category": "goal_status",
+      "checks": {
+        "include": true,
+        "notOpen": true,
+        "supported": true
+      },
+      "claims": {
+        "notOpen:half marathon": [
+          {
+            "status": "done",
+            "text": "You ran the half marathon."
+          }
+        ]
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "DEV"
+    },
+    {
+      "id": "q03",
+      "category": "goal_status",
+      "checks": {
+        "include": true,
+        "notOpen": true,
+        "supported": true
+      },
+      "claims": {
+        "notOpen:half marathon": [
+          {
+            "status": "done",
+            "text": "You ran the half marathon."
+          }
+        ]
+      },
+      "unsupported": [],
+      "headingWordsNotInContext": [],
+      "scaffold": false,
+      "pass": true,
+      "condition": "HEAD"
+    }
+  ]
+}

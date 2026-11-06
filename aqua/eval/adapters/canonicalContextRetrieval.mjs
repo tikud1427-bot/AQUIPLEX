@@ -209,14 +209,22 @@ async function claimFactMap(corpus, owner) {
        JOIN aqua_sources  s ON s.owner_id = e.owner_id AND s.source_id = e.source_id
        JOIN aqua_claims   c ON c.owner_id = ce.owner_id AND c.claim_id = ce.claim_id
       WHERE ce.owner_id = $1`, [owner]);
-  const map = new Map();
+  // A claim maps to its ORIGIN — the earliest turn that supports it, the one
+  // that created it. These rows are unordered, and "last row wins" labelled a
+  // corroborated claim differently from seeding to seeding: the heldout gate's
+  // nDCG flipped 0.7735 ↔ 0.7701 with identical rankings (2026-10-29). The
+  // latest supporting turn is not stable either: whether a later restatement
+  // is attached as corroboration varies between seedings; the origin does not.
+  const origin = new Map();
   const states = {};
   for (const r of rows) {
     const m = String(r.external_ref ?? '').match(/:turn:(\d+)$/);
-    const fact = m ? corpus[Number(m[1]) - 1]?.id : null;
-    if (fact) map.set(String(r.claim_id), fact);
+    const turn = m ? Number(m[1]) : 0;
+    const id = String(r.claim_id);
+    if (corpus[turn - 1]?.id && turn < (origin.get(id) ?? Infinity)) origin.set(id, turn);
     states[r.state] = (states[r.state] ?? 0) + 1;
   }
+  const map = new Map([...origin].map(([id, turn]) => [id, corpus[turn - 1].id]));
   return { map, states };
 }
 

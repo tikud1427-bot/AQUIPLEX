@@ -1,0 +1,38 @@
+{
+  "id": "intent-outcome.check.v1",
+  "status": "CHECK SET — authored 2026-11-04 AFTER the mechanism was built against intent-outcome.dev.v1, with different goals, phrasings and traps; run once before any further change. Not a benchmark: same author.",
+  "notes": "Same format and scoring as intent-outcome.dev.v1.json.",
+  "achievement": [
+    { "id": "ca01", "setup": ["My goal is to read twenty books this year."], "message": "I read my twentieth book last night!", "completed": ["twenty books"], "open": [], "kind": "irregular past, ordinal" },
+    { "id": "ca02", "setup": ["My goal is to win the regional chess tournament."], "message": "I won the regional chess tournament on Saturday.", "completed": ["chess"], "open": [], "kind": "irregular past" },
+    { "id": "ca03", "setup": ["Our goal is to ship version 2 of the app."], "message": "We shipped version 2 of the app this morning.", "completed": ["version 2"], "open": [], "kind": "we, regular past" },
+    { "id": "ca04", "setup": ["My goal is to get my driver's license."], "message": "Got my driver's license today!", "completed": ["license"], "open": [], "kind": "dropped subject" },
+    { "id": "ca05", "setup": ["My goal is to save 10,000 dollars for a car."], "message": "I finally saved 10,000 dollars for the car.", "completed": ["car"], "open": [], "kind": "amount" },
+    { "id": "ca06", "setup": ["My goal is to learn to swim.", "My goal is to visit Japan."], "message": "I visited Japan in April and it was amazing.", "completed": ["Japan"], "open": ["swim"], "kind": "one of two goals" },
+    { "id": "ca07", "setup": ["My goal is to become a certified nurse."], "message": "I became a certified nurse last month.", "completed": ["nurse"], "open": [], "kind": "become" },
+    { "id": "cn01", "setup": ["My goal is to win the regional chess tournament."], "message": "I lost in the semifinal of the regional chess tournament.", "completed": [], "open": ["chess"], "kind": "failure, not achievement" },
+    { "id": "cn02", "setup": ["Our goal is to ship version 2 of the app."], "message": "We still haven't shipped version 2 of the app.", "completed": [], "open": ["version 2"], "kind": "negation" },
+    { "id": "cn03", "setup": ["My goal is to visit Japan."], "message": "My parents visited Japan last year.", "completed": [], "open": ["Japan"], "kind": "third party" },
+    { "id": "cn04", "setup": ["My goal is to read twenty books this year."], "message": "I read a great article about books today.", "completed": [], "open": ["twenty books"], "kind": "same verb and noun, not the outcome" },
+    { "id": "cn05", "setup": ["My goal is to get my driver's license."], "message": "I booked my driving test for next week.", "completed": [], "open": ["license"], "kind": "step toward it" },
+    { "id": "cn06", "setup": ["My goal is to save 10,000 dollars for a car."], "message": "I saved 2,000 dollars for the car so far.", "completed": [], "open": ["car"], "kind": "partial amount" },
+    { "id": "cn07", "setup": ["My goal is to become a certified nurse."], "message": "When I become a certified nurse, I'll move to Boston.", "completed": [], "open": ["nurse"], "kind": "hypothetical" },
+    { "id": "cn08", "setup": ["My goal is to learn to swim."], "message": "I finished my third swimming lesson.", "completed": [], "open": ["swim"], "kind": "partial progress" }
+  ],
+  "entity": [
+    { "id": "ce01", "setup": [], "message": "My employer is Halcyon Labs.", "expect": { "^workplace$": "Halcyon Labs" }, "forbid": ["^project$"], "kind": "employer" },
+    { "id": "ce02", "setup": [], "message": "Halcyon Labs is our biggest customer.", "expect": { "customer": "Halcyon Labs" }, "forbid": ["^workplace$"], "kind": "customer, inverse" },
+    { "id": "ce03", "setup": [], "message": "My mentor is Grace Liu.", "expect": { "mentor": "Grace Liu" }, "forbid": ["^workplace$", "^project$"], "kind": "person" },
+    { "id": "ce04", "setup": [], "message": "My company is growing fast.", "expect": {}, "forbid": [], "kind": "not a name", "noFactKeys": ["^workplace$", "^project$"] },
+    { "id": "ce05", "setup": [], "message": "I'm building an app called Tidepool.", "expect": { "^project$": "Tidepool" }, "forbid": ["^workplace$"], "kind": "project" },
+    { "id": "ce06", "setup": ["I work at Northbeam."], "message": "Actually, my company is Halcyon Labs, not Northbeam.", "expect": { "^workplace$": "Halcyon Labs" }, "forbid": ["^project$"], "kind": "correction" }
+  ],
+  "multi": [
+    { "id": "cm01", "setup": [], "message": "My mentor is Grace Liu and my therapist is private.", "expect": { "mentor": "Grace Liu" }, "noRunOn": [["Grace Liu", "therapist"]], "kind": "second clause has no name" },
+    { "id": "cm02", "setup": [], "message": "I work at Halcyon Labs, my manager is Ben Ortiz and my team lead is Ada Kim.", "expect": { "^workplace$": "Halcyon Labs", "manager": "Ben Ortiz", "lead": "Ada Kim" }, "noRunOn": [["Ben Ortiz", "Ada Kim"], ["Halcyon", "Ben"]], "kind": "three facts" },
+    { "id": "cm03", "setup": [], "message": "Our accountant is Ernst and Young.", "expect": { "accountant": "Ernst and Young" }, "noRunOn": [], "kind": "compound organisation name" },
+    { "id": "cm04", "setup": [], "message": "I live in Lisbon but my company is in Berlin.", "expect": { "^(city|location)$": "Lisbon" }, "noRunOn": [["Lisbon", "Berlin"]], "forbid": [], "kind": "two locations, different subjects" },
+    { "id": "cm05", "setup": [], "message": "My sister is Maya and she lives in Porto.", "expect": { "sister|sibling": "Maya" }, "noRunOn": [["Maya", "Porto"]], "kind": "clause about the same person" },
+    { "id": "cm06", "setup": [], "message": "My manager is Ben Ortiz, who reports to Ada Kim.", "expect": { "manager": "Ben Ortiz" }, "noRunOn": [["Ben Ortiz", "Ada Kim"]], "kind": "relative clause" }
+  ]
+}

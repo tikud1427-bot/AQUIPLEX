@@ -1,0 +1,84 @@
+{
+  "id": "semantic-recall-live.v2",
+  "written": "2026-11-05, before any embedding of these sentences exists",
+  "note": "Independent of v1: new fictional users, companies, places and people; no v1 sentence or question reused (checked by the runner). Synthetic and non-personal. Each user is scored on their OWN passages only, as recall is per owner. `day` = days after a fixed origin; conversations group passages as separate chats.",
+  "labels": {
+    "relevant": "must reach the prompt (selected) for the question",
+    "excluded": "must NOT be selected (keyword traps, someone else's fact, a different meaning)",
+    "current": "the latest true statement among the relevant ones (old and current must both be quoted)",
+    "favours": "which retrieval alone is expected to succeed: keyword (exact identifiers / shared rare words), semantic (different words, same meaning), both (shared words and meaning)"
+  },
+  "users": {
+    "mara": {
+      "about": "Founder of Quillbrook, a fictional bookbinding-software startup in Utrecht",
+      "passages": [
+        { "id": "a1",  "conv": "a-jan", "day": 1,  "text": "We just signed our first enterprise customer, Halvorsen Print." },
+        { "id": "a2",  "conv": "a-jan", "day": 2,  "text": "My goal this quarter is to hire a head of sales." },
+        { "id": "a3",  "conv": "a-jan", "day": 3,  "text": "Our burn rate is about $80k a month." },
+        { "id": "a4",  "conv": "a-jan", "day": 4,  "text": "We are building a mobile app called Inkwell." },
+        { "id": "a13", "conv": "a-jan", "day": 6,  "text": "The sales tax rules for printed books changed in the spring." },
+        { "id": "a14", "conv": "a-jan", "day": 8,  "text": "I bought a new spending tracker notebook for my desk." },
+        { "id": "a15", "conv": "a-jan", "day": 10, "text": "The office plants need watering twice a week." },
+        { "id": "a16", "conv": "a-jan", "day": 12, "text": "A colleague recommended a podcast about typography." },
+        { "id": "a5",  "conv": "a-feb", "day": 20, "text": "We shelved the Inkwell app to focus on the web product." },
+        { "id": "a6",  "conv": "a-feb", "day": 22, "text": "Theo accepted our offer and starts as head of sales next month." },
+        { "id": "a7",  "conv": "a-feb", "day": 25, "text": "Our monthly spending is now closer to $95k after the new hires." },
+        { "id": "a8",  "conv": "a-feb", "day": 26, "text": "I think we might move the team to Rotterdam, but nothing is decided." },
+        { "id": "a9",  "conv": "a-mar", "day": 40, "text": "Halvorsen Print renewed their contract for two more years." },
+        { "id": "a10", "conv": "a-mar", "day": 42, "text": "The Rotterdam idea is off; we're staying in Utrecht." },
+        { "id": "a11", "conv": "a-mar", "day": 44, "text": "Invoice QB-2291 from our cloud provider is overdue." }
+      ]
+    },
+    "dev": {
+      "about": "A fictional secondary-school teacher at Larchmont Academy",
+      "passages": [
+        { "id": "b1",  "conv": "b-1", "day": 1,  "text": "I teach chemistry at Larchmont Academy." },
+        { "id": "b2",  "conv": "b-1", "day": 2,  "text": "I'm training for the Riverside 10K in May." },
+        { "id": "b3",  "conv": "b-1", "day": 3,  "text": "My plan is to write a textbook on lab safety." },
+        { "id": "b10", "conv": "b-1", "day": 4,  "text": "My sister runs a bakery in Ashford." },
+        { "id": "b11", "conv": "b-1", "day": 6,  "text": "The school's boiler broke in January." },
+        { "id": "b12", "conv": "b-1", "day": 8,  "text": "I collect old maps of coastal towns." },
+        { "id": "b13", "conv": "b-1", "day": 10, "text": "We adopted a rescue greyhound named Pepper." },
+        { "id": "b14", "conv": "b-1", "day": 12, "text": "The parent-teacher evening is on the 14th." },
+        { "id": "b4",  "conv": "b-2", "day": 18, "text": "Larchmont asked me to take over the physics classes too." },
+        { "id": "b5",  "conv": "b-2", "day": 20, "text": "I finished the 10K in 48 minutes!" },
+        { "id": "b6",  "conv": "b-2", "day": 24, "text": "The textbook project is on hold indefinitely; no time." },
+        { "id": "b7",  "conv": "b-3", "day": 35, "text": "Starting in September I'll be head of the science department." },
+        { "id": "b8",  "conv": "b-3", "day": 36, "text": "Actually, I was wrong earlier: the 10K was in April, not May." },
+        { "id": "b9",  "conv": "b-3", "day": 38, "text": "Maybe I'll try a half marathon next year, not sure yet." }
+      ]
+    },
+    "ines": {
+      "about": "A fictional volunteer; deliberately FEWER than 8 passages (small-pool fallback with real vectors)",
+      "passages": [
+        { "id": "c1", "conv": "c-1", "day": 1,  "text": "I volunteer at the Northgate food bank on Saturdays." },
+        { "id": "c2", "conv": "c-1", "day": 5,  "text": "My goal is to learn to sail this summer." },
+        { "id": "c4", "conv": "c-1", "day": 9,  "text": "I repainted the kitchen yellow." },
+        { "id": "c5", "conv": "c-2", "day": 13, "text": "The library book club meets on Thursdays." },
+        { "id": "c3", "conv": "c-2", "day": 15, "text": "I got my dinghy sailing certificate last week." },
+        { "id": "c6", "conv": "c-2", "day": 21, "text": "We visited a lighthouse museum on holiday." }
+      ]
+    }
+  },
+  "questions": [
+    { "id": "A1", "user": "mara", "kind": "different-terminology", "favours": "semantic", "text": "How much money are we going through each month?", "relevant": ["a3", "a7"], "current": "a7", "excluded": ["a14"] },
+    { "id": "A2", "user": "mara", "kind": "goal-achieved",         "favours": "both",     "text": "Did we ever find someone to lead our sales team?", "relevant": ["a2", "a6"], "current": "a6", "excluded": ["a13"] },
+    { "id": "A3", "user": "mara", "kind": "abandoned-project",     "favours": "both",     "text": "Is the phone app still in development?", "relevant": ["a4", "a5"], "current": "a5", "excluded": [] },
+    { "id": "A4", "user": "mara", "kind": "uncertain-then-contradicted", "favours": "semantic", "text": "Are we relocating the company?", "relevant": ["a8", "a10"], "current": "a10", "excluded": [] },
+    { "id": "A5", "user": "mara", "kind": "exact-identifier",      "favours": "keyword",  "text": "What's the status of invoice QB-2291?", "relevant": ["a11"], "excluded": [] },
+    { "id": "A6", "user": "mara", "kind": "across-conversations",  "favours": "semantic", "text": "How are things going with our biggest client?", "relevant": ["a1", "a9"], "current": "a9", "excluded": [] },
+    { "id": "A7", "user": "mara", "kind": "unrelated",             "favours": "none",     "text": "What is the capital of Australia?", "relevant": [], "excluded": ["*"] },
+    { "id": "A8", "user": "mara", "kind": "shared-rare-words",     "favours": "both",     "text": "Did the tax rules change for printed books?", "relevant": ["a13"], "excluded": ["a2", "a6"] },
+    { "id": "B1", "user": "dev",  "kind": "historical-current",    "favours": "semantic", "text": "Which subjects am I responsible for at school?", "relevant": ["b1", "b4"], "current": "b4", "excluded": ["b14"] },
+    { "id": "B2", "user": "dev",  "kind": "achieved-and-corrected","favours": "semantic", "text": "How did my race go?", "relevant": ["b2", "b5", "b8"], "current": "b8", "excluded": ["b10"] },
+    { "id": "B3", "user": "dev",  "kind": "abandoned-project",     "favours": "semantic", "text": "Am I still writing that book?", "relevant": ["b3", "b6"], "current": "b6", "excluded": ["b12"] },
+    { "id": "B4", "user": "dev",  "kind": "paraphrase-future",     "favours": "semantic", "text": "Am I getting promoted at work?", "relevant": ["b7"], "excluded": ["b14"] },
+    { "id": "B5", "user": "dev",  "kind": "uncertain",             "favours": "both",     "text": "Have I signed up for a half marathon?", "relevant": ["b9"], "excluded": [] },
+    { "id": "B6", "user": "dev",  "kind": "keyword-trap-inverse",  "favours": "keyword",  "text": "Who runs the bakery?", "relevant": ["b10"], "excluded": ["b2", "b5"] },
+    { "id": "B7", "user": "dev",  "kind": "unrelated",             "favours": "none",     "text": "What is my favourite film?", "relevant": [], "excluded": ["*"] },
+    { "id": "B8", "user": "dev",  "kind": "different-terminology", "favours": "semantic", "text": "What's our dog called?", "relevant": ["b13"], "excluded": [] },
+    { "id": "C1", "user": "ines", "kind": "small-pool-achieved",   "favours": "both",     "text": "Did I manage to learn sailing?", "relevant": ["c2", "c3"], "current": "c3", "excluded": [] },
+    { "id": "C2", "user": "ines", "kind": "small-pool-paraphrase", "favours": "semantic", "text": "Where do I help out at weekends?", "relevant": ["c1"], "excluded": [] },
+    { "id": "C3", "user": "ines", "kind": "small-pool-unrelated",  "favours": "none",     "text": "When does my train to Glasgow leave?", "relevant": [], "excluded": ["*"] }
+  ]
+}

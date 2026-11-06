@@ -1,0 +1,150 @@
+{
+  "id": "temporal-resolution.dev.v1",
+  "version": 1,
+  "authoredAt": "2026-11-02",
+  "status": "DEVELOPMENT — authored by the same session that builds the fix, before any code change. Not held-out evidence.",
+  "purpose": "Lift-shaped multi-session personas for temporal resolution: a later statement resolves or changes an earlier one in DIFFERENT words. Covers resolved blockers, deadlines, prices, project status, reversed decisions, negation, corrections, several changes in one message, conflicting evidence, completed commitments, historical vs current questions, and an UNRESOLVED blocker as a control.",
+  "personas": [
+    {
+      "id": "t1-maya",
+      "sessions": [
+        [
+          "I'm Maya, I run operations at Brightloom, we make smart lamps.",
+          "Our Kickstarter campaign is stuck waiting on FCC certification.",
+          "The factory quote is $14 per unit.",
+          "We plan to ship the first batch on March 3.",
+          "We're going with Shenzhen Arc as our manufacturer.",
+          "How do I write a good press release?",
+          "Our warehouse partner is Boxwell Logistics."
+        ],
+        [
+          "Can you explain landed cost?",
+          "Good news, FCC signed off on the lamp last night.",
+          "The factory bumped its quote to $16.50 per unit.",
+          "We dropped Shenzhen Arc and signed with Penang Forge instead.",
+          "lol my cat knocked the prototype off the desk"
+        ],
+        [
+          "Hi again",
+          "Shipping slips to April 20, and Boxwell is out — we're using Freightly now.",
+          "What's a good way to run a retro?",
+          "Someone on a forum claims the FCC rejected us, but that's not true, we have the certificate."
+        ]
+      ],
+      "questions": [
+        { "id": "t1-q01", "cat": "state_change", "q": "Is anything holding up the Kickstarter?", "required": ["no, the FCC certification came through"], "forbidden": ["the campaign is still waiting on FCC certification"] },
+        { "id": "t1-q02", "cat": "correction", "q": "What does each lamp cost us from the factory?", "required": ["$16.50"], "forbidden": ["$14 is the current unit cost"] },
+        { "id": "t1-q03", "cat": "state_change", "q": "Who is manufacturing the lamps?", "required": ["Penang Forge"], "forbidden": ["Shenzhen Arc is the current manufacturer"] },
+        { "id": "t1-q04", "cat": "correction", "q": "When does the first batch ship?", "required": ["April 20"], "forbidden": ["the first batch ships March 3"] },
+        { "id": "t1-q05", "cat": "state_change", "q": "Which company handles our warehousing?", "required": ["Freightly"], "forbidden": ["Boxwell Logistics is the current warehouse partner"] },
+        { "id": "t1-q06", "cat": "temporal", "q": "Which manufacturer were we originally going with?", "required": ["Shenzhen Arc"] },
+        { "id": "t1-q07", "cat": "unknown", "q": "What's our Kickstarter funding goal?", "expectUnknown": true },
+        { "id": "t1-q08", "cat": "negation", "q": "Did the FCC reject our lamp?", "required": ["no, they have the certificate"], "forbidden": ["the FCC rejected the lamp"] }
+      ]
+    },
+    {
+      "id": "t2-omar",
+      "sessions": [
+        [
+          "I'm Omar, a data analyst at Fintrail in Toronto.",
+          "My girlfriend Lea and I are thinking about getting a dog.",
+          "I've promised my brother I'd help him move on the 12th.",
+          "I'm a big coffee drinker, three cups a day.",
+          "How do pivot tables work?",
+          "I need to renew my passport before the Lisbon conference."
+        ],
+        [
+          "Explain window functions in SQL?",
+          "Lea and I split up last week.",
+          "I handed in my notice at Fintrail; my last day is Friday.",
+          "Starting Monday I'm a senior analyst at Northbeam.",
+          "haha sorry, typo city today"
+        ],
+        [
+          "Hey",
+          "Helped my brother with the move, it went fine.",
+          "I quit caffeine, I'm on herbal tea now.",
+          "Passport is sorted, the new one arrived.",
+          "Thinking about adopting a dog by myself, but not sure yet."
+        ]
+      ],
+      "questions": [
+        { "id": "t2-q01", "cat": "state_change", "q": "Where do I work?", "required": ["Northbeam"], "forbidden": ["he currently works at Fintrail"] },
+        { "id": "t2-q02", "cat": "state_change", "q": "Should I plan a date night with Lea?", "required": ["they split up"], "forbidden": ["Lea is his current girlfriend"] },
+        { "id": "t2-q03", "cat": "state_change", "q": "Do I still owe my brother help with his move?", "required": ["no, he already helped"], "forbidden": ["he still has to help his brother move"] },
+        { "id": "t2-q04", "cat": "preference", "q": "Suggest a drink to order at the café.", "required": ["something without caffeine, e.g. herbal tea"], "forbidden": ["recommends coffee because he is a big coffee drinker"] },
+        { "id": "t2-q05", "cat": "state_change", "q": "Do I still need to renew my passport?", "required": ["no, the new passport arrived"], "forbidden": ["he still needs to renew it"] },
+        { "id": "t2-q06", "cat": "uncertainty", "q": "Am I getting a dog?", "required": ["not decided yet"], "forbidden": ["he is getting a dog with Lea"] },
+        { "id": "t2-q07", "cat": "temporal", "q": "Where did I work before Northbeam?", "required": ["Fintrail"] },
+        { "id": "t2-q08", "cat": "unknown", "q": "What's my brother's name?", "expectUnknown": true }
+      ]
+    },
+    {
+      "id": "t3-ines",
+      "sessions": [
+        [
+          "I'm Inès, I lead the mobile team at Verdana Health.",
+          "The patient portal redesign is in the design phase.",
+          "The app store submission deadline is June 2.",
+          "We will support offline mode in the first release.",
+          "What is a feature flag?",
+          "Our QA vendor is TestPilot."
+        ],
+        [
+          "Can you explain trunk-based development?",
+          "The portal redesign is now in development, design is wrapped.",
+          "Sorry, I misspoke earlier — the submission deadline is June 9, not June 2.",
+          "We've cut offline mode from the first release.",
+          "ugh, meetings all day"
+        ],
+        [
+          "Morning",
+          "Portal redesign is code complete and in QA.",
+          "My manager says QA might move to an in-house team, but I've heard nothing official.",
+          "How do I estimate story points?"
+        ]
+      ],
+      "questions": [
+        { "id": "t3-q01", "cat": "state_change", "q": "What stage is the patient portal redesign at?", "required": ["code complete and in QA"], "forbidden": ["it is in the design phase", "it is in development"] },
+        { "id": "t3-q02", "cat": "correction", "q": "When is the app store submission due?", "required": ["June 9"], "forbidden": ["June 2 is the deadline"] },
+        { "id": "t3-q03", "cat": "negation", "q": "Will the first release work offline?", "required": ["no, offline mode was cut"], "forbidden": ["offline mode is in the first release"] },
+        { "id": "t3-q04", "cat": "uncertainty", "q": "Who does our QA?", "required": ["TestPilot, possibly moving in-house but nothing official"], "forbidden": ["QA has moved in-house"] },
+        { "id": "t3-q05", "cat": "unknown", "q": "How many engineers are on my team?", "expectUnknown": true },
+        { "id": "t3-q06", "cat": "temporal", "q": "What did I first say the submission deadline was?", "required": ["June 2"] }
+      ]
+    },
+    {
+      "id": "t4-kofi",
+      "sessions": [
+        [
+          "I'm Kofi, I own a bike repair shop called Spoke & Chain in Accra.",
+          "A basic tune-up costs 120 cedis.",
+          "We can't open the second bay until the landlord fixes the roof leak.",
+          "Our parts supplier is VeloParts.",
+          "I'm also waiting on a business license renewal from the city.",
+          "How do I calculate gross margin?"
+        ],
+        [
+          "What's a good loyalty program for repeat customers?",
+          "The roof is repaired, finally dry in there.",
+          "Tune-ups are 150 cedis now and flat tire fixes went from 30 to 40.",
+          "We're switching to CycleHub for parts because VeloParts kept shipping late.",
+          "lol a goat walked into the shop"
+        ],
+        [
+          "Hi",
+          "Still no word from the city on the license renewal.",
+          "How should I price a full overhaul?"
+        ]
+      ],
+      "questions": [
+        { "id": "t4-q01", "cat": "state_change", "q": "What's stopping us from opening the second bay?", "required": ["nothing, the roof was repaired"], "forbidden": ["the roof leak is still blocking it"] },
+        { "id": "t4-q02", "cat": "correction", "q": "How much is a tune-up?", "required": ["150 cedis"], "forbidden": ["120 cedis is the current price"] },
+        { "id": "t4-q03", "cat": "correction", "q": "What do we charge to fix a flat?", "required": ["40 cedis"], "forbidden": ["30 cedis is the current price"] },
+        { "id": "t4-q04", "cat": "decision", "q": "Why did we change parts suppliers?", "required": ["VeloParts kept shipping late"] },
+        { "id": "t4-q05", "cat": "state_change", "q": "Is the business license renewal sorted?", "required": ["no, still waiting on the city"], "forbidden": ["the license renewal is done"] },
+        { "id": "t4-q06", "cat": "unknown", "q": "What's the shop's monthly rent?", "expectUnknown": true }
+      ]
+    }
+  ]
+}

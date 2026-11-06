@@ -1,0 +1,63 @@
+{
+  "id": "answer-intelligence.dev.v1",
+  "version": 1,
+  "authoredAt": "2026-11-02",
+  "status": "DEVELOPMENT — authored after the cognitive-model staleness was observed, before any fix. Not held-out evidence.",
+  "purpose": "Ten answer-level scenarios (plan→blocker→resolution, correction, goal change, preference change, two true statements from different times, current vs previous truth, unanswerable, outdated fact beside its resolution, several related facts of which few are relevant, uncertainty vs contradiction). `required`/`forbidden` are for a model judge (eval/lift/liftCore.mjs); the deterministic labels are in answer-intelligence-labels.dev.v1.json.",
+  "personas": [
+    { "id": "a01", "sessions": [
+        ["I'm Priya, I run product at Lumen, a habit-tracking app.", "We plan to launch the Lumen app on May 6."],
+        ["The launch is blocked waiting on Apple's review.", "How do I write App Store release notes?"],
+        ["Apple approved the app this morning."]],
+      "questions": [
+        { "id": "a01-q1", "cat": "state_change", "scenario": "plan-blocker-resolution", "q": "Is anything blocking the Lumen launch?", "required": ["no, Apple approved the app"], "forbidden": ["the launch is still waiting on Apple's review"] },
+        { "id": "a01-q2", "cat": "current_fact", "scenario": "current-truth", "q": "When does Lumen launch?", "required": ["May 6"] } ] },
+    { "id": "a02", "sessions": [
+        ["Our board meeting is on June 12."],
+        ["Correction: the board meeting is June 19, not June 12."]],
+      "questions": [
+        { "id": "a02-q1", "cat": "correction", "scenario": "correction", "q": "When is the board meeting?", "required": ["June 19"], "forbidden": ["the board meeting is on June 12"] },
+        { "id": "a02-q2", "cat": "temporal", "scenario": "previous-truth", "q": "What date did I originally give for the board meeting?", "required": ["June 12"] } ] },
+    { "id": "a03", "sessions": [
+        ["My goal this year is to run a marathon."],
+        ["My knee is bad, so I changed my goal: a half marathon instead of a full one."]],
+      "questions": [
+        { "id": "a03-q1", "cat": "state_change", "scenario": "goal-change", "q": "What's my running goal this year?", "required": ["a half marathon"], "forbidden": ["his current goal is a full marathon"] } ] },
+    { "id": "a04", "sessions": [
+        ["I prefer long, detailed answers with lots of background."],
+        ["Actually, I now prefer short bullet-point answers."]],
+      "questions": [
+        { "id": "a04-q1", "cat": "preference", "scenario": "preference-change", "q": "Explain what an index fund is.", "required": ["a short bullet-point answer"], "forbidden": ["a long, detailed answer with lots of background"] } ] },
+    { "id": "a05", "sessions": [
+        ["I lived in Lagos until 2019."],
+        ["I've lived in Toronto since 2020."]],
+      "questions": [
+        { "id": "a05-q1", "cat": "current_fact", "scenario": "different-times-not-contradiction", "q": "Where do I live?", "required": ["Toronto"], "forbidden": ["his residence is disputed or contradictory"] },
+        { "id": "a05-q2", "cat": "temporal", "scenario": "previous-truth", "q": "Where did I live in 2018?", "required": ["Lagos"] } ] },
+    { "id": "a06", "sessions": [
+        ["My accountant is Rosa Diaz.", "Our office is in Leeds."],
+        ["How do I file quarterly VAT?"]],
+      "questions": [
+        { "id": "a06-q1", "cat": "unknown", "scenario": "unanswerable", "q": "What's my accountant's phone number?", "expectUnknown": true } ] },
+    { "id": "a07", "sessions": [
+        ["The office printer is broken, so I can't print contracts."],
+        ["IT replaced the office printer, it works now."]],
+      "questions": [
+        { "id": "a07-q1", "cat": "state_change", "scenario": "outdated-beside-resolution", "q": "Can I print the contracts at the office?", "required": ["yes, the printer was replaced"], "forbidden": ["the office printer is broken"] } ] },
+    { "id": "a08", "sessions": [
+        ["Atlas is our new analytics product.", "Atlas runs on Postgres.", "The designer for Atlas is Mei Chen."],
+        ["The Atlas budget is 40,000 dollars.", "The Atlas logo is teal.", "Atlas launches in the third quarter."]],
+      "questions": [
+        { "id": "a08-q1", "cat": "current_fact", "scenario": "relevant-subset", "q": "Who designs Atlas?", "required": ["Mei Chen"] } ] },
+    { "id": "a09", "sessions": [
+        ["The team offsite is in Porto."],
+        ["We might move the offsite to Lisbon, but nothing is decided."]],
+      "questions": [
+        { "id": "a09-q1", "cat": "uncertainty", "scenario": "uncertainty-not-contradiction", "q": "Where is the team offsite?", "required": ["Porto, possibly moving to Lisbon but not decided"], "forbidden": ["the offsite has moved to Lisbon"] } ] },
+    { "id": "a10", "sessions": [
+        ["I need to renew my driving licence before it expires in March."],
+        ["The new driving licence arrived in the post."]],
+      "questions": [
+        { "id": "a10-q1", "cat": "state_change", "scenario": "commitment-completed", "q": "Do I still need to renew my driving licence?", "required": ["no, the new licence arrived"], "forbidden": ["he still needs to renew it"] } ] }
+  ]
+}

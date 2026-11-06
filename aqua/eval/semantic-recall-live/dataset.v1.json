@@ -1,0 +1,42 @@
+{
+  "id": "semantic-recall-live.v1",
+  "note": "Synthetic, fictional, non-personal sentences (invented companies, places and names). Written 2026-11-05 before any live call. Passages are first-person as recall sees them; day = days after a fixed origin, so recency is testable.",
+  "passages": [
+    { "id": "f1", "day": 1,  "group": "funding",  "text": "We closed a seed round of $3M led by Larkspur Ventures." },
+    { "id": "f2", "day": 3,  "group": "funding",  "text": "Two angel investors joined the cap table last week." },
+    { "id": "f3", "day": 20, "group": "funding",  "text": "We are starting conversations for our Series A next quarter." },
+    { "id": "g1", "day": 2,  "group": "goal",     "text": "My goal is to finish the Oakridge half marathon." },
+    { "id": "g2", "day": 30, "group": "goal",     "text": "I crossed the finish line at Oakridge in under two hours!" },
+    { "id": "g3", "day": 5,  "group": "goal",     "text": "I want to get my pilot's licence by summer." },
+    { "id": "g4", "day": 40, "group": "goal",     "text": "I gave up on the pilot's licence; the lessons were too expensive." },
+    { "id": "h1", "day": 4,  "group": "history",  "text": "Our office is in Leeds, near the station." },
+    { "id": "h2", "day": 35, "group": "history",  "text": "We moved the office to Bristol in March." },
+    { "id": "h3", "day": 6,  "group": "history",  "text": "Priya leads our design team." },
+    { "id": "h4", "day": 38, "group": "history",  "text": "Priya left the company; Tomas now runs design." },
+    { "id": "p1", "day": 7,  "group": "history",  "text": "The product launch is planned for May 12." },
+    { "id": "p2", "day": 33, "group": "history",  "text": "The launch slipped to June 2 because of a supplier delay." },
+    { "id": "k1", "day": 8,  "group": "keyword-distractor", "text": "I bought a release valve for the boiler." },
+    { "id": "k2", "day": 9,  "group": "keyword-distractor", "text": "The round table in the kitchen needs a new leg." },
+    { "id": "k3", "day": 10, "group": "keyword-distractor", "text": "The goal posts at the park were repainted." },
+    { "id": "u1", "day": 11, "group": "unrelated", "text": "I baked sourdough bread this morning." },
+    { "id": "u2", "day": 12, "group": "unrelated", "text": "The weather was sunny all weekend." },
+    { "id": "u3", "day": 13, "group": "unrelated", "text": "I repainted the garden fence blue." },
+    { "id": "u4", "day": 14, "group": "unrelated", "text": "My cat sleeps on the windowsill most afternoons." },
+    { "id": "u5", "day": 15, "group": "unrelated", "text": "I watched a documentary about volcanoes." },
+    { "id": "u6", "day": 16, "group": "unrelated", "text": "The train was ten minutes late today." },
+    { "id": "u7", "day": 17, "group": "unrelated", "text": "I'm learning a few chords on the ukulele." },
+    { "id": "u8", "day": 18, "group": "unrelated", "text": "We planted tomatoes in the backyard." }
+  ],
+  "queries": [
+    { "id": "Q1",  "kind": "paraphrase",         "text": "How is fundraising going?",                         "relevant": ["f1", "f2", "f3"] },
+    { "id": "Q2",  "kind": "investment-terms",   "text": "Who has put money into the company?",               "relevant": ["f1", "f2"] },
+    { "id": "Q3",  "kind": "goal-achieved",      "text": "Did I complete the race I was training for?",       "relevant": ["g1", "g2"], "current": "g2" },
+    { "id": "Q4",  "kind": "goal-abandoned",     "text": "Am I still working toward flying planes?",          "relevant": ["g3", "g4"], "current": "g4" },
+    { "id": "Q5",  "kind": "historical-current", "text": "Where is our office now?",                          "relevant": ["h1", "h2"], "current": "h2" },
+    { "id": "Q6",  "kind": "historical-current", "text": "Who is in charge of design?",                       "relevant": ["h3", "h4"], "current": "h4" },
+    { "id": "Q7",  "kind": "keyword-trap",       "text": "When is the release date?",                         "relevant": ["p1", "p2"], "current": "p2", "trap": "k1" },
+    { "id": "Q8",  "kind": "unrelated",          "text": "What is my blood pressure?",                        "relevant": [] },
+    { "id": "Q9",  "kind": "keyword",            "text": "Tell me about the Series A.",                       "relevant": ["f3"] },
+    { "id": "Q10", "kind": "keyword+semantic",   "text": "How did the half marathon go?",                     "relevant": ["g1", "g2"], "current": "g2", "trap": "k3" }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "version": "answer-rubric.v2",
+  "base": {
+    "dataset": "aqua/eval/datasets/answer-lifecycle.dev.v1.json",
+    "sha256": "155c0390023f518099a8561260e2add3c33287146a54a384245f042e72c3a595",
+    "note": "Every v1 criterion is kept. This file only ADDS criteria per question; the dataset is not modified."
+  },
+  "provenance": "Written 2026-11-05 AFTER the Cloudflare Mistral primary run had been read. The added criteria therefore are not blind: scores of that run under v2 are diagnostic, not confirmatory. Only a run graded with this frozen file on answers produced after the freeze (or the independent held-out set) is confirmatory.",
+  "statuses": {
+    "historical": "the unit marks the claim as past (was, previously, before, no longer, used to, ...)",
+    "done": "the unit marks a goal as achieved, without negation",
+    "uncertain": "the unit hedges, asks, or tells the user to verify",
+    "inferred": "the unit concludes by inference (likely, probably, presumably, seems, ...) without hedging or asking",
+    "asserted": "none of the above: the claim is stated as current fact"
+  },
+  "add": {
+    "q04": {
+      "uncertain": ["Atlas"],
+      "why": "The context marks the Atlas deadline as 'uncertain whether still current'. The answer must keep it open: no unit may resolve it either way (still yours / no longer yours) without hedging in that same unit."
+    },
+    "q05": {
+      "notCurrent": ["Fintrail", "data analyst"],
+      "reachedGoal": ["promot"],
+      "uncertain": ["Atlas"],
+      "why": "Advice must not be built on the retired employer or role; the promotion goal's target (senior analyst) is the user's current role, so it may not be presented as active; the Atlas deadline is uncertain and may not be stated as current or as resolved."
+    }
+  },
+  "examples": {
+    "q04": {
+      "bad_inferred": "You moved to Northbeam, so the Atlas migration is likely no longer your responsibility.",
+      "bad_resolved": "No, the Atlas migration is no longer on your plate.",
+      "good_hedged_inference": "You've moved to Northbeam, so the Atlas migration may no longer be yours. Can you confirm?"
+    },
+    "q05": {
+      "bad_stale_role": "You are a data analyst at Fintrail, so focus on the Atlas migration due on March 3.",
+      "bad_stale_goal": "As a senior analyst at Northbeam, keep working toward your goal of getting promoted to senior analyst.",
+      "bad_resolved": "As a senior analyst at Northbeam, focus on onboarding. The Atlas migration is no longer relevant.",
+      "good_with_history": "As a new senior analyst at Northbeam, focus on learning the team's data stack. You previously led the Atlas migration at Fintrail; if it is still yours, check its status.",
+      "good_goal_reached": "You've already reached senior analyst at Northbeam, so your earlier promotion goal is done. Focus on learning the team's data stack."
+    }
+  }
+}

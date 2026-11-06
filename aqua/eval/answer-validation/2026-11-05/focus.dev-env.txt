@@ -1,0 +1,197 @@
+
+q01 (current) — "Where do I work now?"
+  HEAD:
+    [] yourself, your company, capabilities, founders, vision, mission, roadmap, and
+    [IDENTITY] - Company: Fintrail
+    [IDENTITY] user's name, role, company, and location directly and confidently from this —
+    [  § Work & Career] ### Work & Career
+    [  § Work & Career] - workplace: Fintrail
+    [COGNITIVE MODEL] Identity: profession: data analyst (user said), organization: Fintrail (user said).
+    [COGNITIVE MODEL] Anticipated need: Likely working toward: run a half marathon in October (p=0.6).
+    [COGNITIVE MODEL] • I now work at Northbeam as a senior analyst. [Conversation harness-job-q01-s1 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] I'm a data analyst at Fintrail.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") I'm leading the Atlas migration at Fintrail; it's due on March 3.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] I now work at Northbeam as a senior analyst.
+  DEV:
+    [] yourself, your company, capabilities, founders, vision, mission, roadmap, and
+    [IDENTITY] - Company: Northbeam
+    [IDENTITY] user's name, role, company, and location directly and confidently from this —
+    [  § Work & Career] ### Work & Career
+    [  § Work & Career] - workplace: Northbeam (previously: Fintrail)
+    [COGNITIVE MODEL] Identity: profession: senior analyst (user said), organization: Northbeam (user said).
+    [COGNITIVE MODEL] Current state: deadline: I'm leading the Atlas migration at Fintrail, it's due on March 3 (uncertain whether still current — they said: "I now work at Northbeam as a senior analyst.").
+    [COGNITIVE MODEL] Anticipated need: Likely working toward: get promoted to senior analyst (p=0.6).
+    [COGNITIVE MODEL] • I now work at Northbeam as a senior analyst. [Conversation harness-job-q01-s1 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] I'm a data analyst at Fintrail.
+    [WHAT THE USER TOLD YOU BEFORE] ↳ since changed — now: "I now work at Northbeam as a senior analyst."
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") I'm leading the Atlas migration at Fintrail; it's due on March 3.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] I now work at Northbeam as a senior analyst.
+
+q02 (historical) — "Where did I work before my current job?"
+  HEAD:
+    [IDENTITY] - Company: Fintrail
+    [  § Work & Career] - workplace: Fintrail
+    [COGNITIVE MODEL] Identity: profession: data analyst (user said), organization: Fintrail (user said).
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] I'm a data analyst at Fintrail.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") I'm leading the Atlas migration at Fintrail; it's due on March 3.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] I now work at Northbeam as a senior analyst.
+  DEV:
+    [IDENTITY] - Company: Northbeam
+    [  § Work & Career] - workplace: Northbeam (previously: Fintrail)
+    [COGNITIVE MODEL] Identity: profession: senior analyst (user said), organization: Northbeam (user said).
+    [COGNITIVE MODEL] Current state: deadline: I'm leading the Atlas migration at Fintrail, it's due on March 3 (uncertain whether still current — they said: "I now work at Northbeam as a senior analyst.").
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] I'm a data analyst at Fintrail.
+    [WHAT THE USER TOLD YOU BEFORE] ↳ since changed — now: "I now work at Northbeam as a senior analyst."
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") I'm leading the Atlas migration at Fintrail; it's due on March 3.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] I now work at Northbeam as a senior analyst.
+
+q03 (goal_status) — "How is my half marathon goal going?"
+  HEAD:
+    [  § Goals & Ambitions] - Goals: get promoted to senior analyst, run a half marathon in October
+    [COGNITIVE MODEL] Active goals: "run a half marathon in October"; "get promoted to senior analyst".
+    [COGNITIVE MODEL] Anticipated need: Likely working toward: run a half marathon in October (p=0.6).
+    [RELATED KNOWLEDGE] - run a half marathon in October ←targets— user —targets→ get promoted to senior analyst
+    [RELATED KNOWLEDGE] - run a half marathon in October ←targets— user —part_of→ Fintrail
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") My goal is to run a half marathon in October.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] (replying to you: "Got it.") I finally ran the half marathon.
+  DEV:
+    [  § No longer current] - Goals: run a half marathon in October (achieved) — they said: "I finally ran the half marathon."
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") My goal is to run a half marathon in October.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] (replying to you: "Got it.") I finally ran the half marathon.
+
+q04 (uncertain_dependency) — "Is the Atlas migration still on my plate?"
+  HEAD:
+    [COGNITIVE MODEL] • I'm leading the Atlas migration at Fintrail; it's due on March 3. [Conversation harness-job-q04-s0 · ¶1] (confidence 0.60)
+    [COGNITIVE MODEL] • Entity: Atlas — appears in
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") I'm leading the Atlas migration at Fintrail; it's due on March 3.
+  DEV:
+    [COGNITIVE MODEL] Current state: deadline: I'm leading the Atlas migration at Fintrail, it's due on March 3 (uncertain whether still current — they said: "I now work at Northbeam as a senior analyst.").
+    [COGNITIVE MODEL] • I'm leading the Atlas migration at Fintrail; it's due on March 3. [Conversation harness-job-q04-s0 · ¶1] (confidence 0.60; uncertain whether still current — they later said: "I now work at Northbeam as a senior analyst
+    [COGNITIVE MODEL] • Entity: Atlas — appears in
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") I'm leading the Atlas migration at Fintrail; it's due on March 3.
+
+q05 (personal_context) — "What should I focus on at work this month?"
+  HEAD:
+    [IDENTITY] - Role: Data Analyst
+    [IDENTITY] - Company: Fintrail
+    [  § Work & Career] - Profession: data analyst
+    [  § Work & Career] - workplace: Fintrail
+    [COGNITIVE MODEL] Identity: profession: data analyst (user said), organization: Fintrail (user said).
+    [COGNITIVE MODEL] Active goals: "run a half marathon in October"; "get promoted to senior analyst".
+    [COGNITIVE MODEL] • I now work at Northbeam as a senior analyst. [Conversation harness-job-q05-s1 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] I'm a data analyst at Fintrail.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") My goal is to get promoted to senior analyst.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") I'm leading the Atlas migration at Fintrail; it's due on March 3.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] I now work at Northbeam as a senior analyst.
+  DEV:
+    [IDENTITY] - Role: Senior Analyst
+    [IDENTITY] - Company: Northbeam
+    [  § Work & Career] - Profession: senior analyst (previously: data analyst)
+    [  § Work & Career] - workplace: Northbeam (previously: Fintrail)
+    [COGNITIVE MODEL] Identity: profession: senior analyst (user said), organization: Northbeam (user said).
+    [COGNITIVE MODEL] Active goals: "get promoted to senior analyst".
+    [COGNITIVE MODEL] Current state: deadline: I'm leading the Atlas migration at Fintrail, it's due on March 3 (uncertain whether still current — they said: "I now work at Northbeam as a senior analyst.") | open question: What should I focus
+    [COGNITIVE MODEL] Anticipated need: Likely working toward: get promoted to senior analyst (p=0.6).
+    [COGNITIVE MODEL] • I now work at Northbeam as a senior analyst. [Conversation harness-job-q05-s1 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] I'm a data analyst at Fintrail.
+    [WHAT THE USER TOLD YOU BEFORE] ↳ since changed — now: "I now work at Northbeam as a senior analyst."
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") My goal is to get promoted to senior analyst.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") I'm leading the Atlas migration at Fintrail; it's due on March 3.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] I now work at Northbeam as a senior analyst.
+
+q06 (abstention) — "What's my manager's name?"
+  HEAD:
+  DEV:
+
+q07 (current) — "What company do I work for?"
+  HEAD:
+    [] yourself, your company, capabilities, founders, vision, mission, roadmap, and
+    [IDENTITY] - Company: Northbeam
+    [IDENTITY] user's name, role, company, and location directly and confidently from this —
+    [  § Work & Career] - workplace: Northbeam
+    [  § Projects] - project: Halcyon Labs
+    [COGNITIVE MODEL] Identity: organization: Northbeam (user said), project: Halcyon Labs (user said).
+    [COGNITIVE MODEL] • Actually, my company is Halcyon Labs. [Conversation harness-people-q07-s1 · ¶1] (confidence 0.60)
+    [COGNITIVE MODEL] • I work at Northbeam. [Conversation harness-people-q07-s0 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] I work at Northbeam.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] Actually, my company is Halcyon Labs.
+  DEV:
+    [] yourself, your company, capabilities, founders, vision, mission, roadmap, and
+    [IDENTITY] - Company: Halcyon Labs
+    [IDENTITY] user's name, role, company, and location directly and confidently from this —
+    [  § Work & Career] - workplace: Halcyon Labs
+    [COGNITIVE MODEL] Identity: organization: Halcyon Labs (user said).
+    [COGNITIVE MODEL] • Actually, my company is Halcyon Labs. [Conversation harness-people-q07-s1 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] I work at Northbeam.
+    [WHAT THE USER TOLD YOU BEFORE] ↳ since changed — now: "Actually, my company is Halcyon Labs."
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] Actually, my company is Halcyon Labs.
+
+q08 (current) — "Who is my accountant?"
+  HEAD:
+    [  § Other Details] - custom manager: Priya Rao and my accountant is Lena Ortiz
+    [COGNITIVE MODEL] • My manager is Priya Rao and my accountant is Lena Ortiz. [Conversation harness-people-q08-s0 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") My manager is Priya Rao and my accountant is Lena Ortiz.
+  DEV:
+    [  § Other Details] - custom manager: Priya Rao
+    [  § Other Details] - custom accountant: Lena Ortiz
+    [COGNITIVE MODEL] • My manager is Priya Rao and my accountant is Lena Ortiz. [Conversation harness-people-q08-s0 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") My manager is Priya Rao and my accountant is Lena Ortiz.
+
+q09 (current) — "Who is our biggest client?"
+  HEAD:
+    [COGNITIVE MODEL] • Our biggest client is Meridian Health. [Conversation harness-people-q09-s1 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] (replying to you: "Got it.") Our biggest client is Meridian Health.
+  DEV:
+    [  § Other Details] - custom biggest client: Meridian Health
+    [COGNITIVE MODEL] • Our biggest client is Meridian Health. [Conversation harness-people-q09-s1 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] (replying to you: "Got it.") Our biggest client is Meridian Health.
+
+q10 (abstention) — "What's my accountant's phone number?"
+  HEAD:
+    [  § Other Details] - custom manager: Priya Rao and my accountant is Lena Ortiz
+    [COGNITIVE MODEL] • My manager is Priya Rao and my accountant is Lena Ortiz. [Conversation harness-people-q10-s0 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") My manager is Priya Rao and my accountant is Lena Ortiz.
+  DEV:
+    [  § Other Details] - custom accountant: Lena Ortiz
+    [COGNITIVE MODEL] • My manager is Priya Rao and my accountant is Lena Ortiz. [Conversation harness-people-q10-s0 · ¶1] (confidence 0.60)
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") My manager is Priya Rao and my accountant is Lena Ortiz.
+
+q11 (goal_status) — "Which of my goals are still open?"
+  HEAD:
+    [  § Goals & Ambitions] ### Goals & Ambitions
+    [  § Goals & Ambitions] - Goals: pass the CFA Level 1 exam, learn Spanish this year
+    [COGNITIVE MODEL] Active goals: "learn Spanish this year"; "pass the CFA Level 1 exam".
+    [COGNITIVE MODEL] Anticipated need: Likely working toward: learn Spanish this year (p=0.6).
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] My goal is to pass the CFA Level 1 exam.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") My goal is to learn Spanish this year.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] I passed my CFA exam!
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] (replying to you: "Got it.") I didn't get to practice Spanish this week.
+  DEV:
+    [  § Goals & Ambitions] ### Goals & Ambitions
+    [  § Goals & Ambitions] - Goals: learn Spanish this year
+    [  § No longer current] - Goals: pass the CFA Level 1 exam (achieved) — they said: "I passed my CFA exam!"
+    [COGNITIVE MODEL] Active goals: "learn Spanish this year".
+    [COGNITIVE MODEL] Anticipated need: Likely working toward: learn Spanish this year (p=0.6).
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] My goal is to pass the CFA Level 1 exam.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] (replying to you: "Got it.") My goal is to learn Spanish this year.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] I passed my CFA exam!
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] (replying to you: "Got it.") I didn't get to practice Spanish this week.
+
+q12 (goal_status) — "Did I pass the CFA?"
+  HEAD:
+    [  § Goals & Ambitions] - Goals: pass the CFA Level 1 exam, learn Spanish this year
+    [COGNITIVE MODEL] Active goals: "learn Spanish this year"; "pass the CFA Level 1 exam".
+    [RELATED KNOWLEDGE] - pass the CFA Level 1 exam ←targets— user
+    [RELATED KNOWLEDGE] • I passed my CFA exam! [Conversation harness-goals-q12-s1 · ¶1] (confidence 0.60)
+    [RELATED KNOWLEDGE] • Entity: CFA Level — appears in
+    [RELATED KNOWLEDGE] • Entity: CFA — appears in
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] My goal is to pass the CFA Level 1 exam.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] I passed my CFA exam!
+  DEV:
+    [  § No longer current] - Goals: pass the CFA Level 1 exam (achieved) — they said: "I passed my CFA exam!"
+    [COGNITIVE MODEL] • My goal is to pass the CFA Level 1 exam. [Conversation harness-goals-q12-s0 · ¶1] (confidence 0.60)
+    [COGNITIVE MODEL] • I passed my CFA exam! [Conversation harness-goals-q12-s1 · ¶1] (confidence 0.60)
+    [COGNITIVE MODEL] • Entity: CFA Level — appears in
+    [COGNITIVE MODEL] • Entity: CFA — appears in
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-01 · another conversation] My goal is to pass the CFA Level 1 exam.
+    [WHAT THE USER TOLD YOU BEFORE] [2026-09-08 · another conversation] I passed my CFA exam!

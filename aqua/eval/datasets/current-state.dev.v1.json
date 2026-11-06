@@ -1,0 +1,55 @@
+{
+  "id": "current-state.dev.v1",
+  "version": 1,
+  "authoredAt": "2026-11-02",
+  "status": "DEVELOPMENT — authored before the current-state resolver, by the session that builds it. Not held-out evidence.",
+  "purpose": "Does the memory block hold the CURRENT value as current, the previous one as history, and nothing changed by statements that change nothing? Explicit new values, ended affiliations and possessions, replacement after an ending, goal completion, scoped values, separate deadlines, preference change, context-specific and one-time preferences, negated / hypothetical / third-party / ambiguous controls, historical questions.",
+  "personas": [
+    { "id": "c01", "sessions": [["I'm a data analyst at Fintrail."], ["I now work at Northbeam as a senior analyst."]],
+      "questions": [
+        { "id": "c01-q1", "cat": "state_change", "q": "Where do I work?", "required": ["Northbeam"], "forbidden": ["he currently works at Fintrail"] },
+        { "id": "c01-q2", "cat": "temporal", "q": "Where did I work before Northbeam?", "required": ["Fintrail"] } ] },
+    { "id": "c02", "sessions": [["My bank contact for the loan is Derek Shaw at Lone Star Bank."], ["Derek Shaw moved to another branch; our new loan officer is Kim Alvarez."]],
+      "questions": [{ "id": "c02-q1", "cat": "state_change", "q": "Who should I call about the loan?", "required": ["Kim Alvarez"], "forbidden": ["Derek Shaw is the current contact"] }] },
+    { "id": "c03", "sessions": [["My biggest client is Oakline.", "My newest client is Mellow."], ["Mellow is now my biggest client."]],
+      "questions": [
+        { "id": "c03-q1", "cat": "state_change", "q": "Who is my biggest client?", "required": ["Mellow"], "forbidden": ["Oakline is the biggest client"] },
+        { "id": "c03-q2", "cat": "current_fact", "q": "Who is my newest client?", "required": ["Mellow"] } ] },
+    { "id": "c04", "sessions": [["I live in Leeds."], ["We relocated to Bristol in June."]],
+      "questions": [{ "id": "c04-q1", "cat": "state_change", "q": "Where do I live?", "required": ["Bristol"], "forbidden": ["he lives in Leeds"] }] },
+    { "id": "c05", "sessions": [["I work at Hartwell Bank."], ["I no longer work at Hartwell."]],
+      "questions": [
+        { "id": "c05-q1", "cat": "state_change", "q": "Where do I work?", "required": ["no current employer stated; he left Hartwell"], "forbidden": ["he works at Hartwell Bank"] },
+        { "id": "c05-q2", "cat": "temporal", "q": "Where did I use to work?", "required": ["Hartwell Bank"] } ] },
+    { "id": "c06", "sessions": [["My car is a 2012 Honda Civic."], ["I sold my Civic and bought a used Tesla Model 3."]],
+      "questions": [{ "id": "c06-q1", "cat": "state_change", "q": "What car do I drive?", "required": ["a used Tesla Model 3"], "forbidden": ["the Honda Civic is his car"] }] },
+    { "id": "c07", "sessions": [["My car is a 2012 Honda Civic."], ["I sold my Civic last month."]],
+      "questions": [{ "id": "c07-q1", "cat": "state_change", "q": "What car do I have?", "required": ["none stated; he sold the Civic"], "forbidden": ["the Honda Civic is his car"] }] },
+    { "id": "c08", "sessions": [["My goal is to pass the CFA level 1 exam."], ["I passed the CFA level 1 exam!"]],
+      "questions": [{ "id": "c08-q1", "cat": "state_change", "q": "What am I working toward right now?", "required": ["the CFA level 1 is done"], "forbidden": ["he is still working toward the CFA level 1"] }] },
+    { "id": "c09", "sessions": [["My day rate is 650 euros."], ["I raised my day rate to 720 euros for new clients."]],
+      "questions": [
+        { "id": "c09-q1", "cat": "current_fact", "q": "What do I charge existing clients per day?", "required": ["650 euros"] },
+        { "id": "c09-q2", "cat": "correction", "q": "What day rate should I quote a new client?", "required": ["720 euros"], "forbidden": ["650 euros for a new client"] } ] },
+    { "id": "c10", "sessions": [["My thesis is due on May 30.", "My ETH application is due December 15."], ["The thesis deadline moved to June 13."]],
+      "questions": [
+        { "id": "c10-q1", "cat": "correction", "q": "When is my thesis due?", "required": ["June 13"], "forbidden": ["May 30"] },
+        { "id": "c10-q2", "cat": "current_fact", "q": "When is my ETH application due?", "required": ["December 15"] } ] },
+    { "id": "c11", "sessions": [["I prefer long, detailed answers with lots of background."], ["Actually, I now prefer short bullet-point answers."]],
+      "questions": [{ "id": "c11-q1", "cat": "preference", "q": "Explain what an index fund is.", "required": ["a short bullet-point answer"], "forbidden": ["a long, detailed answer"] }] },
+    { "id": "c12", "sessions": [["I prefer short bullet-point answers."], ["For emails, I prefer a warm, formal tone."]],
+      "questions": [
+        { "id": "c12-q1", "cat": "preference", "q": "Draft an email to my landlord about the broken heater.", "required": ["a warm, formal tone"] },
+        { "id": "c12-q2", "cat": "preference", "q": "Explain what a heat pump is.", "required": ["short bullet points"] } ] },
+    { "id": "c13", "sessions": [["I prefer detailed explanations."], ["Just give me a short answer this time, I'm in a rush."]],
+      "questions": [{ "id": "c13-q1", "cat": "preference", "q": "Explain how a mortgage works.", "required": ["a detailed explanation"] }] },
+    { "id": "c14", "sessions": [["I work at Hartwell Bank."], ["People keep asking, but I haven't left Hartwell — I'm still there."]],
+      "questions": [{ "id": "c14-q1", "cat": "negation", "q": "Where do I work?", "required": ["Hartwell Bank"] }] },
+    { "id": "c15", "sessions": [["I live in Leeds."], ["I might move to Bristol next year if the job works out."]],
+      "questions": [{ "id": "c15-q1", "cat": "uncertainty", "q": "Where do I live?", "required": ["Leeds"], "forbidden": ["he lives in Bristol"] }] },
+    { "id": "c16", "sessions": [["I work at Coinwise as a product manager."], ["Mei Tan left Coinwise; she joined Stripe."]],
+      "questions": [{ "id": "c16-q1", "cat": "negation", "q": "Where do I work?", "required": ["Coinwise"], "forbidden": ["he works at Stripe"] }] },
+    { "id": "c17", "sessions": [["My car is a 2012 Honda Civic.", "My wife's car is a Honda Civic too."], ["We sold the Civic."]],
+      "questions": [{ "id": "c17-q1", "cat": "uncertainty", "q": "What car do I have?", "required": ["unclear which Civic was sold"] }] }
+  ]
+}

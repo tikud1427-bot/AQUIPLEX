@@ -1,0 +1,37 @@
+{
+  "id": "profile-consistency.dev.v1",
+  "version": 1,
+  "authoredAt": "2026-11-02",
+  "status": "DEVELOPMENT — authored before the profile change, by the session that builds it. Not held-out evidence.",
+  "purpose": "Temporal consistency of the profile / identity / cognitive model: endings, replacements, departures, relocation, partial changes, goal completion, preference change, resolved blocker, moved deadline, historical questions — and controls that must NOT change anything (negated, speculative, hypothetical-future statements).",
+  "personas": [
+    { "id": "p01", "sessions": [["I'm employed at Hartwell Bank as a risk analyst."], ["I resigned from Hartwell last Friday."]],
+      "questions": [
+        { "id": "p01-q1", "cat": "state_change", "q": "Where do I work?", "required": ["he resigned from Hartwell; no current employer stated"], "forbidden": ["he currently works at Hartwell Bank"] },
+        { "id": "p01-q2", "cat": "temporal", "q": "Where did I work before?", "required": ["Hartwell Bank"] } ] },
+    { "id": "p02", "sessions": [["My car is a 2012 Honda Civic."], ["I sold the Civic and bought a used Tesla Model 3."]],
+      "questions": [{ "id": "p02-q1", "cat": "state_change", "q": "What car do I drive?", "required": ["a used Tesla Model 3"], "forbidden": ["a 2012 Honda Civic is his current car"] }] },
+    { "id": "p03", "sessions": [["I live in Leeds."], ["We relocated to Bristol in June."]],
+      "questions": [{ "id": "p03-q1", "cat": "state_change", "q": "Where do I live?", "required": ["Bristol"], "forbidden": ["he currently lives in Leeds"] }] },
+    { "id": "p04", "sessions": [["My biggest client is Oakline."], ["Now Mellow is my biggest client; they doubled my contract."]],
+      "questions": [{ "id": "p04-q1", "cat": "state_change", "q": "Who is my biggest client?", "required": ["Mellow"], "forbidden": ["Oakline is the current biggest client"] }] },
+    { "id": "p05", "sessions": [["My bank contact for the loan is Derek Shaw at Lone Star Bank."], ["Derek Shaw moved to another branch; our new loan officer is Kim Alvarez."]],
+      "questions": [{ "id": "p05-q1", "cat": "state_change", "q": "Who should I call about the loan?", "required": ["Kim Alvarez"], "forbidden": ["Derek Shaw is the current contact"] }] },
+    { "id": "p06", "sessions": [["My day rate is 650 euros."], ["I raised my day rate to 720 euros for new clients."]],
+      "questions": [{ "id": "p06-q1", "cat": "correction", "q": "What day rate should I quote a new client?", "required": ["720 euros"], "forbidden": ["650 euros for a new client"] }] },
+    { "id": "p07", "sessions": [["I work at Hartwell Bank."], ["People keep asking, but I haven't left Hartwell — I'm still there."]],
+      "questions": [{ "id": "p07-q1", "cat": "negation", "q": "Where do I work?", "required": ["Hartwell Bank"], "forbidden": ["he left Hartwell"] }] },
+    { "id": "p08", "sessions": [["My car is a 2012 Honda Civic."], ["I'm thinking about selling the Civic next year."]],
+      "questions": [{ "id": "p08-q1", "cat": "uncertainty", "q": "What car do I have?", "required": ["the 2012 Honda Civic, possibly selling next year"], "forbidden": ["he sold the Civic"] }] },
+    { "id": "p09", "sessions": [["I live in Leeds."], ["I might move to Bristol next year if the job works out."]],
+      "questions": [{ "id": "p09-q1", "cat": "uncertainty", "q": "Where do I live?", "required": ["Leeds"], "forbidden": ["he lives in Bristol"] }] },
+    { "id": "p10", "sessions": [["My goal is to pass the CFA level 1 exam."], ["I passed the CFA level 1 exam!"]],
+      "questions": [{ "id": "p10-q1", "cat": "state_change", "q": "What am I working toward right now?", "required": ["the CFA level 1 is done; no new goal stated"], "forbidden": ["he is still working toward passing CFA level 1"] }] },
+    { "id": "p11", "sessions": [["I prefer long, detailed answers with lots of background."], ["Actually, I now prefer short bullet-point answers."]],
+      "questions": [{ "id": "p11-q1", "cat": "preference", "q": "Explain what an index fund is.", "required": ["a short bullet-point answer"], "forbidden": ["a long, detailed answer"] }] },
+    { "id": "p12", "sessions": [["Our launch is blocked waiting on the FDA letter.", "The launch date is March 3."], ["The FDA letter arrived.", "The launch moved to April 14."]],
+      "questions": [
+        { "id": "p12-q1", "cat": "state_change", "q": "Is anything blocking the launch?", "required": ["no, the FDA letter arrived"], "forbidden": ["still waiting on the FDA letter"] },
+        { "id": "p12-q2", "cat": "correction", "q": "When is the launch?", "required": ["April 14"], "forbidden": ["March 3"] } ] }
+  ]
+}

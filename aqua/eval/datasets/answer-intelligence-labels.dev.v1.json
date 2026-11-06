@@ -1,0 +1,20 @@
+{
+  "id": "answer-intelligence-labels.dev.v1",
+  "authoredAt": "2026-11-02",
+  "status": "DEVELOPMENT labels, written before any fix.",
+  "semantics": "As temporal-resolution-labels.dev.v1, plus: `staleValue` = the outdated VALUE; it must not appear in the memory block (identity, profile, cognitive model: the sections the prompt frames as authoritative or current) when the history holds its update. `irrelevant` = statements about the same subject that do not answer the question (context relevance).",
+  "labels": {
+    "a01-q1": { "stale": ["blocked waiting on apples review"], "staleValue": ["apples review"], "current": ["apple approved the app"] },
+    "a01-q2": { "current": ["launch the lumen app on may 6"] },
+    "a02-q1": { "stale": ["board meeting is on june 12"], "staleValue": ["on june 12"], "current": ["board meeting is june 19"] },
+    "a02-q2": { "historical": true, "current": ["board meeting is on june 12"] },
+    "a03-q1": { "stale": ["goal this year is to run a marathon"], "staleValue": ["run a marathon"], "current": ["half marathon instead"] },
+    "a04-q1": { "stale": ["prefer long, detailed answers"], "staleValue": ["long, detailed"], "current": ["prefer short bullet-point"] },
+    "a05-q1": { "current": ["lived in toronto since 2020"] },
+    "a05-q2": { "historical": true, "current": ["lived in lagos until 2019"] },
+    "a07-q1": { "stale": ["printer is broken"], "staleValue": ["printer is broken"], "current": ["replaced the office printer"] },
+    "a08-q1": { "current": ["designer for atlas is mei chen"], "irrelevant": ["budget is 40,000", "logo is teal", "runs on postgres"] },
+    "a09-q1": { "current": ["offsite is in porto"], "mustNot": ["offsite has moved"] },
+    "a10-q1": { "stale": ["need to renew my driving licence"], "staleValue": ["renew my driving licence"], "current": ["new driving licence arrived"] }
+  }
+}

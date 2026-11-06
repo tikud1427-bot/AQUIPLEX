@@ -1,0 +1,15 @@
+{
+  "started": "2026-11-05T05:49:04.319Z",
+  "finished": "2026-11-05T05:49:48.097Z",
+  "prompts": "prompts.code-defaults.jsonl",
+  "prompts_sha256": "082b0b559ccad3fc8357746d2ee112c2eefa5fdd1794e32cb6d929fda858424d",
+  "model": "@cf/mistralai/mistral-small-3.1-24b-instruct",
+  "settings": {
+    "temperature": 0,
+    "top_p": 1,
+    "max_tokens": 600,
+    "seed": 7
+  },
+  "confirm": "isolated-free-authorized:cloudflare-workers-ai-eval-account",
+  "requests": 24
+}

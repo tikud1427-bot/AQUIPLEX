@@ -1,0 +1,27 @@
+{
+  "id": "vocabulary-continuity-labels.dev.v1",
+  "authoredAt": "2026-11-02",
+  "status": "DEVELOPMENT labels, written before any vocabulary change.",
+  "semantics": "As temporal-resolution-labels.dev.v1, plus `mustNot`: substrings of a look-alike statement that must NOT appear in the context (a false match).",
+  "labels": {
+    "v01": { "stale": ["blocked until the audit finishes"], "current": ["main blocker is that the lead investor"] },
+    "v02": { "stale": ["ship the beta on may 4"], "current": ["shipping moved to may 18"] },
+    "v03": { "current": ["hired tomasz"] },
+    "v04": { "stale": ["priya is managing the vendor contracts"], "current": ["omar is the new contracts manager"] },
+    "v05": { "stale": ["need to renew the domain"], "current": ["domain renewal is done"] },
+    "v06": { "stale": ["work part-time as a teaching assistant"], "current": ["stopped the ta job"] },
+    "v07": { "stale": ["our pm is laila"], "current": ["ben is now our product manager"] },
+    "v08": { "stale": ["chief executive officer is dana wu"], "current": ["felix ortiz is ceo now"] },
+    "v09": { "stale": ["i live in leeds"], "current": ["relocated to bristol"] },
+    "v10": { "stale": ["2012 honda civic"], "current": ["bought a used tesla"] },
+    "v11": { "stale": ["employed at hartwell bank"], "current": ["resigned from hartwell"] },
+
+    "n01": { "current": ["blocked by legal review"], "mustNot": ["blockchain"] },
+    "n02": { "current": ["ship orders every tuesday"], "mustNot": ["relationship coach"] },
+    "n03": { "current": ["numbing cream"], "mustNot": ["phone number"] },
+    "n04": { "mustNot": ["tax advisor", "take the train"] },
+    "n05": { "current": ["expanding to portugal"], "mustNot": ["visited us"] },
+    "n06": { "current": ["late to the board meeting"], "mustNot": ["call later"] },
+    "n07": { "mustNot": ["customer experience officer"] }
+  }
+}

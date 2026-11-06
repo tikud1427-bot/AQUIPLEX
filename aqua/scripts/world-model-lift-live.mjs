@@ -192,6 +192,39 @@ async function judge(persona, question, text) {
 const ingest = (ownerId, persona) => R.ingestPersona(ownerId, persona, { runId: RUN });
 const worldModelContext = (ownerId, q) => R.worldModelContext(ownerId, q);
 
+// Episodic recall (2026-10-29): `recall` = the production recall block alone,
+// `wmRecall` = the World Model block + that block, joined as chat.js joins
+// knowledgeContext and recallContext — what a chat turn now carries, with the
+// run database's "since changed" notes. `memoryProdMatched` = BM25 turns at
+// wmRecall's size, the size-fair simple baseline for it. Same production
+// defaults (AQUA_RECALL_ALL_CHARS, files on) as a chat turn.
+const RECALL_CONDS = ['recall', 'wmRecall', 'memoryProdMatched'];
+const { recallForTurn } = await import('../src/memory/episodicRecall.js');
+const { legacySupersessionNotes } = await import('../src/memory/engine.js');
+const LR = await import('../eval/lift/liftRecall.mjs');
+const recallSources = new Map();
+async function recallContext(persona, userId, ownerId, q) {
+  if (!Array.isArray(persona.sessions)) throw new Error(`recall conditions need multi-session personas (${persona.id})`);
+  if (!recallSources.has(persona.id)) recallSources.set(persona.id, { conversations: LR.conversationsFor(persona, userId), attachmentsFor: LR.attachmentsFor(persona) });
+  const src = recallSources.get(persona.id);
+  return recallForTurn({ ownerId, userId, conversationId: `${persona.id}-ask`, query: q, notesFor: Brain.supersessionNotesFor, ...src });
+}
+
+// LEGACY PRODUCTION READ (2026-10-29): `legacyProd` is what a production turn
+// carries today — the legacy fact store + Mind + PIC knowledge block
+// (eval/lift/liftLegacy.mjs, replayed under a separate owner with DATABASE_URL
+// blanked, so nothing reaches the canonical store the World Model conditions
+// read) + episodic recall without "since changed" notes.
+const LEGACY_CONDS = ['legacyProd'];
+async function legacyContexts(personas, pipeline) {
+  if (!CONDS.some(c => LEGACY_CONDS.includes(c))) return new Map();
+  const t0 = Date.now();
+  const { legacyContexts: build } = await import('../eval/lift/liftLegacy.mjs');
+  const out = await build(personas, { userIdFor: p => `${pipeline[p.id].userId}-legacy`, traceId: `lift-legacy-${RUN}` });
+  console.log(`[LIFT] legacy read replayed for ${personas.length} persona(s) in ${Date.now() - t0} ms`);
+  return out;
+}
+
 async function main() {
   const personas = DS.personas.filter(p => !ONLY || ONLY.includes(p.id));
   const results = PRIOR?.results ?? [];
@@ -241,6 +274,8 @@ async function main() {
     }
   }
   const wmCache = new Map();   // one World-Model context per question, shared by its repeats
+  const recallCache = new Map();
+  const legacy = await legacyContexts(personas, pipeline);
   const checkpoint = () => {
     try {
       mkdirSync(path.join(ROOT, 'eval', 'out'), { recursive: true });
@@ -263,10 +298,30 @@ async function main() {
     contexts.history = L.formatTurns(win.turns);
     contexts.memoryMatched = L.formatTurns(L.bm25WithinChars(persona.history, question.q, Math.max(300, wm.block.length)));
     contexts.hybrid = L.hybridContext(wm.block, contexts.memoryMatched);
+    let recallDiag = null;
+    if (CONDS.some(c => RECALL_CONDS.includes(c) || LEGACY_CONDS.includes(c))) {
+      if (!recallCache.has(question.id)) recallCache.set(question.id, recallContext(persona, pipeline[persona.id].userId, ownerId, question.q));
+      const rec = await recallCache.get(question.id);
+      recallDiag = { stats: rec.stats, excerpts: rec.excerpts.length, chars: rec.block.length };
+      contexts.recall = rec.block;
+      contexts.wmRecall = [wm.block, rec.block].filter(s => s && s.trim()).join('\n\n');
+      contexts.memoryProdMatched = L.formatTurns(L.bm25WithinChars(persona.history, question.q, Math.max(300, contexts.wmRecall.length)));
+    }
+    const leg = legacy.get(question.id);
+    if (leg) {
+      // As chat.js composes it: memoryBlock rides its own prompt slot, then the
+      // knowledge and recall blocks (combinedContext) — the user-context part of
+      // a legacy turn, in prompt order. Recall's "since changed" notes come from
+      // the legacy fact store's version history, as chat.js reads them.
+      const rec = await recallForTurn({ ownerId: `user:${pipeline[persona.id].userId}-legacy`, userId: pipeline[persona.id].userId,
+        conversationId: `${persona.id}-ask`, query: question.q, notesFor: legacySupersessionNotes, ...recallSources.get(persona.id) });
+      contexts.legacyProd = [leg.memoryBlock, leg.knowledgeBlock, rec.block].filter(s => s && s.trim()).join('\n\n');
+      recallDiag = { ...(recallDiag ?? {}), legacy: { facts: leg.facts, items: leg.items, chars: contexts.legacyProd.length } };
+    }
     const row = { persona: persona.id, length: persona.length ?? 'short', historyTokens: win.totalTokens, historyTruncated: win.truncated,
       id: question.id, cat: question.cat, q: question.q, rep,
       expectUnknown: Boolean(question.expectUnknown), hasForbidden: (question.forbidden ?? []).length > 0,
-      worldModelDiag: wm, conditions: {} };
+      worldModelDiag: wm, ...(recallDiag ? { recallDiag } : {}), conditions: {} };
     for (const cond of CONDS) {
       const p = L.buildAnswerPrompt(question.q, contexts[cond]);
       const a = await answer(p.system, p.user);
@@ -303,7 +358,7 @@ async function main() {
   const vec = c => graded.map(r => r.conditions[c].grade.correct);
   // Conditions under test: the World Model, and (when run) the pre-registered
   // hybrid. Each is compared with every other condition.
-  const SUBJECTS = ['worldModel', 'hybrid'].filter(s => CONDS.includes(s));
+  const SUBJECTS = ['worldModel', 'hybrid', 'wmRecall', 'recall', 'legacyProd'].filter(s => CONDS.includes(s));
   const othersOf = s => CONDS.filter(c => c !== s);
   const paired = Object.fromEntries(SUBJECTS.flatMap(s => othersOf(s).map(c => [`${s}_vs_${c}`, L.pairedComparison(vec(s), vec(c))])));
   // PRIMARY STATISTIC (question-clustered): repeats of one question are not

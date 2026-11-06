@@ -1,0 +1,311 @@
+[
+  {
+    "id": "q09",
+    "category": "current",
+    "checks": {
+      "include": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q09",
+    "category": "current",
+    "checks": {
+      "include": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "DEV"
+  },
+  {
+    "id": "q04",
+    "category": "uncertain_dependency",
+    "checks": {
+      "include": true,
+      "hedge": true,
+      "supported": false
+    },
+    "unsupported": [
+      "Given"
+    ],
+    "pass": false,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q04",
+    "category": "uncertain_dependency",
+    "checks": {
+      "include": true,
+      "hedge": true,
+      "supported": false
+    },
+    "unsupported": [
+      "However"
+    ],
+    "pass": false,
+    "condition": "DEV"
+  },
+  {
+    "id": "q10",
+    "category": "abstention",
+    "checks": {
+      "abstain": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q10",
+    "category": "abstention",
+    "checks": {
+      "abstain": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "DEV"
+  },
+  {
+    "id": "q02",
+    "category": "historical",
+    "checks": {
+      "include": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "DEV"
+  },
+  {
+    "id": "q02",
+    "category": "historical",
+    "checks": {
+      "include": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q11",
+    "category": "goal_status",
+    "checks": {
+      "include": true,
+      "notOpen": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "DEV"
+  },
+  {
+    "id": "q11",
+    "category": "goal_status",
+    "checks": {
+      "include": true,
+      "notOpen": false,
+      "supported": false
+    },
+    "unsupported": [
+      "September",
+      "Based"
+    ],
+    "pass": false,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q06",
+    "category": "abstention",
+    "checks": {
+      "abstain": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q06",
+    "category": "abstention",
+    "checks": {
+      "abstain": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "DEV"
+  },
+  {
+    "id": "q01",
+    "category": "current",
+    "checks": {
+      "include": true,
+      "notCurrent": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q01",
+    "category": "current",
+    "checks": {
+      "include": true,
+      "notCurrent": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "DEV"
+  },
+  {
+    "id": "q12",
+    "category": "goal_status",
+    "checks": {
+      "include": true,
+      "notOpen": true,
+      "supported": false
+    },
+    "unsupported": [
+      "September"
+    ],
+    "pass": false,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q12",
+    "category": "goal_status",
+    "checks": {
+      "include": true,
+      "notOpen": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "DEV"
+  },
+  {
+    "id": "q05",
+    "category": "personal_context",
+    "checks": {
+      "include": true,
+      "supported": false
+    },
+    "unsupported": [
+      "Additionally",
+      "Skill",
+      "Development",
+      "Consider",
+      "Team",
+      "Collaboration",
+      "Building",
+      "Performance",
+      "Metrics",
+      "Establish",
+      "KPIs",
+      "Feedback",
+      "Improvement",
+      "Regularly"
+    ],
+    "pass": false,
+    "condition": "DEV"
+  },
+  {
+    "id": "q05",
+    "category": "personal_context",
+    "checks": {
+      "include": true,
+      "supported": false
+    },
+    "unsupported": [
+      "Deadlines",
+      "Prioritize",
+      "Align",
+      "Importance",
+      "Completing",
+      "Given"
+    ],
+    "pass": false,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q07",
+    "category": "current",
+    "checks": {
+      "include": true,
+      "notCurrent": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "DEV"
+  },
+  {
+    "id": "q07",
+    "category": "current",
+    "checks": {
+      "include": true,
+      "notCurrent": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q08",
+    "category": "current",
+    "checks": {
+      "include": true,
+      "notCurrent": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "DEV"
+  },
+  {
+    "id": "q08",
+    "category": "current",
+    "checks": {
+      "include": true,
+      "notCurrent": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "HEAD"
+  },
+  {
+    "id": "q03",
+    "category": "goal_status",
+    "checks": {
+      "include": true,
+      "notOpen": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "DEV"
+  },
+  {
+    "id": "q03",
+    "category": "goal_status",
+    "checks": {
+      "include": true,
+      "notOpen": true,
+      "supported": true
+    },
+    "unsupported": [],
+    "pass": true,
+    "condition": "HEAD"
+  }
+]

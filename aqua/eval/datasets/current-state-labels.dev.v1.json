@@ -1,0 +1,31 @@
+{
+  "id": "current-state-labels.dev.v1",
+  "authoredAt": "2026-11-02",
+  "status": "DEVELOPMENT labels, written before the current-state resolver.",
+  "semantics": "Memory block = IDENTITY + USER PROFILE + COGNITIVE MODEL. 'As current' = on a memory-block line that is NOT marked 'since changed', NOT inside a '(previously: …)' note, and NOT under a 'No longer current' heading. `currentValue`: must appear as current (correct current value). `staleValue`: must NOT appear as current (outdated-as-current). `stillCurrent`: a no-change control; must appear as current (false update otherwise). `mustNot`: must not appear as current at all (a value the user never held). `historical`: the past value must remain somewhere in the context (history preserved).",
+  "labels": {
+    "c01-q1": { "stale": ["data analyst at fintrail"], "staleValue": ["fintrail"], "currentValue": ["northbeam"], "current": ["now work at northbeam"] },
+    "c01-q2": { "historical": true, "current": ["fintrail"] },
+    "c02-q1": { "stale": ["derek shaw at lone star bank"], "staleValue": ["derek shaw"], "currentValue": ["kim alvarez"], "current": ["new loan officer is kim alvarez"] },
+    "c03-q1": { "stale": ["my biggest client is oakline"], "staleValue": ["biggest client: oakline"], "currentValue": ["biggest client: mellow"], "current": ["mellow is now my biggest client"] },
+    "c03-q2": { "stillCurrent": ["newest client: mellow"], "current": ["newest client is mellow"] },
+    "c04-q1": { "stale": ["i live in leeds"], "staleValue": ["city: leeds"], "currentValue": ["bristol"], "current": ["relocated to bristol"] },
+    "c05-q1": { "stale": ["i work at hartwell bank"], "staleValue": ["hartwell bank"], "current": ["no longer work at hartwell"] },
+    "c05-q2": { "historical": true, "current": ["hartwell bank"] },
+    "c06-q1": { "stale": ["2012 honda civic"], "staleValue": ["honda civic"], "currentValue": ["tesla model 3"], "current": ["bought a used tesla model 3"] },
+    "c07-q1": { "stale": ["2012 honda civic"], "staleValue": ["honda civic"], "current": ["sold my civic"] },
+    "c08-q1": { "stale": ["goal is to pass the cfa"], "staleValue": ["pass the cfa level 1 exam"], "current": ["passed the cfa level 1"] },
+    "c09-q1": { "stillCurrent": ["650 euros"], "current": ["day rate is 650 euros"] },
+    "c09-q2": { "currentValue": ["720 euros"], "current": ["720 euros for new clients"] },
+    "c10-q1": { "stale": ["thesis is due on may 30"], "staleValue": ["may 30"], "currentValue": ["june 13"], "current": ["thesis deadline moved to june 13"] },
+    "c10-q2": { "stillCurrent": ["december 15"], "current": ["eth application is due december 15"] },
+    "c11-q1": { "stale": ["prefer long, detailed answers"], "staleValue": ["long, detailed answers"], "currentValue": ["short bullet-point answers"], "current": ["now prefer short bullet-point answers"] },
+    "c12-q1": { "currentValue": ["warm, formal tone"], "current": ["for emails, i prefer a warm, formal tone"] },
+    "c12-q2": { "stillCurrent": ["short bullet-point answers"], "current": ["prefer short bullet-point answers"] },
+    "c13-q1": { "stillCurrent": ["detailed explanations"], "current": ["prefer detailed explanations"], "mustNot": ["short answer this time"] },
+    "c14-q1": { "stillCurrent": ["hartwell bank"], "current": ["havent left hartwell"] },
+    "c15-q1": { "stillCurrent": ["leeds"], "current": ["i live in leeds"] },
+    "c16-q1": { "stillCurrent": ["coinwise"], "current": ["work at coinwise"], "mustNot": ["company: stripe", "workplace: stripe"] },
+    "c17-q1": { "stillCurrent": ["2012 honda civic"], "current": ["we sold the civic"] }
+  }
+}
