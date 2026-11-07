@@ -95,6 +95,7 @@ import {
 } from '../memory/conversationStore.js';
 import { resolveOwner, memoryObserve, memoryRetrieve, getMemoryTrace, semanticFactScores, semanticFileChunks, legacySupersessionNotes, uncertaintyNotes } from '../memory/engine.js';
 import { recallEnabled, recallForTurn, startRecallQueryVector } from '../memory/episodicRecall.js';
+import { mindRelevanceEnabled } from '../mind/mindRetriever.js';
 import { sensitivePolicy, redactSensitiveSentences, scrubSensitiveLines, classifyText } from '../memory/sensitivity.js';
 import * as Brain from '../brain/index.js';
 import { proactiveDirectiveForTurn } from '../brain/proactive/index.js';
@@ -569,6 +570,10 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     legacyUserMemory: readMode === 'legacy' ? true : readMode === 'authoritative' ? 'gapfill' : false,
     legacyVeto: readMode === 'authoritative' ? await Brain.legacyVetoFor(memoryOwner) : null,
     sensitive,
+    // C9: the claim scores this turn already computes (started above), for the Mind's
+    // question-aware selection only. Awaited here only when AQUA_MIND_RELEVANCE=on;
+    // otherwise nothing changes on this path. null when embeddings are unavailable.
+    claimScores: mindRelevanceEnabled() ? await canonicalSemanticP : null,
   });
   const relevantFacts = retrieved.relevantFacts;
   const memoryBlock   = retrieved.block;

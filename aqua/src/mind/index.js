@@ -59,12 +59,12 @@ export function mindObserve(ownerId, { userMessage, taskType, extractedFacts = [
  * Cognitive context for the prompt. Returns '' when the Mind is empty,
  * disabled, or nothing clears the relevance bar.
  */
-export function mindContext(ownerId, { query = '', taskType = 'conversation', budgetTokens, laterWords = [], retired = [] } = {}) {
+export function mindContext(ownerId, { query = '', taskType = 'conversation', budgetTokens, laterWords = [], retired = [], meaningOf = null } = {}) {
   if (!ownerId) return { block: '', used: {} };
   try {
     const mind = peekMind(ownerId);          // peek: context must not create minds
     if (!mind) return { block: '', used: {} };
-    return retrieveCognitiveContext(mind, { query, taskType, budgetTokens, laterWords, retired });
+    return retrieveCognitiveContext(mind, { query, taskType, budgetTokens, laterWords, retired, meaningOf });
   } catch (err) {
     console.warn('[MIND] context failed (non-fatal):', err.message);
     return { block: '', used: {} };

@@ -57,6 +57,48 @@ function root(t) {
   const s = stem(t);
   return /ions?$/.test(s) && s.replace(/ions?$/, '').length >= 5 ? s.replace(/ions?$/, '') : s;
 }
+
+/**
+ * A planning question's OWN TOPIC (C9, 2026-11-07): its content words minus the
+ * planning cue and minus time words. "What shoes should I buy for my race?" has
+ * one (shoes, buy, race); "What should I focus on this week?" and "What should
+ * I plan for October?" have none. A month or a number never anchors anything:
+ * "October" in a goal's title is when, not what.
+ */
+const CUE_TERMS = new Set(['focus', 'prioritise', 'prioritize', 'priority', 'priorities', 'plan', 'plans', 'planning', 'should', 'next', 'step', 'steps',
+  'plate', 'todo', 'to-do', 'week', 'month', 'quarter', 'year', 'today', 'tomorrow', 'advice', 'advise', 'recommend', 'suggest', 'suggestion',
+  'suggestions', 'goal', 'goals', 'deadline', 'deadlines', 'working', 'busy', 'schedule', 'progress', 'catch', 'overview', 'summary', 'summarise',
+  'summarize', 'work', 'everything', 'things', 'thing', 'all', 'right', 'now', 'lately', 'currently'].map(root));
+const TIME_TERM = /^(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*$|^(?:mon|tue|wed|thu|fri|sat|sun)[a-z]*$|^(?:morning|afternoon|evening|tonight|weekend|spring|summer|autumn|fall|winter|day|days|weeks|months|years)$|\d/;
+const topicTerms = terms => terms.filter(t => !CUE_TERMS.has(t) && !TIME_TERM.test(t));
+const sharesWord = (terms, text) => terms.length > 0 && contentTerms(text).map(root).some(t => terms.includes(t));
+
+/**
+ * Which candidate items is a question about? (C9) Returns a keep(text) test and
+ * the record of why each item was kept or dropped.
+ *   targeted question  keep an item that shares a word with it, or (when the
+ *                      caller passes `meaningOf`) whose stating statement is a
+ *                      trusted meaning match — mind/itemMeaning.js;
+ *   planning question  keep everything (as before), UNLESS it has a topic of its
+ *                      own that anchors some items but not all — then keep those.
+ * Without `meaningOf` a targeted question behaves exactly as in C7.
+ */
+function selectionFor(scope, candidates, meaningOf) {
+  const topic = scope.broad ? topicTerms(scope.terms) : scope.terms;
+  const why = new Map();
+  for (const c of candidates) {
+    if (why.has(c.text)) continue;
+    if (sharesWord(topic, c.text)) { why.set(c.text, { by: 'word' }); continue; }
+    const m = meaningOf ? meaningOf(c.text) : null;
+    why.set(c.text, m ? { by: 'meaning', statementId: m.statementId, cosine: Math.round(m.cosine * 1000) / 1000 } : null);
+  }
+  const anchored = candidates.filter(c => why.get(c.text));
+  const mode = !scope.broad ? 'targeted' : (topic.length && anchored.length && anchored.length < candidates.length ? 'anchored' : 'broad');
+  const keep = text => mode === 'broad' || !!why.get(text);
+  const record = candidates.map(c => ({ kind: c.kind, text: String(c.text).slice(0, 80), kept: keep(c.text), by: mode === 'broad' ? 'broad' : (why.get(c.text)?.by ?? null),
+    ...(why.get(c.text)?.by === 'meaning' ? { statementId: why.get(c.text).statementId, cosine: why.get(c.text).cosine } : {}) }));
+  return { keep, mode, record };
+}
 const flatText = s => String(s ?? '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
 const DEFAULT_BUDGET_TOKENS = 450;
@@ -82,9 +124,10 @@ function line(parts) { return parts.filter(Boolean).join(' '); }
 
 /**
  * Build the cognitive context block.
- * @returns {{ block: string, used: object }} block='' when nothing meets the bar.
+ * @returns {{ block: string, used: object, selection: object|null }} block='' when nothing meets the bar;
+ *   selection — C9, flag on only: { mode, items: [{ kind, text, kept, by, statementId?, cosine? }] }.
  */
-export function retrieveCognitiveContext(mind, { query = '', taskType = 'conversation', budgetTokens = DEFAULT_BUDGET_TOKENS, laterWords = [], retired = [] } = {}) {
+export function retrieveCognitiveContext(mind, { query = '', taskType = 'conversation', budgetTokens = DEFAULT_BUDGET_TOKENS, laterWords = [], retired = [], meaningOf = null } = {}) {
   if (!mind) return { block: '', used: {} };
   // A belief holding a value the user has since changed (the fact store's
   // later word, passed by memory/engine.js) carries the same note as the
@@ -158,9 +201,21 @@ export function retrieveCognitiveContext(mind, { query = '', taskType = 'convers
 
   const relevance = mindRelevanceEnabled();
   const scope = relevance ? questionScope(query) : { broad: true, terms: [] };
+  // The message being answered is recorded before the prompt is built: it is not its own open question.
+  const asked = flatText(query);
+  // C9: one decision over every candidate item, so a planning question anchored on
+  // one goal drops the unrelated blockers and deadlines too. Flag on only.
+  const w = mind.working;
+  const openCandidates = w.openQuestions.filter(x => !(asked && flatText(x.text) && asked.includes(flatText(x.text))));
+  const sel = relevance ? selectionFor(scope, [
+    ...getActiveGoals(mind, 8).map(g => ({ kind: 'goal', text: g.title })),
+    ...w.blockers.map(b => ({ kind: 'blocker', text: b.text })),
+    ...w.deadlines.map(d => ({ kind: 'deadline', text: d.label })),
+  ], meaningOf) : null;
+  const about = text => sel.keep(text) || (sel.mode !== 'anchored' && isAbout(scope, text));
 
   // ── 5. Active goals — the "why" behind the ask ──────────────────────────────
-  const goals = relevance ? getActiveGoals(mind, 8).filter(g => isAbout(scope, g.title)).slice(0, 3) : getActiveGoals(mind, 3);
+  const goals = relevance ? getActiveGoals(mind, 8).filter(g => about(g.title)).slice(0, 3) : getActiveGoals(mind, 3);
   if (goals.length) {
     // A goal the user has since changed carries their words beside it — the
     // title is what they first said, the note is the current word (goalTracker
@@ -178,7 +233,6 @@ export function retrieveCognitiveContext(mind, { query = '', taskType = 'convers
   }
 
   // ── 6. Working memory — what's on their plate right now ────────────────────
-  const w = mind.working;
   // The same labels the Understanding page uses: classifier routing ids
   // ("simple_qa, personal_info") are not what the user is focused on, and the
   // model was told they were (2026-10-29, Lift v3 legacy replay).
@@ -186,11 +240,10 @@ export function retrieveCognitiveContext(mind, { query = '', taskType = 'convers
   const wmBits = [];
   if (focus.length) wmBits.push(`focus: ${focus.join(', ')}`);
   const reviewOf = x => reviewNote(x?.review);
-  // The message being answered is recorded before the prompt is built: it is not its own open question.
-  const asked = flatText(query);
-  const blockers = relevance ? w.blockers.filter(b => isAbout(scope, b.text)) : w.blockers;
-  const deadline = (relevance ? w.deadlines.filter(d => isAbout(scope, d.label)) : w.deadlines).at(-1);
-  const openQ = (relevance ? w.openQuestions.filter(x => !(asked && flatText(x.text) && asked.includes(flatText(x.text))) && isAbout(scope, x.text)) : w.openQuestions).at(-1);
+  const blockers = relevance ? w.blockers.filter(b => about(b.text)) : w.blockers;
+  const deadline = (relevance ? w.deadlines.filter(d => about(d.label)) : w.deadlines).at(-1);
+  // An open question is judged like the rest; when a planning question is anchored on one thing, an unrelated earlier question stays out.
+  const openQ = (relevance ? openCandidates.filter(x => sel.mode === 'anchored' ? sharesWord(topicTerms(scope.terms), x.text) || !!meaningOf?.(x.text) : about(x.text)) : w.openQuestions).at(-1);
   if (blockers.length) wmBits.push(`blocked on: ${blockers.slice(-2).map(b => `${b.text}${reviewOf(b)}`).join('; ')}`);
   if (deadline) wmBits.push(`deadline: ${deadline.label}${reviewOf(deadline)}`);
   if (openQ) wmBits.push(`open question: ${openQ.text}`);
@@ -205,7 +258,7 @@ export function retrieveCognitiveContext(mind, { query = '', taskType = 'convers
   const listed = [...goals.map(g => g.title), deadline?.label].filter(Boolean).map(flatText).filter(Boolean);
   const subjectOf = p => String(p.label ?? '').includes(':') ? String(p.label).split(':').slice(1).join(':') : String(p.label ?? '');
   const topPred = relevance
-    ? (mind.predictions || []).find(p => p.probability >= 0.55 && !listed.some(t => flatText(p.label).includes(t)) && isAbout(scope, subjectOf(p)))
+    ? (mind.predictions || []).find(p => p.probability >= 0.55 && !listed.some(t => flatText(p.label).includes(t)) && about(subjectOf(p)))
     : (mind.predictions || [])[0];
   if (topPred && topPred.probability >= 0.55) {
     sections.push(`Anticipated need: ${topPred.label} (p=${topPred.probability}).`);
@@ -230,7 +283,9 @@ export function retrieveCognitiveContext(mind, { query = '', taskType = 'convers
     }
   }
 
-  if (!sections.length) return { block: '', used };
+  // Why each goal, blocker and deadline was kept or dropped (C9; flag on only): for the memory trace, never the prompt.
+  const selection = sel ? { mode: sel.mode, items: sel.record } : null;
+  if (!sections.length) return { block: '', used, selection };
 
   // ── Budget enforcement: drop lowest-priority sections from the end ─────────
   // Order above is already priority order (identity → graph); trim tail-first.
@@ -249,5 +304,5 @@ export function retrieveCognitiveContext(mind, { query = '', taskType = 'convers
     lines.pop();
   }
 
-  return { block: wrap(lines), used };
+  return { block: wrap(lines), used, selection };
 }

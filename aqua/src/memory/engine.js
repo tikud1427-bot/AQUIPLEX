@@ -32,6 +32,9 @@ import { getIdentity, hasIdentity, formatIdentityBlock, isIdentityQuery, answerI
 import { mindObserve, mindContext, mindAfterTurn } from '../mind/index.js';
 import { getMind, peekMind, touchMind, deleteItem } from '../mind/mindStore.js';
 import { forgetInBackground, retireSupersededInBackground } from './forget.js';
+import { mindRelevanceEnabled } from '../mind/mindRetriever.js';
+import { buildMeaningOf } from '../mind/itemMeaning.js';
+import { listFacts as listEvidenceFacts } from '../files/evidenceStore.js';
 import { propagationEnabled, recordTransitions, reconcileMind, propagateToEvidenceInBackground, releaseAfterForget, forgetValueInMind, notePronounReferents } from './propagation.js';
 import { classifySensitivity, classifyText, sensitivePolicy, scrubSensitiveLines } from './sensitivity.js';
 import { upsertNode, upsertEdge, SELF_KEY } from '../mind/relationshipGraph.js';
@@ -355,6 +358,9 @@ export function memoryRetrieve(ownerId, {
   // Sensitive categories: the turn's read policy (memory/sensitivity.js
   // sensitivePolicy). Absent = nothing sensitive is allowed (L11).
   sensitive = null,
+  // C9: Brain.canonicalSemanticScores for this question (evidence-store fact id → cosine),
+  // used ONLY by the Mind's question-aware selection (AQUA_MIND_RELEVANCE=on). Ignored otherwise.
+  claimScores = null,
 } = {}) {
   const policy = sensitive ?? sensitivePolicy();
   const vetoed = item => (typeof legacyVeto === 'function' ? Boolean(legacyVeto(item)) : false);
@@ -431,10 +437,21 @@ export function memoryRetrieve(ownerId, {
     ...facts.flatMap(f => (f.transitions ?? []).map(t => t.from).filter(v => typeof v === 'string' && ![].concat(f.ended ? [] : f.value).some(c => String(c).toLowerCase() === v.toLowerCase()))),
     ...facts.flatMap(f => (f.retiredItems ?? []).map(r => r.item)).filter(v => typeof v === 'string'),
   ];
+  // C9: meaning for the Mind's selection — only with the flag on and scores supplied; the
+  // owner's own statements only (mind/itemMeaning.js). Fail-open: any error = lexical, as before.
+  let meaningOf = null;
+  if (mindLanes && claimScores && mindRelevanceEnabled()) {
+    try {
+      const built = buildMeaningOf({ claimScores, statements: listEvidenceFacts(ownerId, { limit: 5000 }) });
+      meaningOf = built.meaningOf;
+      trace.meaning = built.stats;
+    } catch (err) { trace.meaning = { reason: `error: ${err.message}` }; }
+  }
   const cognitive = mindLanes
-    ? mindContext(ownerId, { query, taskType, budgetTokens: cognitiveBudget, laterWords, retired })
+    ? mindContext(ownerId, { query, taskType, budgetTokens: cognitiveBudget, laterWords, retired, meaningOf })
     : { block: '', used: {} };
   trace.cognitiveUsed = cognitive.used || {};
+  if (cognitive.selection) trace.cognitiveSelection = cognitive.selection;
 
   // ── Memory 5.0 lanes (Phases B + C) — each budget-gated, each fail-open ─────
   // Remaining budget after the classic three blocks; a lane that doesn't fit
