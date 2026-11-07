@@ -8,7 +8,7 @@
  */
 import { CAPS } from './mindSchema.js';
 import { touchMind } from './mindStore.js';
-import { transitionOf, closes, datesIn, partAbout, clauseWith, speculative } from '../understanding/stateTransition.js';
+import { transitionOf, closes, datesIn, partAbout, clauseWith, speculative, differentThing, sharedSubject } from '../understanding/stateTransition.js';
 
 const FOCUS_HALF_LIFE_MS = 36 * 3600 * 1000;   // focus weight halves every 36h
 const LIST_TTL_MS        = 7 * 24 * 3600 * 1000; // blockers/discoveries/questions expire after 7d
@@ -67,6 +67,9 @@ function applyLaterWords(w, userMessage, now) {
   for (const b of [...w.blockers]) {
     const about = partAbout(text, b.text);
     if (!about || speculative(about)) continue;
+    // A shared name or word that goes on to a different thing is not this blocker (C9):
+    // "fixed … the Kestrel payment service" does not close "the Kestrel deploy pipeline".
+    if (differentThing(about, b.text, sharedSubject(about, b.text))) continue;
     const closing = closes(about);
     if (!closing && transitionOf(about).stillOpen) { b.lastSeenAt = now; continue; }
     if (!closing) continue;

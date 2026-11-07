@@ -356,6 +356,61 @@ function namesIn(text) {
  */
 const CONTINUATION_HEDGE = /\b(?:could|should|would)\b(?!\s*(?:not|n['’]?t|have)\b)|\bhopefully\b|\b(?:un)?likely\b|\bexpect(?:s|ed|ing)?\s+(?:it\s+|that\s+|them\s+)?to\b|\bfingers\s+crossed\b/i;
 
+/**
+ * Do two statements that share words name DIFFERENT THINGS? (C9, 2026-11-07)
+ *
+ * "I fixed a race condition in the Kestrel payment service." shares one word,
+ * a name, with "I'm blocked on the Kestrel deploy pipeline." — and read as its
+ * resolution: the Mind closed the blocker, Brain continuity linked the two. A
+ * shared name or word is not a shared subject when, in both statements, it goes
+ * on to different things: "Kestrel payment…" vs "Kestrel deploy…", "Kestrel
+ * deploy script" vs "Kestrel deploy pipeline".
+ *
+ * Judged at the LAST shared word in the earlier statement's order:
+ *   · the earlier statement ends there ("the zoning permit") → same thing;
+ *   · the later one ends there, or continues with a shared word → same thing;
+ *   · the later one continues with a closing phrase ("Apple approved the app",
+ *     "FCC signed off") → the name is the subject of the resolution → same thing;
+ *   · otherwise both continue with different content words → different things.
+ * Pure. Used only to decide that something does NOT close or continue, so it can
+ * only ever link less.
+ */
+const TIME_WORD = /^(?:last|next|this|earlier|later|yesterday|today|tonight|tomorrow|now|morning|afternoon|evening|night|week|weekend|month|year|ago|(?:mon|tues|wednes|thurs|fri|satur|sun)day|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)$/i;
+const contentWords = text => {
+  const raw = String(text ?? '').match(/[\p{L}\p{N}]+(?:['’][\p{L}]+)?/gu) ?? [];
+  return raw.map((w, i) => ({ raw: w, i, tok: tokens(w)[0] ?? null })).filter(x => x.tok);
+};
+export function differentThing(later, earlier, shared = sharedSubject(later, earlier)) {
+  if (!shared?.length) return false;
+  const E = contentWords(earlier), L = contentWords(later);
+  const lastE = E.map((x, i) => [x, i]).filter(([x]) => shared.includes(x.tok)).at(-1);
+  if (!lastE) return false;
+  const nextE = E[lastE[1] + 1];
+  const timeLike = x => TIME_WORD.test(x.raw) || /^\p{N}/u.test(x.raw) || /^(?:quarter|season|semester|term)$/i.test(x.raw);
+  // The earlier statement ends at the shared word ("the deploy pipeline"): judge the word
+  // written directly IN FRONT of the shared run instead — "sales pipeline" is not "deploy
+  // pipeline". Only directly adjacent words count: "blocked by a zoning permit" has no modifier.
+  if (!nextE) {
+    let start = lastE[1];
+    while (start > 0 && shared.includes(E[start - 1].tok) && E[start - 1].i === E[start].i - 1) start--;
+    const prevE = start > 0 && E[start - 1].i === E[start].i - 1 ? E[start - 1] : null;
+    const jL = L.map(x => x.tok).lastIndexOf(E[start].tok);
+    const prevL = jL > 0 && L[jL - 1].i === L[jL].i - 1 ? L[jL - 1] : null;
+    return !!(prevE && prevL && prevE.tok !== prevL.tok && !shared.includes(prevL.tok) && !timeLike(prevL) && !timeLike(prevE));
+  }
+  // …or goes on only to a time ("this quarter").
+  if (timeLike(nextE)) return false;
+  const iL = L.map(x => x.tok).lastIndexOf(lastE[0].tok);
+  if (iL < 0) return false;
+  const nextL = L[iL + 1];
+  if (!nextL || shared.includes(nextL.tok) || nextL.tok === nextE.tok) return false;
+  // A time word or a number names no thing: "Hartwell last Friday" is still Hartwell.
+  if (TIME_WORD.test(nextL.raw) || /^\p{N}/u.test(nextL.raw)) return false;
+  const rawL = String(later ?? '').match(/[\p{L}\p{N}]+(?:['’][\p{L}]+)?/gu) ?? [];
+  if (closes(rawL.slice(nextL.i, nextL.i + 4).join(' '))) return false;
+  return true;
+}
+
 export function continues(later, earlier, opts = {}) {
   const tr = transitionOf(later);
   if (!tr.marked) return null;
@@ -365,6 +420,8 @@ export function continues(later, earlier, opts = {}) {
   // for "is anything still blocking it?". A hedge is not a later fact.
   if (speculative(later) || CONTINUATION_HEDGE.test(String(later ?? ''))) return null;
   const shared = sharedSubject(later, earlier, opts);
+  // The shared words go on to different things in the two statements (C9): not a continuation.
+  if (differentThing(later, earlier, shared)) return null;
   if (shared.length >= 2 || (shared.length === 1 && strongContinuation(tr, transitionOf(earlier)))) return shared;
   // A state that ENDED, about the same NAMED thing: "I resigned from Hartwell"
   // after "I'm employed at Hartwell Bank", "I sold the Civic" after "my car is
