@@ -272,7 +272,19 @@ export function memoryObserve(ownerId, {
     } else {
       for (const f of getFacts(ownerId)) {
         const before = previous.get(f.key);
-        if (before && JSON.stringify(before.value) !== JSON.stringify(f.value)) retireSupersededInBackground(ownerId, f.key, before);
+        if (!before || JSON.stringify(before.value) === JSON.stringify(f.value)) continue;
+        // A collection (goals, preferences, likes…) changes when an item is ADDED; the
+        // items it still holds are current, so their sentences stay (C9, 2026-11-07: adding
+        // "learn Spanish" archived the half-marathon goal's statement as superseded-by-user).
+        // Only the items it no longer holds are replaced. A single value is replaced as before.
+        // Either side may be the list: a first goal is stored as a string, the second makes it a list.
+        if (Array.isArray(before.value) || Array.isArray(f.value)) {
+          const now = [].concat(f.value ?? []).map(v => JSON.stringify(v));
+          const removed = [].concat(before.value ?? []).filter(v => !now.includes(JSON.stringify(v)));
+          if (removed.length) retireSupersededInBackground(ownerId, f.key, { ...before, value: removed });
+          continue;
+        }
+        retireSupersededInBackground(ownerId, f.key, before);
       }
     }
   } catch (err) {
