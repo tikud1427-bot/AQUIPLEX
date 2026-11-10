@@ -161,7 +161,25 @@ describe("wiring", () => {
 
   test("the event list is the documented one", () => {
     assert.deepEqual([...EVENTS].sort(), [
-      "chat_turn", "login", "memory_corrected", "memory_forgotten", "project_created", "signup_completed", "upload_completed",
+      "buy_clicked", "chat_turn", "checkout_dismissed", "checkout_failed", "checkout_started", "credits_insufficient",
+      "free_allowance_exhausted", "free_allowance_low", "login", "memory_corrected", "memory_forgotten", "pricing_viewed",
+      "project_created", "purchase_credited", "signup_completed", "upload_completed",
     ]);
+  });
+
+  test("chat_turn carries per-turn AI usage counts and drops anything that is not a small scalar", () => {
+    const { engineEventTap } = require("../../services/analytics/productEvents");
+    const { EventEmitter } = require("node:events");
+    const docs = [];
+    const tap = engineEventTap({ sink: async (d) => { docs.push(d); } });
+    const res = new EventEmitter();
+    res.statusCode = 200;
+    res.locals = { aiUsage: { aiCalls: 2, aiInTok: 900, aiOutTok: 300, providerAttempts: 1, fallback: false, provider: "groq", prompt: "secret words here that are long enough to drop" } };
+    tap({ method: "POST", path: "/chat/stream", session: { userId: "u1" } }, res, () => {});
+    res.emit("finish");
+    return new Promise((r) => setImmediate(r)).then(() => {
+      assert.equal(docs.length, 1);
+      assert.deepEqual(docs[0].props, { aiCalls: 2, aiInTok: 900, aiOutTok: 300, providerAttempts: 1, fallback: false, provider: "groq" });
+    });
   });
 });

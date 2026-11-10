@@ -7,8 +7,8 @@ import { useArtifactsStore } from './artifactsStore';
 import { normalizeError, isCancel } from '@/api/client';
 import { userErrorMessage } from '@/lib/userError';
 import { refreshMind } from './mindStore';
-import { refreshWallet } from './walletStore';
-import { useUiStore } from './uiStore';
+import { refreshWallet, refreshWalletNow } from './walletStore';
+import { CREDIT_PACKS_URL } from '@/api/billing';
 import { useConversationStore } from './conversationStore';
 // Read at call time only, never at module init — same contract artifactsStore
 // already relies on for its import of this file.
@@ -383,15 +383,17 @@ export const useChatStore = create<ChatState>((set, get) => {
         // P1 (freemium) — out of credits is a normal state, not a failure.
         // Friendly copy + a real path forward; balance chip refreshes so the
         // number the user sees matches why they were stopped.
+        // The server's sentence explains it (daily free allowance used vs.
+        // purchased credits used); the bubble carries the one action. No extra
+        // toast — one message, in place, is enough.
         if (serverErrorCode === 'INSUFFICIENT_CREDITS') {
-          refreshWallet();
-          useUiStore.getState().toast('info', 'Out of credits', 'Your conversations, files, and memory are all safe.');
-          failTurn(serverError ?? "You're out of credits.");
+          refreshWalletNow();
+          failTurn(serverError ?? 'Your daily free credits have been used. You can continue using Aqua by purchasing additional credits, or return when your daily allowance resets.');
           if (isLive()) {
             set((s) => ({
               messages: s.messages.map((m) =>
                 m.id === assistantMsg.id
-                  ? { ...m, errorCode: 'INSUFFICIENT_CREDITS', errorUpgradeUrl: serverErrorUpgradeUrl ?? '/wallet' }
+                  ? { ...m, errorCode: 'INSUFFICIENT_CREDITS', errorUpgradeUrl: serverErrorUpgradeUrl ?? CREDIT_PACKS_URL }
                   : m,
               ),
             }));

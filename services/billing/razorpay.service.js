@@ -11,9 +11,10 @@
  * Does NOT use: subscriptions, recurring, mandates, autopay, tokenization.
  *
  * RACE PROTECTION:
- *   verifyPayment uses findOneAndUpdate with status filter as atomic guard.
- *   Two concurrent calls for the same orderId: only one transitions from
- *   created/pending → success. The other gets null back and returns alreadyProcessed.
+ *   Crediting is exactly-once through the atomic Payment.creditedAt claim in
+ *   wallet.service addPaidCredits. Two concurrent verify calls (or verify +
+ *   webhook) for the same order: one credits, the other returns
+ *   alreadyProcessed. "Already done" is decided by creditedAt, never by status.
  */
 
 const Razorpay = require("razorpay");
@@ -120,10 +121,10 @@ async function createOrder(userId, packId) {
  *
  * Razorpay signs: HMAC-SHA256(orderId + "|" + paymentId, key_secret)
  *
- * ATOMIC RACE PROTECTION:
- *   Uses findOneAndUpdate with status: {$in: ["created","pending"]} as a guard.
- *   Only ONE concurrent call can transition the payment to "pending".
- *   If payment is already "success", returns alreadyProcessed without crediting.
+ * EXACTLY-ONCE CREDITING:
+ *   Payment.creditedAt is claimed atomically inside addPaidCredits, so a
+ *   concurrent verify, the webhook, and any retry credit the wallet once.
+ *   A payment whose creditedAt is set returns alreadyProcessed.
  *
  * Returns { verified: true, credits, balanceAfter } or throws.
  */
@@ -139,57 +140,55 @@ async function verifyPayment(razorpayOrderId, razorpayPaymentId, razorpaySignatu
     throw new Error("INVALID_SIGNATURE");
   }
 
-  // 2. Check if already successfully processed (idempotent return)
-  const alreadyDone = await Payment.findOne({
-    razorpayOrderId,
-    status: "success",
-  });
-  if (alreadyDone) {
-    log.info(`verifyPayment: already processed orderId=${razorpayOrderId}`);
-    return { verified: true, alreadyProcessed: true, credits: alreadyDone.creditsToAdd };
+  // 2. Find THIS user's order. Another user's order id is "not found" — the
+  //    route must not confirm that someone else's order exists.
+  const payment = await Payment.findOne({ razorpayOrderId, user: userId });
+  if (!payment) throw new Error("PAYMENT_NOT_FOUND");
+
+  // 3. Already credited? creditedAt is the truth (2026-11-10). It used to be
+  //    status === "success", which is written BEFORE the wallet is credited:
+  //    a crash or DB error between the two writes left an order "success" with
+  //    no credits, and every later verify (and the webhook) skipped it as done.
+  if (payment.creditedAt) {
+    log.info(`verifyPayment: already credited orderId=${razorpayOrderId}`);
+    return { verified: true, alreadyProcessed: true, credits: payment.creditsToAdd, packId: payment.packId };
   }
 
-  // 3. Atomically transition status to "pending" — only one call wins this race.
-  //    If another concurrent verify call already claimed this, result is null.
-  const claimed = await Payment.findOneAndUpdate(
-    {
-      razorpayOrderId,
-      user:   userId,
-      status: { $in: ["created", "pending"] },
-    },
+  // 4. Record the verified payment. Any status may move to success here —
+  //    including "failed": Razorpay lets a customer retry on the same order,
+  //    so a failed first attempt (payment.failed webhook) followed by a
+  //    successful second one is normal, and the signature above proves the
+  //    second one. Previously that order could not be claimed and the paying
+  //    user got PAYMENT_PROCESSING.
+  await Payment.updateOne(
+    { _id: payment._id, creditedAt: { $exists: false } },
     {
       $set: {
         razorpayPaymentId,
         razorpaySignature,
-        status: "pending",  // mark as in-progress
+        status: "success",
         paidAt: new Date(),
       },
-    },
-    { new: true }
+      $unset: { failureReason: 1 },
+    }
   );
 
-  if (!claimed) {
-    // Could be: wrong userId, invalid orderId, or concurrent call already claimed it.
-    const anyMatch = await Payment.findOne({ razorpayOrderId });
-    if (!anyMatch) throw new Error("PAYMENT_NOT_FOUND");
-    // It exists but we couldn't claim it — concurrent verify already handling it
-    log.warn(`verifyPayment: could not claim payment orderId=${razorpayOrderId} — may be concurrent or wrong user`);
-    throw new Error("PAYMENT_PROCESSING");
+  // 5. Credit wallet — exactly once across verify, webhook and retries
+  //    (addPaidCredits claims Payment.creditedAt atomically).
+  const { addPaidCredits } = require("../credits/wallet.service");
+  const result = await addPaidCredits(userId, payment.creditsToAdd, payment._id, payment.packId, { via: "verify" });
+
+  if (result.alreadyCredited) {
+    log.info(`verifyPayment: credited concurrently (webhook/verify) orderId=${razorpayOrderId}`);
+    return { verified: true, alreadyProcessed: true, credits: payment.creditsToAdd, packId: payment.packId };
   }
 
-  // 4. Mark status success
-  await Payment.findByIdAndUpdate(claimed._id, { $set: { status: "success" } });
-
-  // 5. Credit wallet (addPaidCredits is also idempotent via creditedAt atomic guard)
-  const { addPaidCredits } = require("../credits/wallet.service");
-  const result = await addPaidCredits(userId, claimed.creditsToAdd, claimed._id, claimed.packId);
-
-  log.info(`Payment verified: orderId=${razorpayOrderId} user=${userId} credits=${claimed.creditsToAdd}`);
+  log.info(`Payment verified: orderId=${razorpayOrderId} user=${userId} credits=${payment.creditsToAdd}`);
 
   return {
     verified:     true,
-    credits:      claimed.creditsToAdd,
-    packId:       claimed.packId,
+    credits:      payment.creditsToAdd,
+    packId:       payment.packId,
     balanceAfter: result.balanceAfter || null,
   };
 }

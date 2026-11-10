@@ -194,12 +194,12 @@ export const MessageBubble = memo(function MessageBubble({
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Button
                     size="sm"
-                    onClick={() => { window.location.href = message.errorUpgradeUrl ?? '/wallet'; }}
+                    onClick={() => { window.location.href = message.errorUpgradeUrl ?? '/pricing?next=/aqua'; }}
                   >
-                    Buy credits
+                    View credit packs
                   </Button>
                   <span className="text-xs text-foreground-secondary">
-                    Your conversations, files, and memory stay saved.
+                    Your conversations, files, and memory stay saved. Free credits reset at midnight IST.
                   </span>
                 </div>
               ) : message.error !== 'Stopped' && (

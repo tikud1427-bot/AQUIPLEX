@@ -24,6 +24,18 @@ const EVENTS = Object.freeze([
   "project_created",    // a project (workspace) was created
   "memory_corrected",   // the user corrected something Aqua held about them
   "memory_forgotten",   // the user deleted something Aqua held about them
+
+  // ── Monetization funnel (2026-11-10). Ordered as the funnel runs. ─────────
+  "free_allowance_low",       // a debit took today's free balance to the "low" line (props: remaining)
+  "free_allowance_exhausted", // a debit spent the last free credit of the day (props: hasPaid)
+  "credits_insufficient",     // a metered request was refused with 402 (props: actionType, neverPurchased)
+  "pricing_viewed",           // a signed-in user opened /pricing (props: from)
+  "buy_clicked",              // Buy now pressed (client; props: packId)
+  "checkout_started",         // server created a Razorpay order (props: packId, amountPaise)
+  "checkout_dismissed",       // the Razorpay modal was closed without paying (client)
+  "checkout_failed",          // order creation, provider, or verification failed (props: stage)
+  "purchase_credited",        // a VERIFIED payment's credits were added — exactly once per payment
+                              // (props: packId, credits, amountPaise, firstPurchase, via)
 ]);
 const EVENT_SET = new Set(EVENTS);
 
@@ -97,7 +109,9 @@ function engineEventTap(opts = {}) {
     const userId = req.session && req.session.userId;
     res.on("finish", () => {
       const event = classifyEngineRequest(method, path, res.statusCode);
-      if (event) recordProductEvent(userId, event, null, opts);
+      // The chat route leaves counts (never content) in res.locals.aiUsage:
+      // provider calls, tokens, provider attempts — per-user AI consumption.
+      if (event) recordProductEvent(userId, event, event === "chat_turn" ? res.locals?.aiUsage : null, opts);
     });
     next();
   };

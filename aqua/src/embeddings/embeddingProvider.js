@@ -98,8 +98,8 @@ function cacheSet(h, vec) {
 // ── Test injection ────────────────────────────────────────────────────────────
 // fn(texts:string[]) => (number[]|null)[]  — sync or async both accepted.
 let testEmbedder = null;
-export function __setEmbedderForTests(fn) { testEmbedder = fn; cache.clear(); }
-export function __clearEmbedderForTests() { testEmbedder = null; cache.clear(); }
+export function __setEmbedderForTests(fn) { testEmbedder = fn; cache.clear(); inflight.clear(); }
+export function __clearEmbedderForTests() { testEmbedder = null; cache.clear(); inflight.clear(); }
 
 /** Replace ONLY the network call (key, texts) => response; rotation, validation
  *  and ordering stay real. Restored by __clearEmbedTransportForTests. */
@@ -200,38 +200,80 @@ async function callEmbedContent(texts) {
  * @param {string[]} texts
  * @returns {Promise<Array<number[]|null>>}
  */
+// ── In-flight coalescing (2026-11-10) ─────────────────────────────────────────
+// A chat turn starts three retrieval lanes at once (fact, canonical-claim and
+// file recall — routes/chat.js prepareTurn), and each embeds the SAME user
+// message. All three missed the cache together, so every new message cost
+// three identical embedContent calls against the shared Gemini quota. A text
+// already on its way to the API is now awaited instead of sent again.
+// Keyed by the exact text (not the 32-bit hash) so a hash collision can never
+// hand one text another's vector; entries live only while the call is open,
+// so nothing here can go stale.
+const inflight = new Map(); // text → Promise<number[]|null>
+
 export async function embed(texts) {
   if (!Array.isArray(texts) || !texts.length) return [];
   if (!isEmbeddingEnabled()) return texts.map(() => null);
 
   const out = new Array(texts.length).fill(null);
-  const missIdx = [];
-  const missTexts = [];
+  const waits = [];       // [index, promise] — served by a call already open
+  const owned = [];       // texts this call sends: { s, resolve, idx: [indices] }
+  const ownedByText = new Map();
 
   texts.forEach((t, i) => {
     const s = typeof t === 'string' ? t : String(t ?? '');
     if (!s.trim()) return;                         // empty stays null
     const hit = cacheGet(hash(s));
-    if (hit) out[i] = hit; else { missIdx.push(i); missTexts.push(s); }
+    if (hit) { out[i] = hit; return; }
+    const mine = ownedByText.get(s);
+    if (mine) { mine.idx.push(i); return; }        // duplicate inside this batch
+    const pending = inflight.get(s);
+    if (pending) { waits.push([i, pending]); return; }
+    let resolve;
+    const promise = new Promise((r) => { resolve = r; });
+    inflight.set(s, promise);
+    const entry = { s, resolve, promise, idx: [i], done: false };
+    owned.push(entry);
+    ownedByText.set(s, entry);
   });
 
-  for (let start = 0; start < missTexts.length; start += BATCH_MAX) {
-    const chunk = missTexts.slice(start, start + BATCH_MAX);
-    let vecs;
-    try {
-      vecs = testEmbedder ? await testEmbedder(chunk) : await callEmbedContent(chunk);
-    } catch (err) {
-      console.warn(`[EMBED] batch failed (non-fatal): ${err.message}`);
-      vecs = chunk.map(() => null);
+  try {
+    for (let start = 0; start < owned.length; start += BATCH_MAX) {
+      const chunkEntries = owned.slice(start, start + BATCH_MAX);
+      const chunk = chunkEntries.map(e => e.s);
+      let vecs;
+      try {
+        vecs = testEmbedder ? await testEmbedder(chunk) : await callEmbedContent(chunk);
+      } catch (err) {
+        console.warn(`[EMBED] batch failed (non-fatal): ${err.message}`);
+        vecs = chunk.map(() => null);
+      }
+      chunkEntries.forEach((e, j) => {
+        const v = Array.isArray(vecs?.[j]) ? vecs[j] : null;
+        if (v) cacheSet(hash(e.s), v);
+        for (const i of e.idx) out[i] = v;
+        if (inflight.get(e.s) === e.promise) inflight.delete(e.s);
+        e.done = true;
+        e.resolve(v);
+      });
     }
-    chunk.forEach((s, j) => {
-      const v = Array.isArray(vecs?.[j]) ? vecs[j] : null;
-      if (v) { cacheSet(hash(s), v); out[missIdx[start + j]] = v; }
-    });
+  } finally {
+    // Never leave a waiter hanging: anything not settled above resolves null
+    // (keyword fallback), exactly what a failed call would have produced.
+    for (const e of owned) {
+      if (e.done) continue;
+      if (inflight.get(e.s) === e.promise) inflight.delete(e.s);
+      e.done = true;
+      e.resolve(null);
+    }
   }
 
+  for (const [i, p] of waits) out[i] = await p;
   return out;
 }
+
+/** Test seam: how many distinct texts are on their way to the API right now. */
+export function __inflightEmbeddingsForTests() { return inflight.size; }
 
 /** Convenience: embed a single text → vector | null. NEVER throws. */
 export async function embedOne(text) {

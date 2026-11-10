@@ -162,7 +162,12 @@ export function rankProviders(taskType, complexity) {
     // All providers unhealthy — degraded mode: attempt all anyway
     const unhealthy = scored.map(x => x.provider).join(', ');
     console.warn(`[ROUTER] ⚠ All providers unhealthy (${unhealthy}) — degraded mode`);
-    return scored.map(x => ({ ...x, score: 1 }));
+    const all = scored.map(x => ({ ...x, score: 1 }));
+    // Marked so generateText can tell "every circuit is open" apart from a
+    // normal ranking without probing health again (isProviderHealthy has
+    // HALF_OPEN side effects).
+    Object.defineProperty(all, 'degraded', { value: true });
+    return all;
   }
 
   return active;
@@ -253,6 +258,17 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
   // exhausting the chain and returning a 500.
   for (let round = 1; round <= cfg.maxRounds; round++) {
     const ranked = rankProviders(taskType, complexity);
+    // A RETRY round against degraded mode re-sends the request to every
+    // provider whose circuit is open — typically every free-tier quota is
+    // exhausted (429s), and each extra round multiplies the calls per user
+    // message (up to rounds × providers × keys) against quotas that will not
+    // recover within the 90 s retry budget. Round 1 still tries them all
+    // (availability); further rounds happen only when some circuit is closed
+    // or half-open again. 2026-11-10.
+    if (round > 1 && ranked.degraded) {
+      console.log(`[ROUTER] round=${round} skipped — every provider circuit is open; not re-sending to open circuits req=${requestId}`);
+      break;
+    }
     console.log(`[ROUTER] round=${round}/${cfg.maxRounds} providers=[${ranked.map(r => `${r.provider}(${r.score.toFixed(0)})`).join(', ')}] task=${taskType} complexity=${complexity ?? 'n/a'} maxTokens=${maxTokens ?? 'n/a'} req=${requestId}`);
 
     let retryableThisRound = false;

@@ -51,13 +51,15 @@ function featureGuard(feature) {
     }
 
     try {
-      const user = await User.findById(uid);
+      // Wallet reset is atomic in the wallet service (a save() here could
+      // re-grant the free allowance over a concurrent debit).
+      const user = await require("../../services/credits/wallet.service").refreshDailyAllowance(uid);
       if (!user) return res.status(401).json({ error: "USER_NOT_FOUND" });
 
-      // Lazy resets
-      const walletReset = user.resetFreeCreditsIfNeeded();
-      const usageReset  = user.resetDailyUsageIfNeeded();
-      if (walletReset || usageReset) await user.save();
+      // Feature counters only — the save is limited to dailyUsage.
+      if (user.resetDailyUsageIfNeeded()) {
+        await User.updateOne({ _id: user._id }, { $set: { dailyUsage: user.dailyUsage } });
+      }
 
       const { allowed, used, limit } = user.checkFeatureLimit(feature);
 

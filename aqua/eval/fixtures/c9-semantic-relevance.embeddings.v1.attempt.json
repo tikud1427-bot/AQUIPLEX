@@ -1,0 +1,27 @@
+{
+  "about": "One live C9 recording attempt. Holds no vectors and no credential. A later live run refuses while this file exists.",
+  "startedAt": "2026-11-07T04:33:51.160Z",
+  "model": "gemini-embedding-001",
+  "dim": 768,
+  "datasetSha256": "e261520aae93a7e7875ac11d4003491a1e534a05e776207abba22b43a7d0bf42",
+  "plannedRequests": 15,
+  "requests": [
+    {
+      "n": 1,
+      "inputs": 64,
+      "ms": 3317,
+      "ok": true
+    },
+    {
+      "n": 2,
+      "inputs": 64,
+      "ms": 795,
+      "ok": false,
+      "status": 429,
+      "error": "{\"error\":{\"code\":429,\"message\":\"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: ge"
+    }
+  ],
+  "outcome": "failed",
+  "finishedAt": "2026-11-07T04:33:55.381Z",
+  "error": "request 2 failed (status 429): {\"error\":{\"code\":429,\"message\":\"You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://aistudio.google.com/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n"
+}

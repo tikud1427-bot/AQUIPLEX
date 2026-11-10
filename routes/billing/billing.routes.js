@@ -14,7 +14,11 @@ const express  = require("express");
 const router   = express.Router();
 
 const { createOrder, verifyPayment, getUserPaymentHistory } = require("../../services/billing/razorpay.service");
-const { getWalletSummary, getTransactionHistory }           = require("../../services/credits/wallet.service");
+const {
+  getWalletSummary, getTransactionHistory, refreshDailyAllowance,
+} = require("../../services/credits/wallet.service");
+const { FREE_DAILY_CREDITS } = require("../../utils/credits/freeAllowance");
+const { recordProductEvent } = require("../../services/analytics/productEvents");
 const { allPacksArray }      = require("../../utils/credits/packs");
 const { createLogger }       = require("../../utils/logger");
 const User                   = require("../../models/User");
@@ -68,13 +72,29 @@ router.post("/create-order", requireLogin, async (req, res) => {
 
     const order = await createOrder(req.uid, packId);
     log.info(`Order created: user=${req.uid} pack=${packId} orderId=${order.orderId}`);
+    recordProductEvent(req.uid, "checkout_started", { packId, amountPaise: order.amount });
     return res.json({ success: true, order });
 
   } catch (err) {
-    log.error("create-order error:", err.message);
-    return res.status(500).json({ success: false, error: "ORDER_CREATION_FAILED", message: err.message });
+    // Razorpay SDK errors are objects ({ statusCode, error }) with no .message;
+    // log what there is, never echo provider/config detail to the browser.
+    log.error("create-order error:", err?.message || err?.error?.description || err?.statusCode || "unknown");
+    recordProductEvent(req.uid, "checkout_failed", { stage: "create_order" });
+    return res.status(500).json({
+      success: false,
+      error:   "ORDER_CREATION_FAILED",
+      message: "We couldn't start checkout right now. You haven't been charged — please try again in a moment.",
+    });
   }
 });
+
+// Verify-payment failures, as the user should read them. A failure here does
+// not always mean the payment failed: the webhook is the backup credit path.
+const VERIFY_ERRORS = {
+  INVALID_SIGNATURE:  { status: 400, message: "We couldn't confirm this payment. If you were charged, your credits will be added automatically once Razorpay confirms it." },
+  PAYMENT_NOT_FOUND:  { status: 404, message: "We couldn't find this order. If you were charged, please contact support with your payment ID." },
+  PAYMENT_PROCESSING: { status: 409, message: "This payment is already being confirmed. Your credits will appear in a moment." },
+};
 
 // ── POST /api/billing/verify-payment ─────────────────────────────────────────
 
@@ -102,9 +122,29 @@ router.post("/verify-payment", requireLogin, async (req, res) => {
 
   } catch (err) {
     log.error("verify-payment error:", err.message);
-    const status = err.message === "INVALID_SIGNATURE" ? 400 : 500;
-    return res.status(status).json({ success: false, error: err.message });
+    const known = VERIFY_ERRORS[err.message];
+    recordProductEvent(req.uid, "checkout_failed", { stage: "verify", code: known ? err.message.toLowerCase() : "server_error" });
+    return res.status(known ? known.status : 500).json({
+      success: false,
+      error:   known ? err.message : "VERIFY_FAILED",
+      message: known ? known.message
+        : "We couldn't confirm your payment yet. If you were charged, your credits will be added automatically — no need to pay again.",
+    });
   }
+});
+
+// ── POST /api/billing/event ──────────────────────────────────────────────────
+// The three funnel moments only the browser sees. Allow-listed names, no
+// free-form properties beyond a pack id — this is not a general event sink.
+const CLIENT_EVENTS = new Set(["buy_clicked", "checkout_dismissed", "checkout_failed"]);
+const PACK_IDS = new Set(["starter", "growth", "pro", "max"]);
+
+router.post("/event", requireLogin, (req, res) => {
+  const name = String(req.body?.event || "");
+  if (!CLIENT_EVENTS.has(name)) return res.status(400).json({ success: false, error: "UNKNOWN_EVENT" });
+  const packId = PACK_IDS.has(req.body?.packId) ? req.body.packId : undefined;
+  recordProductEvent(req.uid, name, { packId, stage: name === "checkout_failed" ? "provider" : undefined });
+  return res.status(204).end();
 });
 
 // ── GET /api/billing/wallet ───────────────────────────────────────────────────
@@ -125,20 +165,23 @@ router.get("/wallet", requireLogin, async (req, res) => {
 
 router.get("/status", requireLogin, async (req, res) => {
   try {
-    // Need Mongoose instance for methods — do NOT use .lean()
-    const fullUser = await User.findById(req.uid);
+    // Need Mongoose instance for methods — do NOT use .lean(). The atomic
+    // refresh applies today's reset / allowance cap, so this endpoint shows
+    // the same free balance the next debit will see (it used to show the raw
+    // stored value, e.g. yesterday's leftovers before the lazy reset ran).
+    const fullUser = await refreshDailyAllowance(req.uid);
 
     if (!fullUser) {
       return res.status(404).json({ success: false, error: "USER_NOT_FOUND" });
     }
 
-    // Lazy reset before reading
+    // Lazy reset before reading (feature counters; not persisted here)
     fullUser.resetDailyUsageIfNeeded();
 
     const wallet = fullUser.wallet || {};
     const freeCredits  = Number(wallet.freeCredits  || 0);
     const paidCredits  = Number(wallet.paidCredits  || 0);
-    const freeDailyMax = parseInt(process.env.FREE_DAILY_CREDITS || "200", 10);
+    const freeDailyMax = FREE_DAILY_CREDITS;
 
     // getDailyUsageSnapshot already embeds per-feature limits
     const dailyUsageSnapshot = fullUser.getDailyUsageSnapshot();
@@ -251,7 +294,7 @@ router.get("/payments", requireLogin, async (req, res) => {
 // ── GET /api/billing/packs ────────────────────────────────────────────────────
 
 router.get("/packs", (req, res) => {
-  return res.json({ success: true, packs: allPacksArray() });
+  return res.json({ success: true, packs: allPacksArray(), freeDailyCredits: FREE_DAILY_CREDITS });
 });
 
 module.exports = router;

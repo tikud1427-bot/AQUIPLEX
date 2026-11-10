@@ -27,7 +27,9 @@ function CreditsChip() {
   }, [refresh]);
 
   if (!wallet || wallet.unlimited) return null;
-  const low = wallet.total < 15; // chat costs 5 — amber with ~2 messages left
+  // Amber at the server's "low" line (3 messages' worth of free credits).
+  const low = wallet.total <= wallet.lowThreshold;
+  const split = `${wallet.free}${wallet.freeDailyMax != null ? ` of ${wallet.freeDailyMax}` : ''} free today · ${wallet.paid} purchased`;
 
   return (
     <a
@@ -38,8 +40,8 @@ function CreditsChip() {
           ? 'border-warning/40 bg-warning/10 text-warning hover:bg-warning/15'
           : 'border-border text-foreground-secondary hover:bg-surface-secondary hover:text-foreground')
       }
-      title={low ? 'Running low — top up to keep going' : 'Credits remaining'}
-      aria-label={`${wallet.total} credits remaining`}
+      title={`${split}${low ? ' — running low' : ''}. Free credits reset at midnight IST; purchased credits never expire.`}
+      aria-label={`${wallet.total} credits remaining: ${split}`}
     >
       <Wallet className="h-3.5 w-3.5" />
       <span className="tabular-nums">{wallet.total}</span>

@@ -19,7 +19,10 @@
 
 const User                              = require("../../models/User");
 const { getActionCost }                 = require("../../utils/credits/packs");
-const { deductCredits, refundCredits }  = require("../../services/credits/wallet.service");
+const {
+  deductCredits, refundCredits, refreshDailyAllowance,
+} = require("../../services/credits/wallet.service");
+const { FREE_DAILY_CREDITS } = require("../../utils/credits/freeAllowance");
 const {
   hasUnlimitedAccess,
   unlimitedAccessReason,
@@ -68,6 +71,41 @@ function onceOnly(fn) {
   };
 }
 
+/**
+ * The 402 a user sees when they cannot afford an action. Someone who has never
+ * bought credits ran out of TODAY'S free allowance; someone with a purchase
+ * history ran out of what they bought. Different sentences, same doorway.
+ */
+function insufficientCredits(user, { userId, cost, actionType }) {
+  const wallet = (user && user.wallet) || {};
+  const free = Number(wallet.freeCredits || 0);
+  const paid = Number(wallet.paidCredits || 0);
+  const neverPurchased = !(wallet.totalEarned > 0);
+  log.warn("[checkUsage] insufficient credits", { userId, total: free + paid, cost, actionType });
+  try {
+    require("../../services/analytics/productEvents")
+      .recordProductEvent(userId, "credits_insufficient", { actionType, neverPurchased });
+  } catch { /* analytics never blocks */ }
+  return {
+    allowed:      false,
+    status:       402,
+    error:        "INSUFFICIENT_CREDITS",
+    reason:       neverPurchased ? "FREE_DAILY_EXHAUSTED" : "BALANCE_EXHAUSTED",
+    message:      neverPurchased
+      ? "Your daily free credits have been used. You can continue using Aqua by purchasing additional credits, or return when your daily allowance resets."
+      : "You've used your available credits. You can continue by purchasing more credits, or return when your daily free allowance resets.",
+    freeResetAt:  wallet.freeResetAt || null,
+    freeDailyMax: FREE_DAILY_CREDITS,
+    upgradeUrl:   "/pricing?next=/aqua",
+    freeCredits:  free,
+    paidCredits:  paid,
+    totalCredits: free + paid,
+    costRequired: cost,
+    actionType,
+    cta:          "View credit packs",
+  };
+}
+
 async function checkUsage({ userId, actionType, deductOnEntry = true }) {
   // ── 1. Auth ──────────────────────────────────────────────────────────────
   if (!userId) {
@@ -79,7 +117,9 @@ async function checkUsage({ userId, actionType, deductOnEntry = true }) {
     };
   }
 
-  const user = await User.findById(userId);
+  // ── 2. Lazy daily reset (atomic — see wallet.service refreshDailyAllowance)
+  // Also caps a free balance left above today's allowance by the old policy.
+  const user = await refreshDailyAllowance(userId);
   if (!user) {
     return {
       allowed: false,
@@ -87,13 +127,6 @@ async function checkUsage({ userId, actionType, deductOnEntry = true }) {
       error:   "USER_NOT_FOUND",
       message: "User account not found. Please sign in again.",
     };
-  }
-
-  // ── 2. Lazy daily reset ──────────────────────────────────────────────────
-  const wasReset = user.resetFreeCreditsIfNeeded();
-  if (wasReset) {
-    log.info(`[checkUsage] daily IST reset fired userId=${userId} email=${user.email} newFree=${user.wallet.freeCredits}`);
-    await user.save();
   }
 
   // ── 3. Resolve cost ──────────────────────────────────────────────────────
@@ -130,20 +163,7 @@ async function checkUsage({ userId, actionType, deductOnEntry = true }) {
 
   // ── 5. Insufficient credits ──────────────────────────────────────────────
   if (cost > 0 && total < cost) {
-    log.warn("[checkUsage] insufficient credits", { userId, email: user.email, total, cost, actionType });
-    return {
-      allowed:      false,
-      status:       402,
-      error:        "INSUFFICIENT_CREDITS",
-      message:      "You don't have enough credits. Top up your wallet to continue.",
-      upgradeUrl:   "/wallet",
-      freeCredits:  user.wallet.freeCredits,
-      paidCredits:  user.wallet.paidCredits,
-      totalCredits: total,
-      costRequired: cost,
-      actionType,
-      cta:          "Buy Credits",
-    };
+    return insufficientCredits(user, { userId, cost, actionType });
   }
 
   // ── 6. Free action (cost === 0) ──────────────────────────────────────────
@@ -166,7 +186,16 @@ async function checkUsage({ userId, actionType, deductOnEntry = true }) {
 
   // ── 7. Deduct on entry (default) ─────────────────────────────────────────
   if (deductOnEntry) {
-    const deductResult = await deductCredits(userId, cost, actionType);
+    let deductResult;
+    try {
+      deductResult = await deductCredits(userId, cost, actionType);
+    } catch (err) {
+      // A concurrent request spent the balance between the check above and
+      // this debit. That is "out of credits", not a server error.
+      if (err.message !== "INSUFFICIENT_CREDITS") throw err;
+      const fresh = await User.findById(userId);
+      return insufficientCredits(fresh || user, { userId, cost, actionType });
+    }
     log.info(`[checkUsage] DEBIT userId=${userId} cost=${cost} actionType=${actionType} remaining=${deductResult.balanceAfter?.total}`);
 
     return {
@@ -183,7 +212,13 @@ async function checkUsage({ userId, actionType, deductOnEntry = true }) {
         // refunding the same request minted free credits.
         refund: onceOnly(() => {
           log.warn(`[checkUsage] REFUND issued userId=${userId} cost=${cost} actionType=${actionType}`);
-          return refundCredits(userId, cost, `${actionType}_failed`);
+          // The breakdown sends free credits back to today's free balance and
+          // paid credits back to the paid balance — never free → paid.
+          return refundCredits(userId, cost, `${actionType}_failed`, {
+            fromFree:    deductResult.fromFree,
+            fromPaid:    deductResult.fromPaid,
+            freeResetAt: deductResult.freeResetAt,
+          });
         }),
         commit:       () => Promise.resolve(), // already deducted
         balanceAfter: deductResult.balanceAfter,
@@ -207,4 +242,4 @@ async function checkUsage({ userId, actionType, deductOnEntry = true }) {
   };
 }
 
-module.exports = { checkUsage, getUid, onceOnly };
+module.exports = { checkUsage, getUid, onceOnly, insufficientCredits };

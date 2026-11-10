@@ -1498,7 +1498,17 @@ html.js .px-reveal.in { opacity: 1; transform: none; }
 }
 .px-free-callout h3 { font-size: 15px; margin-bottom: 4px; }
 .px-free-callout p { font-size: 13.5px; color: var(--px-text-2); margin: 0; }
+.px-free-callout p + p { margin-top: 4px; }
 @media (max-width: 600px) { .px-free-callout { flex-direction: column; align-items: flex-start; } }
+.px-pricing-balance {
+  max-width: 680px;
+  margin: 14px auto 0;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--px-text-2);
+  text-align: left;
+}
+.px-pricing-balance strong { color: var(--px-text); font-variant-numeric: tabular-nums; }
 
 .pack-card {
   background: var(--px-surface);

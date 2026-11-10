@@ -24,7 +24,8 @@ const crypto   = require("crypto");
 const { hasUnlimitedAccess, unlimitedAccessReason } = require("../utils/credits/unlimitedAccess");
 const { getISTDateStr, nextISTMidnight } = require("../utils/date/getISTDayRange");
 
-const FREE_DAILY_CREDITS = parseInt(process.env.FREE_DAILY_CREDITS || "200", 10);
+// One source of truth for the daily allowance (75/day policy, 2026-11-10).
+const { FREE_DAILY_CREDITS } = require("../utils/credits/freeAllowance");
 
 // ── Per-feature daily limits (free tier) ─────────────────────────────────────
 const FREE_LIMITS = {
@@ -164,21 +165,32 @@ userSchema.methods.unlimitedAccessReason = function () {
 // ── Wallet methods ─────────────────────────────────────────────────────────────
 
 /**
- * resetFreeCreditsIfNeeded — lazy daily reset.
- * Returns true if reset occurred.
+ * resetFreeCreditsIfNeeded — IN-MEMORY view of today's free allowance.
+ * Returns true if the document changed.
+ *
+ * Applies the daily reset when due and caps a free balance above the current
+ * allowance (an account left with 200 under the old policy shows 75). Only the
+ * FREE balance is touched; paid credits are never read or written here.
+ *
+ * Persisting this with user.save() is a read-modify-write that two concurrent
+ * requests can both perform, each re-granting the day's allowance. Code that
+ * persists MUST use wallet.service refreshDailyAllowance(), which does the
+ * same thing atomically.
  */
 userSchema.methods.resetFreeCreditsIfNeeded = function () {
   if (this.hasUnlimitedAccount()) return false;
   const now = new Date();
-  if (this.wallet.freeResetAt && now >= this.wallet.freeResetAt) {
+  let changed = false;
+  if (!this.wallet.freeResetAt || now >= this.wallet.freeResetAt) {
     this.wallet.freeCredits = FREE_DAILY_CREDITS;
     this.wallet.freeResetAt = nextDayReset();
-
-    
-
-    return true;
+    changed = true;
   }
-  return false;
+  if (this.wallet.freeCredits > FREE_DAILY_CREDITS) {
+    this.wallet.freeCredits = FREE_DAILY_CREDITS;
+    changed = true;
+  }
+  return changed;
 };
 
 /**
@@ -322,4 +334,6 @@ function todayStr() {
   return getISTDateStr(); // "YYYY-MM-DD" in IST
 }
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.models.User || mongoose.model("User", userSchema);
+module.exports.FREE_DAILY_CREDITS = FREE_DAILY_CREDITS;
+module.exports.nextDayReset = nextDayReset;

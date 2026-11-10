@@ -189,7 +189,7 @@ function renderStatus(b) {
   var free = Number(b.freeCredits || 0);
   var paid = Number(b.paidCredits || 0);
   var total = free + paid;
-  var freeDailyMax = Number(b.freeDailyMax || 200);
+  var freeDailyMax = Number(b.freeDailyMax || <%= FREE_DAILY_CREDITS %>);
 
   var cv = document.getElementById('credits-val');
   if (cv) cv.textContent = fmtNum(total);

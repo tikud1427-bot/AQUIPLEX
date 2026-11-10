@@ -10,8 +10,12 @@
  *   refund.processed  → deduct refunded credits
  *
  * Idempotency:
- *   Every processed webhook is recorded in WebhookLog with unique idempotencyKey.
- *   Duplicate deliveries are silently skipped.
+ *   Every delivery is recorded in WebhookLog with a unique idempotencyKey.
+ *   A duplicate of a delivery that was HANDLED is skipped. A duplicate of one
+ *   that failed (or never finished) is processed again — before 2026-11-10 it
+ *   was skipped too, so a transient DB error on the first delivery meant
+ *   Razorpay's retry was dropped and a paying user was never credited.
+ *   Re-processing is safe: crediting is exactly-once via Payment.creditedAt.
  *
  * Note: Frontend verifyPayment is the PRIMARY credit path.
  * Webhook is the BACKUP/audit path for payments that complete but frontend fails.
@@ -23,6 +27,12 @@ const { addPaidCredits } = require("../credits/wallet.service");
 const { createLogger }   = require("../../utils/logger");
 
 const log = createLogger("WEBHOOK");
+
+function track(userId, event, props) {
+  try {
+    require("../analytics/productEvents").recordProductEvent(userId, event, props);
+  } catch { /* analytics never fails a webhook */ }
+}
 
 // ── Main dispatcher ───────────────────────────────────────────────────────────
 
@@ -44,11 +54,13 @@ async function handleWebhookEvent(event, payload) {
   try {
     await WebhookLog.create({ idempotencyKey, event, payload });
   } catch (e) {
-    if (e.code === 11000) {
+    if (e.code !== 11000) throw e;
+    const prior = await WebhookLog.findOne({ idempotencyKey }).lean();
+    if (prior?.handled) {
       log.info(`Duplicate webhook skipped: ${idempotencyKey}`);
       return { skipped: true };
     }
-    throw e;
+    log.warn(`Redelivery of an unhandled webhook — processing again: ${idempotencyKey}`);
   }
 
   log.info(`Webhook: ${event} key=${idempotencyKey}`);
@@ -77,7 +89,7 @@ async function handleWebhookEvent(event, payload) {
         result = { handled: false };
     }
 
-    await WebhookLog.updateOne({ idempotencyKey }, { handled: true });
+    await WebhookLog.updateOne({ idempotencyKey }, { handled: true, error: null });
     return result;
 
   } catch (err) {
@@ -99,26 +111,43 @@ async function onPaymentCaptured(entity) {
     return { handled: false, reason: "PAYMENT_NOT_FOUND" };
   }
 
-  // Already credited (frontend verify already ran)
-  if (payment.creditedAt || payment.status === "success") {
-    log.info(`payment.captured: already processed orderId=${rzpOrderId}`);
+  // Already credited (frontend verify already ran). creditedAt is the only
+  // truth: status "success" without creditedAt is a half-finished credit
+  // that this delivery must complete, not skip.
+  if (payment.creditedAt) {
+    log.info(`payment.captured: already credited orderId=${rzpOrderId}`);
     return { handled: true, alreadyProcessed: true };
   }
 
-  // Mark payment success
-  await Payment.findByIdAndUpdate(payment._id, {
-    razorpayPaymentId: rzpPaymentId,
-    status:            "success",
-    paidAt:            new Date(),
-  });
+  // Defence in depth: the order fixed the amount, so a captured amount or
+  // currency that disagrees with what we priced is not something to credit.
+  if (Number.isFinite(entity.amount) && entity.amount !== payment.amountPaise) {
+    log.error(`payment.captured: amount mismatch orderId=${rzpOrderId} captured=${entity.amount} expected=${payment.amountPaise} — NOT credited`);
+    return { handled: false, reason: "AMOUNT_MISMATCH" };
+  }
+  if (entity.currency && entity.currency !== "INR") {
+    log.error(`payment.captured: currency mismatch orderId=${rzpOrderId} currency=${entity.currency} — NOT credited`);
+    return { handled: false, reason: "CURRENCY_MISMATCH" };
+  }
 
-  // Credit wallet
+  // Mark payment success (rzpPaymentId may be null on the order.paid path)
+  const set = { status: "success", paidAt: new Date() };
+  if (rzpPaymentId) set.razorpayPaymentId = rzpPaymentId;
+  await Payment.updateOne({ _id: payment._id, creditedAt: { $exists: false } }, { $set: set, $unset: { failureReason: 1 } });
+
+  // Credit wallet — exactly once (Payment.creditedAt claim)
   const result = await addPaidCredits(
     payment.user,
     payment.creditsToAdd,
     payment._id,
-    payment.packId
+    payment.packId,
+    { via: "webhook" }
   );
+
+  if (result.alreadyCredited) {
+    log.info(`payment.captured: credited concurrently by verify orderId=${rzpOrderId}`);
+    return { handled: true, alreadyProcessed: true };
+  }
 
   log.info(`payment.captured: credited user=${payment.user} credits=${payment.creditsToAdd}`);
   return { handled: true, credited: payment.creditsToAdd, ...result };
@@ -127,8 +156,14 @@ async function onPaymentCaptured(entity) {
 // ── order.paid (backup path) ──────────────────────────────────────────────────
 
 async function onOrderPaid(orderEntity, paymentEntity) {
-  // Delegate to payment.captured logic
-  return onPaymentCaptured(paymentEntity || { id: null, order_id: orderEntity?.id });
+  // Delegate to payment.captured logic. Without a payment entity, check the
+  // order's paid amount instead of the payment's.
+  return onPaymentCaptured(paymentEntity || {
+    id: null,
+    order_id: orderEntity?.id,
+    amount: Number.isFinite(orderEntity?.amount_paid) ? orderEntity.amount_paid : undefined,
+    currency: orderEntity?.currency,
+  });
 }
 
 // ── payment.failed ────────────────────────────────────────────────────────────
@@ -138,10 +173,13 @@ async function onPaymentFailed(entity) {
 
   const { order_id: rzpOrderId, error_description } = entity;
 
-  await Payment.findOneAndUpdate(
-    { razorpayOrderId: rzpOrderId, status: { $in: ["created", "pending"] } },
+  // Never downgrades a credited/successful order: a failed FIRST attempt can
+  // arrive after the successful retry on the same order.
+  const updated = await Payment.findOneAndUpdate(
+    { razorpayOrderId: rzpOrderId, status: { $in: ["created", "pending"] }, creditedAt: { $exists: false } },
     { status: "failed", failureReason: error_description || "Payment failed" }
   );
+  if (updated) track(updated.user, "checkout_failed", { stage: "payment" });
 
   log.info(`payment.failed: orderId=${rzpOrderId} reason=${error_description}`);
   return { handled: true };

@@ -69,6 +69,14 @@ app.set("views", path.join(__dirname, "views"));
 // The one public distribution channel for Aqua AI. Every "Download Aqua AI"
 // button in views/ reads this, so the listing URL lives in exactly one place.
 app.locals.PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.aquiplex.aqua";
+// The daily free allowance every page shows — the same constant the wallet
+// enforces (utils/credits/freeAllowance.js). Announced once at boot so a
+// stale FREE_DAILY_CREDITS override is visible in the deploy log.
+{
+  const allowance = require("./utils/credits/freeAllowance");
+  allowance.announceAllowance();
+  app.locals.FREE_DAILY_CREDITS = allowance.FREE_DAILY_CREDITS;
+}
 
 // ── Razorpay webhook — MUST be raw body, mount BEFORE express.json() ──────────
 const { verifyWebhookSignature, } = require("./services/billing/razorpay.service");
@@ -94,11 +102,20 @@ app.post(
       const payload = JSON.parse(rawBody.toString());
       if (!payload.event) return res.status(400).json({ error: "MISSING_EVENT" });
 
-      res.status(200).json({ received: true });
-
-      handleWebhookEvent(payload.event, payload).catch((err) =>
-        _webhookLog.error("Webhook processing error:", err.message)
-      );
+      // Process BEFORE acknowledging (2026-11-10). This used to answer 200 and
+      // then process in the background, so a processing failure (DB blip
+      // while crediting) was never retried — Razorpay had its 200 — and a
+      // buyer whose browser closed before checkout verification was never
+      // credited. A non-2xx makes Razorpay redeliver; the handler reprocesses
+      // unhandled deliveries and credits exactly once (Payment.creditedAt), so
+      // a retry can never double-credit. Processing is a few indexed writes.
+      try {
+        await handleWebhookEvent(payload.event, payload);
+      } catch (err) {
+        _webhookLog.error("Webhook processing error (Razorpay will retry):", err.message);
+        return res.status(500).json({ error: "WEBHOOK_PROCESSING_FAILED" });
+      }
+      return res.status(200).json({ received: true });
     } catch (err) {
       _webhookLog.error("Webhook handler error:", err.message);
       return res.status(500).json({ error: "WEBHOOK_ERROR" });
@@ -626,6 +643,20 @@ aquaEngine.use((req, res, next) => {
   // CREATION already rides the chat_message guard above).
   if (req.method === "POST" && /^\/artifacts\/[^/]+\/(edit|regenerate)$/.test(routePath)) {
     return usageGuard("chat_with_file")(req, res, next);
+  }
+  // 2026-11-10 — two LLM routes that were reachable without any charge:
+  //   POST /project/workspace/:id/edit — the project editor's "propose an
+  //     edit" (one model call, more with repair:true). The SAME operation
+  //     asked for in chat already costs a chat message; the direct route was
+  //     free, so a script could loop it.
+  //   POST /intelligence/orchestrate — the task-graph runtime chat uses for
+  //     agent turns, exposed directly. Several model calls per request.
+  // Both are metered as one chat message, the price their chat equivalents
+  // already carry — no new price is introduced. Failures are refunded by the
+  // usageGuard net (status ≥ 400).
+  if (req.method === "POST"
+      && (/^\/project\/workspace\/[^/]+\/edit$/.test(routePath) || routePath === "/intelligence/orchestrate")) {
+    return usageGuard("chat_message")(req, res, next);
   }
   next();
 });
@@ -1788,16 +1819,22 @@ app.get("/delete-account", (req, res) => res.render("delete-account"));
 
 // ── Pricing page ───────────────────────────────────────────────────────────────
 app.get("/pricing", async (req, res) => {
+  // Where a buyer goes after a verified purchase: back to what they were doing
+  // (e.g. /aqua, from the out-of-credits prompt) — same-origin paths only.
+  const next = req.query.next ? safeNextPath(String(req.query.next), "/wallet") : "/wallet";
   try {
     let pricingUser = null;
     if (req.session && req.session.userId) {
-      const u = await User.findById(req.session.userId).select("wallet email").lean();
-      if (u) pricingUser = u;
+      // Through the wallet service so the balance shown is today's (reset and
+      // allowance cap applied), i.e. what the next message will be charged against.
+      const u = await require("./services/credits/wallet.service").refreshDailyAllowance(req.session.userId);
+      if (u) pricingUser = { email: u.email, phone: u.phone, wallet: u.wallet };
+      recordProductEvent(req.session.userId, "pricing_viewed", { from: next.startsWith("/aqua") ? "aqua" : "web" });
     }
-    return res.render("pricing", { pricingUser });
+    return res.render("pricing", { pricingUser, next });
   } catch (err) {
     console.error("[pricing]", err.message);
-    return res.render("pricing", { pricingUser: null });
+    return res.render("pricing", { pricingUser: null, next });
   }
 });
 

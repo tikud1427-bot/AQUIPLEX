@@ -221,7 +221,7 @@
       var b = (d && d.billing) || {};
       var free  = Number(b.freeCredits || 0);
       var paid  = Number(b.paidCredits || 0);
-      var max   = Number(b.freeDailyMax || 200);
+      var max   = Number(b.freeDailyMax || <%= FREE_DAILY_CREDITS %>);
       var c  = document.getElementById('uCredits');
       var cs = document.getElementById('uCreditsSub');
       var bar = document.getElementById('uFreeBar');

@@ -1192,6 +1192,31 @@ function buildResponsePayload({
 }
 
 // ── POST /chat — original request/response endpoint (contract unchanged) ─────
+/**
+ * Per-turn AI consumption for the platform's product-event tap (chat_turn
+ * props): provider calls and tokens from this turn's cost ledger, plus how
+ * many provider attempts the answer took. Counts only — never content, never
+ * ids beyond the session user the tap already has. Fail-open.
+ */
+export function aiUsageForTurn(costLedger, result) {
+  try {
+    const s = costLedger?.summary?.() ?? {};
+    const attempts = Array.isArray(result?.fallbackChain) ? result.fallbackChain.length : null;
+    const out = {
+      aiCalls: Number.isFinite(s.calls) ? s.calls : null,
+      aiInTok: Number.isFinite(s.inputTokens) ? s.inputTokens : null,
+      aiOutTok: Number.isFinite(s.outputTokens) ? s.outputTokens : null,
+      providerAttempts: attempts,
+      fallback: attempts != null ? attempts > 1 : null,
+      provider: typeof result?.provider === 'string' ? result.provider : null,
+    };
+    for (const k of Object.keys(out)) if (out[k] == null) delete out[k];
+    return out;
+  } catch {
+    return {};
+  }
+}
+
 router.post('/', async (req, res) => {
   const requestId = uuidv4();
   // Phase 0 (audit F4) — the chat endpoints are the largest attachment/
@@ -1395,6 +1420,7 @@ router.post('/', async (req, res) => {
     recordTurnCost(costLedger.summary(), { providerCallsAlreadyCounted: true });
     logCompletion(ctx, { taskType, classifierConfidence: confidence, promptModules,
       responseLength: finalAnswer.length, selectedProvider: result.provider, finalLatencyMs: result.latency });
+    if (res.locals) res.locals.aiUsage = aiUsageForTurn(costLedger, result);
     return res.json(payload);
   } catch (err) {
     console.error('[CHAT] Request failed:', err.message);
@@ -1714,6 +1740,7 @@ router.post('/stream', async (req, res) => {
     });
 
     console.log(`[CHAT] STREAM_DONE_SENT req=${requestId} conv=${conversationId} chars=${finalAnswer.length} provider=${result.provider} verificationRan=${!!verification.ran} revised=${!!verification.revised}`);
+    if (res.locals) res.locals.aiUsage = aiUsageForTurn(costLedger, result);
     send('done', payload);
     logCompletion(ctx, { taskType, classifierConfidence: confidence, promptModules,
       responseLength: finalAnswer.length, selectedProvider: result.provider, finalLatencyMs: result.latency });

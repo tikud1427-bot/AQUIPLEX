@@ -19,7 +19,7 @@
 
     <div class="px-dash-head">
       <h1>Wallet</h1>
-      <p>Free credits reset every day at midnight. Purchased credits never expire.</p>
+      <p><%= FREE_DAILY_CREDITS %> free credits every day, reset at midnight IST. Purchased credits never expire.</p>
     </div>
 
     <!-- summary -->
@@ -48,7 +48,7 @@
       <div>
         <h3 style="font-size:14.5px; margin-bottom:4px;">How credits work</h3>
         <p style="font-size:13.5px; color:var(--px-text-2); margin:0; line-height:1.6;">
-          Free credits are used first, then purchased credits. A chat message costs 5 credits, code generation 20, a full app build 150. See the <a href="/pricing" style="color:var(--px-accent-strong);">full credit table</a>.
+          Today's free credits are used first, then purchased credits. A message to Aqua costs 5 credits; uploading a file, or editing or regenerating a generated file, costs 8. Unused free credits don't carry over to the next day; purchased credits never expire. See the <a href="/pricing" style="color:var(--px-accent-strong);">full credit table</a>.
         </p>
       </div>
     </div>
@@ -116,7 +116,7 @@
         var b = (d && d.billing) || {};
         var free = Number(b.freeCredits || 0);
         var paid = Number(b.paidCredits || 0);
-        var max  = Number(b.freeDailyMax || 200);
+        var max  = Number(b.freeDailyMax || <%= FREE_DAILY_CREDITS %>);
 
         document.getElementById('statFree').textContent  = fmt(free);
         document.getElementById('statPaid').textContent  = fmt(paid);
@@ -147,7 +147,7 @@
             + '<div class="pack-price">₹' + p.priceINR + '</div>'
             + '<div class="pack-credits-line">' + fmt(p.credits) + ' credits</div>'
             + '<div class="pack-name">' + p.name + '</div>'
-            + '<a class="btn-pack" style="display:block; text-align:center; text-decoration:none;" href="/pricing">Buy on pricing page</a>'
+            + '<a class="btn-pack" style="display:block; text-align:center; text-decoration:none;" href="/pricing?next=/wallet">Buy on pricing page</a>'
             + '</div>';
         }).join('');
       })
@@ -176,7 +176,7 @@
         var history = Array.isArray(d.history) ? d.history : [];
         if (!history.length) { empty.style.display = 'block'; return; }
 
-        var labels = { debit: 'Used', purchase: 'Purchased', refund: 'Refund', wallet: 'Wallet', bonus: 'Bonus' };
+        var labels = { debit: 'Used', purchase: 'Purchased', refund: 'Refund', wallet: 'Wallet', bonus: 'Bonus', admin_adjust: 'Allowance update' };
         var body = document.getElementById('txnBody');
         body.innerHTML = '';
         history.forEach(function (tx) {
@@ -186,7 +186,7 @@
           var tr = document.createElement('tr');
           tr.innerHTML =
             '<td>' + (labels[type] || type.charAt(0).toUpperCase() + type.slice(1)) + '</td>' +
-            '<td>' + (type === 'debit'
+            '<td>' + (type === 'debit' || credits < 0
               ? '<span class="px-txn-debit">−' + fmt(Math.abs(credits)) + '</span>'
               : '<span class="px-txn-credit">+' + fmt(Math.abs(credits)) + '</span>') + '</td>' +
             '<td><span class="status-pill ' + status + '">' + status + '</span></td>' +

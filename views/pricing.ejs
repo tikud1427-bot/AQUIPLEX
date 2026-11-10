@@ -25,10 +25,19 @@
     <div class="px-free-callout">
       <div>
         <h3>Free plan — always available</h3>
-        <p><%= process.env.FREE_DAILY_CREDITS || 200 %> free credits every day, reset at midnight. No card required.</p>
+        <p><%= FREE_DAILY_CREDITS %> free credits every day. Explore Aqua and use it for your everyday thinking.</p>
+        <p>Need more? Purchase additional credits whenever you need them.</p>
+        <p>No subscription. No recurring charges. Purchased credits never expire.</p>
       </div>
-      <a href="/signup" class="px-btn px-btn-secondary">Start free</a>
+      <% if (!pricingUser) { %><a href="/signup" class="px-btn px-btn-secondary">Start free</a><% } %>
     </div>
+    <% if (pricingUser && pricingUser.wallet) { %>
+      <p class="px-pricing-balance" id="pricingBalance">
+        You have <strong><%= Number(pricingUser.wallet.freeCredits || 0) + Number(pricingUser.wallet.paidCredits || 0) %></strong> credits
+        (<%= Number(pricingUser.wallet.freeCredits || 0) %> free today · <%= Number(pricingUser.wallet.paidCredits || 0) %> purchased).
+        Free credits reset at midnight IST; purchased credits are used after them and never expire.
+      </p>
+    <% } %>
   </div>
 </section>
 
@@ -70,8 +79,50 @@
   const USER_EMAIL = '<%= pricingUser?.email || "" %>';
   const USER_PHONE = '<%= pricingUser?.phone || "" %>';
   const IS_LOGGED  = !!USER_EMAIL;
+  // Same-origin path chosen by the server (safeNextPath) — where to continue
+  // after a verified purchase, e.g. back into the Aqua conversation.
+  const NEXT_URL   = <%- JSON.stringify(typeof next === 'string' ? next : '/wallet') %>;
 
   function fmt(n) { return Number(n).toLocaleString('en-IN'); }
+
+  // Funnel beacons: allow-listed server-side, never block the purchase.
+  function beacon(event, packId) {
+    try {
+      fetch('/api/billing/event', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event, packId }), keepalive: true,
+      }).catch(function () {});
+    } catch (e) { /* analytics never blocks checkout */ }
+  }
+
+  function resetButton(btn) {
+    btn.disabled = false;
+    btn.textContent = 'Buy now';
+  }
+
+  // The webhook is the backup credit path, so a verify hiccup is usually not
+  // a lost payment. Watch the balance for a while instead of saying "failed".
+  function waitForCredits(baseline) {
+    let tries = 0;
+    const timer = setInterval(async () => {
+      tries++;
+      try {
+        const r = await fetch('/api/billing/wallet', { cache: 'no-store' });
+        const d = await r.json();
+        const paid = Number(d?.wallet?.paidCredits || 0);
+        if (paid > baseline) {
+          clearInterval(timer);
+          showToast('Payment confirmed — credits added. Taking you back…');
+          setTimeout(() => { window.location.href = NEXT_URL; }, 1500);
+          return;
+        }
+      } catch (e) { /* keep waiting */ }
+      if (tries >= 12) {
+        clearInterval(timer);
+        showToast('Still confirming your payment. If you were charged, your credits will appear shortly — please don\'t pay again.', 'error');
+      }
+    }, 5000);
+  }
 
   function showToast(msg, type = 'success') {
     const el = document.getElementById('toast');
@@ -123,6 +174,22 @@
 
     btn.disabled = true;
     btn.textContent = 'Preparing…';
+    beacon('buy_clicked', packId);
+
+    if (typeof window.Razorpay !== 'function') {
+      // checkout.js blocked (ad-blocker, offline, strict network).
+      showToast('Checkout could not load. Check your connection or disable content blockers for this page, then try again.', 'error');
+      beacon('checkout_failed', packId);
+      resetButton(btn);
+      return;
+    }
+
+    let paidBaseline = 0;
+    try {
+      const wr = await fetch('/api/billing/wallet', { cache: 'no-store' });
+      const wd = await wr.json();
+      paidBaseline = Number(wd?.wallet?.paidCredits || 0);
+    } catch (e) { /* baseline only used for the confirmation fallback */ }
 
     try {
       const r = await fetch('/api/billing/create-order', {
@@ -130,8 +197,12 @@
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ packId }),
       });
+      if (r.status === 401) {
+        window.location.href = '/login?next=' + encodeURIComponent('/pricing?next=' + NEXT_URL);
+        return;
+      }
       const d = await r.json();
-      if (!d.success) throw new Error(d.message || 'Order creation failed');
+      if (!d.success) throw new Error(d.message || 'We couldn\'t start checkout. You haven\'t been charged.');
 
       const order = d.order;
 
@@ -148,12 +219,12 @@
         modal: {
           backdropclose: false,
           ondismiss() {
-            btn.disabled = false;
-            btn.textContent = 'Buy now';
+            beacon('checkout_dismissed', packId);
+            resetButton(btn);
           },
         },
         handler: async function (response) {
-          btn.textContent = 'Verifying…';
+          btn.textContent = 'Confirming payment…';
           try {
             const vr = await fetch('/api/billing/verify-payment', {
               method:  'POST',
@@ -166,33 +237,33 @@
             });
             const vd = await vr.json();
             if (vd.success) {
-              showToast(fmt(vd.credits) + ' credits added. Redirecting…');
-              setTimeout(() => { window.location.href = '/wallet'; }, 1800);
+              const back = NEXT_URL.indexOf('/aqua') === 0 ? 'Taking you back to Aqua…' : 'Opening your wallet…';
+              showToast(fmt(vd.credits) + ' credits added. ' + back);
+              setTimeout(() => { window.location.href = NEXT_URL; }, 1500);
             } else {
-              showToast('Payment error: ' + (vd.error || 'Unknown'), 'error');
-              btn.disabled = false;
-              btn.textContent = 'Buy now';
+              showToast(vd.message || 'We couldn\'t confirm your payment yet. If you were charged, your credits will be added automatically.', 'error');
+              btn.textContent = 'Confirming payment…';
+              waitForCredits(paidBaseline);
             }
           } catch (e) {
-            showToast('Verification failed. Contact support.', 'error');
-            btn.disabled = false;
-            btn.textContent = 'Buy now';
+            showToast('Your connection dropped while confirming. If you were charged, your credits will be added automatically — please don\'t pay again.', 'error');
+            waitForCredits(paidBaseline);
           }
         },
       });
 
       rzp.on('payment.failed', (resp) => {
-        showToast('Payment failed: ' + (resp.error?.description || 'Try again'), 'error');
-        btn.disabled = false;
-        btn.textContent = 'Buy now';
+        // Razorpay keeps the modal open so the customer can retry on the
+        // same order; the server accepts a later successful attempt.
+        beacon('checkout_failed', packId);
+        showToast('Payment didn\'t go through: ' + (resp.error?.description || 'please try again') + '. You haven\'t been charged for this attempt.', 'error');
       });
 
       rzp.open();
 
     } catch (e) {
-      showToast(e.message || 'Something went wrong', 'error');
-      btn.disabled = false;
-      btn.textContent = 'Buy now';
+      showToast(e.message || 'Something went wrong. You haven\'t been charged.', 'error');
+      resetButton(btn);
     }
   };
 

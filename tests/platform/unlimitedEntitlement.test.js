@@ -79,7 +79,11 @@ describe("clients cannot set their own balance or entitlements", () => {
     const billing = files.find(([f]) => f === "routes/billing/billing.routes.js")[1];
     assert.match(billing, /const validPacks = \["starter", "growth", "pro", "max"\];/);
     const rz = files.find(([f]) => f === "services/billing/razorpay.service.js")[1];
-    assert.match(rz, /addPaidCredits\(userId, claimed\.creditsToAdd/);
+    // `payment` is the server's own Payment document for this user's order
+    // (looked up by razorpayOrderId + user), whose creditsToAdd was fixed from
+    // the pack table at order creation.
+    assert.match(rz, /addPaidCredits\(userId, payment\.creditsToAdd/);
+    assert.match(rz, /Payment\.findOne\(\{ razorpayOrderId, user: userId \}\)/);
   });
 });
 
