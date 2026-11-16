@@ -48,6 +48,7 @@ import { getAttachments } from '../upload/attachmentStore.js';
 import { stem, tokens, transitionOf, strongContinuation } from '../understanding/stateTransition.js';
 import { followUpV2Enabled, selectFollowUpsV2 } from './followUpRelevance.js';
 import { withheldBy, policyKey } from './retrievalPrivacy.js';
+import { ownerLogId } from '../core/logSafety.js';
 
 export function recallEnabled() {
   return String(process.env.AQUA_EPISODIC_RECALL ?? '').toLowerCase() !== 'off';
@@ -686,7 +687,7 @@ export async function recallForTurn({ ownerId, userId = null, conversationId = n
         const everything = collectUnits({ userId, conversationId, excludeFromIndex: Infinity, includeFiles: false, ...(conversations ? { conversations } : {}) });
         // The index applies the owner's forget list itself and never embeds a
         // sensitive sentence whatever the policy (semanticRecall.js).
-        indexRecallUnits(ownerId, everything).then(r => { if (r.embedded || r.pruned) console.log(`[RECALL] semantic index owner=${ownerId} embedded=${r.embedded} pruned=${r.pruned} pending=${Math.max(0, r.missing - r.embedded)}`); }).catch(() => {});
+        indexRecallUnits(ownerId, everything).then(r => { if (r.embedded || r.pruned) console.log(`[RECALL] semantic index owner=${ownerLogId(ownerId)} embedded=${r.embedded} pruned=${r.pruned} pending=${Math.max(0, r.missing - r.embedded)}`); }).catch(() => {});
       }
     }
     const said = selectRecall(saidUnits, query, {
@@ -715,7 +716,7 @@ export async function recallForTurn({ ownerId, userId = null, conversationId = n
       stats: { ...stats, ms: Date.now() - t0 },
     };
   } catch (err) {
-    console.warn(`[RECALL] failed open owner=${ownerId}: ${err?.message ?? err}`);
+    console.warn(`[RECALL] failed open owner=${ownerLogId(ownerId)}: ${err?.message ?? err}`);
     return { block: '', excerpts: [], stats: { error: String(err?.message ?? err).slice(0, 120), ms: Date.now() - t0 } };
   }
 }

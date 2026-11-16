@@ -176,12 +176,14 @@ router.post('/orchestrate', async (req, res) => {
     // D5 — same E10 read flip as /chat: the canonical World Model owns the
     // user's world; legacy memory and the PIC store stay out of the answer.
     const Brain = await import('../brain/index.js');
-    const readMode = (await Brain.resolveReadMode()).mode; // unreachable DB ⇒ legacy, not an empty veto
+    const readState = await Brain.resolveReadMode(); // unreachable DB ⇒ legacy, not an empty veto
+    const readMode = readState.mode;
     const canonical = readMode !== 'legacy';
     const memory = memoryRetrieve(ownerId, {
       query: message,
       legacyUserMemory: readMode === 'legacy' ? true : readMode === 'authoritative' ? 'gapfill' : false,
-      legacyVeto: readMode === 'authoritative' ? await Brain.legacyVetoFor(ownerId) : null,
+      // Degraded: the owner's deletions still apply without the canonical store (PWI Phase 1).
+      legacyVeto: readMode === 'authoritative' ? await Brain.legacyVetoFor(ownerId) : readState.degraded ? Brain.deletionVetoFor(ownerId) : null,
     })?.block ?? '';
     const evidence = (canonical
       ? await Brain.assembleContextAsync(ownerId, message, () => ({ items: [], block: '', stats: {} }), {

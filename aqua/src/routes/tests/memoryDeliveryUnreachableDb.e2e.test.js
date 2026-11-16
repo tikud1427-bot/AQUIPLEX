@@ -78,13 +78,14 @@ test('precondition: the database is configured but not reachable, and the config
   assert.equal(Brain.canonicalReadMode(), 'authoritative', 'the incident ran with the default read mode');
 });
 
-test('the defect, pinned: the fail-closed veto withholds every legacy fact when the canonical store is down', async () => {
-  // This is the exact function the authoritative read used. Kept fail-closed
-  // (a reachable World Model that errors mid-query must not let a stale fact
-  // through) — which is why the turn must not take this path at all when the
-  // store is unreachable.
+test('the veto no longer fails closed: a failed canonical query withholds only deleted values (PWI Phase 1, 2026-11-15)', async () => {
+  // This is the exact function the authoritative read uses. It used to return
+  // `() => true` here — every legacy fact withheld. It now serves the fallback
+  // veto: the owner's deletions (+ a fresh canonical snapshot, none here).
+  // Failure injection for the reachable-but-erroring case is in
+  // brain/tests/legacyVetoFallback.test.js.
   const veto = await Brain.legacyVetoFor(OWNER);
-  assert.equal(veto({ key: 'workplace', value: 'Nummo' }), true);
+  assert.equal(veto({ key: 'workplace', value: 'Nummo' }), false);
 });
 
 test('the turn serves the legacy read, marked degraded, instead of the empty authoritative one', () => {

@@ -171,6 +171,7 @@ export const SETTINGS = Object.freeze([
   { name: 'AQUA_CROSS_ENCODER_TIMEOUT_MS', subsystem: 'brain' },
   { name: 'AQUA_OUTBOX_CLAIM_TTL_MS', subsystem: 'jobs' },
   { name: 'AQUA_PROACTIVE_INTERVAL_MS', subsystem: 'proactive', note: 'worker periodic proactive scan interval (default 3600000; 0 = never); change-triggered evaluation runs regardless' },
+  { name: 'AQUA_LOG_PSEUDONYM_KEY', subsystem: 'observability', note: 'SECRET (≥ 32 chars). Key for the stable owner pseudonym in log lines (core/logSafety.js ownerLogId → o_<16 hex>): the same owner gets the same pseudonym on every instance and restart, and it cannot be reversed without this key. Unset/short = a per-process key (p_<16 hex>, correlates within one process only, warned once). scripts/owner-log-id.mjs computes a pseudonym for support' },
 ]);
 
 /** Every registered name, gates and settings alike. */

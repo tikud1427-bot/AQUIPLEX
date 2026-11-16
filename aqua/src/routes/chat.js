@@ -101,6 +101,7 @@ import * as Brain from '../brain/index.js';
 import { proactiveDirectiveForTurn } from '../brain/proactive/index.js';
 import { scorePairs as crossEncoderScorePairs } from '../brain/contextEngine/crossEncoderLocal.js';
 import { runPostTurn } from './turnPostProcess.js';
+import { ownerLogId } from '../core/logSafety.js';
 import { formatCitation } from '../files/evidence.js';
 import { retrieveProjectContext, formatProjectContext }    from '../project/projectRetriever.js';
 import { semanticFileScores }                              from '../project/semanticProject.js';
@@ -412,7 +413,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   const sensitive = sensitivePolicy({ rememberSensitive, message: userMessage });
   const writeView = rememberSensitive ? { text: userMessage, removed: [] } : redactSensitiveSentences(userMessage);
   if (writeView.removed.length) {
-    console.log(`[SENSITIVE] not stored owner=${memoryOwner} sentences=${writeView.removed.length} kinds=${[...new Set(writeView.removed)].join(',')} req=${requestId}`);
+    console.log(`[SENSITIVE] not stored owner=${ownerLogId(memoryOwner)} sentences=${writeView.removed.length} kinds=${[...new Set(writeView.removed)].join(',')} req=${requestId}`);
   }
   // ── Phase 2 — semantic retrieval: start the query embedding NOW so its
   // network round-trip overlaps the synchronous prep below (classify,
@@ -568,7 +569,9 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     semanticScores: await semanticScoresP,   // Phase 2: resolved query embedding (null if unavailable)
     fileChunks: await fileChunksP,           // Phase D: uploaded-content chunks ([] if unavailable)
     legacyUserMemory: readMode === 'legacy' ? true : readMode === 'authoritative' ? 'gapfill' : false,
-    legacyVeto: readMode === 'authoritative' ? await Brain.legacyVetoFor(memoryOwner) : null,
+    // Degraded (the canonical store is configured but unreachable): no canonical
+    // veto exists, but the owner's deletions still apply (PWI Phase 1).
+    legacyVeto: readMode === 'authoritative' ? await Brain.legacyVetoFor(memoryOwner) : readState.degraded ? Brain.deletionVetoFor(memoryOwner) : null,
     sensitive,
     // C9: the claim scores this turn already computes (started above), for the Mind's
     // question-aware selection only. Awaited here only when AQUA_MIND_RELEVANCE=on;
@@ -692,7 +695,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
       // facts/entities/timeline counters are 0 even when the World Model
       // supplied the whole block — print what was actually selected beside them.
       const byKind = (knowledge.items ?? []).reduce((m, i) => (m[i.kind ?? 'item'] = (m[i.kind ?? 'item'] ?? 0) + 1, m), {});
-      console.log(`[PIC] Knowledge injected owner=${memoryOwner} read=${readMode}${readState.degraded ? '(degraded)' : ''} items=${(knowledge.items ?? []).length} kinds=${JSON.stringify(byKind)} worldCore=${knowledge.stats?.worldCore?.rendered ?? 0} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}${knowledge.stats.broadened ? ` broadened=+${knowledge.stats.broadenGained}` : ''}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
+      console.log(`[PIC] Knowledge injected owner=${ownerLogId(memoryOwner)} read=${readMode}${readState.degraded ? '(degraded)' : ''} items=${(knowledge.items ?? []).length} kinds=${JSON.stringify(byKind)} worldCore=${knowledge.stats?.worldCore?.rendered ?? 0} facts=${knowledge.stats.facts} entities=${knowledge.stats.entities} timeline=${knowledge.stats.timelineEvents} feedbackReuse=${knowledge.stats.reusedSignals}${knowledge.stats.broadened ? ` broadened=+${knowledge.stats.broadenGained}` : ''}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
     } else {
       // OBSERVABILITY ONLY — no behaviour change, and the line above is
       // untouched so anything grepping it keeps working.
@@ -709,7 +712,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
       // countable, which is the only way to tell whether the fixture's pool
       // density resembles a real owner's.
       const ce = knowledge.stats?.contextEngine;
-      console.log(`[PIC] Knowledge empty owner=${memoryOwner} read=${readMode}${readState.degraded ? '(degraded)' : ''} floor=${knowledge.stats?.facts ?? 0}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
+      console.log(`[PIC] Knowledge empty owner=${ownerLogId(memoryOwner)} read=${readMode}${readState.degraded ? '(degraded)' : ''} floor=${knowledge.stats?.facts ?? 0}${ce ? ` [CTXv2 selected=${ce.selected}/${ce.candidates} dropped=${ce.dropped}]` : ''}`);
     }
   }
 
@@ -762,7 +765,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
       sensitive,
     });
     const rs = recall.stats ?? {};
-    console.log(`[RECALL] owner=${memoryOwner} excerpts=${recall.excerpts.length} candidates=${rs.candidates ?? 0} matched=${rs.matched ?? 0} followUps=${rs.followUps ?? 0} annotated=${rs.annotated ?? 0} redacted=${rs.redactedSentences ?? 0} ms=${rs.ms ?? 0} mode=${rs.mode ?? '-'}${rs.semantic ? ` semanticOnly=${rs.semanticOnly ?? 0} semanticMs=${rs.semantic.queryMs ?? '-'}${rs.semantic.timedOut ? ' semanticTimeout' : ''}` : ''}${rs.error ? ` error=${rs.error}` : ''}`);
+    console.log(`[RECALL] owner=${ownerLogId(memoryOwner)} excerpts=${recall.excerpts.length} candidates=${rs.candidates ?? 0} matched=${rs.matched ?? 0} followUps=${rs.followUps ?? 0} annotated=${rs.annotated ?? 0} redacted=${rs.redactedSentences ?? 0} ms=${rs.ms ?? 0} mode=${rs.mode ?? '-'}${rs.semantic ? ` semanticOnly=${rs.semanticOnly ?? 0} semanticMs=${rs.semantic.queryMs ?? '-'}${rs.semantic.timedOut ? ' semanticTimeout' : ''}` : ''}${rs.error ? ` error=${rs.error}` : ''}`);
   }
   // Backstop over the formatted block, as for the knowledge lane above.
   const scrubbedRecall = scrubSensitiveLines(recall.block, sensitive);
@@ -832,7 +835,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
 
   const promptTokens = estimateTokens(systemPrompt + messages.map(m => m.content).join(' '));
   if (sensitiveWithheld) {
-    console.log(`[SENSITIVE] withheld from context owner=${memoryOwner} lines=${sensitiveWithheld} optedIn=${sensitive.rememberSensitive} topic=${sensitive.topic ?? 'none'} req=${requestId}`);
+    console.log(`[SENSITIVE] withheld from context owner=${ownerLogId(memoryOwner)} lines=${sensitiveWithheld} optedIn=${sensitive.rememberSensitive} topic=${sensitive.topic ?? 'none'} req=${requestId}`);
   }
 
   return {

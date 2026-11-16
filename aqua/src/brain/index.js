@@ -73,6 +73,8 @@ import { singleValuedPredicateNames, singleObjectPredicateNames } from '../core/
 import { isDeictic, recallFocus, rememberFocus, purgeOwner as purgeFocus } from './contextEngine/conversationFocus.js';
 import { resolveReferences } from './understanding/referenceResolver.js';
 import { startSpan } from '../core/telemetry.js';
+import { ownerLogId } from '../core/logSafety.js';
+import { redactionsFor } from '../memory/recallRedactions.js';
 
 /**
  * The owner's self entity id, or null when they do not have one.
@@ -156,10 +158,85 @@ const LEGACY_KEY_PREDICATES = Object.freeze({
  * fact is dropped when the canonical World Model (a) holds a CURRENT asserted
  * value for the same attribute of the user, or (b) has retired that exact value
  * (superseded) or negated it. One bounded, owner-scoped query per turn.
- * Fail-CLOSED for legacy: if the canonical read fails, every legacy fact is
- * vetoed rather than risking a stale override.
+ *
+ * WHEN THE QUERY FAILS (PWI Phase 1, 2026-11-15). This used to fail CLOSED —
+ * `() => true`, every legacy fact and the whole identity card withheld for the
+ * turn — the P0 2026-10-12 shape for a database that answers the reachability
+ * probe and then errors (timeout, lock, schema drift). It now serves
+ * `fallbackVetoFor`: the owner's DELETIONS always (durable, local, needs no
+ * database), plus this process's last successful canonical veto for the same
+ * owner when it is at most VETO_SNAPSHOT_TTL_MS old. What the fallback cannot
+ * know is a canonical supersession newer than the snapshot (or any, without
+ * one): such a legacy value may answer this turn, as it already does on the
+ * degraded (unreachable) read. Deleted information never does.
  */
-export async function legacyVetoFor(ownerId) {
+const VETO_SNAPSHOT_TTL_MS = 10 * 60_000;
+const VETO_SNAPSHOT_MAX_OWNERS = 1000;
+/** ownerId → { at, currentSelf, retired, retiredSlots } — the last successful veto, this process only. */
+const vetoSnapshots = new Map();
+
+function rememberVetoSnapshot(ownerId, sets, now = Date.now()) {
+  vetoSnapshots.delete(ownerId);   // re-insert: Map order = recency
+  vetoSnapshots.set(ownerId, { at: now, ...sets });
+  while (vetoSnapshots.size > VETO_SNAPSHOT_MAX_OWNERS) vetoSnapshots.delete(vetoSnapshots.keys().next().value);
+}
+
+const vetoSlot = v => String(v ?? '').toLowerCase().replace(/[^a-z]/g, '');
+
+/** The canonical veto predicate over the three sets one successful query yields. */
+function canonicalVetoPredicate({ currentSelf, retired, retiredSlots }) {
+  return ({ key, value } = {}) => {
+    if ((LEGACY_KEY_PREDICATES[key] ?? []).some(pr => currentSelf.has(pr))) return true;
+    if (key && retiredSlots.has(vetoSlot(key))) return true;
+    const vals = (Array.isArray(value) ? value : [value]).map(v => String(v?.name ?? v ?? '').trim().toLowerCase()).filter(Boolean);
+    return vals.some(v => retired.has(v));
+  };
+}
+
+/**
+ * The owner's DELETIONS as a veto, without the canonical store. Every user
+ * forget / correction (memory/forget.js: forgetFact, forgetClaim,
+ * correctClaimValue, forgetGoal, forgetAllFacts; the chat-path forget) records
+ * the forgotten values and sentences in the owner's recall-redaction list
+ * BEFORE the legacy copy is removed — a durable, owner-scoped (the hashes are
+ * keyed by owner id), database-free record. A legacy fact whose value contains
+ * a forgotten phrase, or that predates a "forget everything", is withheld.
+ * An owner whose list is not loaded (partitions) withholds everything — the
+ * redaction store's own fail-closed rule — and so does any error here.
+ */
+export function deletionVetoFor(ownerId) {
+  if (!ownerId) return () => false;
+  try {
+    const r = redactionsFor(ownerId);
+    if (!r.active) return () => false;
+    return ({ value, ts } = {}) => {
+      try {
+        const at = Number.isFinite(ts) ? ts : null;
+        const vals = legacyValueStrings(value);
+        if (!vals.length) return r.isRedacted('', at);
+        return vals.some(v => r.isRedacted(v, at));
+      } catch { return true; }
+    };
+  } catch {
+    return () => true;
+  }
+}
+
+/** The veto a failed canonical query falls back to: deletions ∪ a fresh snapshot of THIS owner. */
+export function fallbackVetoFor(ownerId, { now = Date.now(), reason = 'error' } = {}) {
+  const deletion = deletionVetoFor(ownerId);
+  const snap = vetoSnapshots.get(ownerId);
+  const fresh = snap && now - snap.at <= VETO_SNAPSHOT_TTL_MS ? snap : null;
+  const canonical = fresh ? canonicalVetoPredicate(fresh) : null;
+  console.warn(`[BRAIN] legacy veto query failed (${reason}) — serving the fallback veto: deletions${fresh ? ` + canonical snapshot ageMs=${now - fresh.at}` : ' only (no fresh snapshot)'} owner=${ownerLogId(ownerId)}`);
+  return item => deletion(item) || (canonical ? canonical(item) : false);
+}
+
+/** Tests only. */
+export function _resetVetoSnapshotsForTests() { vetoSnapshots.clear(); }
+export function _vetoSnapshotOwnersForTests() { return [...vetoSnapshots.keys()]; }
+
+export async function legacyVetoFor(ownerId, { now = Date.now() } = {}) {
   if (!ownerId || !dbConfigured()) return () => false;
   try {
     const p = await getPool();
@@ -185,18 +262,13 @@ export async function legacyVetoFor(ownerId) {
     for (const r of rows) if (r.state === 'archived' && r.subject_type !== 'self' && r.subj && r.subj !== 'you' && r.subj.length >= 2) retired.add(r.subj);
     // A deleted ROLE retires the legacy slot of that name ("co-founder" →
     // key "cofounder"), whatever value the regex extractor put there.
-    const slot = v => String(v ?? '').toLowerCase().replace(/[^a-z]/g, '');
     const retiredSlots = new Set(rows.filter(r => r.state === 'archived' && r.subject_type !== 'self')
-      .map(r => slot(r.val)).filter(s => s.length >= 4));
-    return ({ key, value } = {}) => {
-      if ((LEGACY_KEY_PREDICATES[key] ?? []).some(pr => currentSelf.has(pr))) return true;
-      if (key && retiredSlots.has(slot(key))) return true;
-      const vals = (Array.isArray(value) ? value : [value]).map(v => String(v?.name ?? v ?? '').trim().toLowerCase()).filter(Boolean);
-      return vals.some(v => retired.has(v));
-    };
+      .map(r => vetoSlot(r.val)).filter(s => s.length >= 4));
+    const sets = { currentSelf, retired, retiredSlots };
+    rememberVetoSnapshot(ownerId, sets, now);
+    return canonicalVetoPredicate(sets);
   } catch (err) {
-    console.warn(`[BRAIN] legacy veto unavailable — legacy memory withheld this turn: ${err?.message ?? err}`);
-    return () => true;
+    return fallbackVetoFor(ownerId, { now, reason: err?.code ?? err?.name ?? 'error' });
   }
 }
 
@@ -1768,6 +1840,7 @@ export function removeAnnotation(ownerId, entityId, opts = {}) {
 export function purgeOwner(ownerId, opts = {}) {
   const { deps = REAL_DEPS } = opts;
   const out = { annotations: 0, canonicalIds: 0 };
+  vetoSnapshots.delete(ownerId);      // the last canonical veto held this owner's values in memory
   try {
     forgetReflectionOwner(ownerId);   // drop reflection snapshot state too
     purgeFocus(ownerId);              // deictic focus memory (conversationFocus.js)

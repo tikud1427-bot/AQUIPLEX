@@ -141,11 +141,11 @@ describe('the flag registry matches the source, in both directions', () => {
     // AQUA_PROVIDER_MAX_KEY_ATTEMPTS (per-request key-rotation bounds) and
     // AQUA_PROVIDER_KEY_REJECT_TTL_MS (opt-in expiry of a rejected key).
     // +1 setting (2026-10-18): AQUA_S8_HISTORY (bounded | full | compare).
-    assert.equal(SETTINGS.length, 48);   // +1 (2026-10-20): AQUA_RECALL_ALL_CHARS; +1 (2026-11-05): AQUA_EMBEDDING_API_KEY; +1 (2026-11-06): AQUA_PROPAGATION_CRASH_AT (test seam)
+    assert.equal(SETTINGS.length, 49);   // +1 (2026-11-15, PWI Phase 1): AQUA_LOG_PSEUDONYM_KEY   // +1 (2026-10-20): AQUA_RECALL_ALL_CHARS; +1 (2026-11-05): AQUA_EMBEDDING_API_KEY; +1 (2026-11-06): AQUA_PROPAGATION_CRASH_AT (test seam)
     // +1 (2026-10-18): AQUA_E6_ACTOR_RETRY. AQUA_S8_HISTORY is a setting-like rollback read in the repository (counted below).
     // +2 (2026-10-17): the two gates above; +2 (2026-10-20) AQUA_EPISODIC_RECALL, AQUA_RECALL_ALL_CHARS;
     // +3 (2026-11-05): AQUA_MIND_RELEVANCE, AQUA_ANSWER_SCAFFOLD_GUARD, AQUA_SEMANTIC_RECALL.
-    assert.equal(readFromEnv().size, 89);   // +1 (2026-11-05): AQUA_EMBEDDING_API_KEY (setting); +1 (2026-11-05): AQUA_RECALL_FOLLOWUP_V2; +2 (2026-11-06): AQUA_PROPAGATION, AQUA_PROPAGATION_CRASH_AT
+    assert.equal(readFromEnv().size, 90);   // +1 (2026-11-15, PWI Phase 1): AQUA_LOG_PSEUDONYM_KEY   // +1 (2026-11-05): AQUA_EMBEDDING_API_KEY (setting); +1 (2026-11-05): AQUA_RECALL_FOLLOWUP_V2; +2 (2026-11-06): AQUA_PROPAGATION, AQUA_PROPAGATION_CRASH_AT
   });
 });
 
@@ -193,7 +193,7 @@ describe('the registry records how each gate actually reads its variable', () =>
 describe('the boot line is worth printing', () => {
   test('it names the overridden gates, not all 29', () => {
     const line = flagBootLine({ AQUA_E6: 'on' });
-    assert.match(line, /41 gates · 48 settings/);   // +3 (2026-11-05): AQUA_MIND_RELEVANCE, AQUA_ANSWER_SCAFFOLD_GUARD, AQUA_SEMANTIC_RECALL
+    assert.match(line, /41 gates · 49 settings/);   // +3 (2026-11-05): AQUA_MIND_RELEVANCE, AQUA_ANSWER_SCAFFOLD_GUARD, AQUA_SEMANTIC_RECALL
     assert.match(line, /AQUA_E6=on/);
     assert.ok(!line.includes('AQUA_TWIN_V2'), 'a default gate was listed — the line is noise');
   });

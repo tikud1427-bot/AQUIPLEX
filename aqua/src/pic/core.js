@@ -52,6 +52,7 @@ import { retrieveKnowledge as retrieve } from './retrievalIntelligence.js';
 import { healthReport, runMaintenance } from './knowledgeHealth.js';
 import { projectIntelligence } from './projectIntelligence.js';
 import { ledger, getLedger, getPicStoreStats, _resetPicStoreForTests } from './picStore.js';
+import { ownerLogId } from '../core/logSafety.js';
 
 // ── Default dependency wiring (injectable per call for tests) ────────────────
 
@@ -116,10 +117,10 @@ function scheduleConsolidation(ownerId, deps) {
       metrics.factsMerged += report.duplicatesMerged;
       metrics.confidenceAdjusted += report.confidenceAdjusted;
       metrics.latency.consolidateMs = ewma(metrics.latency.consolidateMs, report.durationMs);
-      console.log(`[PIC] Consolidated owner=${ownerId} merged=${report.duplicatesMerged} conf=${report.confidenceAdjusted} disputed=${report.disputed} stale=${report.stale} promoted=${report.promoted} in ${report.durationMs}ms`);
+      console.log(`[PIC] Consolidated owner=${ownerLogId(ownerId)} merged=${report.duplicatesMerged} conf=${report.confidenceAdjusted} disputed=${report.disputed} stale=${report.stale} promoted=${report.promoted} in ${report.durationMs}ms`);
     } catch (err) {
       metrics.failures += 1;
-      console.warn(`[PIC] Background consolidation failed (non-fatal) owner=${ownerId}: ${err.message}`);
+      console.warn(`[PIC] Background consolidation failed (non-fatal) owner=${ownerLogId(ownerId)}: ${err.message}`);
     }
   }, CONSOLIDATE_DEBOUNCE_MS);
   t.unref?.();   // never hold the process open
@@ -287,7 +288,7 @@ export function onKnowledgeIngested({ ownerId, ukoIds = [], entities = [], contr
     metrics.ingests += 1;
     const durationMs = Date.now() - started;
     metrics.latency.ingestMs = ewma(metrics.latency.ingestMs, durationMs);
-    console.log(`[PIC] Ingest synced owner=${ownerId} objects=${ukoIds.length} subjects=${subjects} entityMerges=${merges} in ${durationMs}ms`);
+    console.log(`[PIC] Ingest synced owner=${ownerLogId(ownerId)} objects=${ukoIds.length} subjects=${subjects} entityMerges=${merges} in ${durationMs}ms`);
     return { ok: true, subjects, entityMerges: merges, durationMs };
   } catch (err) {
     metrics.failures += 1;
