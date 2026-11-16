@@ -4,6 +4,25 @@ AQUA Candidate Extractor v3.1
 import { MEMORY_SCHEMA, getSchema, CATEGORIES, CONFLICT_POLICIES } from './memorySchema.js';
 import { goalParts } from '../mind/goalText.js';
 import { splitClauses } from './sentenceParser.js';
+import { textMeta, valueMeta, safeKey } from '../core/logSafety.js';
+import { assertedPart, classifySpeechAct } from '../understanding/speechAct.js';
+
+/**
+ * A value whose trailing number the sentence continues past a separator: "58"
+ * read from "earn 58,000", "3" from "3.5 million", "12" from "12,5 %". The
+ * pattern stopped at the separator; storing it would store a different number.
+ * Such a candidate is dropped (the sentence stays quotable). Defence in depth
+ * behind the digit-aware terminators in memorySchema.
+ */
+export function truncatedNumber(value, sentence) {
+  if (typeof value !== 'string') return false;
+  const m = value.match(/(\d+)\s*$/);
+  if (!m) return false;
+  const tail = value.slice(Math.max(0, value.length - 24));
+  const at = String(sentence ?? '').indexOf(tail);
+  if (at < 0) return false;
+  return /^[.,]\d/.test(String(sentence).slice(at + tail.length));
+}
 
 const log = {
   debug: (msg, ...args) => console.debug(`[AQUA Extractor] ${msg}`, ...args),
@@ -260,22 +279,36 @@ export function extractCandidatesFromSentence(sentence, ctx = {}) {
 export function extractAllCandidates(parsed) {
   const all = [];
   for (const sentence of parsed.sentences) {
+    // Capture Integrity V1 (2026-11-10): only what the user ASSERTED is read
+    // (understanding/speechAct.js). A question, a request or a hypothetical yields
+    // no fact — "Where does my sister work?" stored siblings: Work — and a leading
+    // statement before a question is read alone ("I live in Leeds, can you…").
+    // A prediction or an option being weighed is captured only as hedged: it never
+    // replaces a confirmed value (memoryResolver) and is shown as uncertain.
+    const asserted = assertedPart(sentence);
+    if (!asserted) {
+      console.log(`[EXTRACTOR] NO_MATCH sentence=(${textMeta(sentence)}) act=${classifySpeechAct(sentence).act}`);
+      continue;
+    }
+    const act = classifySpeechAct(asserted.text);
+    const actHedged = !!act.hedged;
     // Each clause is read on its own (sentenceParser.splitClauses), so a sentence
     // stating two facts yields two; provenance stays the whole sentence the user
     // said — what the evidence lane and the transitions quote.
-    const cs = splitClauses(sentence).flatMap(clause => extractCandidatesFromSentence(clause, {
+    const cs = splitClauses(asserted.text).flatMap(clause => extractCandidatesFromSentence(clause, {
       isCorrection: parsed.isCorrection,
       correctionPhrase: parsed.correctionPhrase,
       ts: parsed.ts,
-    }).map(c => ({ ...c, rawText: sentence, sentence, clause, pattern: c.reason })));
+    }).filter(c => !truncatedNumber(c.value, sentence))
+      .map(c => ({ ...c, ...(actHedged ? { hedged: true } : {}), speechAct: asserted.act, rawText: sentence, sentence, clause, pattern: c.reason })));
     // Instrumentation (Extraction Audit Req 3): every sentence prints what
     // matched — pattern, extractor, fact, confidence — or an explicit miss.
     if (cs.length) {
       for (const c of cs) {
-        console.log(`[EXTRACTOR] MATCH sentence="${sentence.slice(0, 80)}" extractor=${c.extractor} pattern=${c.reason} → ${c.key}=${JSON.stringify(c.value)} conf=${c.confidence}`);
+        console.log(`[EXTRACTOR] MATCH sentence=(${textMeta(sentence)}) extractor=${c.extractor} pattern=${c.reason} → ${safeKey(c.key)}=${valueMeta(c.value)} conf=${c.confidence}`);
       }
     } else {
-      console.log(`[EXTRACTOR] NO_MATCH sentence="${sentence.slice(0, 80)}" personal=${isPersonalStatement(sentence)}`);
+      console.log(`[EXTRACTOR] NO_MATCH sentence=(${textMeta(sentence)}) personal=${isPersonalStatement(sentence)}`);
     }
     all.push(...cs);
   }

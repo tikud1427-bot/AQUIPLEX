@@ -7,6 +7,7 @@
  * It does not retrieve, call a model, or invent facts.
  */
 import { analyseQuestion } from '../../pic/questionShape.js';
+import { isPersonalWorldQuestion } from '../../core/conversationContext.js';
 
 /**
  * A slot is defined STRUCTURALLY by the canonical predicates that fill it
@@ -108,14 +109,43 @@ function normalizeTaskType(taskType, query = '') {
   return TEMPLATES[key] ? key : 'conversation';
 }
 
-/** Build a bounded, explainable QueryPlan. */
-export function buildQueryPlan(query, { taskType = 'conversation', maxSlots = 8 } = {}) {
+/**
+ * PERSONAL-WORLD SCOPE (2026-11-16, audit D-01). A required slot means "the
+ * USER'S world must supply this". For an ordinary general question ("Is
+ * pneumonia curable?", "Explain photosynthesis") the user's store has no
+ * `topic` item, and the plan used to end UNKNOWN — the assembler then told the
+ * model "Required slots still unknown: topic. Do not infer or fabricate them",
+ * i.e. not to use its own knowledge or the conversation. These templates keep
+ * their slots for ranking/budgeting but require nothing unless the question is
+ * about the user's own world. decision / project_query / file_analysis /
+ * coding are about the user's own plans, files and code and are unchanged.
+ */
+const GENERAL_SCOPED = new Set(['conversation', 'research', 'analysis', 'planning']);
+
+/** Is the question about the user's own world? One rule, owned by core/conversationContext.js. */
+export const isPersonalWorldQuery = isPersonalWorldQuestion;
+
+function personalScopeOff() {
+  return String(process.env.AQUA_E8_PERSONAL_SCOPE ?? 'on').trim().toLowerCase() === 'off';
+}
+
+/**
+ * Build a bounded, explainable QueryPlan.
+ * `personalWorld`: true/false from the caller's resolved conversation context
+ * (a follow-up to a personal statement is personal even without "my"); when
+ * omitted it is read from the query itself.
+ */
+export function buildQueryPlan(query, { taskType = 'conversation', maxSlots = 8, personalWorld } = {}) {
   const shape = analyseQuestion(query);
   const normalized = normalizeTaskType(taskType, query);
-  const slots = TEMPLATES[normalized].slice(0, Math.max(1, Math.min(8, Number(maxSlots) || 8)));
+  const personal = typeof personalWorld === 'boolean' ? personalWorld : isPersonalWorldQuery(query);
+  const general = !personalScopeOff() && GENERAL_SCOPED.has(normalized) && !personal;
+  const slots = TEMPLATES[normalized].slice(0, Math.max(1, Math.min(8, Number(maxSlots) || 8)))
+    .map(s => (general && s.required ? { ...s, required: false } : s));
   return {
     version: 3,
     taskType: normalized,
+    scope: general ? 'general' : 'personal',
     questionShape: shape,
     slots: slots.map(s => ({ ...s, status: 'unfilled', matches: [] })),
     requiredSlotIds: slots.filter(s => s.required).map(s => s.id),

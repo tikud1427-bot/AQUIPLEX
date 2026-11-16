@@ -16,6 +16,7 @@ import {
   createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore,
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
+import { bindKeyedStore } from '../core/storage/keyedBinding.js';
 
 const STORE_FILE = dataPath('.aqua-fileindex.json');
 const SCHEMA     = 1;
@@ -44,7 +45,9 @@ function loadFromDisk() {
 }
 
 const _writer = createDebouncedWriter(STORE_FILE);
-function scheduleSave() {
+function scheduleSave(ownerKey = null) {
+  if (ownerKey) binding.markDirty(ownerKey);
+  if (!binding.writesWholeJson()) return;
   _writer.schedule(() => {
     const data = {};
     for (const [owner, o] of store.entries()) {
@@ -58,7 +61,45 @@ function scheduleSave() {
   });
 }
 
-loadFromDisk();
+// ── Per-owner persistence (scalability Phase 2c) ─────────────────────────────
+// WRITER: the server only (enrichment pipeline index/remove). A DERIVED index of
+// the owner's files. MERGE: three-way — files per ukoId (newer indexedAt),
+// entity/keyword lanes as id sets, then lane ids of files no longer indexed are
+// dropped. DELETION: purgeOwner → row tombstone.
+const encodeIndex = o => ({
+  files:    Object.fromEntries(o.files),
+  entities: Object.fromEntries([...o.entities].map(([k, v]) => [k, [...v]])),
+  keywords: Object.fromEntries([...o.keywords].map(([k, v]) => [k, [...v]])),
+});
+const binding = bindKeyedStore({
+  storeKey: '.aqua-fileindex.json', file: STORE_FILE, label: 'fileindex', schema: SCHEMA,
+  mergeSchema: {
+    collections: { files: { time: f => Number(f?.indexedAt) || 0 } },
+    links: ['entities', 'keywords'],
+    finalize: m => {
+      for (const lane of ['entities', 'keywords']) {
+        for (const [k, ids] of Object.entries(m[lane] ?? {})) {
+          const live = ids.filter(id => m.files[id]);
+          if (live.length) m[lane][k] = live; else delete m[lane][k];
+        }
+      }
+      return m;
+    },
+  },
+  encode: owner => (store.has(owner) ? encodeIndex(store.get(owner)) : undefined),
+  decode: obj => ({
+    files:    new Map(Object.entries(obj?.files ?? {})),
+    entities: new Map(Object.entries(obj?.entities ?? {}).map(([k, v]) => [k, new Set(v)])),
+    keywords: new Map(Object.entries(obj?.keywords ?? {}).map(([k, v]) => [k, new Set(v)])),
+  }),
+  install: (owner, o) => { if (o) store.set(owner, o); else store.delete(owner); },
+  evict: owner => store.delete(owner),
+  changedAt: obj => Math.max(0, ...Object.values(obj?.files ?? {}).map(f => Number(f?.indexedAt) || 0)),
+  reloadJson: () => loadFromDisk(),
+});
+export function fileIndexPartitionBinding() { return binding; }
+
+if (binding.loadsJsonAtBoot()) loadFromDisk();
 
 function ownerIndex(ownerId) {
   let o = store.get(ownerId);
@@ -95,7 +136,7 @@ export function indexUKO(ownerId, uko) {
   for (const e of uko.entities)  addToLane(o.entities, norm(e.value), uko.id);
   for (const k of uko.keywords)  addToLane(o.keywords, norm(k.term),  uko.id);
 
-  scheduleSave();
+  scheduleSave(ownerId);
   return { indexed: true, entities: uko.entities.length, keywords: uko.keywords.length };
 }
 
@@ -120,7 +161,7 @@ export function removeUKOFromIndex(ownerId, ukoId) {
   if (!o || !o.files.has(ukoId)) return false;
   removeFromLanes(o, ukoId);
   o.files.delete(ukoId);
-  scheduleSave();
+  scheduleSave(ownerId);
   return true;
 }
 
@@ -129,6 +170,7 @@ export function removeUKOFromIndex(ownerId, ukoId) {
  * lanes). Returns the number of indexed files removed.
  */
 export function purgeOwner(ownerId) {
+  binding.markDeleted(ownerId);
   const o = store.get(ownerId);
   if (!o) return 0;
   const removed = o.files.size;
@@ -186,4 +228,4 @@ export function getIndexStats(ownerId) {
   return { files: o.files.size, entities: o.entities.size, keywords: o.keywords.size };
 }
 
-export function _resetFileIndexForTests() { store.clear(); }
+export function _resetFileIndexForTests() { store.clear(); binding._reset(); }

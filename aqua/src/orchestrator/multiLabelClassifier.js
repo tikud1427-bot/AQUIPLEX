@@ -22,6 +22,7 @@
  * influences at once instead of forcing a single winner-take-all label.
  */
 import { scoreTask } from '../core/classifier.js';
+import { CONDITION_TERMS_SOURCE } from '../memory/sensitivity.js';
 
 // Categories surfaced as multi-label "labels" — excludes purely
 // conversational/meta buckets (conversation, memory_recall, memory_update,
@@ -49,6 +50,11 @@ const TAG_PATTERNS = {
   ],
   medical: [
     /\b(diagnos|symptom|medication|dosage|patient\b|clinical|treatment plan|medical record)\b/i,
+    // 2026-11-16 (audit D-11): disease / treatment questions ("Is pneumonia
+    // curable?", "What are the symptoms of tuberculosis?", "Can this medication
+    // cause side effects?") — the condition vocabulary is shared with the
+    // health-privacy classifier (memory/sensitivity.js), one list.
+    new RegExp(String.raw`\b(?:${CONDITION_TERMS_SOURCE})\b[^.?!\n]{0,60}\b(?:cur(?:e|es|ed|able)|treat\w*|symptoms?|contagious|infectious|fatal|deadly|prognosis|recover\w*|vaccin\w*|caus\w*|spread\w*|serious|dangerous)\b|\b(?:cur(?:e|es|ed|able)|treat\w*|symptoms?|contagious|prognosis|vaccin\w*)\b[^.?!\n]{0,60}\b(?:${CONDITION_TERMS_SOURCE})\b|\bside[-\s]effects?\b`, 'i'),
   ],
 };
 

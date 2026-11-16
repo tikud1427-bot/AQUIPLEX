@@ -44,11 +44,24 @@ await test('high complexity → real pass runs, analysis in brief', async () => 
   assert.ok(!/Work through these stages internally/.test(out.synthesis.text), 'generic template line replaced');
 });
 
-await test('low classifier confidence → real pass runs even at medium complexity', async () => {
+await test('low classifier confidence on a long message → real pass runs even at medium complexity', async () => {
   const st = installFakeAgent();
-  const out = await runIntelligencePipeline({ taskType: 'coding', complexity: 'medium', confidence: 0.3, userMessage: 'fix this' });
+  const out = await runIntelligencePipeline({ taskType: 'coding', complexity: 'medium', confidence: 0.3, userMessage: 'fix this '.repeat(16) });
   assert.equal(st.calls, 1, 'low confidence triggers the pass');
   assert.equal(out.reasoningPass.ran, true);
+});
+
+await test('cost-aware: low confidence on a short, non-sensitive message → NO model call', async () => {
+  const st = installFakeAgent();
+  const out = await runIntelligencePipeline({ taskType: 'simple_qa', complexity: 'medium', confidence: 0.45, userMessage: 'Who wrote Hamlet?' });
+  assert.equal(st.calls, 0, 'a fallback classification alone does not buy a reasoning pass');
+  assert.equal(out.reasoningPass.ran, false);
+});
+
+await test('cost-aware: low confidence + a sensitive tag keeps the pass', async () => {
+  const st = installFakeAgent();
+  await runIntelligencePipeline({ taskType: 'simple_qa', complexity: 'medium', confidence: 0.45, userMessage: 'Is ibuprofen safe with my meds?', tags: ['medical'] });
+  assert.equal(st.calls, 1);
 });
 
 await test('medium complexity + confident → NO model call (deterministic brief)', async () => {

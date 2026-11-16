@@ -121,8 +121,14 @@ export function createMemoryPg() {
       // several pre-existing failures in this suite (anything whose `before`
       // hook calls the full `migrate()` past 0011) — not a pg-mem gap, a
       // dead guard that was written to cover exactly that gap.
+      // 0027 (2026-11-14): the per-owner change counter is a plpgsql TRIGGER,
+      // which pg-mem does not implement either. The application falls back to
+      // the full versions query when the counter is absent (ownerBinding
+      // ensureOwnerLoaded); the counter itself is tested on real Postgres
+      // (phase2cLimits.test.js).
       if (/^\s*--\s*0012\s*[—-]/m.test(args[0]) ||
-          /^\s*--\s*0013\s*[—-]/m.test(args[0])) {
+          /^\s*--\s*0013\s*[—-]/m.test(args[0]) ||
+          /^\s*--\s*0027\s*[—-]/m.test(args[0])) {
         return { rows: [], rowCount: 0 };
       }
       args[0] = stripPartialIndexes(args[0]);

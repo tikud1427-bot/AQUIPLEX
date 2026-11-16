@@ -18,6 +18,7 @@
  *     "forget everything" — on the fallback AND on the degraded read
  *   · nothing crosses owners: neither the snapshot nor the deletion list
  *   · the snapshot expires; account purge drops it
+ *   · an owner whose deletion list is not loaded (partitions) fails CLOSED
  *   · sensitive-category protection is untouched (the veto only removes)
  *   · the success path vetoes exactly as before the refactor
  */
@@ -26,6 +27,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 process.env.AQUA_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-veto-fallback-'));
 process.env.AQUA_DISABLE_MONGO_MIRROR = '1';
@@ -33,6 +36,7 @@ process.env.MONGO_URI = '';
 process.env.AQUA_EMBEDDINGS = 'off';
 process.env.DATABASE_URL = 'postgresql://aqua:aqua@127.0.0.1:1/aqua_fake';   // configured; every query goes to the fake below
 delete process.env.AQUA_CANONICAL_READ;
+delete process.env.AQUA_STORE_PARTITIONS;
 
 const pool = await import('../../core/db/pool.js');
 pool._resetForTests();
@@ -191,6 +195,17 @@ test('no database configured: no veto, no query (unchanged)', async () => {
     process.env.DATABASE_URL = saved; pool._resetForTests();
     pool._setPoolForTests(FAKE_POOL);
   }
+});
+
+test('an owner whose deletion list is not loaded (partitions) fails CLOSED — child process', () => {
+  const brainUrl = pathToFileURL(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'index.js')).href;
+  const code = `import(${JSON.stringify(brainUrl)}).then(B => { process.stdout.write(String(B.deletionVetoFor('user:not-loaded')({ key: 'name', value: 'Ana' }))); process.exit(0); })`;
+  const out = execFileSync(process.execPath, ['-e', code], {
+    env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot,
+      AQUA_DATA_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'aqua-veto-nl-')), AQUA_DISABLE_MONGO_MIRROR: '1', MONGO_URI: '',
+      DATABASE_URL: 'postgresql://aqua:aqua@127.0.0.1:1/aqua_unreachable', AQUA_STORE_PARTITIONS: 'recall-redactions:on' },
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  assert.equal(out.trim(), 'true');
 });
 
 // ── end to end through memoryRetrieve (the answer path's retrieval) ──────────

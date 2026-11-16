@@ -1,0 +1,41 @@
+{
+ "_comment": "TEMPLATE for scripts/acib-v3-freeze.mjs. Placeholders only: no author or reviewer has been appointed. The freeze refuses unless >=2 evalAuthors (none of them implementation authors), a reviewer sign-off by a non-implementer, successCriteriaConfirmedBy, and an evalPath OUTSIDE the repository. Declarations must be the verbatim texts of AQUA_ACIB_V3_DECLARATIONS.md (exported as AUTHOR_DECLARATION / REVIEWER_DECLARATION). C-5: founder and everyone in priorResultsExposed are barred from evalAuthors and reviewer; placeholders and future dates are refused.",
+ "version": "acib-3",
+ "evalAuthors": [
+  {
+   "name": "<independent author 1>",
+   "role": "scenario author",
+   "declaration": "I wrote the scenarios attributed to me. I have not read the assistant's source code, design documents, test results or earlier benchmark sets, and I have not discussed these evaluation scenarios with its engineering team. I have not included real personal data. Any filler conversations I wrote were written without knowledge of, or intent to favour, any particular system configuration, and do not change the correct answer to any question.",
+   "declaredAt": "<YYYY-MM-DD>"
+  },
+  {
+   "name": "<independent author 2>",
+   "role": "scenario author",
+   "declaration": "I wrote the scenarios attributed to me. I have not read the assistant's source code, design documents, test results or earlier benchmark sets, and I have not discussed these evaluation scenarios with its engineering team. I have not included real personal data. Any filler conversations I wrote were written without knowledge of, or intent to favour, any particular system configuration, and do not change the correct answer to any question.",
+   "declaredAt": "<YYYY-MM-DD>"
+  }
+ ],
+ "devAuthors": [
+  {
+   "name": "<development author(s), not evaluation authors>"
+  }
+ ],
+ "implementationAuthors": [
+  "<everyone who built the context engine or the hybrid context feature, including AI agents used for it>"
+ ],
+ "founder": {
+  "name": "<the founder>"
+ },
+ "priorResultsExposed": [
+  "<everyone who has seen prior evaluation results, engine/hybrid internals or ACIB v1/v2 — including the founder>"
+ ],
+ "reviewer": {
+  "name": "<independent reviewer>",
+  "signedAt": "<YYYY-MM-DD>",
+  "statement": "I checked scenario counts and category balance, spot-checked at least 20 evaluation scenarios for a single defensible answer and reachable annotations, and hold the evaluation file outside the code repository. I am not an author of the assistant's engine or its hybrid context feature, and I have not shared evaluation scenarios with its engineering team."
+ },
+ "successCriteriaConfirmedBy": "<founder, YYYY-MM-DD>",
+ "analysisSpecSha256": "<sha256 of the confirmed AQUA_ACIB_V3_ANALYSIS_SPEC.md>",
+ "evalPath": "<absolute path OUTSIDE the repository, held by the reviewer>",
+ "devPath": "<path of the 62-scenario development set>"
+}

@@ -42,6 +42,8 @@ import {
   unwrapStore,
 } from '../core/atomicStore.js';
 import { migrateLegacyFile, dataPath } from '../core/dataDir.js';
+import { bindConversationStore, MESSAGE_KEY } from './conversationPartitions.js';
+import { getMirrorStatus } from '../core/mongoMirror.js';
 
 // P0 v4 — history lives in the canonical DATA DIRECTORY, not the deploy tree.
 // migrateLegacyFile() performs the one-time, loss-proof move of any existing
@@ -59,6 +61,18 @@ const HARD_CAP_PER_CONV = 5000; // safety valve only — warn + trim far past an
 // Map<conversationId, { messages: Array, meta: object }>
 const store = new Map();
 
+// Ids deleted by this process (bounded) — addMessage never resurrects them (D-13).
+const deletedIds = new Set();
+function noteDeleted(id) {
+  deletedIds.add(id);
+  if (deletedIds.size > 2000) deletedIds.delete(deletedIds.values().next().value);
+}
+
+// Phase 2b, step 3 — revision-based message persistence (memory/conversationPartitions.js).
+// AQUA_STORE_PARTITIONS=history:<mode>. Off (default): every hook is a no-op.
+const partitions = bindConversationStore({ file: HISTORY_FILE, store, reloadJson: () => loadFromDisk() });
+const P = partitions.hooks;
+
 // ── Persistence ───────────────────────────────────────────────────────────────
 
 function loadFromDisk() {
@@ -74,14 +88,29 @@ function loadFromDisk() {
     store.set(id, { messages, meta });
     total += messages.length;
   }
+  P.adoptJsonLoaded();
   console.log(`[STORE] Loaded ${store.size} conversations (${total} messages) from ${HISTORY_FILE}`);
 }
 
 // Phase 3b — atomic + async persistence via the shared primitive.
 // The writer also takes a boot backup (`.bak`) before this process's first
 // flush, so every deploy leaves a last-known-good snapshot behind.
-const _writer = createDebouncedWriter(HISTORY_FILE);
+// 2026-11-16 (audit D-15): what the history file's writer actually did — read by
+// persistenceState(), never assumed from an in-memory write.
+const writeState = { lastOkAt: null, lastErrorAt: null, lastError: null };
+const _writer = createDebouncedWriter(HISTORY_FILE, {
+  onFlushed: () => { writeState.lastOkAt = Date.now(); },
+  onError: (err) => {
+    writeState.lastErrorAt = Date.now();
+    writeState.lastError = String(err?.code ?? err?.name ?? 'error');
+    console.warn(`[STORE] atomic write failed for ${HISTORY_FILE.split(/[\\/]/).pop()}: ${err?.message ?? err}`);
+  },
+});
 function scheduleSave() {
+  // Partitions authoritative: the binding writes per message and keeps the
+  // JSON rollback copy itself. The whole file is never rewritten from memory,
+  // which now holds only the owners loaded by requests.
+  if (!partitions.writesWholeJson()) return;
   _writer.schedule(() => {
     const data = {};
     for (const [id, conv] of store.entries()) {
@@ -91,7 +120,7 @@ function scheduleSave() {
   });
 }
 
-loadFromDisk();
+if (partitions.loadsJsonAtBoot()) loadFromDisk();
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -120,6 +149,7 @@ export function createConversation(meta = {}) {
 
   const id = requestedId || uuidv4();
   store.set(id, { messages: [], meta: { createdAt: Date.now(), ...rest } });
+  P.created(id);
   scheduleSave();
   console.log(`[STORE] CREATED conversation=${id}`);
   return id;
@@ -143,6 +173,7 @@ export function getOrCreateConversation(id, meta = {}) {
 
   const finalId = id || uuidv4();
   store.set(finalId, { messages: [], meta: { createdAt: Date.now(), ...meta } });
+  P.created(finalId);
   scheduleSave();
   console.log(`[STORE] CREATED conversation=${finalId}`);
   return { id: finalId, isNew: true };
@@ -190,23 +221,45 @@ export function getConversation(id) {
  */
 export function addMessage(id, role, content, extra = null) {
   if (!store.has(id)) {
+    // D-13 (2026-11-16): a conversation deleted while a turn was in flight is
+    // NOT resurrected (it would come back owner-less and unreadable — and the
+    // user asked for it to be gone). Any other auto-create carries the owner
+    // the caller vouches for, so it stays reachable by that user.
+    if (deletedIds.has(id)) {
+      console.warn(`[STORE] addMessage: conversation ${id} was deleted during the turn — message not stored`);
+      return null;
+    }
     console.warn(`[STORE] addMessage: conversation ${id} not found — auto-creating`);
-    store.set(id, { messages: [], meta: { autoCreated: true, createdAt: Date.now() } });
+    const owner = extra?.ownerUserId ?? null;
+    store.set(id, { messages: [], meta: { autoCreated: true, createdAt: Date.now(), ...(owner ? { userId: String(owner) } : {}) } });
+    P.created(id);
   }
 
   const conv = store.get(id);
-  // extra: only contextRefs today (memory/contextProvenance.js) — references,
-  // never personal text, so forget/correct have nothing new to chase.
+  // extra: contextRefs (memory/contextProvenance.js) — references, never
+  // personal text, so forget/correct have nothing new to chase — and, since
+  // 2026-11-16 (D-06), the verification verdict of an assistant message
+  // (status words only), so a reviewer-revised answer is never
+  // indistinguishable from a confirmed one in the history.
   const msg = { role, content, ts: Date.now() };
   if (Array.isArray(extra?.contextRefs) && extra.contextRefs.length) msg.contextRefs = extra.contextRefs;
-  conv.messages.push(msg);
+  if (role === 'assistant' && extra?.verification && typeof extra.verification === 'object') {
+    const v = extra.verification;
+    msg.verification = {
+      status: typeof v.status === 'string' ? v.status.slice(0, 32) : null,
+      outcome: typeof v.outcome === 'string' ? v.outcome.slice(0, 32) : null,
+      revised: !!v.revised,
+    };
+  }
   conv.meta.updatedAt = Date.now();
+  P.messageAdded(id, msg);   // partitions on: a stable `mid` and its own row (no-op when off)
+  conv.messages.push(msg);
 
   // Safety valve ONLY (was a silent 200-message rolling delete — see header).
   // Context sent to the model is budgeted separately; storage keeps history.
   if (conv.messages.length > HARD_CAP_PER_CONV) {
     console.warn(`[STORE] conversation ${id} exceeded ${HARD_CAP_PER_CONV} messages — trimming oldest (safety valve)`);
-    conv.messages.splice(0, conv.messages.length - HARD_CAP_PER_CONV);
+    P.messagesTrimmed(id, conv.messages.splice(0, conv.messages.length - HARD_CAP_PER_CONV));
   }
 
   scheduleSave();
@@ -241,6 +294,7 @@ const META_KINDS = new Set(['understanding_intro']);
 export function updateConversationMeta(id, patch = {}) {
   const conv = store.get(id);
   if (!conv) return null;
+  P.metaChanged(id, ['updatedAt', ...Object.keys(patch).filter(k => META_PATCH_WHITELIST.has(k))]);
   for (const [k, v] of Object.entries(patch)) {
     if (!META_PATCH_WHITELIST.has(k)) continue;
     if (k === 'kind') {
@@ -297,7 +351,7 @@ export function getConversationMeta(id) {
  */
 export function clearConversation(id) {
   const conv = store.get(id);
-  if (conv) {
+  if (conv && !P.trashed(id)) {   // partitions on: the snapshot is a row of the trash store instead
     try {
       const parsed = loadJsonFile(TRASH_FILE, { label: 'history-trash' });
       const trash  = Array.isArray(parsed) ? parsed : [];
@@ -308,7 +362,9 @@ export function clearConversation(id) {
       console.warn(`[STORE] trash snapshot failed for ${id}: ${err.message} — deleting anyway`);
     }
   }
+  P.conversationDeleted(id);
   store.delete(id);
+  noteDeleted(id);
   scheduleSave();
 }
 
@@ -331,7 +387,9 @@ export function listConversationIdsForUser(userId) {
 
 /** Delete a conversation permanently — no trash snapshot. */
 export function purgeConversation(id) {
+  P.conversationDeleted(id);
   const existed = store.delete(id);
+  noteDeleted(id);
   if (existed) scheduleSave();
   return existed;
 }
@@ -343,6 +401,9 @@ export function purgeConversation(id) {
  */
 export function purgeTrashForUser(userId) {
   if (!userId) return 0;
+  // Partitions on: the user's trash rows are tombstoned by the binding's next
+  // flush (the count is not known synchronously; reported as 0).
+  if (P.trashPurged(String(userId))) return 0;
   const uid = String(userId);
   try {
     const parsed = loadJsonFile(TRASH_FILE, { label: 'history-trash' });
@@ -355,6 +416,128 @@ export function purgeTrashForUser(userId) {
     console.warn(`[STORE] trash purge failed for user=${uid}: ${err.message}`);
     return 0;
   }
+}
+
+// ── Message revisions (Phase 2b, step 3) ─────────────────────────────────────
+
+/** A message's stable key ("1-…" for new messages, "0-000042" for migrated ones). */
+export function messageKeyOf(conversationId, message) {
+  const conv = store.get(conversationId);
+  if (!conv || !message) return null;
+  return message[MESSAGE_KEY] ?? partitions.keyOf(message, conv.messages.indexOf(message));
+}
+
+/**
+ * Edit one message (content / contextRefs). With partitions on, the write is
+ * checked against the version this process holds: a concurrent edit returns
+ * `{ ok: false, conflict: true, current }` instead of overwriting it.
+ */
+export async function editMessage(conversationId, key, patch) {
+  const r = await partitions.editMessage(conversationId, key, patch);
+  if (r.ok) { const conv = store.get(conversationId); if (conv) conv.meta.updatedAt = Date.now(); scheduleSave(); }
+  return r;
+}
+
+/** Delete one message (a tombstone with partitions on). */
+export async function deleteMessage(conversationId, key) {
+  const r = await partitions.deleteMessage(conversationId, key);
+  if (r.ok) scheduleSave();
+  return r;
+}
+
+export function conversationPartitionBinding() { return partitions; }
+
+/**
+ * Phase 3 — write this turn's messages and its learning jobs in ONE
+ * transaction (memory/conversationPartitions.js commitTurn). Throws, with the
+ * messages removed again, if they could not be made durable.
+ */
+export async function commitTurnDurably(conversationId, messages, jobsWithin) {
+  return partitions.commitTurn(conversationId, messages, jobsWithin);
+}
+
+/** Can turns be committed durably here (history partitions authoritative)? */
+export function durableTurnCommitAvailable() { return partitions.authoritative(); }
+
+// ── Missing-conversation recovery + truthful persistence state (2026-11-16) ──
+//
+// Audit D-07: a conversation id the client already holds but this process's Map
+// lacks (restart, second instance, unverified mirror, owner partition not
+// loaded) used to be silently RE-CREATED empty at that id, and the next answer
+// had no history. These two functions let the route tell the cases apart.
+
+/** Is the configured persistence able to say whether this id exists right now? */
+function persistenceUnavailableReason(userId) {
+  if (partitions.authoritative() && userId && !partitions.ready(`user:${userId}`)) return 'owner-partition-not-loaded';
+  try {
+    const m = getMirrorStatus();
+    if (m?.enabled && /^(UNVERIFIED|RECOVERY REQUIRED)/.test(String(m.verdict ?? ''))) return 'mirror-unverified';
+  } catch { /* status unavailable is not evidence of anything */ }
+  return null;
+}
+
+/**
+ * Re-read ONE conversation from the history file into the Map (JSON-backed
+ * modes only — partitions load whole owners through ensureOwnerLoaded). Used
+ * when another process on the same disk wrote it after this one booted.
+ * @returns {boolean} true when the conversation is now present
+ */
+export function recoverConversation(id) {
+  if (!id || store.has(id)) return store.has(id);
+  if (!partitions.loadsJsonAtBoot() || deletedIds.has(id)) return false;
+  try {
+    const parsed = loadJsonFile(HISTORY_FILE, { label: 'history' });
+    if (parsed == null) return false;
+    const { data } = unwrapStore(parsed, { expected: SCHEMA, file: HISTORY_FILE, label: 'history' });
+    const conv = data?.[id];
+    if (!conv) return false;
+    const messages = Array.isArray(conv) ? conv : (conv.messages || []);
+    const meta = Array.isArray(conv) ? {} : (conv.meta || {});
+    store.set(id, { messages, meta });
+    console.log(`[STORE] RECOVERED conversation=${id} from disk (messages=${messages.length})`);
+    return true;
+  } catch (err) {
+    console.warn(`[STORE] recovery read failed for ${id}: ${err?.message ?? err}`);
+    return false;
+  }
+}
+
+/**
+ * Where does a requested conversation id stand for this request?
+ *   'present'      in the Map
+ *   'recovered'    was not, and has just been reloaded from disk
+ *   'unavailable'  persistence cannot answer right now (retryable)
+ *   'absent'       persistence answered: no such conversation
+ */
+export function conversationLoadState(id, userId = null) {
+  if (!id) return 'absent';
+  if (store.has(id)) return 'present';
+  if (recoverConversation(id)) return 'recovered';
+  return persistenceUnavailableReason(userId) ? 'unavailable' : 'absent';
+}
+
+/**
+ * Truthful persistence state of the conversation history (audit D-09/D-15).
+ *   DURABLE    committed in the authoritative database (partitions) for this turn
+ *   MIRRORED   written to disk and the Mongo mirror is verified and healthy
+ *   LOCAL_ONLY written to disk, no mirror configured — lost on a Render redeploy
+ *   DEGRADED   the mirror is configured but not durable (unverified, failing, standby)
+ *   FAILED     the last write of the history file failed
+ *   PENDING    nothing written since the change yet (debounce window)
+ * @param {{ durableCommit?: boolean }} [opts]
+ */
+export function persistenceState({ durableCommit = false } = {}) {
+  if (durableCommit) return 'DURABLE';
+  if (writeState.lastErrorAt && (!writeState.lastOkAt || writeState.lastErrorAt > writeState.lastOkAt)) return 'FAILED';
+  let mirror = null;
+  try { mirror = getMirrorStatus(); } catch { mirror = null; }
+  if (!mirror || !mirror.enabled) return 'LOCAL_ONLY';
+  return mirror.durable ? 'MIRRORED' : 'DEGRADED';
+}
+
+/** Privacy-safe status for /provider-health style reporting. */
+export function historyWriteStatus() {
+  return { ...writeState, pending: _writer.isPending?.() ?? null, partitions: partitions.mode };
 }
 
 /**

@@ -1,0 +1,1103 @@
+{
+ "stage": "A",
+ "infra": {
+  "events": 0,
+  "probes": 0,
+  "other": 0,
+  "networkBlocked": 0,
+  "actions": []
+ },
+ "metrics": {
+  "entity": {
+   "precision": 1,
+   "recallGraph": 0.2308,
+   "recallStructured": 0.5294,
+   "typeAgreement": 0.6667
+  },
+  "relationship": {
+   "precision": 1,
+   "recall": 0.2308,
+   "staleEdges": 0
+  },
+  "claim": {
+   "recall": 0.6071,
+   "recallFactStore": 0.5357,
+   "accuracy": 0.6071,
+   "recallChat": 0.6071,
+   "recallDocument": null
+  },
+  "temporal": {
+   "probeAccuracy": 0.6667,
+   "staleUnmarkedRate": null,
+   "staleQuoted": 0,
+   "staleQuotedWithChangeNote": 0
+  },
+  "contradiction": {
+   "changes": 0,
+   "detectedInStore": null,
+   "handledInContext": null
+  },
+  "correctionPropagation": {
+   "corrections": 0,
+   "storeViewsConsistent": null,
+   "contextConsistent": null,
+   "worldChangeStoreViewsConsistent": null
+  },
+  "retrievalRelevance": {
+   "precisionMean": 0.2464,
+   "irrelevantItemsPerProbe": 2.5625
+  },
+  "contextCompleteness": {
+   "mean": 0.7222,
+   "items": 0.7333,
+   "missCapture": 4,
+   "missRetrieval": 0
+  },
+  "crossSource": {
+   "completeness": null,
+   "documentItems": null
+  },
+  "personalizedReasoning": {
+   "completeness": 0.6667,
+   "precision": 1
+  },
+  "answerFactuality": {
+   "value": null,
+   "status": "not measured — needs model calls (answer + judge); not approved for this run"
+  },
+  "personalizedAnswerQuality": {
+   "value": null,
+   "status": "not measured — needs model calls (answer + judge); not approved for this run"
+  },
+  "uncertainty": {
+   "hedgedAsFact": 0,
+   "hedged": 0,
+   "hedgedUnmarkedInContext": 0,
+   "hedgedChecks": 0,
+   "unknownAcknowledged": 0
+  },
+  "deletion": {
+   "checksStore": 3,
+   "violationsStore": 0,
+   "complianceStore": 1,
+   "contextViolations": 0,
+   "deletedEntityNodes": 0,
+   "items": 1,
+   "itemsFullyGone": 1,
+   "factsHeld": 0,
+   "factsSourceTextOnly": 0,
+   "mind": 0,
+   "evidence": 0
+  },
+  "isolation": {
+   "storeLeaks": 0,
+   "contextLeaks": 0,
+   "probes": 16
+  },
+  "quantity": {
+   "facts": 24,
+   "currentFacts": 24,
+   "nodes": 12,
+   "edges": 8,
+   "evidence": 0
+  }
+ },
+ "perPersona": {
+  "p1": {
+   "claims": [
+    {
+     "slot": "name",
+     "value": "Ines Okafor",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "city",
+     "value": "Lisbon",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "cofounder",
+     "value": "Teodor Varga",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "project",
+     "value": "Atlas",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "deadline",
+     "value": "March 14",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "teamsize",
+     "value": "3 engineers",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    }
+   ],
+   "changes": [],
+   "deletion": [],
+   "hedged": [],
+   "leaks": [],
+   "entities": {
+    "labelled": 4,
+    "graphable": 3,
+    "predicted": 2,
+    "tp": 2,
+    "coveredGraph": 2,
+    "coveredAny": 4,
+    "typeAgree": 1,
+    "missed": [
+     "Atlas"
+    ],
+    "spurious": [],
+    "deletedEntityNodes": []
+   },
+   "relations": {
+    "labelled": 3,
+    "predicted": 2,
+    "tp": 2,
+    "covered": 2,
+    "stale": 0,
+    "missed": [
+     "self-builds-atlas"
+    ]
+   },
+   "counts": {
+    "facts": 8,
+    "currentFacts": 8,
+    "nodes": 5,
+    "edges": 4,
+    "evidence": 0
+   }
+  },
+  "p2": {
+   "claims": [
+    {
+     "slot": "name",
+     "value": "Daniel Mbeki",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "workplace",
+     "value": "Harrowgate Academy",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "profession",
+     "value": "physics teacher",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "research",
+     "value": "tidal energy storage",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "supervisor",
+     "value": "Amara Whitlock",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "childcount",
+     "value": "2 children",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "city",
+     "value": "Bristol",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    }
+   ],
+   "changes": [],
+   "deletion": [],
+   "hedged": [],
+   "leaks": [],
+   "entities": {
+    "labelled": 5,
+    "graphable": 4,
+    "predicted": 0,
+    "tp": 0,
+    "coveredGraph": 0,
+    "coveredAny": 1,
+    "typeAgree": 0,
+    "missed": [
+     "Harrowgate Academy",
+     "Amara Whitlock",
+     "Nia",
+     "Tobi"
+    ],
+    "spurious": [],
+    "deletedEntityNodes": []
+   },
+   "relations": {
+    "labelled": 4,
+    "predicted": 0,
+    "tp": 0,
+    "covered": 0,
+    "stale": 0,
+    "missed": [
+     "self-works_at-harrowgate",
+     "self-supervised_by-whitlock",
+     "self-child-nia",
+     "self-child-tobi"
+    ]
+   },
+   "counts": {
+    "facts": 5,
+    "currentFacts": 5,
+    "nodes": 2,
+    "edges": 1,
+    "evidence": 0
+   }
+  },
+  "p3": {
+   "claims": [
+    {
+     "slot": "name",
+     "value": "Sofia Hartmann",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "profession",
+     "value": "freelance brand designer",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "city",
+     "value": "Munich",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "projects",
+     "value": "Brindle & Co rebrand",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "projects",
+     "value": "Vellum Foods packaging",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "nextdeadline",
+     "value": "February 20",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    }
+   ],
+   "changes": [],
+   "deletion": [
+    {
+     "kind": "sensitive",
+     "value": "chronic migraines",
+     "found": {
+      "facts": false,
+      "mind": false,
+      "evidence": false
+     },
+     "factsDetail": {
+      "held": false,
+      "sourceTextOnly": false
+     }
+    }
+   ],
+   "hedged": [],
+   "leaks": [],
+   "entities": {
+    "labelled": 3,
+    "graphable": 2,
+    "predicted": 0,
+    "tp": 0,
+    "coveredGraph": 0,
+    "coveredAny": 0,
+    "typeAgree": 0,
+    "missed": [
+     "Brindle & Co",
+     "Vellum Foods"
+    ],
+    "spurious": [],
+    "deletedEntityNodes": []
+   },
+   "relations": {
+    "labelled": 2,
+    "predicted": 0,
+    "tp": 0,
+    "covered": 0,
+    "stale": 0,
+    "missed": [
+     "self-client-brindle",
+     "self-client-vellum"
+    ]
+   },
+   "counts": {
+    "facts": 4,
+    "currentFacts": 4,
+    "nodes": 2,
+    "edges": 1,
+    "evidence": 0
+   }
+  },
+  "p4": {
+   "claims": [
+    {
+     "slot": "name",
+     "value": "Rahul Deshpande",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "workplace",
+     "value": "Corvantis",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "profession",
+     "value": "backend engineer",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "manager",
+     "value": "Teodor Ilić",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "city",
+     "value": "Pune",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "partner",
+     "value": "Ankit Raman",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    }
+   ],
+   "changes": [],
+   "deletion": [],
+   "hedged": [],
+   "leaks": [],
+   "entities": {
+    "labelled": 5,
+    "graphable": 4,
+    "predicted": 1,
+    "tp": 1,
+    "coveredGraph": 1,
+    "coveredAny": 4,
+    "typeAgree": 1,
+    "missed": [
+     "Corvantis",
+     "Ankit Raman",
+     "Teodor Ilić"
+    ],
+    "spurious": [],
+    "deletedEntityNodes": []
+   },
+   "relations": {
+    "labelled": 4,
+    "predicted": 1,
+    "tp": 1,
+    "covered": 1,
+    "stale": 0,
+    "missed": [
+     "self-works_at-corvantis",
+     "self-partner-ankit",
+     "self-managed_by-teodori"
+    ]
+   },
+   "counts": {
+    "facts": 7,
+    "currentFacts": 7,
+    "nodes": 3,
+    "edges": 2,
+    "evidence": 0
+   }
+  }
+ },
+ "probes": [
+  {
+   "persona": "p1",
+   "probe": "p1-city",
+   "category": "factual",
+   "required": [
+    {
+     "slot": "city",
+     "kind": "current",
+     "value": "Lisbon",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    },
+    {
+     "slot": "deadline",
+     "value": "March 14"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.25
+  },
+  {
+   "persona": "p1",
+   "probe": "p1-cofounder",
+   "category": "relationship",
+   "required": [
+    {
+     "slot": "cofounder",
+     "kind": "current",
+     "value": "Teodor Varga",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh"
+    },
+    {
+     "slot": "city",
+     "value": "Lisbon"
+    },
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    },
+    {
+     "slot": "deadline",
+     "value": "March 14"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.1667
+  },
+  {
+   "persona": "p1",
+   "probe": "p1-launch",
+   "category": "temporal",
+   "required": [
+    {
+     "slot": "deadline",
+     "kind": "current",
+     "value": "March 14",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh"
+    },
+    {
+     "slot": "city",
+     "value": "Lisbon"
+    },
+    {
+     "slot": "cofounder",
+     "value": "Teodor Varga"
+    },
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.1667
+  },
+  {
+   "persona": "p1",
+   "probe": "p1-revenue",
+   "category": "uncertainty",
+   "required": [],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh"
+    },
+    {
+     "slot": "cofounder",
+     "value": "Teodor Varga"
+    },
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    },
+    {
+     "slot": "deadline",
+     "value": "March 14"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": {
+    "slot": "annual revenue",
+    "acknowledged": false
+   },
+   "completeness": null,
+   "precision": 0
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-work",
+   "category": "factual",
+   "required": [
+    {
+     "slot": "workplace",
+     "kind": "current",
+     "value": "Harrowgate Academy",
+     "source": "chat",
+     "present": false,
+     "inStructured": false,
+     "miss": "capture"
+    }
+   ],
+   "stale": [],
+   "irrelevant": [],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 0,
+   "precision": null
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-kids",
+   "category": "correction",
+   "required": [
+    {
+     "slot": "childcount",
+     "kind": "current",
+     "value": "2 children",
+     "source": "chat",
+     "present": false,
+     "inStructured": false,
+     "miss": "capture"
+    }
+   ],
+   "stale": [],
+   "irrelevant": [],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 0,
+   "precision": null
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-salary",
+   "category": "uncertainty",
+   "required": [],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "supervisor",
+     "value": "Amara Whitlock"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": {
+    "slot": "salary",
+    "acknowledged": false
+   },
+   "completeness": null,
+   "precision": 0
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-projects",
+   "category": "factual",
+   "required": [
+    {
+     "slot": "projects",
+     "kind": "current",
+     "value": "Brindle & Co rebrand",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "projects",
+     "kind": "current",
+     "value": "Vellum Foods packaging",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "nextdeadline",
+     "value": "February 20"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.6667
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-deadline",
+   "category": "temporal",
+   "required": [
+    {
+     "slot": "nextdeadline",
+     "kind": "current",
+     "value": "February 20",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "projects",
+     "value": "Brindle & Co rebrand"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.5
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-week",
+   "category": "personalized",
+   "required": [
+    {
+     "slot": "projects",
+     "kind": "current",
+     "value": "Brindle & Co rebrand",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "projects",
+     "kind": "current",
+     "value": "Vellum Foods packaging",
+     "source": "chat",
+     "present": false,
+     "inStructured": false,
+     "miss": "capture"
+    },
+    {
+     "slot": "nextdeadline",
+     "kind": "current",
+     "value": "February 20",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 0.6667,
+   "precision": 1
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-city",
+   "category": "factual",
+   "required": [
+    {
+     "slot": "city",
+     "kind": "current",
+     "value": "Munich",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "profession",
+     "value": "freelance brand designer"
+    },
+    {
+     "slot": "projects",
+     "value": "Brindle & Co rebrand"
+    },
+    {
+     "slot": "nextdeadline",
+     "value": "February 20"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.25
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-rate",
+   "category": "uncertainty",
+   "required": [],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "projects",
+     "value": "Brindle & Co rebrand"
+    },
+    {
+     "slot": "nextdeadline",
+     "value": "February 20"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": {
+    "slot": "hourly rate",
+    "acknowledged": false
+   },
+   "completeness": null,
+   "precision": 0
+  },
+  {
+   "persona": "p4",
+   "probe": "p4-manager",
+   "category": "deletion",
+   "required": [
+    {
+     "slot": "manager",
+     "kind": "current",
+     "value": "Teodor Ilić",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Corvantis"
+    },
+    {
+     "slot": "city",
+     "value": "Pune"
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.25
+  },
+  {
+   "persona": "p4",
+   "probe": "p4-partner",
+   "category": "relationship",
+   "required": [
+    {
+     "slot": "partner",
+     "kind": "current",
+     "value": "Ankit Raman",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Corvantis"
+    },
+    {
+     "slot": "manager",
+     "value": "Teodor Ilić"
+    },
+    {
+     "slot": "city",
+     "value": "Pune"
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.2
+  },
+  {
+   "persona": "p4",
+   "probe": "p4-role",
+   "category": "temporal",
+   "required": [
+    {
+     "slot": "profession",
+     "kind": "current",
+     "value": "backend engineer",
+     "source": "chat",
+     "present": false,
+     "inStructured": false,
+     "miss": "capture"
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Corvantis"
+    },
+    {
+     "slot": "manager",
+     "value": "Teodor Ilić"
+    },
+    {
+     "slot": "city",
+     "value": "Pune"
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 0,
+   "precision": 0
+  },
+  {
+   "persona": "p4",
+   "probe": "p4-rent",
+   "category": "uncertainty",
+   "required": [],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Corvantis"
+    },
+    {
+     "slot": "manager",
+     "value": "Teodor Ilić"
+    },
+    {
+     "slot": "city",
+     "value": "Pune"
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": {
+    "slot": "monthly rent",
+    "acknowledged": false
+   },
+   "completeness": null,
+   "precision": 0
+  }
+ ]
+}

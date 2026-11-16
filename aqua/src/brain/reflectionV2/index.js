@@ -31,7 +31,7 @@ import { applyWorldDelta } from './deltaApplier.js';
 import { brainEnabled } from '../worldModel/schema.js';
 import {
   loadSnapshot, loadWatermark, saveReflectionState,
-  forgetReflectionState, reflectionStoreStats,
+  forgetReflectionState, reflectionStoreStats, reflectionOwnerReady,
 } from './reflectionStore.js';
 import { ledger } from '../../pic/picStore.js';
 import { SELF_LABEL } from '../identity/selfEntity.js';
@@ -77,6 +77,10 @@ function rememberSnapshot(ownerId, snap) {
  */
 export function reflectWorldModel(deps, ownerId, opts = {}) {
   if (!ownerId) return { delta: null, applied: false };
+  // Phase 2b: with partitions authoritative, an owner not loaded in this unit
+  // of work has UNKNOWN state, not empty state. Diffing against "nothing" would
+  // report the whole graph as changed, so do nothing; the next turn reflects.
+  if (!reflectionOwnerReady(ownerId)) { metrics.skippedNotLoaded = (metrics.skippedNotLoaded ?? 0) + 1; return { delta: null, applied: false, skipped: 'owner-not-loaded' }; }
   const started = Date.now();
   try {
     metrics.reflections += 1;

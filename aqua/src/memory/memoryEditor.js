@@ -34,6 +34,7 @@ import {
 import { RESOLUTION_ACTIONS } from './memoryResolver.js';
 import { resolveCanonicalKey } from './memoryExtractor.js';
 import { withTransitions } from './propagation.js';
+import { safeKey } from '../core/logSafety.js';
 
 const CONF_CEIL = 0.98;          // matches consolidationEngine's ceiling
 const MIN_STORE_CONF = 0.5;      // longTermMemory MIN_CONF — below is rejected
@@ -85,7 +86,7 @@ export function correctFact(ownerId, key, value, { reason = 'user_correction', s
     }), { source, kind: 'corrected' });
     const after = getFact(ownerId, canonical);
     recordMemoryRevision(ownerId, canonical, { before: existing?.value ?? null, after: after?.value ?? value, reason });
-    console.log(`[MEMEDIT] CORRECT owner=${ownerId} key=${canonical}`);
+    console.log(`[MEMEDIT] CORRECT owner=${ownerId} key=${safeKey(canonical)}`);
     return { ok: true, key: canonical, fact: factView(after) };
   } catch (err) {
     console.warn('[MEMEDIT] correctFact failed (non-fatal):', err.message);
@@ -116,7 +117,7 @@ export function replaceFact(ownerId, key, value, { reason = 'replace', confidenc
     }), { source, kind: 'changed' });
     const after = getFact(ownerId, canonical);
     recordMemoryRevision(ownerId, canonical, { before: existing?.value ?? null, after: after?.value ?? value, reason });
-    console.log(`[MEMEDIT] REPLACE owner=${ownerId} key=${canonical}`);
+    console.log(`[MEMEDIT] REPLACE owner=${ownerId} key=${safeKey(canonical)}`);
     return { ok: true, key: canonical, fact: factView(after) };
   } catch (err) {
     console.warn('[MEMEDIT] replaceFact failed (non-fatal):', err.message);
@@ -136,7 +137,7 @@ export function pinFact(ownerId, key, pinned = true) {
     fact.updatedAt = Date.now();
     touchMind(mind);
     recordMemoryRevision(ownerId, key, { before: !pinned, after: !!pinned, reason: pinned ? 'pinned' : 'unpinned' });
-    console.log(`[MEMEDIT] ${pinned ? 'PIN' : 'UNPIN'} owner=${ownerId} key=${key}`);
+    console.log(`[MEMEDIT] ${pinned ? 'PIN' : 'UNPIN'} owner=${ownerId} key=${safeKey(key)}`);
     return { ok: true, key, fact: factView(fact) };
   } catch (err) {
     return fail(err.message);
@@ -159,7 +160,7 @@ export function archiveFact(ownerId, key, { reason = 'manual_archive', force = f
       touchMind(mind);
     }, { kind: 'archived' });
     recordMemoryRevision(ownerId, key, { before: 'active', after: 'archived', reason });
-    console.log(`[MEMEDIT] ARCHIVE owner=${ownerId} key=${key}`);
+    console.log(`[MEMEDIT] ARCHIVE owner=${ownerId} key=${safeKey(key)}`);
     return { ok: true, key, fact: factView(fact) };
   } catch (err) {
     return fail(err.message);
@@ -180,7 +181,7 @@ export function restoreFact(ownerId, key, { reason = 'manual_restore' } = {}) {
       touchMind(mind);
     });
     recordMemoryRevision(ownerId, key, { before: 'archived', after: 'active', reason });
-    console.log(`[MEMEDIT] RESTORE owner=${ownerId} key=${key}`);
+    console.log(`[MEMEDIT] RESTORE owner=${ownerId} key=${safeKey(key)}`);
     return { ok: true, key, fact: factView(fact) };
   } catch (err) {
     return fail(err.message);
@@ -244,7 +245,7 @@ export function mergeFacts(ownerId, keys = [], { intoKey = null, reason = 'manua
     recordMemoryRevision(ownerId, survivor.key, {
       before: { absorbed: absorbedKeys }, after: { supportCount: survivor.supportCount }, reason,
     });
-    console.log(`[MEMEDIT] MERGE owner=${ownerId} survivor=${survivor.key} absorbed=${absorbedKeys.join(',')}`);
+    console.log(`[MEMEDIT] MERGE owner=${ownerId} survivor=${safeKey(survivor.key)} absorbed=${absorbedKeys.map(safeKey).join(',')}`);
     return { ok: true, survivor: factView(survivor), archived: absorbedKeys };
   } catch (err) {
     console.warn('[MEMEDIT] mergeFacts failed (non-fatal):', err.message);
@@ -308,7 +309,7 @@ export function splitFact(ownerId, key, parts = [], { reason = 'manual_split' } 
       touchMind(mind);
     }, { kind: 'split' });
     recordMemoryRevision(ownerId, key, { before: 'active', after: `split_into:${source.splitInto.join(',')}`, reason });
-    console.log(`[MEMEDIT] SPLIT owner=${ownerId} key=${key} into=${source.splitInto.join(',')}`);
+    console.log(`[MEMEDIT] SPLIT owner=${ownerId} key=${safeKey(key)} into=${source.splitInto.map(safeKey).join(',')}`);
     return { ok: true, source: factView(source), parts: source.splitInto.map(k => factView(getFact(ownerId, k))) };
   } catch (err) {
     console.warn('[MEMEDIT] splitFact failed (non-fatal):', err.message);

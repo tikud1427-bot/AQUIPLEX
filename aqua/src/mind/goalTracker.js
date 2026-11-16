@@ -12,7 +12,8 @@ import { touchMind } from './mindStore.js';
 import { pushTimeline } from './timeline.js';
 import { splitCoordinated, listContinuation, isGoalLike, goalSimilarity, splitGoalTitle } from './goalText.js';
 import { transitionOf, closeKind, datesIn, subjectShared, partAbout, speculative, achieves, whenSaid, reportsDone } from '../understanding/stateTransition.js';
-import { splitClauses } from '../memory/sentenceParser.js';
+import { splitClauses, splitSentences } from '../memory/sentenceParser.js';
+import { assertedText } from '../understanding/speechAct.js';
 
 export { goalSimilarity, splitGoalTitle };
 
@@ -149,7 +150,9 @@ export function trackGoals(mind, { userMessage = '', extractedFacts = [], conver
   const now = Date.now();
   const changed = [];
 
-  const titles = detectGoalTitles(userMessage);
+  // Capture Integrity V1: a goal is read only from what the user asserted — never from a
+  // question or request ("Can you help me plan my training?", "Should we plan to hire?").
+  const titles = detectGoalTitles(assertedText(splitSentences(userMessage)));
   for (const f of extractedFacts) {
     if (f.key !== 'goal' || typeof f.value !== 'string') continue;
     for (const piece of splitCoordinated(f.value.trim())) {

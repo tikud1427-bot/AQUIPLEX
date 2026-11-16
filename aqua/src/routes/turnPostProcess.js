@@ -42,12 +42,29 @@ import { defer } from '../core/jobs/jobRegistry.js';
 import { enqueue, queueConfigured as durableQueueConfigured } from '../core/jobs/jobQueue.js';
 import * as Brain from '../brain/index.js';
 import { memoryAfterTurn } from '../memory/engine.js';
-import { getConversation } from '../memory/conversationStore.js';
+import { getConversation, getConversationMeta, addMessage, commitTurnDurably, durableTurnCommitAvailable } from '../memory/conversationStore.js';
+import { conversationOwner } from '../memory/conversationPartitions.js';
+import { durableLearningEnabled, turnLearningJobs, enqueueTurnLearning, turnIndexJob } from '../learning/turnLearning.js';
+import { commitTurnMemory, turnHasEffect, awaitTurnEffects } from '../memory/turnCommit.js';
+import { flushScopeStrict } from '../core/storage/requestWrites.js';
+import { commitChargeIn } from '../credits/pendingCharges.js';
+import { isEmbeddingEnabled } from '../embeddings/embeddingProvider.js';
 import { REFLECT_EVERY_TURNS } from '../mind/reflectionEngine.js';
 import { consolidate, consolidateEnabled, CONSOLIDATE_EVERY_TURNS } from '../pic/core.js';
 import { peekMind } from '../mind/mindStore.js';
 import { logE6Turn } from '../core/observability.js';
 import { resolveClaimShadowMode } from '../core/claims/shadowMode.js';
+import { noteFeature } from '../core/flags.js';
+
+/**
+ * Brain post-turn stages return { ok } on success, { ok:false, skipped } when
+ * their flag or input says not to run, and the guard fallback { ok:false } when
+ * they threw. Only the first and last are executions (Sprint 1 feature status).
+ */
+function noteOutcome(gate, result) {
+  if (!result || result.skipped) return;
+  noteFeature(gate, result.ok ? 'ran' : 'failed', result.ok ? null : 'guarded-error');
+}
 
 /**
  * Resolve the mode, then project — or say why not.
@@ -171,6 +188,7 @@ export function runPostTurn({
         assistantMessage,
       });
     } catch { /* fail-open: world-model enrichment must never affect the turn */ }
+    noteOutcome('AQUA_BRAIN_INGEST', ingest);
 
     // E5/PR-6 — project THIS turn's facts into the claim substrate, in shadow.
     //
@@ -198,8 +216,8 @@ export function runPostTurn({
       // decay/contradict/version like every existing dimension. Reads the
       // USER's message only: inferring the user's style from AQUA's own
       // output would be a closed loop that manufactures its own evidence.
-      d.observeTwin({ ownerId, userMessage, conversationId });
-    } catch { /* fail-open */ }
+      noteOutcome('AQUA_TWIN_V2', d.observeTwin({ ownerId, userMessage, conversationId }));
+    } catch { noteFeature('AQUA_TWIN_V2', 'failed', 'threw'); }
   });
 
   // ── E6 — SEMANTIC UNDERSTANDING, ON THE REAL TURN PATH AT LAST ─────────────
@@ -258,8 +276,8 @@ export function runPostTurn({
     const runInProcess = () => Promise.resolve()
       .then(() => d.understandTurn({ ownerId, conversationId, turn, userMessage }))
       .then(
-        result => d.reportE6({ ownerId, conversationId, result, ms: Date.now() - started }),
-        error => d.reportE6({ ownerId, conversationId, error, ms: Date.now() - started }),
+        result => { noteFeature('AQUA_E6', 'ran'); return d.reportE6({ ownerId, conversationId, result, ms: Date.now() - started }); },
+        error => { noteFeature('AQUA_E6', 'failed', error?.code ?? error?.name); return d.reportE6({ ownerId, conversationId, error, ms: Date.now() - started }); },
       )
       .catch(() => { /* fail-open: understanding must never affect the turn */ });
 
@@ -278,7 +296,7 @@ export function runPostTurn({
           idempotencyKey: `understanding.turn.v1:${conversationId}:${turn}`,
         }))
         .then(
-          job => d.reportE6({ ownerId, conversationId, scheduled: job ?? { created: true }, ms: Date.now() - started }),
+          job => { noteFeature('AQUA_E6', 'ran'); return d.reportE6({ ownerId, conversationId, scheduled: job ?? { created: true }, ms: Date.now() - started }); },
           () => runInProcess(),
         )
         .catch(() => { /* fail-open floor: reporter threw; stay silent (see note above) */ });
@@ -294,7 +312,8 @@ export function runPostTurn({
   d.defer(() => {
     try {
       if ((d.getConversation(conversationId).length % d.reflectEvery) === 0) {
-        d.reflectTurn(ownerId);
+        const r = d.reflectTurn(ownerId);
+        if (r?.applied) noteFeature('AQUA_REFLECT_V2', 'ran');
       }
     } catch { /* fail-open: reflection must never affect the turn */ }
   });
@@ -316,8 +335,141 @@ export function runPostTurn({
       if (turns - last < d.consolidateEvery) return;
       lastConsolidatedAt.set(ownerId, turns);
       d.consolidate(ownerId);
-    } catch { /* fail-open: maintenance must never affect the turn */ }
+      noteFeature('AQUA_CONSOLIDATE', 'ran');
+    } catch { noteFeature('AQUA_CONSOLIDATE', 'failed', 'threw'); /* fail-open: maintenance must never affect the turn */ }
   });
 }
 
 export const _internals = { REAL_DEPS };
+
+// ── Scalability Phase 3 — durable post-turn learning ─────────────────────────
+//
+// With AQUA_POST_TURN_DURABLE=on (and history partitions on, and a database),
+// the turn's messages and every learning job it needs are committed in ONE
+// transaction, and the API runs none of the learning itself: workers do
+// (learning/turnLearning.js). The turn is acknowledged only after that
+// transaction committed. If it cannot commit, the request fails with a
+// retryable error — the caller refunds and rolls back the turn's memory — and
+// nothing of the turn remains, rather than a turn that was answered and then
+// silently never learned from.
+
+/** Is durable learning on AND possible here? `reason` says why not. */
+export function durableTurnLearningState() {
+  if (!durableLearningEnabled()) return { active: false, reason: 'AQUA_POST_TURN_DURABLE is off' };
+  if (!durableQueueConfigured()) return { active: false, reason: 'AQUA_POST_TURN_DURABLE=on but DATABASE_URL is not set' };
+  if (!durableTurnCommitAvailable()) return { active: false, reason: 'AQUA_POST_TURN_DURABLE=on but history partitions are not on (AQUA_STORE_PARTITIONS .aqua-history.json:on)' };
+  return { active: true, reason: null };
+}
+export const durableTurnLearningActive = () => durableTurnLearningState().active;
+
+const durableStats = { committed: 0, failed: 0, jobs: 0, ownerMismatch: 0, commitMs: [], preFlushFailed: 0, postCommitNotDurable: 0, effectsTimedOut: 0 };
+export function durableTurnStats() {
+  const ms = [...durableStats.commitMs].sort((a, b) => a - b);
+  const pct = q => (ms.length ? ms[Math.min(ms.length - 1, Math.floor(q * ms.length))] : null);
+  return { committed: durableStats.committed, failed: durableStats.failed, jobs: durableStats.jobs,
+    ownerMismatch: durableStats.ownerMismatch, preFlushFailed: durableStats.preFlushFailed,
+    postCommitNotDurable: durableStats.postCommitNotDurable, effectsTimedOut: durableStats.effectsTimedOut,
+    commitMs: { n: ms.length, p50: pct(0.5), p95: pct(0.95), max: ms.at(-1) ?? null } };
+}
+
+/**
+ * Persist a turn (user message + answer) and schedule its learning, durably.
+ * Replaces `persistUserTurn + addMessage(assistant) + runPostTurn` on the
+ * durable path. Throws a retryable error when the turn could not be made
+ * durable; `commitMemory` (the turn's memory commit) runs only after success.
+ */
+export async function commitTurnWithLearning({
+  conversationId, userMessage, assistantMessage, assistantExtra = null,
+  ownerId, taskType = null, workspaceId = null, rememberSensitive = false,
+  commitMemory = () => {}, legacyPostTurn = null, memoryTxn = null, chargeId = null,
+}, deps = {}) {
+  const t0 = Date.now();
+  const add = deps.addMessage ?? addMessage;
+  const notDurable = (err, where) => Object.assign(new Error('The message could not be saved. Please try again.'), {
+    retryable: true, retryAfterMs: 2_000, type: 'turn_not_durable', code: err?.code ?? 'TURN_NOT_DURABLE', where, cause: err });
+  // Phase 4A — 1. What this turn's preparation wrote (Mind observation, facts,
+  // identity, retrieval bookkeeping) becomes durable BEFORE the turn is
+  // committed. Before the messages are added: their inserts must stay inside
+  // the transaction below. A failure here leaves nothing committed: the caller
+  // refunds and rolls the turn's memory back.
+  let preKeys = 0;
+  try { preKeys = (await flushScopeStrict()).keys; }
+  catch (err) {
+    durableStats.preFlushFailed++; durableStats.failed++;
+    console.error(`[TURN] turn state not durable before commit conv=${conversationId}: ${err?.message ?? err}`);
+    throw notDurable(err, 'pre-commit');
+  }
+  const tPre = Date.now() - t0;
+  const tTx0 = Date.now();
+  // D-13 (2026-11-16): addMessage returns null for a conversation deleted while
+  // this turn ran — it is not resurrected, and the turn is not committed.
+  const addOrFail = (...args) => {
+    const list = add(...args);
+    if (!list) throw notDurable(Object.assign(new Error('conversation was deleted during the turn'), { code: 'CONVERSATION_DELETED' }), 'deleted');
+    return list.at(-1);
+  };
+  const msgs = [addOrFail(conversationId, 'user', userMessage)];
+  if (assistantMessage != null) msgs.push(addOrFail(conversationId, 'assistant', assistantMessage, assistantExtra));
+  // Learning belongs to the memory owner; the worker reads the turn from the
+  // conversation owner's rows. They are the same owner except in edge cases
+  // (a turn whose conversation belongs to someone else); then the turn is
+  // still committed durably, and its learning runs in-process as before.
+  const meta = getConversationMeta(conversationId);
+  const convOwner = conversationOwner(conversationId, { meta });
+  const learnDurably = Boolean(ownerId) && ownerId === convOwner;
+  if (ownerId && !learnDurably) {
+    durableStats.ownerMismatch++;
+    console.warn(`[TURN] durable learning not possible for this turn (memory owner ≠ conversation owner); learning in-process conv=${conversationId}`);
+  }
+  let jobs = [];
+  let chargeCommitted = false;
+  // Phase 4A — the fact-embedding refresh this turn scheduled becomes a durable
+  // job in the same transaction (it calls a provider: not on the request path).
+  const indexDurably = learnDurably && turnHasEffect(memoryTxn, 'index') && isEmbeddingEnabled();
+  try {
+    await commitTurnDurably(conversationId, msgs, async (client, keys) => {
+      // Phase 4B: the request's pending charge becomes COMMITTED in THIS
+      // transaction — a charge is settled exactly when its turn exists.
+      if (chargeId) chargeCommitted = await commitChargeIn(client, chargeId, { reason: 'turn-committed' });
+      if (!learnDurably) return [];
+      const specs = turnLearningJobs({ ownerId, conversationId, keys, turn: getConversation(conversationId).length,
+        taskType, workspaceId, rememberSensitive });
+      if (indexDurably) specs.push(turnIndexJob({ ownerId, conversationId, keys }));
+      jobs = await enqueueTurnLearning(client, specs);
+      return jobs;
+    });
+  } catch (err) {
+    durableStats.failed++;
+    console.error(`[TURN] durable commit FAILED conv=${conversationId}: ${err?.message ?? err}`);
+    throw notDurable(err, 'commit');
+  }
+  const tTx = Date.now() - tTx0;
+  const tFx0 = Date.now();
+  // 2. The turn's memory commits; its effects on other stores (evidence-lane
+  // retirement, propagation) run now and are AWAITED (bounded), then written.
+  if (memoryTxn) commitTurnMemory(memoryTxn, { skipKinds: indexDurably ? ['index'] : null });
+  else commitMemory();
+  if (memoryTxn && !(await awaitTurnEffects(memoryTxn, 3_000))) {
+    durableStats.effectsTimedOut++;
+    console.warn(`[TURN] post-commit effects still running after 3 s conv=${conversationId} (they finish in the background)`);
+  }
+  const tFx = Date.now() - tFx0;
+  // 3. Everything written since step 1 (the effects, the conversation's
+  // updatedAt) — the turn is already committed, so a failure here cannot
+  // un-accept it: it is counted and logged, and the writes stay queued for
+  // the background retry. The window is one database round trip after a
+  // successful commit (AQUIPLEX_PHASE_4A_PERSISTENCE_REPORT.md §4).
+  const tPost = Date.now();
+  let postKeys = 0;
+  try { postKeys = (await flushScopeStrict()).keys; }
+  catch (err) {
+    durableStats.postCommitNotDurable++;
+    console.error(`[TURN] post-commit writes not yet durable conv=${conversationId} (queued for retry): ${err?.message ?? err}`);
+  }
+  const ms = Date.now() - t0;
+  durableStats.committed++; durableStats.jobs += jobs.length;
+  durableStats.commitMs.push(ms); if (durableStats.commitMs.length > 2_000) durableStats.commitMs.shift();
+  console.log(`[TURN] ${JSON.stringify({ evt: 'turn', phase: 'committed', conv: conversationId, jobs: jobs.length, created: jobs.filter(j => j.created).length, ms, preFlushMs: tPre, txMs: tTx, effectsMs: tFx, postFlushMs: Date.now() - tPost, preKeys, postKeys, charge: chargeId ? (chargeCommitted ? 'committed' : 'not-pending') : null })}`);
+  if (ownerId && !learnDurably && typeof legacyPostTurn === 'function') legacyPostTurn();
+  return { durable: true, jobs, ms, chargeCommitted };
+}

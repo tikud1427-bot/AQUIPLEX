@@ -47,6 +47,11 @@ import { migrateLegacyMemory }  from "./src/memory/migrate.js";
 import { migrateIdentity }      from "./src/memory/identityMigration.js";
 import { fail, ErrorCodes } from "./src/routes/envelope.js";
 import { errorText } from './src/core/errorText.js';
+import { ensureOwnerLoaded, anyAuthoritative as anyPartitionStoreAuthoritative } from './src/core/storage/ownerBinding.js';
+import { runWithWriteScope } from './src/core/storage/requestWrites.js';
+import { installResponseGate } from './src/core/storage/responseGate.js';
+import { ownerForUser } from './src/memory/ownerResolver.js';
+import { errorMeta, stackFrames } from './src/core/logSafety.js';
 import { configureTelemetryFromEnv } from './src/core/telemetryExport.js';
 import { startMetricsPublisher } from './src/core/processMetrics.js';
 
@@ -76,7 +81,11 @@ runStartupValidation();
 // One change, every store (src/memory/propagation.js): finish what a crash, a
 // restart or a failed step left pending — without waiting for the user's next message.
 // DEFAULT OFF: starts only when AQUA_PROPAGATION=on (startPropagationSweeper checks it).
-startPropagationSweeper();
+// Phase 3 prep: an AQUA_ROLE=api process runs NO periodic scheduler — a stateless
+// API instance must not sweep (every instance would). Unset role = today's single
+// process, unchanged.
+if (String(process.env.AQUA_ROLE ?? '').toLowerCase() !== 'api') startPropagationSweeper();
+else console.log('[ROLE] api — periodic schedulers are not started in this process');
 
 // ── Understanding-loop flag report (Phase 1) ─────────────────────────────────
 // Most of the Brain switches default OFF in code, so which understanding
@@ -146,9 +155,18 @@ try {
     }
     // E3/PR-5 — install the storage backend the environment asks for, then say
     // which one is live. Fails open to JSON with the reason printed.
-    const { configureStorageFromEnv, storageBootLine } = await import('./src/core/storage/index.js');
+    const { configureStorageFromEnv, storageBootLine, configurePartitionBindings } = await import('./src/core/storage/index.js');
     const storeResult = await configureStorageFromEnv();
     console.log(storageBootLine(storeResult));
+    // Phase 2b — per-owner partition bindings (AQUA_STORE_PARTITIONS). Always
+    // printed: `partitions=off` is the default and says so.
+    console.log(await configurePartitionBindings());
+    // Phase 3 — durable post-turn learning: always stated, with the reason when off.
+    try {
+      const { durableTurnLearningState } = await import('./src/routes/turnPostProcess.js');
+      const s = durableTurnLearningState();
+      console.log(`[TURN] durable post-turn learning: ${s.active ? 'ACTIVE (turn + jobs in one transaction; workers learn)' : `off — ${s.reason}`}`);
+    } catch (err) { console.log(`[TURN] durable state unavailable: ${errorText(err)}`); }
 
     // E3/PR-6 — in shadow mode, report drift once at boot. Deliberately NOT
     // awaited: a comparison that delayed startup would be the first thing
@@ -172,8 +190,10 @@ try {
 // listing all 26 gates every boot would be read exactly as often as listing
 // none. Fail-open: a boot report that can break boot is worse than no report.
 try {
-  const { flagBootLine } = await import('./src/core/flags.js');
+  const { flagBootLine, flagEffectiveLine } = await import('./src/core/flags.js');
   console.log(flagBootLine());
+  // Which ON gates cannot run here (missing Postgres, keys or a parent gate) — Sprint 1.
+  console.log(flagEffectiveLine());
 } catch (err) {
   console.warn(`[FLAGS] census unavailable: ${err?.message ?? err}`);
 }
@@ -214,6 +234,26 @@ setTimeout(() => {
 }, 2000).unref?.();
 
 const router = express.Router();
+
+// Phase 4A — every request runs in a write scope; its response is held until
+// what it wrote is durable (core/storage/responseGate.js). A no-op while no
+// store is on partitions and no refund is owed.
+router.use((req, res, next) => runWithWriteScope(() => { installResponseGate(req, res); next(); }));
+
+// Phase 2b — the unit-of-work load. When any store is authoritative on owner
+// partitions (AQUA_STORE_PARTITIONS=<store>:on), this request's owner is loaded
+// into those stores before any route reads them: one indexed query. With every
+// store off (the default) it is a no-op. A database failure is logged and the
+// request continues with the owner NOT READY: bound stores then decline to act
+// (reflection skips) rather than act on missing state.
+router.use(async (req, _res, next) => {
+  try {
+    if (req.aquaUserId && anyPartitionStoreAuthoritative()) await ensureOwnerLoaded(ownerForUser(req.aquaUserId));
+  } catch (err) {
+    console.error(`[STORE] owner load failed (owner not ready this request): ${errorText(err)}`);
+  }
+  next();
+});
 
 router.use("/chat",            chatRoute);
 router.use("/provider-health", healthRoute);
@@ -256,7 +296,8 @@ router.use((err, req, res, _next) => {
   if (err.type === "entity.parse.failed") {
     return fail(res, ErrorCodes.BAD_REQUEST, "Invalid request body (malformed JSON).");
   }
-  console.error(`[AQUA] Unhandled error ${req.method} ${req.baseUrl}${req.path}:`, err.stack ?? err.message);
+  // Class/code/status + frames, never the raw message (core/logSafety.js).
+  console.error(`[AQUA] Unhandled error ${req.method} ${req.baseUrl}${req.path}: ${errorMeta(err)}`, `\n${stackFrames(err)}`);
   return fail(res, errorCodeFor(status), err.message ?? "Internal server error");
 });
 

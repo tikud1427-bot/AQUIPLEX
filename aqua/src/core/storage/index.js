@@ -206,11 +206,29 @@ export async function seedShadowBaseline(shadow, { dataDir = null, primary = cre
  */
 export async function flushStorage(timeoutMs = 5_000) {
   const a = getAdapter();
-  if (typeof a.flush !== 'function') return 0;
+  // Phase 2b — per-owner partition writes are behind a short debounce too.
+  // Imported lazily: ownerBinding → atomicStore → this module is a cycle.
+  const owners = import('./ownerBinding.js').then(m => m.flushOwnerBindings(timeoutMs)).catch(() => 0);
+  if (typeof a.flush !== 'function') return owners.then(() => 0);   // contract: the adapter's count, 0 without one
   return Promise.race([
-    a.flush(),
+    Promise.all([a.flush(), owners]).then(([n]) => n),
     new Promise(resolve => setTimeout(() => resolve('timeout'), timeoutMs)),
   ]).catch(() => 0);
+}
+
+/**
+ * Phase 2b — apply the per-owner binding safety rules that need the database
+ * (refuse `on` for a never-migrated store) and return their boot line.
+ * Called by the server boot (router.js) and the worker. Never throws.
+ */
+export async function configurePartitionBindings() {
+  try {
+    const m = await import('./ownerBinding.js');
+    await m.configureOwnerBindings();
+    return m.ownerBindingBootLine();
+  } catch (err) {
+    return `[STORE] partitions: configuration failed: ${errorText(err)}`;
+  }
 }
 
 /** One boot line, always — L13, no dark stages. */

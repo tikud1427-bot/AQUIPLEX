@@ -34,6 +34,7 @@ import {
   createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore,
 } from '../../core/atomicStore.js';
 import { dataPath } from '../../core/dataDir.js';
+import { bindKeyedStore } from '../../core/storage/keyedBinding.js';
 
 const STORE_FILE = dataPath('.aqua-brain.json');
 const SCHEMA     = 1;
@@ -70,7 +71,9 @@ function loadFromDisk() {
 }
 
 const _writer = createDebouncedWriter(STORE_FILE);
-function scheduleSave() {
+function scheduleSave(ownerKey = null) {
+  if (ownerKey) binding.markDirty(ownerKey);
+  if (!binding.writesWholeJson()) return;
   _writer.schedule(() => {
     const data = {};
     for (const [owner, b] of store.entries()) data[owner] = Object.fromEntries(b);
@@ -78,7 +81,25 @@ function scheduleSave() {
   });
 }
 
-loadFromDisk();
+// ── Per-owner persistence (scalability Phase 2c) ─────────────────────────────
+// WRITER: the server only (reflection apply, the Memory UI's annotate/remove);
+// more than one API instance makes it concurrent. MERGE: three-way per entity
+// annotation against the last-synced base (core/storage/entryMerge.js): an
+// annotation changed on one side takes that side; changed on both, the newer
+// updatedAt wins; removed on one side and untouched on the other, removed.
+const binding = bindKeyedStore({
+  storeKey: '.aqua-brain.json', file: STORE_FILE, label: 'brain', schema: SCHEMA,
+  mergeSchema: { root: { time: a => Number(a?.updatedAt) || 0 } },
+  encode: owner => (store.has(owner) ? Object.fromEntries(store.get(owner)) : undefined),
+  decode: obj => new Map(Object.entries(obj ?? {})),
+  install: (owner, b) => { if (b) store.set(owner, b); else store.delete(owner); },
+  evict: owner => store.delete(owner),
+  changedAt: obj => Math.max(0, ...Object.values(obj ?? {}).map(a => Number(a?.updatedAt) || 0)),
+  reloadJson: () => loadFromDisk(),
+});
+export function annotationsPartitionBinding() { return binding; }
+
+if (binding.loadsJsonAtBoot()) loadFromDisk();
 
 // ── Read ─────────────────────────────────────────────────────────────────────
 
@@ -134,7 +155,7 @@ export function annotate(ownerId, entityId, patch = {}) {
     updatedAt: now,
   };
   b.set(entityId, next);
-  scheduleSave();
+  scheduleSave(ownerId ?? 'anon');
   return next;
 }
 
@@ -149,7 +170,7 @@ function normOverride(v) {
 export function removeAnnotation(ownerId, entityId) {
   const b = bucket(ownerId);
   const had = b.delete(entityId);
-  if (had) scheduleSave();
+  if (had) scheduleSave(ownerId ?? 'anon');
   return had;
 }
 
@@ -161,6 +182,7 @@ export function removeAnnotation(ownerId, entityId) {
  */
 export function purgeOwner(ownerId) {
   const key = ownerId ?? 'anon';
+  binding.markDeleted(key);
   const b = store.get(key);
   if (!b) return { annotations: 0 };
   const removed = { annotations: b.size };
@@ -175,4 +197,4 @@ export function annotationStats() {
   return { owners: store.size, annotations: total, pinned };
 }
 
-export function _resetAnnotationsForTests() { store.clear(); }
+export function _resetAnnotationsForTests() { store.clear(); binding._reset(); }

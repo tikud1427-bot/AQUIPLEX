@@ -15,6 +15,7 @@ import {
   getSymbolGraph, getRoutes, getModels, findRoutes, findModels,
 } from './symbolGraph.js';
 import { buildRepoDigest } from './contextCompressor.js';
+import { textMeta } from '../core/logSafety.js';
 
 const MAX_FILES          = 5;
 const MAX_CONTENT_CHARS  = 2_000;   // per file content snippet
@@ -73,7 +74,7 @@ export function retrieveProjectContext(workspaceId, query, limit = MAX_FILES, { 
     console.log(`[RETRIEVAL] Broad-query fallback applied workspace=${workspaceId} added=${topFiles.length}`);
   }
 
-  console.log(`[RETRIEVAL] Relevant files selected workspace=${workspaceId} query="${query.slice(0, 60)}" count=${topFiles.length}`);
+  console.log(`[RETRIEVAL] Relevant files selected workspace=${workspaceId} query=(${textMeta(query)}) count=${topFiles.length}`);
 
   const files = topFiles.map(({ filePath, meta }) => ({
     path:          filePath,

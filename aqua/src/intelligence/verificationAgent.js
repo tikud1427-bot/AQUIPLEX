@@ -52,7 +52,12 @@ import { generateText }    from '../providers/router.js';
 import { createContext }   from '../core/observability.js';
 import { getFocusRisks }   from './critic.js';
 import { registerAgent }   from './agentRegistry.js';
-import { hasGroundedEvidence, isCapabilityRefusal, isUsableRevision } from './evidenceContext.js';
+import {
+  hasGroundedEvidence, isCapabilityRefusal, isUsableRevision,
+  CONVERSATION_GROUNDING_RULE, conversationReviewBlock, withdrawalReason,
+  classifyRevision, parseRevisionReason, reviewReasonRequired,
+} from './evidenceContext.js';
+import { renderRecentConversation, referenceNote } from '../core/conversationContext.js';
 
 const PASS_SENTINEL =
   'VERIFICATION_PASSED — the draft was checked against the listed risks and no material issues were found; returning it unchanged.';
@@ -69,7 +74,7 @@ const PASS_SENTINEL =
  * @param {boolean}  grounded - evidence block accompanies the critique input
  * @returns {string} system prompt for the critique call
  */
-function buildCritiquePrompt(focusRisks, grounded = false) {
+function buildCritiquePrompt(focusRisks, grounded = false, withConversation = false) {
   return [
     "You are AQUA's internal verification pass. You are shown a user's question and a draft answer someone already wrote for them.",
     // E1/PR-5b — fencing the evidence without saying what a fence MEANS would
@@ -88,11 +93,13 @@ function buildCritiquePrompt(focusRisks, grounded = false) {
       '- NEVER replace the draft with a statement that files, videos, images, audio, or documents cannot be accessed, watched, viewed, read, or analyzed — the analyses are right there in the evidence.',
       '',
     ] : []),
+    // D-02 (2026-11-16): the reviewer now sees the conversation the draft answered.
+    ...(withConversation ? [CONVERSATION_GROUNDING_RULE, ''] : []),
     `Check the draft ONLY against these specific risks: ${focusRisks.join(', ')}.`,
     '',
     `If none of these specific risks are actually present, respond with EXACTLY this line and nothing else:\n"${PASS_SENTINEL}"`,
     '',
-    'If one of these specific risks IS genuinely present, respond with the complete corrected replacement answer only — no preamble, no explanation of what changed, no meta-commentary about the review. Your response must be ready to send to the user exactly as-is, as a full replacement for the draft.',
+    'If one of these specific risks IS genuinely present, respond with ONE first line "REVISION_REASON: <the specific problem, tied to a listed risk>", then a blank line, then the complete corrected replacement answer — no other preamble, no explanation of what changed, no meta-commentary about the review. Everything after the reason line must be ready to send to the user exactly as-is, as a full replacement for the draft.',
     '',
     'Be conservative: only replace the draft for a real, specific problem tied to the listed risks. Do not rewrite for style, tone, or phrasing preferences.',
   ].join('\n');
@@ -145,11 +152,13 @@ export async function runVerification({
   maxPasses = 1,
   costLedger = null,
   evidenceContext = '',           // Phase 0 (F1): grounding contract — see buildCritiquePrompt
+  conversationContext = null,     // D-02 (2026-11-16): core/conversationContext.js — the chat the draft answered
   generate = generateText,
 }) {
   const focusRisks = getFocusRisks(taskType);
   const grounded   = hasGroundedEvidence(evidenceContext);
-  const critiquePrompt = buildCritiquePrompt(focusRisks, grounded);
+  const conversationBlock = conversationReviewBlock(conversationContext, renderRecentConversation, referenceNote);
+  const critiquePrompt = buildCritiquePrompt(focusRisks, grounded, !!conversationBlock);
   const evidenceBlock  = grounded
     ? `Evidence context available to the drafter (ground truth):\n${evidenceContext}\n\n`
     : '';
@@ -181,11 +190,14 @@ export async function runVerification({
   let suppressedRefusals  = 0;  // Phase 0 (F2 interplay): guarded revisions never count as `revised`
   let suppressedMalformed = 0;  // forensic pass (Bug 1): empty/whitespace "revisions" never count as `revised`
   let suppressedTruncated = 0;  // P0 2026-10-12: a budget-truncated critique is never a revision
+  let suppressedWithdrawals = 0; // D-02: a clarification / "no information" replacing an answer it could not fault
+  let outcome = null;            // what the reviewer PROPOSED (evidenceContext.js REVIEW_OUTCOMES)
+  let revisionReason = null;     // the reviewer's stated reason for the applied revision
 
   while (passes < cap) {
     const critiqueMessages = [{
       role: 'user',
-      content: `${evidenceBlock}Original user question:\n${userMessage}\n\nDraft answer to review:\n${current}`,
+      content: `${evidenceBlock}${conversationBlock}${conversationBlock ? 'Latest user message' : 'Original user question'}:\n${userMessage}\n\nDraft answer to review:\n${current}`,
     }];
 
     let result;
@@ -214,6 +226,8 @@ export async function runVerification({
         suppressedRefusals,
         suppressedMalformed,
         suppressedTruncated,
+        suppressedWithdrawals,
+        outcome, applied: revised, revisionReason,
         provider,
         latencyMs: Date.now() - start,
         error: err.message,
@@ -227,6 +241,7 @@ export async function runVerification({
 
     if (text.startsWith('VERIFICATION_PASSED')) {
       passed = true;
+      outcome = 'ACCEPT';
       break;                 // converged — current draft confirmed clean
     }
 
@@ -263,12 +278,34 @@ export async function runVerification({
     // ledger never books the malfunction as a legitimate revision (F2).
     if (grounded && isCapabilityRefusal(text)) {
       suppressedRefusals += 1;
+      outcome = 'REFUSE';
       console.warn(`[VERIFICATION] capability-refusal revision SUPPRESSED on grounded turn (pass ${passes}/${cap}) — keeping ${revised ? 'latest revision' : 'draft'}`);
       break;
     }
 
+    // ── D-02 (2026-11-16) — reason protocol + withdrawal guard ───────────────
+    // The reason line is stripped (it never reaches the user) and recorded.
+    // A reviewer may correct an answer; it may not WITHDRAW one it could not
+    // fault — a clarification is legitimate only for a genuinely ambiguous
+    // reference (core/conversationContext.js), "no information" never on its own.
+    const parsed = parseRevisionReason(text);
+    const proposal = parsed.text;
+    outcome = classifyRevision(proposal);
+    if (!isUsableRevision(proposal) || (reviewReasonRequired() && !parsed.reason)) {
+      suppressedMalformed += 1;
+      console.warn(`[VERIFICATION] revision without ${isUsableRevision(proposal) ? 'a stated reason' : 'content'} SUPPRESSED (pass ${passes}/${cap}) — keeping ${revised ? 'latest revision' : 'draft'}`);
+      break;
+    }
+    const withdrawn = withdrawalReason(current, proposal, conversationContext);
+    if (withdrawn) {
+      suppressedWithdrawals += 1;
+      console.warn(`[VERIFICATION] ${withdrawn} SUPPRESSED (pass ${passes}/${cap}) — the reviewer could not fault the answer; keeping ${revised ? 'latest revision' : 'draft'}`);
+      break;
+    }
+
     revised = true;
-    current = text;          // revision becomes the draft under review
+    revisionReason = parsed.reason ?? 'unstated';
+    current = proposal;      // revision becomes the draft under review
   }
 
   return {
@@ -284,6 +321,9 @@ export async function runVerification({
     suppressedRefusals,
     suppressedMalformed,
     suppressedTruncated,
+    suppressedWithdrawals,
+    outcome, applied: revised, revisionReason,
+    conversationAware: !!conversationBlock,
     provider,
     latencyMs: Date.now() - start,
     attemptCount: verifyCtx.attempts.length,

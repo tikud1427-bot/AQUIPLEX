@@ -42,7 +42,7 @@ import { selectWorldCore } from './contextEngine/worldCore.js';
 import { understoodOf } from './contextEngine/index.js';
 import { readingOf } from './contextEngine/assembler.js';
 import { reflectWorldModel, reflectionV2Metrics, reflectV2Enabled, forgetOwner as forgetReflectionOwner } from './reflectionV2/index.js';
-import { loadSurfacedAt, markSurfaced } from './reflectionV2/reflectionStore.js';
+import { loadSurfacedAt, markSurfaced, reflectionOwnerReady } from './reflectionV2/reflectionStore.js';
 import { buildRevisionDirective, isSuitableTurn } from './reflectionV2/revisionVoice.js';
 import { getLedger } from '../pic/picStore.js';
 import { observeTwinTurn, twinView, twinMetrics, twinV2Enabled } from './digitalTwin/index.js';
@@ -73,7 +73,8 @@ import { singleValuedPredicateNames, singleObjectPredicateNames } from '../core/
 import { isDeictic, recallFocus, rememberFocus, purgeOwner as purgeFocus } from './contextEngine/conversationFocus.js';
 import { resolveReferences } from './understanding/referenceResolver.js';
 import { startSpan } from '../core/telemetry.js';
-import { ownerLogId } from '../core/logSafety.js';
+import { noteFeature } from '../core/flags.js';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted, ownerLogId } from '../core/logSafety.js';
 import { redactionsFor } from '../memory/recallRedactions.js';
 
 /**
@@ -966,6 +967,9 @@ export function revisionVoiceMode() {
 export function revisionDirectiveFor(ownerId, { taskType = null, mode = null } = {}) {
   if (!ownerId || revisionVoiceMode() !== 'canonical+legacy') return '';
   if (!isSuitableTurn({ taskType, mode })) return '';
+  // Phase 2b: an owner whose reflection state is not loaded has an unknown
+  // surfaced watermark; reading it as 0 would raise revisions already raised.
+  if (!reflectionOwnerReady(ownerId)) return '';
   return guard('revisionDirectiveFor', '', () => {
     const since = loadSurfacedAt(ownerId);
     // Insertion order IS chronology — `getLedger` returns the ring in the order
@@ -1008,7 +1012,7 @@ export function revisionDirectiveFor(ownerId, { taskType = null, mode = null } =
       return '';
     }
     markSurfaced(ownerId, highest || Date.now());
-    console.log(`[BRAIN] Revision raised owner=${ownerId} at=${chosen.entry.at} summary="${chosen.entry.summary}"`);
+    console.log(`[BRAIN] Revision raised owner=${ownerId} at=${chosen.entry.at} summary=(${textMeta(chosen.entry.summary)})`);
     return chosen.directive;
   });
 }
@@ -1035,6 +1039,7 @@ export async function revisionDirectiveForTurn(ownerId, { taskType = null, mode 
   if (dbConfigured() && e6CommitEnabled()) {
     try {
       const candidates = await canonicalReadModel.revisionVoiceCandidates(ownerId);
+      noteFeature('AQUA_REVISION_VOICE', 'ran');
       if (candidates.length) {
         const pick = selectCanonicalRevision(candidates, { conversationId });
         recordRevisionVoice('considered', { n: pick.considered.length });
@@ -1057,6 +1062,7 @@ export async function revisionDirectiveForTurn(ownerId, { taskType = null, mode 
       }
     } catch (err) {
       recordRevisionVoice('skipped', { reason: 'error' });
+      noteFeature('AQUA_REVISION_VOICE', 'failed', err?.code ?? err?.name);
       console.warn(`[BRAIN] canonical revision voice failed (fail-open): ${err?.message ?? err}`);
       return '';
     }
@@ -1172,6 +1178,9 @@ export async function assembleContextAsync(ownerId, query, floorRetrieve, opts =
     priorEntityIds: prior?.length ? prior : undefined,
     plan,
     queryPlan,
+    // D-01: is this question about the user's own world? From the turn's
+    // resolved conversation context; undefined → read from the query.
+    personalWorld: typeof opts.personalWorld === 'boolean' ? opts.personalWorld : undefined,
     taskType,
     semanticScores,
     semanticClaimScores,
@@ -1225,8 +1234,19 @@ async function withWorldCore(ownerId, result, { semanticScores = null, retiredTe
     // was chosen as the answer ("What is my dog's name?" → the user's job). Said
     // explicitly here, in the same words as the relevance footer.
     const coreBlock = relevanceEmpty ? `${core.block}\n${WORLD_CORE_NOTHING_SELECTED}` : core.block;
+    const join = (...parts) => parts.filter(s => s && String(s).trim()).join('\n\n');
+    // Trust boundary (D-17): when the assembler split its block, the World Core
+    // lines (the user's statements) join the data half and the "nothing
+    // selected" sentence (AQUA's policy) joins the policy half.
+    const split = typeof result.dataBlock === 'string' || typeof result.policyBlock === 'string'
+      ? {
+          dataBlock: join(result.dataBlock, core.block),
+          policyBlock: join(result.policyBlock, relevanceEmpty ? WORLD_CORE_NOTHING_SELECTED : ''),
+        }
+      : {};
     return {
       ...result,
+      ...split,
       block: [result.block, coreBlock].filter(s => s && String(s).trim()).join('\n\n'),
       worldCore: { claimIds: core.claimIds, lines: core.lines },
       stats: { ...result.stats, worldCore: coreStats, ...(ce ? { contextEngine: { ...ce, worldCore: coreStats } } : {}) },
@@ -1268,6 +1288,20 @@ export async function canonicalSemanticScores(ownerId, query) {
 }
 
 export function contextV2Active() { return contextV2Enabled(); }
+
+/**
+ * The existing conversation-focus carry-over (contextEngine/conversationFocus.js)
+ * as the turn's shared conversation context records it: the World-Model entity
+ * ids the previous turn of THIS conversation selected, only for a deictic
+ * message. Same rule assembleContextAsync applies; owner + conversation keyed.
+ * Read-only; fail-open to [].
+ */
+export function conversationFocusFor(ownerId, conversationId, message) {
+  try {
+    if (!ownerId || !conversationId || !isDeictic(message)) return [];
+    return recallFocus(ownerId, conversationId) ?? [];
+  } catch { return []; }
+}
 
 // ── E6 — semantic understanding on the turn path ─────────────────────────────
 

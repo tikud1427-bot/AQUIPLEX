@@ -38,6 +38,7 @@ import { registerBuiltinParsers } from './parsers.js';
 import { runEnrichment } from './enrichmentPipeline.js';
 import { saveUKO, cacheKnowledge, getCachedKnowledge } from './ukoStore.js';
 import { enqueueDocumentUnderstanding } from './documentUnderstanding.js';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 
 registerBuiltinParsers();
 
@@ -194,7 +195,7 @@ async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
 
   try {
     // ── Parse (or content-hash cache) ──
-    const cached = getCachedKnowledge(hash, cls.kind);
+    const cached = getCachedKnowledge(hash, cls.kind, { ownerId });
     if (cached) {
       uko.processing.cacheHit = true;
       for (const f of CACHED_FIELDS) uko[f] = structuredClone(cached[f]);
@@ -232,7 +233,7 @@ async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
       document: { ukoId: uko.id, name, kind: cls.kind, text: uko.rawContent, hash } };
   } catch (err) {
     recordParserOutcome(parser.id, false, err.message);
-    console.error(`[FILES] Ingest failed file=${name} parser=${parser.id}:`, err.message);
+    console.error(`[FILES] Ingest failed ${fileMeta(name)} parser=${parser.id}:`, stripQuoted(err.message));
     return { result: { name, kind: cls.kind, status: 'failed', error: err.message } };
   }
 }

@@ -1,0 +1,117 @@
+# AQUIPLEX — Cloud Run API service (TEMPLATE — Phase 4B; NOT DEPLOYED, NOT ACTIVATED)
+#
+# Render with your values (envsubst or by hand), review, then — only with
+# authorisation — `gcloud run services replace api.service.yaml --region ${REGION}`.
+# Nothing in this repository applies it. See AQUIPLEX_CLOUD_RUN_CONFIGURATION_PLAN.md.
+#
+# Placeholders: ${PROJECT_ID} ${REGION} ${SQL_INSTANCE} ${IMAGE} ${API_SA} ${GCS_BUCKET} ${APP_URL}
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: aquiplex-api
+  labels:
+    app: aquiplex
+    role: api
+spec:
+  template:
+    metadata:
+      annotations:
+        # Scaling: at least one warm instance (sessions, cold starts); a ceiling
+        # that keeps database connections within budget (plan §4: max instances
+        # × PGPOOL_MAX + workers × PGPOOL_MAX ≤ Cloud SQL max_connections − reserve).
+        autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "4"
+        # CPU ALWAYS ALLOCATED (instance-based billing). Request-based is plausible
+        # since Phase 4A but unvalidated under load (plan §5): statistics sync and
+        # PIC maintenance timers run after responses.
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/startup-cpu-boost: "true"
+        run.googleapis.com/execution-environment: gen2
+        run.googleapis.com/cloudsql-instances: ${PROJECT_ID}:${REGION}:${SQL_INSTANCE}
+    spec:
+      serviceAccountName: ${API_SA}
+      # One instance serves this many requests at once. Chat turns hold a
+      # request for seconds (model calls); 40 keeps per-instance memory bounded.
+      containerConcurrency: 40
+      # Long streams (SSE chat) must fit; Cloud Run's maximum is 3600 s.
+      timeoutSeconds: 300
+      containers:
+        - image: ${IMAGE}
+          command: ["node"]
+          args: ["scripts/start-api.mjs"]          # sets AQUA_ROLE=api: HTTP only, no workers, no schedulers
+          ports:
+            - name: http1
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:                             # ready = Mongo + engine + Postgres reachable, not draining
+            httpGet: { path: /ready, port: 8080 }
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 24
+          livenessProbe:                            # liveness only: never depends on a database
+            httpGet: { path: /health, port: 8080 }
+            periodSeconds: 30
+            timeoutSeconds: 3
+            failureThreshold: 3
+          env:
+            # ── runtime ──
+            - { name: NODE_ENV, value: production }
+            - { name: APP_URL, value: "${APP_URL}" }
+            - { name: MAIL_TRANSPORT, value: resend }
+            - { name: MAIL_FROM, value: "${MAIL_FROM}" }
+            # ── storage (all stores on per-owner partitions; the only multi-instance mode) ──
+            - { name: AQUA_STORE_PARTITIONS, value: "reflection:on,mind:on,recall-redactions:on,history:on,reasoning-graph:on,ids:on,brain:on,evidence:on,fileindex:on,uko:on,attachments:on,pic:on,vectors:on,projects:on,index:on,artifacts:on,cognition:on,ledger:on" }
+            - { name: AQUA_DISABLE_MONGO_MIRROR, value: "1" }        # the JSON mirror is for the single-process mode
+            - { name: AQUA_DATA_DIR, value: /tmp/aqua-data }       # local cache only (memory on Cloud Run)
+            - { name: AQUA_ARTIFACTS_DIR, value: /tmp/aqua-artifacts }
+            - { name: AQUA_OBJECT_STORE, value: gcs }
+            - { name: AQUA_GCS_BUCKET, value: "${GCS_BUCKET}" }
+            # ── durability (Phases 3–4B) ──
+            - { name: AQUA_POST_TURN_DURABLE, value: "on" }
+            - { name: AQUA_PENDING_CHARGES, value: "on" }
+            # ── answer context (PWI Phase 1, 2026-11-15) ──
+            # DATABASE_URL alone would switch the read to 'authoritative', which drops the
+            # Mind lanes (goals, blockers, deadlines, relationships, episodes) while the
+            # canonical World Model has no writer (AQUA_E6 off) and no prompt path
+            # (AQUA_CONTEXT_V2 off). Keep the legacy read until that is deliberately enabled.
+            # Guarded by src/core/tests/cloudRunTemplates.test.js + src/routes/tests/cloudRunMemoryLanes.test.js.
+            - { name: AQUA_CANONICAL_READ, value: "off" }
+            # ── shutdown: Cloud Run gives 10 s from SIGTERM to SIGKILL ──
+            - { name: AQUA_API_SHUTDOWN_MS, value: "7000" }
+            - { name: AQUA_SHUTDOWN_BUDGET_MS, value: "9500" }
+            # ── database pool (per instance) ──
+            - { name: PGPOOL_MAX, value: "10" }
+            - { name: PGPOOL_CONNECT_MS, value: "5000" }
+            # ── secrets (Secret Manager; never inline) ──
+            - name: DATABASE_URL                  # postgresql://USER:PASS@/aqua?host=/cloudsql/${PROJECT_ID}:${REGION}:${SQL_INSTANCE}
+              valueFrom: { secretKeyRef: { name: aquiplex-database-url, key: latest } }
+            - name: MONGO_URI
+              valueFrom: { secretKeyRef: { name: aquiplex-mongo-uri, key: latest } }
+            - name: SESSION_SECRET
+              valueFrom: { secretKeyRef: { name: aquiplex-session-secret, key: latest } }
+            - name: AQUA_LOG_PSEUDONYM_KEY          # stable owner pseudonyms in logs; the SAME secret in API and worker
+              valueFrom: { secretKeyRef: { name: aquiplex-log-pseudonym-key, key: latest } }
+            - name: GOOGLE_CLIENT_ID
+              valueFrom: { secretKeyRef: { name: aquiplex-google-client-id, key: latest } }
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom: { secretKeyRef: { name: aquiplex-google-client-secret, key: latest } }
+            - name: RAZORPAY_KEY_ID
+              valueFrom: { secretKeyRef: { name: aquiplex-razorpay-key-id, key: latest } }
+            - name: RAZORPAY_KEY_SECRET
+              valueFrom: { secretKeyRef: { name: aquiplex-razorpay-key-secret, key: latest } }
+            - name: RAZORPAY_WEBHOOK_SECRET
+              valueFrom: { secretKeyRef: { name: aquiplex-razorpay-webhook-secret, key: latest } }
+            - name: RESEND_API_KEY
+              valueFrom: { secretKeyRef: { name: aquiplex-resend-api-key, key: latest } }
+            - name: GROQ_API_KEY_1
+              valueFrom: { secretKeyRef: { name: aquiplex-groq-api-key-1, key: latest } }
+            - name: GEMINI_KEY_1
+              valueFrom: { secretKeyRef: { name: aquiplex-gemini-key-1, key: latest } }
+            - name: NVIDIA_API_KEY_1
+              valueFrom: { secretKeyRef: { name: aquiplex-nvidia-api-key-1, key: latest } }
+            - name: SERPER_API_KEY
+              valueFrom: { secretKeyRef: { name: aquiplex-serper-api-key, key: latest } }

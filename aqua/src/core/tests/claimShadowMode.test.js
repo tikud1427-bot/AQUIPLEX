@@ -107,7 +107,12 @@ describe('AQUA_GRAPH is a live endpoint gate, not a dead flag', () => {
   test('it is registered, so it is no longer dark (L13)', () => {
     const g = GATES.find(x => x.name === 'AQUA_GRAPH');
     assert.ok(g, 'AQUA_GRAPH is not in the registry');
-    assert.equal(g.dflt, 'off');
+    // Corrected 2026-11-10 (Sprint 1, audit F-02): both read sites are
+    // `String(process.env.AQUA_GRAPH ?? 'on') !== 'off'` — ON by default. This line
+    // pinned the registry's wrong 'off'; flagReadSiteParity.test.js now checks every
+    // gate against its read site. Reviewed change, recorded in
+    // AQUIPLEX_SPRINT1_PRODUCTION_SAFETY_REPORT.md.
+    assert.equal(g.dflt, 'on');
     assert.match(g.note ?? '', /orchestrate/,
       'the registry does not record that this gate protects an endpoint');
   });

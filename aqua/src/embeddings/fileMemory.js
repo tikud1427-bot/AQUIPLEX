@@ -27,6 +27,7 @@
  */
 import { embed, embedOne, isEmbeddingEnabled, contentHash } from './embeddingProvider.js';
 import { upsert, has, remove, idsIn, topK, getMeta, clearNamespace } from './vectorStore.js';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 
 export const CHUNK_CHARS = 700;          // target chunk size
 export const MAX_CHUNKS_PER_FILE = 30;   // per-file cap (big docs: head coverage)
@@ -115,7 +116,7 @@ export async function indexFileChunks(ownerId, fileKey, name, content) {
       if (vecs[i]) upsert(nsKey, t.id, vecs[i], t.hash, { text: t.text, fileKey, name, idx: t.idx });
     });
     const done = vecs.filter(Boolean).length;
-    if (done) console.log(`[FILE_MEM] indexed ${done}/${toEmbed.length} chunk(s) owner=${ownerId} file="${name}"`);
+    if (done) console.log(`[FILE_MEM] indexed ${done}/${toEmbed.length} chunk(s) owner=${ownerId} ${fileMeta(name)}`);
   } catch (err) {
     console.warn('[FILE_MEM] indexFileChunks failed (non-fatal):', err.message);
   }

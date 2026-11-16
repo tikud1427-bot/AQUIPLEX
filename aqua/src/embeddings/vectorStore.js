@@ -29,6 +29,8 @@
 import { createDebouncedWriter, loadJsonFile } from '../core/atomicStore.js';
 import { migrateLegacyFile } from '../core/dataDir.js';
 import { modelSignature } from './embeddingModel.js';
+import { bindKeyedStore } from '../core/storage/keyedBinding.js';
+import { namespaceOwner } from '../core/storage/ownerBinding.js';
 
 // P0 — canonical data dir (survives redeploys) + one-time legacy migration.
 const STORE_FILE  = migrateLegacyFile('.aqua-vectors.json');
@@ -71,15 +73,51 @@ function loadFromDisk() {
 // Phase 3b — atomic + async persistence via the shared primitive; persist flag
 // (disabled in tests) preserved.
 const _writer = createDebouncedWriter(STORE_FILE);
-function scheduleSave() {
+function scheduleSave(namespace = null) {
   if (!persist) return;
+  if (namespace) binding.markDirty(namespace);
+  if (!binding.writesWholeJson()) return;
   _writer.schedule(() => {
     const data = {};
     for (const [ns, m] of store.entries()) data[ns] = Object.fromEntries(m.entries());
     return JSON.stringify(data);
   });
 }
-loadFromDisk();
+
+// ── Per-owner persistence (scalability Phase 2c) ─────────────────────────────
+// WRITERS: the server only (fact/file/recall/project embedding). One row per
+// NAMESPACE, owned by the namespace's owner ("<owner>", "files:<owner>",
+// "recall:<owner>", "canonical-claims:<owner>"; "ws:<id>" → the workspace's
+// owner via a resolver the project module registers), so one per-user load
+// brings every namespace of that user. MERGE: three-way per vector id (newer
+// ts on a double change; remove() attributed against the base), then the
+// per-namespace cap keeps the newest NS_ITEM_CAP. Records from another embedding
+// model are dropped on load exactly as the file path drops them.
+// DELETION: clearNamespace → row tombstone.
+const binding = bindKeyedStore({
+  storeKey: '.aqua-vectors.json', file: STORE_FILE, label: 'vectors', section: 'ns', envelope: false,
+  mergeSchema: {
+    root: { time: r => Number(r?.ts) || 0 },
+    finalize: m => {
+      const entries = Object.entries(m);
+      if (entries.length <= NS_ITEM_CAP) return m;
+      return Object.fromEntries(entries.sort((a, b) => (b[1].ts || 0) - (a[1].ts || 0)).slice(0, NS_ITEM_CAP));
+    },
+  },
+  ownerOf: ns => namespaceOwner(ns),
+  encode: ns => (store.has(ns) ? Object.fromEntries(store.get(ns)) : undefined),
+  decode: obj => {
+    const signature = modelSignature();
+    return new Map(Object.entries(obj ?? {}).filter(([, r]) => Array.isArray(r?.vec) && r.model === signature));
+  },
+  install: (ns, m) => { if (m) store.set(ns, m); else store.delete(ns); },
+  evict: ns => store.delete(ns),
+  changedAt: obj => Math.max(0, ...Object.values(obj ?? {}).map(r => Number(r?.ts) || 0)),
+  reloadJson: () => { loaded = false; loadFromDisk(); },
+});
+export function vectorsPartitionBinding() { return binding; }
+
+if (binding.loadsJsonAtBoot()) loadFromDisk(); else loaded = true;
 
 // ── Namespace helpers ─────────────────────────────────────────────────────────
 function ns(namespace) {
@@ -108,7 +146,7 @@ export function upsert(namespace, id, vec, hash = '', meta = null) {
   if (meta != null) rec.meta = meta;
   m.set(id, rec);
   enforceCap(m);
-  scheduleSave();
+  scheduleSave(namespace);
 }
 
 /** Meta stored with a vector (Phase D), or null. */
@@ -128,10 +166,11 @@ export function getVec(namespace, id) {
 
 export function remove(namespace, id) {
   const m = store.get(namespace);
-  if (m?.delete(id)) scheduleSave();
+  if (m?.delete(id)) scheduleSave(namespace);
 }
 
 export function clearNamespace(namespace) {
+  if (persist) binding.markDeleted(namespace);
   if (store.delete(namespace)) scheduleSave();
 }
 
@@ -176,4 +215,5 @@ export function __resetForTests({ disablePersist = true } = {}) {
   store.clear();
   persist = !disablePersist;
   _writer.cancel();
+  binding._reset();
 }

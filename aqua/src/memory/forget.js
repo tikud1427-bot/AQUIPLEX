@@ -26,6 +26,7 @@ import { redactPhrases, redactAllBefore } from './recallRedactions.js';
 import { releaseAfterForget, forgetValueInMind } from './propagation.js';
 import { peekMind, touchMind, deleteItem } from '../mind/mindStore.js';
 import { goalSimilarity } from '../mind/goalText.js';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 
 // What a forgotten fact's changes set elsewhere (memory/propagation.js: review
 // notes quoting the user, ended graph edges) goes with it. Never fails a forget.
@@ -214,7 +215,8 @@ export function forgetInBackground(ownerId, key, value) {
  * sentence that stated the old value (brain/index.js retireSupersededStatement).
  */
 export function retireSupersededInBackground(ownerId, key, previous) {
-  brain()
+  // Returns the chain (still fail-open) so the turn commit can await it (Phase 4A).
+  return brain()
     .then(Brain => Brain.retireSupersededStatement(ownerId, { oldValue: previous.value, sourceText: previous.sourceText }))
     .then(ids => { if (ids.length) console.log(`[MEMORY] SUPERSEDED owner=${ownerId} key=${key} conversationFacts=${ids.length}`); })
     .catch(err => console.warn(`[MEMORY] superseded statement not retired owner=${ownerId} key=${key}: ${err?.message ?? err}`));
@@ -238,5 +240,5 @@ export function slotOf(s) {
 
 function logControl(kind, ownerId, key, wm) {
   const claims = (wm?.claims?.length ?? 0) + (wm?.corrected?.length ?? 0);
-  console.log(`[MEMORY] ${kind} owner=${ownerId} key=${key} canonicalClaims=${claims} conversationFacts=${wm?.conversationFacts?.length ?? 0}`);
+  console.log(`[MEMORY] ${kind} owner=${ownerId} key=${safeKey(key)} canonicalClaims=${claims} conversationFacts=${wm?.conversationFacts?.length ?? 0}`);
 }

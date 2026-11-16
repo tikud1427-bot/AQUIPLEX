@@ -77,13 +77,42 @@ function flushAllWriters(reason) {
   if (flushed) console.log(`[STORE] shutdown flush (${reason}): ${flushed} store(s) persisted`);
 }
 
+// Scalability Phase 3 — work that must END before the final flush: the API's
+// in-flight HTTP requests (a turn still committing). Each blocker is a
+// function returning a promise; the shutdown waits for all of them, bounded by
+// its own deadline, then flushes and exits exactly as before. None registered
+// (today's single process) = unchanged.
+const _shutdownBlockers = new Set();
+/** SIGTERM → exit budget when shutdown blockers are registered (AQUA_SHUTDOWN_BUDGET_MS, default 9500). */
+const SHUTDOWN_BUDGET_MS = Number(process.env.AQUA_SHUTDOWN_BUDGET_MS) >= 2_000 ? Number(process.env.AQUA_SHUTDOWN_BUDGET_MS) : 9_500;
+export function registerShutdownBlocker(fn) {
+  _shutdownBlockers.add(fn);
+  hookShutdownOnce();   // the flush-and-exit handler must exist even before any writer did
+  return () => _shutdownBlockers.delete(fn);
+}
+function awaitShutdownBlockers() {
+  if (!_shutdownBlockers.size) return Promise.resolve();
+  return Promise.all([..._shutdownBlockers].map(fn => Promise.resolve().then(fn).catch(() => {})));
+}
+
 function hookShutdownOnce() {
   if (_shutdownHooked) return;
   _shutdownHooked = true;
   process.on('beforeExit', () => flushAllWriters('beforeExit'));
   for (const sig of ['SIGTERM', 'SIGINT']) {
-    process.once(sig, () => {
+    process.once(sig, async () => {
+      const t0 = Date.now();
+      await awaitShutdownBlockers();
       flushAllWriters(sig);
+      // Phase 4A (found by the Linux API shutdown test): the drains below had
+      // their own 5 s each AFTER the blockers' wait, so a drain stuck behind a
+      // locked row stretched SIGTERM → exit to 13 s — past a platform's 10 s
+      // grace. With blockers registered (the split runtime), the drains get only
+      // what is left of ONE budget (AQUA_SHUTDOWN_BUDGET_MS, default 9500 ms),
+      // at least 1 s. Without blockers (today's single process) nothing changes.
+      const drainMs = _shutdownBlockers.size
+        ? Math.min(5_000, Math.max(1_000, SHUTDOWN_BUDGET_MS - (Date.now() - t0)))
+        : 5_000;
       // P0 (Render) — a deploy IS a SIGTERM. The sync file flush above queued
       // Mongo upserts (mirrorWrite); give them ≤5s to land so the session's
       // last messages survive the container swap. Never blocks longer.
@@ -101,9 +130,9 @@ function hookShutdownOnce() {
       // Run alongside the others, not after — a deploy will not wait three
       // times, and the platform sends SIGKILL on its own schedule regardless.
       Promise.allSettled([
-        drainMirror(5_000),
-        flushStorage(5_000),
-        drainJobs(5_000).then(r => { const line = drainLine(r); if (r.drained || r.timedOut) console.log(line); }),
+        drainMirror(drainMs),
+        flushStorage(drainMs),
+        drainJobs(drainMs).then(r => { const line = drainLine(r); if (r.drained || r.timedOut) console.log(line); }),
       ]).finally(() => process.exit(code));
     });
   }
@@ -228,7 +257,7 @@ export function atomicWriteFileSync(file, data) {
  *
  *   cancel() — drop a pending write without writing (for __resetForTests).
  */
-export function createDebouncedWriter(file, { debounceMs = 500, onError } = {}) {
+export function createDebouncedWriter(file, { debounceMs = 500, onError, onFlushed } = {}) {
   let timer   = null;
   let writing = false;
   let dirty   = false;
@@ -254,6 +283,9 @@ export function createDebouncedWriter(file, { debounceMs = 500, onError } = {}) 
         try {
           await atomicWriteFile(file, data);
           mirrorWrite(file, data);  // P0 (Render) — durable copy → MongoDB, fire-and-forget
+          // 2026-11-16 (audit D-15): optional success signal, so a store can
+          // report "written to disk" truthfully instead of assuming it.
+          try { onFlushed?.(); } catch { /* a reporting hook never breaks a flush */ }
         } catch (err) {
           warn(err);              // keep draining; a later schedule may retry
         }
@@ -279,6 +311,7 @@ export function createDebouncedWriter(file, { debounceMs = 500, onError } = {}) 
           const data = serializeFn();
           atomicWriteFileSync(file, data);
           mirrorWrite(file, data);  // P0 (Render) — the SIGTERM drain below awaits this
+          try { onFlushed?.(); } catch { /* reporting hook only */ }
         } catch (err) {
           warn(err);
         }

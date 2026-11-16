@@ -280,7 +280,7 @@ export function assembleContext(candidates, ctx, opts = {}) {
   const items = selected.map(c => toItem(c));
   const epistemic = contextEpistemicState(cfg.queryPlan);
   const retired = cfg.retiredTexts ? new Set([...cfg.retiredTexts].map(normText)) : null;
-  const block = renderBlock(selected, cfg.charBudget, epistemic, retired);
+  const { block, dataBlock, policyBlock } = renderBlockParts(selected, cfg.charBudget, epistemic, retired);
 
   const stats = {
     // PIC-compatible fields (chat.js logs these).
@@ -317,7 +317,7 @@ export function assembleContext(candidates, ctx, opts = {}) {
     },
   };
 
-  return { items, block, stats };
+  return { items, block, dataBlock, policyBlock, stats };
 }
 
 function buildSlotBudget(plan, charBudget) {
@@ -544,7 +544,9 @@ function headerLines(epistemic) {
     lines.push(`Not known: ${epistemic.missing.join(', ') || 'unspecified'}. Say so plainly; do not infer or fabricate it. If it changes the answer, ask about it once.`);
   } else if (epistemic.state === 'unknown') {
     lines.push(`EVIDENCE STATUS: UNKNOWN — required information is missing after the bounded retrieval policy.`);
-    lines.push(`Required slots still unknown: ${epistemic.missing.join(', ') || 'unspecified'}. Do not infer or fabricate them.`);
+    // Scoped (2026-11-16, D-01): the slots are facts about the USER's world;
+    // the line must never read as "the question's subject is unknown".
+    lines.push(`Required slots still unknown: ${epistemic.missing.join(', ') || 'unspecified'}. Do not infer or fabricate them. These are facts about the user's own world; this does not limit general knowledge or the conversation itself.`);
   } else if (epistemic.state === 'needs_round_two') {
     lines.push(`EVIDENCE STATUS: INCOMPLETE — a targeted second retrieval round is required for: ${epistemic.missing.join(', ')}.`);
   } else {
@@ -553,9 +555,22 @@ function headerLines(epistemic) {
   return lines;
 }
 
-function renderBlock(selected, charBudget, epistemic = { state: 'sufficient', missing: [] }, retired = null) {
-  if (!selected.length && epistemic.state !== 'unknown') return '';
+/**
+ * TRUST BOUNDARY (2026-11-16, audit D-17). The block mixes two kinds of lines:
+ * the user's own statements (data — fenced as untrusted by the prompt builder)
+ * and AQUA's interpretation policy (evidence status, ordering rule, footer).
+ * Fencing the policy as "never instruction" made it either noise or an
+ * unfenced order, depending on the model. `renderBlockParts` keeps the
+ * combined `block` byte-identical for every existing consumer and also returns
+ * the two halves, so the chat path can put the policy in an operator section.
+ * The split is decided while rendering (by which list a line came from), never
+ * by parsing text — a user statement can never be promoted to policy.
+ */
+function renderBlockParts(selected, charBudget, epistemic = { state: 'sufficient', missing: [] }, retired = null) {
+  if (!selected.length && epistemic.state !== 'unknown') return { block: '', dataBlock: '', policyBlock: '' };
+  const policy = new Set();
   const lines = ['── CONTEXT AQUA ASSEMBLED FOR THIS QUESTION ──'];
+  const pushPolicy = (l) => { policy.add(lines.length); lines.push(l); };
   // PARTIAL vs UNKNOWN (2026-10-07). With predicate-defined slots, "Should I
   // launch?" routinely knows the goal and the blocker but not the deadline.
   // Calling that UNKNOWN pushed the model toward refusing to answer — the
@@ -563,7 +578,7 @@ function renderBlock(selected, charBudget, epistemic = { state: 'sufficient', mi
   // gap is named, never filled in) while still answering from what is known,
   // and caps the follow-up at one question. UNKNOWN is kept for the case where
   // no required slot is known at all. State names and shouldAbstain unchanged.
-  lines.push(...headerLines(epistemic).slice(1));
+  for (const l of headerLines(epistemic).slice(1)) pushPolicy(l);
   // ORDER IN TIME (2026-10-06). Selection is by relevance; the READING order is
   // chronological for the World Model's dated claims, so the answer model can
   // see which of two statements about the same thing came later — the one
@@ -581,18 +596,24 @@ function renderBlock(selected, charBudget, epistemic = { state: 'sufficient', mi
   const dated = selected.filter(c => c.kind === 'fact' && dayOf(saidAt(c)));
   const undated = selected.filter(c => !dated.includes(c));
   const ordered = [...undated, ...[...dated].sort((a, b) => new Date(saidAt(a)) - new Date(saidAt(b)))];
-  if (dated.length > 1) lines.push(ORDER_NOTE);
+  if (dated.length > 1) pushPolicy(ORDER_NOTE);
   // Selection budgeted the LONGER (dated) line, so dropping dates never overflows.
   const showDates = new Set(dated.map(c => dayOf(saidAt(c)))).size >= 2;
   for (const c of ordered) lines.push(renderItemLine(c, { showDates, retired }));
-  lines.push(BLOCK_FOOTER);
+  pushPolicy(BLOCK_FOOTER);
 
   let out = '';
-  for (const l of lines) {
+  const data = [];
+  const pol = [];
+  for (let i = 0; i < lines.length; i += 1) {
+    const l = lines[i];
     if (out.length + l.length + 1 > charBudget) break;
     out += (out ? '\n' : '') + l;
+    (policy.has(i) ? pol : data).push(l);
   }
-  return out;
+  // A data half holding only the title carries nothing.
+  const dataBlock = data.length > 1 ? data.join('\n') : '';
+  return { block: out, dataBlock, policyBlock: pol.join('\n') };
 }
 
 function contextEpistemicState(plan) {

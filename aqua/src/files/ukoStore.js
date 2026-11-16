@@ -26,6 +26,7 @@ import {
   createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore,
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
+import { bindKeyedStore } from '../core/storage/keyedBinding.js';
 
 const STORE_FILE = dataPath('.aqua-uko.json');
 const SCHEMA     = 1;
@@ -55,7 +56,9 @@ function loadFromDisk() {
 }
 
 const _writer = createDebouncedWriter(STORE_FILE);
-function scheduleSave() {
+function scheduleSave(ownerKeyToSave = null) {
+  if (ownerKeyToSave) binding.markDirty(ownerKeyToSave);
+  if (!binding.writesWholeJson()) return;
   _writer.schedule(() => {
     const owners = {};
     for (const [owner, m] of byOwner.entries()) owners[owner] = Object.fromEntries(m);
@@ -63,7 +66,36 @@ function scheduleSave() {
   });
 }
 
-loadFromDisk();
+// ── Per-owner persistence (scalability Phase 2c) ─────────────────────────────
+// OWNERS SECTION — writer: the server only (upload / file pipeline). One row per
+// owner ('owners:<owner>'), three-way per uko (newer uploadedAt on a double
+// change; removeUKO and eviction attributed against the base). purgeOwner →
+// row tombstone.
+// CONTENT CACHE — global by design today (parsed content keyed by content hash,
+// reused across owners). With partitions on it is NOT shared and NOT persisted:
+// it becomes process-local and scoped per owner. Sharing it would create a
+// global hot row, and would let a deleted user's parsed content outlive the
+// purge in other instances' memory. It is a pure parse cache: a miss only
+// re-parses.
+const binding = bindKeyedStore({
+  storeKey: '.aqua-uko.json', file: STORE_FILE, label: 'uko', schema: SCHEMA,
+  section: 'owners', jsonPath: ['owners'],
+  mergeSchema: { root: { time: u => Number(u?.provenance?.uploadedAt) || 0 } },
+  encode: owner => (byOwner.has(owner) ? Object.fromEntries(byOwner.get(owner)) : undefined),
+  decode: obj => new Map(Object.entries(obj ?? {})),
+  install: (owner, m) => { if (m) byOwner.set(owner, m); else byOwner.delete(owner); },
+  evict: owner => {
+    byOwner.delete(owner);
+    for (const k of [...byHash.keys()]) if (k.startsWith(`${owner}\u0000`)) byHash.delete(k);
+  },
+  changedAt: obj => Math.max(0, ...Object.values(obj ?? {}).map(u => Number(u?.provenance?.uploadedAt) || 0)),
+  reloadJson: () => loadFromDisk(),
+});
+export function ukoPartitionBinding() { return binding; }
+/** Cache key: content hash; per owner while partitions are on (see above). */
+const cacheKey = (hash, ownerId) => (binding.mode === 'off' ? hash : `${ownerId ?? 'anon'}\u0000${hash}`);
+
+if (binding.loadsJsonAtBoot()) loadFromDisk();
 
 const ownerKey = (ownerId) => ownerId ?? 'anon';
 
@@ -79,7 +111,7 @@ export function saveUKO(uko) {
     if (oldest) m.delete(oldest.id);
   }
   m.set(uko.id, uko);
-  scheduleSave();
+  scheduleSave(key);
   return uko;
 }
 
@@ -98,7 +130,7 @@ export function listUKOs(ownerId, { limit = 50 } = {}) {
 export function removeUKO(ownerId, ukoId) {
   const m = byOwner.get(ownerKey(ownerId));
   const had = m?.delete(ukoId) ?? false;
-  if (had) scheduleSave();
+  if (had) scheduleSave(ownerKey(ownerId));
   return had;
 }
 
@@ -110,6 +142,8 @@ export function removeUKO(ownerId, ukoId) {
  */
 export function purgeOwner(ownerId) {
   const key = ownerKey(ownerId);
+  binding.markDeleted(key);
+  for (const k of [...byHash.keys()]) if (k.startsWith(`${key}\u0000`)) byHash.delete(k);   // partitions on: per-owner cache
   const m = byOwner.get(key);
   if (!m) return 0;
   const removed = m.size;
@@ -131,13 +165,14 @@ const CONTENT_FIELDS = [
 
 export function cacheKnowledge(uko) {
   if (!uko?.sourceFile?.hash) return;
-  if (byHash.size >= MAX_CACHE_ENTRIES && !byHash.has(uko.sourceFile.hash)) {
+  const ck = cacheKey(uko.sourceFile.hash, uko.owner);
+  if (byHash.size >= MAX_CACHE_ENTRIES && !byHash.has(ck)) {
     byHash.delete(byHash.keys().next().value); // FIFO — same policy as mediaPipeline
   }
   const entry = { cachedAt: Date.now(), fileType: uko.fileType, analyzer: uko.provenance.analyzer, parser: uko.provenance.parser, parserVersion: uko.provenance.parserVersion };
   for (const f of CONTENT_FIELDS) entry[f] = uko[f];
-  byHash.set(uko.sourceFile.hash, entry);
-  scheduleSave();
+  byHash.set(ck, entry);
+  if (binding.mode === 'off') scheduleSave();   // partitions on: process-local, never persisted
 }
 
 /**
@@ -145,8 +180,8 @@ export function cacheKnowledge(uko) {
  * copies these fields onto a FRESH UKO (new id/owner/conversation) and
  * re-runs only the integration stages.
  */
-export function getCachedKnowledge(hash, fileType) {
-  const entry = byHash.get(hash);
+export function getCachedKnowledge(hash, fileType, { ownerId = null } = {}) {
+  const entry = byHash.get(cacheKey(hash, ownerId));
   if (!entry) return null;
   if (fileType && entry.fileType !== fileType) return null; // same bytes classified differently — don't cross-wire
   return entry;
@@ -160,4 +195,4 @@ export function getUKOStoreStats() {
   };
 }
 
-export function _resetUKOStoreForTests() { byOwner.clear(); byHash.clear(); }
+export function _resetUKOStoreForTests() { byOwner.clear(); byHash.clear(); binding._reset(); }

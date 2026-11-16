@@ -48,6 +48,7 @@ import {
   createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore,
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
+import { bindKeyedStore } from '../core/storage/keyedBinding.js';
 import { evidenceChecksum } from './evidence.js';
 import { indexCanonicalClaim, indexCanonicalClaims, canonicalClaimNamespace } from '../brain/contextEngine/canonicalSemantic.js';
 import { clearNamespace } from '../embeddings/vectorStore.js';
@@ -93,23 +94,80 @@ function loadFromDisk() {
 
 const _writer = createDebouncedWriter(STORE_FILE);
 /** Write pending changes to disk now (synchronous, atomic) — memory/propagation.js stamps a change done only after this. */
-export function flushEvidence() { _writer.flush(); }
-function scheduleSave() {
+export function flushEvidence() {
+  if (binding.writesWholeJson()) { _writer.flush(); return; }
+  binding.flush().catch(() => {});   // partitions authoritative: started now, cannot be awaited synchronously
+}
+function encodeBucket(b) {
+  return {
+    evidence: Object.fromEntries(b.evidence),
+    facts:    Object.fromEntries(b.facts),
+    byFile:   Object.fromEntries([...b.byFile].map(([k, v]) => [k, { facts: [...v.facts], evidence: [...v.evidence] }])),
+    evidenceRefs: Object.fromEntries([...b.evidenceRefs].map(([k, v]) => [k, [...v]])),
+  };
+}
+
+function decodeBucket(obj) {
+  const bk = { evidence: new Map(), byChecksum: new Map(), facts: new Map(), byFile: new Map(), evidenceRefs: new Map() };
+  for (const ev of Object.values(obj?.evidence ?? {})) { bk.evidence.set(ev.id, ev); bk.byChecksum.set(ev.checksum, ev.id); }
+  for (const f of Object.values(obj?.facts ?? {})) bk.facts.set(f.id, f);
+  for (const [file, links] of Object.entries(obj?.byFile ?? {})) {
+    bk.byFile.set(file, { facts: new Set(links.facts ?? []), evidence: new Set(links.evidence ?? []) });
+  }
+  for (const [evId, factIds] of Object.entries(obj?.evidenceRefs ?? {})) bk.evidenceRefs.set(evId, new Set(factIds));
+  return bk;
+}
+
+function scheduleSave(ownerKey = null) {
+  if (ownerKey) binding.markDirty(ownerKey);
+  if (!binding.writesWholeJson()) return;
   _writer.schedule(() => {
     const data = {};
-    for (const [owner, b] of store.entries()) {
-      data[owner] = {
-        evidence: Object.fromEntries(b.evidence),
-        facts:    Object.fromEntries(b.facts),
-        byFile:   Object.fromEntries([...b.byFile].map(([k, v]) => [k, { facts: [...v.facts], evidence: [...v.evidence] }])),
-        evidenceRefs: Object.fromEntries([...b.evidenceRefs].map(([k, v]) => [k, [...v]])),
-      };
-    }
+    for (const [owner, b] of store.entries()) data[owner] = encodeBucket(b);
     return JSON.stringify(wrapStore(SCHEMA, data));
   });
 }
 
-loadFromDisk();
+// ── Per-owner persistence (scalability Phase 2c) ─────────────────────────────
+// WRITERS: the server only (file pipeline, memory engine, propagation, PIC
+// consolidation, reflection archive); concurrent with several API instances.
+// MERGE (three-way against the last-synced base, core/storage/entryMerge.js):
+//   evidence, facts   per item; changed on one side → that side; on both →
+//                     newer (facts: updatedAt, stamped by updateFact while
+//                     partitions are on; else createdAt); deleted (removeFile,
+//                     eviction) on one side and untouched on the other → gone
+//   byFile,
+//   evidenceRefs      id sets merged three-way, then links to items that no
+//                     longer exist are dropped; byChecksum is rebuilt, not merged
+// DELETION: purgeOwner → row tombstone.
+const factTime = f => Number(f?.updatedAt ?? f?.createdAt) || 0;
+const binding = bindKeyedStore({
+  storeKey: '.aqua-evidence.json', file: STORE_FILE, label: 'evidence', schema: SCHEMA,
+  mergeSchema: {
+    collections: { evidence: { time: e => Number(e?.createdAt) || 0 }, facts: { time: factTime } },
+    links: ['byFile', 'evidenceRefs'],
+    finalize: m => {
+      for (const l of Object.values(m.byFile ?? {})) {
+        l.facts = (l.facts ?? []).filter(id => m.facts[id]);
+        l.evidence = (l.evidence ?? []).filter(id => m.evidence[id]);
+      }
+      for (const [evId, ids] of Object.entries(m.evidenceRefs ?? {})) {
+        if (!m.evidence[evId]) delete m.evidenceRefs[evId];
+        else m.evidenceRefs[evId] = ids.filter(id => m.facts[id]);
+      }
+      return m;
+    },
+  },
+  encode: owner => (store.has(owner) ? encodeBucket(store.get(owner)) : undefined),
+  decode: decodeBucket,
+  install: (owner, b) => { if (b) store.set(owner, b); else store.delete(owner); },
+  evict: owner => store.delete(owner),
+  changedAt: obj => Math.max(0, ...Object.values(obj?.facts ?? {}).map(factTime), ...Object.values(obj?.evidence ?? {}).map(e => Number(e?.createdAt) || 0)),
+  reloadJson: () => loadFromDisk(),
+});
+export function evidencePartitionBinding() { return binding; }
+
+if (binding.loadsJsonAtBoot()) loadFromDisk();
 
 // ── Write (with dedup/sharing) ───────────────────────────────────────────────
 
@@ -128,7 +186,7 @@ export function saveEvidence(ownerId, evidence) {
   b.byChecksum.set(evidence.checksum, evidence.id);
   if (!b.evidenceRefs.has(evidence.id)) b.evidenceRefs.set(evidence.id, new Set());
   linkFile(b, evidence.sourceFileId).evidence.add(evidence.id);
-  scheduleSave();
+  scheduleSave(ownerId ?? 'anon');
   return evidence;
 }
 
@@ -150,7 +208,7 @@ export function saveFact(ownerId, fact, { sourceFileId = null } = {}) {
     const refs = b.evidenceRefs.get(evId);
     if (refs) refs.add(fact.id);   // only real evidence gets an edge
   }
-  scheduleSave();
+  scheduleSave(ownerId ?? 'anon');
   void indexCanonicalClaim(ownerId, fact).catch(() => {});
   return fact;
 }
@@ -219,10 +277,12 @@ export function updateFact(ownerId, factId, patch = {}) {
     patch = { ...patch, evidence: [...new Set(patch.evidence)] };
   }
   Object.assign(fact, patch);
+  // Partitions on: a time for the three-way merge to settle a double edit by.
+  if (binding.mode !== 'off') fact.updatedAt = Date.now();
   if (Array.isArray(patch.evidence)) {
     for (const evId of fact.evidence) b.evidenceRefs.get(evId)?.add(factId);
   }
-  scheduleSave();
+  scheduleSave(ownerId ?? 'anon');
   if (Object.prototype.hasOwnProperty.call(patch, 'statement')) {
     void indexCanonicalClaim(ownerId, fact).catch(() => {});
   }
@@ -247,7 +307,7 @@ export function removeFile(ownerId, ukoId) {
     b.evidenceRefs.delete(evId);
   }
   b.byFile.delete(ukoId);
-  scheduleSave();
+  scheduleSave(ownerId ?? 'anon');
   void indexCanonicalClaims(ownerId, [...b.facts.values()]).catch(() => {});
   return true;
 }
@@ -258,6 +318,7 @@ export function removeFile(ownerId, ukoId) {
  */
 export function purgeOwner(ownerId) {
   const key = ownerId ?? 'anon';
+  binding.markDeleted(key);
   const b = store.get(key);
   if (!b) return { facts: 0, evidence: 0 };
   const removed = { facts: b.facts.size, evidence: b.evidence.size };
@@ -342,4 +403,4 @@ export function getEvidenceStats(ownerId) {
   };
 }
 
-export function _resetEvidenceStoreForTests() { store.clear(); }
+export function _resetEvidenceStoreForTests() { store.clear(); binding._reset(); }

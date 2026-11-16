@@ -29,6 +29,9 @@ import {
   unwrapStore,
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
+import { bindKeyedStore } from '../core/storage/keyedBinding.js';
+import { getConversationMeta } from '../memory/conversationStore.js';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 
 const STORE_FILE = dataPath('.aqua-attachments.json');
 const SCHEMA     = 1;
@@ -57,7 +60,9 @@ function loadFromDisk() {
 }
 
 const _writer = createDebouncedWriter(STORE_FILE);
-function scheduleSave() {
+function scheduleSave(conversationId = null) {
+  if (conversationId) binding.markDirty(conversationId);
+  if (!binding.writesWholeJson()) return;
   _writer.schedule(() => {
     const data = {};
     for (const [id, list] of store.entries()) data[id] = list;
@@ -65,7 +70,31 @@ function scheduleSave() {
   });
 }
 
-loadFromDisk();
+// ── Per-owner persistence (scalability Phase 2c) ─────────────────────────────
+// WRITERS: the server only (upload route, chat, file engine, conversation
+// deletion). Keyed by CONVERSATION; the row belongs to the conversation's user
+// ('user:<meta.userId>'), so a user's request loads their attachments with their
+// conversations. MERGE: three-way list by attachment id, ordered by uploadedAt,
+// capped like today; removeAttachment and cap eviction attributed against the
+// base. clearAttachments → row tombstone.
+const conversationOwner = conversationId => {
+  const uid = getConversationMeta(conversationId)?.userId;
+  return uid != null && String(uid) !== '' ? `user:${uid}` : `conv:${conversationId}`;
+};
+const binding = bindKeyedStore({
+  storeKey: '.aqua-attachments.json', file: STORE_FILE, label: 'attachments', schema: SCHEMA, section: 'c',
+  mergeSchema: { rootList: { id: a => a?.id, time: a => Number(a?.uploadedAt) || 0, cap: MAX_ATTACHMENTS_PER_CONVERSATION } },
+  ownerOf: conversationOwner,
+  encode: id => (store.has(id) ? store.get(id) : undefined),
+  decode: list => (Array.isArray(list) ? list : []),
+  install: (id, list) => { if (list) store.set(id, list); else store.delete(id); },
+  evict: id => store.delete(id),
+  changedAt: list => Math.max(0, ...(list ?? []).map(a => Number(a?.uploadedAt) || 0)),
+  reloadJson: () => loadFromDisk(),
+});
+export function attachmentsPartitionBinding() { return binding; }
+
+if (binding.loadsJsonAtBoot()) loadFromDisk();
 
 // ── Write ─────────────────────────────────────────────────────────────────────
 
@@ -96,8 +125,8 @@ export function attachToConversation(conversationId, { name, kind, normalized })
 
   list.push(attachment);
   store.set(conversationId, list);
-  scheduleSave();
-  console.log(`[UPLOAD] Attached ${kind} "${name}" conversation=${conversationId} chars=${normalized.content.length}`);
+  scheduleSave(conversationId);
+  console.log(`[UPLOAD] Attached ${kind} ${fileMeta(name)} conversation=${conversationId} chars=${normalized.content.length}`);
   return attachment;
 }
 
@@ -113,11 +142,12 @@ export function removeAttachment(conversationId, attachmentId) {
   const idx = list.findIndex(a => a.id === attachmentId);
   if (idx === -1) return false;
   list.splice(idx, 1);
-  scheduleSave();
+  scheduleSave(conversationId);
   return true;
 }
 
 export function clearAttachments(conversationId) {
+  binding.markDeleted(conversationId);
   const had = store.delete(conversationId);
   if (had) scheduleSave();
   return had;

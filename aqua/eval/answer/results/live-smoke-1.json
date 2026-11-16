@@ -1,0 +1,147 @@
+{
+ "label": "live-smoke-1",
+ "createdAt": "2026-11-11T11:48:16.869Z",
+ "mode": "executed (free-tier quota only)",
+ "dataset": {
+  "set": "acib.v2.dev",
+  "sha256": "abca89163767a79a8799f01c84a0ac2851467ce1ad049cc8c2a12139cf6d6acc"
+ },
+ "regime": "short",
+ "arms": [
+  "A",
+  "H"
+ ],
+ "status": "complete-judging-queued",
+ "answered": 2,
+ "judged": 0,
+ "skipped": 0,
+ "judgeQueued": [
+  "d-pc-job@short"
+ ],
+ "incomplete": [],
+ "pausedAt": null,
+ "resumeAt": null,
+ "refused": [],
+ "rejected": null,
+ "pauseReason": null,
+ "models": {
+  "answer": "groq/openai/gpt-oss-120b",
+  "judge": "groq/qwen/qwen3.8-27b"
+ },
+ "usage": [
+  {
+   "provider": "groq",
+   "model": "openai/gpt-oss-120b",
+   "envName": "GROQ_API_KEY_1",
+   "domain": "40c2a0d1df2c",
+   "requests": 2,
+   "ok": 2,
+   "promptTokens": 2650,
+   "completionTokens": 152,
+   "errors": {},
+   "retries": 0
+  }
+ ],
+ "quota": {
+  "keys": [
+   {
+    "provider": "groq",
+    "envName": "GROQ_API_KEY_1",
+    "domain": "40c2a0d1df2c",
+    "status": "unknown-until-used"
+   }
+  ],
+  "domains": [
+   {
+    "provider": "groq",
+    "domain": "40c2a0d1df2c",
+    "verified": false,
+    "billing": "free-tier-verified",
+    "status": "ok",
+    "until": null
+   }
+  ],
+  "stopped": null
+ },
+ "merged": {
+  "aggregates": {
+   "A": {
+    "answers": 1,
+    "deterministic": {
+     "factual_correctness": 1,
+     "factual_correctness_n": 1,
+     "temporal_accuracy": null,
+     "temporal_accuracy_n": 0,
+     "contradiction_handling": null,
+     "contradiction_handling_n": 0,
+     "uncertainty_handling": null,
+     "uncertainty_handling_n": 0,
+     "clarification_quality": 1,
+     "clarification_quality_n": 1,
+     "personalization": 1,
+     "personalization_n": 1,
+     "stale_asserted": 0,
+     "ungrounded_figures": 0,
+     "personal_leaks": 0,
+     "distractor_mentions": 0,
+     "questions_asked": 0
+    },
+    "judged": 0,
+    "judge": {
+     "factual_correctness": null,
+     "grounding": null,
+     "personalization": null,
+     "temporal_accuracy": null,
+     "contradiction_handling": null,
+     "uncertainty": null,
+     "clarification_quality": null
+    },
+    "hallucinationRate": null
+   },
+   "H": {
+    "answers": 1,
+    "deterministic": {
+     "factual_correctness": 1,
+     "factual_correctness_n": 1,
+     "temporal_accuracy": null,
+     "temporal_accuracy_n": 0,
+     "contradiction_handling": null,
+     "contradiction_handling_n": 0,
+     "uncertainty_handling": null,
+     "uncertainty_handling_n": 0,
+     "clarification_quality": 1,
+     "clarification_quality_n": 1,
+     "personalization": 1,
+     "personalization_n": 1,
+     "stale_asserted": 0,
+     "ungrounded_figures": 0,
+     "personal_leaks": 0,
+     "distractor_mentions": 0,
+     "questions_asked": 0
+    },
+    "judged": 0,
+    "judge": {
+     "factual_correctness": null,
+     "grounding": null,
+     "personalization": null,
+     "temporal_accuracy": null,
+     "contradiction_handling": null,
+     "uncertainty": null,
+     "clarification_quality": null
+    },
+    "hallucinationRate": null
+   }
+  },
+  "review": [],
+  "models": {
+   "answer": [
+    "groq/openai/gpt-oss-120b"
+   ],
+   "judge": []
+  },
+  "counts": {
+   "answers": 2,
+   "judgements": 0
+  }
+ }
+}

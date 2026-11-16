@@ -25,6 +25,7 @@
 
 import { createDebouncedWriter, loadJsonFile } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
+import { bindAggregateStore } from '../core/storage/instanceAggregate.js';
 
 const STORE_FILE = dataPath('.aqua-cognition.json');
 const STORE_VERSION = 1;
@@ -57,11 +58,24 @@ function scheduleSave() {
   _writer.schedule(() => JSON.stringify(store));
 }
 
+// ── Phase 2c: instance-partitioned aggregate (AQUA_STORE_PARTITIONS=cognition:on)
+// GLOBAL strategy statistics, not user data. Each instance publishes only its
+// own changes; the local view is the shared total plus unpublished changes.
+// Counters add exactly; EWMAs combine sample-weighted (core/storage/instanceAggregate.js).
+// The JSON file stays this instance's cache and rollback copy. Off: unchanged.
+const AGG = bindAggregateStore({
+  storeKey: '.aqua-cognition.json',
+  label: 'cognition',
+  emptyDelta: () => ({ version: STORE_VERSION, byTask: {}, updatedAt: null }),
+  setLocal: view => { if (view?.byTask) { store = { ...emptyStore(), ...view, version: STORE_VERSION }; scheduleSave(); } },
+  initialBase: () => { loadFromDisk(); return Object.keys(store.byTask).length ? store : null; },
+});
+
 const ewma = (prev, value) => (prev == null ? value : prev + EWMA_ALPHA * (value - prev));
 
-function taskBucket(taskType) {
+function taskBucket(taskType, root = store) {
   loadFromDisk();
-  return (store.byTask[taskType] ??= { turns: 0, clarifications: 0, byStrategy: {} });
+  return (root.byTask[taskType] ??= { turns: 0, clarifications: 0, byStrategy: {} });
 }
 
 function strategyBucket(task, styleId) {
@@ -84,13 +98,17 @@ function strategyBucket(task, styleId) {
 export function recordPlan({ taskType, styleId, reused = false, clarification = false } = {}) {
   try {
     if (!taskType || !styleId) return;
-    const task = taskBucket(taskType);
-    task.turns += 1;
-    if (clarification) task.clarifications += 1;
-    const s = strategyBucket(task, styleId);
-    s.planned += 1;
-    if (reused) s.reused += 1;
-    store.updatedAt = new Date().toISOString();
+    loadFromDisk();
+    const now = new Date().toISOString();
+    AGG.apply(store, root => {
+      const task = taskBucket(taskType, root);
+      task.turns += 1;
+      if (clarification) task.clarifications += 1;
+      const s = strategyBucket(task, styleId);
+      s.planned += 1;
+      if (reused) s.reused += 1;
+      root.updatedAt = now;
+    });
     scheduleSave();
   } catch (err) {
     console.warn('[CIE] recordPlan failed (ignored):', err.message);
@@ -104,19 +122,23 @@ export function recordReflection({
 } = {}) {
   try {
     if (!taskType || !styleId) return;
-    const s = strategyBucket(taskBucket(taskType), styleId);
-    s.reflected += 1;
-    if (typeof effectiveness === 'number') s.effectivenessEwma = ewma(s.effectivenessEwma, effectiveness);
-    if (typeof confidence === 'number')    s.confidenceEwma    = ewma(s.confidenceEwma, confidence);
-    s.findingsEwma = ewma(s.findingsEwma, findings);
-    if (verification?.ran)     s.verification.ran += 1;
-    if (verification?.passed)  s.verification.passed += 1;
-    if (verification?.revised) s.verification.revised += 1;
-    if (outcome && s.outcomes[outcome] != null) s.outcomes[outcome] += 1;
-    if (betterStrategyHint) s.hints[betterStrategyHint] = (s.hints[betterStrategyHint] ?? 0) + 1;
-    if (lesson) s.lastLesson = String(lesson).slice(0, 200);
-    s.lastAt = new Date().toISOString();
-    store.updatedAt = s.lastAt;
+    loadFromDisk();
+    const now = new Date().toISOString();
+    AGG.apply(store, root => {
+      const s = strategyBucket(taskBucket(taskType, root), styleId);
+      s.reflected += 1;
+      if (typeof effectiveness === 'number') s.effectivenessEwma = ewma(s.effectivenessEwma, effectiveness);
+      if (typeof confidence === 'number')    s.confidenceEwma    = ewma(s.confidenceEwma, confidence);
+      s.findingsEwma = ewma(s.findingsEwma, findings);
+      if (verification?.ran)     s.verification.ran += 1;
+      if (verification?.passed)  s.verification.passed += 1;
+      if (verification?.revised) s.verification.revised += 1;
+      if (outcome && s.outcomes[outcome] != null) s.outcomes[outcome] += 1;
+      if (betterStrategyHint) s.hints[betterStrategyHint] = (s.hints[betterStrategyHint] ?? 0) + 1;
+      if (lesson) s.lastLesson = String(lesson).slice(0, 200);
+      s.lastAt = now;
+      root.updatedAt = now;
+    });
     scheduleSave();
   } catch (err) {
     console.warn('[CIE] recordReflection failed (ignored):', err.message);

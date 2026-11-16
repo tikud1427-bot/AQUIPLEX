@@ -12,7 +12,12 @@
  * ordering and acknowledgement; domain modules own the actual work. Unknown
  * kinds DEAD-LETTER rather than retry forever.
  */
-import { claim, complete, fail, enqueue } from './jobQueue.js';
+import { claim, complete, fail, enqueue, heartbeat, release, HEARTBEAT_STALE_MS, canarySleep } from './jobQueue.js';
+import { ensureOwnerLoaded, anyAuthoritative as anyPartitionStoreAuthoritative, flushOwnerBindingsStrict } from '../storage/ownerBinding.js';
+import { isOwnerDeleted } from '../storage/deletedOwners.js';
+import { LEARNING_HANDLERS, readTurnText } from '../../learning/turnLearning.js';
+import { logJobEvent } from './jobLog.js';
+import { RECONCILE_KIND, runReconcile, scheduleChargeReconcile, RECONCILE_INTERVAL_MS } from '../../credits/reconcileJob.js';
 import { dispatchPendingClaimReflections } from '../../brain/reflectionV3/reflectionOutbox.js';
 import { runClaimReflectionJob } from '../../brain/reflectionV3/reflectionWorker.js';
 import { runClaimContradictionJob } from '../../brain/reflectionV3/contradictionWorker.js';
@@ -48,11 +53,22 @@ export const HANDLERS = Object.freeze({
   'understanding.turn.v1': async job => {
     const started = Date.now();
     const payload = job.payload ?? {};
+    // Phase 3: a durable turn's job carries a REFERENCE to the message, not
+    // its text; read it now (redacted as the request path would have). A
+    // deleted conversation or message means there is nothing to understand.
+    // Older jobs (and the in-process fallback's enqueue) carry the text itself.
+    let userMessage = payload.userMessage ?? '';
+    if (payload.userMessageKey) {
+      const text = readTurnText({ conversationId: payload.conversationId, userMessageKey: payload.userMessageKey },
+        { rememberSensitive: payload.rememberSensitive === true });
+      if (!text) return { skipped: 'source-missing' };
+      userMessage = text.userMessage;
+    }
     const result = await Brain.understandTurn({
       ownerId: job.ownerId,
       conversationId: payload.conversationId ?? null,
       turn: Number.isInteger(payload.turn) ? payload.turn : null,
-      userMessage: payload.userMessage ?? '',
+      userMessage,
       // When the user SAID it (enqueue time), the anchor for relative dates.
       // Older payloads lack it: the job's own creation time is the closest truth.
       assertedAt: payload.assertedAt ?? job.createdAt ?? null,
@@ -112,6 +128,18 @@ export const HANDLERS = Object.freeze({
   [ACTION_JOB_KIND]: async job => {
     await runActionJob(job);
   },
+  // Phase 3: durable post-turn learning (learning/turnLearning.js).
+  ...LEARNING_HANDLERS,
+  // Phase 3: an operational canary — holds a database connection busy for
+  // payload.ms (≤ 30 s) and writes nothing. Used to test shutdown and recovery
+  // while a job is inside a database call.
+  // Phase 4B: pending-charge recovery (credits/pendingCharges.js). Idempotent:
+  // every wallet refund is conditional on the charge id.
+  [RECONCILE_KIND]: async () => runReconcile(),
+  'ops.canary.v1': async job => {
+    await canarySleep(Math.min(30_000, Math.max(0, Number(job.payload?.ms) || 0)));
+    return { slept: true };
+  },
 });
 
 /** Phase 4 periodic scan interval (default 1 h; 0 = never). Registered setting AQUA_PROACTIVE_INTERVAL_MS. */
@@ -119,6 +147,8 @@ export const PROACTIVE_INTERVAL_MS = (() => {
   const v = Number(process.env.AQUA_PROACTIVE_INTERVAL_MS);
   return Number.isFinite(v) && v >= 0 ? v : 60 * 60_000;
 })();
+export const scheduleChargeReconcileTick = (opts = {}) => scheduleChargeReconcile({ enqueue, ...opts });
+export { RECONCILE_INTERVAL_MS as CHARGE_RECONCILE_INTERVAL_MS };
 export const scheduleProactiveScan = (opts = {}) => scheduleProactive({ enqueue, intervalMs: PROACTIVE_INTERVAL_MS, ...opts });
 
 /** Throw when any segment's extraction failed (transport/parse), so the job retries. */
@@ -190,40 +220,143 @@ export async function dispatchReflections({ limit = 25 } = {}) {
 }
 
 /**
+ * A database that cannot be reached (refused, reset, shut down, timed out) —
+ * not a fault of the job. Phase 3: such a job is RELEASED (attempt not
+ * counted) instead of failed, so an outage cannot dead-letter a user's turn.
+ */
+export function isDatabaseUnavailable(err) {
+  const code = String(err?.code ?? '');
+  if (['ECONNREFUSED', 'ECONNRESET', 'ETIMEDOUT', 'EPIPE', 'ENOTFOUND', 'EAI_AGAIN', '57P01', '57P02', '57P03', '53300'].includes(code)) return true;
+  if (/^08/.test(code)) return true;
+  return /Connection terminated|connect ECONNREFUSED|timeout exceeded when trying to connect|Client has encountered a connection error|the database system is (starting up|shutting down)/i
+    .test(String(err?.message ?? ''));
+}
+
+/** jobId → { job, timer, lost } — what this process is running right now. */
+const inFlight = new Map();
+export const HEARTBEAT_EVERY_MS = Math.max(250, Math.floor(HEARTBEAT_STALE_MS / 4));
+
+/**
+ * Shutdown past its deadline: stop renewing and hand every in-flight job back
+ * (attempt not counted) so another worker takes it at once instead of after
+ * the heartbeat goes stale. The process must exit right after: a handler still
+ * running here could otherwise keep writing. Re-running is idempotent.
+ */
+export async function releaseInFlight(reason = 'shutdown') {
+  let n = 0;
+  for (const [jobId, e] of inFlight) {
+    clearInterval(e.timer);
+    e.lost = true;
+    try { if (await release(jobId, e.job.fence, { reason })) n++; } catch { /* db gone: the heartbeat goes stale and recovery reclaims it */ }
+    logJobEvent('released', e.job, { reason });
+  }
+  return n;
+}
+export const inFlightCount = () => inFlight.size;
+
+/**
  * Claim one job and run it. Returns null when the queue has nothing runnable,
  * otherwise `{ jobId, kind, ownerId, ok, state?, error? }`.
+ *
+ * Phase 3 — the lifecycle of one attempt:
+ *   claim (fenced: this worker, this attempt) → heartbeat every
+ *   HEARTBEAT_EVERY_MS while the handler runs → owner deleted? complete as a
+ *   no-op → load the owner (database unreachable → RELEASE, attempt not
+ *   counted) → handler → flush every partition write (incomplete → the job
+ *   fails and retries; nothing is acknowledged while its result is only in
+ *   memory) → complete, fenced. A worker whose claim was taken away (it looked
+ *   dead) can neither complete nor fail the job: its result is discarded.
  */
 export async function runOneJob(workerId, { kinds = null, handlers = HANDLERS } = {}) {
   const job = await claim(workerId, { kinds });
   if (!job) return null;
+  const fence = job.fence ?? null;
+  const t0 = Date.now();
+  const queueWaitMs = job.createdAt ? Math.max(0, new Date(job.claimedAt ?? t0).getTime() - new Date(job.createdAt).getTime()) : null;
+  logJobEvent('claimed', job, { workerId, queueWaitMs });
 
   const handler = handlers[job.kind];
   if (!handler) {
-    await fail(job.jobId, `no handler registered for kind "${job.kind}"`);
+    await fail(job.jobId, `no handler registered for kind "${job.kind}"`, fence);
     console.warn(`[WORKER] job ${job.jobId} kind=${job.kind} has no handler`);
+    logJobEvent('failed', job, { error: 'no-handler' });
     return { jobId: job.jobId, kind: job.kind, ownerId: job.ownerId, ok: false, error: 'no-handler' };
   }
+
+  const entry = { job, timer: null, lost: false };
+  if (fence) {
+    entry.timer = setInterval(() => {
+      heartbeat(job.jobId, fence)
+        .then(held => { if (!held && !entry.lost) { entry.lost = true; logJobEvent('lost', job, { reason: 'claim taken over' }); } })
+        .catch(() => { /* a missed beat; the next one retries */ });
+    }, HEARTBEAT_EVERY_MS);
+    entry.timer.unref?.();
+    inFlight.set(job.jobId, entry);
+  }
+  const done = () => { clearInterval(entry.timer); inFlight.delete(job.jobId); };
 
   const span = startSpan('job.run', {
     'aqua.job_kind': job.kind, 'aqua.attempts': Number(job.attempts ?? 0), 'aqua.owner_hash': hashOwner(job.ownerId),
   });
+  const base = { jobId: job.jobId, kind: job.kind, ownerId: job.ownerId };
   try {
-    await handler(job);
-    await complete(job.jobId);
-    span.setAttribute('aqua.outcome', 'done');
+    // Phase 3: an account deleted while this job waited — nothing to learn, nothing to write.
+    if (await isOwnerDeleted(job.ownerId)) {
+      done();
+      await complete(job.jobId, fence);
+      logJobEvent('skipped', job, { reason: 'owner-deleted', runMs: Date.now() - t0 });
+      return { ...base, ok: true, skipped: 'owner-deleted' };
+    }
+    // Phase 2b — the job is the unit of work: load its owner into every store
+    // that is authoritative on partitions. A database that cannot answer is not
+    // the job's fault: give it back without counting the attempt.
+    if (anyPartitionStoreAuthoritative()) {
+      try { await ensureOwnerLoaded(job.ownerId); }
+      catch (err) {
+        if (!isDatabaseUnavailable(err)) throw err;
+        done();
+        try { await release(job.jobId, fence, { delayMs: 5_000, reason: `owner load: ${String(err?.message ?? err).slice(0, 200)}` }); } catch { /* db down: recovery reclaims it */ }
+        logJobEvent('released', job, { reason: 'database-unavailable', error: String(err?.message ?? err) });
+        return { ...base, ok: false, state: 'released', error: String(err?.message ?? err) };
+      }
+    }
+    const outcome = await handler(job);
+    // Nothing is acknowledged while what it wrote is only in this process's memory.
+    if (anyPartitionStoreAuthoritative()) await flushOwnerBindingsStrict();
+    done();
+    if (entry.lost) {
+      logJobEvent('lost', job, { reason: 'claim taken over before completion; result discarded', runMs: Date.now() - t0 });
+      return { ...base, ok: false, state: 'lost' };
+    }
+    const acked = await complete(job.jobId, fence);
+    span.setAttribute('aqua.outcome', acked ? 'done' : 'lost');
+    if (!acked) {
+      logJobEvent('lost', job, { reason: 'fence mismatch at completion', runMs: Date.now() - t0 });
+      return { ...base, ok: false, state: 'lost' };
+    }
     console.log(`[WORKER] job ${job.jobId} kind=${job.kind} owner=${job.ownerId} done`);
-    return { jobId: job.jobId, kind: job.kind, ownerId: job.ownerId, ok: true };
+    logJobEvent('done', job, { runMs: Date.now() - t0, queueWaitMs, outcome: outcome?.skipped ? `skipped:${outcome.skipped}` : 'applied' });
+    return { ...base, ok: true, ...(outcome?.skipped ? { skipped: outcome.skipped } : {}) };
   } catch (err) {
+    done();
     span.setStatus('error');
     reportError(err, { where: `job.${String(job.kind).replace(/[^a-z0-9._-]/gi, '_')}`, ownerId: job.ownerId });
-    const r = await fail(job.jobId, err);
-    span.setAttribute('aqua.outcome', r.state === 'dead' ? 'dead' : 'retry');
+    let r;
+    try { r = await fail(job.jobId, err, fence); }
+    catch (e2) {
+      // Could not even record the failure (database gone): the heartbeat
+      // stopped, and recovery reclaims the job once it is stale.
+      logJobEvent('unrecorded', job, { error: String(err?.message ?? err), recordError: String(e2?.message ?? e2) });
+      return { ...base, ok: false, state: 'unrecorded', error: String(err?.message ?? err) };
+    }
+    span.setAttribute('aqua.outcome', r.state === 'dead' ? 'dead' : r.state === 'lost' ? 'lost' : 'retry');
     const detail = r.state === 'dead'
       ? `DEAD after ${job.attempts} attempt(s)`
-      : `retry in ${Math.round(r.retryInMs / 1000)}s`;
+      : r.state === 'lost' ? 'claim lost; not recorded' : `retry in ${Math.round(r.retryInMs / 1000)}s`;
     console.error(`[WORKER] job ${job.jobId} kind=${job.kind} failed — ${detail}: ${err?.message ?? err}`);
-    return { jobId: job.jobId, kind: job.kind, ownerId: job.ownerId, ok: false, state: r.state,
-      error: String(err?.message ?? err) };
+    logJobEvent(r.state === 'dead' ? 'dead' : r.state === 'lost' ? 'lost' : 'retry', job,
+      { runMs: Date.now() - t0, retryInMs: r.retryInMs, error: String(err?.message ?? err).slice(0, 300) });
+    return { ...base, ok: false, state: r.state, error: String(err?.message ?? err) };
   } finally {
     span.end();
   }

@@ -1,0 +1,4467 @@
+{
+  "benchmark": "acib-1.0.0",
+  "suite": "acib-heldout-v1-needs",
+  "dataset": {
+    "id": "acib-heldout",
+    "version": "1",
+    "file": "acib.heldout.v1.json",
+    "sha256": "8da1bffb7e387ce9fc66c3489c051b87c084b0073384c1ec21e7d4d1cbd51921",
+    "frozen": "8da1bffb7e387ce9fc66c3489c051b87c084b0073384c1ec21e7d4d1cbd51921",
+    "intact": true
+  },
+  "pipeline": {
+    "commit": "839ea0d167025e1ad7085668727ff65452d51335",
+    "dirty": true,
+    "source": {
+      "files": 371,
+      "sha256": "8a85b4f533335a5b3aca877ead72a496d5d31a7efb4f4d0e1af849f276574b93"
+    }
+  },
+  "configuration": {
+    "gates": {
+      "AQUA_ANSWER_SCAFFOLD_GUARD": "on",
+      "AQUA_BRAIN": "on",
+      "AQUA_BRAIN_INGEST": "off",
+      "AQUA_BRAIN_INGEST_FACTS": "off",
+      "AQUA_CANONICAL_IDS": "off",
+      "AQUA_CANONICAL_READ": "auto",
+      "AQUA_CANONICAL_RELEVANCE_GATE": "on",
+      "AQUA_CIE": "on",
+      "AQUA_CLAIM_STRICT_PREDICATES": "off",
+      "AQUA_CLAIMS_SHADOW": "off",
+      "AQUA_CONSOLIDATE": "off",
+      "AQUA_CONTEXT_V2": "off",
+      "AQUA_CROSS_ENCODER": "off",
+      "AQUA_RETRIEVAL_V3": "off",
+      "AQUA_CORRECTION_PHRASES": "off",
+      "AQUA_DISABLE_MONGO_MIRROR": "on",
+      "AQUA_E6_ACTOR_RETRY": "on",
+      "AQUA_PROPAGATION": "off",
+      "AQUA_EPISODIC_RECALL": "on",
+      "AQUA_E6_COMPOUND_RETRY": "off",
+      "AQUA_E6": "off",
+      "AQUA_EMBEDDINGS": "on",
+      "AQUA_GRAPH": "on",
+      "AQUA_GRAPH_STRICT_TYPES": "off",
+      "AQUA_MIND_RELEVANCE": "off",
+      "AQUA_MIND_VIEW": "off",
+      "AQUA_PARSE_WORKER": "on",
+      "AQUA_PIC": "on",
+      "AQUA_PROACTIVE": "on",
+      "AQUA_PROVIDER_LOG": "off",
+      "AQUA_RECALL_FOLLOWUP_V2": "off",
+      "AQUA_REFLECT_V2": "off",
+      "AQUA_REL_EVOLVE": "off",
+      "AQUA_REVISION_VOICE": "on",
+      "AQUA_SEMANTIC_RECALL": "off",
+      "AQUA_SELF_ENTITY": "off",
+      "AQUA_STORE_PG": "off",
+      "AQUA_STORE_PG_READ": "off",
+      "AQUA_TWIN_V2": "off",
+      "AQUA_UUS": "off",
+      "AQUA_WORLD_CORE": "on",
+      "AQUA_INFO_NEEDS": "off",
+      "AQUA_LOG_CONTENT": "off",
+      "ARTIFACTS_ENABLED": "on"
+    },
+    "overridden": [
+      "AQUA_DISABLE_MONGO_MIRROR=1"
+    ],
+    "infrastructure": {
+      "db": false,
+      "llm": false,
+      "embedding-key": false,
+      "dedicated-embedding-key": false
+    },
+    "readModeExpected": "legacy (no DATABASE_URL)"
+  },
+  "executedAt": "2026-11-11T03:06:33.002Z",
+  "durationMs": 21006,
+  "node": "v24.19.0",
+  "platform": "win32-x64",
+  "coverage": {
+    "total": 20,
+    "executed": 20,
+    "skipped": 0,
+    "errored": 0,
+    "complete": true
+  },
+  "metrics": {
+    "cases_scored": 20,
+    "production_short_context_precision": 0.8222,
+    "production_short_context_recall": 1,
+    "production_short_evidence_coverage": 1,
+    "production_short_context_efficiency": 0.818,
+    "production_short_temporal_accuracy": 1,
+    "production_short_contradiction_handling": 1,
+    "production_short_unknown_handling": 0.5,
+    "production_short_cross_entity_accuracy": 1,
+    "production_short_irrelevant_items": 6,
+    "production_short_irrelevant_chars": 665,
+    "production_short_distractor_items": 2,
+    "production_short_critical_missing": 0,
+    "production_short_critical_miss_with_noise": 0,
+    "production_short_stale_as_current": 0,
+    "production_short_cross_entity_violations": 0,
+    "production_short_personal_items_on_impersonal": 0,
+    "critical_production_short_context_precision": 0.8889,
+    "critical_production_short_context_recall": 1,
+    "critical_production_short_evidence_coverage": 1,
+    "critical_production_short_context_efficiency": 0.8672,
+    "critical_production_short_critical_missing": 0,
+    "critical_production_short_irrelevant_items": 1,
+    "critical_production_short_distractor_items": 1,
+    "critical_production_short_critical_miss_with_noise": 0,
+    "recall_short_context_precision": 0.8833,
+    "recall_short_context_recall": 1,
+    "recall_short_evidence_coverage": 1,
+    "recall_short_context_efficiency": 0.8899,
+    "recall_short_temporal_accuracy": 1,
+    "recall_short_contradiction_handling": 0.5,
+    "recall_short_unknown_handling": 0,
+    "recall_short_cross_entity_accuracy": 1,
+    "recall_short_irrelevant_items": 3,
+    "recall_short_irrelevant_chars": 293,
+    "recall_short_distractor_items": 1,
+    "recall_short_critical_missing": 0,
+    "recall_short_critical_miss_with_noise": 0,
+    "recall_short_stale_as_current": 0,
+    "recall_short_cross_entity_violations": 0,
+    "recall_short_personal_items_on_impersonal": 0,
+    "critical_recall_short_context_precision": 1,
+    "critical_recall_short_context_recall": 1,
+    "critical_recall_short_evidence_coverage": 1,
+    "critical_recall_short_context_efficiency": 1,
+    "critical_recall_short_critical_missing": 0,
+    "critical_recall_short_irrelevant_items": 0,
+    "critical_recall_short_distractor_items": 0,
+    "critical_recall_short_critical_miss_with_noise": 0,
+    "memory_short_context_precision": 0.275,
+    "memory_short_context_recall": 0.1556,
+    "memory_short_evidence_coverage": 0.1556,
+    "memory_short_context_efficiency": 0.2781,
+    "memory_short_temporal_accuracy": 0,
+    "memory_short_contradiction_handling": 1,
+    "memory_short_unknown_handling": 0.5,
+    "memory_short_cross_entity_accuracy": 1,
+    "memory_short_irrelevant_items": 3,
+    "memory_short_irrelevant_chars": 372,
+    "memory_short_distractor_items": 1,
+    "memory_short_critical_missing": 14,
+    "memory_short_critical_miss_with_noise": 3,
+    "memory_short_stale_as_current": 0,
+    "memory_short_cross_entity_violations": 0,
+    "memory_short_personal_items_on_impersonal": 0,
+    "critical_memory_short_context_precision": 0.75,
+    "critical_memory_short_context_recall": 0.4,
+    "critical_memory_short_evidence_coverage": 0.4,
+    "critical_memory_short_context_efficiency": 0.7813,
+    "critical_memory_short_critical_missing": 3,
+    "critical_memory_short_irrelevant_items": 1,
+    "critical_memory_short_distractor_items": 1,
+    "critical_memory_short_critical_miss_with_noise": 1,
+    "knowledge_short_context_precision": 0.1,
+    "knowledge_short_context_recall": 0,
+    "knowledge_short_evidence_coverage": 0,
+    "knowledge_short_context_efficiency": 0.1,
+    "knowledge_short_temporal_accuracy": 0,
+    "knowledge_short_contradiction_handling": 0,
+    "knowledge_short_unknown_handling": 0,
+    "knowledge_short_cross_entity_accuracy": 1,
+    "knowledge_short_irrelevant_items": 0,
+    "knowledge_short_irrelevant_chars": 0,
+    "knowledge_short_distractor_items": 0,
+    "knowledge_short_critical_missing": 18,
+    "knowledge_short_critical_miss_with_noise": 0,
+    "knowledge_short_stale_as_current": 0,
+    "knowledge_short_cross_entity_violations": 0,
+    "knowledge_short_personal_items_on_impersonal": 0,
+    "critical_knowledge_short_context_precision": 0,
+    "critical_knowledge_short_context_recall": 0,
+    "critical_knowledge_short_evidence_coverage": 0,
+    "critical_knowledge_short_context_efficiency": 0,
+    "critical_knowledge_short_critical_missing": 5,
+    "critical_knowledge_short_irrelevant_items": 0,
+    "critical_knowledge_short_distractor_items": 0,
+    "critical_knowledge_short_critical_miss_with_noise": 0,
+    "planner_short_need_coverage": 0.5556,
+    "short_network_attempts": 0,
+    "production_long_context_precision": 0.7927,
+    "production_long_context_recall": 1,
+    "production_long_evidence_coverage": 1,
+    "production_long_context_efficiency": 0.795,
+    "production_long_temporal_accuracy": 1,
+    "production_long_contradiction_handling": 1,
+    "production_long_unknown_handling": 0.5,
+    "production_long_cross_entity_accuracy": 1,
+    "production_long_irrelevant_items": 10,
+    "production_long_irrelevant_chars": 1005,
+    "production_long_distractor_items": 2,
+    "production_long_critical_missing": 0,
+    "production_long_critical_miss_with_noise": 0,
+    "production_long_stale_as_current": 0,
+    "production_long_cross_entity_violations": 0,
+    "production_long_personal_items_on_impersonal": 0,
+    "critical_production_long_context_precision": 0.7273,
+    "critical_production_long_context_recall": 1,
+    "critical_production_long_evidence_coverage": 1,
+    "critical_production_long_context_efficiency": 0.7645,
+    "critical_production_long_critical_missing": 0,
+    "critical_production_long_irrelevant_items": 3,
+    "critical_production_long_distractor_items": 1,
+    "critical_production_long_critical_miss_with_noise": 0,
+    "recall_long_context_precision": 0.8298,
+    "recall_long_context_recall": 1,
+    "recall_long_evidence_coverage": 1,
+    "recall_long_context_efficiency": 0.8378,
+    "recall_long_temporal_accuracy": 1,
+    "recall_long_contradiction_handling": 0.5,
+    "recall_long_unknown_handling": 0,
+    "recall_long_cross_entity_accuracy": 1,
+    "recall_long_irrelevant_items": 7,
+    "recall_long_irrelevant_chars": 633,
+    "recall_long_distractor_items": 1,
+    "recall_long_critical_missing": 0,
+    "recall_long_critical_miss_with_noise": 0,
+    "recall_long_stale_as_current": 0,
+    "recall_long_cross_entity_violations": 0,
+    "recall_long_personal_items_on_impersonal": 0,
+    "critical_recall_long_context_precision": 0.7143,
+    "critical_recall_long_context_recall": 1,
+    "critical_recall_long_evidence_coverage": 1,
+    "critical_recall_long_context_efficiency": 0.7451,
+    "critical_recall_long_critical_missing": 0,
+    "critical_recall_long_irrelevant_items": 2,
+    "critical_recall_long_distractor_items": 0,
+    "critical_recall_long_critical_miss_with_noise": 0,
+    "memory_long_context_precision": 0.275,
+    "memory_long_context_recall": 0.1556,
+    "memory_long_evidence_coverage": 0.1556,
+    "memory_long_context_efficiency": 0.2781,
+    "memory_long_temporal_accuracy": 0,
+    "memory_long_contradiction_handling": 1,
+    "memory_long_unknown_handling": 0.5,
+    "memory_long_cross_entity_accuracy": 1,
+    "memory_long_irrelevant_items": 3,
+    "memory_long_irrelevant_chars": 372,
+    "memory_long_distractor_items": 1,
+    "memory_long_critical_missing": 14,
+    "memory_long_critical_miss_with_noise": 3,
+    "memory_long_stale_as_current": 0,
+    "memory_long_cross_entity_violations": 0,
+    "memory_long_personal_items_on_impersonal": 0,
+    "critical_memory_long_context_precision": 0.75,
+    "critical_memory_long_context_recall": 0.4,
+    "critical_memory_long_evidence_coverage": 0.4,
+    "critical_memory_long_context_efficiency": 0.7813,
+    "critical_memory_long_critical_missing": 3,
+    "critical_memory_long_irrelevant_items": 1,
+    "critical_memory_long_distractor_items": 1,
+    "critical_memory_long_critical_miss_with_noise": 1,
+    "knowledge_long_context_precision": 0.1,
+    "knowledge_long_context_recall": 0,
+    "knowledge_long_evidence_coverage": 0,
+    "knowledge_long_context_efficiency": 0.1,
+    "knowledge_long_temporal_accuracy": 0,
+    "knowledge_long_contradiction_handling": 0,
+    "knowledge_long_unknown_handling": 0,
+    "knowledge_long_cross_entity_accuracy": 1,
+    "knowledge_long_irrelevant_items": 0,
+    "knowledge_long_irrelevant_chars": 0,
+    "knowledge_long_distractor_items": 0,
+    "knowledge_long_critical_missing": 18,
+    "knowledge_long_critical_miss_with_noise": 0,
+    "knowledge_long_stale_as_current": 0,
+    "knowledge_long_cross_entity_violations": 0,
+    "knowledge_long_personal_items_on_impersonal": 0,
+    "critical_knowledge_long_context_precision": 0,
+    "critical_knowledge_long_context_recall": 0,
+    "critical_knowledge_long_evidence_coverage": 0,
+    "critical_knowledge_long_context_efficiency": 0,
+    "critical_knowledge_long_critical_missing": 5,
+    "critical_knowledge_long_irrelevant_items": 0,
+    "critical_knowledge_long_distractor_items": 0,
+    "critical_knowledge_long_critical_miss_with_noise": 0,
+    "planner_long_need_coverage": 0.5556,
+    "long_network_attempts": 0
+  },
+  "metricsError": null,
+  "scenarios": [
+    {
+      "case": "ho-brother@long",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "long",
+      "taskType": "simple_qa",
+      "confidence": 0.45,
+      "readMode": "legacy",
+      "promptTokens": 1361,
+      "networkBlocked": 0,
+      "questionMs": 14.4,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "lookup",
+        "needs": 1,
+        "essential": 1,
+        "found": 1,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 1,
+        "ms": 4.44,
+        "byNeed": [
+          {
+            "id": "answer",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "brother-city",
+            "required": true,
+            "match": [
+              "ghent"
+            ],
+            "evidence": [
+              "Tomas lives in Ghent"
+            ]
+          }
+        ],
+        "distractors": [
+          "self"
+        ],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] My brother Tomas lives in Ghent and works as an architect."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 1,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "brother-city"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 1,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "brother-city"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "brother-city"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "brother-city"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 1,
+        "planner_task": "conversation",
+        "planner_uncovered": []
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-brother@short",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "short",
+      "taskType": "simple_qa",
+      "confidence": 0.45,
+      "readMode": "legacy",
+      "promptTokens": 1361,
+      "networkBlocked": 0,
+      "questionMs": 9.5,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "lookup",
+        "needs": 1,
+        "essential": 1,
+        "found": 1,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 1,
+        "ms": 1.23,
+        "byNeed": [
+          {
+            "id": "answer",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "brother-city",
+            "required": true,
+            "match": [
+              "ghent"
+            ],
+            "evidence": [
+              "Tomas lives in Ghent"
+            ]
+          }
+        ],
+        "distractors": [
+          "self"
+        ],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] My brother Tomas lives in Ghent and works as an architect."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 1,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "brother-city"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 1,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "brother-city"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "brother-city"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "brother-city"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 1,
+        "planner_task": "conversation",
+        "planner_uncovered": []
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-car@long",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "long",
+      "taskType": "simple_qa",
+      "confidence": 0.45,
+      "readMode": "legacy",
+      "promptTokens": 1461,
+      "networkBlocked": 0,
+      "questionMs": 10.7,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "decision",
+        "needs": 5,
+        "essential": 3,
+        "found": 2,
+        "missing": 3,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "insufficient",
+        "quotes": 2,
+        "ms": 3.61,
+        "byNeed": [
+          {
+            "id": "cost",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "cash",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "income",
+            "essential": true,
+            "status": "missing",
+            "quotes": 0,
+            "facts": 0
+          },
+          {
+            "id": "runway",
+            "essential": false,
+            "status": "missing",
+            "quotes": 0,
+            "facts": 0
+          },
+          {
+            "id": "situation",
+            "essential": false,
+            "status": "missing",
+            "quotes": 0,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "savings",
+            "required": true,
+            "match": [
+              "9,?000",
+              "savings"
+            ],
+            "evidence": [
+              "9,000 in savings"
+            ]
+          },
+          {
+            "id": "price",
+            "required": true,
+            "match": [
+              "14,?500"
+            ],
+            "evidence": [
+              "costs 14,500"
+            ]
+          }
+        ],
+        "distractors": [
+          "puppy"
+        ],
+        "unknowns": [
+          "income"
+        ]
+      },
+      "retrieved": [
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "Not known: income or how much can be saved per month — the user has not said. Do not guess it."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] We have about 9,000 in savings right now."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] The used estate car we like costs 14,500."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 3,
+          "context_precision": 0.6666666666666666,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.6209677419354839,
+          "irrelevant_items": 1,
+          "irrelevant_chars": 94,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "savings",
+            "price"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 1,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 2,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "savings",
+            "price"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 1,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 1,
+          "irrelevant_chars": 94,
+          "distractor_items": 0,
+          "critical_missing": 2,
+          "missing_needs": [
+            "savings",
+            "price"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 1,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 1,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 2,
+          "missing_needs": [
+            "savings",
+            "price"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 0,
+        "planner_task": "conversation",
+        "planner_uncovered": [
+          "savings",
+          "price"
+        ]
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-car@short",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "short",
+      "taskType": "simple_qa",
+      "confidence": 0.45,
+      "readMode": "legacy",
+      "promptTokens": 1461,
+      "networkBlocked": 0,
+      "questionMs": 9.2,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "decision",
+        "needs": 5,
+        "essential": 3,
+        "found": 2,
+        "missing": 3,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "insufficient",
+        "quotes": 2,
+        "ms": 2.94,
+        "byNeed": [
+          {
+            "id": "cost",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "cash",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "income",
+            "essential": true,
+            "status": "missing",
+            "quotes": 0,
+            "facts": 0
+          },
+          {
+            "id": "runway",
+            "essential": false,
+            "status": "missing",
+            "quotes": 0,
+            "facts": 0
+          },
+          {
+            "id": "situation",
+            "essential": false,
+            "status": "missing",
+            "quotes": 0,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "savings",
+            "required": true,
+            "match": [
+              "9,?000",
+              "savings"
+            ],
+            "evidence": [
+              "9,000 in savings"
+            ]
+          },
+          {
+            "id": "price",
+            "required": true,
+            "match": [
+              "14,?500"
+            ],
+            "evidence": [
+              "costs 14,500"
+            ]
+          }
+        ],
+        "distractors": [
+          "puppy"
+        ],
+        "unknowns": [
+          "income"
+        ]
+      },
+      "retrieved": [
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "Not known: income or how much can be saved per month — the user has not said. Do not guess it."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] We have about 9,000 in savings right now."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] The used estate car we like costs 14,500."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 3,
+          "context_precision": 0.6666666666666666,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.6209677419354839,
+          "irrelevant_items": 1,
+          "irrelevant_chars": 94,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "savings",
+            "price"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 1,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 2,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "savings",
+            "price"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 1,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 1,
+          "irrelevant_chars": 94,
+          "distractor_items": 0,
+          "critical_missing": 2,
+          "missing_needs": [
+            "savings",
+            "price"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 1,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 1,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 2,
+          "missing_needs": [
+            "savings",
+            "price"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 0,
+        "planner_task": "conversation",
+        "planner_uncovered": [
+          "savings",
+          "price"
+        ]
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-impersonal@long",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "long",
+      "taskType": "simple_qa",
+      "confidence": 0.97,
+      "readMode": "legacy",
+      "promptTokens": 808,
+      "networkBlocked": 0,
+      "questionMs": 9.7,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "general",
+        "needs": 0,
+        "essential": 0,
+        "found": 0,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "not-applicable",
+        "quotes": 0,
+        "ms": 2.07,
+        "byNeed": []
+      },
+      "expected": {
+        "needs": [],
+        "distractors": [
+          "any-personal"
+        ],
+        "unknowns": []
+      },
+      "retrieved": [],
+      "arms": {
+        "production": {
+          "items": 0,
+          "context_precision": 1,
+          "context_recall": null,
+          "evidence_coverage": null,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": 0
+        },
+        "recall": {
+          "items": 0,
+          "context_precision": 1,
+          "context_recall": null,
+          "evidence_coverage": null,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": 0
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 1,
+          "context_recall": null,
+          "evidence_coverage": null,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": 0
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 1,
+          "context_recall": null,
+          "evidence_coverage": null,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": 0
+        }
+      },
+      "planner": {
+        "planner_need_coverage": null,
+        "planner_task": "conversation"
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-impersonal@short",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "short",
+      "taskType": "simple_qa",
+      "confidence": 0.97,
+      "readMode": "legacy",
+      "promptTokens": 808,
+      "networkBlocked": 0,
+      "questionMs": 14.8,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "general",
+        "needs": 0,
+        "essential": 0,
+        "found": 0,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "not-applicable",
+        "quotes": 0,
+        "ms": 0.82,
+        "byNeed": []
+      },
+      "expected": {
+        "needs": [],
+        "distractors": [
+          "any-personal"
+        ],
+        "unknowns": []
+      },
+      "retrieved": [],
+      "arms": {
+        "production": {
+          "items": 0,
+          "context_precision": 1,
+          "context_recall": null,
+          "evidence_coverage": null,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": 0
+        },
+        "recall": {
+          "items": 0,
+          "context_precision": 1,
+          "context_recall": null,
+          "evidence_coverage": null,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": 0
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 1,
+          "context_recall": null,
+          "evidence_coverage": null,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": 0
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 1,
+          "context_recall": null,
+          "evidence_coverage": null,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": 0
+        }
+      },
+      "planner": {
+        "planner_need_coverage": null,
+        "planner_task": "conversation"
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-job-offer@long",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "long",
+      "taskType": "simple_qa",
+      "confidence": 0.45,
+      "readMode": "legacy",
+      "promptTokens": 1702,
+      "networkBlocked": 0,
+      "questionMs": 17.6,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "decision",
+        "needs": 6,
+        "essential": 1,
+        "found": 5,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 1,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 7,
+        "ms": 7.05,
+        "byNeed": [
+          {
+            "id": "subject",
+            "essential": true,
+            "status": "found",
+            "quotes": 3,
+            "facts": 0
+          },
+          {
+            "id": "situation",
+            "essential": false,
+            "status": "found",
+            "quotes": 0,
+            "facts": 2
+          },
+          {
+            "id": "money",
+            "essential": false,
+            "status": "contradictory",
+            "quotes": 2,
+            "facts": 0
+          },
+          {
+            "id": "time",
+            "essential": false,
+            "status": "found",
+            "quotes": 2,
+            "facts": 1
+          },
+          {
+            "id": "criteria",
+            "essential": false,
+            "status": "found",
+            "quotes": 2,
+            "facts": 0
+          },
+          {
+            "id": "timing",
+            "essential": false,
+            "status": "found",
+            "quotes": 2,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "current-pay",
+            "required": true,
+            "match": [
+              "58,?000"
+            ],
+            "evidence": [
+              "earn 58,000 a year"
+            ]
+          },
+          {
+            "id": "offer",
+            "required": true,
+            "match": [
+              "66,?000",
+              "clinical lead"
+            ],
+            "evidence": [
+              "clinical lead role at 66,000"
+            ]
+          },
+          {
+            "id": "commute",
+            "required": true,
+            "match": [
+              "commute",
+              "90 minute"
+            ],
+            "evidence": [
+              "90 minute commute"
+            ]
+          },
+          {
+            "id": "family",
+            "required": true,
+            "match": [
+              "stay in this city",
+              "daughter"
+            ],
+            "evidence": [
+              "stay in this city until our daughter finishes school"
+            ]
+          },
+          {
+            "id": "deadline",
+            "required": true,
+            "match": [
+              "friday",
+              "expires"
+            ],
+            "evidence": [
+              "offer expires on Friday"
+            ]
+          }
+        ],
+        "distractors": [
+          "pottery"
+        ],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "profession: nurse manager (user-stated, 2026-11-11; they said: \"I work as a nurse manager at St Aldric Hospital and earn 58,000 a year.\")"
+        },
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "workplace: St Aldric Hospital (user-stated, 2026-11-11; they said: \"I work as a nurse manager at St Aldric Hospital and earn 58,000 a year.\")"
+        },
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "Conflicting statements about money available for it (savings or budget) and income: \"I work as a nurse manager at St Aldric Hospital and earn 58,000 a year.\" (2026-11-11) vs \"Lumen Health offered me a clinical lead role at 66,000 a year.\" (2026-11-11) — contradictory, neither marked as a change; do not pick one silently."
+        },
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "halfway through a weekend pottery course: halfway through a weekend pottery course (user-stated, 2026-11-11; they said: \"I'm halfway through a weekend pottery course.\")"
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I work as a nurse manager at St Aldric Hospital and earn 58,000 a year."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Lumen Health offered me a clinical lead role at 66,000 a year."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] The Lumen office is a 90 minute commute each way from my flat."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] My partner and I agreed we want to stay in this city until our daughter finishes school."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] The Lumen offer expires on Friday."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I finally organised the garage this weekend."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I enjoy sketching birds at the park on quiet mornings."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 11,
+          "context_precision": 0.7272727272727273,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.7644599303135888,
+          "irrelevant_items": 3,
+          "irrelevant_chars": 338,
+          "distractor_items": 1,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "current-pay",
+            "offer",
+            "commute",
+            "family",
+            "deadline"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 7,
+          "context_precision": 0.7142857142857143,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.7451274362818591,
+          "irrelevant_items": 2,
+          "irrelevant_chars": 170,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "current-pay",
+            "offer",
+            "commute",
+            "family",
+            "deadline"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 4,
+          "context_precision": 0.75,
+          "context_recall": 0.4,
+          "evidence_coverage": 0.4,
+          "context_efficiency": 0.78125,
+          "irrelevant_items": 1,
+          "irrelevant_chars": 168,
+          "distractor_items": 1,
+          "critical_missing": 3,
+          "missing_needs": [
+            "commute",
+            "family",
+            "deadline"
+          ],
+          "found_needs": [
+            "current-pay",
+            "offer"
+          ],
+          "critical_miss_with_noise": 1,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 5,
+          "missing_needs": [
+            "current-pay",
+            "offer",
+            "commute",
+            "family",
+            "deadline"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 1,
+        "planner_task": "decision",
+        "planner_uncovered": []
+      },
+      "plannerSlots": [
+        "goal",
+        "deadline",
+        "blockers",
+        "constraints",
+        "risk_signals",
+        "prior_plans"
+      ]
+    },
+    {
+      "case": "ho-job-offer@short",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "short",
+      "taskType": "simple_qa",
+      "confidence": 0.45,
+      "readMode": "legacy",
+      "promptTokens": 1659,
+      "networkBlocked": 0,
+      "questionMs": 33,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "decision",
+        "needs": 6,
+        "essential": 1,
+        "found": 5,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 1,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 5,
+        "ms": 12.32,
+        "byNeed": [
+          {
+            "id": "subject",
+            "essential": true,
+            "status": "found",
+            "quotes": 3,
+            "facts": 0
+          },
+          {
+            "id": "situation",
+            "essential": false,
+            "status": "found",
+            "quotes": 0,
+            "facts": 2
+          },
+          {
+            "id": "money",
+            "essential": false,
+            "status": "contradictory",
+            "quotes": 2,
+            "facts": 0
+          },
+          {
+            "id": "time",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 1
+          },
+          {
+            "id": "criteria",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "timing",
+            "essential": false,
+            "status": "found",
+            "quotes": 2,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "current-pay",
+            "required": true,
+            "match": [
+              "58,?000"
+            ],
+            "evidence": [
+              "earn 58,000 a year"
+            ]
+          },
+          {
+            "id": "offer",
+            "required": true,
+            "match": [
+              "66,?000",
+              "clinical lead"
+            ],
+            "evidence": [
+              "clinical lead role at 66,000"
+            ]
+          },
+          {
+            "id": "commute",
+            "required": true,
+            "match": [
+              "commute",
+              "90 minute"
+            ],
+            "evidence": [
+              "90 minute commute"
+            ]
+          },
+          {
+            "id": "family",
+            "required": true,
+            "match": [
+              "stay in this city",
+              "daughter"
+            ],
+            "evidence": [
+              "stay in this city until our daughter finishes school"
+            ]
+          },
+          {
+            "id": "deadline",
+            "required": true,
+            "match": [
+              "friday",
+              "expires"
+            ],
+            "evidence": [
+              "offer expires on Friday"
+            ]
+          }
+        ],
+        "distractors": [
+          "pottery"
+        ],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "profession: nurse manager (user-stated, 2026-11-11; they said: \"I work as a nurse manager at St Aldric Hospital and earn 58,000 a year.\")"
+        },
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "workplace: St Aldric Hospital (user-stated, 2026-11-11; they said: \"I work as a nurse manager at St Aldric Hospital and earn 58,000 a year.\")"
+        },
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "Conflicting statements about money available for it (savings or budget) and income: \"I work as a nurse manager at St Aldric Hospital and earn 58,000 a year.\" (2026-11-11) vs \"Lumen Health offered me a clinical lead role at 66,000 a year.\" (2026-11-11) — contradictory, neither marked as a change; do not pick one silently."
+        },
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "halfway through a weekend pottery course: halfway through a weekend pottery course (user-stated, 2026-11-11; they said: \"I'm halfway through a weekend pottery course.\")"
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I work as a nurse manager at St Aldric Hospital and earn 58,000 a year."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Lumen Health offered me a clinical lead role at 66,000 a year."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] The Lumen office is a 90 minute commute each way from my flat."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] My partner and I agreed we want to stay in this city until our daughter finishes school."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] The Lumen offer expires on Friday."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 9,
+          "context_precision": 0.8888888888888888,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.867193675889328,
+          "irrelevant_items": 1,
+          "irrelevant_chars": 168,
+          "distractor_items": 1,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "current-pay",
+            "offer",
+            "commute",
+            "family",
+            "deadline"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 5,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "current-pay",
+            "offer",
+            "commute",
+            "family",
+            "deadline"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 4,
+          "context_precision": 0.75,
+          "context_recall": 0.4,
+          "evidence_coverage": 0.4,
+          "context_efficiency": 0.78125,
+          "irrelevant_items": 1,
+          "irrelevant_chars": 168,
+          "distractor_items": 1,
+          "critical_missing": 3,
+          "missing_needs": [
+            "commute",
+            "family",
+            "deadline"
+          ],
+          "found_needs": [
+            "current-pay",
+            "offer"
+          ],
+          "critical_miss_with_noise": 1,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 5,
+          "missing_needs": [
+            "current-pay",
+            "offer",
+            "commute",
+            "family",
+            "deadline"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 1,
+        "planner_task": "decision",
+        "planner_uncovered": []
+      },
+      "plannerSlots": [
+        "goal",
+        "deadline",
+        "blockers",
+        "constraints",
+        "risk_signals",
+        "prior_plans"
+      ]
+    },
+    {
+      "case": "ho-kids-saturday@long",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "long",
+      "taskType": "planning",
+      "confidence": 0.97,
+      "readMode": "legacy",
+      "promptTokens": 1528,
+      "networkBlocked": 0,
+      "questionMs": 10.8,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "planning",
+        "needs": 3,
+        "essential": 2,
+        "found": 3,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 3,
+        "ms": 3.8,
+        "byNeed": [
+          {
+            "id": "people",
+            "essential": true,
+            "status": "found",
+            "quotes": 2,
+            "facts": 0
+          },
+          {
+            "id": "day",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "preferences",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "kids",
+            "required": true,
+            "match": [
+              "noor",
+              "idris"
+            ],
+            "evidence": [
+              "My kids are Noor"
+            ]
+          },
+          {
+            "id": "practice",
+            "required": true,
+            "match": [
+              "football",
+              "10am"
+            ],
+            "evidence": [
+              "football practice every Saturday at 10am"
+            ]
+          },
+          {
+            "id": "interests",
+            "required": true,
+            "match": [
+              "science museum"
+            ],
+            "evidence": [
+              "love the science museum"
+            ]
+          }
+        ],
+        "distractors": [
+          "report"
+        ],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] My kids are Noor, who is 9, and Idris, who is 6."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Noor has football practice every Saturday at 10am."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Both kids love the science museum."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 3,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "kids",
+            "practice",
+            "interests"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 3,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "kids",
+            "practice",
+            "interests"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 3,
+          "missing_needs": [
+            "kids",
+            "practice",
+            "interests"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 3,
+          "missing_needs": [
+            "kids",
+            "practice",
+            "interests"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 1,
+        "planner_task": "planning",
+        "planner_uncovered": []
+      },
+      "plannerSlots": [
+        "goal",
+        "constraints",
+        "dependencies",
+        "prior_plans",
+        "deadline"
+      ]
+    },
+    {
+      "case": "ho-kids-saturday@short",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "short",
+      "taskType": "planning",
+      "confidence": 0.97,
+      "readMode": "legacy",
+      "promptTokens": 1528,
+      "networkBlocked": 0,
+      "questionMs": 10.2,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "planning",
+        "needs": 3,
+        "essential": 2,
+        "found": 3,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 3,
+        "ms": 3.56,
+        "byNeed": [
+          {
+            "id": "people",
+            "essential": true,
+            "status": "found",
+            "quotes": 2,
+            "facts": 0
+          },
+          {
+            "id": "day",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "preferences",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "kids",
+            "required": true,
+            "match": [
+              "noor",
+              "idris"
+            ],
+            "evidence": [
+              "My kids are Noor"
+            ]
+          },
+          {
+            "id": "practice",
+            "required": true,
+            "match": [
+              "football",
+              "10am"
+            ],
+            "evidence": [
+              "football practice every Saturday at 10am"
+            ]
+          },
+          {
+            "id": "interests",
+            "required": true,
+            "match": [
+              "science museum"
+            ],
+            "evidence": [
+              "love the science museum"
+            ]
+          }
+        ],
+        "distractors": [
+          "report"
+        ],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] My kids are Noor, who is 9, and Idris, who is 6."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Noor has football practice every Saturday at 10am."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Both kids love the science museum."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 3,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "kids",
+            "practice",
+            "interests"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 3,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "kids",
+            "practice",
+            "interests"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 3,
+          "missing_needs": [
+            "kids",
+            "practice",
+            "interests"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 3,
+          "missing_needs": [
+            "kids",
+            "practice",
+            "interests"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 1,
+        "planner_task": "planning",
+        "planner_uncovered": []
+      },
+      "plannerSlots": [
+        "goal",
+        "constraints",
+        "dependencies",
+        "prior_plans",
+        "deadline"
+      ]
+    },
+    {
+      "case": "ho-landlord@long",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "long",
+      "taskType": "memory_recall",
+      "confidence": 0.62,
+      "readMode": "legacy",
+      "promptTokens": 1182,
+      "networkBlocked": 0,
+      "questionMs": 29.5,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "lookup",
+        "needs": 1,
+        "essential": 1,
+        "found": 1,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 2,
+        "ms": 17.56,
+        "byNeed": [
+          {
+            "id": "answer",
+            "essential": true,
+            "status": "found",
+            "quotes": 2,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "landlord",
+            "required": true,
+            "match": [
+              "adeyemi"
+            ],
+            "evidence": [
+              "my landlord is Mr. Adeyemi"
+            ]
+          }
+        ],
+        "distractors": [],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] My landlord is Mr. Okafor. ↳ since changed — now: \"Correction: my landlord is Mr. Adeyemi, Okafor was the previous one.\""
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Correction: my landlord is Mr. Adeyemi, Okafor was the previous one."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 2,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "landlord"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": 0,
+          "temporal_accuracy": 1,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 2,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "landlord"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": 0,
+          "temporal_accuracy": 1,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "landlord"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": 0,
+          "temporal_accuracy": 0,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "landlord"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": 0,
+          "temporal_accuracy": 0,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 1,
+        "planner_task": "conversation",
+        "planner_uncovered": []
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-landlord@short",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "short",
+      "taskType": "memory_recall",
+      "confidence": 0.62,
+      "readMode": "legacy",
+      "promptTokens": 1182,
+      "networkBlocked": 0,
+      "questionMs": 7.6,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "lookup",
+        "needs": 1,
+        "essential": 1,
+        "found": 1,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 2,
+        "ms": 1.47,
+        "byNeed": [
+          {
+            "id": "answer",
+            "essential": true,
+            "status": "found",
+            "quotes": 2,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "landlord",
+            "required": true,
+            "match": [
+              "adeyemi"
+            ],
+            "evidence": [
+              "my landlord is Mr. Adeyemi"
+            ]
+          }
+        ],
+        "distractors": [],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] My landlord is Mr. Okafor. ↳ since changed — now: \"Correction: my landlord is Mr. Adeyemi, Okafor was the previous one.\""
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Correction: my landlord is Mr. Adeyemi, Okafor was the previous one."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 2,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "landlord"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": 0,
+          "temporal_accuracy": 1,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 2,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "landlord"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": 0,
+          "temporal_accuracy": 1,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "landlord"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": 0,
+          "temporal_accuracy": 0,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "landlord"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": 0,
+          "temporal_accuracy": 0,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 1,
+        "planner_task": "conversation",
+        "planner_uncovered": []
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-leave@long",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "long",
+      "taskType": "simple_qa",
+      "confidence": 0.97,
+      "readMode": "legacy",
+      "promptTokens": 1313,
+      "networkBlocked": 0,
+      "questionMs": 12.6,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "lookup",
+        "needs": 1,
+        "essential": 1,
+        "found": 0,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 1,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "insufficient",
+        "quotes": 2,
+        "ms": 3.08,
+        "byNeed": [
+          {
+            "id": "answer",
+            "essential": true,
+            "status": "contradictory",
+            "quotes": 2,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "leave-a",
+            "required": true,
+            "match": [
+              "12 days"
+            ],
+            "evidence": [
+              "12 days of annual leave"
+            ]
+          },
+          {
+            "id": "leave-b",
+            "required": true,
+            "match": [
+              "9 days"
+            ],
+            "evidence": [
+              "9 days of annual leave"
+            ]
+          }
+        ],
+        "distractors": [],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "Conflicting statements about the information asked about (How many days of annual leave do I have left): \"I have 12 days of annual leave left this year.\" (2026-11-11) vs \"HR says I have 9 days of annual leave left.\" (2026-11-11) — contradictory, neither marked as a change; do not pick one silently."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I have 12 days of annual leave left this year."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] HR says I have 9 days of annual leave left."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 3,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "leave-a",
+            "leave-b"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": 1,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 2,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "leave-a",
+            "leave-b"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": 0.5,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 1,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "leave-a",
+            "leave-b"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": 1,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 2,
+          "missing_needs": [
+            "leave-a",
+            "leave-b"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": 0,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 0,
+        "planner_task": "conversation",
+        "planner_uncovered": [
+          "leave-a",
+          "leave-b"
+        ]
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-leave@short",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "short",
+      "taskType": "simple_qa",
+      "confidence": 0.97,
+      "readMode": "legacy",
+      "promptTokens": 1313,
+      "networkBlocked": 0,
+      "questionMs": 9.2,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "lookup",
+        "needs": 1,
+        "essential": 1,
+        "found": 0,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 1,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "insufficient",
+        "quotes": 2,
+        "ms": 2.75,
+        "byNeed": [
+          {
+            "id": "answer",
+            "essential": true,
+            "status": "contradictory",
+            "quotes": 2,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "leave-a",
+            "required": true,
+            "match": [
+              "12 days"
+            ],
+            "evidence": [
+              "12 days of annual leave"
+            ]
+          },
+          {
+            "id": "leave-b",
+            "required": true,
+            "match": [
+              "9 days"
+            ],
+            "evidence": [
+              "9 days of annual leave"
+            ]
+          }
+        ],
+        "distractors": [],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "Conflicting statements about the information asked about (How many days of annual leave do I have left): \"I have 12 days of annual leave left this year.\" (2026-11-11) vs \"HR says I have 9 days of annual leave left.\" (2026-11-11) — contradictory, neither marked as a change; do not pick one silently."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I have 12 days of annual leave left this year."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] HR says I have 9 days of annual leave left."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 3,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "leave-a",
+            "leave-b"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": 1,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 2,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "leave-a",
+            "leave-b"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": 0.5,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 1,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "leave-a",
+            "leave-b"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": 1,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 2,
+          "missing_needs": [
+            "leave-a",
+            "leave-b"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": 0,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 0,
+        "planner_task": "conversation",
+        "planner_uncovered": [
+          "leave-a",
+          "leave-b"
+        ]
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-migration@long",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "long",
+      "taskType": "simple_qa",
+      "confidence": 0.45,
+      "readMode": "legacy",
+      "promptTokens": 1420,
+      "networkBlocked": 0,
+      "questionMs": 10.3,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "status",
+        "needs": 2,
+        "essential": 1,
+        "found": 2,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 3,
+        "ms": 3.47,
+        "byNeed": [
+          {
+            "id": "statement",
+            "essential": true,
+            "status": "found",
+            "quotes": 3,
+            "facts": 0
+          },
+          {
+            "id": "who",
+            "essential": false,
+            "status": "found",
+            "quotes": 2,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "orion-status",
+            "required": true,
+            "match": [
+              "orion.*(behind|vendor|api keys)",
+              "two weeks behind"
+            ],
+            "evidence": [
+              "Orion is two weeks behind"
+            ]
+          }
+        ],
+        "distractors": [
+          "vega"
+        ],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] We have two migrations this quarter: Orion moves billing to the new cluster, and Vega moves search."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Orion is two weeks behind because the vendor hasn't delivered the API keys."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Vega finished early and is already live."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 3,
+          "context_precision": 0.3333333333333333,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.3447204968944099,
+          "irrelevant_items": 2,
+          "irrelevant_chars": 211,
+          "distractor_items": 1,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "orion-status"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 3,
+          "context_precision": 0.3333333333333333,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.3447204968944099,
+          "irrelevant_items": 2,
+          "irrelevant_chars": 211,
+          "distractor_items": 1,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "orion-status"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "orion-status"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "orion-status"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 0,
+        "planner_task": "conversation",
+        "planner_uncovered": [
+          "orion-status"
+        ]
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-migration@short",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "short",
+      "taskType": "simple_qa",
+      "confidence": 0.45,
+      "readMode": "legacy",
+      "promptTokens": 1420,
+      "networkBlocked": 0,
+      "questionMs": 6.9,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "status",
+        "needs": 2,
+        "essential": 1,
+        "found": 2,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 3,
+        "ms": 2.39,
+        "byNeed": [
+          {
+            "id": "statement",
+            "essential": true,
+            "status": "found",
+            "quotes": 3,
+            "facts": 0
+          },
+          {
+            "id": "who",
+            "essential": false,
+            "status": "found",
+            "quotes": 2,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "orion-status",
+            "required": true,
+            "match": [
+              "orion.*(behind|vendor|api keys)",
+              "two weeks behind"
+            ],
+            "evidence": [
+              "Orion is two weeks behind"
+            ]
+          }
+        ],
+        "distractors": [
+          "vega"
+        ],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] We have two migrations this quarter: Orion moves billing to the new cluster, and Vega moves search."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Orion is two weeks behind because the vendor hasn't delivered the API keys."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Vega finished early and is already live."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 3,
+          "context_precision": 0.3333333333333333,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.3447204968944099,
+          "irrelevant_items": 2,
+          "irrelevant_chars": 211,
+          "distractor_items": 1,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "orion-status"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 3,
+          "context_precision": 0.3333333333333333,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.3447204968944099,
+          "irrelevant_items": 2,
+          "irrelevant_chars": 211,
+          "distractor_items": 1,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "orion-status"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "orion-status"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "orion-status"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": 0,
+          "cross_entity_accuracy": 1,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 0,
+        "planner_task": "conversation",
+        "planner_uncovered": [
+          "orion-status"
+        ]
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-pricing@long",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "long",
+      "taskType": "simple_qa",
+      "confidence": 0.45,
+      "readMode": "legacy",
+      "promptTokens": 1466,
+      "networkBlocked": 0,
+      "questionMs": 11.7,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "decision",
+        "needs": 7,
+        "essential": 2,
+        "found": 6,
+        "missing": 0,
+        "uncertain": 1,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "partial",
+        "quotes": 4,
+        "ms": 3.49,
+        "byNeed": [
+          {
+            "id": "subject",
+            "essential": true,
+            "status": "uncertain",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "situation",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "money",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "time",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "effects",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "criteria",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "timing",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "current-price",
+            "required": true,
+            "match": [
+              "8 euros"
+            ],
+            "evidence": [
+              "costs 8 euros a month"
+            ]
+          },
+          {
+            "id": "subscribers",
+            "required": true,
+            "match": [
+              "1,?200"
+            ],
+            "evidence": [
+              "1,200 subscribers"
+            ]
+          }
+        ],
+        "distractors": [],
+        "unknowns": [
+          "churn"
+        ]
+      },
+      "retrieved": [
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "Uncertain: what is known about the option (raise our price) — they have only said it tentatively; not decided."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Our app costs 8 euros a month and we have about 1,200 subscribers."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I'm thinking about whether to raise the price."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I finally organised the garage this weekend."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I enjoy sketching birds at the park on quiet mornings."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 5,
+          "context_precision": 0.2,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.21982758620689655,
+          "irrelevant_items": 4,
+          "irrelevant_chars": 362,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "current-price",
+            "subscribers"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 4,
+          "context_precision": 0.25,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.288135593220339,
+          "irrelevant_items": 3,
+          "irrelevant_chars": 252,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "current-price",
+            "subscribers"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 1,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 1,
+          "irrelevant_chars": 110,
+          "distractor_items": 0,
+          "critical_missing": 2,
+          "missing_needs": [
+            "current-price",
+            "subscribers"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 1,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 2,
+          "missing_needs": [
+            "current-price",
+            "subscribers"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 0,
+        "planner_task": "conversation",
+        "planner_uncovered": [
+          "current-price",
+          "subscribers"
+        ]
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-pricing@short",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "short",
+      "taskType": "simple_qa",
+      "confidence": 0.45,
+      "readMode": "legacy",
+      "promptTokens": 1423,
+      "networkBlocked": 0,
+      "questionMs": 8.6,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "decision",
+        "needs": 7,
+        "essential": 2,
+        "found": 4,
+        "missing": 2,
+        "uncertain": 1,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "partial",
+        "quotes": 2,
+        "ms": 2.23,
+        "byNeed": [
+          {
+            "id": "subject",
+            "essential": true,
+            "status": "uncertain",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "situation",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "money",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "time",
+            "essential": false,
+            "status": "missing",
+            "quotes": 0,
+            "facts": 0
+          },
+          {
+            "id": "effects",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          },
+          {
+            "id": "criteria",
+            "essential": false,
+            "status": "missing",
+            "quotes": 0,
+            "facts": 0
+          },
+          {
+            "id": "timing",
+            "essential": false,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "current-price",
+            "required": true,
+            "match": [
+              "8 euros"
+            ],
+            "evidence": [
+              "costs 8 euros a month"
+            ]
+          },
+          {
+            "id": "subscribers",
+            "required": true,
+            "match": [
+              "1,?200"
+            ],
+            "evidence": [
+              "1,200 subscribers"
+            ]
+          }
+        ],
+        "distractors": [],
+        "unknowns": [
+          "churn"
+        ]
+      },
+      "retrieved": [
+        {
+          "lane": "memory",
+          "structured": true,
+          "text": "Uncertain: what is known about the option (raise our price) — they have only said it tentatively; not decided."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] Our app costs 8 euros a month and we have about 1,200 subscribers."
+        },
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I'm thinking about whether to raise the price."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 3,
+          "context_precision": 0.3333333333333333,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.3469387755102041,
+          "irrelevant_items": 2,
+          "irrelevant_chars": 192,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "current-price",
+            "subscribers"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 2,
+          "context_precision": 0.5,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 0.5543478260869565,
+          "irrelevant_items": 1,
+          "irrelevant_chars": 82,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "current-price",
+            "subscribers"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 1,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 1,
+          "irrelevant_chars": 110,
+          "distractor_items": 0,
+          "critical_missing": 2,
+          "missing_needs": [
+            "current-price",
+            "subscribers"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 1,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 2,
+          "missing_needs": [
+            "current-price",
+            "subscribers"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": 0,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 0,
+        "planner_task": "conversation",
+        "planner_uncovered": [
+          "current-price",
+          "subscribers"
+        ]
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-sourdough@long",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "long",
+      "taskType": "memory_recall",
+      "confidence": 0.62,
+      "readMode": "legacy",
+      "promptTokens": 1136,
+      "networkBlocked": 0,
+      "questionMs": 11.1,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "lookup",
+        "needs": 1,
+        "essential": 1,
+        "found": 1,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 1,
+        "ms": 3.86,
+        "byNeed": [
+          {
+            "id": "answer",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "starter-name",
+            "required": true,
+            "match": [
+              "bubbles"
+            ],
+            "evidence": [
+              "starter Bubbles"
+            ]
+          }
+        ],
+        "distractors": [],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I named my sourdough starter Bubbles."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 1,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "starter-name"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 1,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "starter-name"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "starter-name"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "starter-name"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 1,
+        "planner_task": "conversation",
+        "planner_uncovered": []
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    },
+    {
+      "case": "ho-sourdough@short",
+      "status": "ok",
+      "correct": true,
+      "reason": null,
+      "regime": "short",
+      "taskType": "memory_recall",
+      "confidence": 0.62,
+      "readMode": "legacy",
+      "promptTokens": 1136,
+      "networkBlocked": 0,
+      "questionMs": 8.3,
+      "infoNeeds": {
+        "applied": true,
+        "reason": null,
+        "intent": "lookup",
+        "needs": 1,
+        "essential": 1,
+        "found": 1,
+        "missing": 0,
+        "uncertain": 0,
+        "contradictory": 0,
+        "outdated": 0,
+        "forgotten": 0,
+        "ambiguous": 0,
+        "sufficiency": "sufficient",
+        "quotes": 1,
+        "ms": 1.93,
+        "byNeed": [
+          {
+            "id": "answer",
+            "essential": true,
+            "status": "found",
+            "quotes": 1,
+            "facts": 0
+          }
+        ]
+      },
+      "expected": {
+        "needs": [
+          {
+            "id": "starter-name",
+            "required": true,
+            "match": [
+              "bubbles"
+            ],
+            "evidence": [
+              "starter Bubbles"
+            ]
+          }
+        ],
+        "distractors": [],
+        "unknowns": []
+      },
+      "retrieved": [
+        {
+          "lane": "recall",
+          "structured": false,
+          "text": "[2026-11-11 · another conversation] I named my sourdough starter Bubbles."
+        }
+      ],
+      "arms": {
+        "production": {
+          "items": 1,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "starter-name"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "recall": {
+          "items": 1,
+          "context_precision": 1,
+          "context_recall": 1,
+          "evidence_coverage": 1,
+          "context_efficiency": 1,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 0,
+          "missing_needs": [],
+          "found_needs": [
+            "starter-name"
+          ],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "memory": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "starter-name"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        },
+        "knowledge": {
+          "items": 0,
+          "context_precision": 0,
+          "context_recall": 0,
+          "evidence_coverage": 0,
+          "context_efficiency": 0,
+          "irrelevant_items": 0,
+          "irrelevant_chars": 0,
+          "distractor_items": 0,
+          "critical_missing": 1,
+          "missing_needs": [
+            "starter-name"
+          ],
+          "found_needs": [],
+          "critical_miss_with_noise": 0,
+          "stale_as_current": null,
+          "temporal_accuracy": null,
+          "contradiction_handling": null,
+          "unknown_handling": null,
+          "cross_entity_violations": null,
+          "cross_entity_accuracy": null,
+          "forgotten_leaks": null,
+          "failed_turn_leaks": null,
+          "personal_items_on_impersonal": null
+        }
+      },
+      "planner": {
+        "planner_need_coverage": 1,
+        "planner_task": "conversation",
+        "planner_uncovered": []
+      },
+      "plannerSlots": [
+        "topic"
+      ]
+    }
+  ]
+}

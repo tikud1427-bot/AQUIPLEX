@@ -1,0 +1,34 @@
+{
+  "_comment": "TEMPLATE. As written, the preflight REFUSES: billing is 'unknown' and nothing is verified. Fill in only what has been checked by a person (provider console / dashboard), with who and when. Never put a credential value in this file; refer to environment variable NAMES only.",
+  "evaluationOnly": true,
+  "credentialSource": "production",
+  "allowProductionCredentials": false,
+  "syntheticDatasets": [
+    "002208e4737bd917143d90097db5e018d84b49e936ee8ea7b7704c21f1242e21"
+  ],
+  "models": {
+    "answer": { "provider": "groq", "model": "openai/gpt-oss-120b", "settings": { "temperature": 0, "max_tokens": 700 } },
+    "judge":  { "provider": "gemini", "model": "gemini-2.5-flash", "settings": { "temperature": 0, "max_tokens": 400 } }
+  },
+  "allowNonStandard": [],
+  "domains": [
+    {
+      "id": "groq-org-<name>",
+      "provider": "groq",
+      "envNames": ["GROQ_API_KEY_1"],
+      "verification": { "method": "<how it was established that these keys belong to ONE organisation>", "by": "<person>", "at": "<YYYY-MM-DD>" },
+      "billing": "unknown",
+      "billingEvidence": { "method": "<console page showing the free plan and no payment method>", "by": "<person>", "at": "<YYYY-MM-DD>" },
+      "resetPolicy": { "dailyResetUtcHour": 0 }
+    },
+    {
+      "id": "gemini-project-<id>",
+      "provider": "gemini",
+      "envNames": ["GEMINI_API_KEY"],
+      "verification": { "method": "<AI Studio: key listed under this project>", "by": "<person>", "at": "<YYYY-MM-DD>" },
+      "billing": "unknown",
+      "billingEvidence": { "method": "<Cloud console: no billing account linked to this project>", "by": "<person>", "at": "<YYYY-MM-DD>" },
+      "resetPolicy": { "dailyResetUtcHour": 8 }
+    }
+  ]
+}

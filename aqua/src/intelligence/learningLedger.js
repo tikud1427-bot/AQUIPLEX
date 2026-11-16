@@ -33,6 +33,7 @@
 import fs from 'fs';
 import { createDebouncedWriter, loadJsonFile } from '../core/atomicStore.js';
 import { migrateLegacyFile } from '../core/dataDir.js';
+import { bindAggregateStore } from '../core/storage/instanceAggregate.js';
 
 // P0 — canonical data dir (survives redeploys) + one-time legacy migration.
 const STORE_FILE = migrateLegacyFile('.aqua-ledger.json');
@@ -84,6 +85,16 @@ const EWMA_ALPHA = 0.2;
 const PRIOR_CLAMP = 6;
 const PRIOR_NEUTRAL_CONFIDENCE = 0.65; // response-confidence level worth zero adjustment
 
+/**
+ * Which revisions feed the learned verification gate (2026-11-16, audit D-05).
+ * confirmed (default): only revisions a later pass confirmed — a history-blind
+ *   or withdrawn rewrite can no longer switch verification on for every user.
+ * legacy: every applied revision (the previous, self-reinforcing behaviour).
+ */
+export function revisionBasis(env = process.env) {
+  return String(env.AQUA_LEDGER_REVISION_BASIS ?? "confirmed").trim().toLowerCase() === "legacy" ? "legacy" : "confirmed";
+}
+
 /** Adaptive-verification thresholds (consumed via getTaskStats → shouldVerify). */
 export const LEARNED_REVISION_RATE = 0.30;
 export const LEARNED_LOW_CONFIDENCE = 0.55;
@@ -93,7 +104,7 @@ let loaded  = false;
 let persist = true;
 
 function emptyLedger() {
-  return { version: LEDGER_VERSION, byTask: {}, updatedAt: null };
+  return { version: LEDGER_VERSION, revisionBasis: "confirmed", byTask: {}, updatedAt: null };
 }
 
 function loadFromDisk() {
@@ -105,6 +116,22 @@ function loadFromDisk() {
   if (data.version === LEDGER_VERSION && data.byTask) {
     ledger = data;
     console.log(`[LEDGER] Loaded outcome aggregates for ${Object.keys(ledger.byTask).length} task type(s) from ${STORE_FILE}`);
+    // 2026-11-16 (audit D-05): the learned verification gate now reads only
+    // CONFIRMED revisions. Aggregates written before that are kept as they are
+    // (their `revised` counters still feed the legacy basis and the provider
+    // prior) and copied once to a sidecar, so the change is reversible with
+    // AQUA_LEDGER_REVISION_BASIS=legacy and nothing is lost.
+    if (ledger.revisionBasis !== 'confirmed') {
+      try {
+        const sidecar = `${STORE_FILE}.pre-confirmed-basis-${Date.now()}.json`;
+        fs.writeFileSync(sidecar, JSON.stringify(data, null, 2));
+        console.log(`[LEDGER] backed up pre-confirmed-basis aggregates → ${sidecar}`);
+      } catch (err) {
+        console.warn(`[LEDGER] pre-confirmed-basis backup failed (${err.message}) — aggregates are left untouched in place`);
+      }
+      ledger.revisionBasis = 'confirmed';
+      scheduleSave();
+    }
     return;
   }
   if (data.version === 1 && data.byTask) {
@@ -124,13 +151,23 @@ function scheduleSave() {
 }
 loadFromDisk();
 
+// Phase 2c: instance-partitioned aggregate (AQUA_STORE_PARTITIONS=ledger:on). GLOBAL
+// routing statistics, not user data — see cognition/cognitiveStore.js. Off: unchanged.
+const AGG = bindAggregateStore({
+  storeKey: '.aqua-ledger.json',
+  label: 'ledger',
+  emptyDelta: () => ({ ...emptyLedger() }),
+  setLocal: view => { if (view?.byTask) { ledger = { ...emptyLedger(), ...view, version: LEDGER_VERSION }; scheduleSave(); } },
+  initialBase: () => (Object.keys(ledger.byTask).length ? ledger : null),
+});
+
 const ewma = (prev, value) => (prev == null ? value : prev + EWMA_ALPHA * (value - prev));
 
-function taskBucket(taskType) {
-  return (ledger.byTask[taskType] ??= {
+function taskBucket(taskType, root = ledger) {
+  return (root.byTask[taskType] ??= {
     turns: 0,
     confidenceEwma: null,
-    verification: { warranted: 0, ran: 0, revised: 0, failedOpen: 0, inconclusive: 0 },
+    verification: { warranted: 0, ran: 0, revised: 0, confirmed: 0, failedOpen: 0, inconclusive: 0 },
     byProvider: {},
   });
 }
@@ -160,7 +197,9 @@ function providerBucket(task, provider) {
 export function recordOutcome({ taskType, provider, responseConfidence, verification, verificationWarranted = false, latencyMs } = {}) {
   try {
     if (!taskType) return;
-    const task = taskBucket(taskType);
+    const now = new Date().toISOString();
+    AGG.apply(ledger, root => {
+    const task = taskBucket(taskType, root);
     task.turns += 1;
 
     const score = responseConfidence?.score;
@@ -170,6 +209,10 @@ export function recordOutcome({ taskType, provider, responseConfidence, verifica
     if (verificationWarranted) task.verification.warranted += 1;
     if (v.ran)                 task.verification.ran += 1;
     if (v.revised)             task.verification.revised += 1;
+    // D-05: a revision a later review pass CONFIRMED (revised and then passed).
+    // Unconfirmed rewrites, suppressed withdrawals, timeouts and malformed
+    // reviews never count toward the learned verification gate.
+    if (v.revised && v.passed === true) task.verification.confirmed = (task.verification.confirmed ?? 0) + 1;
     if (v.inconclusive)        task.verification.inconclusive += 1;
     if (!v.ran && v.error)     task.verification.failedOpen += 1;
 
@@ -182,7 +225,8 @@ export function recordOutcome({ taskType, provider, responseConfidence, verifica
       if (!v.ran && v.error)             p.failedOpen += 1;
     }
 
-    ledger.updatedAt = new Date().toISOString();
+    root.updatedAt = now;
+    });
     scheduleSave();
   } catch (err) {
     console.warn('[LEDGER] recordOutcome failed (ignored):', err.message);
@@ -201,9 +245,11 @@ export function getTaskStats(taskType) {
   const task = ledger.byTask[taskType];
   if (!task || task.turns < MIN_SAMPLE) return null;
   const ran = task.verification.ran;
+  const revisedCount = revisionBasis() === "legacy" ? task.verification.revised : (task.verification.confirmed ?? 0);
   return {
     sampleSize:    task.turns,
-    revisionRate:  ran > 0 ? task.verification.revised / ran : 0,
+    revisionRate:  ran > 0 ? revisedCount / ran : 0,
+    revisionBasis: revisionBasis(),
     avgConfidence: task.confidenceEwma,
   };
 }

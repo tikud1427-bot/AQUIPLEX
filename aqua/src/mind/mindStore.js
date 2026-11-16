@@ -22,6 +22,7 @@ import { createEmptyMind } from './mindSchema.js';
 import { createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore } from '../core/atomicStore.js';
 import { migrateLegacyFile } from '../core/dataDir.js';
 import { clearNamespace } from '../embeddings/vectorStore.js';
+import { bindOwnerStore } from '../core/storage/ownerBinding.js';
 
 // P0 — memory is critical user data: it now lives in the canonical DATA
 // DIRECTORY (survives every redeploy), with a one-time loss-proof migration
@@ -142,7 +143,30 @@ function mergeConcurrent(ours, disk) {
     for (const [k, v] of Object.entries(disk.graph?.[part] ?? {})) if (!ours.graph[part][k]) ours.graph[part][k] = v;
   }
   ours.turnCount = Math.max(ours.turnCount ?? 0, disk.turnCount ?? 0);
+  // Phase 3: the worker's applied-turn markers — union, so a retried learning
+  // job that already landed on either side is recognised.
+  if (disk.appliedTurns || ours.appliedTurns) {
+    ours.appliedTurns = trimApplied({ ...(disk.appliedTurns ?? {}), ...(ours.appliedTurns ?? {}) });
+  }
   ours.updatedAt = Math.max(tsOf(ours), tsOf(disk));
+}
+
+// ── Applied-turn markers (scalability Phase 3) ───────────────────────────────
+// A durable learning job may run more than once (a worker died after writing
+// and before acknowledging). Stages that are not naturally idempotent — the
+// turn counter, Twin observation — record "this turn was applied" IN THE MIND,
+// so the marker is written in the same row, by the same flush, as the change
+// it guards: both land or neither does. Bounded: the newest APPLIED_MAX.
+const APPLIED_MAX = 400;
+function trimApplied(map) {
+  const entries = Object.entries(map);
+  if (entries.length <= APPLIED_MAX) return map;
+  return Object.fromEntries(entries.sort((a, b) => b[1] - a[1]).slice(0, APPLIED_MAX));
+}
+export function turnApplied(mind, marker) { return Boolean(mind?.appliedTurns?.[marker]); }
+export function markTurnApplied(mind, marker, at = Date.now()) {
+  if (!mind) return;
+  mind.appliedTurns = trimApplied({ ...(mind.appliedTurns ?? {}), [marker]: at });
 }
 
 /**
@@ -198,7 +222,78 @@ function adoptDeletedOwners(fromDisk, now = Date.now()) {
 // (temp+rename) and non-blocking; serialize snapshots at flush time. The
 // writer also takes a `.bak` boot backup before this process's first flush.
 const _writer = createDebouncedWriter(STORE_FILE);
+
+// ── Per-owner persistence (scalability Phase 2b, step 2) ─────────────────────
+//
+// WRITERS. Every subsystem that learns about a person (memory engine, Mind
+// post-turn, reflection V3 in the worker, propagation, the Memory UI) mutates
+// that owner's Mind and calls touchMind. Server and worker both do.
+// MERGE. Exactly the two-process merge this file already applies to the shared
+// JSON file (mergeConcurrent): per-item tombstones as data, the newer item wins
+// per key, beliefs/goals/episodes/files unioned, graph nodes/edges unioned,
+// turnCount max. It is applied to COPIES; the in-memory object is then updated
+// in place so references other modules hold stay valid.
+// DELETION. deleteMind → a tombstone row. A copy older than the deletion is
+// dropped; a mind re-created after it (the user came back) is written without
+// the deleted data. Item deletions travel inside the mind (`tombstones`).
+// MEMORY. In `on`/`only` only the owners loaded by a request or job are held;
+// least-recently-used clean owners are evicted (AQUA_PARTITION_STORE_OWNERS).
+const binding = bindOwnerStore({
+  storeKey: '.aqua-mind.json',
+  file: STORE_FILE,
+  label: 'mind',
+  schema: STORE_SCHEMA,
+  encode: owner => store.get(owner) ?? undefined,
+  decode: obj => upgradeMind(obj),
+  install: (owner, mind) => {
+    if (!mind) { store.delete(owner); baseUpdatedAt.delete(owner); return; }
+    const cur = store.get(owner);
+    if (cur) replaceInPlace(cur, mind); else store.set(owner, mind);
+    baseUpdatedAt.set(owner, tsOf(mind));
+  },
+  merge: (ours, theirs) => {
+    const copy = structuredClone(ours);
+    mergeConcurrent(copy, upgradeMind(structuredClone(theirs)));
+    return copy;
+  },
+  changedAt: tsOf,
+  pruneBefore: pruneMindBefore,
+  evict: owner => { store.delete(owner); baseUpdatedAt.delete(owner); },
+  reloadJson: () => { loaded = false; loadFromDisk(); },
+});
+
+/**
+ * After a whole-mind deletion at `at`, keep only what was learned at or after
+ * it. A process that loaded the mind before the deletion still holds the old
+ * items, and touching the mind (which stamps updatedAt=now) must not carry them
+ * back. Derived structures (graph, timeline, predictions, reflections) are
+ * rebuilt from new data rather than kept. null = nothing new at all.
+ */
+export function pruneMindBefore(mind, at) {
+  let kept = 0;
+  for (const bag of TOMBSTONE_BAGS) {
+    for (const [key, item] of Object.entries(mind[bag] ?? {})) {
+      if (itemTime(item) >= at) kept++; else delete mind[bag][key];
+    }
+  }
+  if (!kept) return null;
+  mind.graph = { nodes: {}, edges: {} };
+  for (const list of ['timeline', 'predictions', 'reflections']) if (Array.isArray(mind[list])) mind[list] = [];
+  mind.tombstones = {};
+  return mind;
+}
+
+/**
+ * Is this owner's Mind loaded (partitions authoritative) — i.e. may an empty
+ * result be read as "this person has told us nothing"? Always true when the
+ * JSON file is authoritative.
+ */
+export function mindOwnerReady(ownerId) { return !ownerId || binding.ready(ownerId); }
+export function mindPartitionBinding() { return binding; }
+
 function scheduleSave(ownerId = null) {
+  if (ownerId) binding.markDirty(ownerId);
+  if (!binding.writesWholeJson()) return;   // partitions are authoritative; the binding writes the rollback copy
   if (ownerId) dirty.add(ownerId);
   _writer.schedule(() => {
     const disk = readDiskData();
@@ -213,7 +308,8 @@ function scheduleSave(ownerId = null) {
     return JSON.stringify(envelope);
   });
 }
-loadFromDisk();
+// `on`/`only`: owners load on demand (ensureOwnerLoaded); no whole-world boot load.
+if (binding.loadsJsonAtBoot()) loadFromDisk();
 
 /**
  * Write this owner's mind to disk NOW (synchronous, atomic, merged with the
@@ -223,7 +319,12 @@ loadFromDisk();
  */
 export function flushMind(ownerId = null) {
   scheduleSave(ownerId);
-  _writer.flush();
+  if (binding.writesWholeJson()) { _writer.flush(); return; }
+  // Partitions authoritative: there is no synchronous database write. The
+  // flush is started now and not awaited — weaker than the file path's
+  // "durable before anything acts on it". Stated in AQUIPLEX_PHASE_2B_REPORT.md
+  // (propagation, the only caller, is OFF by default).
+  binding.flush().catch(() => {});
 }
 
 /** Schema v1 → v2: facts + files live INSIDE the mind (single store). */
@@ -305,6 +406,7 @@ export function adoptMind(fromOwner, toOwner) {
   src.adoptedAt = Date.now();
   src.updatedAt = Date.now();
   dirty.add(fromOwner);
+  binding.markDirty(fromOwner);
   touchMind(dst);
   console.log(`[MIND] ADOPTED ${fromOwner} → ${toOwner} facts=${Object.keys(src.facts || {}).length} beliefs=${Object.keys(src.beliefs || {}).length}`);
   return true;
@@ -350,7 +452,9 @@ export function deleteMind(ownerId) {
   const existed = store.delete(ownerId);
   // Persisted (envelope `deletedOwners`), so the OTHER process drops its copy
   // too — even when this process never loaded the owner.
-  deleted.set(ownerId, Date.now());
+  const at = Date.now();
+  deleted.set(ownerId, at);
+  binding.markDeleted(ownerId, at);   // partitions: a tombstone row
   scheduleSave();
   // Phase D — GDPR cascade: deleting a mind also purges every vector the
   // owner accumulated (fact vectors live in ns `<ownerId>`, uploaded-file
@@ -389,4 +493,5 @@ export function _iterateMindsForStats() {
 export function _clearAllForTests() {
   store.clear();
   dirty.clear(); deleted.clear(); baseUpdatedAt.clear();
+  binding._reset();
 }

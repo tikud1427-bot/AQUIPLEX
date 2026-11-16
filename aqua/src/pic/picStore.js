@@ -25,6 +25,7 @@ import {
   createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore,
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
+import { bindKeyedStore } from '../core/storage/keyedBinding.js';
 
 const STORE_FILE = dataPath('.aqua-pic.json');
 const SCHEMA     = 1;
@@ -39,8 +40,14 @@ export const MAX_SIGNALS_PER_OWNER    = 10_000;
 /** ownerKey → bucket */
 const store = new Map();
 
+// Owners whose bucket was handed out since the last save. Callers mutate the
+// bucket and then call schedulePicSave() with no owner; these are the owners
+// that save may concern (an untouched one is skipped against its base).
+const touched = new Set();
+
 export function picBucket(ownerId) {
   const key = ownerId ?? 'anon';
+  touched.add(key);
   let b = store.get(key);
   if (!b) {
     b = {
@@ -75,23 +82,68 @@ function loadFromDisk() {
 }
 
 const _writer = createDebouncedWriter(STORE_FILE);
+const encodeBucket = b => ({
+  lifecycle: Object.fromEntries(b.lifecycle),
+  versions:  Object.fromEntries(b.versions),
+  signals:   Object.fromEntries(b.signals),
+  sessions:  b.sessions,
+  ledger:    b.ledger,
+});
+
 export function schedulePicSave() {
+  for (const owner of touched) binding.markDirty(owner);
+  touched.clear();
+  if (!binding.writesWholeJson()) return;
   _writer.schedule(() => {
     const data = {};
-    for (const [owner, b] of store.entries()) {
-      data[owner] = {
-        lifecycle: Object.fromEntries(b.lifecycle),
-        versions:  Object.fromEntries(b.versions),
-        signals:   Object.fromEntries(b.signals),
-        sessions:  b.sessions,
-        ledger:    b.ledger,
-      };
-    }
+    for (const [owner, b] of store.entries()) data[owner] = encodeBucket(b);
     return JSON.stringify(wrapStore(SCHEMA, data));
   });
 }
 
-loadFromDisk();
+// ── Per-owner persistence (scalability Phase 2c) ─────────────────────────────
+// WRITER: the server only (post-turn consolidation, lifecycle transitions,
+// reasoning feedback, version history, ledger); concurrent across API instances.
+// MERGE (three-way against the last-synced base, core/storage/entryMerge.js):
+//   lifecycle  per subject; on a double change the record with the later
+//              transition wins
+//   versions   per subject: revision history UNIONED by (rev, at), capped
+//   signals    per fact: ok/bad are COUNTERS — both sides' increments kept
+//              (theirs + ours − base), lastAt the later
+//   sessions,
+//   ledger     logs unioned by identity, time-ordered, capped as today
+// DELETION: purgeOwner → row tombstone.
+const lifecycleTime = r => Math.max(Number(r?.updatedAt) || 0, ...(r?.transitions ?? []).map(t => Number(t?.at) || 0), 0);
+const binding = bindKeyedStore({
+  storeKey: '.aqua-pic.json', file: STORE_FILE, label: 'pic', schema: SCHEMA,
+  mergeSchema: {
+    collections: {
+      lifecycle: { time: lifecycleTime },
+      signals: { time: s => Number(s?.lastAt) || 0, counters: ['ok', 'bad'] },
+    },
+    logMaps: { versions: { id: v => `${v?.rev}:${v?.at}`, time: v => Number(v?.at) || 0, cap: MAX_REVISIONS_PER_SUBJ } },
+    logs: {
+      sessions: { id: x => `${x?.at}:${x?.requestId ?? ''}:${x?.query ?? ''}`, time: x => Number(x?.at) || 0, cap: MAX_SESSIONS_PER_OWNER },
+      ledger: { time: x => Number(x?.at) || 0, cap: MAX_LEDGER_PER_OWNER },
+    },
+  },
+  encode: owner => (store.has(owner) ? encodeBucket(store.get(owner)) : undefined),
+  decode: obj => ({
+    lifecycle: new Map(Object.entries(obj?.lifecycle ?? {})),
+    versions:  new Map(Object.entries(obj?.versions ?? {})),
+    signals:   new Map(Object.entries(obj?.signals ?? {})),
+    sessions:  Array.isArray(obj?.sessions) ? obj.sessions : [],
+    ledger:    Array.isArray(obj?.ledger) ? obj.ledger : [],
+  }),
+  install: (owner, b) => { if (b) store.set(owner, b); else store.delete(owner); },
+  evict: owner => store.delete(owner),
+  changedAt: obj => Math.max(0, ...Object.values(obj?.lifecycle ?? {}).map(lifecycleTime),
+    ...Object.values(obj?.signals ?? {}).map(s => Number(s?.lastAt) || 0), ...(obj?.ledger ?? []).map(x => Number(x?.at) || 0)),
+  reloadJson: () => loadFromDisk(),
+});
+export function picPartitionBinding() { return binding; }
+
+if (binding.loadsJsonAtBoot()) { loadFromDisk(); touched.clear(); }
 
 // ── Bounded push helpers (eviction policy identical everywhere: oldest-first) ─
 
@@ -125,6 +177,8 @@ export function getLedger(ownerId, { limit = 50 } = {}) {
  */
 export function purgeOwner(ownerId) {
   const key = ownerId ?? 'anon';
+  binding.markDeleted(key);
+  touched.delete(key);
   const b = store.get(key);
   if (!b) return 0;
   const removed = b.lifecycle.size;
@@ -143,4 +197,4 @@ export function getPicStoreStats() {
   return { owners: store.size, subjects, revisions, sessions };
 }
 
-export function _resetPicStoreForTests() { store.clear(); }
+export function _resetPicStoreForTests() { store.clear(); touched.clear(); binding._reset(); }

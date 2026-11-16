@@ -38,6 +38,7 @@ import { traverseGraph } from '../../core/worldModel/graphLane.js';
 import { getPool, isConfigured } from '../../core/db/pool.js';
 import * as canonicalWM from '../../core/worldModel/canonicalReadModel.js';
 import { canonicalClaimScores } from './canonicalSemantic.js';
+import { noteFeature } from '../../core/flags.js';
 
 const metrics = {
   calls: 0, v2Assemblies: 0, floorFallbacks: 0, errors: 0,
@@ -70,6 +71,7 @@ export async function assembleTurnContextAsync(deps, ownerId, query, opts = {}) 
       taskType: opts.taskType ?? 'conversation',
       limit,
       queryPlan: opts.queryPlan,
+      personalWorld: opts.personalWorld,
       retrieve: (q, retrievalOpts) => retrieveRoundAsync(deps, ownerId, q, retrievalOpts, {
         ...opts, semanticScores,
       }),
@@ -124,10 +126,12 @@ export async function assembleTurnContextAsync(deps, ownerId, query, opts = {}) 
     assembled.stats.contextEngine.sufficiency = retrievalRounds.sufficiency;
     assembled.stats.contextEngine.retrievalRounds = retrievalRounds.rounds;
     assembled.stats.contextEngine.roundCalls = retrievalRounds.roundCalls;
+    noteFeature('AQUA_CONTEXT_V2', 'ran');
     return assembled;
   } catch (err) {
     metrics.errors += 1;
     metrics.floorFallbacks += 1;
+    noteFeature('AQUA_CONTEXT_V2', 'failed', err?.name);
     console.warn(`[BRAIN] Async Context Engine V2 failed (floor fallback): ${err?.message ?? err}`);
     return initialFloor;
   }
@@ -178,6 +182,7 @@ export function assembleTurnContext(deps, ownerId, query, opts = {}) {
       taskType: opts.taskType ?? 'conversation',
       limit,
       queryPlan: opts.queryPlan,
+      personalWorld: opts.personalWorld,
       retrieve: (q, retrievalOpts) => safeFloor(deps, ownerId, q, {
         limit: retrievalOpts.limit,
         plan: retrievalOpts.queryPlan,

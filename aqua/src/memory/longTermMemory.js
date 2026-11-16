@@ -152,7 +152,7 @@ export function storeFact(ownerId, fact, { trace = null } = {}) {
   }
 
   const { action, reason } = resolveMemoryConflict(fact, existing);
-  console.log(`[LTM] CONFLICT_RESOLVED owner=${ownerId} key=${fact.key} action=${action} reason=${reason}`);
+  console.log(`[LTM] CONFLICT_RESOLVED owner=${ownerId} key=${safeKey(fact.key)} action=${action} reason=${reason}`);
   trace?.actions?.push({ key: fact.key, action, reason });
 
   if (action === 'keep' && reason === 'identical_value' && existing) {
@@ -436,4 +436,5 @@ export function getMemoryStats() {
 
 // Internal: enumerate minds without exporting the raw map from mindStore.
 import { _iterateMindsForStats } from '../mind/mindStore.js';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 function _allMinds() { return _iterateMindsForStats(); }

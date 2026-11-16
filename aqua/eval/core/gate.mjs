@@ -69,6 +69,25 @@ export const LOWER_IS_BETTER = new Set([
 ]);
 
 /**
+ * Lower-is-better by SUFFIX (2026-11-10, ACIB v1). ACIB reports every metric per
+ * arm and regime (`production_long_irrelevant_items`, `recall_short_stale_as_current`…);
+ * listing each combination by hand is how one gets missed and a doubling of noise
+ * passes as an improvement. Each suffix counts an error.
+ */
+export const LOWER_IS_BETTER_SUFFIXES = Object.freeze([
+  '_irrelevant_items', '_irrelevant_chars', '_critical_missing', '_critical_miss_with_noise',
+  '_stale_as_current', '_cross_entity_violations', '_forgotten_leaks', '_failed_turn_leaks',
+  '_distractor_items', '_personal_items_on_impersonal',
+  // A benchmark that makes no external calls: any attempt (blocked) is a defect.
+  '_network_attempts',
+]);
+
+/** One direction rule for every gate decision. */
+export function isLowerBetter(name) {
+  return LOWER_IS_BETTER.has(name) || LOWER_IS_BETTER_SUFFIXES.some(sfx => String(name).endsWith(sfx));
+}
+
+/**
  * Metrics that describe the dataset or the route taken, not quality.
  *
  * `n_via_*` counts which lane admitted a segment. They move whenever an
@@ -195,8 +214,8 @@ export function compareToBaseline(baseline, report) {
       continue;
     }
 
-    const worse = LOWER_IS_BETTER.has(name) ? delta > EPSILON : delta < -EPSILON;
-    const better = LOWER_IS_BETTER.has(name) ? delta < -EPSILON : delta > EPSILON;
+    const worse = isLowerBetter(name) ? delta > EPSILON : delta < -EPSILON;
+    const better = isLowerBetter(name) ? delta < -EPSILON : delta > EPSILON;
     const verdict = worse ? VERDICT.REGRESSED : better ? VERDICT.IMPROVED : VERDICT.PASS;
     rows.push({ name, was, now, delta, verdict });
     if (worse) blocking.push(`REGRESSED: ${name} ${fmt(was)} → ${fmt(now)} (${fmt(delta, true)})`);

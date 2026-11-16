@@ -23,6 +23,7 @@
 import { _iterateMindsForStats, touchMind } from '../mind/mindStore.js';
 import { storeFact } from './longTermMemory.js';
 import { CATEGORIES } from './memorySchema.js';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 
 // Unambiguous "[the/a/an] ROLE of|at|for ORG" — the exact shape that used to
 // rot inside custom_trait. Conservative on purpose: we only auto-promote when
@@ -72,7 +73,7 @@ export function migrateIdentity() {
         }
         delete facts['custom_trait'];
         reclassified++; changed = true;
-        console.log(`[MIGRATE] Identity: owner=${owner} promoted custom_trait "${text}" → role=${titleCase(ident[0].value)} company="${ident[1].value}"`);
+        console.log(`[MIGRATE] Identity: owner=${owner} promoted custom_trait (${textMeta(text)}) → role, company`);
       } else {
         const slug = customSlug(text);
         if (slug !== 'custom_' && !facts[slug]) facts[slug] = { ...legacy, key: slug, id: `${owner}:${slug}` };

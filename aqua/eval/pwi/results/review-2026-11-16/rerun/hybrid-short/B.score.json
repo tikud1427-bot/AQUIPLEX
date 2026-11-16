@@ -1,0 +1,2611 @@
+{
+ "stage": "B",
+ "infra": {
+  "events": 0,
+  "probes": 0,
+  "other": 0,
+  "networkBlocked": 0,
+  "actions": []
+ },
+ "metrics": {
+  "entity": {
+   "precision": 0.9,
+   "recallGraph": 0.3636,
+   "recallStructured": 0.4815,
+   "typeAgreement": 0.5556
+  },
+  "relationship": {
+   "precision": 0.9,
+   "recall": 0.381,
+   "staleEdges": 0
+  },
+  "claim": {
+   "recall": 0.5,
+   "recallFactStore": 0.4565,
+   "accuracy": 0.5,
+   "recallChat": 0.5897,
+   "recallDocument": 0
+  },
+  "temporal": {
+   "probeAccuracy": 1,
+   "staleUnmarkedRate": 0,
+   "staleQuoted": 4,
+   "staleQuotedWithChangeNote": 0
+  },
+  "contradiction": {
+   "changes": 2,
+   "detectedInStore": 0,
+   "handledInContext": 1
+  },
+  "correctionPropagation": {
+   "corrections": 0,
+   "storeViewsConsistent": null,
+   "contextConsistent": null,
+   "worldChangeStoreViewsConsistent": 1
+  },
+  "retrievalRelevance": {
+   "precisionMean": 0.1394,
+   "irrelevantItemsPerProbe": 9.2593
+  },
+  "contextCompleteness": {
+   "mean": 1,
+   "items": 1,
+   "missCapture": 0,
+   "missRetrieval": 0
+  },
+  "crossSource": {
+   "completeness": 1,
+   "documentItems": 1
+  },
+  "personalizedReasoning": {
+   "completeness": 1,
+   "precision": 0.3759
+  },
+  "answerFactuality": {
+   "value": null,
+   "status": "not measured — needs model calls (answer + judge); not approved for this run"
+  },
+  "personalizedAnswerQuality": {
+   "value": null,
+   "status": "not measured — needs model calls (answer + judge); not approved for this run"
+  },
+  "uncertainty": {
+   "hedgedAsFact": 0,
+   "hedged": 2,
+   "hedgedUnmarkedInContext": 0,
+   "hedgedChecks": 3,
+   "unknownAcknowledged": 0
+  },
+  "deletion": {
+   "checksStore": 3,
+   "violationsStore": 0,
+   "complianceStore": 1,
+   "contextViolations": 0,
+   "deletedEntityNodes": 0,
+   "items": 1,
+   "itemsFullyGone": 1,
+   "factsHeld": 0,
+   "factsSourceTextOnly": 0,
+   "mind": 0,
+   "evidence": 0
+  },
+  "isolation": {
+   "storeLeaks": 0,
+   "contextLeaks": 0,
+   "probes": 27
+  },
+  "quantity": {
+   "facts": 19,
+   "currentFacts": 19,
+   "nodes": 16,
+   "edges": 12,
+   "evidence": 1
+  }
+ },
+ "perPersona": {
+  "p1": {
+   "claims": [
+    {
+     "slot": "name",
+     "value": "Ines Okafor",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "city",
+     "value": "Lisbon",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "cofounder",
+     "value": "Teodor Varga",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "project",
+     "value": "Atlas",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "deadline",
+     "value": "March 14",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "teamsize",
+     "value": "3 engineers",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "blocker",
+     "value": "payments integration",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "funding",
+     "value": "$400,000",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "runway",
+     "value": "11 months",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "sister",
+     "value": "Rosalind",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "launchbudget",
+     "value": "EUR 85,000",
+     "source": "document",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "designer",
+     "value": "Pellwick Studio",
+     "source": "document",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    }
+   ],
+   "changes": [],
+   "deletion": [],
+   "hedged": [
+    {
+     "slot": "city",
+     "value": "Berlin",
+     "asFact": false,
+     "inMind": false
+    }
+   ],
+   "leaks": [],
+   "entities": {
+    "labelled": 7,
+    "graphable": 5,
+    "predicted": 4,
+    "tp": 4,
+    "coveredGraph": 4,
+    "coveredAny": 5,
+    "typeAgree": 2,
+    "missed": [
+     "Pellwick Studio"
+    ],
+    "spurious": [],
+    "deletedEntityNodes": []
+   },
+   "relations": {
+    "labelled": 6,
+    "predicted": 4,
+    "tp": 4,
+    "covered": 4,
+    "stale": 0,
+    "missed": [
+     "rosalind-located_in-leeds",
+     "atlas-contractor-pellwick"
+    ]
+   },
+   "counts": {
+    "facts": 7,
+    "currentFacts": 7,
+    "nodes": 6,
+    "edges": 5,
+    "evidence": 0
+   }
+  },
+  "p2": {
+   "claims": [
+    {
+     "slot": "name",
+     "value": "Daniel Mbeki",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "workplace",
+     "value": "Harrowgate Academy",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "profession",
+     "value": "physics teacher",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "research",
+     "value": "tidal energy storage",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "supervisor",
+     "value": "Amara Whitlock",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "childcount",
+     "value": "2 children",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "city",
+     "value": "Bristol",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "deadline",
+     "value": "June 1",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "blocker",
+     "value": "wave-tank data access",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "wife",
+     "value": "Leah",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "wifeEmployer",
+     "value": "Fenwright Partners",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "committee",
+     "value": "Ilse Brandvold",
+     "source": "document",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "dataset",
+     "value": "Severn estuary dataset",
+     "source": "document",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    }
+   ],
+   "changes": [],
+   "deletion": [],
+   "hedged": [
+    {
+     "slot": "profession",
+     "value": "lecturer",
+     "asFact": false,
+     "inMind": false
+    }
+   ],
+   "leaks": [],
+   "entities": {
+    "labelled": 9,
+    "graphable": 8,
+    "predicted": 2,
+    "tp": 1,
+    "coveredGraph": 1,
+    "coveredAny": 2,
+    "typeAgree": 1,
+    "missed": [
+     "Harrowgate Academy",
+     "Amara Whitlock",
+     "Nia",
+     "Tobi",
+     "Fenwright Partners",
+     "Ilse Brandvold",
+     "Severn estuary dataset"
+    ],
+    "spurious": [
+     "artifact:thesis-outline.txt"
+    ],
+    "deletedEntityNodes": []
+   },
+   "relations": {
+    "labelled": 7,
+    "predicted": 2,
+    "tp": 1,
+    "covered": 1,
+    "stale": 0,
+    "missed": [
+     "self-works_at-harrowgate",
+     "self-supervised_by-whitlock",
+     "self-child-nia",
+     "self-child-tobi",
+     "leah-works_at-fenwright",
+     "self-committee-brandvold"
+    ]
+   },
+   "counts": {
+    "facts": 5,
+    "currentFacts": 5,
+    "nodes": 3,
+    "edges": 2,
+    "evidence": 0
+   }
+  },
+  "p3": {
+   "claims": [
+    {
+     "slot": "name",
+     "value": "Sofia Hartmann",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "profession",
+     "value": "freelance brand designer",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "city",
+     "value": "Munich",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "projects",
+     "value": "Vellum Foods packaging",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "nextdeadline",
+     "value": "April 9",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "collaborator",
+     "value": "Jonas Eckermann",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "vellumcontact",
+     "value": "Marta Ruiz-Feld",
+     "source": "document",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "printrun",
+     "value": "25,000 units",
+     "source": "document",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    }
+   ],
+   "changes": [
+    {
+     "slot": "projects",
+     "kind": "past",
+     "old": "Brindle & Co rebrand",
+     "recordedAsHistory": false,
+     "stillCurrent": {
+      "facts": false,
+      "mind": false,
+      "evidence": false
+     }
+    },
+    {
+     "slot": "nextdeadline",
+     "kind": "past",
+     "old": "February 20",
+     "recordedAsHistory": false,
+     "stillCurrent": {
+      "facts": false,
+      "mind": false,
+      "evidence": false
+     }
+    }
+   ],
+   "deletion": [
+    {
+     "kind": "sensitive",
+     "value": "chronic migraines",
+     "found": {
+      "facts": false,
+      "mind": false,
+      "evidence": false
+     },
+     "factsDetail": {
+      "held": false,
+      "sourceTextOnly": false
+     }
+    }
+   ],
+   "hedged": [],
+   "leaks": [],
+   "entities": {
+    "labelled": 5,
+    "graphable": 4,
+    "predicted": 2,
+    "tp": 2,
+    "coveredGraph": 2,
+    "coveredAny": 2,
+    "typeAgree": 1,
+    "missed": [
+     "Brindle & Co",
+     "Marta Ruiz-Feld"
+    ],
+    "spurious": [],
+    "deletedEntityNodes": []
+   },
+   "relations": {
+    "labelled": 4,
+    "predicted": 2,
+    "tp": 2,
+    "covered": 2,
+    "stale": 0,
+    "missed": [
+     "jonas-helps_with-vellum",
+     "vellum-contact-marta"
+    ]
+   },
+   "counts": {
+    "facts": 2,
+    "currentFacts": 2,
+    "nodes": 3,
+    "edges": 2,
+    "evidence": 0
+   }
+  },
+  "p4": {
+   "claims": [
+    {
+     "slot": "name",
+     "value": "Rahul Deshpande",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "workplace",
+     "value": "Corvantis",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "profession",
+     "value": "backend engineer",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "manager",
+     "value": "Teodor Ilić",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "city",
+     "value": "Pune",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": false,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "partner",
+     "value": "Ankit Raman",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "users",
+     "value": "120 users",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    },
+    {
+     "slot": "goal",
+     "value": "1,000 users by end of June",
+     "source": "chat",
+     "inFacts": true,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "blocker",
+     "value": "Apple approval of the iOS build",
+     "source": "chat",
+     "inFacts": false,
+     "inMind": true,
+     "captured": true,
+     "staleAlongside": []
+    },
+    {
+     "slot": "mrr",
+     "value": "310",
+     "source": "document",
+     "inFacts": false,
+     "inMind": false,
+     "captured": false,
+     "staleAlongside": []
+    }
+   ],
+   "changes": [],
+   "deletion": [],
+   "hedged": [],
+   "leaks": [],
+   "entities": {
+    "labelled": 6,
+    "graphable": 5,
+    "predicted": 2,
+    "tp": 2,
+    "coveredGraph": 1,
+    "coveredAny": 4,
+    "typeAgree": 1,
+    "missed": [
+     "Corvantis",
+     "Ankit Raman",
+     "Teodor Ilić",
+     "Apple"
+    ],
+    "spurious": [],
+    "deletedEntityNodes": []
+   },
+   "relations": {
+    "labelled": 4,
+    "predicted": 2,
+    "tp": 2,
+    "covered": 1,
+    "stale": 0,
+    "missed": [
+     "self-works_at-corvantis",
+     "self-partner-ankit",
+     "self-managed_by-teodori"
+    ]
+   },
+   "counts": {
+    "facts": 5,
+    "currentFacts": 5,
+    "nodes": 4,
+    "edges": 3,
+    "evidence": 1
+   }
+  }
+ },
+ "probes": [
+  {
+   "persona": "p1",
+   "probe": "p1-city",
+   "category": "factual",
+   "required": [
+    {
+     "slot": "city",
+     "kind": "current",
+     "value": "Lisbon",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [
+    {
+     "slot": "city",
+     "kind": "hedged",
+     "value": "Berlin",
+     "unmarked": false,
+     "unmarkedLines": [],
+     "quoted": 1,
+     "quotedWithChangeNote": 0
+    }
+   ],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh"
+    },
+    {
+     "slot": "cofounder",
+     "value": "Teodor Varga"
+    },
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    },
+    {
+     "slot": "deadline",
+     "value": "March 14"
+    },
+    {
+     "slot": "teamsize",
+     "value": "3 engineers"
+    },
+    {
+     "slot": "blocker",
+     "value": "payments integration"
+    },
+    {
+     "slot": "funding",
+     "value": "$400,000"
+    },
+    {
+     "slot": "runway",
+     "value": "11 months"
+    },
+    {
+     "slot": "sister",
+     "value": "Rosalind"
+    },
+    {
+     "slot": "launchbudget",
+     "value": "EUR 85,000"
+    },
+    {
+     "slot": "designer",
+     "value": "Pellwick Studio"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.0769
+  },
+  {
+   "persona": "p1",
+   "probe": "p1-cofounder",
+   "category": "relationship",
+   "required": [
+    {
+     "slot": "cofounder",
+     "kind": "current",
+     "value": "Teodor Varga",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh"
+    },
+    {
+     "slot": "city",
+     "value": "Lisbon"
+    },
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    },
+    {
+     "slot": "deadline",
+     "value": "March 14"
+    },
+    {
+     "slot": "teamsize",
+     "value": "3 engineers"
+    },
+    {
+     "slot": "blocker",
+     "value": "payments integration"
+    },
+    {
+     "slot": "funding",
+     "value": "$400,000"
+    },
+    {
+     "slot": "runway",
+     "value": "11 months"
+    },
+    {
+     "slot": "sister",
+     "value": "Rosalind"
+    },
+    {
+     "slot": "launchbudget",
+     "value": "EUR 85,000"
+    },
+    {
+     "slot": "designer",
+     "value": "Pellwick Studio"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.0769
+  },
+  {
+   "persona": "p1",
+   "probe": "p1-launch",
+   "category": "temporal",
+   "required": [
+    {
+     "slot": "deadline",
+     "kind": "current",
+     "value": "March 14",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh"
+    },
+    {
+     "slot": "city",
+     "value": "Lisbon"
+    },
+    {
+     "slot": "cofounder",
+     "value": "Teodor Varga"
+    },
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    },
+    {
+     "slot": "teamsize",
+     "value": "3 engineers"
+    },
+    {
+     "slot": "blocker",
+     "value": "payments integration"
+    },
+    {
+     "slot": "funding",
+     "value": "$400,000"
+    },
+    {
+     "slot": "runway",
+     "value": "11 months"
+    },
+    {
+     "slot": "sister",
+     "value": "Rosalind"
+    },
+    {
+     "slot": "launchbudget",
+     "value": "EUR 85,000"
+    },
+    {
+     "slot": "designer",
+     "value": "Pellwick Studio"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.0769
+  },
+  {
+   "persona": "p1",
+   "probe": "p1-hire",
+   "category": "personalized",
+   "required": [
+    {
+     "slot": "teamsize",
+     "kind": "current",
+     "value": "3 engineers",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    },
+    {
+     "slot": "runway",
+     "kind": "current",
+     "value": "11 months",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "funding",
+     "kind": "current",
+     "value": "$400,000",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    },
+    {
+     "slot": "deadline",
+     "kind": "current",
+     "value": "March 14",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "blocker",
+     "kind": "current",
+     "value": "payments integration",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh"
+    },
+    {
+     "slot": "city",
+     "value": "Lisbon"
+    },
+    {
+     "slot": "cofounder",
+     "value": "Teodor Varga"
+    },
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    },
+    {
+     "slot": "sister",
+     "value": "Rosalind"
+    },
+    {
+     "slot": "launchbudget",
+     "value": "EUR 85,000"
+    },
+    {
+     "slot": "designer",
+     "value": "Pellwick Studio"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.3846
+  },
+  {
+   "persona": "p1",
+   "probe": "p1-doc",
+   "category": "cross-source",
+   "required": [
+    {
+     "slot": "launchbudget",
+     "kind": "current",
+     "value": "EUR 85,000",
+     "source": "document",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "designer",
+     "kind": "current",
+     "value": "Pellwick Studio",
+     "source": "document",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh"
+    },
+    {
+     "slot": "city",
+     "value": "Lisbon"
+    },
+    {
+     "slot": "cofounder",
+     "value": "Teodor Varga"
+    },
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    },
+    {
+     "slot": "deadline",
+     "value": "March 14"
+    },
+    {
+     "slot": "teamsize",
+     "value": "3 engineers"
+    },
+    {
+     "slot": "blocker",
+     "value": "payments integration"
+    },
+    {
+     "slot": "funding",
+     "value": "$400,000"
+    },
+    {
+     "slot": "runway",
+     "value": "11 months"
+    },
+    {
+     "slot": "sister",
+     "value": "Rosalind"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.1538
+  },
+  {
+   "persona": "p1",
+   "probe": "p1-revenue",
+   "category": "uncertainty",
+   "required": [],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh"
+    },
+    {
+     "slot": "city",
+     "value": "Lisbon"
+    },
+    {
+     "slot": "cofounder",
+     "value": "Teodor Varga"
+    },
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    },
+    {
+     "slot": "deadline",
+     "value": "March 14"
+    },
+    {
+     "slot": "teamsize",
+     "value": "3 engineers"
+    },
+    {
+     "slot": "blocker",
+     "value": "payments integration"
+    },
+    {
+     "slot": "funding",
+     "value": "$400,000"
+    },
+    {
+     "slot": "runway",
+     "value": "11 months"
+    },
+    {
+     "slot": "sister",
+     "value": "Rosalind"
+    },
+    {
+     "slot": "launchbudget",
+     "value": "EUR 85,000"
+    },
+    {
+     "slot": "designer",
+     "value": "Pellwick Studio"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": {
+    "slot": "annual revenue",
+    "acknowledged": false
+   },
+   "completeness": null,
+   "precision": 0
+  },
+  {
+   "persona": "p1",
+   "probe": "p1-berlin",
+   "category": "uncertainty",
+   "required": [
+    {
+     "slot": "city",
+     "kind": "current",
+     "value": "Lisbon",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [
+    {
+     "slot": "city",
+     "kind": "hedged",
+     "value": "Berlin",
+     "unmarked": false,
+     "unmarkedLines": [],
+     "quoted": 1,
+     "quotedWithChangeNote": 0
+    }
+   ],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Quillmarsh"
+    },
+    {
+     "slot": "cofounder",
+     "value": "Teodor Varga"
+    },
+    {
+     "slot": "project",
+     "value": "Atlas"
+    },
+    {
+     "slot": "goal",
+     "value": "launch Atlas"
+    },
+    {
+     "slot": "deadline",
+     "value": "March 14"
+    },
+    {
+     "slot": "teamsize",
+     "value": "3 engineers"
+    },
+    {
+     "slot": "blocker",
+     "value": "payments integration"
+    },
+    {
+     "slot": "funding",
+     "value": "$400,000"
+    },
+    {
+     "slot": "runway",
+     "value": "11 months"
+    },
+    {
+     "slot": "sister",
+     "value": "Rosalind"
+    },
+    {
+     "slot": "launchbudget",
+     "value": "EUR 85,000"
+    },
+    {
+     "slot": "designer",
+     "value": "Pellwick Studio"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.0769
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-work",
+   "category": "factual",
+   "required": [
+    {
+     "slot": "workplace",
+     "kind": "current",
+     "value": "Harrowgate Academy",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "profession",
+     "value": "physics teacher"
+    },
+    {
+     "slot": "research",
+     "value": "tidal energy storage"
+    },
+    {
+     "slot": "supervisor",
+     "value": "Amara Whitlock"
+    },
+    {
+     "slot": "childcount",
+     "value": "2 children"
+    },
+    {
+     "slot": "city",
+     "value": "Bristol"
+    },
+    {
+     "slot": "deadline",
+     "value": "June 1"
+    },
+    {
+     "slot": "blocker",
+     "value": "wave-tank data access"
+    },
+    {
+     "slot": "wife",
+     "value": "Leah"
+    },
+    {
+     "slot": "wifeEmployer",
+     "value": "Fenwright Partners"
+    },
+    {
+     "slot": "committee",
+     "value": "Ilse Brandvold"
+    },
+    {
+     "slot": "dataset",
+     "value": "Severn estuary dataset"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.0833
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-kids",
+   "category": "correction",
+   "required": [
+    {
+     "slot": "childcount",
+     "kind": "current",
+     "value": "2 children",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Harrowgate Academy"
+    },
+    {
+     "slot": "profession",
+     "value": "physics teacher"
+    },
+    {
+     "slot": "research",
+     "value": "tidal energy storage"
+    },
+    {
+     "slot": "supervisor",
+     "value": "Amara Whitlock"
+    },
+    {
+     "slot": "city",
+     "value": "Bristol"
+    },
+    {
+     "slot": "deadline",
+     "value": "June 1"
+    },
+    {
+     "slot": "blocker",
+     "value": "wave-tank data access"
+    },
+    {
+     "slot": "wife",
+     "value": "Leah"
+    },
+    {
+     "slot": "wifeEmployer",
+     "value": "Fenwright Partners"
+    },
+    {
+     "slot": "committee",
+     "value": "Ilse Brandvold"
+    },
+    {
+     "slot": "dataset",
+     "value": "Severn estuary dataset"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.0833
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-deadline",
+   "category": "temporal",
+   "required": [
+    {
+     "slot": "deadline",
+     "kind": "current",
+     "value": "June 1",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Harrowgate Academy"
+    },
+    {
+     "slot": "profession",
+     "value": "physics teacher"
+    },
+    {
+     "slot": "research",
+     "value": "tidal energy storage"
+    },
+    {
+     "slot": "supervisor",
+     "value": "Amara Whitlock"
+    },
+    {
+     "slot": "childcount",
+     "value": "2 children"
+    },
+    {
+     "slot": "city",
+     "value": "Bristol"
+    },
+    {
+     "slot": "blocker",
+     "value": "wave-tank data access"
+    },
+    {
+     "slot": "wife",
+     "value": "Leah"
+    },
+    {
+     "slot": "wifeEmployer",
+     "value": "Fenwright Partners"
+    },
+    {
+     "slot": "committee",
+     "value": "Ilse Brandvold"
+    },
+    {
+     "slot": "dataset",
+     "value": "Severn estuary dataset"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.0833
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-week",
+   "category": "personalized",
+   "required": [
+    {
+     "slot": "deadline",
+     "kind": "current",
+     "value": "June 1",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "blocker",
+     "kind": "current",
+     "value": "wave-tank data access",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    },
+    {
+     "slot": "supervisor",
+     "kind": "current",
+     "value": "Amara Whitlock",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "research",
+     "kind": "current",
+     "value": "tidal energy storage",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Harrowgate Academy"
+    },
+    {
+     "slot": "profession",
+     "value": "physics teacher"
+    },
+    {
+     "slot": "childcount",
+     "value": "2 children"
+    },
+    {
+     "slot": "city",
+     "value": "Bristol"
+    },
+    {
+     "slot": "wife",
+     "value": "Leah"
+    },
+    {
+     "slot": "wifeEmployer",
+     "value": "Fenwright Partners"
+    },
+    {
+     "slot": "committee",
+     "value": "Ilse Brandvold"
+    },
+    {
+     "slot": "dataset",
+     "value": "Severn estuary dataset"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.3333
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-doc",
+   "category": "cross-source",
+   "required": [
+    {
+     "slot": "committee",
+     "kind": "current",
+     "value": "Ilse Brandvold",
+     "source": "document",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "dataset",
+     "kind": "current",
+     "value": "Severn estuary dataset",
+     "source": "document",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Harrowgate Academy"
+    },
+    {
+     "slot": "profession",
+     "value": "physics teacher"
+    },
+    {
+     "slot": "research",
+     "value": "tidal energy storage"
+    },
+    {
+     "slot": "supervisor",
+     "value": "Amara Whitlock"
+    },
+    {
+     "slot": "childcount",
+     "value": "2 children"
+    },
+    {
+     "slot": "city",
+     "value": "Bristol"
+    },
+    {
+     "slot": "deadline",
+     "value": "June 1"
+    },
+    {
+     "slot": "blocker",
+     "value": "wave-tank data access"
+    },
+    {
+     "slot": "wife",
+     "value": "Leah"
+    },
+    {
+     "slot": "wifeEmployer",
+     "value": "Fenwright Partners"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.1667
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-wife",
+   "category": "deletion",
+   "required": [
+    {
+     "slot": "wife",
+     "kind": "current",
+     "value": "Leah",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Harrowgate Academy"
+    },
+    {
+     "slot": "profession",
+     "value": "physics teacher"
+    },
+    {
+     "slot": "research",
+     "value": "tidal energy storage"
+    },
+    {
+     "slot": "supervisor",
+     "value": "Amara Whitlock"
+    },
+    {
+     "slot": "childcount",
+     "value": "2 children"
+    },
+    {
+     "slot": "city",
+     "value": "Bristol"
+    },
+    {
+     "slot": "deadline",
+     "value": "June 1"
+    },
+    {
+     "slot": "blocker",
+     "value": "wave-tank data access"
+    },
+    {
+     "slot": "wifeEmployer",
+     "value": "Fenwright Partners"
+    },
+    {
+     "slot": "committee",
+     "value": "Ilse Brandvold"
+    },
+    {
+     "slot": "dataset",
+     "value": "Severn estuary dataset"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.0833
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-salary",
+   "category": "uncertainty",
+   "required": [],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Harrowgate Academy"
+    },
+    {
+     "slot": "profession",
+     "value": "physics teacher"
+    },
+    {
+     "slot": "research",
+     "value": "tidal energy storage"
+    },
+    {
+     "slot": "supervisor",
+     "value": "Amara Whitlock"
+    },
+    {
+     "slot": "childcount",
+     "value": "2 children"
+    },
+    {
+     "slot": "city",
+     "value": "Bristol"
+    },
+    {
+     "slot": "deadline",
+     "value": "June 1"
+    },
+    {
+     "slot": "blocker",
+     "value": "wave-tank data access"
+    },
+    {
+     "slot": "wife",
+     "value": "Leah"
+    },
+    {
+     "slot": "wifeEmployer",
+     "value": "Fenwright Partners"
+    },
+    {
+     "slot": "committee",
+     "value": "Ilse Brandvold"
+    },
+    {
+     "slot": "dataset",
+     "value": "Severn estuary dataset"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": {
+    "slot": "salary",
+    "acknowledged": false
+   },
+   "completeness": null,
+   "precision": 0
+  },
+  {
+   "persona": "p2",
+   "probe": "p2-lecture",
+   "category": "uncertainty",
+   "required": [
+    {
+     "slot": "profession",
+     "kind": "current",
+     "value": "physics teacher",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    }
+   ],
+   "stale": [
+    {
+     "slot": "profession",
+     "kind": "hedged",
+     "value": "lecturer",
+     "unmarked": false,
+     "unmarkedLines": [],
+     "quoted": 1,
+     "quotedWithChangeNote": 0
+    }
+   ],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Harrowgate Academy"
+    },
+    {
+     "slot": "research",
+     "value": "tidal energy storage"
+    },
+    {
+     "slot": "supervisor",
+     "value": "Amara Whitlock"
+    },
+    {
+     "slot": "childcount",
+     "value": "2 children"
+    },
+    {
+     "slot": "city",
+     "value": "Bristol"
+    },
+    {
+     "slot": "deadline",
+     "value": "June 1"
+    },
+    {
+     "slot": "blocker",
+     "value": "wave-tank data access"
+    },
+    {
+     "slot": "wife",
+     "value": "Leah"
+    },
+    {
+     "slot": "wifeEmployer",
+     "value": "Fenwright Partners"
+    },
+    {
+     "slot": "committee",
+     "value": "Ilse Brandvold"
+    },
+    {
+     "slot": "dataset",
+     "value": "Severn estuary dataset"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.0833
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-projects",
+   "category": "factual",
+   "required": [
+    {
+     "slot": "projects",
+     "kind": "current",
+     "value": "Vellum Foods packaging",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [
+    {
+     "slot": "projects",
+     "kind": "past",
+     "value": "Brindle & Co rebrand",
+     "unmarked": false,
+     "unmarkedLines": [],
+     "quoted": 3,
+     "quotedWithChangeNote": 0
+    }
+   ],
+   "irrelevant": [
+    {
+     "slot": "profession",
+     "value": "freelance brand designer"
+    },
+    {
+     "slot": "city",
+     "value": "Munich"
+    },
+    {
+     "slot": "nextdeadline",
+     "value": "April 9"
+    },
+    {
+     "slot": "collaborator",
+     "value": "Jonas Eckermann"
+    },
+    {
+     "slot": "vellumcontact",
+     "value": "Marta Ruiz-Feld"
+    },
+    {
+     "slot": "printrun",
+     "value": "25,000 units"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.1429
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-deadline",
+   "category": "temporal",
+   "required": [
+    {
+     "slot": "nextdeadline",
+     "kind": "current",
+     "value": "April 9",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    }
+   ],
+   "stale": [
+    {
+     "slot": "nextdeadline",
+     "kind": "past",
+     "value": "February 20",
+     "unmarked": false,
+     "unmarkedLines": [],
+     "quoted": 1,
+     "quotedWithChangeNote": 0
+    }
+   ],
+   "irrelevant": [
+    {
+     "slot": "profession",
+     "value": "freelance brand designer"
+    },
+    {
+     "slot": "city",
+     "value": "Munich"
+    },
+    {
+     "slot": "projects",
+     "value": "Vellum Foods packaging"
+    },
+    {
+     "slot": "collaborator",
+     "value": "Jonas Eckermann"
+    },
+    {
+     "slot": "vellumcontact",
+     "value": "Marta Ruiz-Feld"
+    },
+    {
+     "slot": "printrun",
+     "value": "25,000 units"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.1429
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-week",
+   "category": "personalized",
+   "required": [
+    {
+     "slot": "projects",
+     "kind": "current",
+     "value": "Vellum Foods packaging",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    },
+    {
+     "slot": "nextdeadline",
+     "kind": "current",
+     "value": "April 9",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    }
+   ],
+   "stale": [
+    {
+     "slot": "projects",
+     "kind": "past",
+     "value": "Brindle & Co rebrand",
+     "unmarked": false,
+     "unmarkedLines": [],
+     "quoted": 3,
+     "quotedWithChangeNote": 0
+    },
+    {
+     "slot": "nextdeadline",
+     "kind": "past",
+     "value": "February 20",
+     "unmarked": false,
+     "unmarkedLines": [],
+     "quoted": 1,
+     "quotedWithChangeNote": 0
+    }
+   ],
+   "irrelevant": [
+    {
+     "slot": "profession",
+     "value": "freelance brand designer"
+    },
+    {
+     "slot": "city",
+     "value": "Munich"
+    },
+    {
+     "slot": "collaborator",
+     "value": "Jonas Eckermann"
+    },
+    {
+     "slot": "vellumcontact",
+     "value": "Marta Ruiz-Feld"
+    },
+    {
+     "slot": "printrun",
+     "value": "25,000 units"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.2857
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-doc",
+   "category": "cross-source",
+   "required": [
+    {
+     "slot": "printrun",
+     "kind": "current",
+     "value": "25,000 units",
+     "source": "document",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "vellumcontact",
+     "kind": "current",
+     "value": "Marta Ruiz-Feld",
+     "source": "document",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "profession",
+     "value": "freelance brand designer"
+    },
+    {
+     "slot": "city",
+     "value": "Munich"
+    },
+    {
+     "slot": "projects",
+     "value": "Vellum Foods packaging"
+    },
+    {
+     "slot": "nextdeadline",
+     "value": "April 9"
+    },
+    {
+     "slot": "collaborator",
+     "value": "Jonas Eckermann"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.2857
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-mockups",
+   "category": "relationship",
+   "required": [
+    {
+     "slot": "collaborator",
+     "kind": "current",
+     "value": "Jonas Eckermann",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "profession",
+     "value": "freelance brand designer"
+    },
+    {
+     "slot": "city",
+     "value": "Munich"
+    },
+    {
+     "slot": "projects",
+     "value": "Vellum Foods packaging"
+    },
+    {
+     "slot": "nextdeadline",
+     "value": "April 9"
+    },
+    {
+     "slot": "vellumcontact",
+     "value": "Marta Ruiz-Feld"
+    },
+    {
+     "slot": "printrun",
+     "value": "25,000 units"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.1429
+  },
+  {
+   "persona": "p3",
+   "probe": "p3-rate",
+   "category": "uncertainty",
+   "required": [],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "profession",
+     "value": "freelance brand designer"
+    },
+    {
+     "slot": "city",
+     "value": "Munich"
+    },
+    {
+     "slot": "projects",
+     "value": "Vellum Foods packaging"
+    },
+    {
+     "slot": "nextdeadline",
+     "value": "April 9"
+    },
+    {
+     "slot": "collaborator",
+     "value": "Jonas Eckermann"
+    },
+    {
+     "slot": "vellumcontact",
+     "value": "Marta Ruiz-Feld"
+    },
+    {
+     "slot": "printrun",
+     "value": "25,000 units"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": {
+    "slot": "hourly rate",
+    "acknowledged": false
+   },
+   "completeness": null,
+   "precision": 0
+  },
+  {
+   "persona": "p4",
+   "probe": "p4-manager",
+   "category": "deletion",
+   "required": [
+    {
+     "slot": "manager",
+     "kind": "current",
+     "value": "Teodor Ilić",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Corvantis"
+    },
+    {
+     "slot": "profession",
+     "value": "backend engineer"
+    },
+    {
+     "slot": "city",
+     "value": "Pune"
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly"
+    },
+    {
+     "slot": "partner",
+     "value": "Ankit Raman"
+    },
+    {
+     "slot": "users",
+     "value": "120 users"
+    },
+    {
+     "slot": "goal",
+     "value": "1,000 users by end of June"
+    },
+    {
+     "slot": "blocker",
+     "value": "Apple approval of the iOS build"
+    },
+    {
+     "slot": "mrr",
+     "value": "310"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.1
+  },
+  {
+   "persona": "p4",
+   "probe": "p4-partner",
+   "category": "relationship",
+   "required": [
+    {
+     "slot": "partner",
+     "kind": "current",
+     "value": "Ankit Raman",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Corvantis"
+    },
+    {
+     "slot": "profession",
+     "value": "backend engineer"
+    },
+    {
+     "slot": "manager",
+     "value": "Teodor Ilić"
+    },
+    {
+     "slot": "city",
+     "value": "Pune"
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly"
+    },
+    {
+     "slot": "users",
+     "value": "120 users"
+    },
+    {
+     "slot": "goal",
+     "value": "1,000 users by end of June"
+    },
+    {
+     "slot": "blocker",
+     "value": "Apple approval of the iOS build"
+    },
+    {
+     "slot": "mrr",
+     "value": "310"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.1
+  },
+  {
+   "persona": "p4",
+   "probe": "p4-users",
+   "category": "factual",
+   "required": [
+    {
+     "slot": "users",
+     "kind": "current",
+     "value": "120 users",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "goal",
+     "kind": "current",
+     "value": "1,000 users by end of June",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Corvantis"
+    },
+    {
+     "slot": "profession",
+     "value": "backend engineer"
+    },
+    {
+     "slot": "manager",
+     "value": "Teodor Ilić"
+    },
+    {
+     "slot": "city",
+     "value": "Pune"
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly"
+    },
+    {
+     "slot": "partner",
+     "value": "Ankit Raman"
+    },
+    {
+     "slot": "blocker",
+     "value": "Apple approval of the iOS build"
+    },
+    {
+     "slot": "mrr",
+     "value": "310"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.2
+  },
+  {
+   "persona": "p4",
+   "probe": "p4-mrr",
+   "category": "cross-source",
+   "required": [
+    {
+     "slot": "mrr",
+     "kind": "current",
+     "value": "310",
+     "source": "document",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Corvantis"
+    },
+    {
+     "slot": "profession",
+     "value": "backend engineer"
+    },
+    {
+     "slot": "manager",
+     "value": "Teodor Ilić"
+    },
+    {
+     "slot": "city",
+     "value": "Pune"
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly"
+    },
+    {
+     "slot": "partner",
+     "value": "Ankit Raman"
+    },
+    {
+     "slot": "users",
+     "value": "120 users"
+    },
+    {
+     "slot": "goal",
+     "value": "1,000 users by end of June"
+    },
+    {
+     "slot": "blocker",
+     "value": "Apple approval of the iOS build"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.1
+  },
+  {
+   "persona": "p4",
+   "probe": "p4-quit",
+   "category": "personalized",
+   "required": [
+    {
+     "slot": "users",
+     "kind": "current",
+     "value": "120 users",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "goal",
+     "kind": "current",
+     "value": "1,000 users by end of June",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "workplace",
+     "kind": "current",
+     "value": "Corvantis",
+     "source": "chat",
+     "present": true,
+     "inStructured": false,
+     "miss": null
+    },
+    {
+     "slot": "partner",
+     "kind": "current",
+     "value": "Ankit Raman",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    },
+    {
+     "slot": "blocker",
+     "kind": "current",
+     "value": "Apple approval of the iOS build",
+     "source": "chat",
+     "present": true,
+     "inStructured": true,
+     "miss": null
+    }
+   ],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "profession",
+     "value": "backend engineer"
+    },
+    {
+     "slot": "manager",
+     "value": "Teodor Ilić"
+    },
+    {
+     "slot": "city",
+     "value": "Pune"
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly"
+    },
+    {
+     "slot": "mrr",
+     "value": "310"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": null,
+   "completeness": 1,
+   "precision": 0.5
+  },
+  {
+   "persona": "p4",
+   "probe": "p4-rent",
+   "category": "uncertainty",
+   "required": [],
+   "stale": [],
+   "irrelevant": [
+    {
+     "slot": "workplace",
+     "value": "Corvantis"
+    },
+    {
+     "slot": "profession",
+     "value": "backend engineer"
+    },
+    {
+     "slot": "manager",
+     "value": "Teodor Ilić"
+    },
+    {
+     "slot": "city",
+     "value": "Pune"
+    },
+    {
+     "slot": "sideproject",
+     "value": "Ledgerly"
+    },
+    {
+     "slot": "partner",
+     "value": "Ankit Raman"
+    },
+    {
+     "slot": "users",
+     "value": "120 users"
+    },
+    {
+     "slot": "goal",
+     "value": "1,000 users by end of June"
+    },
+    {
+     "slot": "blocker",
+     "value": "Apple approval of the iOS build"
+    },
+    {
+     "slot": "mrr",
+     "value": "310"
+    }
+   ],
+   "deleted": [],
+   "sensitive": [],
+   "leaks": [],
+   "unknown": {
+    "slot": "monthly rent",
+    "acknowledged": false
+   },
+   "completeness": null,
+   "precision": 0
+  }
+ ]
+}

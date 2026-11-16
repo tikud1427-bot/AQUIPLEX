@@ -52,6 +52,25 @@ const MOOD = [
 /** Conditions named as one's own: "I have anxiety", "my depression". */
 const MOOD_CONDITION = /\b(?:depression|anxiety|loneliness|burnout|grief|grieving)\b/i;
 
+/**
+ * Common named conditions (2026-11-16, audit D-10). "I have pneumonia." was not
+ * recognised as health information — the lexicon below listed symptoms and
+ * drugs but few conditions — so a plain first-person disclosure was stored
+ * without the opt-in the privacy setting promises. Exported: the multi-label
+ * classifier reads the SAME list for its medical tag (D-11), so "is this
+ * medical?" has one vocabulary. A condition alone never makes text personal:
+ * classifyText still requires a first-person anchor ("Is pneumonia curable?"
+ * stays a general question).
+ */
+export const CONDITION_TERMS_SOURCE = String.raw`pneumonia|influenza|flu|covid(?:-?19)?|coronavirus|bronchitis|tuberculosis|hepatitis(?:\s+[a-e])?|hiv|malaria|dengue|measles|mumps|chickenpox|shingles|strep\s+throat|sinusitis|tonsillitis|meningitis|sepsis|appendicitis|gastritis|gastroenteritis|food\s+poisoning|ulcers?|colitis|crohn'?s|ibs|celiac|coeliac|gout|lupus|psoriasis|eczema|dermatitis|acne|anemi(?:a|c)|anaemi(?:a|c)|leukemia|leukaemia|lymphoma|melanoma|stroke|heart\s+(?:attack|disease|failure|condition)|arrhythmia|angina|high\s+cholesterol|cholesterol|kidney\s+(?:stones?|disease|failure)|liver\s+disease|cirrhosis|copd|emphysema|pneumothorax|concussion|dementia|alzheimer'?s|parkinson'?s|multiple\s+sclerosis|sclerosis|fibromyalgia|endometriosis|pcos|osteoporosis|scoliosis|hernia|glaucoma|cataracts?|tinnitus|vertigo|sleep\s+apnea|anorexia|bulimia|chemo(?:therapy)?|radiotherapy|antibiotics?|dialysis`;
+/**
+ * A named condition is personal only as a DISCLOSURE: "I have / I've got /
+ * I'm on / I was … pneumonia", "my son has flu", "my pneumonia". "Tell me about
+ * pneumonia" (an object "me") and "Can I get pneumonia from…" (a modal
+ * question) are information requests, not the user's health.
+ */
+const CONDITION_DISCLOSURE = new RegExp(String.raw`(?<!\b(?:can|could|will|would|should|might|may|do|does|did)\s)\b(?:i|i'm|im|i've|ive|i'd|we|we're|we've|my\s+[a-z]+(?:\s+[a-z]+)?)\s+(?:have|has|had|got|get|caught|am|is|are|was|were|been|keep|suffer\w*|diagnosed|recover\w*|treated|taking|take|on|started|getting|having|fighting|battling|living)\b[^.!?\n]{0,40}?\b(?:${CONDITION_TERMS_SOURCE})\b|\bmy\s+(?:[a-z]+\s+)?(?:${CONDITION_TERMS_SOURCE})\b`, 'i');
+
 const HEALTH_TERMS = /\b(?:pain|painful|ache|aching|headaches?|migraines?|fever|nausea|nauseous|dizzy|dizziness|vomit\w*|cough\w*|rash|bleeding|insomnia|can'?t\s+sleep|fatigue|seizures?|numbness|tingling|twitch\w*|swollen|swelling|lump|infection|infected|blurry\s+vision|injur\w+|fractured?|sprain\w*|allerg\w+|asthma|diabet\w+|cancer|tumou?r|adhd|autis\w+|ocd|ptsd|bipolar|schizophren\w+|epilep\w+|arthritis|hypertension|blood\s+pressure|thyroid|diagnos\w+|symptoms?|medication|medicines?|meds|pills?|prescri\w+|antidepressants?|insulin|ibuprofen|paracetamol|acetaminophen|sertraline|prozac|xanax|adderall|ritalin|dosage|therap(?:y|ist)|psychiatrist|surgery|hospitali[sz]ed|in\s+(?:the\s+)?hospital|doctor|pregnan\w+|miscarriage|mental\s+health)\b/i;
 
 const BODY_PART = '(?:eyes?|ears?|head|chest|heart|stomach|belly|back|knees?|legs?|arms?|hands?|fingers?|skin|tooth|teeth|throat|lungs?|kidneys?|liver|nose|neck|shoulders?|wrists?|foot|feet|hips?|ankles?|jaw|eyelids?|muscles?|joints?|spine|bladder|bowels?)';
@@ -89,11 +108,49 @@ export function classifyText(text) {
   if (CARE_RELATION.test(masked)) return 'health';
   const personal = PERSONAL_ANCHOR.test(masked) && !PRODUCT_FRAMING.test(masked);
   if (personal && HEALTH_TERMS.test(masked)) return 'health';
+  if (!PRODUCT_FRAMING.test(masked) && CONDITION_DISCLOSURE.test(masked)) return 'health';
   const moodText = masked.replace(OPINION_ABOUT_TOPIC, ' ');
   if (MOOD.some(re => re.test(moodText))) return 'mood';
   if (personal && MOOD_CONDITION.test(moodText)) return 'mood';
   return null;
 }
+
+/**
+ * Health CONTEXT of a message (2026-11-16, audit D-10/D-11) — a label for
+ * policy and diagnostics, deliberately separate from classifyText (which
+ * decides what may be STORED):
+ *   'emergency'           acute high-risk wording — always takes precedence
+ *   'personal_disclosure' the user states their own (or a named person's) health
+ *   'personal_followup'   a medical question with no anchor of its own, after
+ *                         the user disclosed their health earlier in this chat
+ *   'general_medical'     a medical information request ("Is pneumonia curable?")
+ *   null                  not medical
+ * Pure; reads only the strings it is given.
+ */
+const EMERGENCY_RE = /\b(?:can'?t\s+breathe|cannot\s+breathe|trouble\s+breathing|difficulty\s+breathing|chest\s+pain|crushing\s+chest|overdos\w*|took\s+too\s+many\s+(?:pills|tablets)|suicid\w*|kill\s+myself|end\s+my\s+life|unconscious|not\s+breathing|severe\s+bleeding|bleeding\s+heavily|seizing|anaphyla\w*|face\s+(?:is\s+)?drooping|slurred\s+speech)\b/i;
+// Names a medical subject (a condition, a drug, a diagnosis…). Words like
+// "curable", "treat" or "symptoms" alone do not: "Is it curable?" names nothing.
+const MEDICAL_QUESTION_RE = new RegExp(String.raw`\b(?:${CONDITION_TERMS_SOURCE}|diagnos\w*|medications?|medicines?|dosage|side[-\s]effects?|prognosis|vaccin\w*|diseases?|infections?|prescri\w+)\b`, 'i');
+
+export function isMedicalText(text) {
+  return MEDICAL_QUESTION_RE.test(String(text ?? ''));
+}
+
+export function classifyHealthContext(text, { previousUserMessages = [] } = {}) {
+  const t = String(text ?? '');
+  if (EMERGENCY_RE.test(t)) return 'emergency';
+  if (classifyText(t) === 'health') return 'personal_disclosure';
+  const named = isMedicalText(t);
+  const followupWords = HEALTH_FOLLOWUP_RE.test(t);
+  if (!named && !followupWords) return null;
+  // "Is it curable?" after "I have pneumonia" is about the earlier disclosure.
+  const priorDisclosure = (previousUserMessages ?? []).slice(-6).some(m => classifyText(m) === 'health');
+  if (priorDisclosure) return 'personal_followup';
+  // "Is it serious?" with no medical subject and no disclosure is not medical.
+  return named ? 'general_medical' : null;
+}
+/** Medical follow-up wording that names no condition ("is it serious?", "will I recover?"). */
+const HEALTH_FOLLOWUP_RE = /\b(?:curable|serious|dangerous|contagious|recover\w*|heal\w*|fatal|deadly|go\s+away)\b/i;
 
 /** The extractor's own snake_case key → words ("custom_right_eye" → "right eye"). */
 function keyWords(key) {

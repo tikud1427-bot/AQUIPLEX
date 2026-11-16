@@ -55,6 +55,7 @@ import {
   createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore,
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
+import { bindOwnerStore } from '../core/storage/ownerBinding.js';
 import {
   EDGE_CLASS, ensureEdgeType, isKnownEdgeType, isKnownNodeType,
   edgeClassOf, expandEdgeTypes, listEdgeTypes, listNodeTypes,
@@ -228,25 +229,162 @@ function loadFromDisk() {
   if (migratedV3) {
     console.log(`[GRAPH] v3 migration: ${migratedV3} edge(s) given confirmation history (lastConfirmedAt = createdAt)`);
   }
-  if (migrated || migratedV3) scheduleSave();
+  if (migrated || migratedV3) for (const owner of store.keys()) scheduleSave(owner);
 }
 
 const _writer = createDebouncedWriter(STORE_FILE);
-function scheduleSave() {
+function scheduleSave(ownerId = null) {
+  if (ownerId) binding.markDirty(ownerId);
+  if (!binding.writesWholeJson()) return;
   _writer.schedule(() => {
     const data = {};
-    for (const [owner, g] of store.entries()) {
-      data[owner] = {
-        nodes: Object.fromEntries(g.nodes),
-        edges: Object.fromEntries(g.edges),
-        byFile: Object.fromEntries([...g.byFile].map(([k, v]) => [k, { nodes: [...v.nodes], edges: [...v.edges] }])),
-      };
-    }
+    for (const [owner, g] of store.entries()) data[owner] = encodeGraph(g);
     return JSON.stringify(wrapStore(SCHEMA, data));
   });
 }
 
-loadFromDisk();
+// ── Per-owner persistence (scalability Phase 2b, step 4) ─────────────────────
+// WRITERS: the server (file enrichment, conversation ingest, reflection) AND
+// the worker (understandTurn → ensureSelfEntity → upsertNode). Audit finding S6:
+// on the whole-file path the two overwrite each other.
+// MERGE, per owner graph, order-independent:
+//   nodes  union by id; one in both → data shallow-merged, sourceFiles unioned
+//   edges  union by id; one in both → confidence/peak/observations/
+//          lastConfirmedAt = max, evidence + sourceFiles unioned, history merged
+//          by time (capped at MAX_EDGE_HISTORY), type upgraded only per isTypeUpgrade
+//   byFile union per file
+// DELETION: removeFile is recorded as a file tombstone (`removedFiles`) that
+// travels with the graph, so the other process's copy cannot bring that file's
+// nodes and edges back through the union. Account purge → row tombstone.
+// `removedFiles` is only written while partitions are on (off: unchanged file).
+const MAX_REMOVED_FILES = 500;
+
+function encodeGraph(g) {
+  const out = {
+    nodes: Object.fromEntries(g.nodes),
+    edges: Object.fromEntries(g.edges),
+    byFile: Object.fromEntries([...g.byFile].map(([k, v]) => [k, v.at ? { nodes: [...v.nodes], edges: [...v.edges], at: v.at } : { nodes: [...v.nodes], edges: [...v.edges] }])),
+  };
+  if (g.removedFiles?.size) out.removedFiles = Object.fromEntries(g.removedFiles);
+  return out;
+}
+
+function decodeGraph(obj) {
+  const g = { nodes: new Map(), edges: new Map(), byFile: new Map(), adj: new Map() };
+  for (const n of Object.values(obj?.nodes ?? {})) g.nodes.set(n.id, n);
+  for (const e of Object.values(obj?.edges ?? {})) { g.edges.set(e.id, e); indexEdge(g, e); }
+  for (const [file, links] of Object.entries(obj?.byFile ?? {})) {
+    const l = { nodes: new Set(links.nodes ?? []), edges: new Set(links.edges ?? []) };
+    if (links.at) l.at = links.at;
+    g.byFile.set(file, l);
+  }
+  if (obj?.removedFiles) g.removedFiles = new Map(Object.entries(obj.removedFiles));
+  return g;
+}
+
+const union = (a = [], b = []) => [...new Set([...a, ...b])];
+
+function mergeEdge(t, o) {
+  const history = [...(t.history ?? []), ...(o.history ?? [])]
+    .filter((h, i, arr) => arr.findIndex(x => JSON.stringify(x) === JSON.stringify(h)) === i)
+    .sort((x, y) => (Number(x?.at) || 0) - (Number(y?.at) || 0))
+    .slice(-MAX_EDGE_HISTORY);
+  const type = isTypeUpgrade(t.type, o.type) ? o.type : isTypeUpgrade(o.type, t.type) ? t.type : o.type;
+  return {
+    ...t, ...o,
+    type,
+    reason: type === o.type ? o.reason : t.reason,
+    confidence: Math.max(Number(t.confidence) || 0, Number(o.confidence) || 0),
+    peakConfidence: Math.max(Number(t.peakConfidence ?? t.confidence) || 0, Number(o.peakConfidence ?? o.confidence) || 0),
+    observations: Math.max(Number(t.observations) || 1, Number(o.observations) || 1),
+    lastConfirmedAt: Math.max(Number(t.lastConfirmedAt) || 0, Number(o.lastConfirmedAt) || 0) || undefined,
+    evidence: union(t.evidence, o.evidence),
+    sourceFiles: union(t.sourceFiles, o.sourceFiles),
+    ...(history.length ? { history } : {}),
+  };
+}
+
+export function mergeGraphs(ours, theirs) {
+  const removed = { ...(theirs.removedFiles ?? {}) };
+  for (const [f, at] of Object.entries(ours.removedFiles ?? {})) removed[f] = Math.max(Number(removed[f]) || 0, Number(at) || 0);
+  // A file link survives a removal only if it was made AFTER it (re-linked).
+  // Symmetric: whichever side still holds a pre-removal link, it is dropped.
+  const keepLink = (f, l) => !removed[f] || (Number(l?.at) || 0) > removed[f];
+  const dropNodes = new Set();
+  const dropEdges = new Set();
+  const keptNodes = new Set();
+  const keptEdges = new Set();
+  for (const side of [ours, theirs]) {
+    for (const [f, l] of Object.entries(side.byFile ?? {})) {
+      const into = keepLink(f, l) ? [keptNodes, keptEdges] : [dropNodes, dropEdges];
+      for (const n of l.nodes ?? []) into[0].add(n);
+      for (const e of l.edges ?? []) into[1].add(e);
+    }
+  }
+  const goneNode = id => dropNodes.has(id) && !keptNodes.has(id);
+  const goneEdge = id => dropEdges.has(id) && !keptEdges.has(id);
+  const nodes = {};
+  for (const [id, n] of Object.entries(theirs.nodes ?? {})) if (!goneNode(id)) nodes[id] = n;
+  for (const [id, o] of Object.entries(ours.nodes ?? {})) {
+    if (goneNode(id)) continue;
+    const t = nodes[id];
+    nodes[id] = t ? { ...t, ...o, data: { ...(t.data ?? {}), ...(o.data ?? {}) }, sourceFiles: union(t.sourceFiles, o.sourceFiles) } : o;
+  }
+  const edges = {};
+  for (const [id, e] of Object.entries(theirs.edges ?? {})) if (!goneEdge(id)) edges[id] = e;
+  for (const [id, o] of Object.entries(ours.edges ?? {})) {
+    if (goneEdge(id)) continue;
+    edges[id] = edges[id] ? mergeEdge(edges[id], o) : o;
+  }
+  const byFile = {};
+  for (const side of [theirs, ours]) {
+    for (const [f, l] of Object.entries(side.byFile ?? {})) {
+      if (!keepLink(f, l)) continue;
+      const cur = byFile[f] ?? { nodes: [], edges: [] };
+      byFile[f] = { nodes: union(cur.nodes, l.nodes).filter(id => nodes[id]), edges: union(cur.edges, l.edges).filter(id => edges[id]) };
+      const at = Math.max(Number(cur.at) || 0, Number(l.at) || 0);
+      if (at) byFile[f].at = at;
+    }
+  }
+  const out = { nodes, edges, byFile };
+  const kept = Object.entries(removed).sort((a, b) => b[1] - a[1]).slice(0, MAX_REMOVED_FILES);
+  if (kept.length) out.removedFiles = Object.fromEntries(kept);
+  return out;
+}
+
+const graphChangedAt = obj => Math.max(0,
+  ...Object.values(obj?.nodes ?? {}).map(n => Number(n?.updatedAt ?? n?.createdAt) || 0),
+  ...Object.values(obj?.edges ?? {}).map(e => Number(e?.lastConfirmedAt ?? e?.createdAt) || 0),
+  ...Object.values(obj?.removedFiles ?? {}).map(Number));
+
+const binding = bindOwnerStore({
+  storeKey: '.aqua-reasoning-graph.json',
+  file: STORE_FILE,
+  label: 'reasoning-graph',
+  schema: SCHEMA,
+  encode: owner => { const g = store.get(owner); return g ? encodeGraph(g) : undefined; },
+  decode: decodeGraph,
+  install: (owner, g) => { if (g) store.set(owner, g); else store.delete(owner); },
+  merge: mergeGraphs,
+  changedAt: graphChangedAt,
+  // After an account purge: only what was created or confirmed after it.
+  pruneBefore: (obj, at) => {
+    for (const [id, n] of Object.entries(obj.nodes ?? {})) if ((Number(n?.createdAt) || 0) < at) delete obj.nodes[id];
+    for (const [id, e] of Object.entries(obj.edges ?? {})) if ((Number(e?.lastConfirmedAt ?? e?.createdAt) || 0) < at) delete obj.edges[id];
+    for (const l of Object.values(obj.byFile ?? {})) {
+      l.nodes = (l.nodes ?? []).filter(id => obj.nodes[id]);
+      l.edges = (l.edges ?? []).filter(id => obj.edges[id]);
+    }
+    delete obj.removedFiles;
+    return Object.keys(obj.nodes ?? {}).length || Object.keys(obj.edges ?? {}).length ? obj : null;
+  },
+  evict: owner => store.delete(owner),
+  reloadJson: () => loadFromDisk(),
+});
+export function graphPartitionBinding() { return binding; }
+export function graphOwnerReady(ownerId) { return !ownerId || binding.ready(ownerId); }
+
+if (binding.loadsJsonAtBoot()) loadFromDisk();
 
 function indexEdge(g, edge) {
   for (const nid of [edge.from, edge.to]) {
@@ -287,7 +425,7 @@ export function upsertNode(ownerId, node, { fileId = null } = {}) {
   };
   g.nodes.set(node.id, merged);
   if (fileId) linkFile(g, fileId).nodes.add(node.id);
-  scheduleSave();
+  scheduleSave(ownerId ?? 'anon');
   return merged;
 }
 
@@ -368,13 +506,19 @@ export function addEdge(ownerId, edge, { fileId = null } = {}) {
   g.edges.set(id, rec);
   indexEdge(g, rec);
   if (fileId) linkFile(g, fileId).edges.add(id);
-  scheduleSave();
+  scheduleSave(ownerId ?? 'anon');
   return rec;
 }
 
 function linkFile(g, fileId) {
   let l = g.byFile.get(fileId);
-  if (!l) { l = { nodes: new Set(), edges: new Set() }; g.byFile.set(fileId, l); }
+  if (!l) {
+    l = { nodes: new Set(), edges: new Set() };
+    // Partitions on: when the link was made, so a removal can tell a re-link from a stale copy.
+    if (binding.mode !== 'off') l.at = Date.now();
+    g.byFile.set(fileId, l);
+    g.removedFiles?.delete(fileId);
+  }
   return l;
 }
 
@@ -493,7 +637,9 @@ export function removeFile(ownerId, ukoId) {
     if (!stillReferenced && !(g.adj.get(nid)?.size)) { g.nodes.delete(nid); g.adj.delete(nid); }
   }
   g.byFile.delete(ukoId);
-  scheduleSave();
+  // Partitions on: the removal travels with the graph (see mergeGraphs).
+  if (binding.mode !== 'off') (g.removedFiles ??= new Map()).set(ukoId, Date.now());
+  scheduleSave(ownerId ?? 'anon');
   return true;
 }
 
@@ -504,9 +650,10 @@ export function removeFile(ownerId, ukoId) {
 export function purgeOwner(ownerId) {
   const key = ownerId ?? 'anon';
   const g = store.get(key);
-  if (!g) return { nodes: 0, edges: 0 };
+  if (!g) { binding.markDeleted(key); return { nodes: 0, edges: 0 }; }
   const removed = { nodes: g.nodes.size, edges: g.edges.size };
   store.delete(key);
+  binding.markDeleted(key);
   scheduleSave();
   return removed;
 }
@@ -531,4 +678,4 @@ export function listOwners() { return [...store.keys()]; }
 
 export function _migrateEdgeV3ForTests(edge) { return migrateEdgeV3(edge); }
 
-export function _resetGraphForTests() { store.clear(); }
+export function _resetGraphForTests() { store.clear(); binding._reset(); }

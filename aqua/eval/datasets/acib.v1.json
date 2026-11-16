@@ -1,0 +1,1115 @@
+{
+  "id": "acib",
+  "version": "1",
+  "status": "DEVELOPMENT SET — authored 2026-11-10 with the audit's findings in view; not a held-out set. Frozen by acib.v1.FROZEN.sha256: any edit requires a reviewed change (see AQUA_ACIB_V1_IMPLEMENTATION.md §7).",
+  "about": "Aqua Contextual Intelligence Benchmark v1 — context-level (Stage A). Synthetic users; every message is written through the production write path, every question is answered by the production read path (prepareTurn) at code-default flags without Postgres. Patterns are case-insensitive JavaScript regular expressions matched against one context item at a time.",
+  "regimes": {
+    "short": "history only",
+    "long": "history, then filler conversations until the user's past messages exceed 9,000 characters (past the 8,000-character whole-history recall window, where every retained user ends up)"
+  },
+  "fillerTargetChars": 9000,
+  "filler": [
+    "I tried a new sourdough recipe this weekend and the crust came out much darker than I expected.",
+    "Can you recommend a good documentary about deep sea creatures?",
+    "What's the difference between baking soda and baking powder?",
+    "I watched an old western last night and the soundtrack was surprisingly good.",
+    "How do I stop my basil plant from getting leggy on the windowsill?",
+    "Give me three easy weeknight pasta dishes that use spinach.",
+    "Why do cats knead blankets before lying down?",
+    "I finished reading a mystery novel set on a train and guessed the ending halfway through.",
+    "What's a good way to clean a cast iron pan without ruining the seasoning?",
+    "Explain how rainbows form in simple terms.",
+    "I like listening to jazz piano while I cook dinner.",
+    "Suggest a board game that works well with four players and lasts under an hour.",
+    "How long should I steep green tea so it doesn't taste bitter?",
+    "What are some tips for taking better photos with a phone at night?",
+    "I repainted the hallway a pale green and it looks brighter now.",
+    "Can you explain what a haiku is and give me an example about autumn?",
+    "What's the best way to store fresh herbs in the fridge?",
+    "Tell me a fun fact about octopuses.",
+    "I went for a long walk by the river and saw a heron.",
+    "How do noise cancelling headphones actually work?",
+    "Recommend a few podcasts about history that aren't too dry.",
+    "What should I keep in a basic first aid kit for the car?",
+    "I'm trying to drink more water during the day; any simple tricks?",
+    "How do you make a simple vinaigrette?",
+    "Why does bread go stale faster in the fridge?",
+    "I rearranged my bookshelf by colour and now I can't find anything.",
+    "What's the plot of Hamlet in five sentences?",
+    "Give me a quick stretching routine for after sitting a long time.",
+    "How do tides work?",
+    "I bought a small cactus for my desk today.",
+    "What's a good beginner knitting project?",
+    "Explain the rules of cricket briefly.",
+    "How can I keep my phone battery healthy over the years?",
+    "Suggest a vegetarian chili recipe with black beans.",
+    "What's the tallest mountain in Africa?",
+    "I enjoy doing crossword puzzles on Sunday mornings.",
+    "How do I get rid of fruit flies in the kitchen?",
+    "Recommend a calm video game to unwind with.",
+    "What causes the northern lights?",
+    "Tell me how to fold a paper crane."
+  ],
+  "scenarios": [
+    {
+      "id": "personal-fact",
+      "category": "Personal fact retrieval",
+      "dimensions": [
+        "D1"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "My name is Ilse Marten and I'm a pediatric nurse in Leeds."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "I've been learning to play the cello for about a year."
+        }
+      ],
+      "question": "What do I do for work?",
+      "needs": [
+        {
+          "id": "profession",
+          "required": true,
+          "match": [
+            "nurse"
+          ],
+          "evidence": [
+            "pediatric nurse in Leeds"
+          ],
+          "slots": [
+            "subject_state",
+            "topic"
+          ]
+        }
+      ],
+      "distractors": [
+        {
+          "id": "cello",
+          "match": [
+            "cello"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "long-history",
+      "category": "Long conversation history",
+      "dimensions": [
+        "D2"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "We adopted a rescue greyhound and named him Pixel."
+        },
+        {
+          "id": "m2",
+          "conv": "c1",
+          "text": "He is scared of the vacuum cleaner but loves long walks."
+        }
+      ],
+      "inlineFiller": 30,
+      "question": "What's my dog called?",
+      "needs": [
+        {
+          "id": "dog-name",
+          "required": true,
+          "match": [
+            "pixel"
+          ],
+          "evidence": [
+            "named him Pixel"
+          ],
+          "slots": [
+            "topic"
+          ]
+        }
+      ],
+      "distractors": []
+    },
+    {
+      "id": "multi-project",
+      "category": "Multiple related projects",
+      "dimensions": [
+        "D4",
+        "D8"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "I'm running two projects: Atlas, our mobile app, due March 15, and Beacon, an analytics dashboard due June 30."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "Beacon is blocked because we still don't have read access to the client's warehouse data."
+        },
+        {
+          "id": "m3",
+          "conv": "c3",
+          "text": "Atlas is on track and the beta testers like the new onboarding."
+        }
+      ],
+      "question": "What's blocking Beacon right now?",
+      "needs": [
+        {
+          "id": "beacon-blocker",
+          "required": true,
+          "match": [
+            "beacon.*(blocked|block|access|warehouse)",
+            "(warehouse|read access).*beacon",
+            "warehouse data"
+          ],
+          "evidence": [
+            "read access to the client's warehouse data"
+          ],
+          "slots": [
+            "blockers",
+            "dependencies"
+          ]
+        }
+      ],
+      "distractors": [
+        {
+          "id": "atlas-status",
+          "match": [
+            "atlas is on track",
+            "onboarding",
+            "beta testers"
+          ]
+        }
+      ],
+      "crossEntity": [
+        {
+          "id": "atlas-not-blocked",
+          "forbid": [
+            "atlas.*(blocked|warehouse)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cross-conversation",
+      "category": "Cross-conversation context",
+      "dimensions": [
+        "D2",
+        "D8"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "Our budget for the kitchen renovation is 40,000 euros, and that's the absolute maximum."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "The contractor sent a quote of 52,000 euros for the kitchen."
+        },
+        {
+          "id": "m3",
+          "conv": "c3",
+          "text": "My niece starts university in September."
+        }
+      ],
+      "question": "Can I afford the contractor's quote for the kitchen?",
+      "needs": [
+        {
+          "id": "budget",
+          "required": true,
+          "match": [
+            "40,?000"
+          ],
+          "evidence": [
+            "budget for the kitchen renovation is 40,000"
+          ],
+          "slots": [
+            "constraints"
+          ]
+        },
+        {
+          "id": "quote",
+          "required": true,
+          "match": [
+            "52,?000"
+          ],
+          "evidence": [
+            "quote of 52,000"
+          ],
+          "slots": [
+            "evidence",
+            "subject_state"
+          ]
+        }
+      ],
+      "distractors": [
+        {
+          "id": "niece",
+          "match": [
+            "niece",
+            "university"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cross-file",
+      "category": "Cross-file context",
+      "dimensions": [
+        "D7",
+        "D8"
+      ],
+      "history": [],
+      "uploads": [
+        {
+          "conv": "c1",
+          "name": "pricing.txt",
+          "content": "Tidepool pricing. The Standard plan costs $49 per month. Annual plan: two months free."
+        },
+        {
+          "conv": "c2",
+          "name": "board-memo.txt",
+          "content": "Board memo, October. We will price the Standard plan at $59 per month from January."
+        }
+      ],
+      "question": "Do my pricing doc and the board memo agree on the Standard plan price?",
+      "needs": [
+        {
+          "id": "pricing-doc",
+          "required": true,
+          "match": [
+            "\\$?49 per month",
+            "standard plan costs \\$49"
+          ],
+          "evidence": [
+            "Standard plan costs \\$49 per month"
+          ],
+          "slots": [
+            "document",
+            "evidence"
+          ]
+        },
+        {
+          "id": "board-memo",
+          "required": true,
+          "match": [
+            "\\$?59 per month"
+          ],
+          "evidence": [
+            "Standard plan at \\$59 per month"
+          ],
+          "slots": [
+            "document",
+            "evidence"
+          ]
+        }
+      ],
+      "distractors": [],
+      "contradiction": {
+        "a": [
+          "\\$49"
+        ],
+        "b": [
+          "\\$59"
+        ]
+      }
+    },
+    {
+      "id": "historical-current",
+      "category": "Historical versus current facts",
+      "dimensions": [
+        "D3"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "I work at Hartwell Bank as an analyst."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "I left Hartwell last month and now work at Northbeam."
+        }
+      ],
+      "question": "Where do I work?",
+      "needs": [
+        {
+          "id": "current-employer",
+          "required": true,
+          "match": [
+            "northbeam"
+          ],
+          "evidence": [
+            "now work at Northbeam"
+          ],
+          "slots": [
+            "subject_state",
+            "topic"
+          ]
+        }
+      ],
+      "distractors": [],
+      "temporal": {
+        "current": [
+          "northbeam"
+        ],
+        "stale": [
+          "hartwell"
+        ]
+      }
+    },
+    {
+      "id": "contradiction",
+      "category": "Contradictory statements",
+      "dimensions": [
+        "D7"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "Our marketing budget for Q3 is $50,000."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "The Q3 marketing budget is $40,000."
+        }
+      ],
+      "question": "What's our Q3 marketing budget?",
+      "needs": [
+        {
+          "id": "budget-a",
+          "required": true,
+          "match": [
+            "50,?000"
+          ],
+          "evidence": [
+            "marketing budget for Q3 is \\$50,000"
+          ],
+          "slots": [
+            "subject_state",
+            "constraints"
+          ]
+        },
+        {
+          "id": "budget-b",
+          "required": true,
+          "match": [
+            "40,?000"
+          ],
+          "evidence": [
+            "Q3 marketing budget is \\$40,000"
+          ],
+          "slots": [
+            "subject_state",
+            "constraints"
+          ]
+        }
+      ],
+      "distractors": [],
+      "contradiction": {
+        "a": [
+          "50,?000"
+        ],
+        "b": [
+          "40,?000"
+        ]
+      }
+    },
+    {
+      "id": "correction",
+      "category": "User corrections",
+      "dimensions": [
+        "D3",
+        "D7"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "My accountant is Kate Morrow."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "Sorry, I misspoke — my accountant is Kim Morrow, not Kate."
+        }
+      ],
+      "question": "Who is my accountant?",
+      "needs": [
+        {
+          "id": "accountant",
+          "required": true,
+          "match": [
+            "kim morrow"
+          ],
+          "evidence": [
+            "my accountant is Kim Morrow"
+          ],
+          "slots": [
+            "subject_state",
+            "topic"
+          ]
+        }
+      ],
+      "distractors": [],
+      "temporal": {
+        "current": [
+          "kim morrow"
+        ],
+        "stale": [
+          "kate morrow"
+        ]
+      }
+    },
+    {
+      "id": "goal-change",
+      "category": "Goal changes",
+      "dimensions": [
+        "D3",
+        "D5"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "My goal is to run a marathon in October."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "I injured my knee, so I've given up on the marathon. My new goal is to swim 2 km nonstop by October."
+        }
+      ],
+      "question": "Help me plan my training this week.",
+      "needs": [
+        {
+          "id": "current-goal",
+          "required": true,
+          "match": [
+            "swim"
+          ],
+          "evidence": [
+            "swim 2 km nonstop"
+          ],
+          "slots": [
+            "goal"
+          ]
+        },
+        {
+          "id": "injury",
+          "required": false,
+          "match": [
+            "knee"
+          ],
+          "evidence": [
+            "injured my knee"
+          ],
+          "slots": [
+            "constraints"
+          ],
+          "note": "Optional: a health sentence. At default privacy settings (rememberSensitive off) the sensitivity policy withholds it from every lane by design; corrected during pre-freeze validation 2026-11-10 (AQUA_ACIB_V1_IMPLEMENTATION.md §7)."
+        }
+      ],
+      "distractors": [],
+      "temporal": {
+        "current": [
+          "swim"
+        ],
+        "stale": [
+          "marathon"
+        ]
+      }
+    },
+    {
+      "id": "missing-info",
+      "category": "Missing information",
+      "dimensions": [
+        "D10"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "I want to hire a second engineer for my startup."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "Our runway is 14 months at the current spend."
+        }
+      ],
+      "question": "Can I afford a second engineer's salary?",
+      "needs": [
+        {
+          "id": "runway",
+          "required": true,
+          "match": [
+            "14 months",
+            "runway"
+          ],
+          "evidence": [
+            "runway is 14 months"
+          ],
+          "slots": [
+            "constraints"
+          ]
+        },
+        {
+          "id": "hiring-intent",
+          "required": false,
+          "match": [
+            "second engineer"
+          ],
+          "evidence": [
+            "hire a second engineer"
+          ],
+          "slots": [
+            "goal"
+          ]
+        }
+      ],
+      "distractors": [],
+      "unknowns": [
+        {
+          "id": "salary",
+          "label": "the engineer's salary / hiring cost",
+          "match": [
+            "salary",
+            "hiring cost",
+            "compensation"
+          ]
+        },
+        {
+          "id": "cash",
+          "label": "cash in the bank or monthly burn",
+          "match": [
+            "burn",
+            "cash",
+            "bank"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ambiguous-relationship",
+      "category": "Ambiguous relationships",
+      "dimensions": [
+        "D4",
+        "D10"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "Alex Chen is my co-founder."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "Alex Rivera at Northwind is our biggest client."
+        },
+        {
+          "id": "m3",
+          "conv": "c3",
+          "text": "Alex said the renewal depends on the Q4 roadmap."
+        }
+      ],
+      "question": "What did Alex say about the renewal?",
+      "needs": [
+        {
+          "id": "renewal-statement",
+          "required": true,
+          "match": [
+            "renewal"
+          ],
+          "evidence": [
+            "renewal depends on the Q4 roadmap"
+          ],
+          "slots": [
+            "topic",
+            "evidence"
+          ]
+        },
+        {
+          "id": "alex-chen",
+          "required": true,
+          "match": [
+            "alex chen"
+          ],
+          "evidence": [
+            "Alex Chen is my co-founder"
+          ],
+          "slots": [
+            "topic"
+          ]
+        },
+        {
+          "id": "alex-rivera",
+          "required": true,
+          "match": [
+            "alex rivera"
+          ],
+          "evidence": [
+            "Alex Rivera at Northwind"
+          ],
+          "slots": [
+            "topic"
+          ]
+        }
+      ],
+      "distractors": [],
+      "unknowns": [
+        {
+          "id": "which-alex",
+          "label": "which Alex made the statement",
+          "match": [
+            "which alex",
+            "alex"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "third-party",
+      "category": "Third-party facts",
+      "dimensions": [
+        "D4"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "My sister Ana works at Stripe as a designer."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "I work at Tidewell as a product manager."
+        }
+      ],
+      "question": "Where does my sister work?",
+      "needs": [
+        {
+          "id": "sister-employer",
+          "required": true,
+          "match": [
+            "stripe"
+          ],
+          "evidence": [
+            "Ana works at Stripe"
+          ],
+          "slots": [
+            "topic",
+            "subject_state"
+          ]
+        }
+      ],
+      "distractors": [
+        {
+          "id": "user-job",
+          "match": [
+            "tidewell",
+            "product manager"
+          ]
+        }
+      ],
+      "crossEntity": [
+        {
+          "id": "stripe-is-not-the-user",
+          "forbid": [
+            "(workplace|company|employer|works? at|organization)\\W.*stripe",
+            "(role|profession)\\W.*designer"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "irrelevant-history",
+      "category": "Irrelevant historical information",
+      "dimensions": [
+        "D6"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "I'm a tax lawyer in Rotterdam and my goal is to make partner by 2027."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "My husband Joost and I are expecting our first child in May."
+        },
+        {
+          "id": "m3",
+          "conv": "c3",
+          "text": "We're blocked on the office move until the lease is signed."
+        }
+      ],
+      "question": "At what temperature does water boil at sea level?",
+      "needs": [],
+      "distractors": [
+        {
+          "id": "any-personal",
+          "match": [
+            "lawyer",
+            "rotterdam",
+            "partner",
+            "joost",
+            "child",
+            "lease",
+            "office move"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "multi-fact",
+      "category": "Questions requiring multiple facts",
+      "dimensions": [
+        "D8",
+        "D9"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "I'm visiting Porto from May 3 to May 10."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "My partner Joao is vegetarian."
+        },
+        {
+          "id": "m3",
+          "conv": "c3",
+          "text": "We prefer cheap, casual places over fancy restaurants."
+        }
+      ],
+      "question": "Plan a dinner for my partner and me during my trip.",
+      "needs": [
+        {
+          "id": "trip",
+          "required": true,
+          "match": [
+            "porto"
+          ],
+          "evidence": [
+            "visiting Porto from May 3"
+          ],
+          "slots": [
+            "goal",
+            "constraints"
+          ]
+        },
+        {
+          "id": "diet",
+          "required": true,
+          "match": [
+            "vegetarian"
+          ],
+          "evidence": [
+            "Joao is vegetarian"
+          ],
+          "slots": [
+            "constraints"
+          ]
+        },
+        {
+          "id": "style",
+          "required": true,
+          "match": [
+            "cheap",
+            "casual"
+          ],
+          "evidence": [
+            "cheap, casual places"
+          ],
+          "slots": [
+            "constraints"
+          ]
+        }
+      ],
+      "distractors": []
+    },
+    {
+      "id": "forgotten",
+      "category": "Explicitly forgotten information",
+      "dimensions": [
+        "D6",
+        "D10"
+      ],
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "My home address is 14 Larch Road, Bristol."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "Forget my address"
+        }
+      ],
+      "question": "Where do I live?",
+      "needs": [],
+      "distractors": [],
+      "forgotten": [
+        "larch road"
+      ],
+      "unknowns": [
+        {
+          "id": "address",
+          "label": "the user's address (forgotten at their request)",
+          "match": [
+            "address",
+            "live"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "failed-turn",
+      "category": "Failed-turn memory integrity",
+      "dimensions": [
+        "D1",
+        "D3",
+        "D6"
+      ],
+      "note": "Redesigned during pre-freeze validation 2026-11-10: the first version (an engagement sentence) produced nothing the read path shows, so a leak was undetectable — verified by disabling the rollback (AQUA_ACIB_V1_IMPLEMENTATION.md §7). Failed message rephrased to a form the extractor stores (\"I just started a new job at…\" is not captured at all — itself a capture gap).",
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "My name is Rowan Pike."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "I work at Kestrel Labs as a data engineer."
+        },
+        {
+          "id": "m3",
+          "conv": "c3",
+          "text": "Actually I now work at Solberg Marine.",
+          "fail": true
+        }
+      ],
+      "question": "Where do I work?",
+      "needs": [
+        {
+          "id": "employer",
+          "required": true,
+          "match": [
+            "kestrel"
+          ],
+          "evidence": [
+            "work at Kestrel Labs"
+          ],
+          "slots": [
+            "subject_state",
+            "topic"
+          ]
+        }
+      ],
+      "distractors": [],
+      "failedTurn": [
+        "solberg"
+      ]
+    },
+    {
+      "id": "hiring-decision",
+      "category": "Critical: hiring decision",
+      "dimensions": [
+        "D5",
+        "D8",
+        "D9",
+        "D3",
+        "D10"
+      ],
+      "critical": true,
+      "history": [
+        {
+          "id": "m1",
+          "conv": "c1",
+          "text": "I'm the founder of Tidewell, a B2B scheduling startup. We have 3 engineers: Priya, Marco and Sam."
+        },
+        {
+          "id": "m2",
+          "conv": "c2",
+          "text": "We have $180k in the bank and we burn about $30k a month."
+        },
+        {
+          "id": "m3",
+          "conv": "c3",
+          "text": "We need to ship the iOS app by March 1, and the payments integration is blocking it."
+        },
+        {
+          "id": "m4",
+          "conv": "c4",
+          "text": "Last quarter we decided to hold off on hiring until we reach $20k MRR."
+        },
+        {
+          "id": "m5",
+          "conv": "c5",
+          "text": "We're at $14k MRR right now."
+        },
+        {
+          "id": "m6",
+          "conv": "c6",
+          "text": "I might hire a designer next year, not sure yet."
+        },
+        {
+          "id": "m7",
+          "conv": "c7",
+          "text": "My sister's wedding is in June and I'm giving a speech."
+        },
+        {
+          "id": "m8",
+          "conv": "c8",
+          "text": "I've been learning Portuguese on my commute."
+        },
+        {
+          "id": "m9",
+          "conv": "c9",
+          "text": "Marco told me he's leaving at the end of the month."
+        }
+      ],
+      "question": "Should I hire another developer?",
+      "needs": [
+        {
+          "id": "team-size",
+          "required": true,
+          "match": [
+            "3 engineers",
+            "three engineers",
+            "priya"
+          ],
+          "evidence": [
+            "We have 3 engineers: Priya, Marco and Sam"
+          ],
+          "slots": [
+            "constraints"
+          ]
+        },
+        {
+          "id": "departure",
+          "required": true,
+          "match": [
+            "marco.*leaving",
+            "leaving at the end of the month"
+          ],
+          "evidence": [
+            "Marco told me he's leaving"
+          ],
+          "slots": [
+            "risk_signals",
+            "constraints"
+          ]
+        },
+        {
+          "id": "finances",
+          "required": true,
+          "match": [
+            "180k",
+            "30k a month",
+            "burn"
+          ],
+          "evidence": [
+            "\\$180k in the bank"
+          ],
+          "slots": [
+            "constraints"
+          ]
+        },
+        {
+          "id": "roadmap",
+          "required": true,
+          "match": [
+            "ios app",
+            "march 1",
+            "payments integration"
+          ],
+          "evidence": [
+            "ship the iOS app by March 1"
+          ],
+          "slots": [
+            "goal",
+            "deadline",
+            "blockers"
+          ]
+        },
+        {
+          "id": "prior-decision",
+          "required": true,
+          "match": [
+            "hold off on hiring",
+            "20k mrr"
+          ],
+          "evidence": [
+            "hold off on hiring until we reach \\$20k MRR"
+          ],
+          "slots": [
+            "prior_plans"
+          ]
+        },
+        {
+          "id": "revenue",
+          "required": true,
+          "match": [
+            "14k mrr"
+          ],
+          "evidence": [
+            "\\$14k MRR right now"
+          ],
+          "slots": [
+            "constraints"
+          ]
+        }
+      ],
+      "distractors": [
+        {
+          "id": "designer",
+          "match": [
+            "designer"
+          ]
+        },
+        {
+          "id": "wedding",
+          "match": [
+            "wedding",
+            "speech"
+          ]
+        },
+        {
+          "id": "portuguese",
+          "match": [
+            "portuguese",
+            "commute"
+          ]
+        }
+      ],
+      "unknowns": [
+        {
+          "id": "dev-cost",
+          "label": "the cost of a developer",
+          "match": [
+            "salary",
+            "cost of a developer",
+            "hiring cost"
+          ]
+        }
+      ]
+    }
+  ]
+}

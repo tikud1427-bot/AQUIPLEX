@@ -23,6 +23,7 @@ const {
   deductCredits, refundCredits, refreshDailyAllowance,
 } = require("../../services/credits/wallet.service");
 const { FREE_DAILY_CREDITS } = require("../../utils/credits/freeAllowance");
+const { loadPendingCharges, createWalletAdapter } = require("../../services/credits/pendingChargeWallet");
 const {
   hasUnlimitedAccess,
   unlimitedAccessReason,
@@ -63,11 +64,15 @@ function getUid(req) {
  */
 /** Wrap fn so it runs at most once; later calls resolve false without running it. */
 function onceOnly(fn) {
-  let done = false;
+  // A second call still never re-runs the refund (it resolves false), but it
+  // settles only AFTER the first one has (Phase 4A): a caller awaiting it
+  // before sending an error response — the response gate — really waits for
+  // the credit to be written, instead of passing an in-flight refund by.
+  let first = null;
   return () => {
-    if (done) return Promise.resolve(false);
-    done = true;
-    return Promise.resolve().then(fn);
+    if (first) return first.then(() => false, () => false);
+    first = Promise.resolve().then(fn);
+    return first;
   };
 }
 
@@ -184,7 +189,54 @@ async function checkUsage({ userId, actionType, deductOnEntry = true }) {
     };
   }
 
-  // ── 7. Deduct on entry (default) ─────────────────────────────────────────
+  // ── 7a. Deduct on entry WITH pending-charge recovery (Phase 4B) ─────────────
+  // AQUA_PENDING_CHARGES=on: the charge is a row (PENDING) before the wallet is
+  // debited, the turn's commit settles it (COMMITTED, same transaction as the
+  // turn), a failure refunds it through REFUND_PENDING → REFUNDED, and a process
+  // that dies anywhere in between leaves a charge the reconciler resolves.
+  if (deductOnEntry) {
+    const PC = await loadPendingCharges().catch(() => null);
+    if (PC) {
+      const wallet = createWalletAdapter();
+      let charge;
+      try {
+        charge = await PC.beginCharge({ userId, ownerId: `user:${userId}`, actionType, amount: cost, wallet });
+      } catch (err) {
+        if (err.message === "INSUFFICIENT_CREDITS") {
+          const fresh = await User.findById(userId);
+          return insufficientCredits(fresh || user, { userId, cost, actionType });
+        }
+        // The charge cannot be tracked (database unavailable): do not charge untracked.
+        log.error(`[checkUsage] charge not started userId=${userId}: ${err.message}`);
+        return { allowed: false, status: 503, error: "CHARGE_UNAVAILABLE", retryable: true,
+          message: "We could not start this request right now. Please try again in a moment." };
+      }
+      log.info(`[checkUsage] DEBIT userId=${userId} cost=${cost} actionType=${actionType} charge=${charge.chargeId} remaining=${charge.balanceAfter?.total}`);
+      return {
+        allowed: true,
+        cost,
+        actionType,
+        creditContext: {
+          userId, cost, actionType,
+          deducted: true,
+          chargeId: charge.chargeId,
+          // ONCE per request (see 7b): REFUND_PENDING, then the idempotent wallet refund.
+          refund: onceOnly(async () => {
+            log.warn(`[checkUsage] REFUND requested userId=${userId} charge=${charge.chargeId} actionType=${actionType}`);
+            await PC.requestRefund(charge.chargeId, { reason: `${actionType}_failed` });
+            const r = await PC.processRefund(charge.chargeId, { wallet });
+            return r.state === "REFUNDED" || r.state === "VOID";
+          }),
+          // A successful request that did not commit the charge inside a turn's transaction.
+          settle: onceOnly(() => PC.commitCharge(charge.chargeId, { reason: "request-succeeded" })),
+          commit: () => Promise.resolve(), // already deducted
+          balanceAfter: charge.balanceAfter,
+        },
+      };
+    }
+  }
+
+  // ── 7b. Deduct on entry (default) ────────────────────────────────────────
   if (deductOnEntry) {
     let deductResult;
     try {

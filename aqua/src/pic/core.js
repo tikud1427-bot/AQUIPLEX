@@ -120,7 +120,7 @@ function scheduleConsolidation(ownerId, deps) {
       console.log(`[PIC] Consolidated owner=${ownerLogId(ownerId)} merged=${report.duplicatesMerged} conf=${report.confidenceAdjusted} disputed=${report.disputed} stale=${report.stale} promoted=${report.promoted} in ${report.durationMs}ms`);
     } catch (err) {
       metrics.failures += 1;
-      console.warn(`[PIC] Background consolidation failed (non-fatal) owner=${ownerLogId(ownerId)}: ${err.message}`);
+      console.warn(`[PIC] Background consolidation failed (non-fatal) owner=${ownerLogId(ownerId)}:${err.message}`);
     }
   }, CONSOLIDATE_DEBOUNCE_MS);
   t.unref?.();   // never hold the process open

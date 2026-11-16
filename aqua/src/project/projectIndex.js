@@ -29,6 +29,8 @@
 import { parseFile } from './fileParser.js';
 import { createDebouncedWriter, loadJsonFile } from '../core/atomicStore.js';
 import { migrateLegacyFile } from '../core/dataDir.js';
+import { bindKeyedStore } from '../core/storage/keyedBinding.js';
+import { namespaceOwner } from '../core/storage/ownerBinding.js';
 
 // P0 — canonical data dir (survives redeploys) + one-time legacy migration.
 const INDEX_FILE = migrateLegacyFile('.aqua-index.json');
@@ -61,7 +63,9 @@ function loadFromDisk() {
 // the synchronous path is the biggest event-loop win; temp+rename also removes
 // the "corrupt index on crash mid-write" failure mode.
 const _writer = createDebouncedWriter(INDEX_FILE);
-function scheduleSave() {
+function scheduleSave(workspaceId = null) {
+  if (workspaceId) binding.markDirty(workspaceId);
+  if (!binding.writesWholeJson()) return;
   _writer.schedule(() => {
     const data = {};
     for (const [id, files] of sources.entries()) data[id] = files;
@@ -69,7 +73,26 @@ function scheduleSave() {
   });
 }
 
-loadFromDisk();
+// ── Per-owner persistence (scalability Phase 2c) ─────────────────────────────
+// WRITER: the server only (ingestion, summary sync, clear). One row per
+// workspace's SOURCE list, owned by the workspace's owner (the 'ws:' resolver
+// projectMemory registers). The derived index is never persisted: it is
+// rebuilt from the sources, so an installed source list drops the cached index.
+// MERGE: the source list is replaced whole by a (re-)ingest → three-way on the
+// whole value. DELETION: clearIndex → row tombstone.
+const binding = bindKeyedStore({
+  storeKey: '.aqua-index.json', file: INDEX_FILE, label: 'index', section: 'ws', envelope: false,
+  mergeSchema: { whole: true },
+  ownerOf: id => namespaceOwner(`ws:${id}`) ?? `ws:${id}`,
+  encode: id => (sources.has(id) ? sources.get(id) : undefined),
+  decode: files => (Array.isArray(files) ? files : []),
+  install: (id, files) => { indexes.delete(id); if (files) sources.set(id, files); else sources.delete(id); },
+  evict: id => { indexes.delete(id); sources.delete(id); },
+  reloadJson: () => { loaded = false; loadFromDisk(); },
+});
+export function indexPartitionBinding() { return binding; }
+
+if (binding.loadsJsonAtBoot()) loadFromDisk(); else loaded = true;
 
 // ── Build ─────────────────────────────────────────────────────────────────────
 
@@ -95,7 +118,7 @@ export function buildIndex(workspaceId, ingestedFiles, { persist = true } = {}) 
       truncated: f.truncated ?? false,
       summary:   f.summary ?? null,
     })));
-    scheduleSave();
+    scheduleSave(workspaceId);
   }
 
   console.log(`[Index] ${ingestedFiles.length} files indexed for workspace=${workspaceId}`);
@@ -187,7 +210,7 @@ export function syncSummaries(workspaceId, enriched = []) {
       changed = true;
     }
   }
-  if (changed) scheduleSave();
+  if (changed) scheduleSave(workspaceId);
 }
 
 // ── Query ─────────────────────────────────────────────────────────────────────
@@ -215,6 +238,7 @@ export function getIndex(workspaceId) {
 
 export function clearIndex(workspaceId) {
   const had = indexes.delete(workspaceId);
+  binding.markDeleted(workspaceId);
   if (sources.delete(workspaceId)) scheduleSave();
   return had;
 }

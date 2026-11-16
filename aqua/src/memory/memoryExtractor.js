@@ -10,6 +10,7 @@ import { detectCorrection, CORRECTION_PHRASES } from './memoryConflictResolver.j
 import { getSchema, getWordIndex } from './memorySchema.js';
 import { onto } from './factChange.js';
 import { getFacts } from './longTermMemory.js';
+import { textMeta, valueMeta, safeKey, stripQuoted } from '../core/logSafety.js';
 
 export { detectCorrection, CORRECTION_PHRASES } from './memoryConflictResolver.js';
 
@@ -71,8 +72,9 @@ export function extractFactsWithReport(message, ownerId = null) {
 
   // 1. Parse — Instrumentation (Req 3): input + normalized sentences
   const parsed = parseMessage(message);
-  console.log(`[EXTRACTOR] INPUT "${message.slice(0, 120)}"`);
-  console.log(`[EXTRACTOR] NORMALIZED sentences=${parsed.sentences.length} correction=${parsed.isCorrection}${parsed.correctionPhrase ? ` phrase="${parsed.correctionPhrase}"` : ''} → ${JSON.stringify(parsed.sentences.map(x => x.slice(0, 60)))}`);
+  // Metadata only (core/logSafety.js): the message and its sentences are the user's.
+  console.log(`[EXTRACTOR] INPUT ${textMeta(message)}`);
+  console.log(`[EXTRACTOR] NORMALIZED sentences=${parsed.sentences.length} correction=${parsed.isCorrection}${parsed.correctionPhrase ? ' phrase=yes' : ''}`);
   if (parsed.sentences.length === 0) {
     report.processingTimeMs = Date.now() - t0;
     return { facts: [], report: finalizeReport(report) };
@@ -91,7 +93,7 @@ export function extractFactsWithReport(message, ownerId = null) {
   report.accepted = accepted.length;
   report.rejected += rejected.length;
   for (const r of rejected) {
-    console.log(`[EXTRACTOR] REJECTED key=${r.key} value=${JSON.stringify(r.value)} reason=${r.rejectionReason}`);
+    console.log(`[EXTRACTOR] REJECTED key=${safeKey(r.key)} value=${valueMeta(r.value)} reason=${stripQuoted(r.rejectionReason)}`);
   }
   if (accepted.length === 0) {
     report.processingTimeMs = Date.now() - t0;
@@ -110,7 +112,7 @@ export function extractFactsWithReport(message, ownerId = null) {
     const resolved = resolveCandidates(ownerId, onto(unique, getFacts(ownerId)));
     toStore = [];
     for (const r of resolved) {
-      console.log(`[EXTRACTOR] PROMOTION key=${r.key} action=${r.action} reason=${r.reason}${r.previousValue !== undefined ? ` previous=${JSON.stringify(r.previousValue)}` : ''}`);
+      console.log(`[EXTRACTOR] PROMOTION key=${safeKey(r.key)} action=${r.action} reason=${stripQuoted(r.reason)}${r.previousValue !== undefined ? ` previous=${valueMeta(r.previousValue)}` : ''}`);
       switch (r.action) {
         case RESOLUTION_ACTIONS.STORE_NEW: report.stored++; toStore.push(r); break;
         case RESOLUTION_ACTIONS.OVERWRITE:
@@ -198,6 +200,9 @@ function toLegacyFact(resolved) {
       confidence: resolved.confidence,
       // The user said it unsure ("I think…"): kept as uncertain, shown as such (candidateExtractor hedgeOf).
       ...(resolved.hedged ? { hedged: true } : {}),
+      // What the sentence did (understanding/speechAct.js): assertion, negation, correction,
+      // preference, goal, intention, prediction, remember. Questions/requests never get here.
+      ...(resolved.speechAct ? { speechAct: resolved.speechAct } : {}),
     },
   };
 }

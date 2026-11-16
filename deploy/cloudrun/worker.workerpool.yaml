@@ -1,0 +1,78 @@
+# AQUIPLEX — Cloud Run WORKER POOL (TEMPLATE — Phase 4B; NOT DEPLOYED, NOT ACTIVATED)
+#
+# The worker serves no HTTP (by design: scripts/start-worker.mjs never listens,
+# a test asserts it), so it runs as a Cloud Run worker pool, not a service.
+#
+# VERIFY BEFORE USE: worker pools appeared in Google's documentation with both
+# `gcloud beta run worker-pools` and `gcloud run worker-pools` commands and a
+# BETA launch-stage annotation; check the current launch stage, the instance-
+# count field and its billing in the Cloud Run docs at deployment time. If
+# worker pools are not available in the chosen region, the documented
+# alternative is a small Compute Engine managed instance group running the same
+# image and command (plan §3).
+#
+# Apply only with authorisation: `gcloud run worker-pools replace worker.workerpool.yaml --region ${REGION}`.
+# Placeholders: ${PROJECT_ID} ${REGION} ${SQL_INSTANCE} ${IMAGE} ${WORKER_SA} ${GCS_BUCKET}
+apiVersion: run.googleapis.com/v1
+kind: WorkerPool
+metadata:
+  name: aquiplex-worker
+  labels:
+    app: aquiplex
+    role: worker
+  annotations:
+    run.googleapis.com/launch-stage: BETA          # VERIFY: remove once worker pools are GA in the region
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cloudsql-instances: ${PROJECT_ID}:${REGION}:${SQL_INSTANCE}
+    spec:
+      serviceAccountName: ${WORKER_SA}
+      containers:
+        - image: ${IMAGE}
+          command: ["node"]
+          # One job at a time per process; scale by INSTANCES. --diag: lifecycle
+          # + queue-lag summary every 30 s (AQUIPLEX_WORKER_FAILURE_INVESTIGATION.md).
+          args: ["scripts/start-worker.mjs", "--poll", "750", "--diag", "30000"]
+          resources:
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          env:
+            - { name: NODE_ENV, value: production }
+            - { name: START_WORKER_SKIP_DOTENV, value: "1" }
+            - { name: AQUA_STORE_PARTITIONS, value: "reflection:on,mind:on,recall-redactions:on,history:on,reasoning-graph:on,ids:on,brain:on,evidence:on,fileindex:on,uko:on,attachments:on,pic:on,vectors:on,projects:on,index:on,artifacts:on,cognition:on,ledger:on" }
+            - { name: AQUA_DISABLE_MONGO_MIRROR, value: "1" }
+            - { name: AQUA_DATA_DIR, value: /tmp/aqua-data }
+            - { name: AQUA_ARTIFACTS_DIR, value: /tmp/aqua-artifacts }
+            - { name: AQUA_OBJECT_STORE, value: gcs }
+            - { name: AQUA_GCS_BUCKET, value: "${GCS_BUCKET}" }
+            - { name: AQUA_POST_TURN_DURABLE, value: "on" }
+            - { name: AQUA_PENDING_CHARGES, value: "on" }
+            # PWI Phase 1: the same read mode as the API (see api.service.yaml for why).
+            - { name: AQUA_CANONICAL_READ, value: "off" }
+            # Jobs: a dead worker's job is reclaimed when its heartbeat is 30 s stale
+            # (default 120 s); a job waiting runnable gains priority (aging, 5 s/pt).
+            - { name: AQUA_JOB_HEARTBEAT_STALE_MS, value: "30000" }
+            - { name: AQUA_JOB_AGING_SECONDS, value: "5" }
+            - { name: AQUA_SCHEDULER_LEASE_MS, value: "60000" }
+            - { name: AQUA_CHARGE_ABANDON_MS, value: "900000" }
+            - { name: AQUA_CHARGE_RECONCILE_INTERVAL_MS, value: "60000" }
+            # SIGTERM: finish or release the job in hand within the 10 s grace.
+            - { name: AQUA_WORKER_SHUTDOWN_MS, value: "7000" }
+            - { name: AQUA_SHUTDOWN_BUDGET_MS, value: "9500" }
+            - { name: PGPOOL_MAX, value: "5" }
+            - { name: PGPOOL_CONNECT_MS, value: "5000" }
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: aquiplex-database-url, key: latest } }
+            - name: MONGO_URI                       # the charge reconciler refunds wallets (Mongo)
+              valueFrom: { secretKeyRef: { name: aquiplex-mongo-uri, key: latest } }
+            - name: AQUA_LOG_PSEUDONYM_KEY          # the SAME secret as the API, so owner pseudonyms correlate across both
+              valueFrom: { secretKeyRef: { name: aquiplex-log-pseudonym-key, key: latest } }
+            - name: GROQ_API_KEY_1
+              valueFrom: { secretKeyRef: { name: aquiplex-groq-api-key-1, key: latest } }
+            - name: GEMINI_KEY_1
+              valueFrom: { secretKeyRef: { name: aquiplex-gemini-key-1, key: latest } }
+            - name: NVIDIA_API_KEY_1
+              valueFrom: { secretKeyRef: { name: aquiplex-nvidia-api-key-1, key: latest } }

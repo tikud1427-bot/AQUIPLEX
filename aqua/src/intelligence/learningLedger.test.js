@@ -32,6 +32,8 @@ function seed(n, outcome) {
 
 const CLEAN  = { taskType: 'coding', provider: 'groq', responseConfidence: { score: 0.9 }, verification: { ran: true, passed: true, revised: false }, verificationWarranted: true, latencyMs: 800 };
 const SHAKY  = { taskType: 'coding', provider: 'groq', responseConfidence: { score: 0.4 }, verification: { ran: true, passed: false, revised: true }, verificationWarranted: true, latencyMs: 2000 };
+// 2026-11-16 (audit D-05): the learned gate counts only CONFIRMED revisions — revised, then a pass confirmed it.
+const CONFIRMED = { ...SHAKY, verification: { ran: true, passed: true, revised: true } };
 
 // ═══ Recording ════════════════════════════════════════════════════════════════
 
@@ -75,16 +77,30 @@ test('snapshot is a deep copy — mutating it cannot corrupt the ledger', () => 
 // ═══ Feedback 1 — adaptive verification ═══════════════════════════════════════
 
 test('getTaskStats: null below the sample gate, stats at/above it', () => {
-  seed(MIN_SAMPLE - 1, SHAKY);
+  seed(MIN_SAMPLE - 1, CONFIRMED);
   assert.equal(getTaskStats('coding'), null);
-  seed(1, SHAKY);
+  seed(1, CONFIRMED);
   const stats = getTaskStats('coding');
   assert.equal(stats.sampleSize, MIN_SAMPLE);
   assert.equal(stats.revisionRate, 1);
 });
 
-test('learned revision history warrants verification on an otherwise-quiet request', () => {
+test('D-05: UNCONFIRMED revisions (history-blind rewrites) never switch the learned gate on', () => {
+  seed(MIN_SAMPLE * 2, SHAKY);
+  const stats = getTaskStats('coding');
+  assert.equal(stats.revisionRate, 0);
+  assert.equal(stats.revisionBasis, 'confirmed');
+  assert.doesNotMatch(shouldVerify({ taskType: 'coding', complexity: 'medium', tags: [], userMessage: 'short ask', history: stats }).reason, /revision-prone/);
+});
+
+test('D-05 rollback: AQUA_LEDGER_REVISION_BASIS=legacy restores the previous rate', () => {
   seed(MIN_SAMPLE, SHAKY);
+  process.env.AQUA_LEDGER_REVISION_BASIS = 'legacy';
+  try { assert.equal(getTaskStats('coding').revisionRate, 1); } finally { delete process.env.AQUA_LEDGER_REVISION_BASIS; }
+});
+
+test('learned revision history warrants verification on an otherwise-quiet request', () => {
+  seed(MIN_SAMPLE, CONFIRMED);
   const history = getTaskStats('coding');
   const quiet = { taskType: 'coding', complexity: 'medium', tags: [], userMessage: 'short ask' };
   assert.equal(shouldVerify(quiet).enabled, false);                       // without history: off

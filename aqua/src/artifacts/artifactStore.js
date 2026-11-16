@@ -36,6 +36,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { atomicWriteFile, createDebouncedWriter } from '../core/atomicStore.js';
 import { sanitizeRelativePath, resolveInsideRoot, QUOTAS } from './security.js';
 import { migrateLegacyDir } from '../core/dataDir.js';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
+import { bindKeyedStore } from '../core/storage/keyedBinding.js';
+import { objectStoreFromEnv } from '../core/storage/objectStore.js';
 
 // P0 — artifacts live in the canonical DATA DIRECTORY (survive redeploys).
 // AQUA_ARTIFACTS_DIR still wins when set (unchanged contract); otherwise a
@@ -95,6 +98,7 @@ function loadIndexFromDisk() {
 
 const _writer = createDebouncedWriter(INDEX_FILE);
 function scheduleSave() {
+  if (!P.writesWholeJson()) return;   // partitions: every change is committed per artifact
   _writer.schedule(() => {
     const data = {};
     for (const [id, e] of index.entries()) data[id] = e;
@@ -102,7 +106,131 @@ function scheduleSave() {
   });
 }
 
-loadIndexFromDisk();
+// ── Per-owner persistence (scalability Phase 2c) ─────────────────────────────
+// WRITER: the server only (artifact engine, edit engine, routes, account purge);
+// concurrent across API instances. AQUA_STORE_PARTITIONS=artifacts:on:
+//   · one row per ARTIFACT (owner = ownerId) holding its index entry AND its
+//     manifest; a user's request loads their artifacts;
+//   · every mutation is COMMITTED immediately and version-checked
+//     (keyedBinding.commit): two instances editing one artifact each get their
+//     own version number, never the same one;
+//   · binary files go to the shared object store (core/storage/objectStore.js,
+//     pg today, GCS in Phase 4) under a per-version directory that is UNIQUE
+//     ("v<ts36>-<rand>"), so a version-number race can never mix two versions'
+//     files; the local disk is a cache filled on demand (ensureArtifactFiles);
+//   · delete → row tombstone + the artifact's objects removed.
+// An artifact with no owner keeps the local-disk path (it cannot be placed
+// under a user). Off: everything exactly as before.
+const manifests = new Map();   // partitions on: artifactId → full manifest
+const P = bindKeyedStore({
+  storeKey: '.aqua-artifacts.json', file: INDEX_FILE, label: 'artifacts', section: 'a', envelope: false,
+  mergeSchema: { whole: true },
+  ownerOf: (id, e) => (e?.ownerId ? String(e.ownerId) : null),
+  encode: id => (index.has(id) ? { ...index.get(id), ...(manifests.has(id) ? { manifest: manifests.get(id) } : {}) } : undefined),
+  decode: obj => obj,
+  install: (id, rec) => {
+    if (!rec) { index.delete(id); manifests.delete(id); return; }
+    const { manifest, ...lite } = rec;
+    index.set(id, lite);
+    if (manifest) manifests.set(id, manifest);
+  },
+  evict: id => { index.delete(id); manifests.delete(id); },
+  reloadJson: () => loadIndexFromDisk(),
+});
+export function artifactsPartitionBinding() { return P; }
+let objectStore = null;
+const objects = () => (objectStore ??= objectStoreFromEnv());
+const objectKey = (id, dir, rel) => `artifacts/${id}/${dir}/${rel}`;
+const partitioned = ownerId => P.authoritative() && !!ownerId;
+const uniqueDir = () => `v${Date.now().toString(36)}-${crypto.randomBytes(4).toString('hex')}`;
+/** The on-disk directory of one version: its own unique dir (partitions) or the classic v<N>. */
+const versionDir = (manifest, version) => manifest.versions?.find(v => v.v === version)?.dir ?? `v${version}`;
+
+/** Write one version's files: local disk always, the shared object store when partitioned. */
+async function writeVersionFiles(id, dir, files, ownerId) {
+  const verDir = path.join(ROOT, id, dir);
+  await ensureDir(verDir);
+  const fileMetas = [];
+  let totalBytes = 0;
+  const hashInput = crypto.createHash('sha256');
+  for (const f of files) {
+    const rel = sanitizeRelativePath(f.path);
+    const abs = resolveInsideRoot(verDir, rel);
+    await ensureDir(path.dirname(abs));
+    await fs.promises.writeFile(abs, f.buffer, { mode: 0o644 });
+    if (partitioned(ownerId)) await objects().put(objectKey(id, dir, rel), f.buffer, { ownerId });
+    const sha256 = crypto.createHash('sha256').update(f.buffer).digest('hex');
+    hashInput.update(`${rel}:${sha256}\n`);
+    totalBytes += f.buffer.length;
+    fileMetas.push({ path: rel, size: f.buffer.length, mime: f.mime, sha256 });
+  }
+  return { fileMetas, totalBytes, hash: hashInput.digest('hex') };
+}
+
+/**
+ * Partitions on: make one version's files present on THIS instance's disk
+ * (another instance may have written them). Fetched from the object store,
+ * written temp-then-rename. A no-op for local-disk artifacts.
+ */
+export async function ensureArtifactFiles(manifest, version = manifest.version) {
+  // Phase 4B: CLASSIC versions too (no `dir`: v<N>, every artifact created
+  // before partitions, migrated to the object store under artifacts/<id>/v<N>/…).
+  // Before, they returned here and were unreadable on any other instance.
+  if (!manifest?.ownerId || !partitioned(manifest.ownerId) || !manifest.versions?.some(v => v.v === version)) return;
+  const dir = versionDir(manifest, version);
+  const metas = getVersionFileMetas(manifest, version);
+  for (const f of metas) {
+    const abs = resolveInsideRoot(path.join(ROOT, manifest.id, dir), sanitizeRelativePath(f.path));
+    if (fs.existsSync(abs)) continue;
+    const buf = await objects().get(objectKey(manifest.id, dir, f.path), { ownerId: manifest.ownerId });
+    if (!buf) throw missingObject(manifest, version, f.path);
+    await ensureDir(path.dirname(abs));
+    const tmp = `${abs}.tmp.${process.pid}.${crypto.randomBytes(3).toString('hex')}`;
+    await fs.promises.writeFile(tmp, buf);
+    await fs.promises.rename(tmp, abs);
+  }
+}
+
+/** A listed file whose object is gone: data loss, never silently a 404. */
+function missingObject(manifest, version, rel) {
+  console.error(`[ARTIFACT] OBJECT MISSING id=${manifest.id} v${version} file=(${rel.length} chars) — listed in the manifest, absent from the object store`);
+  return Object.assign(new Error(`artifact ${manifest.id} v${version}: object ${rel} is missing`), { code: 'ARTIFACT_OBJECT_MISSING' });
+}
+
+/**
+ * Phase 4B — open one file of one version for reading WITHOUT materialising it
+ * on this instance's disk when it is not already there: on Cloud Run the local
+ * filesystem is memory. Local copy first; else a stream from the object store;
+ * else (no streaming backend) the classic ensure-then-read.
+ * @returns {Promise<{ stream: import('node:stream').Readable, size: number|null }>}
+ */
+export async function openArtifactFileStream(manifest, relPath, version = manifest.version) {
+  const abs = getFileAbsolutePath(manifest, relPath, version);       // also validates version + listing
+  if (fs.existsSync(abs)) return { stream: fs.createReadStream(abs), size: fs.statSync(abs).size };
+  if (partitioned(manifest.ownerId) && typeof objects().getStream === 'function') {
+    const rel = sanitizeRelativePath(relPath);
+    const r = await objects().getStream(objectKey(manifest.id, versionDir(manifest, version), rel), { ownerId: manifest.ownerId });
+    if (!r) throw missingObject(manifest, version, rel);
+    return r;
+  }
+  await ensureArtifactFiles(manifest, version);
+  return { stream: fs.createReadStream(abs), size: fs.statSync(abs).size };
+}
+
+/** Phase 4B — one file's bytes (local, else the object store), for archives. */
+export async function readArtifactFile(manifest, relPath, version = manifest.version) {
+  const abs = getFileAbsolutePath(manifest, relPath, version);
+  if (fs.existsSync(abs)) return fs.promises.readFile(abs);
+  if (partitioned(manifest.ownerId)) {
+    const rel = sanitizeRelativePath(relPath);
+    const buf = await objects().get(objectKey(manifest.id, versionDir(manifest, version), rel), { ownerId: manifest.ownerId });
+    if (!buf) throw missingObject(manifest, version, rel);
+    return buf;
+  }
+  return fs.promises.readFile(abs);
+}
+
+if (P.loadsJsonAtBoot()) loadIndexFromDisk();
 
 async function ensureDir(dir) {
   await fs.promises.mkdir(dir, { recursive: true });
@@ -129,6 +257,8 @@ export async function createArtifact(input) {
     ownerId = null, conversationId, workspaceId = null, requestId,
     format, title, spec, packaging, files, summary = '', model = null,
   } = input;
+
+  if (partitioned(ownerId)) return createArtifactPartitioned(input);
 
   const id      = uuidv4();
   const now     = Date.now();
@@ -188,6 +318,35 @@ export async function createArtifact(input) {
   return manifest;
 }
 
+/** createArtifact with partitions on: files to the object store, manifest committed with the index entry. */
+async function createArtifactPartitioned(input) {
+  const { ownerId, conversationId, workspaceId = null, requestId, format, title, spec, packaging, files, summary = '', model = null } = input;
+  const id = uuidv4();
+  const now = Date.now();
+  const dir = uniqueDir();
+  let written;
+  try {
+    written = await writeVersionFiles(id, dir, files, ownerId);
+  } catch (err) {
+    await fs.promises.rm(path.join(ROOT, id), { recursive: true, force: true }).catch(() => {});
+    await objects().deletePrefix(ownerId, `artifacts/${id}/`).catch(() => {});
+    throw err;
+  }
+  const { fileMetas, totalBytes, hash } = written;
+  const manifest = {
+    id, ownerId, conversationId, workspaceId, requestId, format, title, version: 1,
+    versions: [{ v: 1, dir, createdAt: now, reason: 'initial', bytes: totalBytes, files: fileMetas }],
+    files: fileMetas, totalBytes, packaging, spec,
+    ...(persistableModel(model, id) != null ? { model: persistableModel(model, id) } : {}),
+    summary, createdAt: now, updatedAt: now, hash,
+  };
+  await P.commit(id, cur => (cur ? undefined : { ...liteEntry(manifest), manifest }), { ownerId: String(ownerId) });
+  await atomicWriteFile(path.join(ROOT, id, 'manifest.json'), JSON.stringify(manifest, null, 2));   // this instance's cache
+  await enforceOwnerQuota(ownerId, id);
+  console.log(`[ARTIFACT] Created id=${id} format=${format} files=${fileMetas.length} bytes=${totalBytes} owner=${ownerId} (partitions)`);
+  return manifest;
+}
+
 function liteEntry(m) {
   return {
     id: m.id, ownerId: m.ownerId, conversationId: m.conversationId,
@@ -223,6 +382,13 @@ export function getArtifactLite(id) {
 /** Full manifest from disk (spec included). */
 export async function getArtifact(id) {
   if (!index.has(id)) return null;
+  if (manifests.has(id)) {
+    // Partitions on: the manifest came with the owner's load. Phase 4B: the
+    // files are NOT copied to this instance's disk any more (on Cloud Run that
+    // disk is memory) — every reader goes through openArtifactFileStream /
+    // readArtifactFile, which read the object store when the file is not here.
+    return structuredClone(manifests.get(id));
+  }
   try {
     const raw = await fs.promises.readFile(path.join(ROOT, id, 'manifest.json'), 'utf8');
     return JSON.parse(raw);
@@ -256,7 +422,7 @@ export function getFileAbsolutePath(manifest, relPath, version = manifest.versio
   if (!listed) {
     throw new Error(`File "${rel}" is not part of artifact ${manifest.id}`);
   }
-  const verDir = path.join(ROOT, manifest.id, `v${version}`);
+  const verDir = path.join(ROOT, manifest.id, versionDir(manifest, version));
   return resolveInsideRoot(verDir, rel);
 }
 
@@ -281,7 +447,65 @@ export function getFileAbsolutePath(manifest, relPath, version = manifest.versio
  * @returns {Promise<object|null>} updated full manifest
  */
 export async function appendVersion(id, { files, reason, model = null }) {
+  if (manifests.has(id)) return appendVersionPartitioned(id, { files, reason, model });
   return withVersionLock(id, () => appendVersionUnlocked(id, { files, reason, model }));
+}
+
+/**
+ * Partitions on. The files go first, under a directory no other writer can
+ * pick; then ONE version-checked commit allocates the version number from the
+ * newest manifest. A concurrent edit on another instance makes the commit
+ * retry with the next number — both versions survive, neither overwrites.
+ */
+async function appendVersionPartitioned(id, { files, reason, model = null }) {
+  const lite = index.get(id);
+  if (!lite) return null;
+  const ownerId = String(lite.ownerId);
+  const dir = uniqueDir();
+  const now = Date.now();
+  let written;
+  try {
+    written = await writeVersionFiles(id, dir, files, ownerId);
+  } catch (err) {
+    await fs.promises.rm(path.join(ROOT, id, dir), { recursive: true, force: true }).catch(() => {});
+    await objects().deletePrefix(ownerId, `artifacts/${id}/${dir}/`).catch(() => {});
+    throw err;
+  }
+  const { fileMetas, totalBytes, hash } = written;
+  let pruned = [];
+  const stored = await P.commit(id, cur => {
+    if (!cur?.manifest) return undefined;               // deleted meanwhile
+    const m = structuredClone(cur.manifest);
+    const newV = m.version + 1;
+    const currentEntry = m.versions.find(v => v.v === m.version);
+    if (currentEntry && !currentEntry.files) currentEntry.files = m.files;
+    m.versions.push({ v: newV, dir, createdAt: now, reason: String(reason ?? '').slice(0, 200), bytes: totalBytes, files: fileMetas });
+    m.version = newV; m.files = fileMetas; m.totalBytes = totalBytes; m.updatedAt = now; m.hash = hash;
+    if (model != null) { const ok = persistableModel(model, id); if (ok != null) m.model = ok; }
+    pruned = [];
+    if (m.versions.length > MAX_VERSIONS) {
+      const keepCount = MAX_VERSIONS - 1;
+      const [first, ...rest] = m.versions;
+      pruned = rest.slice(0, rest.length - keepCount);
+      m.versions = [first, ...rest.slice(rest.length - keepCount)];
+    }
+    return { ...liteEntry(m), manifest: m };
+  }, { ownerId });
+  if (!stored?.manifest) {
+    await objects().deletePrefix(ownerId, `artifacts/${id}/${dir}/`).catch(() => {});
+    await fs.promises.rm(path.join(ROOT, id, dir), { recursive: true, force: true }).catch(() => {});
+    return null;
+  }
+  for (const p of pruned) {
+    const pdir = p.dir ?? `v${p.v}`;
+    await objects().deletePrefix(ownerId, `artifacts/${id}/${pdir}/`).catch(() => {});
+    await fs.promises.rm(path.join(ROOT, id, pdir), { recursive: true, force: true }).catch(() => {});
+    console.warn(`[ARTIFACT] Pruned v${p.v} of id=${id} (version cap ${MAX_VERSIONS})`);
+  }
+  await atomicWriteFile(path.join(ROOT, id, 'manifest.json'), JSON.stringify(stored.manifest, null, 2));
+  await enforceOwnerQuota(ownerId, id);
+  console.log(`[ARTIFACT] Appended v${stored.manifest.version} id=${id} files=${fileMetas.length} bytes=${totalBytes} (partitions)`);
+  return structuredClone(stored.manifest);
 }
 
 async function appendVersionUnlocked(id, { files, reason, model = null }) {
@@ -349,7 +573,7 @@ async function appendVersionUnlocked(id, { files, reason, model = null }) {
   scheduleSave();
   await enforceOwnerQuota(manifest.ownerId, id);
 
-  console.log(`[ARTIFACT] Appended v${newV} id=${id} files=${fileMetas.length} bytes=${totalBytes} reason="${manifest.versions.at(-1).reason}"`);
+  console.log(`[ARTIFACT] Appended v${newV} id=${id} files=${fileMetas.length} bytes=${totalBytes} reason=(${textMeta(manifest.versions.at(-1).reason)})`);
   return manifest;
 }
 
@@ -367,6 +591,16 @@ export function getVersionFileMetas(manifest, version = manifest.version) {
 export async function renameArtifact(id, title) {
   const lite = index.get(id);
   if (!lite) return null;
+  if (manifests.has(id)) {
+    const stored = await P.commit(id, cur => {
+      if (!cur?.manifest) return undefined;
+      const m = structuredClone(cur.manifest);
+      m.title = String(title).slice(0, 200);
+      m.updatedAt = Date.now();
+      return { ...liteEntry(m), manifest: m };
+    }, { ownerId: String(lite.ownerId) });
+    return stored?.manifest ? structuredClone(stored.manifest) : null;
+  }
   const manifest = await getArtifact(id);
   if (!manifest) return null;
 
@@ -381,6 +615,14 @@ export async function renameArtifact(id, title) {
 
 export async function deleteArtifact(id) {
   if (!index.has(id)) return false;
+  if (manifests.has(id)) {
+    const ownerId = String(index.get(id).ownerId);
+    await P.commit(id, () => null, { ownerId });                     // row tombstone
+    await objects().deletePrefix(ownerId, `artifacts/${id}/`);        // every version's files
+    await fs.promises.rm(path.join(ROOT, id), { recursive: true, force: true }).catch(() => {});
+    console.log(`[ARTIFACT] Deleted id=${id} (partitions)`);
+    return true;
+  }
   index.delete(id);
   scheduleSave();
   await fs.promises.rm(path.join(ROOT, id), { recursive: true, force: true }).catch((err) => {
@@ -400,6 +642,8 @@ export function getArtifactStats() {
 
 /** Test hooks — same convention every other store exposes. */
 export function _resetForTests() {
+  manifests.clear();
+  P._reset();
   index.clear();
   _writer.cancel();
 }

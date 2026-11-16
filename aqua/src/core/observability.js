@@ -15,6 +15,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { safeDetails, textMeta } from './logSafety.js';
 
 // ── In-memory metrics (Prometheus-ready — swap for prom-client later) ─────────
 
@@ -310,7 +311,9 @@ export function logMemoryEvent(ctx, event, details = []) {
     conversationId: ctx.conversationId,
     event,
     count:          details.length,
-    details,
+    // Callers pass `key=value`; only the key (a field name) is logged — the
+    // value is the user's (core/logSafety.js safeDetails, Sprint 1).
+    details:        safeDetails(details),
   };
 
   console.log('[MEMORY]', JSON.stringify(entry));
@@ -569,7 +572,7 @@ export function logSearchEvent(ctx, result) {
     used:           result.used,
     cached:         result.cached,
     provider:       result.provider,
-    query:          (result.query ?? '').slice(0, 160),
+    query:          textMeta(result.query ?? ''),   // the search query is built from the user's message
     sources:        result.sources?.length ?? 0,
     contextTokens:  result.contextTokens ?? 0,
     latencyMs:      result.latencyMs ?? null,

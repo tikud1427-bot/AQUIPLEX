@@ -25,6 +25,7 @@ import { openDocumentZip } from './zipGuard.js';
 import { isDocumentExt as isCoreDocumentExt } from '../project/documentParser.js';
 import { parseDocumentBounded } from './boundedParse.js';
 import { analyzeMediaWithGemini } from '../providers/gemini.js';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 
 const MAX_CONTENT_CHARS = 200_000; // richer than code files (100 KB) — documents ARE the content
 export const PIPELINE_DOCUMENT_EXTS = new Set(['.pdf', '.docx', '.pptx', '.xlsx', '.csv', '.odt', '.epub']);
@@ -93,7 +94,7 @@ async function ocrScannedPdf(filename, buffer, pages, ocrFn) {
   }
   const text = analysis?.text?.trim();
   if (!text) throw new Error(`"${filename}" is a scanned PDF and OCR returned no text.`);
-  console.log(`[UPLOAD] Scanned PDF OCR ok file=${filename} pages=${pages ?? '?'} chars=${text.length} model=${analysis.model ?? '?'}`);
+  console.log(`[UPLOAD] Scanned PDF OCR ok ${fileMeta(filename)} pages=${pages ?? '?'} chars=${text.length} model=${analysis.model ?? '?'}`);
   const out = { text, meta: { pages, ocr: true, model: analysis.model ?? null } };
   ocrCacheSet(key, out);
   return out;

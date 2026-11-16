@@ -82,6 +82,7 @@ app.locals.PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.a
 const { verifyWebhookSignature, } = require("./services/billing/razorpay.service");
 const { handleWebhookEvent } = require("./services/billing/webhook.handler");
 const { createLogger: _createLogger } = require("./utils/logger");
+const { sessionTag, errorSummary, stackFrames } = require("./utils/logSafety");
 const _webhookLog = _createLogger("WEBHOOK");
 
 app.post(
@@ -781,6 +782,27 @@ app.get(["/chatbot", "/aqua-ai", "/aqua-project-engine", "/workspace", "/workspa
 
 app.get("/health", (req, res) => res.status(200).json({ status: "OK", timestamp: new Date().toISOString() }));
 
+// Phase 3 prep — READINESS, separate from liveness (/health stays exactly as it
+// was). 503 until this instance can actually serve: Mongo connected, the AQUA
+// engine mounted, Postgres reachable when one is configured, and not draining
+// after SIGTERM. A load balancer (Cloud Run startup/readiness probe) routes on
+// this; nothing here exposes hosts, errors or counts.
+let draining = false;
+app.get("/ready", async (req, res) => {
+  const checks = { mongo: mongoose.connection.readyState === 1, engine: aquaMounted, accepting: !draining };
+  if (process.env.DATABASE_URL) {
+    try {
+      const { isReachable } = await import("./aqua/src/core/db/pool.js");
+      checks.postgres = await isReachable();
+    } catch {
+      checks.postgres = false;
+    }
+  }
+  const ready = Object.values(checks).every(Boolean);
+  res.set("Cache-Control", "no-store");
+  res.status(ready ? 200 : 503).json({ ready, checks });
+});
+
 app.get("/", (req, res) => {
   if (req.session && req.session.userId) return res.redirect("/home");
   return res.redirect("/landing");
@@ -1462,7 +1484,7 @@ app.get("/auth/google", authLimiter, (req, res, next) => {
       nonceType: typeof req.query.nonce,
     });
   } else if (wantedNative) {
-    console.log("[native oauth] /auth/google: native leg entered, nonce accepted, session.id=", req.sessionID);
+    console.log("[native oauth] /auth/google: native leg entered, nonce accepted,", sessionTag(req.sessionID));
   }
 
   const authOptions = { scope: ["profile", "email"] };
@@ -1496,7 +1518,7 @@ app.get(
     // round-trip (session not persisted before the redirect to Google, a
     // different session store row on the way back, etc.) rather than never
     // having been set — a different bug than "the app never asked for it".
-    console.log("[native oauth] /auth/google/callback: entering, session.id=", req.sessionID,
+    console.log("[native oauth] /auth/google/callback: entering,", sessionTag(req.sessionID),
       "nativeReturn=", keepNativeSessionInfo);
     // Custom callback (2026-10-19): the strategy may decline to sign in because
     // the address belongs to a password account (link required) or because the
@@ -1527,7 +1549,7 @@ app.get(
     // NATIVE LEG: this request started at /auth/google?native=1. Ordinary
     // browser logins never set req.session.nativeReturn, so this branch
     // changes nothing about the existing web flow below it.
-    console.log("[native oauth] /auth/google/callback: authenticated, session.id=", req.sessionID,
+    console.log("[native oauth] /auth/google/callback: authenticated,", sessionTag(req.sessionID),
       "nativeReturn=", req.session.nativeReturn === true);
     if (req.session.nativeReturn) {
       // The callback middleware above uses keepSessionInfo ONLY when this
@@ -1937,7 +1959,9 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
+  // Never the error OBJECT: a malformed-JSON error carries the raw request body
+  // (utils/logSafety.js). Class/code/status/type + stack frames instead.
+  console.error(`Unhandled error: ${errorSummary(err)}`, `\n${stackFrames(err)}`);
   if (err.code === "LIMIT_FILE_SIZE")        return res.status(400).json({ reply: "⚠️ File too large. Maximum size is 10MB." });
   if (err.message?.includes("not supported")) return res.status(400).json({ reply: `⚠️ ${err.message}` });
   // The message is logged above; the response never carries it (stack-level
@@ -1970,6 +1994,42 @@ async function startServer() {
   });
 
   server.listen(PORT, "0.0.0.0", () => console.log(`🚀 Aqua AI running on port ${PORT}`));
+
+  // Phase 3 prep — with an explicit AQUA_ROLE (the split runtime), SIGTERM first
+  // stops accepting connections and reports not-ready, so the platform routes new
+  // requests elsewhere while the existing drains (stores, mirror, deferred jobs —
+  // core/atomicStore.js) run. prependListener: this runs before that handler,
+  // which exits the process. Without AQUA_ROLE nothing changes (today's Render
+  // process keeps its current shutdown exactly).
+  if (process.env.AQUA_ROLE) {
+    // Phase 3 — requests already in progress FINISH before the final flush and
+    // exit (core/atomicStore.js shutdown blockers): a chat turn mid-commit is
+    // either acknowledged durably or not at all, never cut between the two.
+    // Bounded by AQUA_API_SHUTDOWN_MS (default 7 s; the whole shutdown by AQUA_SHUTDOWN_BUDGET_MS).
+    // 7 s default: the store drains that follow get the rest of one 9.5 s budget
+    // (AQUA_SHUTDOWN_BUDGET_MS, core/atomicStore.js) — inside a 10 s platform grace.
+    const shutdownMs = Number(process.env.AQUA_API_SHUTDOWN_MS) > 0 ? Number(process.env.AQUA_API_SHUTDOWN_MS) : 7_000;
+    let closed = null;
+    import("./aqua/src/core/atomicStore.js").then(({ registerShutdownBlocker }) => {
+      registerShutdownBlocker(() => Promise.race([
+        closed ?? Promise.resolve(),
+        new Promise(r => setTimeout(r, shutdownMs).unref()),
+      ]));
+    }).catch(err => console.error(`[ROLE] shutdown blocker not registered: ${err?.message ?? err}`));
+    process.prependListener("SIGTERM", () => {
+      if (draining) return;
+      draining = true;
+      const t0 = Date.now();
+      // server.close's callback fires when every connection has ended.
+      closed = new Promise(resolve => server.close(() => resolve()));
+      server.closeIdleConnections?.();
+      // Keep-alive sockets become idle as their requests finish: close them too.
+      const idle = setInterval(() => server.closeIdleConnections?.(), 200);
+      idle.unref();
+      closed.then(() => { clearInterval(idle); console.log(`[ROLE] ${process.env.AQUA_ROLE} — in-flight requests finished in ${Date.now() - t0}ms`); });
+      console.log(`[ROLE] ${process.env.AQUA_ROLE} — SIGTERM: not accepting new connections; draining (≤${shutdownMs}ms)`);
+    });
+  }
 }
 
 startServer();

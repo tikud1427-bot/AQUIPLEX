@@ -86,7 +86,7 @@ const MODULE_MAP = {
  * @param {string} [searchContext] - Web Search: compressed live-web block from search/contextExtractor.js ('' if search skipped/failed). Injected AFTER project context — repository truth stays foundational; web results supplement it.
  * @returns {{ prompt: string, modules: string[] }}
  */
-export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective = '', projectContext = '', intelligenceBlock = '', identityIntent = null, searchContext = '') {
+export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective = '', projectContext = '', intelligenceBlock = '', identityIntent = null, searchContext = '', enginePolicy = '') {
   const modules     = MODULE_MAP[taskType] ?? [];
   const parts       = [M.system];
   const moduleNames = ['system'];
@@ -128,6 +128,17 @@ export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective
   if (intelligenceBlock && intelligenceBlock.trim()) {
     parts.push(intelligenceBlock.trim());
     moduleNames.push('intelligence');
+  }
+
+  // 2026-11-16 (audit D-17) — AQUA's OWN context policy: what a follow-up
+  // refers to, the evidence status of the user's world, degraded-memory
+  // notices. Operator text, so it sits OUTSIDE the untrusted fence below; the
+  // user's statements, files and web pages stay inside it. Producers build
+  // this only from engine state (slot ids, statuses, the user's own earlier
+  // words in this chat as a referent), never from ingested documents.
+  if (enginePolicy && enginePolicy.trim()) {
+    parts.push(`CONTEXT POLICY (from AQUA — operator instructions; not user content):\n${enginePolicy.trim()}`);
+    moduleNames.push('context_policy');
   }
 
   // Phase 5: project context — injected after reasoning directive

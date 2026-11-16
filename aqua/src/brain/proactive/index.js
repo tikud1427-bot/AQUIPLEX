@@ -20,6 +20,7 @@ import { proposeAction } from '../actions/planner.js';
 import * as actionRuns from '../actions/repository.js';
 import { recordProactive } from '../../core/observability.js';
 import { isConfigured } from '../../core/db/pool.js';
+import { noteFeature } from '../../core/flags.js';
 
 export const PROACTIVE_JOB_KIND = 'proactive.evaluate.v1';
 
@@ -93,6 +94,7 @@ export async function proactiveDirectiveForTurn(ownerId, { minSeverity = null } 
   if (!ownerId || !proactiveEnabled()) return '';
   try {
     const prefs = await repo.loadPrefs(ownerId);
+    noteFeature('AQUA_PROACTIVE', 'ran');   // the policy store answered
     if (prefs.enabled === false) return '';
     const iv = await repo.claimDeliverable(ownerId, { minSeverity: minSeverity ?? prefs.minSeverity ?? 'medium' });
     if (!iv) return '';
@@ -105,6 +107,7 @@ export async function proactiveDirectiveForTurn(ownerId, { minSeverity = null } 
       `Why (from what the user told Aqua): ${iv.reason}`,
     ].join('\n');
   } catch (err) {
+    noteFeature('AQUA_PROACTIVE', 'failed', err?.code ?? err?.name);
     console.warn(`[PROACTIVE] delivery skipped (fail-open): ${err?.message ?? err}`);
     return '';
   }

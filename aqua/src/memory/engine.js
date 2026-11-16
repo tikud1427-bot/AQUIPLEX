@@ -45,6 +45,7 @@ import { recordMemoryRetrieval } from '../core/observability.js';
 import { estimateTokens } from '../core/tokenManager.js';
 import { indexOwnerFacts, semanticFactScores } from '../embeddings/semanticMemory.js';
 import { indexFileChunks, fileChunkScores, removeFileChunks } from '../embeddings/fileMemory.js';
+import { fileMeta } from '../core/logSafety.js';
 
 export { resolveOwner, isUserOwner };
 // Phase 2 — semantic retrieval. Re-exported through the ONE memory facade so
@@ -143,8 +144,12 @@ export function memoryObserve(ownerId, {
   // and the Mind learn only from it. Forget and correction still read the
   // whole message — "forget that I'm bored" must work.
   extractMessage = null, rememberSensitive = false,
+  // Sprint 1 (memory/turnCommit.js): schedules background effects on OTHER stores
+  // so they run only if the turn commits. Absent = run now (previous behaviour).
+  defer = null,
 } = {}) {
   const learnFrom = extractMessage ?? userMessage;
+  const later = typeof defer === 'function' ? defer : (fn => fn());
   const trace = beginTrace(requestId, { ownerId, userId, conversationId });
   if (!ownerId) {
     trace.notes.push('owner_null_memory_disabled');
@@ -284,10 +289,10 @@ export function memoryObserve(ownerId, {
         if (Array.isArray(before.value) || Array.isArray(f.value)) {
           const now = [].concat(f.value ?? []).map(v => JSON.stringify(v));
           const removed = [].concat(before.value ?? []).filter(v => !now.includes(JSON.stringify(v)));
-          if (removed.length) retireSupersededInBackground(ownerId, f.key, { ...before, value: removed });
+          if (removed.length) later(() => retireSupersededInBackground(ownerId, f.key, { ...before, value: removed }));
           continue;
         }
-        retireSupersededInBackground(ownerId, f.key, before);
+        later(() => retireSupersededInBackground(ownerId, f.key, before));
       }
     }
   } catch (err) {
@@ -310,7 +315,7 @@ export function memoryObserve(ownerId, {
     const r = reconcileMind(ownerId);
     if (r.beliefs || r.edges || r.flagged || r.cleared) trace.notes.push(`propagated:beliefs=${r.beliefs},edges=${r.edges},flagged=${r.flagged},cleared=${r.cleared}`);
     if (trace.forget?.deleted) releaseAfterForget(ownerId).catch(() => {});
-    else propagateToEvidenceInBackground(ownerId);
+    else later(() => propagateToEvidenceInBackground(ownerId));
   }
 
   // 6. Phase 2 — refresh this owner's fact vectors for semantic retrieval.
@@ -321,7 +326,9 @@ export function memoryObserve(ownerId, {
   //    falls back to keyword this turn and is covered on the next.
   const factsChanged = extractedFacts.length > 0 || trace.forget || trace.correction;
   if (factsChanged) {
-    indexOwnerFacts(ownerId, getFacts(ownerId)).catch(() => {});
+    // 'index' (Phase 4A): with durable learning on, the embedding call becomes a
+    // worker job (memory.index.v1) committed with the turn instead of running here.
+    later(() => indexOwnerFacts(ownerId, getFacts(ownerId)).catch(() => {}), 'index');
   }
 
   return { extractedFacts, mind: mindDiag, trace };
@@ -662,7 +669,7 @@ export function rememberFile(ownerId, { name, kind = 'document', summary = '', c
       indexFileChunks(ownerId, key, name, content).catch(() => {});
     }
 
-    console.log(`[MEMORY] FILE_REMEMBERED owner=${ownerId} name="${name}" kind=${kind}${content ? ` contentChars=${String(content).length}` : ''}`);
+    console.log(`[MEMORY] FILE_REMEMBERED owner=${ownerId} ${fileMeta(name)} kind=${kind}${content ? ` contentChars=${String(content).length}` : ''}`);
     return entry;
   } catch (err) {
     console.warn('[MEMORY] rememberFile failed (non-fatal):', err.message);

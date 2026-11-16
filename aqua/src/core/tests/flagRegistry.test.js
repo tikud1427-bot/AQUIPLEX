@@ -34,6 +34,7 @@ const PLATFORM_FILES = [path.resolve(SRC, '../../utils/rateLimitStore.js')];
 // The World-Model Lift adapter reads its AQUA_LIFT_* settings outside src/
 // (2026-10). Registered so env-doctor accepts them in a .env.
 const EVAL_FILES = [path.resolve(SRC, '../eval/adapters/pairedAnswerLift.mjs')];
+const NON_PREFIXED_GATES = ['ARTIFACTS_ENABLED'];
 
 /** Every .js / .cjs under src/, excluding tests — tests set flags, they do not define them.
  *  (.cjs since 2026-10-15: the shared provider key pool is CommonJS so the
@@ -75,6 +76,9 @@ function readFromEnv() {
     // An injectable env object (`env = process.env`) read as env.AQUA_X — the
     // telemetry/rate-limit adapters take one so tests need not mutate process.env.
     for (const m of text.matchAll(/\benv\.(AQUA_[A-Z0-9_]+)/g)) found.add(m[1]);
+    // Behaviour gates without the AQUA_ prefix (2026-11-10): named explicitly, because
+    // a generic process.env scan would pull in every platform setting.
+    for (const n of NON_PREFIXED_GATES) if (text.includes(`process.env.${n}`)) found.add(n);
   }
   return found;
 }
@@ -119,7 +123,14 @@ describe('the flag registry matches the source, in both directions', () => {
     // +1 gate (2026-11-05): AQUA_SEMANTIC_RECALL — semantic episodic recall, OFF by default.
     // +1 gate (2026-11-05): AQUA_RECALL_FOLLOWUP_V2 — follow-up relevance v2, OFF by default.
     // +1 gate (2026-11-06): AQUA_PROPAGATION — change propagation, OFF by default (only "on" enables it).
-    assert.equal(GATES.length, 41);
+    // +2 gates (2026-11-10, Sprint 1): AQUA_LOG_CONTENT (local-only content logging) and
+    // ARTIFACTS_ENABLED (read since Day 5, unregistered because the scan only saw AQUA_ names).
+    // +1 gate (2026-11-10, Sprint 3): AQUA_INFO_NEEDS — information-needs engine, OFF by default.
+    // +1 gate (2026-11-11, Sprint 6): AQUA_HYBRID_CONTEXT — hybrid context (adds after the existing context), OFF by default.
+    // +1 gate (2026-11-13, scalability Phase 2b): AQUA_STORE_PARTITIONS — per-owner partition persistence, OFF by default.
+    // +1 gate (2026-11-14, scalability Phase 3): AQUA_POST_TURN_DURABLE — durable post-turn learning in workers, OFF by default.
+    // +1 gate (2026-11-15, Phase 4B): AQUA_PENDING_CHARGES — pending-charge recovery, OFF by default.
+    assert.equal(GATES.length, 54);   // +5 (2026-11-16, conversation recovery): AQUA_CONVERSATION_CONTEXT, AQUA_E8_PERSONAL_SCOPE, AQUA_STRICT_CONVERSATION_IDS, AQUA_CONVERSATION_TURN_LOCK, AQUA_REVIEW_REQUIRE_REASON
     // +2 settings, 0 gates (Sep 30): AQUA_E6_MINT and AQUA_E6_SINGLE_VALUED. Both
     // are SETTINGS because neither opens a subsystem — they tune one stage of an
     // already-gated one.
@@ -141,11 +152,13 @@ describe('the flag registry matches the source, in both directions', () => {
     // AQUA_PROVIDER_MAX_KEY_ATTEMPTS (per-request key-rotation bounds) and
     // AQUA_PROVIDER_KEY_REJECT_TTL_MS (opt-in expiry of a rejected key).
     // +1 setting (2026-10-18): AQUA_S8_HISTORY (bounded | full | compare).
-    assert.equal(SETTINGS.length, 49);   // +1 (2026-11-15, PWI Phase 1): AQUA_LOG_PSEUDONYM_KEY   // +1 (2026-10-20): AQUA_RECALL_ALL_CHARS; +1 (2026-11-05): AQUA_EMBEDDING_API_KEY; +1 (2026-11-06): AQUA_PROPAGATION_CRASH_AT (test seam)
+    // +3 settings (2026-11-11, Sprint 6): AQUA_HYBRID_MAX_TOKENS, AQUA_HYBRID_MAX_MS, AQUA_HYBRID_MAX_SENTENCES (hybrid budgets).
+    assert.equal(SETTINGS.length, 70);   // +3 (2026-11-16, conversation recovery): AQUA_LEDGER_REVISION_BASIS, AQUA_TURN_LOCK_WAIT_MS, AQUA_TURN_LOCK_STALE_MS   // +1 (2026-11-15, PWI Phase 1): AQUA_LOG_PSEUDONYM_KEY   // +2 (2026-11-15, Phase 4B): AQUA_GCS_BUCKET, AQUA_GCS_ENDPOINT   // +3 (2026-11-15, Phase 4B): AQUA_CHARGE_ABANDON_MS, AQUA_CHARGE_RECONCILE_INTERVAL_MS, AQUA_CHARGE_CRASH_AT   // +1 (2026-11-15, Phase 4B): AQUA_JOB_AGING_SECONDS   // +1 (2026-11-15, Phase 4A): AQUA_SHUTDOWN_BUDGET_MS   // +2 (2026-11-14, Phase 3): AQUA_JOB_HEARTBEAT_STALE_MS, AQUA_JOB_LOG   // +3 (2026-11-14, Phase 2c/3 prep): AQUA_ROLE, AQUA_SCHEDULER_LEASE_MS, AQUA_OBJECT_STORE   // +1 (2026-11-13, Phase 2b): AQUA_PARTITION_STORE_OWNERS   // +2 (2026-11-13, scalability Phase 2a): AQUA_PARTITION_CACHE_ENTRIES, AQUA_PARTITION_CACHE_BYTES   // +1 (2026-10-20): AQUA_RECALL_ALL_CHARS; +1 (2026-11-05): AQUA_EMBEDDING_API_KEY; +1 (2026-11-06): AQUA_PROPAGATION_CRASH_AT (test seam)
     // +1 (2026-10-18): AQUA_E6_ACTOR_RETRY. AQUA_S8_HISTORY is a setting-like rollback read in the repository (counted below).
     // +2 (2026-10-17): the two gates above; +2 (2026-10-20) AQUA_EPISODIC_RECALL, AQUA_RECALL_ALL_CHARS;
     // +3 (2026-11-05): AQUA_MIND_RELEVANCE, AQUA_ANSWER_SCAFFOLD_GUARD, AQUA_SEMANTIC_RECALL.
-    assert.equal(readFromEnv().size, 90);   // +1 (2026-11-15, PWI Phase 1): AQUA_LOG_PSEUDONYM_KEY   // +1 (2026-11-05): AQUA_EMBEDDING_API_KEY (setting); +1 (2026-11-05): AQUA_RECALL_FOLLOWUP_V2; +2 (2026-11-06): AQUA_PROPAGATION, AQUA_PROPAGATION_CRASH_AT
+    assert.equal(readFromEnv().size, 124);   // +8 (2026-11-16, conversation recovery): the 5 gates + 3 settings above   // +1 (2026-11-15, PWI Phase 1): AQUA_LOG_PSEUDONYM_KEY   // +2 (2026-11-15, Phase 4B): AQUA_GCS_BUCKET, AQUA_GCS_ENDPOINT   // +4 (2026-11-15, Phase 4B): AQUA_PENDING_CHARGES + 3 charge settings   // +1 (2026-11-15, Phase 4B): AQUA_JOB_AGING_SECONDS   // +1 (2026-11-15, Phase 4A): AQUA_SHUTDOWN_BUDGET_MS   // +3 (2026-11-14, Phase 3): AQUA_POST_TURN_DURABLE, AQUA_JOB_HEARTBEAT_STALE_MS, AQUA_JOB_LOG   // +3 (2026-11-14): AQUA_ROLE, AQUA_SCHEDULER_LEASE_MS, AQUA_OBJECT_STORE   // +1 (2026-11-13): AQUA_PARTITION_STORE_OWNERS   // +1 (2026-11-13): AQUA_STORE_PARTITIONS   // +2 (2026-11-13): AQUA_PARTITION_CACHE_ENTRIES, AQUA_PARTITION_CACHE_BYTES   // +1 (2026-11-12): AQUA_COST_AWARE_REVIEW   // +4 (Sprint 6): AQUA_HYBRID_CONTEXT, AQUA_HYBRID_MAX_TOKENS, AQUA_HYBRID_MAX_MS, AQUA_HYBRID_MAX_SENTENCES
+      // +1 (Sprint 3): AQUA_INFO_NEEDS   // +2 (2026-11-10): AQUA_LOG_CONTENT, ARTIFACTS_ENABLED   // +1 (2026-11-05): AQUA_EMBEDDING_API_KEY (setting); +1 (2026-11-05): AQUA_RECALL_FOLLOWUP_V2; +2 (2026-11-06): AQUA_PROPAGATION, AQUA_PROPAGATION_CRASH_AT
   });
 });
 
@@ -176,7 +189,10 @@ describe('the registry records how each gate actually reads its variable', () =>
     // AQUA_ANSWER_SCAFFOLD_GUARD joined 2026-11-05 (scaffoldGuard.test.js); =off is the rollback.
     // AQUA_PROPAGATION (registered 2026-11-06) is deliberately NOT here: it was ON by default in
     // memory/propagation.js and is now OFF by default — only exactly "on" enables it.
-    assert.deepEqual(onByDefault, ['AQUA_ANSWER_SCAFFOLD_GUARD', 'AQUA_BRAIN', 'AQUA_CANONICAL_RELEVANCE_GATE', 'AQUA_E6_ACTOR_RETRY', 'AQUA_EMBEDDINGS', 'AQUA_EPISODIC_RECALL', 'AQUA_PARSE_WORKER', 'AQUA_PIC', 'AQUA_PROACTIVE', 'AQUA_REVISION_VOICE', 'AQUA_WORLD_CORE']);
+    // AQUA_CIE and AQUA_GRAPH were ALWAYS on by default at their read sites; the registry said off
+    // until 2026-11-10 (audit F-02; flagReadSiteParity.test.js now checks every gate against its
+    // read site). ARTIFACTS_ENABLED was registered the same day.
+    assert.deepEqual(onByDefault, ['AQUA_ANSWER_SCAFFOLD_GUARD', 'AQUA_BRAIN', 'AQUA_CANONICAL_RELEVANCE_GATE', 'AQUA_CIE', 'AQUA_CONVERSATION_CONTEXT', 'AQUA_CONVERSATION_TURN_LOCK', 'AQUA_COST_AWARE_REVIEW', 'AQUA_E6_ACTOR_RETRY', 'AQUA_E8_PERSONAL_SCOPE', 'AQUA_EMBEDDINGS', 'AQUA_EPISODIC_RECALL', 'AQUA_GRAPH', 'AQUA_PARSE_WORKER', 'AQUA_PIC', 'AQUA_PROACTIVE', 'AQUA_REVISION_VOICE', 'AQUA_STRICT_CONVERSATION_IDS', 'AQUA_WORLD_CORE', 'ARTIFACTS_ENABLED']);   // +4 ON by default (2026-11-16, conversation recovery)
   });
 
   test('an overridden gate reports its RAW value, not just the resolved one', () => {
@@ -193,7 +209,7 @@ describe('the registry records how each gate actually reads its variable', () =>
 describe('the boot line is worth printing', () => {
   test('it names the overridden gates, not all 29', () => {
     const line = flagBootLine({ AQUA_E6: 'on' });
-    assert.match(line, /41 gates · 49 settings/);   // +3 (2026-11-05): AQUA_MIND_RELEVANCE, AQUA_ANSWER_SCAFFOLD_GUARD, AQUA_SEMANTIC_RECALL
+    assert.match(line, /54 gates · 70 settings/);   // +5 gates, +3 settings (2026-11-16, conversation recovery)   // +1 setting (2026-11-15, PWI Phase 1): AQUA_LOG_PSEUDONYM_KEY   // +1 gate (2026-11-13): AQUA_STORE_PARTITIONS   // +2 settings (2026-11-13): AQUA_PARTITION_CACHE_*   // +1 gate (2026-11-12): AQUA_COST_AWARE_REVIEW   // +1 gate, +3 settings (Sprint 6): AQUA_HYBRID_*   // +2 (2026-11-10): AQUA_LOG_CONTENT, ARTIFACTS_ENABLED   // +3 (2026-11-05): AQUA_MIND_RELEVANCE, AQUA_ANSWER_SCAFFOLD_GUARD, AQUA_SEMANTIC_RECALL
     assert.match(line, /AQUA_E6=on/);
     assert.ok(!line.includes('AQUA_TWIN_V2'), 'a default gate was listed — the line is noise');
   });

@@ -81,6 +81,11 @@ function nodeSystemPrompt(node, context) {
   const add = (label, block) => {
     if (block && block.trim()) parts.push(`--- ${label} ---\n${block.trim().slice(0, BLOCK_CAP)}\n--- END ${label} ---`);
   };
+  // 2026-11-16 (audit D-04): every node sees the bounded conversation this
+  // request continues (core/conversationContext.js), so a graph turn is not
+  // answered as if it opened a new chat. Same block the reviewers get.
+  add('CONVERSATION SO FAR (this chat, oldest first)', context.conversation);
+  if (context.conversationNote && String(context.conversationNote).trim()) parts.push(String(context.conversationNote).trim());
   if (['memory', 'synthesize', 'reason', 'search'].includes(node.capability)) add('USER MEMORY', context.memory);
   if (['evidence', 'vision', 'extract', 'synthesize', 'search', 'verify'].includes(node.capability)) add('UPLOADED-FILE EVIDENCE', context.evidence);
   if (['search', 'synthesize'].includes(node.capability)) add('WEB SEARCH RESULTS', context.search);
@@ -109,7 +114,8 @@ function nodeUserPrompt(node, results, userMessage, retryNote) {
  * @param {string}  args.taskType
  * @param {object}  [args.plan]        executionPlanner plan ({ complexity }) — biases provider order/timeouts
  * @param {object}  [args.graph]       prebuilt task graph; defaults to planTaskGraph()
- * @param {object}  [args.context]     { memory, evidence, search } grounding blocks (strings)
+ * @param {object}  [args.context]     { memory, evidence, search, conversation, conversationNote } grounding blocks (strings);
+ *                                     `conversation` must fit BLOCK_CAP (chat.js renders it newest-kept at ≤1500 chars)
  * @param {object}  [args.budget]      orchestration.budget (response token budget)
  * @param {object}  [args.deps]        { generate } — test injection; defaults to providers/router generateText
  * @param {object}  [args.ctx]         observability context (requestId, attempts[])

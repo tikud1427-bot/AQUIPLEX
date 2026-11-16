@@ -74,7 +74,7 @@ const clamp01 = (n) => Math.max(0, Math.min(1, n));
  *   clarification: { recommended: boolean, reason: string|null }
  * }}
  */
-export function assessQuestion(userMessage, { taskType, confidence = 1.0, hasWorkspace = false, hasOwner = false } = {}) {
+export function assessQuestion(userMessage, { taskType, confidence = 1.0, hasWorkspace = false, hasOwner = false, referenceResolved = false } = {}) {
   const text  = String(userMessage ?? '').trim();
   const words = text ? text.split(/\s+/).length : 0;
   const sentences = text ? text.split(/[.!?]+\s+/).filter(Boolean).length : 0;
@@ -82,7 +82,11 @@ export function assessQuestion(userMessage, { taskType, confidence = 1.0, hasWor
 
   // ── Ambiguity ──────────────────────────────────────────────────────────────
   const signals = [];
-  if (DEICTIC_RE.test(text) && words < 12)              signals.push('deictic_opener');
+  // 2026-11-16 (conversation recovery): a deictic opener whose referent the
+  // conversation already resolved ("That one — is it curable?" after "Tell me
+  // about pneumonia") is NOT under-specified; it must not earn the "ask ONE
+  // clarifying question" directive.
+  if (DEICTIC_RE.test(text) && words < 12 && !referenceResolved) signals.push('deictic_opener');
   if (BARE_OBJECT_RE.test(text) && !hasWorkspace)       signals.push('unanchored_reference');
   if (VAGUE_ASK_RE.test(text))                          signals.push('vague_ask');
   if ((text.match(FILLER_NOUN_RE) ?? []).length >= 2)   signals.push('filler_nouns');

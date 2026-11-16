@@ -148,6 +148,24 @@ describe('db pool — inert by default', () => {
       // 2026-10-11 — uploaded documents → understanding jobs: reads only
       // isConfigured() to stay inert without a database (fail-open, L11).
       'src/files/documentUnderstanding.js',
+      // 2026-11-13 (scalability Phase 2a) — owner-partitioned store rows (0026)
+      // and the file/blob → partition migration, reconcile and export tooling.
+      // No production path imports either until a store is cut over (Phase 2b).
+      'src/core/storage/partitionRepository.js',
+      'src/core/storage/partitionMigration.js',
+      // 2026-11-13 (Phase 2b) — per-owner bindings of existing stores. Reads
+      // isConfigured() only, to refuse on/only without a database; all writes
+      // go through partitionRepository.
+      'src/core/storage/ownerBinding.js',
+      // 2026-11-13 (Phase 2c) — the immutable object store's Postgres backend
+      // (aqua_objects, 0028): artifact binaries with partitions on.
+      'src/core/storage/objectStore.js',
+      // Phase 3 prep — periodic-scheduler leases (aqua_scheduler_leases, 0029).
+      'src/core/jobs/schedulerLease.js',
+      // Phase 3 — the deleted-owner marker (aqua_deleted_owners, 0030), written first by account deletion.
+      'src/core/storage/deletedOwners.js',
+      // Phase 4B — pending-charge state machine (aqua_charges, 0031).
+      'src/credits/pendingCharges.js',
     ];
     const offenders = [];
     const walk = (dir) => {

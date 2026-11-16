@@ -45,6 +45,8 @@ import { monitorDraft } from './reasoningMonitor.js';
 import { reflect } from './reflectionEngine.js';
 import { recordPlan, getCognitionSnapshot, _resetCognitionStoreForTests } from './cognitiveStore.js';
 import { retrieveKnowledge as picRetrieveKnowledge } from '../pic/core.js';
+import { textMeta } from '../core/logSafety.js';
+import { noteFeature } from '../core/flags.js';
 
 export function cieEnabled() {
   return String(process.env.AQUA_CIE ?? 'on').toLowerCase() !== 'off';
@@ -77,12 +79,14 @@ export function getCIEMetrics() {
  * reasoningStrategy directive by chat.js; empty when CIE is off or the
  * style is 'fast', keeping casual traffic byte-identical.
  */
-export function cognitivePrepare({ userMessage, taskType, confidence, complexity, hasWorkspace = false, hasOwner = false } = {}) {
+export function cognitivePrepare({ userMessage, taskType, confidence, complexity, hasWorkspace = false, hasOwner = false, referenceResolved = false } = {}) {
   const empty = { plan: null, directive: '' };
   if (!cieEnabled()) return empty;
   const started = Date.now();
   try {
-    const question  = assessQuestion(userMessage, { taskType, confidence, hasWorkspace, hasOwner });
+    // referenceResolved (2026-11-16): the turn's shared conversation context
+    // resolved a deictic reference — not an ambiguity to clarify.
+    const question  = assessQuestion(userMessage, { taskType, confidence, hasWorkspace, hasOwner, referenceResolved });
     const selection = selectCognitiveStyle({ taskType, complexity, question });
     const plan      = buildReasoningPlan({ question, selection, taskType, complexity, confidence });
 
@@ -101,9 +105,11 @@ export function cognitivePrepare({ userMessage, taskType, confidence, complexity
     metrics.latency.prepareMs = ewma(metrics.latency.prepareMs, Date.now() - started);
 
     console.log(`[CIE] PLAN style=${plan.style.id}(${plan.style.source}) depth=${plan.depth} evidence=${plan.expectations.evidence} ambiguity=${plan.question.ambiguity.score} clarify=${plan.expectations.clarification.recommended} reused=${plan.reused}`);
+    noteFeature('AQUA_CIE', 'ran');
     return { plan, directive: plan.directive };
   } catch (err) {
     metrics.failures += 1;
+    noteFeature('AQUA_CIE', 'failed', err?.name);
     console.warn(`[CIE] cognitivePrepare failed (non-fatal): ${err.message}`);
     return empty;
   }
@@ -174,7 +180,7 @@ export function cognitiveKnowledgeRetrieve(ownerId, query, opts = {}) {
       gained += 1;
     }
     metrics.retrieval.broadenGained += gained;
-    console.log(`[CIE] RETRIEVE broadened "${bq}" gained=${gained} owner=${ownerId}`);
+    console.log(`[CIE] RETRIEVE broadened (${textMeta(bq)}) gained=${gained} owner=${ownerId}`);
 
     return {
       items: merged,

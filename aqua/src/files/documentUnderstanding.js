@@ -23,6 +23,7 @@
  * Fail-open (L11): an upload never fails because understanding is unavailable.
  */
 import crypto from 'node:crypto';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 
 export const DOCUMENT_JOB_KIND = 'understanding.document.v1';
 export const MAX_CHUNKS = 24;
@@ -89,7 +90,7 @@ export async function enqueueDocumentUnderstanding({ ownerId, documents = [], de
       const chunks = all.slice(0, MAX_CHUNKS);
       if (all.length > chunks.length) {
         out.truncated++;
-        console.warn(`[FILES] ${doc.name}: ${all.length} chunks, understanding the first ${chunks.length} (MAX_CHUNKS)`);
+        console.warn(`[FILES] ${fileMeta(doc.name)}: ${all.length} chunks, understanding the first ${chunks.length} (MAX_CHUNKS)`);
       }
       const hash = doc.hash ?? crypto.createHash('sha256').update(doc.text).digest('hex');
       out.files++;

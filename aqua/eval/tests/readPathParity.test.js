@@ -33,7 +33,11 @@ const gate = read('eval/gate.mjs');
 describe('production read path (routes/chat.js) — the reference both adapters follow', () => {
   test('chat resolves the SERVED read mode and passes it to assembleContextAsync', () => {
     assert.match(chat, /await Brain\.resolveReadMode\(\)/);
-    assert.match(chat, /Brain\.assembleContextAsync\(memoryOwner, userMessage, floorRetrieve, \{/);
+    // 2026-11-16 (conversation recovery): chat queries with the turn's resolved retrieval query —
+    // for a single-turn question (every eval suite) it IS the question, so the adapters stay on the
+    // production path; a follow-up adds the resolved subject (core/conversationContext.js).
+    assert.match(chat, /Brain\.assembleContextAsync\(memoryOwner, retrievalQuery, floorRetrieve, \{/);
+    assert.match(chat, /const retrievalQuery = conversation\.retrievalQuery;/);
     assert.match(chat, /canonicalOnly: readMode !== 'legacy'/);
   });
 });

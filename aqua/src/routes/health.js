@@ -18,6 +18,7 @@ import { getMirrorStatus }            from '../core/mongoMirror.js';
 import '../orchestrator/capabilities.js'; // side-effect: registers every capability definition
 import { getAllCapabilities }         from '../orchestrator/capabilityRegistry.js';
 import { ok }                         from './envelope.js';
+import { featureStatus }              from '../core/flags.js';
 import keyPoolLib                     from '../providers/keyPool.cjs';
 
 const { getCredentialDiagnostics, getProviderUsageSnapshot } = keyPoolLib;
@@ -53,6 +54,10 @@ router.get('/', (req, res) => {
     // Per provider/model/slot/purpose attempt counters, latency, TTFT, key
     // switches, rate-limit hints; tokens null where the provider reported none.
     providerUsage: getProviderUsageSnapshot(),
+    // Sprint 1: per gate — configured value, missing dependencies, and whether
+    // it was OBSERVED running in this process (off|inert|enabled|active|failing).
+    // A flag that is on is not reported as operational unless it ran.
+    features: featureStatus(),
   });
 });
 

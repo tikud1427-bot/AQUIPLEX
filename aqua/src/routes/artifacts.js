@@ -27,7 +27,8 @@ import fs from 'fs';
 import path from 'path';
 import {
   getArtifactLite, getArtifact, listArtifacts,
-  renameArtifact, deleteArtifact, getFileAbsolutePath, getVersionFileMetas,
+  renameArtifact, deleteArtifact, getFileAbsolutePath, getVersionFileMetas, ensureArtifactFiles,
+  openArtifactFileStream, readArtifactFile,
 } from '../artifacts/artifactStore.js';
 import { publicManifest, composeArtifactEditSummary } from '../artifacts/engine.js';
 import { editArtifact, regenerateArtifact } from '../artifacts/editEngine.js';
@@ -94,16 +95,18 @@ router.get('/:id/download', async (req, res) => {
   const version = req.query.version ? Number(req.query.version) : manifest.version;
 
   try {
+    // Phase 4B: files are streamed from this instance's copy, else straight from
+    // the object store — never materialised on local disk (memory on Cloud Run).
     res.setHeader('X-Content-Type-Options', 'nosniff');
 
     const versionFiles = getVersionFileMetas(manifest, version);
     if (versionFiles.length === 1) {
       const f   = versionFiles[0];
-      const abs = getFileAbsolutePath(manifest, f.path, version);
+      const { stream } = await openArtifactFileStream(manifest, f.path, version);
       res.setHeader('Content-Type', f.mime || 'application/octet-stream');
       res.setHeader('Content-Length', f.size);
       res.setHeader('Content-Disposition', contentDisposition('attachment', path.basename(f.path)));
-      fs.createReadStream(abs)
+      stream
         .on('error', (err) => {
           console.warn(`[ARTIFACT] download stream failed id=${manifest.id}: ${err.message}`);
           if (!res.headersSent) fail(res, ErrorCodes.INTERNAL, 'Download failed');
@@ -117,10 +120,10 @@ router.get('/:id/download', async (req, res) => {
     // artifact's own packaging mode (zip default; tar/tar.gz when the user
     // asked). Bounded by the 100 MB artifact cap, so in-memory assembly is
     // safe.
-    const files = versionFiles.map(f => ({
+    const files = await Promise.all(versionFiles.map(async f => ({
       path:   f.path,
-      buffer: fs.readFileSync(getFileAbsolutePath(manifest, f.path, version)),
-    }));
+      buffer: await readArtifactFile(manifest, f.path, version),
+    })));
     const packaging = ARCHIVE_META[manifest.packaging] ? manifest.packaging : 'zip';
     const meta      = ARCHIVE_META[packaging];
     const archive   = buildArchiveBuffer(packaging, files, { rootDir: slugify(manifest.title) });
@@ -148,11 +151,11 @@ router.get('/:id/file', async (req, res) => {
 
   try {
     const meta = getVersionFileMetas(manifest, version).find(f => f.path === relPath);
-    const abs  = getFileAbsolutePath(manifest, relPath, version); // throws on unlisted/hostile
+    const { stream } = await openArtifactFileStream(manifest, relPath, version); // throws on unlisted/hostile/missing
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Type', meta?.mime || 'application/octet-stream');
     res.setHeader('Content-Disposition', contentDisposition('attachment', path.basename(relPath)));
-    fs.createReadStream(abs)
+    stream
       .on('error', () => { if (!res.headersSent) notFound(res); })
       .pipe(res);
   } catch {
@@ -181,8 +184,7 @@ router.get('/:id/preview', async (req, res) => {
     if (!meta || !TEXT_MIME_RE.test(meta.mime ?? '')) {
       return ok(res, { previewable: false });
     }
-    const abs  = getFileAbsolutePath(manifest, relPath, version);
-    const text = await fs.promises.readFile(abs, 'utf8');
+    const text = (await readArtifactFile(manifest, relPath, version)).toString('utf8');
     ok(res, {
       previewable: true,
       path: relPath,

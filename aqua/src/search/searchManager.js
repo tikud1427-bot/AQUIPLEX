@@ -37,6 +37,7 @@ import { normalizeQuery, cacheGet, cacheSet, cacheInvalidate, cacheStats } from 
 import { rankResults }                          from './resultRanker.js';
 import { extractSearchContext }                 from './contextExtractor.js';
 import { buildSearchQuery }                     from './searchDecision.js';
+import { textMeta }                             from '../core/logSafety.js';
 
 const PROVIDER_LABELS = { serper: 'Serper', tavily: 'Tavily' };
 
@@ -90,13 +91,13 @@ export async function performSearch({
     const normalizedQuery = normalizeQuery(query, type);
 
     onStage('search', '🔍 Searching the web…');
-    console.log(`[SEARCH] query="${query.slice(0, 120)}" type=${type} task=${taskType} req=${requestId}`);
+    console.log(`[SEARCH] query=(${textMeta(query)}) type=${type} task=${taskType} req=${requestId}`);
 
     // ── Cache ────────────────────────────────────────────────────────────────
     if (cfg.cacheEnabled) {
       const hit = cacheGet(normalizedQuery);
       if (hit) {
-        console.log(`[SEARCH] cache HIT key="${normalizedQuery.slice(0, 80)}" req=${requestId}`);
+        console.log(`[SEARCH] cache HIT key=(${textMeta(normalizedQuery)}) req=${requestId}`);
         onStage('search_context', '📝 Building context from cached results…');
         return { ...hit, cached: true, latencyMs: Date.now() - started };
       }
@@ -182,6 +183,6 @@ export function getSearchHealth() {
 /** Invalidate one cached query (any phrasing) or the whole cache. */
 export function invalidateSearchCache(query, type = 'search') {
   const removed = cacheInvalidate(query, type);
-  console.log(`[SEARCH] cache invalidated ${query === undefined ? 'ALL' : `"${query}"`} (${removed} entr${removed === 1 ? 'y' : 'ies'})`);
+  console.log(`[SEARCH] cache invalidated ${query === undefined ? 'ALL' : `(${textMeta(query)})`} (${removed} entr${removed === 1 ? 'y' : 'ies'})`);
   return removed;
 }

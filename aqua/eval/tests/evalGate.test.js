@@ -20,7 +20,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  compareToBaseline, gateReport, VERDICT, LOWER_IS_BETTER, STRUCTURAL, DIAGNOSTIC, EPSILON, NOT_GATED,
+  compareToBaseline, gateReport, VERDICT, LOWER_IS_BETTER, STRUCTURAL, DIAGNOSTIC, EPSILON, NOT_GATED, isLowerBetter,
 } from '../core/gate.mjs';
 import { readdirSync } from 'node:fs';
 
@@ -156,12 +156,23 @@ describe('gate — direction and structure are declared, not guessed', () => {
     for (const f of allBaselines()) {
       for (const name of Object.keys(load(f).metrics ?? {})) {
         if (!/noise|false_positive|false_admit|error|miss|fail|unreachable|dropped|conflict|orphan/i.test(name)) continue;
-        if (LOWER_IS_BETTER.has(name) || STRUCTURAL.has(name) || DIAGNOSTIC.has(name)) continue;
+        // isLowerBetter = the exact-name set OR a declared suffix (ACIB, 2026-11-10) — the rule the gate applies.
+        if (isLowerBetter(name) || STRUCTURAL.has(name) || DIAGNOSTIC.has(name)) continue;
         suspicious.push(`${f}:${name}`);
       }
     }
     assert.deepEqual(suspicious, [],
       'these read like wrongness metrics but are gated as higher-is-better');
+  });
+
+  test('ACIB per-arm error counts are gated lower-is-better by suffix (2026-11-10)', () => {
+    for (const n of ['production_long_irrelevant_items', 'recall_short_critical_missing', 'memory_long_stale_as_current',
+      'production_short_failed_turn_leaks', 'production_long_forgotten_leaks', 'long_network_attempts']) assert.ok(isLowerBetter(n), n);
+    for (const n of ['production_long_context_recall', 'planner_short_need_coverage']) assert.ok(!isLowerBetter(n), n);
+    const r = compareToBaseline({ suiteFingerprint: 'f', metrics: { production_long_irrelevant_items: 10, production_long_context_recall: 0.5 } },
+      { manifest: { suiteFingerprint: 'f' }, result: { coverage: { complete: true }, metrics: { production_long_irrelevant_items: 12, production_long_context_recall: 0.6 } } });
+    assert.equal(r.ok, false, 'more irrelevant items must block');
+    assert.ok(r.blocking.some(b => /production_long_irrelevant_items/.test(b)));
   });
 
   test('a route count is DIAGNOSTIC, not structural and not gated', () => {

@@ -75,6 +75,15 @@ const walletSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+
+    // Phase 4B — pending-charge recovery (aqua/src/credits/pendingCharges.js).
+    // The charge ids whose debit / refund this wallet has APPLIED. A debit or a
+    // refund is a conditional update on these lists, so each applies at most
+    // once even when a crashed request or a reconciler retries it. Bounded to
+    // the newest 500 each (a charge is resolved within minutes; older ids are
+    // never retried). Absent on wallets that never used pending charges.
+    appliedCharges:  { type: [String], default: undefined },
+    refundedCharges: { type: [String], default: undefined },
   }
 );
 

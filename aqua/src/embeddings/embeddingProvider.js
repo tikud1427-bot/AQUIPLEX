@@ -29,6 +29,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { EMBED_MODEL, EMBED_DIM } from './embeddingModel.js';
 import keyPoolLib from '../providers/keyPool.cjs';
+import { noteFeature } from '../core/flags.js';
 
 const { getKeyPool, classifyKeyFailure, recordKeyAttempt } = keyPoolLib;
 
@@ -269,6 +270,8 @@ export async function embed(texts) {
   }
 
   for (const [i, p] of waits) out[i] = await p;
+  // Sprint 1: observed execution — any vector = the provider answered; none = it did not.
+  noteFeature('AQUA_EMBEDDINGS', out.some(v => v) ? 'ran' : 'failed', out.some(v => v) ? null : 'no-vectors');
   return out;
 }
 

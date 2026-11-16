@@ -1,0 +1,1002 @@
+{
+ "j0": {
+  "scenario": "mi-hire-va",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j1": {
+  "scenario": "tp-mum-city",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j2": {
+  "scenario": "fd-wedding-gift",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j3": {
+  "scenario": "hc-goal",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j4": {
+  "scenario": "fd-price-rise",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j5": {
+  "scenario": "pc-birthday",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j6": {
+  "scenario": "pc-diet",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j7": {
+  "scenario": "hc-goal",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j8": {
+  "scenario": "ct-headcount",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j9": {
+  "scenario": "ed-offer",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j10": {
+  "scenario": "xp-budget",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j11": {
+  "scenario": "fd-car",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j12": {
+  "scenario": "lh-plant",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j13": {
+  "scenario": "pc-name",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j14": {
+  "scenario": "mi-school",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j15": {
+  "scenario": "ng-translate",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j16": {
+  "scenario": "hc-job",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j17": {
+  "scenario": "mi-freelance",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j18": {
+  "scenario": "hc-manager",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j19": {
+  "scenario": "ct-age",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j20": {
+  "scenario": "lh-recipe",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j21": {
+  "scenario": "mi-course",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j22": {
+  "scenario": "tp-son-hobby",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j23": {
+  "scenario": "hc-diet",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j24": {
+  "scenario": "tp-two-sams",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j25": {
+  "scenario": "ct-files",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j26": {
+  "scenario": "ed-course-time",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j27": {
+  "scenario": "hc-salary",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j28": {
+  "scenario": "ct-files",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j29": {
+  "scenario": "xp-priority",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j30": {
+  "scenario": "lh-plant",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j31": {
+  "scenario": "tp-cofounder",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j32": {
+  "scenario": "ct-meeting",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j33": {
+  "scenario": "xp-tools",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j34": {
+  "scenario": "mi-renovate",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j35": {
+  "scenario": "mi-mortgage",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j36": {
+  "scenario": "xp-owner",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j37": {
+  "scenario": "xp-blocker",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j38": {
+  "scenario": "ng-science",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j39": {
+  "scenario": "ed-offer",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j40": {
+  "scenario": "xp-tools",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j41": {
+  "scenario": "ng-math",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j42": {
+  "scenario": "pc-birthday",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j43": {
+  "scenario": "hc-team",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j44": {
+  "scenario": "xp-budget",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j45": {
+  "scenario": "pc-car",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j46": {
+  "scenario": "lh-podcast",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j47": {
+  "scenario": "hc-salary",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j48": {
+  "scenario": "ed-relocate",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j49": {
+  "scenario": "tp-boss",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j50": {
+  "scenario": "xp-team-split",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j51": {
+  "scenario": "lh-mentor",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j52": {
+  "scenario": "mi-puppy",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j53": {
+  "scenario": "ct-headcount",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j54": {
+  "scenario": "hc-diet",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j55": {
+  "scenario": "ng-boil",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j56": {
+  "scenario": "tp-dad-health-free",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j57": {
+  "scenario": "lh-wifi",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j58": {
+  "scenario": "fd-business-loan",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j59": {
+  "scenario": "ng-math",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j60": {
+  "scenario": "tp-friend-bday",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j61": {
+  "scenario": "pc-city",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j62": {
+  "scenario": "xp-blocker",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j63": {
+  "scenario": "ed-quit",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j64": {
+  "scenario": "ct-rate",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j65": {
+  "scenario": "fd-rent-buy",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j66": {
+  "scenario": "mi-invest",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j67": {
+  "scenario": "pc-shift",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j68": {
+  "scenario": "ct-price",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j69": {
+  "scenario": "pc-diet",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j70": {
+  "scenario": "fd-loan-friend",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j71": {
+  "scenario": "pc-car",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j72": {
+  "scenario": "pc-shift",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j73": {
+  "scenario": "ed-sidegig",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j74": {
+  "scenario": "mi-school",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j75": {
+  "scenario": "hc-rent",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j76": {
+  "scenario": "pc-allergy-free",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j77": {
+  "scenario": "lh-kid-school",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j78": {
+  "scenario": "ed-parttime",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j79": {
+  "scenario": "pc-job",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j80": {
+  "scenario": "ed-quit",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j81": {
+  "scenario": "ng-translate",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j82": {
+  "scenario": "tp-neighbour",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j83": {
+  "scenario": "ct-budget",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j84": {
+  "scenario": "hc-wedding",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j85": {
+  "scenario": "xp-deadline",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j86": {
+  "scenario": "lh-locker",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j87": {
+  "scenario": "hc-job",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j88": {
+  "scenario": "ct-age",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j89": {
+  "scenario": "ed-sidegig",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j90": {
+  "scenario": "fd-equipment",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j91": {
+  "scenario": "ng-science",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j92": {
+  "scenario": "tp-neighbour",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j93": {
+  "scenario": "fd-business-loan",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j94": {
+  "scenario": "ct-meeting",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j95": {
+  "scenario": "fd-pension",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j96": {
+  "scenario": "tp-sister-job",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j97": {
+  "scenario": "hc-correction",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j98": {
+  "scenario": "mi-move",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j99": {
+  "scenario": "hc-city",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j100": {
+  "scenario": "fd-solar",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j101": {
+  "scenario": "mi-renovate",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j102": {
+  "scenario": "xp-client",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j103": {
+  "scenario": "xp-status",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j104": {
+  "scenario": "xp-deadline",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j105": {
+  "scenario": "ng-define",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j106": {
+  "scenario": "ct-budget",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j107": {
+  "scenario": "mi-move",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j108": {
+  "scenario": "tp-mum-city",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j109": {
+  "scenario": "pc-allergy-free",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j110": {
+  "scenario": "mi-promo",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j111": {
+  "scenario": "mi-promo",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j112": {
+  "scenario": "mi-invest",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j113": {
+  "scenario": "ng-history",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j114": {
+  "scenario": "hc-city",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j115": {
+  "scenario": "tp-partner-allergy",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j116": {
+  "scenario": "lh-boat",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j117": {
+  "scenario": "mi-holiday",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j118": {
+  "scenario": "lh-recipe",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j119": {
+  "scenario": "fd-wedding-gift",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j120": {
+  "scenario": "lh-gym",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j121": {
+  "scenario": "ct-days",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j122": {
+  "scenario": "lh-mentor",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j123": {
+  "scenario": "xp-priority",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j124": {
+  "scenario": "xp-status",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j125": {
+  "scenario": "ct-price",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j126": {
+  "scenario": "mi-car-loan",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j127": {
+  "scenario": "hc-wedding",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j128": {
+  "scenario": "lh-wifi",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j129": {
+  "scenario": "lh-bike",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j130": {
+  "scenario": "ed-relocate",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j131": {
+  "scenario": "ng-capital",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j132": {
+  "scenario": "pc-job",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j133": {
+  "scenario": "tp-partner-allergy",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j134": {
+  "scenario": "ed-parttime",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j135": {
+  "scenario": "fd-equipment",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j136": {
+  "scenario": "hc-partner",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j137": {
+  "scenario": "ct-rate",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j138": {
+  "scenario": "fd-debt",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j139": {
+  "scenario": "xp-team-split",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j140": {
+  "scenario": "ed-contract",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j141": {
+  "scenario": "lh-gym",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j142": {
+  "scenario": "fd-loan-friend",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j143": {
+  "scenario": "ed-raise",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j144": {
+  "scenario": "ng-boil",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j145": {
+  "scenario": "pc-instrument",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j146": {
+  "scenario": "fd-price-rise",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j147": {
+  "scenario": "lh-bike",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j148": {
+  "scenario": "fd-debt",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j149": {
+  "scenario": "lh-locker",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j150": {
+  "scenario": "fd-car",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j151": {
+  "scenario": "lh-kid-school",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j152": {
+  "scenario": "pc-lang",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j153": {
+  "scenario": "lh-boat",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j154": {
+  "scenario": "hc-rent",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j155": {
+  "scenario": "ng-trivia",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j156": {
+  "scenario": "mi-freelance",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j157": {
+  "scenario": "lh-podcast",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j158": {
+  "scenario": "tp-cofounder",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j159": {
+  "scenario": "ng-trivia",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j160": {
+  "scenario": "ed-contract",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j161": {
+  "scenario": "mi-mortgage",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j162": {
+  "scenario": "pc-city",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j163": {
+  "scenario": "ng-capital",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j164": {
+  "scenario": "mi-holiday",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j165": {
+  "scenario": "ed-raise",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j166": {
+  "scenario": "mi-course",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j167": {
+  "scenario": "tp-boss",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j168": {
+  "scenario": "tp-son-hobby",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j169": {
+  "scenario": "hc-correction",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j170": {
+  "scenario": "pc-name",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j171": {
+  "scenario": "fd-subscription",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j172": {
+  "scenario": "hc-partner",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j173": {
+  "scenario": "ct-days",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j174": {
+  "scenario": "fd-bonus",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j175": {
+  "scenario": "ng-history",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j176": {
+  "scenario": "fd-bonus",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j177": {
+  "scenario": "mi-hire-va",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j178": {
+  "scenario": "xp-client",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j179": {
+  "scenario": "hc-team",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j180": {
+  "scenario": "tp-friend-bday",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j181": {
+  "scenario": "fd-solar",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j182": {
+  "scenario": "tp-dad-health-free",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j183": {
+  "scenario": "fd-pension",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j184": {
+  "scenario": "xp-owner",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j185": {
+  "scenario": "pc-instrument",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j186": {
+  "scenario": "hc-phone",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j187": {
+  "scenario": "xp-launch",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j188": {
+  "scenario": "hc-phone",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j189": {
+  "scenario": "ed-course-time",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j190": {
+  "scenario": "tp-sister-job",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j191": {
+  "scenario": "ng-define",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j192": {
+  "scenario": "mi-car-loan",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j193": {
+  "scenario": "xp-launch",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j194": {
+  "scenario": "hc-manager",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j195": {
+  "scenario": "pc-lang",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j196": {
+  "scenario": "fd-rent-buy",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j197": {
+  "scenario": "fd-subscription",
+  "arm": "A",
+  "regime": "long"
+ },
+ "j198": {
+  "scenario": "tp-two-sams",
+  "arm": "B",
+  "regime": "long"
+ },
+ "j199": {
+  "scenario": "mi-puppy",
+  "arm": "A",
+  "regime": "long"
+ }
+}

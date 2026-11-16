@@ -37,6 +37,7 @@ import {
   createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore,
 } from '../../core/atomicStore.js';
 import { dataPath } from '../../core/dataDir.js';
+import { bindOwnerStore } from '../../core/storage/ownerBinding.js';
 
 const STORE_FILE = dataPath('.aqua-ids.json');
 const SCHEMA     = 1;
@@ -108,7 +109,9 @@ function loadFromDisk() {
 }
 
 const _writer = createDebouncedWriter(STORE_FILE);
-function scheduleSave() {
+function scheduleSave(ownerId = null) {
+  if (ownerId) binding.markDirty(ownerId);
+  if (!binding.writesWholeJson()) return;
   _writer.schedule(() => {
     const data = {};
     for (const [owner, b] of store.entries()) data[owner] = Object.fromEntries(b);
@@ -116,7 +119,64 @@ function scheduleSave() {
   });
 }
 
-loadFromDisk();
+// ── Per-owner persistence (scalability Phase 2b, step 4) ─────────────────────
+// WRITERS: the server (conversation ingest, resolution) AND the worker
+// (understandTurn → ensureSelfEntity → putEntry). Audit finding S6: on the
+// whole-file path the two overwrite each other.
+// MERGE (per entry id, grow-only, order-independent): norms and refs UNIONED
+// (capped as putEntry caps them), canonical = the fuller spelling (putEntry's
+// own rule), kind = the more recently updated entry's, createdAt = earliest,
+// updatedAt = latest. No API removes a single entry; the only deletion is the
+// account purge → tombstone, after which only entries updated after it survive.
+export function mergeIdEntries(ours, theirs) {
+  const out = { ...theirs };
+  for (const [id, o] of Object.entries(ours)) {
+    const t = theirs[id];
+    if (!t) { out[id] = o; continue; }
+    const newer = (Number(o.updatedAt) || 0) >= (Number(t.updatedAt) || 0) ? o : t;
+    const seen = new Set();
+    out[id] = {
+      kind: newer.kind,
+      canonical: pickFuller(t.canonical, o.canonical),
+      norms: [...new Set([...(t.norms ?? []), ...(o.norms ?? [])])].slice(0, MAX_NORMS_PER_ENTRY),
+      refs: [...(t.refs ?? []), ...(o.refs ?? [])].filter(r => {
+        const k = `${r?.space}:${r?.ref}`;
+        if (!r?.space || !r?.ref || seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      }).slice(0, MAX_REFS_PER_ENTRY),
+      createdAt: Math.min(Number(o.createdAt) || Infinity, Number(t.createdAt) || Infinity),
+      updatedAt: Math.max(Number(o.updatedAt) || 0, Number(t.updatedAt) || 0),
+    };
+  }
+  return out;
+}
+
+const binding = bindOwnerStore({
+  storeKey: '.aqua-ids.json',
+  file: STORE_FILE,
+  label: 'ids',
+  schema: SCHEMA,
+  encode: owner => { const b = store.get(owner); return b ? Object.fromEntries(b) : undefined; },
+  decode: obj => new Map(Object.entries(obj ?? {})),
+  install: (owner, b) => {
+    if (!b) { store.delete(owner); normIndex.delete(owner); return; }
+    store.set(owner, b);
+    reindex(owner);
+  },
+  merge: mergeIdEntries,
+  changedAt: obj => Math.max(0, ...Object.values(obj ?? {}).map(e => Number(e?.updatedAt) || 0)),
+  pruneBefore: (obj, at) => {
+    for (const [id, e] of Object.entries(obj)) if ((Number(e?.updatedAt) || 0) < at) delete obj[id];
+    return Object.keys(obj).length ? obj : null;
+  },
+  evict: owner => { store.delete(owner); normIndex.delete(owner); },
+  reloadJson: () => loadFromDisk(),
+});
+export function idsPartitionBinding() { return binding; }
+export function idsOwnerReady(ownerId) { return !ownerId || binding.ready(ownerId); }
+
+if (binding.loadsJsonAtBoot()) loadFromDisk();
 
 // ── Read ─────────────────────────────────────────────────────────────────────
 
@@ -229,7 +289,7 @@ export function putEntry(ownerId, id, patch = {}) {
     const k = indexKey(entry.kind, norm);
     if (!n.has(k)) n.set(k, id);
   }
-  scheduleSave();
+  scheduleSave(ownerId ?? 'anon');
   return entry;
 }
 
@@ -253,6 +313,7 @@ export function purgeOwner(ownerId) {
   const removed = b?.size ?? 0;
   store.delete(ownerId ?? 'anon');
   normIndex.delete(ownerId ?? 'anon');
+  binding.markDeleted(ownerId ?? 'anon');
   if (removed) scheduleSave();
   return removed;
 }
@@ -263,4 +324,4 @@ export function idStats() {
   return { owners: store.size, entries, file: STORE_FILE };
 }
 
-export function _resetIdsForTests() { store.clear(); normIndex.clear(); }
+export function _resetIdsForTests() { store.clear(); normIndex.clear(); binding._reset(); }

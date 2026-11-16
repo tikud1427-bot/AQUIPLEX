@@ -1,0 +1,749 @@
+{
+ "runId": "2026-11-15T14-07-16-961Z",
+ "dataset": {
+  "version": "pwi-v1",
+  "sha256": "23706af21821f34e9c6c92443fe09011fcb98a03c5f9d46a2a003e1187ab001c",
+  "personas": 4,
+  "probes": 32
+ },
+ "node": "v24.19.0",
+ "platform": "win32 10.0.26300",
+ "startedAt": "2026-11-15T14:07:16.963Z",
+ "arms": {
+  "prod-short": {
+   "arm": "prod",
+   "regime": "short",
+   "note": "code defaults = production today (legacy read, no database)",
+   "env": {},
+   "dataDir": "C:\\Users\\dell\\AppData\\Local\\Temp\\aqua-pwi-prod-short-KwYk1z",
+   "stages": {
+    "A": {
+     "ms": {
+      "run": 2036,
+      "verify": 1852
+     },
+     "infra": {
+      "events": 0,
+      "probes": 0,
+      "other": 0,
+      "networkBlocked": 0,
+      "actions": []
+     },
+     "metrics": {
+      "entity": {
+       "precision": 1,
+       "recallGraph": 0.2308,
+       "recallStructured": 0.5294,
+       "typeAgreement": 0.6667
+      },
+      "relationship": {
+       "precision": 1,
+       "recall": 0.2308,
+       "staleEdges": 0
+      },
+      "claim": {
+       "recall": 0.6071,
+       "recallFactStore": 0.5357,
+       "accuracy": 0.6071,
+       "recallChat": 0.6071,
+       "recallDocument": null
+      },
+      "temporal": {
+       "probeAccuracy": 1,
+       "staleUnmarkedRate": null,
+       "staleQuoted": 0,
+       "staleQuotedWithChangeNote": 0
+      },
+      "contradiction": {
+       "changes": 0,
+       "detectedInStore": null,
+       "handledInContext": null
+      },
+      "correctionPropagation": {
+       "corrections": 0,
+       "storeViewsConsistent": null,
+       "contextConsistent": null,
+       "worldChangeStoreViewsConsistent": null
+      },
+      "retrievalRelevance": {
+       "precisionMean": 0.1664,
+       "irrelevantItemsPerProbe": 5
+      },
+      "contextCompleteness": {
+       "mean": 1,
+       "items": 1,
+       "missCapture": 0,
+       "missRetrieval": 0
+      },
+      "crossSource": {
+       "completeness": null,
+       "documentItems": null
+      },
+      "personalizedReasoning": {
+       "completeness": 1,
+       "precision": 0.6
+      },
+      "answerFactuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "personalizedAnswerQuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "uncertainty": {
+       "hedgedAsFact": 0,
+       "hedged": 0,
+       "hedgedUnmarkedInContext": 0,
+       "hedgedChecks": 0,
+       "unknownAcknowledged": 0
+      },
+      "deletion": {
+       "checksStore": 3,
+       "violationsStore": 0,
+       "complianceStore": 1,
+       "contextViolations": 0,
+       "deletedEntityNodes": 0,
+       "items": 1,
+       "itemsFullyGone": 1,
+       "factsHeld": 0,
+       "factsSourceTextOnly": 0,
+       "mind": 0,
+       "evidence": 0
+      },
+      "isolation": {
+       "storeLeaks": 0,
+       "contextLeaks": 0,
+       "probes": 16
+      },
+      "quantity": {
+       "facts": 12,
+       "currentFacts": 12,
+       "nodes": 8,
+       "edges": 4,
+       "evidence": 0
+      }
+     },
+     "persistence": {
+      "probesCompared": 16,
+      "probeDiffs": [],
+      "storeDiffs": [],
+      "identical": 1
+     }
+    },
+    "B": {
+     "ms": {
+      "run": 1856,
+      "verify": 1710
+     },
+     "infra": {
+      "events": 0,
+      "probes": 0,
+      "other": 0,
+      "networkBlocked": 0,
+      "actions": []
+     },
+     "metrics": {
+      "entity": {
+       "precision": 0.9,
+       "recallGraph": 0.3636,
+       "recallStructured": 0.4815,
+       "typeAgreement": 0.5556
+      },
+      "relationship": {
+       "precision": 0.9,
+       "recall": 0.381,
+       "staleEdges": 0
+      },
+      "claim": {
+       "recall": 0.5,
+       "recallFactStore": 0.4565,
+       "accuracy": 0.5,
+       "recallChat": 0.5897,
+       "recallDocument": 0
+      },
+      "temporal": {
+       "probeAccuracy": 1,
+       "staleUnmarkedRate": 0,
+       "staleQuoted": 4,
+       "staleQuotedWithChangeNote": 0
+      },
+      "contradiction": {
+       "changes": 2,
+       "detectedInStore": 0,
+       "handledInContext": 1
+      },
+      "correctionPropagation": {
+       "corrections": 0,
+       "storeViewsConsistent": null,
+       "contextConsistent": null,
+       "worldChangeStoreViewsConsistent": 1
+      },
+      "retrievalRelevance": {
+       "precisionMean": 0.1394,
+       "irrelevantItemsPerProbe": 9.2593
+      },
+      "contextCompleteness": {
+       "mean": 1,
+       "items": 1,
+       "missCapture": 0,
+       "missRetrieval": 0
+      },
+      "crossSource": {
+       "completeness": 1,
+       "documentItems": 1
+      },
+      "personalizedReasoning": {
+       "completeness": 1,
+       "precision": 0.3759
+      },
+      "answerFactuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "personalizedAnswerQuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "uncertainty": {
+       "hedgedAsFact": 0,
+       "hedged": 2,
+       "hedgedUnmarkedInContext": 0,
+       "hedgedChecks": 3,
+       "unknownAcknowledged": 0
+      },
+      "deletion": {
+       "checksStore": 3,
+       "violationsStore": 0,
+       "complianceStore": 1,
+       "contextViolations": 0,
+       "deletedEntityNodes": 0,
+       "items": 1,
+       "itemsFullyGone": 1,
+       "factsHeld": 0,
+       "factsSourceTextOnly": 0,
+       "mind": 0,
+       "evidence": 0
+      },
+      "isolation": {
+       "storeLeaks": 0,
+       "contextLeaks": 0,
+       "probes": 27
+      },
+      "quantity": {
+       "facts": 19,
+       "currentFacts": 19,
+       "nodes": 16,
+       "edges": 12,
+       "evidence": 1
+      }
+     },
+     "persistence": {
+      "probesCompared": 27,
+      "probeDiffs": [],
+      "storeDiffs": [],
+      "identical": 1
+     }
+    },
+    "C": {
+     "ms": {
+      "run": 1902,
+      "verify": 1767
+     },
+     "infra": {
+      "events": 0,
+      "probes": 0,
+      "other": 0,
+      "networkBlocked": 0,
+      "actions": [
+       {
+        "persona": "p1",
+        "kind": "pageCorrect",
+        "slot": "runway",
+        "applied": true,
+        "key": "custom_runway"
+       },
+       {
+        "persona": "p2",
+        "kind": "pageForget",
+        "slot": "wifeEmployer",
+        "applied": false,
+        "reason": "not-captured: no stored fact shows this value, so the Memory page cannot delete it"
+       }
+      ]
+     },
+     "metrics": {
+      "entity": {
+       "precision": 0.7273,
+       "recallGraph": 0.3182,
+       "recallStructured": 0.3929,
+       "typeAgreement": 0.5
+      },
+      "relationship": {
+       "precision": 0.8,
+       "recall": 0.4118,
+       "staleEdges": 0
+      },
+      "claim": {
+       "recall": 0.4474,
+       "recallFactStore": 0.4211,
+       "accuracy": 0.4474,
+       "recallChat": 0.5313,
+       "recallDocument": 0
+      },
+      "temporal": {
+       "probeAccuracy": 1,
+       "staleUnmarkedRate": 0.0769,
+       "staleQuoted": 24,
+       "staleQuotedWithChangeNote": 0
+      },
+      "contradiction": {
+       "changes": 18,
+       "detectedInStore": 0.1667,
+       "handledInContext": 0.9231
+      },
+      "correctionPropagation": {
+       "corrections": 2,
+       "storeViewsConsistent": 1,
+       "contextConsistent": 1,
+       "worldChangeStoreViewsConsistent": 0.875
+      },
+      "retrievalRelevance": {
+       "precisionMean": 0.1358,
+       "irrelevantItemsPerProbe": 7.4375
+      },
+      "contextCompleteness": {
+       "mean": 1,
+       "items": 1,
+       "missCapture": 0,
+       "missRetrieval": 0
+      },
+      "crossSource": {
+       "completeness": 1,
+       "documentItems": 1
+      },
+      "personalizedReasoning": {
+       "completeness": 1,
+       "precision": 0.3909
+      },
+      "answerFactuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "personalizedAnswerQuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "uncertainty": {
+       "hedgedAsFact": 0,
+       "hedged": 2,
+       "hedgedUnmarkedInContext": 0,
+       "hedgedChecks": 3,
+       "unknownAcknowledged": 0
+      },
+      "deletion": {
+       "checksStore": 18,
+       "violationsStore": 3,
+       "complianceStore": 0.8333,
+       "contextViolations": 23,
+       "deletedEntityNodes": 1,
+       "items": 6,
+       "itemsFullyGone": 3,
+       "factsHeld": 1,
+       "factsSourceTextOnly": 1,
+       "mind": 1,
+       "evidence": 0
+      },
+      "isolation": {
+       "storeLeaks": 0,
+       "contextLeaks": 0,
+       "probes": 32
+      },
+      "quantity": {
+       "facts": 18,
+       "currentFacts": 18,
+       "nodes": 17,
+       "edges": 12,
+       "evidence": 1
+      }
+     },
+     "persistence": {
+      "probesCompared": 32,
+      "probeDiffs": [],
+      "storeDiffs": [],
+      "identical": 1
+     }
+    }
+   },
+   "infraFailures": []
+  },
+  "prod-long": {
+   "arm": "prod",
+   "regime": "long",
+   "note": "code defaults = production today (legacy read, no database)",
+   "env": {},
+   "dataDir": "C:\\Users\\dell\\AppData\\Local\\Temp\\aqua-pwi-prod-long-sF5iJ3",
+   "stages": {
+    "A": {
+     "ms": {
+      "run": 3669,
+      "verify": 1619
+     },
+     "infra": {
+      "events": 0,
+      "probes": 0,
+      "other": 0,
+      "networkBlocked": 0,
+      "actions": []
+     },
+     "metrics": {
+      "entity": {
+       "precision": 1,
+       "recallGraph": 0.2308,
+       "recallStructured": 0.5294,
+       "typeAgreement": 0.6667
+      },
+      "relationship": {
+       "precision": 1,
+       "recall": 0.2308,
+       "staleEdges": 0
+      },
+      "claim": {
+       "recall": 0.6071,
+       "recallFactStore": 0.5357,
+       "accuracy": 0.6071,
+       "recallChat": 0.6071,
+       "recallDocument": null
+      },
+      "temporal": {
+       "probeAccuracy": 0.6667,
+       "staleUnmarkedRate": null,
+       "staleQuoted": 0,
+       "staleQuotedWithChangeNote": 0
+      },
+      "contradiction": {
+       "changes": 0,
+       "detectedInStore": null,
+       "handledInContext": null
+      },
+      "correctionPropagation": {
+       "corrections": 0,
+       "storeViewsConsistent": null,
+       "contextConsistent": null,
+       "worldChangeStoreViewsConsistent": null
+      },
+      "retrievalRelevance": {
+       "precisionMean": 0.2464,
+       "irrelevantItemsPerProbe": 2.5625
+      },
+      "contextCompleteness": {
+       "mean": 0.7222,
+       "items": 0.7333,
+       "missCapture": 4,
+       "missRetrieval": 0
+      },
+      "crossSource": {
+       "completeness": null,
+       "documentItems": null
+      },
+      "personalizedReasoning": {
+       "completeness": 0.6667,
+       "precision": 1
+      },
+      "answerFactuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "personalizedAnswerQuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "uncertainty": {
+       "hedgedAsFact": 0,
+       "hedged": 0,
+       "hedgedUnmarkedInContext": 0,
+       "hedgedChecks": 0,
+       "unknownAcknowledged": 0
+      },
+      "deletion": {
+       "checksStore": 3,
+       "violationsStore": 0,
+       "complianceStore": 1,
+       "contextViolations": 0,
+       "deletedEntityNodes": 0,
+       "items": 1,
+       "itemsFullyGone": 1,
+       "factsHeld": 0,
+       "factsSourceTextOnly": 0,
+       "mind": 0,
+       "evidence": 0
+      },
+      "isolation": {
+       "storeLeaks": 0,
+       "contextLeaks": 0,
+       "probes": 16
+      },
+      "quantity": {
+       "facts": 24,
+       "currentFacts": 24,
+       "nodes": 12,
+       "edges": 8,
+       "evidence": 0
+      }
+     },
+     "persistence": {
+      "probesCompared": 16,
+      "probeDiffs": [],
+      "storeDiffs": [],
+      "identical": 1
+     }
+    },
+    "B": {
+     "ms": {
+      "run": 4684,
+      "verify": 2002
+     },
+     "infra": {
+      "events": 0,
+      "probes": 0,
+      "other": 0,
+      "networkBlocked": 0,
+      "actions": []
+     },
+     "metrics": {
+      "entity": {
+       "precision": 0.9,
+       "recallGraph": 0.3636,
+       "recallStructured": 0.4815,
+       "typeAgreement": 0.5556
+      },
+      "relationship": {
+       "precision": 0.9,
+       "recall": 0.381,
+       "staleEdges": 0
+      },
+      "claim": {
+       "recall": 0.5,
+       "recallFactStore": 0.4565,
+       "accuracy": 0.5,
+       "recallChat": 0.5897,
+       "recallDocument": 0
+      },
+      "temporal": {
+       "probeAccuracy": 0.6667,
+       "staleUnmarkedRate": 0,
+       "staleQuoted": 1,
+       "staleQuotedWithChangeNote": 0
+      },
+      "contradiction": {
+       "changes": 2,
+       "detectedInStore": 0,
+       "handledInContext": 1
+      },
+      "correctionPropagation": {
+       "corrections": 0,
+       "storeViewsConsistent": null,
+       "contextConsistent": null,
+       "worldChangeStoreViewsConsistent": 1
+      },
+      "retrievalRelevance": {
+       "precisionMean": 0.1823,
+       "irrelevantItemsPerProbe": 4.8148
+      },
+      "contextCompleteness": {
+       "mean": 0.7674,
+       "items": 0.7692,
+       "missCapture": 8,
+       "missRetrieval": 1
+      },
+      "crossSource": {
+       "completeness": 1,
+       "documentItems": 1
+      },
+      "personalizedReasoning": {
+       "completeness": 0.6625,
+       "precision": 0.3985
+      },
+      "answerFactuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "personalizedAnswerQuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "uncertainty": {
+       "hedgedAsFact": 0,
+       "hedged": 2,
+       "hedgedUnmarkedInContext": 0,
+       "hedgedChecks": 3,
+       "unknownAcknowledged": 1
+      },
+      "deletion": {
+       "checksStore": 3,
+       "violationsStore": 0,
+       "complianceStore": 1,
+       "contextViolations": 0,
+       "deletedEntityNodes": 0,
+       "items": 1,
+       "itemsFullyGone": 1,
+       "factsHeld": 0,
+       "factsSourceTextOnly": 0,
+       "mind": 0,
+       "evidence": 0
+      },
+      "isolation": {
+       "storeLeaks": 0,
+       "contextLeaks": 0,
+       "probes": 27
+      },
+      "quantity": {
+       "facts": 30,
+       "currentFacts": 30,
+       "nodes": 20,
+       "edges": 16,
+       "evidence": 1
+      }
+     },
+     "persistence": {
+      "probesCompared": 27,
+      "probeDiffs": [],
+      "storeDiffs": [],
+      "identical": 1
+     }
+    },
+    "C": {
+     "ms": {
+      "run": 5752,
+      "verify": 2099
+     },
+     "infra": {
+      "events": 0,
+      "probes": 0,
+      "other": 0,
+      "networkBlocked": 0,
+      "actions": [
+       {
+        "persona": "p1",
+        "kind": "pageCorrect",
+        "slot": "runway",
+        "applied": true,
+        "key": "custom_runway"
+       },
+       {
+        "persona": "p2",
+        "kind": "pageForget",
+        "slot": "wifeEmployer",
+        "applied": false,
+        "reason": "not-captured: no stored fact shows this value, so the Memory page cannot delete it"
+       }
+      ]
+     },
+     "metrics": {
+      "entity": {
+       "precision": 0.7273,
+       "recallGraph": 0.3182,
+       "recallStructured": 0.3929,
+       "typeAgreement": 0.5
+      },
+      "relationship": {
+       "precision": 0.8,
+       "recall": 0.4118,
+       "staleEdges": 0
+      },
+      "claim": {
+       "recall": 0.4474,
+       "recallFactStore": 0.4211,
+       "accuracy": 0.4474,
+       "recallChat": 0.5313,
+       "recallDocument": 0
+      },
+      "temporal": {
+       "probeAccuracy": 0.6667,
+       "staleUnmarkedRate": 0.0769,
+       "staleQuoted": 12,
+       "staleQuotedWithChangeNote": 0
+      },
+      "contradiction": {
+       "changes": 18,
+       "detectedInStore": 0.1667,
+       "handledInContext": 0.9231
+      },
+      "correctionPropagation": {
+       "corrections": 2,
+       "storeViewsConsistent": 1,
+       "contextConsistent": 1,
+       "worldChangeStoreViewsConsistent": 0.875
+      },
+      "retrievalRelevance": {
+       "precisionMean": 0.147,
+       "irrelevantItemsPerProbe": 4.2188
+      },
+      "contextCompleteness": {
+       "mean": 0.7257,
+       "items": 0.7222,
+       "missCapture": 9,
+       "missRetrieval": 1
+      },
+      "crossSource": {
+       "completeness": 1,
+       "documentItems": 1
+      },
+      "personalizedReasoning": {
+       "completeness": 0.6042,
+       "precision": 0.3298
+      },
+      "answerFactuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "personalizedAnswerQuality": {
+       "value": null,
+       "status": "not measured — needs model calls (answer + judge); not approved for this run"
+      },
+      "uncertainty": {
+       "hedgedAsFact": 0,
+       "hedged": 2,
+       "hedgedUnmarkedInContext": 0,
+       "hedgedChecks": 3,
+       "unknownAcknowledged": 1
+      },
+      "deletion": {
+       "checksStore": 18,
+       "violationsStore": 3,
+       "complianceStore": 0.8333,
+       "contextViolations": 12,
+       "deletedEntityNodes": 1,
+       "items": 6,
+       "itemsFullyGone": 3,
+       "factsHeld": 1,
+       "factsSourceTextOnly": 1,
+       "mind": 1,
+       "evidence": 0
+      },
+      "isolation": {
+       "storeLeaks": 0,
+       "contextLeaks": 0,
+       "probes": 32
+      },
+      "quantity": {
+       "facts": 29,
+       "currentFacts": 29,
+       "nodes": 21,
+       "edges": 16,
+       "evidence": 1
+      }
+     },
+     "persistence": {
+      "probesCompared": 32,
+      "probeDiffs": [],
+      "storeDiffs": [],
+      "identical": 1
+     }
+    }
+   },
+   "infraFailures": []
+  }
+ },
+ "finishedAt": "2026-11-15T14:07:49.677Z"
+}

@@ -1,0 +1,312 @@
+ M aqua/eval/core/gate.mjs
+ M aqua/eval/tests/evalGate.test.js
+ M aqua/router.js
+ M aqua/scripts/worker.mjs
+ M aqua/src/account/accountPurge.js
+ M aqua/src/artifacts/artifactStore.js
+ M aqua/src/artifacts/editEngine.js
+ M aqua/src/brain/contextEngine/index.js
+ M aqua/src/brain/identity/idStore.js
+ M aqua/src/brain/index.js
+ M aqua/src/brain/proactive/index.js
+ M aqua/src/brain/reflectionV2/index.js
+ M aqua/src/brain/reflectionV2/reflectionStore.js
+ M aqua/src/brain/tests/legacyVetoFallback.test.js
+ M aqua/src/brain/worldModel/annotationStore.js
+ M aqua/src/cognition/cognitiveStore.js
+ M aqua/src/cognition/index.js
+ M aqua/src/core/atomicStore.js
+ M aqua/src/core/flags.js
+ M aqua/src/core/jobs/jobQueue.js
+ M aqua/src/core/jobs/workerRuntime.js
+ M aqua/src/core/logSafety.js
+ M aqua/src/core/mongoMirror.js
+ M aqua/src/core/observability.js
+ M aqua/src/core/storage/index.js
+ M aqua/src/core/tests/claimShadowMode.test.js
+ M aqua/src/core/tests/dbPool.test.js
+ M aqua/src/core/tests/flagRegistry.test.js
+ M aqua/src/core/tests/helpers/memoryPg.mjs
+ M aqua/src/core/tests/storageAdapter.test.js
+ M aqua/src/embeddings/embeddingProvider.js
+ M aqua/src/embeddings/fileMemory.js
+ M aqua/src/embeddings/vectorStore.js
+ M aqua/src/files/documentUnderstanding.js
+ M aqua/src/files/evidenceStore.js
+ M aqua/src/files/fileEngine.js
+ M aqua/src/files/fileSearchIndex.js
+ M aqua/src/files/ukoStore.js
+ M aqua/src/intelligence/confidenceEngine.test.js
+ M aqua/src/intelligence/internalIntelligenceEngine.js
+ M aqua/src/intelligence/learningLedger.js
+ M aqua/src/intelligence/tests/intelligencePipeline.test.js
+ M aqua/src/memory/candidateExtractor.js
+ M aqua/src/memory/conversationStore.js
+ M aqua/src/memory/engine.js
+ M aqua/src/memory/forget.js
+ M aqua/src/memory/identityMigration.js
+ M aqua/src/memory/longTermMemory.js
+ M aqua/src/memory/memoryEditor.js
+ M aqua/src/memory/memoryExtractor.js
+ M aqua/src/memory/memoryRetriever.js
+ M aqua/src/memory/memorySchema.js
+ M aqua/src/memory/propagation.js
+ M aqua/src/memory/recallRedactions.js
+ M aqua/src/mind/goalTracker.js
+ M aqua/src/mind/mindStore.js
+ M aqua/src/orchestrator/verificationStrategy.js
+ M aqua/src/pic/core.js
+ M aqua/src/pic/picStore.js
+ M aqua/src/project/projectIndex.js
+ M aqua/src/project/projectMemory.js
+ M aqua/src/project/projectRetriever.js
+ M aqua/src/reasoning/reasoningGraph.js
+ M aqua/src/routes/artifacts.js
+ M aqua/src/routes/chat.js
+ M aqua/src/routes/health.js
+ M aqua/src/routes/turnPostProcess.js
+ M aqua/src/search/searchManager.js
+ M aqua/src/upload/attachmentStore.js
+ M aqua/src/upload/documentPipeline.js
+ M index.js
+ M middleware/usage/checkUsage.js
+ M models/User.js
+ M package.json
+ M services/credits/wallet.service.js
+?? AQUA_ACIB_V1_BASELINE_RESULTS.md
+?? AQUA_ACIB_V1_COMPARISON_RESULTS.md
+?? AQUA_ACIB_V1_IMPLEMENTATION.md
+?? AQUA_ACIB_V2_BENCHMARK.md
+?? AQUA_ACIB_V3_ANALYSIS_SPEC.md
+?? AQUA_ACIB_V3_AUTHORING_BRIEF.md
+?? AQUA_ACIB_V3_DECLARATIONS.md
+?? AQUA_ACIB_V3_FREEZE_AND_GOVERNANCE.md
+?? AQUA_ANSWER_EVALUATION_COST_REVIEW.md
+?? AQUA_ANSWER_EVALUATION_RUNNER.md
+?? AQUA_ANSWER_QUALITY_EVALUATION.md
+?? AQUA_CAPTURE_INTEGRITY_V1.md
+?? AQUA_CONTEXTUAL_INTELLIGENCE_BENCHMARK.md
+?? AQUA_CONTEXT_ENGINE_AUDIT.md
+?? AQUA_EVALUATION_APPROVAL_SWITCH_AUDIT.md
+?? AQUA_EVALUATION_CREDENTIAL_VERIFICATION.md
+?? AQUA_EVALUATION_KEY_POOL_AUDIT.md
+?? AQUA_EVALUATION_PROVIDER_INTEGRATION_TESTS.md
+?? AQUA_EVALUATION_PROVIDER_MANAGER.md
+?? AQUA_EVALUATION_RUNNER_INTEGRATION.md
+?? AQUA_EVALUATION_SMOKE_TEST_READINESS.md
+?? AQUA_EXISTING_KEY_POOL_INTEGRATION.md
+?? AQUA_EXISTING_KEY_POOL_TESTS.md
+?? AQUA_FEATURE_FLAG_AUDIT.md
+?? AQUA_HYBRID_CONTEXT_ARCHITECTURE.md
+?? AQUA_HYBRID_CONTEXT_BENCHMARK_PLAN.md
+?? AQUA_HYBRID_CONTEXT_V1_IMPLEMENTATION.md
+?? AQUA_HYBRID_CONTEXT_V1_RESULTS.md
+?? AQUA_INFORMATION_NEEDS_ENGINE_DESIGN.md
+?? AQUA_INFORMATION_NEEDS_ENGINE_IMPLEMENTATION.md
+?? AQUA_INFORMATION_NEEDS_V2.md
+?? AQUA_KNOWLEDGE_ARCHITECTURE_AUDIT.md
+?? AQUA_RENDER_SHADOW_READINESS.md
+?? AQUA_SHADOW_FAILED_TURN_TEST.md
+?? AQUA_ZERO_COST_QUOTA_FALLBACK_TESTS.md
+?? AQUIPLEX_ACIB_V3_GOVERNANCE_AND_GRADER_READINESS.md
+?? AQUIPLEX_API_SHUTDOWN_TEST_REPORT.md
+?? AQUIPLEX_APPLICATION_INTEGRATION_TEST_REPORT.md
+?? AQUIPLEX_ARCHITECTURE_MAP.md
+?? AQUIPLEX_ARTIFACT_MIGRATION_READINESS.md
+?? AQUIPLEX_ARTIFACT_STORAGE_AUDIT.md
+?? AQUIPLEX_CLOUD_RUN_CONFIGURATION_PLAN.md
+?? AQUIPLEX_CONVERSATION_MIGRATION_REPORT.md
+?? AQUIPLEX_ENGINEERING_ROADMAP.md
+?? AQUIPLEX_EVALUATION_KEY_POOL_REPORT.md
+?? AQUIPLEX_EVALUATION_READINESS_REPORT.md
+?? AQUIPLEX_EXISTING_CREDENTIAL_EVALUATION_READINESS.md
+?? AQUIPLEX_GCS_STORAGE_IMPLEMENTATION_REPORT.md
+?? AQUIPLEX_INITIAL_INFRASTRUCTURE_COST_ESTIMATE.md
+?? AQUIPLEX_INTELLIGENCE_BENCHMARK_READINESS.md
+?? AQUIPLEX_INTELLIGENCE_EVALUATION_PHASE2.md
+?? AQUIPLEX_JOB_ARCHITECTURE.md
+?? AQUIPLEX_JOB_OWNERSHIP_AND_RECOVERY.md
+?? AQUIPLEX_JUDGE_READINESS.md
+?? AQUIPLEX_LINUX_SHUTDOWN_TEST_REPORT.md
+?? AQUIPLEX_PENDING_CHARGE_RECOVERY_REPORT.md
+?? AQUIPLEX_PER_OWNER_STORAGE_PLAN.md
+?? AQUIPLEX_PHASE_2B_REPORT.md
+?? AQUIPLEX_PHASE_2C_REPORT.md
+?? AQUIPLEX_PHASE_3_API_WORKER_DESIGN.md
+?? AQUIPLEX_PHASE_3_IMPLEMENTATION_REPORT.md
+?? AQUIPLEX_PHASE_3_READINESS_REPORT.md
+?? AQUIPLEX_PHASE_3_TEST_REPORT.md
+?? AQUIPLEX_PHASE_4A_PERSISTENCE_REPORT.md
+?? AQUIPLEX_PHASE_4B_IMPLEMENTATION_REPORT.md
+?? AQUIPLEX_PHASE_4B_READINESS_REPORT.md
+?? AQUIPLEX_PHASE_4_READINESS_REPORT.md
+?? AQUIPLEX_PHASE_5_READINESS_REPORT.md
+?? AQUIPLEX_PRODUCTION_INTELLIGENCE_AUDIT.md
+?? AQUIPLEX_PWI_ARCHITECTURE_AUDIT.md
+?? AQUIPLEX_PWI_BENCHMARK_BASELINE_REPORT.md
+?? AQUIPLEX_PWI_BENCHMARK_SPEC.md
+?? AQUIPLEX_PWI_PHASE1_COMMIT_PREP.md
+?? AQUIPLEX_PWI_PHASE1_IMPLEMENTATION_REPORT.md
+?? AQUIPLEX_SCALABILITY_AUDIT.md
+?? AQUIPLEX_SPRINT1_PRODUCTION_SAFETY_REPORT.md
+?? AQUIPLEX_SPRINT2_ENGINEERING_NOTES.md
+?? AQUIPLEX_SPRINT3_ENGINEERING_REPORT.md
+?? AQUIPLEX_SPRINT4_REPORT.md
+?? AQUIPLEX_SPRINT5_CAPTURE_RELEASE_REVIEW.md
+?? AQUIPLEX_SPRINT5_REPORT.md
+?? AQUIPLEX_SPRINT5_SHADOW_READINESS_REVIEW.md
+?? AQUIPLEX_SPRINT6_CAPTURE_RELEASE_PACKAGE.md
+?? AQUIPLEX_SPRINT6_REPORT.md
+?? AQUIPLEX_STORE_OWNERSHIP_MATRIX.md
+?? AQUIPLEX_UNIFIED_INTELLIGENCE_STAGE0_1.md
+?? AQUIPLEX_WORKER_FAILURE_INVESTIGATION.md
+?? AQUIPLEX_ZERO_BUDGET_INTEGRATION_REPORT.md
+?? AQUIPLEX_ZERO_COST_EVALUATION_READINESS.md
+?? aqua/eval/acib/
+?? aqua/eval/adapters/acibPipeline.mjs
+?? aqua/eval/answer/
+?? aqua/eval/baselines/acib-heldout-v1-needs.v1.json
+?? aqua/eval/baselines/acib-heldout-v1.v1.json
+?? aqua/eval/baselines/acib-v1-needs.v1.json
+?? aqua/eval/baselines/acib-v1.v1.json
+?? aqua/eval/datasets/acib.heldout.v1.FROZEN.sha256
+?? aqua/eval/datasets/acib.heldout.v1.json
+?? aqua/eval/datasets/acib.v1.FROZEN.sha256
+?? aqua/eval/datasets/acib.v1.json
+?? aqua/eval/datasets/acib.v2.dev.FROZEN.sha256
+?? aqua/eval/datasets/acib.v2.dev.json
+?? aqua/eval/datasets/acib.v2.eval.FROZEN.sha256
+?? aqua/eval/datasets/acib.v2.eval.json
+?? aqua/eval/datasets/src/
+?? aqua/eval/governance/
+?? aqua/eval/measurements/
+?? aqua/eval/providers/
+?? aqua/eval/pwi/
+?? aqua/eval/suites/acib-heldout-v1-hybrid.suite.mjs
+?? aqua/eval/suites/acib-heldout-v1-needs.suite.mjs
+?? aqua/eval/suites/acib-heldout-v1.suite.mjs
+?? aqua/eval/suites/acib-v1-hybrid.suite.mjs
+?? aqua/eval/suites/acib-v1-needs.suite.mjs
+?? aqua/eval/suites/acib-v1.suite.mjs
+?? aqua/eval/suites/acib-v2-dev-hybrid.suite.mjs
+?? aqua/eval/suites/acib-v2-dev-needs.suite.mjs
+?? aqua/eval/suites/acib-v2-dev.suite.mjs
+?? aqua/eval/suites/acib-v2-eval-hybrid.suite.mjs
+?? aqua/eval/suites/acib-v2-eval-needs.suite.mjs
+?? aqua/eval/suites/acib-v2-eval.suite.mjs
+?? aqua/eval/suites/acibScoring.mjs
+?? aqua/eval/suites/acibSuite.mjs
+?? aqua/eval/tests/acibV3Decisions.test.js
+?? aqua/eval/tests/acibV3FinalPrep.test.js
+?? aqua/eval/tests/acibV3FounderFinal.test.js
+?? aqua/eval/tests/acibV3Governance.test.js
+?? aqua/eval/tests/acibV3Readiness.test.js
+?? aqua/eval/tests/answerGrader.test.js
+?? aqua/eval/tests/answerRunner.test.js
+?? aqua/eval/tests/evalProviderIntegration.test.js
+?? aqua/eval/tests/evalProviderManager.test.js
+?? aqua/eval/tests/evalReadiness.test.js
+?? aqua/eval/tests/existingKeyPool.test.js
+?? aqua/eval/tests/finalPreExecution.test.js
+?? aqua/eval/tests/fixtures/
+?? aqua/eval/tests/founderVerifiedGemini.test.js
+?? aqua/eval/tests/phase2Evaluation.test.js
+?? aqua/eval/tests/preSmokeReadiness.test.js
+?? aqua/eval/tests/pwiBenchmark.test.js
+?? aqua/eval/tests/zeroCostReadiness.test.js
+?? aqua/scripts/acib-run.mjs
+?? aqua/scripts/acib-v3-freeze.mjs
+?? aqua/scripts/acib-v3-reviewer-prepare.mjs
+?? aqua/scripts/answer-analyze.mjs
+?? aqua/scripts/answer-eval.mjs
+?? aqua/scripts/answer-judge.mjs
+?? aqua/scripts/artifact-migration.mjs
+?? aqua/scripts/artifact-storage-audit.mjs
+?? aqua/scripts/build-acib-v2.mjs
+?? aqua/scripts/charges-reconcile.mjs
+?? aqua/scripts/history-migration.mjs
+?? aqua/scripts/measure-prompt-sizes.mjs
+?? aqua/scripts/partition-load.mjs
+?? aqua/scripts/partition-migrate.mjs
+?? aqua/scripts/phase2b-bench.mjs
+?? aqua/scripts/phase2c-app-journey.mjs
+?? aqua/scripts/phase3-learning-journey.mjs
+?? aqua/scripts/phase3-linux-shutdown.mjs
+?? aqua/scripts/phase4a-linux-api-shutdown.mjs
+?? aqua/src/artifacts/artifactAudit.js
+?? aqua/src/artifacts/tests/artifactAudit.test.js
+?? aqua/src/artifacts/tests/artifactMigration.live.test.js
+?? aqua/src/brain/contextEngine/hybridContext.js
+?? aqua/src/brain/contextEngine/informationNeeds.js
+?? aqua/src/brain/tests/hybridContext.test.js
+?? aqua/src/brain/tests/informationNeeds.test.js
+?? aqua/src/brain/tests/informationNeedsV2.test.js
+?? aqua/src/brain/tests/reflectionPartitions.test.js
+?? aqua/src/core/db/migrations/0026_store_partitions.sql
+?? aqua/src/core/db/migrations/0027_owner_versions.sql
+?? aqua/src/core/db/migrations/0028_objects.sql
+?? aqua/src/core/db/migrations/0029_scheduler_leases.sql
+?? aqua/src/core/db/migrations/0030_learning_jobs.sql
+?? aqua/src/core/db/migrations/0031_pending_charges.sql
+?? aqua/src/core/jobs/jobLog.js
+?? aqua/src/core/jobs/schedulerLease.js
+?? aqua/src/core/storage/deletedOwners.js
+?? aqua/src/core/storage/entryMerge.js
+?? aqua/src/core/storage/historyMigration.js
+?? aqua/src/core/storage/instanceAggregate.js
+?? aqua/src/core/storage/keyedBinding.js
+?? aqua/src/core/storage/objectStore.js
+?? aqua/src/core/storage/ownerBinding.js
+?? aqua/src/core/storage/partitionLayout.js
+?? aqua/src/core/storage/partitionMigration.js
+?? aqua/src/core/storage/partitionRepository.js
+?? aqua/src/core/storage/requestWrites.js
+?? aqua/src/core/storage/responseGate.js
+?? aqua/src/core/tests/cloudRunTemplates.test.js
+?? aqua/src/core/tests/entryMerge.test.js
+?? aqua/src/core/tests/featureStatus.test.js
+?? aqua/src/core/tests/flagReadSiteParity.test.js
+?? aqua/src/core/tests/helpers/multiProcess.mjs
+?? aqua/src/core/tests/helpers/storeProcess.mjs
+?? aqua/src/core/tests/historyMigration.test.js
+?? aqua/src/core/tests/instanceAggregate.test.js
+?? aqua/src/core/tests/logSafety.test.js
+?? aqua/src/core/tests/mongoMirrorStartup.test.js
+?? aqua/src/core/tests/objectStoreGcs.test.js
+?? aqua/src/core/tests/partitionLayout.test.js
+?? aqua/src/core/tests/partitionMigration.test.js
+?? aqua/src/core/tests/partitionRepository.test.js
+?? aqua/src/core/tests/phase2cLimits.test.js
+?? aqua/src/core/tests/phase2cStores.test.js
+?? aqua/src/core/tests/phase3Learning.test.js
+?? aqua/src/core/tests/phase3Roles.test.js
+?? aqua/src/core/tests/phase4aPersistence.test.js
+?? aqua/src/core/tests/phase4bWorker.test.js
+?? aqua/src/core/tests/storeMigrationMatrix.test.js
+?? aqua/src/credits/
+?? aqua/src/learning/
+?? aqua/src/memory/conversationPartitions.js
+?? aqua/src/memory/tests/captureIntegrity.test.js
+?? aqua/src/memory/tests/conversationPartitions.test.js
+?? aqua/src/memory/tests/turnCommit.test.js
+?? aqua/src/memory/turnCommit.js
+?? aqua/src/mind/tests/mindPartitions.test.js
+?? aqua/src/orchestrator/tests/reviewDepth.test.js
+?? aqua/src/reasoning/tests/graphIdsPartitions.test.js
+?? aqua/src/routes/tests/cloudRunMemoryLanes.test.js
+?? aqua/src/routes/tests/failedTurnMemory.test.js
+?? aqua/src/routes/tests/hybridContextRoute.test.js
+?? aqua/src/routes/tests/infoNeedsShadowFailedTurn.test.js
+?? aqua/src/routes/tests/infoNeedsShadowReadiness.test.js
+?? aqua/src/routes/tests/informationNeedsRoute.test.js
+?? aqua/src/routes/tests/logPrivacy.test.js
+?? aqua/src/routes/tests/picQueryRedaction.test.js
+?? aqua/src/understanding/speechAct.js
+?? aqua/src/understanding/tests/speechAct.test.js
+?? deploy/
+?? release/
+?? scripts/start-api.mjs
+?? scripts/start-worker.mjs
+?? services/credits/pendingChargeWallet.js
+?? tests/platform/logSafety.test.js
+?? utils/logSafety.js

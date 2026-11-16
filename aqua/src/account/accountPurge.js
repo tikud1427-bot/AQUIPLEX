@@ -67,6 +67,8 @@ import { purgeOwner as purgeEmbeddings } from '../core/worldModel/embeddingRepos
 // of exactly this: aqua_jobs has had a working purge function with nothing
 // wiring it in.
 import { purgeOwner as purgeJobs } from '../core/jobs/jobQueue.js';
+import { purgeOwnerCharges } from '../credits/pendingCharges.js';
+import { markOwnerDeleted } from '../core/storage/deletedOwners.js';
 import { purgeOwner as purgeInterventions } from '../brain/proactive/repository.js';
 import { purgeOwner as purgeActionRuns } from '../brain/actions/repository.js';
 // E10 migration audit rows (aqua_migration_runs) are owner data too.
@@ -141,6 +143,12 @@ export async function purgeOwnerData({ userId } = {}) {
     errors: [],
   };
 
+  // ── 0. (Phase 3) Record the deletion FIRST. A learning job already running
+  //    for this owner, or a debounced flush, checks this marker before every
+  //    write, so nothing is written back after the purge below. Without a
+  //    database there is no marker and no durable job to stop.
+  report.deletionMarked = (await stepAsync(report, 'deletionMarker', () => markOwnerDeleted(ownerId))) ?? false;
+
   // ── 1. Conversations + their attachments + any un-adopted conv-scoped mind ──
   const conversationIds = step(report, 'conversations:list', () =>
     listConversationIdsForUser(userId)) ?? [];
@@ -199,6 +207,10 @@ export async function purgeOwnerData({ userId } = {}) {
   report.embeddings = (await stepAsync(report, 'embeddings',
     () => purgeEmbeddings(ownerId)))?.embeddings ?? 0;
   report.jobs = (await stepAsync(report, 'jobs', () => purgeJobs(ownerId)))?.jobs ?? 0;
+  // Phase 4B: open charges close as VOID (recorded), then the charge rows go with
+  // the account, as the Mongo credit ledger does. A refund still in flight
+  // finds the account gone and closes VOID.
+  report.charges = await stepAsync(report, 'charges', () => purgeOwnerCharges(ownerId));
   report.migrationRuns = (await stepAsync(report, 'migrationRuns', () => purgeMigrationRuns(ownerId))) ?? 0;
 
   // ── 5. Generated artifacts (manifest index + files on disk) ───────────────

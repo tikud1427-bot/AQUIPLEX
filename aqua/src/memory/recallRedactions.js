@@ -21,6 +21,7 @@
 import crypto from 'node:crypto';
 import { createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
+import { bindOwnerStore } from '../core/storage/ownerBinding.js';
 
 const FILE = dataPath('.aqua-recall-redactions.json');
 const SCHEMA = 1;
@@ -40,21 +41,77 @@ let REVISION = 0;
 const store = new Map();
 const writer = createDebouncedWriter(FILE);
 
+const decodeRecord = rec => ({
+  forgetAllAt: Number.isFinite(rec?.forgetAllAt) ? rec.forgetAllAt : null,
+  phrases: new Map(Object.entries(rec?.phrases ?? {})),
+  rev: ++REVISION,
+});
+const encodeRecord = rec => ({ forgetAllAt: rec.forgetAllAt, phrases: Object.fromEntries(rec.phrases) });
+
 function load() {
   const parsed = loadJsonFile(FILE, { label: 'recall-redactions' });
   if (parsed == null) return;
   const { data } = unwrapStore(parsed, { expected: SCHEMA, file: FILE, label: 'recall-redactions' });
   if (!data || typeof data !== 'object') return;
   for (const [owner, rec] of Object.entries(data)) {
-    store.set(owner, {
-      forgetAllAt: Number.isFinite(rec?.forgetAllAt) ? rec.forgetAllAt : null,
-      phrases: new Map(Object.entries(rec?.phrases ?? {})),
-    });
+    const d = decodeRecord(rec);
+    d.rev = 0;
+    store.set(owner, d);
   }
 }
-load();
 
-function persist() {
+// ── Per-owner persistence (scalability Phase 2b, step 2) ─────────────────────
+// WRITERS: the Memory UI's forget/correct (server) and memory propagation.
+// MERGE: grow-only. Phrases are UNIONED (a redaction is never lost to a race),
+// forgetAllAt takes the LATER time. Both are order-independent, so any number
+// of processes converge on the same list.
+// DELETION: purgeOwner (account deletion) → tombstone; redactions made after it
+// (a returning user) start a new record.
+// FAIL CLOSED: with partitions authoritative, an owner whose list is not loaded
+// gets a matcher that redacts EVERYTHING — recall quotes nothing rather than
+// risk quoting what the person asked to forget.
+export function mergeRedactionRecords(ours, theirs) {
+  const phrases = { ...(theirs.phrases ?? {}) };
+  for (const [h, v] of Object.entries(ours.phrases ?? {})) {
+    const t = phrases[h];
+    phrases[h] = t ? { n: v.n, at: Math.min(Number(v.at) || 0, Number(t.at) || 0) } : v;
+  }
+  const times = [ours.forgetAllAt, theirs.forgetAllAt].filter(Number.isFinite);
+  return { forgetAllAt: times.length ? Math.max(...times) : null, phrases };
+}
+const redactionChangedAt = rec => Math.max(Number(rec?.forgetAllAt) || 0,
+  ...Object.values(rec?.phrases ?? {}).map(v => Number(v?.at) || 0), 0);
+
+const binding = bindOwnerStore({
+  storeKey: '.aqua-recall-redactions.json',
+  file: FILE,
+  label: 'recall-redactions',
+  schema: SCHEMA,
+  encode: owner => { const rec = store.get(owner); return rec ? encodeRecord(rec) : undefined; },
+  decode: decodeRecord,
+  install: (owner, rec) => { if (rec) store.set(owner, rec); else store.delete(owner); },
+  merge: mergeRedactionRecords,
+  changedAt: redactionChangedAt,
+  // After an account purge at `at`, only redactions made at or after it survive.
+  pruneBefore: (rec, at) => {
+    for (const [h, v] of Object.entries(rec.phrases ?? {})) if ((Number(v?.at) || 0) < at) delete rec.phrases[h];
+    if (!((Number(rec.forgetAllAt) || 0) >= at)) rec.forgetAllAt = null;
+    return Object.keys(rec.phrases ?? {}).length || rec.forgetAllAt != null ? rec : null;
+  },
+  evict: owner => store.delete(owner),
+  reloadJson: () => load(),
+});
+export function redactionsPartitionBinding() { return binding; }
+
+if (binding.loadsJsonAtBoot()) load();
+
+function persist(ownerId = null) {
+  if (ownerId) binding.markDirty(ownerId);
+  if (!binding.writesWholeJson()) {
+    // A forget must survive a crash: start the partition write now, not after the debounce.
+    binding.flush().catch(() => {});
+    return;
+  }
   writer.schedule(() => {
     const data = {};
     for (const [owner, rec] of store) {
@@ -104,7 +161,7 @@ export function redactPhrases(ownerId, phrases, { at = Date.now() } = {}) {
     if (!rec.phrases.has(h)) { rec.phrases.set(h, { n: ws.length, at }); added++; }
   }
   while (rec.phrases.size > MAX_PHRASES_PER_OWNER) rec.phrases.delete(rec.phrases.keys().next().value);
-  if (added) { rec.rev = ++REVISION; persist(); }
+  if (added) { rec.rev = ++REVISION; persist(ownerId); }
   return added;
 }
 
@@ -114,7 +171,7 @@ export function redactAllBefore(ownerId, at = Date.now()) {
   const rec = recordFor(ownerId);
   rec.forgetAllAt = Math.max(rec.forgetAllAt ?? 0, at);
   rec.rev = ++REVISION;
-  persist();
+  persist(ownerId);
 }
 
 /**
@@ -123,6 +180,10 @@ export function redactAllBefore(ownerId, at = Date.now()) {
  * contains a redacted phrase as whole words.
  */
 export function redactionsFor(ownerId) {
+  if (ownerId && !binding.ready(ownerId)) {
+    // Not loaded (partitions authoritative): fail CLOSED. See the header.
+    return { active: true, stamp: `${ownerId}#not-loaded`, isRedacted: () => true };
+  }
   const rec = ownerId ? store.get(ownerId) : null;
   if (!rec || (!rec.phrases.size && rec.forgetAllAt == null)) {
     return { active: false, isRedacted: () => false };
@@ -150,8 +211,9 @@ export function redactionsFor(ownerId) {
 
 /** Account deletion: nothing about this owner survives. Returns the phrase count removed. */
 export function purgeOwner(ownerId) {
+  binding.markDeleted(ownerId);   // tombstone even if this process never loaded it
   const rec = store.get(ownerId);
-  if (!rec) return 0;
+  if (!rec) { if (!binding.writesWholeJson()) binding.flush().catch(() => {}); return 0; }
   store.delete(ownerId);
   persist();
   return rec.phrases.size;
@@ -161,4 +223,5 @@ export function purgeOwner(ownerId) {
 export function __resetForTests() {
   writer.cancel();
   store.clear();
+  binding._reset();
 }

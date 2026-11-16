@@ -14,10 +14,11 @@ export function runBoundedRetrievalRounds({
   limit = 8,
   retrieve,
   queryPlan = null,
+  personalWorld,
 }) {
   if (typeof retrieve !== 'function') throw new TypeError('retrieve must be a function');
 
-  const plan = queryPlan ?? buildQueryPlan(query, { taskType });
+  const plan = queryPlan ?? buildQueryPlan(query, { taskType, personalWorld });
   const roundCalls = [];
   const first = retrieve(query, {
     limit,
@@ -88,10 +89,11 @@ export async function runBoundedRetrievalRoundsAsync({
   limit = 8,
   retrieve,
   queryPlan = null,
+  personalWorld,
 }) {
   if (typeof retrieve !== 'function') throw new TypeError('retrieve must be a function');
 
-  const plan = queryPlan ?? buildQueryPlan(query, { taskType });
+  const plan = queryPlan ?? buildQueryPlan(query, { taskType, personalWorld });
   const roundCalls = [];
   const first = await retrieve(query, {
     limit,

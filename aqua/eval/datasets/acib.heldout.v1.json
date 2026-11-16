@@ -1,0 +1,210 @@
+{
+  "id": "acib-heldout",
+  "version": "1",
+  "status": "HELD-OUT SET — authored 2026-11-10 BEFORE the information-needs engine (Sprint 3) was written, frozen by acib.heldout.v1.FROZEN.sha256 before its first run. Different domains, people and phrasings from acib.v1. Never tune against it; a change is a reviewed change and a new version.",
+  "about": "Same schema and scoring as acib.v1 (eval/suites/acibScoring.mjs).",
+  "regimes": {
+    "short": "history only",
+    "long": "history, then filler conversations until the user's past messages exceed 9,000 characters"
+  },
+  "fillerTargetChars": 9000,
+  "filler": [
+    "What's a good way to keep cut flowers fresh for longer?",
+    "I watched a documentary about lighthouses last night, oddly relaxing.",
+    "Explain how a refrigerator keeps things cold.",
+    "Give me a simple recipe for lentil soup.",
+    "Why do onions make you cry when you cut them?",
+    "I finally organised the garage this weekend.",
+    "Recommend a few classic novels that are short.",
+    "How do I remove a coffee stain from a white shirt?",
+    "What is the difference between weather and climate?",
+    "I enjoy sketching birds at the park on quiet mornings.",
+    "Suggest a card game for two people.",
+    "How does compound interest work, in simple terms?",
+    "What are some good houseplants for low light?",
+    "I tried making dumplings from scratch and they fell apart.",
+    "Tell me a fun fact about honeybees.",
+    "How do I sharpen a kitchen knife safely?",
+    "What's the origin of the word 'quarantine'?",
+    "I listened to an album of old sea shanties today.",
+    "How do solar panels generate electricity?",
+    "What should I pack for a rainy weekend hike?",
+    "Explain what a sonnet is.",
+    "Give me ideas for a rainy afternoon indoors.",
+    "Why is the sky darker at the zenith than near the horizon?",
+    "I repotted my fern and it already looks happier.",
+    "How long do boiled eggs keep in the fridge?",
+    "Recommend an easy jigsaw puzzle size for a beginner.",
+    "What causes thunder?",
+    "How do I make a paper airplane that flies far?",
+    "Tell me about the history of chess briefly.",
+    "I bought a second-hand bicycle with a wicker basket.",
+    "What's the best way to defrost frozen bread?",
+    "Explain how vaccines train the immune system, briefly.",
+    "Suggest a podcast about space exploration.",
+    "How do I stop squeaky door hinges?",
+    "What is a haiku's syllable pattern?",
+    "I tried a new route to the station and it was quieter.",
+    "What are the primary colours in painting?",
+    "Why do cats purr?",
+    "How do I keep a notebook organised?",
+    "Give me a tongue twister."
+  ],
+  "scenarios": [
+    {
+      "id": "ho-job-offer",
+      "category": "Decision with several facts",
+      "dimensions": ["D5", "D8", "D9"],
+      "critical": true,
+      "history": [
+        { "id": "m1", "conv": "c1", "text": "I work as a nurse manager at St Aldric Hospital and earn 58,000 a year." },
+        { "id": "m2", "conv": "c2", "text": "Lumen Health offered me a clinical lead role at 66,000 a year." },
+        { "id": "m3", "conv": "c3", "text": "The Lumen office is a 90 minute commute each way from my flat." },
+        { "id": "m4", "conv": "c4", "text": "My partner and I agreed we want to stay in this city until our daughter finishes school." },
+        { "id": "m5", "conv": "c5", "text": "I'm halfway through a weekend pottery course." },
+        { "id": "m6", "conv": "c6", "text": "The Lumen offer expires on Friday." }
+      ],
+      "question": "Should I take the Lumen offer?",
+      "needs": [
+        { "id": "current-pay", "required": true, "match": ["58,?000"], "evidence": ["earn 58,000 a year"], "slots": ["constraints"] },
+        { "id": "offer", "required": true, "match": ["66,?000", "clinical lead"], "evidence": ["clinical lead role at 66,000"], "slots": ["goal", "evidence"] },
+        { "id": "commute", "required": true, "match": ["commute", "90 minute"], "evidence": ["90 minute commute"], "slots": ["constraints"] },
+        { "id": "family", "required": true, "match": ["stay in this city", "daughter"], "evidence": ["stay in this city until our daughter finishes school"], "slots": ["constraints", "prior_plans"] },
+        { "id": "deadline", "required": true, "match": ["friday", "expires"], "evidence": ["offer expires on Friday"], "slots": ["deadline"] }
+      ],
+      "distractors": [ { "id": "pottery", "match": ["pottery"] } ]
+    },
+    {
+      "id": "ho-car",
+      "category": "Missing information (affordability)",
+      "dimensions": ["D10", "D9"],
+      "history": [
+        { "id": "m1", "conv": "c1", "text": "We have about 9,000 in savings right now." },
+        { "id": "m2", "conv": "c2", "text": "The used estate car we like costs 14,500." },
+        { "id": "m3", "conv": "c3", "text": "Our neighbour just got a new puppy." }
+      ],
+      "question": "Can we afford to replace the car this year?",
+      "needs": [
+        { "id": "savings", "required": true, "match": ["9,?000", "savings"], "evidence": ["9,000 in savings"], "slots": ["constraints"] },
+        { "id": "price", "required": true, "match": ["14,?500"], "evidence": ["costs 14,500"], "slots": ["evidence"] }
+      ],
+      "distractors": [ { "id": "puppy", "match": ["puppy", "neighbour"] } ],
+      "unknowns": [ { "id": "income", "label": "monthly income or what they can save per month", "match": ["income", "earn", "save per month", "monthly"] } ]
+    },
+    {
+      "id": "ho-kids-saturday",
+      "category": "Planning with several facts",
+      "dimensions": ["D8", "D9"],
+      "history": [
+        { "id": "m1", "conv": "c1", "text": "My kids are Noor, who is 9, and Idris, who is 6." },
+        { "id": "m2", "conv": "c2", "text": "Noor has football practice every Saturday at 10am." },
+        { "id": "m3", "conv": "c3", "text": "Both kids love the science museum." },
+        { "id": "m4", "conv": "c4", "text": "My boss wants the quarterly report by Monday." }
+      ],
+      "question": "Plan my Saturday with the kids.",
+      "needs": [
+        { "id": "kids", "required": true, "match": ["noor", "idris"], "evidence": ["My kids are Noor"], "slots": ["constraints"] },
+        { "id": "practice", "required": true, "match": ["football", "10am"], "evidence": ["football practice every Saturday at 10am"], "slots": ["constraints", "deadline"] },
+        { "id": "interests", "required": true, "match": ["science museum"], "evidence": ["love the science museum"], "slots": ["constraints"] }
+      ],
+      "distractors": [ { "id": "report", "match": ["quarterly report", "boss"] } ]
+    },
+    {
+      "id": "ho-brother",
+      "category": "Third-party facts",
+      "dimensions": ["D4"],
+      "history": [
+        { "id": "m1", "conv": "c1", "text": "My brother Tomas lives in Ghent and works as an architect." },
+        { "id": "m2", "conv": "c2", "text": "I live in Utrecht and teach maths." }
+      ],
+      "question": "Where does my brother live?",
+      "needs": [ { "id": "brother-city", "required": true, "match": ["ghent"], "evidence": ["Tomas lives in Ghent"], "slots": ["topic", "subject_state"] } ],
+      "distractors": [ { "id": "self", "match": ["utrecht", "teach maths"] } ],
+      "crossEntity": [ { "id": "ghent-is-not-the-user", "forbid": ["(city|location|lives? in|home)\\W.*ghent", "(role|profession)\\W.*architect"] } ]
+    },
+    {
+      "id": "ho-migration",
+      "category": "Multiple related projects",
+      "dimensions": ["D4", "D8"],
+      "history": [
+        { "id": "m1", "conv": "c1", "text": "We have two migrations this quarter: Orion moves billing to the new cluster, and Vega moves search." },
+        { "id": "m2", "conv": "c2", "text": "Orion is two weeks behind because the vendor hasn't delivered the API keys." },
+        { "id": "m3", "conv": "c3", "text": "Vega finished early and is already live." }
+      ],
+      "question": "Is the Orion migration on schedule?",
+      "needs": [ { "id": "orion-status", "required": true, "match": ["orion.*(behind|vendor|api keys)", "two weeks behind"], "evidence": ["Orion is two weeks behind"], "slots": ["subject_state", "blockers"] } ],
+      "distractors": [ { "id": "vega", "match": ["vega finished", "already live"] } ],
+      "crossEntity": [ { "id": "vega-not-orion", "forbid": ["vega.*(behind|api keys)"] } ]
+    },
+    {
+      "id": "ho-landlord",
+      "category": "User corrections",
+      "dimensions": ["D3", "D7"],
+      "history": [
+        { "id": "m1", "conv": "c1", "text": "My landlord is Mr. Okafor." },
+        { "id": "m2", "conv": "c2", "text": "Correction: my landlord is Mr. Adeyemi, Okafor was the previous one." }
+      ],
+      "question": "Who is my landlord?",
+      "needs": [ { "id": "landlord", "required": true, "match": ["adeyemi"], "evidence": ["my landlord is Mr. Adeyemi"], "slots": ["subject_state", "topic"] } ],
+      "distractors": [],
+      "temporal": { "current": ["adeyemi"], "stale": ["okafor"] }
+    },
+    {
+      "id": "ho-leave",
+      "category": "Contradictory statements",
+      "dimensions": ["D7"],
+      "history": [
+        { "id": "m1", "conv": "c1", "text": "I have 12 days of annual leave left this year." },
+        { "id": "m2", "conv": "c2", "text": "HR says I have 9 days of annual leave left." }
+      ],
+      "question": "How many days of annual leave do I have left?",
+      "needs": [
+        { "id": "leave-a", "required": true, "match": ["12 days"], "evidence": ["12 days of annual leave"], "slots": ["subject_state"] },
+        { "id": "leave-b", "required": true, "match": ["9 days"], "evidence": ["9 days of annual leave"], "slots": ["subject_state"] }
+      ],
+      "distractors": [],
+      "contradiction": { "a": ["12 days"], "b": ["9 days"] }
+    },
+    {
+      "id": "ho-sourdough",
+      "category": "Long conversation history",
+      "dimensions": ["D2"],
+      "history": [
+        { "id": "m1", "conv": "c1", "text": "I named my sourdough starter Bubbles." },
+        { "id": "m2", "conv": "c1", "text": "I feed it twice a day with rye flour." }
+      ],
+      "inlineFiller": 30,
+      "question": "What's my starter called?",
+      "needs": [ { "id": "starter-name", "required": true, "match": ["bubbles"], "evidence": ["starter Bubbles"], "slots": ["topic"] } ],
+      "distractors": []
+    },
+    {
+      "id": "ho-impersonal",
+      "category": "Irrelevant historical information",
+      "dimensions": ["D6"],
+      "history": [
+        { "id": "m1", "conv": "c1", "text": "I'm a structural engineer in Lyon and I'm saving for a sailboat." },
+        { "id": "m2", "conv": "c2", "text": "My wife Camille is training for a triathlon." }
+      ],
+      "question": "How many planets are in the solar system?",
+      "needs": [],
+      "distractors": [ { "id": "any-personal", "match": ["engineer", "lyon", "sailboat", "camille", "triathlon"] } ]
+    },
+    {
+      "id": "ho-pricing",
+      "category": "Missing information (decision)",
+      "dimensions": ["D10", "D5"],
+      "history": [
+        { "id": "m1", "conv": "c1", "text": "Our app costs 8 euros a month and we have about 1,200 subscribers." },
+        { "id": "m2", "conv": "c2", "text": "I'm thinking about whether to raise the price." }
+      ],
+      "question": "Is it a good time to raise our price?",
+      "needs": [
+        { "id": "current-price", "required": true, "match": ["8 euros"], "evidence": ["costs 8 euros a month"], "slots": ["subject_state", "constraints"] },
+        { "id": "subscribers", "required": true, "match": ["1,?200"], "evidence": ["1,200 subscribers"], "slots": ["subject_state"] }
+      ],
+      "distractors": [],
+      "unknowns": [ { "id": "churn", "label": "churn or how customers reacted to past price changes", "match": ["churn", "cancel", "retention"] } ]
+    }
+  ]
+}

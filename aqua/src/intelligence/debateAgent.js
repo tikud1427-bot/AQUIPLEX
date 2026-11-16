@@ -40,7 +40,11 @@ import { generateText }  from '../providers/router.js';
 import { createContext } from '../core/observability.js';
 import { registerAgent } from './agentRegistry.js';
 import { selectPanel, normalizeFinding, synthesizeDebate } from './debatePanel.js';
-import { hasGroundedEvidence, isCapabilityRefusal, isUsableRevision } from './evidenceContext.js';
+import {
+  hasGroundedEvidence, isCapabilityRefusal, isUsableRevision,
+  CONVERSATION_GROUNDING_RULE, conversationReviewBlock, withdrawalReason, classifyRevision,
+} from './evidenceContext.js';
+import { renderRecentConversation, referenceNote } from '../core/conversationContext.js';
 
 /**
  * Phase 0 (audit F3) — grounding contract, panel edition. Deep-review turns
@@ -53,12 +57,14 @@ import { hasGroundedEvidence, isCapabilityRefusal, isUsableRevision } from './ev
  * @param {boolean} grounded - evidence block accompanies the review input
  * @returns {string} system prompt for the single panel-review call
  */
-function buildPanelPrompt(panel, grounded = false) {
+function buildPanelPrompt(panel, grounded = false, withConversation = false) {
   const roster = panel.map(p => `- ${p.id} (${p.name}): ${p.charter}`).join('\n');
   const ids = panel.map(p => p.id).join(', ');
   return [
     "You are AQUA's internal review panel. Three independent reviewers each examine a draft answer strictly from their own charter. Reviewers do not defer to each other — genuine disagreement must be reported, not smoothed over.",
     '',
+    // D-02 (2026-11-16): the panel sees the conversation the draft answered.
+    ...(withConversation ? [CONVERSATION_GROUNDING_RULE, ''] : []),
     ...(grounded ? [
       'The draft was written WITH the evidence context included in the review input (file analyses, project context, search results, memory). Every reviewer treats that evidence as ground truth available to the drafter: claims supported by it are grounded, NOT hallucinations, and file/media analyses there were already performed by the platform. No reviewer may report an issue asserting that files, videos, images, audio, or documents cannot be accessed or analyzed.',
       // E1/PR-5b — the same distinction the verification pass makes. The
@@ -157,13 +163,19 @@ export async function runDebate({
   maxPasses = 1,
   costLedger = null,
   evidenceContext = '',           // Phase 0 (F3): grounding contract — see buildPanelPrompt
+  conversationContext = null,     // D-02 (2026-11-16): core/conversationContext.js — the chat the draft answered
   generate = generateText,
 }) {
   const panel      = selectPanel(taskType, tags);
   const panelIds   = panel.map(p => p.id);
   const allowedIds = new Set(panelIds);
   const grounded   = hasGroundedEvidence(evidenceContext);
-  const panelPrompt = buildPanelPrompt(panel, grounded);
+  const conversationBlock = conversationReviewBlock(conversationContext, renderRecentConversation, referenceNote);
+  const panelPrompt = buildPanelPrompt(panel, grounded, !!conversationBlock);
+  const questionLabel = conversationBlock ? 'Latest user message' : 'Original user question';
+  let suppressedWithdrawals = 0;   // D-02: a revision withdrawing an answer the panel could not fault
+  let outcome = null;              // what the review PROPOSED (evidenceContext.js REVIEW_OUTCOMES)
+  let revisionReason = null;       // the panel issues the applied revision fixed
   const evidenceBlock = grounded
     ? `Evidence context available to the drafter (ground truth):\n${evidenceContext}\n\n`
     : '';
@@ -202,6 +214,8 @@ export async function runDebate({
       panel: panelIds,
       findings,
       disagreements: extraDisagreements,
+      suppressedWithdrawals, outcome, applied: revised, revisionReason,
+      conversationAware: !!conversationBlock,
       provider,
       latencyMs: Date.now() - start,
       error,
@@ -218,7 +232,7 @@ export async function runDebate({
       const result = await generate(
         userMessage,
         panelPrompt,
-        [{ role: 'user', content: `${evidenceBlock}Original user question:\n${userMessage}\n\nDraft answer to review:\n${current}` }],
+        [{ role: 'user', content: `${evidenceBlock}${conversationBlock}${questionLabel}:\n${userMessage}\n\nDraft answer to review:\n${current}` }],
         debateCtx,
         taskType,
         undefined,
@@ -243,6 +257,7 @@ export async function runDebate({
     passes += 1;
 
     if (synth.consensusPass) {
+      outcome = "ACCEPT";
       passed = true;
       converged = true;
       disagreements = [];
@@ -276,7 +291,7 @@ export async function runDebate({
       const result = await generate(
         userMessage,
         REVISION_PROMPT,
-        [{ role: 'user', content: `${evidenceBlock}Original user question:\n${userMessage}\n\nDraft answer:\n${current}\n\nPanel issues to fix:\n${issueList}` }],
+        [{ role: 'user', content: `${evidenceBlock}${conversationBlock}${questionLabel}:\n${userMessage}\n\nDraft answer:\n${current}\n\nPanel issues to fix:\n${issueList}` }],
         debateCtx,
         taskType,
         undefined,
@@ -326,8 +341,20 @@ export async function runDebate({
         break;
       }
 
+      // ── D-02 (2026-11-16) — withdrawal guard (same rule as verificationAgent.js).
+      outcome = classifyRevision(revision);
+      const withdrawn = withdrawalReason(current, revision, conversationContext);
+      if (withdrawn) {
+        suppressedWithdrawals += 1;
+        console.warn(`[DEBATE] ${withdrawn} SUPPRESSED (pass ${passes}/${cap}) — keeping ${revised ? 'latest revision' : 'draft'}`);
+        disagreements = synth.issues;
+        converged = false;
+        break;
+      }
+
       current  = revision;
       revised  = true;
+      revisionReason = synth.issues.map(f => `${f.persona}: ${f.issue}`).join("; ").slice(0, 300) || "panel issues";
       disagreements = []; // objections are being resolved by this revision…
     } catch (err) {
       // …unless the fix couldn't be produced: the panel's objection goes on
@@ -350,6 +377,8 @@ export async function runDebate({
     panel: panelIds,
     findings,
     disagreements,
+    suppressedWithdrawals, outcome, applied: revised, revisionReason,
+    conversationAware: !!conversationBlock,
     provider,
     latencyMs: Date.now() - start,
     attemptCount: debateCtx.attempts.length,

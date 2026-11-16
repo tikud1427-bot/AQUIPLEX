@@ -183,6 +183,185 @@ const state = {
 function log(msg)  { console.log(`[MIRROR] ${msg}`); }
 function warn(msg) { console.warn(`[MIRROR] ${msg}`); }
 
+// ── Verified initialization (Sprint 1, 2026-11-10 — audit F-20) ──────────────
+//
+// THE INCIDENT THIS PREVENTS. Render gives every deploy an empty disk. If Mongo
+// is unreachable while a new instance boots, hydration fails and the stores
+// load EMPTY. The old code then mirrored the first flush once Mongo came back:
+// the CAS filter (no known generation) missed, the conflict path preserved the
+// live backup under conflict/… (pruned to the newest 3) and LANDED THE EMPTY
+// STORE AS LIVE. The next deploy hydrated nothing. Every user's memory gone,
+// recoverable only by hand, and only while the preserved copy survived pruning.
+//
+// THE RULE. A local store may overwrite its backup only when its LINEAGE is
+// known: this process hydrated it (or confirmed the backup has none), or the
+// marker below records that it descends from the backup's current generation.
+//   · Hydration failed           → `sync.status = 'unverified'`; nothing is
+//                                   mirrored; the backup is untouched.
+//   · Mongo answers again        → reconcile on metadata: a file whose remote
+//                                   generation matches the marker resumes; a file
+//                                   with unknown lineage is BLOCKED — its local
+//                                   copy (the outage-period writes) is preserved
+//                                   as conflict/<file>/local-<instance>, the live
+//                                   backup is left alone, and status says
+//                                   "recovery required: restart to load it".
+//   · Next boot                  → for a file with unknown lineage the backup
+//                                   wins and the local copy is preserved first.
+// "Missing" vs "valid empty": a store the backup does not have, seen by a
+// hydration that SUCCEEDED, is valid (new store); any store seen by a failed
+// one is unverified, empty or not.
+//
+// THE MARKER. `<DATA_DIR>/.mirror-sync.json`, written with plain fs (never
+// through atomicStore, so it is never mirrored): per file, the remote
+// generation the local copy equals or descends from; `unverifiedSince` while
+// the data dir has run without a verified hydration. Updated per file as
+// hydration proceeds and after every successful mirror write, so an
+// interrupted initialization restarts from what is actually on disk.
+// No marker at all = a data dir from before this change: the previous
+// newer-wins rule applies (documented in AQUIPLEX_SPRINT1_PRODUCTION_SAFETY_REPORT.md).
+
+const SYNC_MARKER = '.mirror-sync.json';
+const LOCAL_RECOVERY_TAG = 'local-';
+
+const sync = {
+  status: 'pending',          // 'pending' | 'verified' | 'unverified' | 'not-configured'
+  dataDir: null,
+  unverifiedSince: null,
+  blocked: new Map(),         // filename → { reason, remoteGen, since, preservedAs }
+  lastAttemptAt: 0,
+  reconciling: null,          // single-flight promise
+  preservedLocal: [],         // ids of local copies preserved during recovery
+};
+const RECONCILE_MIN_INTERVAL_MS = 15_000;
+
+function markerPath() { return sync.dataDir ? path.join(sync.dataDir, SYNC_MARKER) : null; }
+
+function readMarker() {
+  const p = markerPath();
+  if (!p) return null;
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; }
+}
+
+/** Atomic (temp + rename). Never throws: a marker that cannot be written leaves the previous one. */
+function writeMarker(m) {
+  const p = markerPath();
+  if (!p) return;
+  const tmp = `${p}.tmp.${process.pid}`;
+  try {
+    fs.writeFileSync(tmp, JSON.stringify({ version: 1, ...m, updatedAt: Date.now() }), 'utf8');
+    fs.renameSync(tmp, p);
+  } catch (err) {
+    try { fs.unlinkSync(tmp); } catch { /* absent */ }
+    warn(`sync marker not written (${err.code ?? err.message}) — lineage of local stores stays unverified`);
+  }
+}
+
+function updateMarker(fn) {
+  const m = readMarker() ?? { files: {}, unverifiedSince: null };
+  m.files ??= {};
+  fn(m);
+  writeMarker(m);
+}
+
+/** Record that the local copy of `filename` now equals remote generation `gen`. */
+function recordLineage(filename, gen) {
+  if (gen === undefined || gen === null) return;
+  updateMarker(m => { m.files[filename] = { gen, at: Date.now() }; });
+}
+
+function enterUnverified(reason) {
+  sync.status = 'unverified';
+  const m = readMarker();
+  sync.unverifiedSince = m?.unverifiedSince ?? Date.now();
+  updateMarker(mm => { mm.unverifiedSince = sync.unverifiedSince; mm.unverifiedReason = reason; });
+  warn(`initialization UNVERIFIED (${reason}) — local stores are not mirrored; the Mongo backup is left untouched until its state is confirmed`);
+}
+
+/** Can this file's payload overwrite its backup right now? */
+function writeAllowed(filename) {
+  return sync.status === 'verified' && !sync.blocked.has(filename);
+}
+
+/** Lineage of an existing local file against a remote generation. */
+function lineageKnown(marker, filename, remoteGen) {
+  return !!marker && marker.files?.[filename]?.gen !== undefined && marker.files[filename].gen === remoteGen;
+}
+
+/** Docs that are live stores (not parts, canary, lock or preserved generations). */
+function liveDocs(docs) {
+  return docs.filter(d => !d.part && d._id !== CANARY_ID && d._id !== LOCK_ID
+    && !d.conflict && !String(d._id ?? '').startsWith(CONFLICT_PREFIX));
+}
+
+/**
+ * Store a LOCAL copy whose lineage is unknown under conflict/<file>/local-<instance>,
+ * chunked like a live store when large. Never touches the live doc. Excluded from
+ * pruning (prunePreserved skips localRecovery docs): it can be the only copy of
+ * what users wrote while the backup was unreachable.
+ */
+async function preserveLocal(col, filename, json) {
+  const id = `${CONFLICT_PREFIX}${filename}/${LOCAL_RECOVERY_TAG}${INSTANCE_ID}`;
+  const bytes = Buffer.byteLength(json, 'utf8');
+  const base = { conflict: true, localRecovery: true, of: filename, writer: INSTANCE_ID, preservedAt: Date.now(), updatedAt: Date.now(), bytes,
+    unverifiedSince: sync.unverifiedSince };
+  if (bytes <= CHUNK_BYTES) {
+    await col.updateOne({ _id: id }, { $set: { ...base, chunked: false, parts: 0, json } }, { upsert: true });
+  } else {
+    const gen = nextGen();
+    const n = Math.ceil(json.length / CHUNK_CHARS);
+    for (let i = 0; i < n; i++) {
+      await col.updateOne({ _id: `${id}::part${gen}:${i}` },
+        { $set: { part: true, of: id, i, gen, json: json.slice(i * CHUNK_CHARS, (i + 1) * CHUNK_CHARS) } }, { upsert: true });
+    }
+    await col.updateOne({ _id: id }, { $set: { ...base, chunked: true, parts: n, gen, json: null } }, { upsert: true });
+  }
+  if (!sync.preservedLocal.includes(id)) sync.preservedLocal.push(id);
+  return id;
+}
+
+/**
+ * Mongo answered after an unverified start: decide, per remote store, whether
+ * this process may resume writing it. Metadata only (no store bodies are read).
+ * Single-flight and rate-limited; never throws.
+ */
+async function reconcileAfterOutage() {
+  if (sync.status === 'verified') return true;
+  if (sync.reconciling) return sync.reconciling;
+  if (Date.now() - sync.lastAttemptAt < RECONCILE_MIN_INTERVAL_MS) return false;
+  sync.lastAttemptAt = Date.now();
+  sync.reconciling = (async () => {
+    try {
+      const col = await connect();
+      if (!col) return false;
+      const docs = await col.find({}, { projection: { json: 0 } }).toArray();
+      const marker = readMarker();
+      for (const doc of liveDocs(docs)) {
+        const filename = String(doc._id);
+        if (lineageKnown(marker, filename, doc.gen)) {
+          state.knownGen.set(filename, doc.gen);
+          continue;
+        }
+        sync.blocked.set(filename, { reason: 'lineage-unknown', remoteGen: doc.gen ?? null, since: sync.unverifiedSince, preservedAs: null });
+      }
+      sync.status = 'verified';   // the remote state is KNOWN now; blocked files stay blocked
+      if (sync.blocked.size) {
+        warn(`RECOVERY REQUIRED — Mongo is reachable again after an unverified start. ${sync.blocked.size} store(s) hold a backup this instance did not load; the backups are left untouched and this instance's local copies are preserved as conflict/<file>/${LOCAL_RECOVERY_TAG}<instance>. Restart the service to load the backups.`);
+      } else {
+        updateMarker(m => { m.unverifiedSince = null; m.unverifiedReason = null; });
+        sync.unverifiedSince = null;
+        log('initialization verified after outage — no backed-up store diverged; mirroring resumes');
+      }
+      return true;
+    } catch (err) {
+      noteFailure('post-outage reconciliation failed', err);
+      return false;
+    } finally {
+      sync.reconciling = null;
+    }
+  })();
+  return sync.reconciling;
+}
+
 /**
  * Warn, but collapse an unchanging message. An outage repeats the SAME error
  * every 30s forever; printing all of them buries everything else in the log.
@@ -423,9 +602,18 @@ async function releaseLease() {
  */
 export async function hydrateFromMongo(dataDir) {
   const empty = { restored: 0, kept: 0, total: 0 };
+  sync.dataDir = dataDir;
+  const mirrorConfigured = !!process.env.MONGO_URI && process.env.AQUA_DISABLE_MONGO_MIRROR !== '1';
   try {
     const col = await connect();
-    if (!col) return empty;
+    if (!col) {
+      // Configured but unreachable: the local stores' relation to the backup is
+      // unknown. Not configured at all: there is no backup to protect.
+      if (mirrorConfigured || state.collection) enterUnverified('mongo-unreachable-at-boot');
+      else sync.status = 'not-configured';
+      return { ...empty, verified: sync.status === 'verified', status: sync.status };
+    }
+    const marker = readMarker();   // BEFORE this hydration writes anything
 
     const docs = await col.find({}).toArray();
     const parts = new Map();               // "of:gen" → [ {i, json} ]
@@ -443,7 +631,7 @@ export async function hydrateFromMongo(dataDir) {
       mains.push(doc);
     }
 
-    let restored = 0, kept = 0;
+    let restored = 0, kept = 0, preserved = 0;
     for (const doc of mains) {
       const filename = String(doc._id ?? '');
       // Defense: _id is a filename WE wrote (basename form). Refuse anything
@@ -460,7 +648,10 @@ export async function hydrateFromMongo(dataDir) {
       if (doc.chunked) {
         const set = (parts.get(`${filename}:${doc.gen}`) ?? []).sort((a, b) => a.i - b.i);
         if (set.length !== doc.parts || set.some((p, i) => p.i !== i || typeof p.json !== 'string')) {
-          warn(`${filename}: chunk set incomplete (${set.length}/${doc.parts} gen=${doc.gen}) — keeping local copy.`);
+          // Keep the local copy for reading — but never let it overwrite a backup
+          // this process could not read (Sprint 1): the file is blocked.
+          sync.blocked.set(filename, { reason: 'remote-chunk-set-incomplete', remoteGen: doc.gen ?? null, since: Date.now(), preservedAs: null });
+          warn(`${filename}: chunk set incomplete (${set.length}/${doc.parts} gen=${doc.gen}) — keeping local copy; NOT mirroring it over the backup.`);
           continue;
         }
         json = set.map(p => p.json).join('');
@@ -474,7 +665,27 @@ export async function hydrateFromMongo(dataDir) {
       let fileMtime = 0;
       try { fileMtime = fs.statSync(target).mtimeMs; } catch { /* absent */ }
       const docTime = Number(doc.updatedAt ?? 0);
-      if (fileMtime && fileMtime >= docTime) { kept++; continue; }
+      // A local copy whose lineage the marker cannot vouch for (it was written
+      // while this data dir ran unverified, or the backup has moved since) must
+      // not win on mtime: preserve it in Mongo, then restore the backup.
+      // No marker at all = a data dir from before this rule: newer-wins, as before.
+      const unknownLineage = fileMtime && marker && !lineageKnown(marker, filename, doc.gen);
+      if (unknownLineage) {
+        try {
+          const id = await preserveLocal(col, filename, fs.readFileSync(target, 'utf8'));
+          preserved++;
+          warn(`${filename}: local copy has unknown lineage (written while unverified, or the backup moved) — preserved as "${id}", restoring the backup`);
+        } catch (err) {
+          // Could not preserve it: do not destroy it either. Keep local, block mirroring.
+          sync.blocked.set(filename, { reason: 'local-unpreservable', remoteGen: doc.gen ?? null, since: Date.now(), preservedAs: null });
+          warn(`${filename}: local copy has unknown lineage and could not be preserved (${err.message}) — keeping it, NOT mirroring it`);
+          continue;
+        }
+      } else if (fileMtime && fileMtime >= docTime) {
+        kept++;
+        recordLineage(filename, doc.gen);
+        continue;
+      }
 
       // Atomic write (temp+rename) — same guarantee as atomicStore, inlined
       // to avoid an import cycle (atomicStore imports this module).
@@ -483,17 +694,29 @@ export async function hydrateFromMongo(dataDir) {
         fs.writeFileSync(tmp, json, 'utf8');
         fs.renameSync(tmp, target);
         restored++;
+        recordLineage(filename, doc.gen);   // per file: an interrupted hydration resumes from here
       } catch (err) {
         try { fs.unlinkSync(tmp); } catch { /* temp may not exist */ }
-        warn(`could not restore ${filename}: ${err.message}`);
+        // The backup could not be loaded, so the local copy (if any) is not it.
+        sync.blocked.set(filename, { reason: 'restore-failed', remoteGen: doc.gen ?? null, since: Date.now(), preservedAs: null });
+        warn(`could not restore ${filename}: ${err.message} — NOT mirroring it over the backup`);
       }
     }
 
-    log(`hydration: ${restored} restored, ${kept} kept (local newer), ${mains.length} mirrored file(s)`);
-    return { restored, kept, total: mains.length };
+    // The backup's state is known now. Blocked files stay blocked for this process.
+    sync.status = 'verified';
+    if (!sync.blocked.size) {
+      // Clear a previous unverified state. With nothing to record, no marker is
+      // written (recordLineage creates it on the first restored or mirrored file).
+      if (readMarker()) updateMarker(m => { m.unverifiedSince = null; m.unverifiedReason = null; m.verifiedAt = Date.now(); });
+      sync.unverifiedSince = null;
+    }
+    log(`hydration: ${restored} restored, ${kept} kept (local newer), ${preserved} local copies preserved, ${sync.blocked.size} blocked, ${mains.length} mirrored file(s) — initialization verified`);
+    return { restored, kept, preserved, blocked: sync.blocked.size, total: mains.length, verified: true, status: sync.status };
   } catch (err) {
     warn(`hydration failed (${err.message}) — continuing with local files only.`);
-    return empty;
+    enterUnverified('hydration-failed');
+    return { ...empty, verified: false, status: sync.status };
   }
 }
 
@@ -538,6 +761,9 @@ const PRESERVE_PER_FILE = 3;
 async function prunePreserved(col, filename) {
   try {
     const docs = (await col.find({ conflict: true, of: filename }).toArray())
+      // A local copy preserved during outage recovery can be the ONLY copy of
+      // what users wrote meanwhile: never pruned automatically (Sprint 1).
+      .filter(d => !d.localRecovery)
       .sort((a, b) => Number(b.preservedAt ?? 0) - Number(a.preservedAt ?? 0));
     for (const d of docs.slice(PRESERVE_PER_FILE)) {
       if (typeof col.deleteMany !== 'function') break;
@@ -612,7 +838,32 @@ async function upsertLoop(filename) {
         requeue(filename, json);
         return;
       }
+      if (sync.status !== 'verified') {
+        // Unverified start (Sprint 1): the backup's state is unknown, so this
+        // payload may be an empty store about to replace everyone's data. Keep
+        // it queued; establish the backup's state first.
+        requeue(filename, json);
+        const ok = await reconcileAfterOutage();
+        if (!ok || sync.status !== 'verified') {
+          const attempt = (state.retryAttempts.get(filename) ?? 0) + 1;
+          state.retryAttempts.set(filename, attempt);
+          scheduleRetry(filename, attempt);
+          return;
+        }
+        continue;   // verified now: the loop takes the payload again
+      }
+      if (sync.blocked.has(filename)) {
+        // Lineage unknown: the live backup stays as it is. The newest local
+        // state (what users wrote meanwhile) is preserved beside it instead.
+        const b = sync.blocked.get(filename);
+        b.preservedAs = await preserveLocal(col, filename, json);
+        b.lastPreservedAt = Date.now();
+        state.retryAttempts.delete(filename);
+        noteOk();
+        continue;
+      }
       await writeOne(col, filename, json);
+      recordLineage(filename, state.knownGen.get(filename));   // the local copy now equals this generation
       state.lastWriteAt = Date.now();
       state.retryAttempts.delete(filename);
       noteOk();
@@ -726,7 +977,15 @@ export function getMirrorStatus() {
     verdict = 'DISABLED — file-only; data will NOT survive a redeploy';
   } else if (!state.collection) {
     durable = false;
-    verdict = 'NOT CONNECTED — file-only; data will NOT survive a redeploy';
+    verdict = sync.status === 'unverified'
+      ? 'UNVERIFIED START — Mongo was unreachable at boot; local stores may be empty and are NOT mirrored; the backup is untouched until its state is confirmed'
+      : 'NOT CONNECTED — file-only; data will NOT survive a redeploy';
+  } else if (sync.status === 'unverified') {
+    durable = false;
+    verdict = 'UNVERIFIED START — reconciling with the backup; nothing is mirrored until its state is confirmed';
+  } else if (sync.blocked.size) {
+    durable = false;
+    verdict = `RECOVERY REQUIRED — ${sync.blocked.size} store(s) have a backup this instance did not load; backups untouched, local copies preserved as conflict/<file>/${LOCAL_RECOVERY_TAG}<instance>. Restart to load the backups.`;
   } else if (state.consecutiveFailures > 0 && state.lastOkAt === null) {
     // Never landed a single operation. The least durable state there is —
     // it must never fall through to the transient-blip branch below.
@@ -773,17 +1032,43 @@ export function getMirrorStatus() {
     writeConflicts: state.writeConflicts,   // generation CAS hits; each preserved, never silently overwritten
     lastConflict: state.lastConflict,
     chunkBytes:   CHUNK_BYTES,
+    // Sprint 1 — verified initialization. File names are store names (.aqua-*.json), never user data.
+    sync: {
+      status:          sync.status,
+      unverifiedSince: sync.unverifiedSince,
+      recoveryRequired: sync.blocked.size > 0,
+      blocked:         [...sync.blocked.entries()].map(([file, b]) => ({ file, reason: b.reason, remoteGen: b.remoteGen, preservedAs: b.preservedAs ?? null })),
+      preservedLocal:  [...sync.preservedLocal],
+    },
   };
 }
 
 // ── Test seams ────────────────────────────────────────────────────────────────
 /** Install a fake cluster. Default: this instance is a writer holding the lease (the pre-lease contract). */
-export function __setCollectionForTests(fakeCollection, { role = 'writer', leader = role === 'writer' } = {}) {
+export function __setCollectionForTests(fakeCollection, { role = 'writer', leader = role === 'writer', sync: syncStatus = 'verified' } = {}) {
   state.collection = fakeCollection;
   state.enabled    = !!fakeCollection;
   state.failedOnce = false;
   state.role       = role;
   state.leader     = leader;
+  // Installing a reachable fake = a verified start (the pre-Sprint-1 test contract).
+  // A hydration that then runs re-derives the status from what it finds.
+  sync.status = syncStatus;
+}
+/** Sprint 1 seams: inspect / set the initialization state. */
+export function __syncForTests() {
+  return { status: sync.status, dataDir: sync.dataDir, unverifiedSince: sync.unverifiedSince, blocked: new Map(sync.blocked), preservedLocal: [...sync.preservedLocal] };
+}
+export function __setSyncForTests({ status, dataDir } = {}) {
+  if (status) sync.status = status;
+  if (dataDir !== undefined) sync.dataDir = dataDir;
+  sync.lastAttemptAt = 0;
+}
+/** Simulate "Mongo was unreachable at boot" for a data dir (writes the marker as a real failed boot would). */
+export function __enterUnverifiedForTests(dataDir, reason = 'test') {
+  sync.dataDir = dataDir;
+  enterUnverified(reason);
+  sync.lastAttemptAt = 0;
 }
 export function __instanceIdForTests() { return INSTANCE_ID; }
 export function __leaseTtlForTests() { return LEASE_TTL_MS; }
@@ -809,4 +1094,6 @@ export function __resetForTests() {
   state.inflight.clear();
   state.retryTimers.clear();
   state.retryAttempts.clear();
+  Object.assign(sync, { status: 'pending', dataDir: null, unverifiedSince: null, lastAttemptAt: 0, reconciling: null, preservedLocal: [] });
+  sync.blocked.clear();
 }

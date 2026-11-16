@@ -8,6 +8,7 @@ import { getFacts, touchRetrieved } from './longTermMemory.js';
 import { sensitivePolicy, withheld } from './sensitivity.js';
 import { FACT_LABELS, laterWordNote, reviewNote, hedgeNote, SINCE_CHANGED_RULE } from './displayLabels.js';
 import { failsItsSchema } from './factVisibility.js';
+import { textMeta } from '../core/logSafety.js';
 import { corrects } from '../understanding/stateTransition.js';
 import { getSchema, getSchemaByCategory, getWordIndex, CATEGORIES, SEMANTIC_CONCEPTS, CATEGORY_ALIASES } from './memorySchema.js';
 
@@ -241,7 +242,8 @@ export function retrieveRelevantFacts(ownerId, query, limit = 15, { trace = null
     .map((f) => ({ fact: f, ...scoreRelevance(f, query, ctx) }))
     .sort((a, b) => b.score - a.score);
 
-  console.log(`[MEM_RETRIEVER] MEMORY_RANKED owner=${ownerId} query="${query}" candidates=${scored.length}`);
+  // The query is the user's raw message (sensitive sentences included): metadata only.
+  console.log(`[MEM_RETRIEVER] MEMORY_RANKED owner=${ownerId} query=(${textMeta(query)}) candidates=${scored.length}`);
 
   let threshold = 0;
   if (!isRecall && (!categoryFilter || categoryFilter.size === 0) && semanticConcepts.size === 0) {

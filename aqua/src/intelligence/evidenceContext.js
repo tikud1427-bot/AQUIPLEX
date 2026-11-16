@@ -160,3 +160,109 @@ export { CAPABILITY_REFUSAL_PATTERNS as _capabilityRefusalPatterns };
 export function isUsableRevision(text) {
   return typeof text === 'string' && text.trim().length > 0;
 }
+
+// ── Conversation-aware review (2026-11-16, audit D-02) ────────────────────────
+//
+// The reviewers used to see "Original user question: Is it curable?" and a
+// draft about pneumonia — nothing else. From that view, naming pneumonia is an
+// unsupported assumption, and the "complete corrected replacement" they were
+// told to return was a clarifying question. Both reviewers now receive the
+// same bounded conversation the drafter answered from (core/conversationContext.js),
+// and two guards keep a reviewer from WITHDRAWING an answer it cannot fault:
+// replacing an answered draft with a clarification (unless the reference really
+// is ambiguous) or with "I don't have information about X in the context".
+
+/** One rule both reviewers' system prompts carry. */
+export const CONVERSATION_GROUNDING_RULE = [
+  'The review input may include the CONVERSATION SO FAR in this chat. The draft answered the latest message in that conversation:',
+  '- A reference in the latest message ("it", "that", "which one") that the conversation resolves is grounded; a draft that answers about that referent is NOT an assumption or a hallucination.',
+  '- General knowledge needed to answer an ordinary question is not "missing evidence". Absence of a fact from the user\'s personal context only matters for questions about the user\'s own life, plans or data.',
+  '- Never replace an answer with a request for clarification, or with "I don\'t have information about this", unless the draft itself is wrong and the question genuinely cannot be answered.',
+].join('\n');
+
+/**
+ * The conversation section of a review input (empty when there is none).
+ * @param {object|null} conversationContext  core/conversationContext.js result
+ * @param {(ctx:object, o?:object)=>string} renderRecent
+ * @param {(ctx:object)=>string} note
+ */
+export function conversationReviewBlock(conversationContext, renderRecent, note) {
+  if (!conversationContext || typeof renderRecent !== 'function') return '';
+  const recent = renderRecent(conversationContext, { maxChars: 3000 });
+  if (!recent) return '';
+  const ref = typeof note === 'function' ? note(conversationContext) : '';
+  return `Conversation so far in this chat (oldest first, before the latest message):\n${recent}\n\n${ref ? `${ref}\n\n` : ''}`;
+}
+
+const CLARIFY_RE = /\b(?:which|what)\b[^?\n]{0,80}\b(?:refer(?:ring)?\s+to|you\s+mean|are\s+you\s+asking|you(?:'re|\s+are)\s+(?:asking|talking)\s+about)\b|\b(?:could|can|would)\s+you\s+(?:please\s+)?(?:specify|clarify|tell\s+me\s+(?:which|what))\b|\bplease\s+(?:specify|clarify)\b|\b(?:i'?m|i\s+am)\s+not\s+sure\s+(?:which|what)\b/i;
+const NO_INFO_RE = /\bi\s+(?:do\s+not|don['’]t)\s+have\s+(?:any\s+)?(?:information|info|details|data|knowledge)\b|\b(?:not|isn['’]t)\s+(?:in|mentioned\s+in|available\s+in|covered\s+(?:by|in))\s+the\s+(?:provided\s+)?context\b|\bin\s+the\s+provided\s+context\b/i;
+
+/** A short reply whose job is to ask the user what they meant. */
+export function isClarificationRequest(text) {
+  const t = String(text ?? '').trim();
+  return t.length > 0 && t.length <= 600 && t.includes('?') && CLARIFY_RE.test(t);
+}
+
+/** A reply that withdraws the answer as "not in the context / no information". */
+export function isNoInformationWithdrawal(text) {
+  const t = String(text ?? '').trim();
+  return t.length > 0 && t.length <= 600 && NO_INFO_RE.test(t);
+}
+
+/**
+ * Would replacing `draft` with `revision` withdraw an answer the reviewer could
+ * not fault? Returns the reason, or null when the revision may stand.
+ * A clarification is legitimate only when the conversation context marks the
+ * reference as genuinely ambiguous (or the draft itself already asked).
+ */
+export function withdrawalReason(draft, revision, conversationContext = null) {
+  const draftAsked = isClarificationRequest(draft) || isNoInformationWithdrawal(draft);
+  if (draftAsked) return null;
+  if (isClarificationRequest(revision)) {
+    return conversationContext?.reference?.status === 'ambiguous' ? null : 'unsupported_clarification';
+  }
+  if (isNoInformationWithdrawal(revision)) return 'unsupported_no_information';
+  return null;
+}
+
+/**
+ * Reviewer outcome vocabulary (one place). What the reviewer PROPOSED, separate
+ * from whether it was applied (`applied`).
+ *   ACCEPT                 the draft passed review
+ *   REVISE                 a corrected replacement
+ *   CLARIFY                a request for clarification
+ *   REFUSE                 a capability refusal
+ *   INSUFFICIENT_EVIDENCE  "no information about this"
+ *   null                   no review completed (error / timeout / truncated / malformed)
+ */
+export const REVIEW_OUTCOMES = Object.freeze(['ACCEPT', 'REVISE', 'CLARIFY', 'REFUSE', 'INSUFFICIENT_EVIDENCE']);
+
+export function classifyRevision(text) {
+  if (isCapabilityRefusal(text)) return 'REFUSE';
+  if (isClarificationRequest(text)) return 'CLARIFY';
+  if (isNoInformationWithdrawal(text)) return 'INSUFFICIENT_EVIDENCE';
+  return 'REVISE';
+}
+
+/**
+ * Revision reason protocol: a replacement starts with one line
+ * `REVISION_REASON: <the specific issue>`. Returns { reason, text } with the
+ * line stripped, or { reason: null, text } when absent.
+ */
+export function parseRevisionReason(raw) {
+  const s = String(raw ?? '').replace(/^\uFEFF/, '');
+  // Tolerates markdown emphasis ("**REVISION_REASON:** …") so the line can never leak into the answer.
+  const m = s.match(/^\s*[*_`]*\s*REVISION_REASON\s*[*_`]*\s*:\s*[*_`]*\s*([^\n]{3,300})\n+/i);
+  if (!m) return { reason: null, text: s.trim() };
+  return { reason: m[1].trim(), text: s.slice(m[0].length).trim() };
+}
+
+/**
+ * Strict mode: a replacement WITHOUT a reason line is discarded (draft kept).
+ * Default OFF — free-tier reviewers do not reliably follow the format, and a
+ * dropped legitimate correction is a regression. The reason is always
+ * requested, parsed, stripped from the answer and recorded either way.
+ */
+export function reviewReasonRequired(env = process.env) {
+  return String(env.AQUA_REVIEW_REQUIRE_REASON ?? 'off').trim().toLowerCase() === 'on';
+}

@@ -79,6 +79,7 @@ import { FACT_TO_BELIEF } from '../mind/observers.js';
 import { upsertNode, SELF_KEY } from '../mind/relationshipGraph.js';
 import { createEdge } from '../mind/mindSchema.js';
 import { corrects, datesIn } from '../understanding/stateTransition.js';
+import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 
 export function propagationEnabled() {
   return String(process.env.AQUA_PROPAGATION ?? '').trim().toLowerCase() === 'on';
@@ -726,11 +727,11 @@ export async function propagateToEvidence(ownerId, { now = Date.now() } = {}) {
         if (t.picAttempts >= EVIDENCE_ATTEMPTS) {
           t.picDead = { at: now, error: t.picError, attempts: t.picAttempts };
           out.dead++;
-          console.warn(`[MEMORY] PROPAGATION_DEAD owner=${ownerId} transition=${t.id} key=${t.key} attempts=${t.picAttempts}: ${t.picError}`);
+          console.warn(`[MEMORY] PROPAGATION_DEAD owner=${ownerId} transition=${t.id} key=${safeKey(t.key)} attempts=${t.picAttempts}: ${stripQuoted(t.picError)}`);
         } else {
           t.picNextAt = now + backoffMs(t.picAttempts);
           out.failed++;
-          console.warn(`[MEMORY] evidence propagation failed owner=${ownerId} transition=${t.id} attempt=${t.picAttempts} (retry in ${backoffMs(t.picAttempts)}ms): ${t.picError}`);
+          console.warn(`[MEMORY] evidence propagation failed owner=${ownerId} transition=${t.id} attempt=${t.picAttempts} (retry in ${backoffMs(t.picAttempts)}ms): ${stripQuoted(t.picError)}`);
         }
       }
     }
@@ -849,7 +850,8 @@ export function withTransitions(ownerId, keys, mutate, { text = '', source = 'me
 
 /** Fire-and-forget form for the chat path: never on the turn's critical path. */
 export function propagateToEvidenceInBackground(ownerId) {
-  propagateToEvidence(ownerId)
+  // Returns the chain (still fail-open) so the turn commit can await it (Phase 4A).
+  return propagateToEvidence(ownerId)
     .then(r => { if (r.retired || r.flagged || r.cleared) console.log(`[MEMORY] PROPAGATED owner=${ownerId} retired=${r.retired} flagged=${r.flagged} cleared=${r.cleared}`); })
     .catch(err => console.warn(`[MEMORY] evidence propagation deferred owner=${ownerId}: ${err?.message ?? err}`));
 }

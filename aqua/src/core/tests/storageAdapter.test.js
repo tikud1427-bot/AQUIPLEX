@@ -81,9 +81,12 @@ describe('storage seam', () => {
 describe('atomicStore — the refactor changed nothing', () => {
   test('the public API is exactly what it was', () => {
     // A refactor that quietly adds or removes an export is not a refactor.
+    // +registerShutdownBlocker (2026-11-14, scalability Phase 3): deliberate —
+    // lets the API (in-flight requests) and the worker (job in hand) finish
+    // before this module's SIGTERM flush-and-exit runs.
     assert.deepEqual(Object.keys(store).sort(), [
       'atomicWriteFile', 'atomicWriteFileSync', 'backupOnce',
-      'createDebouncedWriter', 'loadJsonFile', 'unwrapStore', 'wrapStore',
+      'createDebouncedWriter', 'loadJsonFile', 'registerShutdownBlocker', 'unwrapStore', 'wrapStore',
     ]);
   });
 

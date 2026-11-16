@@ -1,0 +1,4032 @@
+{
+ "id": "acib-v2-eval",
+ "version": "2",
+ "status": "EVALUATION SET — authored 2026-11-10 (Sprint 4) BEFORE any Sprint 4 code change, frozen by acib.v2.eval.FROZEN.sha256 before its first run. Never used for development. A change is a reviewed change and a new version.",
+ "about": "Same schema and scorer as acib.v1 (eval/suites/acibScoring.mjs). Built from eval/datasets/src by scripts/build-acib-v2.mjs.",
+ "regimes": {
+  "short": "history only",
+  "long": "history, then filler conversations until the user's past messages exceed 9,000 characters"
+ },
+ "fillerTargetChars": 9000,
+ "filler": [
+  "Can you explain how a bread maker works?",
+  "I watched a nature show about penguins tonight.",
+  "What is the capital of Australia?",
+  "Give me a recipe for banana bread without eggs.",
+  "Why does popcorn pop?",
+  "I cleaned out the hall cupboard and found my old roller skates.",
+  "Recommend a short film for a rainy evening.",
+  "How do I get candle wax out of a tablecloth?",
+  "What does a carburettor do?",
+  "I love the smell of cut grass in the morning.",
+  "Explain the offside rule in football simply.",
+  "What are some fun facts about otters?",
+  "How do you make cold brew coffee?",
+  "I rearranged the living room so the sofa faces the window.",
+  "Suggest a board game for a family evening.",
+  "Why is the ocean salty?",
+  "What is the difference between a crocodile and an alligator?",
+  "I found a great second-hand bookshop near the station.",
+  "How do noise-reducing curtains work?",
+  "Give me a three-minute breathing exercise.",
+  "What is a palindrome? Give me examples.",
+  "How long should I boil pasta for?",
+  "I spent the afternoon fixing a wobbly chair.",
+  "Tell me something interesting about volcanoes.",
+  "How do I make my sourdough more sour?",
+  "What do the colours of a rainbow stand for in painting?",
+  "Explain how an electric kettle switches itself off.",
+  "I tried a new tea blend with ginger and lemon.",
+  "Recommend a calm playlist genre for reading.",
+  "What causes hiccups?",
+  "How do bees make honey?",
+  "I painted a small watercolour of the harbour.",
+  "What is the tallest building in the world?",
+  "How do I keep herbs alive on a windowsill?",
+  "Explain what a leap year is.",
+  "I went to a pottery market and bought a blue mug.",
+  "How do you fold a fitted sheet?",
+  "What is the speed of sound?",
+  "Give me a riddle with an easy answer.",
+  "Why do leaves change colour in autumn?"
+ ],
+ "scenarios": [
+  {
+   "id": "pc-job",
+   "category": "personal",
+   "dimensions": [
+    "personal"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I teach chemistry at a secondary school in Leicester."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I play five-a-side on Thursdays."
+    }
+   ],
+   "question": "What subject do I teach?",
+   "needs": [
+    {
+     "id": "subject",
+     "required": true,
+     "match": [
+      "chemistry"
+     ],
+     "evidence": [
+      "teach chemistry"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [
+    {
+     "id": "football",
+     "match": [
+      "five-a-side"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pc-name",
+   "category": "personal",
+   "dimensions": [
+    "personal"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Hi, I'm Rosalind, but everyone calls me Roz."
+    }
+   ],
+   "question": "What do people call me?",
+   "needs": [
+    {
+     "id": "nick",
+     "required": true,
+     "match": [
+      "roz\\b"
+     ],
+     "evidence": [
+      "calls me Roz"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "pc-city",
+   "category": "personal",
+   "dimensions": [
+    "personal"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I live in Aarhus with my two cats."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Work has been hectic this month."
+    }
+   ],
+   "question": "Which city do I live in?",
+   "needs": [
+    {
+     "id": "city",
+     "required": true,
+     "match": [
+      "aarhus"
+     ],
+     "evidence": [
+      "live in Aarhus"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "pc-diet",
+   "category": "personal",
+   "dimensions": [
+    "personal"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I've been vegan for six years."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "My brother runs a bakery."
+    }
+   ],
+   "question": "Suggest a dinner I could cook tonight.",
+   "needs": [
+    {
+     "id": "diet",
+     "required": true,
+     "match": [
+      "vegan"
+     ],
+     "evidence": [
+      "vegan for six years"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [
+    {
+     "id": "bakery",
+     "match": [
+      "bakery"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pc-car",
+   "category": "personal",
+   "dimensions": [
+    "personal"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I drive a 2014 Skoda Octavia estate."
+    }
+   ],
+   "question": "What car do I have?",
+   "needs": [
+    {
+     "id": "car",
+     "required": true,
+     "match": [
+      "octavia|skoda"
+     ],
+     "evidence": [
+      "Skoda Octavia"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "pc-lang",
+   "category": "personal",
+   "dimensions": [
+    "personal"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I'm learning Japanese, I'm at about JLPT N4 level."
+    }
+   ],
+   "question": "What language am I learning?",
+   "needs": [
+    {
+     "id": "lang",
+     "required": true,
+     "match": [
+      "japanese"
+     ],
+     "evidence": [
+      "learning Japanese"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "pc-shift",
+   "category": "personal",
+   "dimensions": [
+    "personal"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I work night shifts at the hospital, 8pm to 8am."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "My flatmate is training for a marathon."
+    }
+   ],
+   "question": "When are my working hours?",
+   "needs": [
+    {
+     "id": "hours",
+     "required": true,
+     "match": [
+      "8pm|night shift"
+     ],
+     "evidence": [
+      "8pm to 8am"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [
+    {
+     "id": "flatmate",
+     "match": [
+      "flatmate|marathon"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pc-instrument",
+   "category": "personal",
+   "dimensions": [
+    "personal"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I play bass guitar in a covers band called The Tidelines."
+    }
+   ],
+   "question": "What's the name of my band?",
+   "needs": [
+    {
+     "id": "band",
+     "required": true,
+     "match": [
+      "tidelines"
+     ],
+     "evidence": [
+      "called The Tidelines"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "pc-allergy-free",
+   "category": "personal",
+   "dimensions": [
+    "personal"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I hate coriander, it tastes like soap to me."
+    }
+   ],
+   "question": "Is there any herb I dislike?",
+   "needs": [
+    {
+     "id": "herb",
+     "required": true,
+     "match": [
+      "coriander"
+     ],
+     "evidence": [
+      "hate coriander"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "pc-birthday",
+   "category": "personal",
+   "dimensions": [
+    "personal"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My birthday is on the 14th of February."
+    }
+   ],
+   "question": "When is my birthday?",
+   "needs": [
+    {
+     "id": "bday",
+     "required": true,
+     "match": [
+      "14th of february|february 14"
+     ],
+     "evidence": [
+      "14th of February"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "lh-plant",
+   "category": "long-history",
+   "dimensions": [
+    "long-history"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I called my fiddle-leaf fig Gerald."
+    },
+    {
+     "id": "m2",
+     "conv": "c-a",
+     "text": "He sits by the south window."
+    }
+   ],
+   "inlineFiller": 30,
+   "question": "What did I name my plant?",
+   "needs": [
+    {
+     "id": "plant",
+     "required": true,
+     "match": [
+      "gerald"
+     ],
+     "evidence": [
+      "fig Gerald"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "lh-wifi",
+   "category": "long-history",
+   "dimensions": [
+    "long-history"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Our wifi network at home is called Narnia5G."
+    }
+   ],
+   "inlineFiller": 30,
+   "question": "What's our home wifi called?",
+   "needs": [
+    {
+     "id": "wifi",
+     "required": true,
+     "match": [
+      "narnia5g"
+     ],
+     "evidence": [
+      "called Narnia5G"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "lh-boat",
+   "category": "long-history",
+   "dimensions": [
+    "long-history"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My dad keeps a small sailing dinghy named Puffin at the lake."
+    }
+   ],
+   "inlineFiller": 30,
+   "question": "What's my dad's boat called?",
+   "needs": [
+    {
+     "id": "boat",
+     "required": true,
+     "match": [
+      "puffin"
+     ],
+     "evidence": [
+      "named Puffin"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "lh-gym",
+   "category": "long-history",
+   "dimensions": [
+    "long-history"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I go to the climbing gym on Tuesday and Friday evenings."
+    }
+   ],
+   "inlineFiller": 30,
+   "question": "Which evenings do I climb?",
+   "needs": [
+    {
+     "id": "days",
+     "required": true,
+     "match": [
+      "tuesday"
+     ],
+     "evidence": [
+      "Tuesday and Friday"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "lh-locker",
+   "category": "long-history",
+   "dimensions": [
+    "long-history"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My locker number at work is 217."
+    }
+   ],
+   "inlineFiller": 30,
+   "question": "What's my locker number?",
+   "needs": [
+    {
+     "id": "locker",
+     "required": true,
+     "match": [
+      "\\b217\\b"
+     ],
+     "evidence": [
+      "locker number at work is 217"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "lh-recipe",
+   "category": "long-history",
+   "dimensions": [
+    "long-history"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My grandmother's secret for her stew was a spoon of black treacle."
+    }
+   ],
+   "inlineFiller": 30,
+   "question": "What was my gran's secret ingredient?",
+   "needs": [
+    {
+     "id": "treacle",
+     "required": true,
+     "match": [
+      "treacle"
+     ],
+     "evidence": [
+      "black treacle"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "lh-podcast",
+   "category": "long-history",
+   "dimensions": [
+    "long-history"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I host a tiny podcast called Low Tide Radio about coastal history."
+    }
+   ],
+   "inlineFiller": 30,
+   "question": "What's my podcast called?",
+   "needs": [
+    {
+     "id": "pod",
+     "required": true,
+     "match": [
+      "low tide radio"
+     ],
+     "evidence": [
+      "Low Tide Radio"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "lh-kid-school",
+   "category": "long-history",
+   "dimensions": [
+    "long-history"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Our son Felix goes to Brookfield Primary, he's in year 3."
+    }
+   ],
+   "inlineFiller": 30,
+   "question": "Which school does Felix go to?",
+   "needs": [
+    {
+     "id": "school",
+     "required": true,
+     "match": [
+      "brookfield"
+     ],
+     "evidence": [
+      "Brookfield Primary"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "lh-mentor",
+   "category": "long-history",
+   "dimensions": [
+    "long-history"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My mentor at work is Dana Whitlock, she runs the data team."
+    }
+   ],
+   "inlineFiller": 30,
+   "question": "Who is my mentor?",
+   "needs": [
+    {
+     "id": "mentor",
+     "required": true,
+     "match": [
+      "dana whitlock"
+     ],
+     "evidence": [
+      "mentor at work is Dana Whitlock"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "lh-bike",
+   "category": "long-history",
+   "dimensions": [
+    "long-history"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I commute on a red Brompton folding bike."
+    }
+   ],
+   "inlineFiller": 30,
+   "question": "What kind of bike do I ride?",
+   "needs": [
+    {
+     "id": "bike",
+     "required": true,
+     "match": [
+      "brompton"
+     ],
+     "evidence": [
+      "Brompton"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "xp-launch",
+   "category": "cross-project",
+   "dimensions": [
+    "cross-project"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "We're running three projects: Kestrel (the iOS app), Heron (the website relaunch) and Wren (the newsletter)."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Heron is waiting on final copy from the agency."
+    },
+    {
+     "id": "m3",
+     "conv": "c-c",
+     "text": "Kestrel passed App Store review yesterday."
+    }
+   ],
+   "question": "What is Heron waiting for?",
+   "needs": [
+    {
+     "id": "heron",
+     "required": true,
+     "match": [
+      "heron.*(copy|agency)|final copy"
+     ],
+     "evidence": [
+      "waiting on final copy"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [
+    {
+     "id": "kestrel",
+     "match": [
+      "kestrel passed|app store review"
+     ]
+    }
+   ],
+   "crossEntity": [
+    {
+     "id": "kestrel-not-heron",
+     "forbid": [
+      "kestrel.*(copy|agency)"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "xp-budget",
+   "category": "cross-project",
+   "dimensions": [
+    "cross-project"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "The Lark project has a budget of 12,000 and the Swift project has 30,000."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "We have spent 11,500 on Lark so far."
+    }
+   ],
+   "question": "How much budget is left on Lark?",
+   "needs": [
+    {
+     "id": "lark-budget",
+     "required": true,
+     "match": [
+      "12,?000"
+     ],
+     "evidence": [
+      "Lark project has a budget of 12,000"
+     ],
+     "slots": []
+    },
+    {
+     "id": "lark-spent",
+     "required": true,
+     "match": [
+      "11,?500"
+     ],
+     "evidence": [
+      "spent 11,500 on Lark"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "xp-owner",
+   "category": "cross-project",
+   "dimensions": [
+    "cross-project"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Mira owns the billing migration and Tom owns the search revamp."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Tom is on holiday until the 20th."
+    }
+   ],
+   "question": "Who owns the billing migration?",
+   "needs": [
+    {
+     "id": "owner",
+     "required": true,
+     "match": [
+      "mira"
+     ],
+     "evidence": [
+      "Mira owns the billing migration"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "crossEntity": [
+    {
+     "id": "tom-not-billing",
+     "forbid": [
+      "tom.*owns? the billing"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "xp-deadline",
+   "category": "cross-project",
+   "dimensions": [
+    "cross-project"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "The grant report is due on 3 March and the conference talk is on 18 April."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I have barely started the slides for the talk."
+    }
+   ],
+   "question": "When is the grant report due?",
+   "needs": [
+    {
+     "id": "grant",
+     "required": true,
+     "match": [
+      "3 march|march 3"
+     ],
+     "evidence": [
+      "due on 3 March"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "xp-blocker",
+   "category": "cross-project",
+   "dimensions": [
+    "cross-project"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Project Atlas is blocked on legal sign-off; Project Birch is blocked on a hardware delivery."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Legal said they need another week."
+    }
+   ],
+   "question": "What is Birch blocked on?",
+   "needs": [
+    {
+     "id": "birch",
+     "required": true,
+     "match": [
+      "hardware"
+     ],
+     "evidence": [
+      "Birch is blocked on a hardware delivery"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "crossEntity": [
+    {
+     "id": "atlas-not-birch",
+     "forbid": [
+      "birch.*legal"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "xp-client",
+   "category": "cross-project",
+   "dimensions": [
+    "cross-project"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "The Orchard Foods account is worth 40k a year and the Pebble Media account 15k."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Pebble Media wants to renegotiate."
+    }
+   ],
+   "question": "Which account is bigger?",
+   "needs": [
+    {
+     "id": "orchard",
+     "required": true,
+     "match": [
+      "40k"
+     ],
+     "evidence": [
+      "Orchard Foods account is worth 40k"
+     ],
+     "slots": []
+    },
+    {
+     "id": "pebble",
+     "required": true,
+     "match": [
+      "15k"
+     ],
+     "evidence": [
+      "Pebble Media account 15k"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "xp-tools",
+   "category": "cross-project",
+   "dimensions": [
+    "cross-project"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "For the mobile app we use Flutter; for the internal dashboard we use Vue."
+    }
+   ],
+   "question": "What framework does the dashboard use?",
+   "needs": [
+    {
+     "id": "vue",
+     "required": true,
+     "match": [
+      "vue"
+     ],
+     "evidence": [
+      "dashboard we use Vue"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "xp-priority",
+   "category": "cross-project",
+   "dimensions": [
+    "cross-project"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My manager said the payments rewrite is top priority this quarter, ahead of the redesign."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "The redesign mockups look great though."
+    }
+   ],
+   "question": "Which should I focus on, the payments rewrite or the redesign?",
+   "needs": [
+    {
+     "id": "priority",
+     "required": true,
+     "match": [
+      "top priority|payments rewrite"
+     ],
+     "evidence": [
+      "payments rewrite is top priority"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "xp-team-split",
+   "category": "cross-project",
+   "dimensions": [
+    "cross-project"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Ana and Leo work on the API; Priyanka is the only one on the mobile client."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Priyanka is going on parental leave in May."
+    }
+   ],
+   "question": "Is the mobile client at risk if someone leaves?",
+   "needs": [
+    {
+     "id": "solo",
+     "required": true,
+     "match": [
+      "priyanka is the only|only one on the mobile"
+     ],
+     "evidence": [
+      "only one on the mobile client"
+     ],
+     "slots": []
+    },
+    {
+     "id": "leave",
+     "required": true,
+     "match": [
+      "parental leave"
+     ],
+     "evidence": [
+      "parental leave in May"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "xp-status",
+   "category": "cross-project",
+   "dimensions": [
+    "cross-project"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "The kitchen refit is finished but the bathroom is still waiting for tiles."
+    }
+   ],
+   "question": "Is the bathroom done?",
+   "needs": [
+    {
+     "id": "bath",
+     "required": true,
+     "match": [
+      "waiting for tiles|bathroom is still"
+     ],
+     "evidence": [
+      "bathroom is still waiting for tiles"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "crossEntity": [
+    {
+     "id": "kitchen-not-bath",
+     "forbid": [
+      "bathroom.*finished"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "hc-job",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I work as a paralegal at Hendry & Ross."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Big news: I quit Hendry & Ross and joined Calder Legal as a solicitor."
+    }
+   ],
+   "question": "Where do I work now?",
+   "needs": [
+    {
+     "id": "now",
+     "required": true,
+     "match": [
+      "calder"
+     ],
+     "evidence": [
+      "joined Calder Legal"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "calder"
+    ],
+    "stale": [
+     "hendry"
+    ]
+   }
+  },
+  {
+   "id": "hc-city",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I live in Bristol."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "We moved to Cardiff last weekend!"
+    }
+   ],
+   "question": "Which city do I live in?",
+   "needs": [
+    {
+     "id": "city",
+     "required": true,
+     "match": [
+      "cardiff"
+     ],
+     "evidence": [
+      "moved to Cardiff"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "cardiff"
+    ],
+    "stale": [
+     "bristol"
+    ]
+   }
+  },
+  {
+   "id": "hc-partner",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My girlfriend Elena and I are going to Lisbon in June."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Elena and I broke up, the Lisbon trip is off."
+    }
+   ],
+   "question": "Am I still going to Lisbon in June?",
+   "needs": [
+    {
+     "id": "off",
+     "required": true,
+     "match": [
+      "trip is off|broke up"
+     ],
+     "evidence": [
+      "Lisbon trip is off"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "trip is off|broke up"
+    ],
+    "stale": [
+     "going to lisbon"
+    ]
+   }
+  },
+  {
+   "id": "hc-goal",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My goal this year is to learn Italian."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I've switched from Italian to Spanish because of my new job in Madrid."
+    }
+   ],
+   "question": "What language should I practise this week?",
+   "needs": [
+    {
+     "id": "spanish",
+     "required": true,
+     "match": [
+      "spanish"
+     ],
+     "evidence": [
+      "switched from Italian to Spanish"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "spanish"
+    ],
+    "stale": [
+     "learn italian"
+    ]
+   }
+  },
+  {
+   "id": "hc-rent",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My rent is 950 a month."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "The landlord put the rent up to 1,050 from this month."
+    }
+   ],
+   "question": "How much is my rent?",
+   "needs": [
+    {
+     "id": "rent",
+     "required": true,
+     "match": [
+      "1,?050"
+     ],
+     "evidence": [
+      "rent up to 1,050"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "1,?050"
+    ],
+    "stale": [
+     "\\b950\\b"
+    ]
+   }
+  },
+  {
+   "id": "hc-manager",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My manager is Greg Hollis."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Greg left; my new manager is Aisha Bello."
+    }
+   ],
+   "question": "Who is my manager?",
+   "needs": [
+    {
+     "id": "mgr",
+     "required": true,
+     "match": [
+      "aisha bello"
+     ],
+     "evidence": [
+      "new manager is Aisha Bello"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "aisha"
+    ],
+    "stale": [
+     "greg hollis"
+    ]
+   }
+  },
+  {
+   "id": "hc-phone",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I'm on an iPhone 12."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Finally upgraded to a Pixel 8."
+    }
+   ],
+   "question": "What phone do I use?",
+   "needs": [
+    {
+     "id": "phone",
+     "required": true,
+     "match": [
+      "pixel 8"
+     ],
+     "evidence": [
+      "upgraded to a Pixel 8"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "pixel"
+    ],
+    "stale": [
+     "iphone 12"
+    ]
+   }
+  },
+  {
+   "id": "hc-wedding",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Our wedding is on 12 September."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "We've pushed the wedding back to 3 October because of the venue."
+    }
+   ],
+   "question": "When is our wedding?",
+   "needs": [
+    {
+     "id": "date",
+     "required": true,
+     "match": [
+      "3 october|october 3"
+     ],
+     "evidence": [
+      "pushed the wedding back to 3 October"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "3 october"
+    ],
+    "stale": [
+     "12 september"
+    ]
+   }
+  },
+  {
+   "id": "hc-diet",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I'm vegetarian."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I started eating fish again, so pescatarian now."
+    }
+   ],
+   "question": "Can you suggest a dinner for me?",
+   "needs": [
+    {
+     "id": "diet",
+     "required": true,
+     "match": [
+      "pescatarian|fish"
+     ],
+     "evidence": [
+      "pescatarian now"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "pescatarian|fish"
+    ],
+    "stale": [
+     "^vegetarian|diet: vegetarian"
+    ]
+   }
+  },
+  {
+   "id": "hc-correction",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My sister's name is Jodie."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Sorry, typo earlier, my sister is Josie not Jodie."
+    }
+   ],
+   "question": "What's my sister's name?",
+   "needs": [
+    {
+     "id": "sister",
+     "required": true,
+     "match": [
+      "josie"
+     ],
+     "evidence": [
+      "my sister is Josie"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "josie"
+    ],
+    "stale": [
+     "jodie"
+    ]
+   }
+  },
+  {
+   "id": "hc-salary",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I make 42k a year."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Got a raise, I now make 48k."
+    }
+   ],
+   "question": "What is my salary?",
+   "needs": [
+    {
+     "id": "pay",
+     "required": true,
+     "match": [
+      "48k"
+     ],
+     "evidence": [
+      "now make 48k"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "temporal": {
+    "current": [
+     "48k"
+    ],
+    "stale": [
+     "42k"
+    ]
+   }
+  },
+  {
+   "id": "hc-team",
+   "category": "history-change",
+   "dimensions": [
+    "history-change"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "There are four people on my team."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Two people left the team last month, so it is just us two now."
+    }
+   ],
+   "question": "How big is my team?",
+   "needs": [
+    {
+     "id": "team",
+     "required": true,
+     "match": [
+      "two now|us two"
+     ],
+     "evidence": [
+      "just us two now"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "ct-budget",
+   "category": "contradiction",
+   "dimensions": [
+    "contradiction"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "The wedding budget is 15,000."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "We can spend up to 20,000 on the wedding."
+    }
+   ],
+   "question": "What's our wedding budget?",
+   "needs": [
+    {
+     "id": "a",
+     "required": true,
+     "match": [
+      "15,?000"
+     ],
+     "evidence": [
+      "budget is 15,000"
+     ],
+     "slots": []
+    },
+    {
+     "id": "b",
+     "required": true,
+     "match": [
+      "20,?000"
+     ],
+     "evidence": [
+      "up to 20,000"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "contradiction": {
+    "a": [
+     "15,?000"
+    ],
+    "b": [
+     "20,?000"
+    ]
+   }
+  },
+  {
+   "id": "ct-days",
+   "category": "contradiction",
+   "dimensions": [
+    "contradiction"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I have 5 days of holiday left."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Payroll says I have 8 days of holiday left."
+    }
+   ],
+   "question": "How many holiday days do I have?",
+   "needs": [
+    {
+     "id": "a",
+     "required": true,
+     "match": [
+      "5 days"
+     ],
+     "evidence": [
+      "5 days of holiday"
+     ],
+     "slots": []
+    },
+    {
+     "id": "b",
+     "required": true,
+     "match": [
+      "8 days"
+     ],
+     "evidence": [
+      "8 days of holiday"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "contradiction": {
+    "a": [
+     "5 days"
+    ],
+    "b": [
+     "8 days"
+    ]
+   }
+  },
+  {
+   "id": "ct-meeting",
+   "category": "contradiction",
+   "dimensions": [
+    "contradiction"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "The board meeting is on Tuesday at 10."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "The board meeting is on Wednesday at 10."
+    }
+   ],
+   "question": "When is the board meeting?",
+   "needs": [
+    {
+     "id": "a",
+     "required": true,
+     "match": [
+      "tuesday"
+     ],
+     "evidence": [
+      "Tuesday at 10"
+     ],
+     "slots": []
+    },
+    {
+     "id": "b",
+     "required": true,
+     "match": [
+      "wednesday"
+     ],
+     "evidence": [
+      "Wednesday at 10"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "contradiction": {
+    "a": [
+     "tuesday"
+    ],
+    "b": [
+     "wednesday"
+    ]
+   }
+  },
+  {
+   "id": "ct-price",
+   "category": "contradiction",
+   "dimensions": [
+    "contradiction"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "The quote for the roof is 7,200."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "The roofer quoted 6,400 for the roof."
+    }
+   ],
+   "question": "How much is the roof going to cost?",
+   "needs": [
+    {
+     "id": "a",
+     "required": true,
+     "match": [
+      "7,?200"
+     ],
+     "evidence": [
+      "roof is 7,200"
+     ],
+     "slots": []
+    },
+    {
+     "id": "b",
+     "required": true,
+     "match": [
+      "6,?400"
+     ],
+     "evidence": [
+      "quoted 6,400"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "contradiction": {
+    "a": [
+     "7,?200"
+    ],
+    "b": [
+     "6,?400"
+    ]
+   }
+  },
+  {
+   "id": "ct-headcount",
+   "category": "contradiction",
+   "dimensions": [
+    "contradiction"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "We have 12 staff."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "We have 9 staff at the moment."
+    }
+   ],
+   "question": "How many staff do we have?",
+   "needs": [
+    {
+     "id": "a",
+     "required": true,
+     "match": [
+      "12 staff"
+     ],
+     "evidence": [
+      "12 staff"
+     ],
+     "slots": []
+    },
+    {
+     "id": "b",
+     "required": true,
+     "match": [
+      "9 staff"
+     ],
+     "evidence": [
+      "9 staff"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "contradiction": {
+    "a": [
+     "12 staff"
+    ],
+    "b": [
+     "9 staff"
+    ]
+   }
+  },
+  {
+   "id": "ct-files",
+   "category": "contradiction",
+   "dimensions": [
+    "contradiction"
+   ],
+   "history": [],
+   "uploads": [
+    {
+     "conv": "c-a",
+     "name": "contract.txt",
+     "content": "Service contract. Monthly fee: 1,200 euros, billed in advance."
+    },
+    {
+     "conv": "c-b",
+     "name": "invoice-march.txt",
+     "content": "Invoice March. Monthly fee 1,450 euros. Due in 14 days."
+    }
+   ],
+   "question": "Do the contract and the invoice agree on the monthly fee?",
+   "needs": [
+    {
+     "id": "contract",
+     "required": true,
+     "match": [
+      "1,?200"
+     ],
+     "evidence": [
+      "Monthly fee: 1,200"
+     ],
+     "slots": []
+    },
+    {
+     "id": "invoice",
+     "required": true,
+     "match": [
+      "1,?450"
+     ],
+     "evidence": [
+      "Monthly fee 1,450"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "contradiction": {
+    "a": [
+     "1,?200"
+    ],
+    "b": [
+     "1,?450"
+    ]
+   }
+  },
+  {
+   "id": "ct-age",
+   "category": "contradiction",
+   "dimensions": [
+    "contradiction"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My daughter is 7."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "My daughter is 8."
+    }
+   ],
+   "question": "How old is my daughter?",
+   "needs": [
+    {
+     "id": "a",
+     "required": true,
+     "match": [
+      "\\b7\\b"
+     ],
+     "evidence": [
+      "daughter is 7"
+     ],
+     "slots": []
+    },
+    {
+     "id": "b",
+     "required": true,
+     "match": [
+      "\\b8\\b"
+     ],
+     "evidence": [
+      "daughter is 8"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "contradiction": {
+    "a": [
+     "\\b7\\b"
+    ],
+    "b": [
+     "\\b8\\b"
+    ]
+   }
+  },
+  {
+   "id": "ct-rate",
+   "category": "contradiction",
+   "dimensions": [
+    "contradiction"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My day rate is 450 pounds."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I charge 500 pounds a day."
+    }
+   ],
+   "question": "What's my day rate?",
+   "needs": [
+    {
+     "id": "a",
+     "required": true,
+     "match": [
+      "\\b450\\b"
+     ],
+     "evidence": [
+      "day rate is 450"
+     ],
+     "slots": []
+    },
+    {
+     "id": "b",
+     "required": true,
+     "match": [
+      "\\b500\\b"
+     ],
+     "evidence": [
+      "charge 500 pounds"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "contradiction": {
+    "a": [
+     "\\b450\\b"
+    ],
+    "b": [
+     "\\b500\\b"
+    ]
+   }
+  },
+  {
+   "id": "mi-mortgage",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "We want to buy a flat for around 280,000."
+    }
+   ],
+   "question": "Can we afford the flat?",
+   "needs": [
+    {
+     "id": "price",
+     "required": true,
+     "match": [
+      "280,?000"
+     ],
+     "evidence": [
+      "flat for around 280,000"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "income",
+     "label": "household income",
+     "match": [
+      "income|earn|salary"
+     ]
+    },
+    {
+     "id": "deposit",
+     "label": "savings or deposit",
+     "match": [
+      "deposit|savings"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-holiday",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "We're thinking about a holiday in Crete."
+    }
+   ],
+   "question": "Plan our holiday.",
+   "needs": [
+    {
+     "id": "crete",
+     "required": true,
+     "match": [
+      "crete"
+     ],
+     "evidence": [
+      "holiday in Crete"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "dates",
+     "label": "travel dates",
+     "match": [
+      "dates|when they|travel date"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-promo",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "There's a team lead role opening up in my department."
+    }
+   ],
+   "question": "Should I apply for the team lead role?",
+   "needs": [
+    {
+     "id": "role",
+     "required": true,
+     "match": [
+      "team lead"
+     ],
+     "evidence": [
+      "team lead role opening"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "current",
+     "label": "their current role or experience",
+     "match": [
+      "current role|experience|role"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-car-loan",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "The car I want costs 18,000."
+    }
+   ],
+   "question": "Should I take out a loan for the car?",
+   "needs": [
+    {
+     "id": "price",
+     "required": true,
+     "match": [
+      "18,?000"
+     ],
+     "evidence": [
+      "costs 18,000"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "income",
+     "label": "income or monthly budget",
+     "match": [
+      "income|monthly|budget|earn"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-move",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I got offered a job in Edinburgh."
+    }
+   ],
+   "question": "Should I move to Edinburgh?",
+   "needs": [
+    {
+     "id": "offer",
+     "required": true,
+     "match": [
+      "edinburgh"
+     ],
+     "evidence": [
+      "job in Edinburgh"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "ties",
+     "label": "what keeps them where they are now (family, home, partner)",
+     "match": [
+      "family|partner|home|where they"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-freelance",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I'm thinking about going freelance as a designer."
+    }
+   ],
+   "question": "Is it a good time to go freelance?",
+   "needs": [
+    {
+     "id": "idea",
+     "required": true,
+     "match": [
+      "freelance"
+     ],
+     "evidence": [
+      "going freelance"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "savings",
+     "label": "savings or financial buffer",
+     "match": [
+      "savings|buffer|money"
+     ]
+    },
+    {
+     "id": "clients",
+     "label": "existing clients or demand",
+     "match": [
+      "clients|demand|work lined"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-puppy",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "The kids keep asking for a puppy."
+    }
+   ],
+   "question": "Should we get a puppy?",
+   "needs": [
+    {
+     "id": "kids",
+     "required": true,
+     "match": [
+      "puppy"
+     ],
+     "evidence": [
+      "asking for a puppy"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "time",
+     "label": "time available to care for it",
+     "match": [
+      "time|schedule|work"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-invest",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I have about 10k sitting in my current account."
+    }
+   ],
+   "question": "Should I invest the 10k?",
+   "needs": [
+    {
+     "id": "cash",
+     "required": true,
+     "match": [
+      "10k"
+     ],
+     "evidence": [
+      "10k sitting"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "goal",
+     "label": "what the money is for / time horizon",
+     "match": [
+      "goal|horizon|what the money is for|need the money"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-course",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "There is a data science bootcamp that costs 6,000."
+    }
+   ],
+   "question": "Is the bootcamp worth it for me?",
+   "needs": [
+    {
+     "id": "cost",
+     "required": true,
+     "match": [
+      "6,?000"
+     ],
+     "evidence": [
+      "costs 6,000"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "career",
+     "label": "their current job or career goal",
+     "match": [
+      "career|job|goal|current"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-renovate",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "The builder quoted 25,000 for the loft conversion."
+    }
+   ],
+   "question": "Should we go ahead with the loft conversion?",
+   "needs": [
+    {
+     "id": "quote",
+     "required": true,
+     "match": [
+      "25,?000"
+     ],
+     "evidence": [
+      "quoted 25,000"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "money",
+     "label": "savings or budget",
+     "match": [
+      "savings|budget|afford"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-hire-va",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I'm drowning in admin for my consultancy."
+    }
+   ],
+   "question": "Should I hire a virtual assistant?",
+   "needs": [
+    {
+     "id": "admin",
+     "required": true,
+     "match": [
+      "admin"
+     ],
+     "evidence": [
+      "drowning in admin"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "cost",
+     "label": "what an assistant would cost / their budget",
+     "match": [
+      "cost|budget|rate|afford"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "mi-school",
+   "category": "missing",
+   "dimensions": [
+    "missing"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "We are choosing between two primary schools for our daughter."
+    }
+   ],
+   "question": "Which school should we pick?",
+   "needs": [
+    {
+     "id": "choice",
+     "required": true,
+     "match": [
+      "primary schools|two schools"
+     ],
+     "evidence": [
+      "two primary schools"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "names",
+     "label": "which schools and how they differ",
+     "match": [
+      "which schools|names|differ"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "fd-car",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "We have about 6 grand saved."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "The van we need costs 11,000."
+    },
+    {
+     "id": "m3",
+     "conv": "c-c",
+     "text": "Our take-home is 3,800 a month combined."
+    }
+   ],
+   "question": "Can we afford the van?",
+   "needs": [
+    {
+     "id": "saved",
+     "required": true,
+     "match": [
+      "6 grand|6,?000"
+     ],
+     "evidence": [
+      "6 grand saved"
+     ],
+     "slots": []
+    },
+    {
+     "id": "price",
+     "required": true,
+     "match": [
+      "11,?000"
+     ],
+     "evidence": [
+      "costs 11,000"
+     ],
+     "slots": []
+    },
+    {
+     "id": "income",
+     "required": true,
+     "match": [
+      "3,?800"
+     ],
+     "evidence": [
+      "3,800 a month"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-pension",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I'm 41 and I put 5% of my salary into my pension."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "My employer matches up to 8%."
+    }
+   ],
+   "question": "Should I increase my pension contributions?",
+   "needs": [
+    {
+     "id": "now",
+     "required": true,
+     "match": [
+      "5%"
+     ],
+     "evidence": [
+      "5% of my salary"
+     ],
+     "slots": []
+    },
+    {
+     "id": "match",
+     "required": true,
+     "match": [
+      "8%"
+     ],
+     "evidence": [
+      "matches up to 8%"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-debt",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I owe 4,000 on a credit card at 24% interest."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I have 5,000 in an easy-access savings account."
+    }
+   ],
+   "question": "Should I pay off the credit card?",
+   "needs": [
+    {
+     "id": "debt",
+     "required": true,
+     "match": [
+      "4,?000"
+     ],
+     "evidence": [
+      "owe 4,000"
+     ],
+     "slots": []
+    },
+    {
+     "id": "savings",
+     "required": true,
+     "match": [
+      "5,?000"
+     ],
+     "evidence": [
+      "5,000 in an easy-access"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-rent-buy",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Our rent is 1,400 a month."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "A similar house nearby sells for about 320,000."
+    },
+    {
+     "id": "m3",
+     "conv": "c-c",
+     "text": "We have 40k for a deposit."
+    }
+   ],
+   "question": "Should we keep renting or buy?",
+   "needs": [
+    {
+     "id": "rent",
+     "required": true,
+     "match": [
+      "1,?400"
+     ],
+     "evidence": [
+      "rent is 1,400"
+     ],
+     "slots": []
+    },
+    {
+     "id": "price",
+     "required": true,
+     "match": [
+      "320,?000"
+     ],
+     "evidence": [
+      "about 320,000"
+     ],
+     "slots": []
+    },
+    {
+     "id": "deposit",
+     "required": true,
+     "match": [
+      "40k"
+     ],
+     "evidence": [
+      "40k for a deposit"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-subscription",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "We pay for Netflix, Disney+, Spotify and two gym memberships we barely use."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Money is tight this month."
+    }
+   ],
+   "question": "Where can we cut costs?",
+   "needs": [
+    {
+     "id": "subs",
+     "required": true,
+     "match": [
+      "gym memberships|netflix"
+     ],
+     "evidence": [
+      "barely use"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-bonus",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I got a 3,000 bonus."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Our boiler is 15 years old and making noises."
+    }
+   ],
+   "question": "What should I do with my bonus?",
+   "needs": [
+    {
+     "id": "bonus",
+     "required": true,
+     "match": [
+      "3,?000"
+     ],
+     "evidence": [
+      "3,000 bonus"
+     ],
+     "slots": []
+    },
+    {
+     "id": "boiler",
+     "required": true,
+     "match": [
+      "boiler"
+     ],
+     "evidence": [
+      "boiler is 15 years old"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-price-rise",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I sell handmade candles for 18 each and sell about 200 a month."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Wax costs have gone up 30% this year."
+    }
+   ],
+   "question": "Should I raise my candle prices?",
+   "needs": [
+    {
+     "id": "price",
+     "required": true,
+     "match": [
+      "18 each"
+     ],
+     "evidence": [
+      "18 each"
+     ],
+     "slots": []
+    },
+    {
+     "id": "volume",
+     "required": true,
+     "match": [
+      "200 a month"
+     ],
+     "evidence": [
+      "200 a month"
+     ],
+     "slots": []
+    },
+    {
+     "id": "costs",
+     "required": true,
+     "match": [
+      "30%"
+     ],
+     "evidence": [
+      "gone up 30%"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-equipment",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My laptop is six years old and crashes during video edits."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Video editing is how I earn most of my income."
+    }
+   ],
+   "question": "Should I buy a new laptop?",
+   "needs": [
+    {
+     "id": "old",
+     "required": true,
+     "match": [
+      "six years old|crashes"
+     ],
+     "evidence": [
+      "crashes during video edits"
+     ],
+     "slots": []
+    },
+    {
+     "id": "income",
+     "required": true,
+     "match": [
+      "earn most of my income|video editing"
+     ],
+     "evidence": [
+      "how I earn most of my income"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-loan-friend",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My friend Sam asked to borrow 2,000."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Sam still owes me 500 from last year."
+    }
+   ],
+   "question": "Should I lend Sam the money?",
+   "needs": [
+    {
+     "id": "ask",
+     "required": true,
+     "match": [
+      "2,?000"
+     ],
+     "evidence": [
+      "borrow 2,000"
+     ],
+     "slots": []
+    },
+    {
+     "id": "owes",
+     "required": true,
+     "match": [
+      "\\b500\\b|still owes"
+     ],
+     "evidence": [
+      "still owes me 500"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-solar",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Solar panels for our roof would cost 7,500."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Our electricity bill is about 160 a month."
+    }
+   ],
+   "question": "Are solar panels worth it for us?",
+   "needs": [
+    {
+     "id": "cost",
+     "required": true,
+     "match": [
+      "7,?500"
+     ],
+     "evidence": [
+      "would cost 7,500"
+     ],
+     "slots": []
+    },
+    {
+     "id": "bill",
+     "required": true,
+     "match": [
+      "\\b160\\b"
+     ],
+     "evidence": [
+      "about 160 a month"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-wedding-gift",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My cousin is getting married in August."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Our monthly spare cash after bills is around 300."
+    }
+   ],
+   "question": "How much should I spend on a wedding gift?",
+   "needs": [
+    {
+     "id": "spare",
+     "required": true,
+     "match": [
+      "\\b300\\b"
+     ],
+     "evidence": [
+      "around 300"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "fd-business-loan",
+   "category": "financial",
+   "dimensions": [
+    "financial"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My café makes about 2,000 profit a month."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "A second espresso machine would cost 9,000."
+    },
+    {
+     "id": "m3",
+     "conv": "c-c",
+     "text": "Weekend queues are out the door."
+    }
+   ],
+   "question": "Should I take a loan for a second espresso machine?",
+   "needs": [
+    {
+     "id": "profit",
+     "required": true,
+     "match": [
+      "2,?000"
+     ],
+     "evidence": [
+      "2,000 profit"
+     ],
+     "slots": []
+    },
+    {
+     "id": "cost",
+     "required": true,
+     "match": [
+      "9,?000"
+     ],
+     "evidence": [
+      "cost 9,000"
+     ],
+     "slots": []
+    },
+    {
+     "id": "demand",
+     "required": true,
+     "match": [
+      "queues"
+     ],
+     "evidence": [
+      "queues are out the door"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "ed-offer",
+   "category": "employment",
+   "dimensions": [
+    "employment"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I earn 52k as a QA engineer at Fenwick."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Brightmoor offered me 60k for a QA lead job, fully remote."
+    },
+    {
+     "id": "m3",
+     "conv": "c-c",
+     "text": "I really like my team at Fenwick."
+    }
+   ],
+   "question": "Should I take the Brightmoor offer?",
+   "needs": [
+    {
+     "id": "now",
+     "required": true,
+     "match": [
+      "52k"
+     ],
+     "evidence": [
+      "earn 52k"
+     ],
+     "slots": []
+    },
+    {
+     "id": "offer",
+     "required": true,
+     "match": [
+      "60k"
+     ],
+     "evidence": [
+      "offered me 60k"
+     ],
+     "slots": []
+    },
+    {
+     "id": "team",
+     "required": true,
+     "match": [
+      "like my team"
+     ],
+     "evidence": [
+      "like my team at Fenwick"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "ed-quit",
+   "category": "employment",
+   "dimensions": [
+    "employment"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My boss keeps scheduling meetings at 7pm and I'm exhausted."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I have about four months of expenses saved."
+    }
+   ],
+   "question": "Should I quit my job?",
+   "needs": [
+    {
+     "id": "boss",
+     "required": true,
+     "match": [
+      "7pm|meetings"
+     ],
+     "evidence": [
+      "meetings at 7pm"
+     ],
+     "slots": []
+    },
+    {
+     "id": "savings",
+     "required": true,
+     "match": [
+      "four months"
+     ],
+     "evidence": [
+      "four months of expenses"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "ed-raise",
+   "category": "employment",
+   "dimensions": [
+    "employment"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I've been at Lumio for three years without a raise."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I led the migration project that saved the company 200k."
+    }
+   ],
+   "question": "Should I ask for a raise?",
+   "needs": [
+    {
+     "id": "tenure",
+     "required": true,
+     "match": [
+      "three years"
+     ],
+     "evidence": [
+      "three years without a raise"
+     ],
+     "slots": []
+    },
+    {
+     "id": "impact",
+     "required": true,
+     "match": [
+      "200k|migration"
+     ],
+     "evidence": [
+      "saved the company 200k"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "ed-parttime",
+   "category": "employment",
+   "dimensions": [
+    "employment"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I work full time as an accountant."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Our second baby is due in March."
+    }
+   ],
+   "question": "Should I ask to go part-time?",
+   "needs": [
+    {
+     "id": "job",
+     "required": true,
+     "match": [
+      "accountant|full time"
+     ],
+     "evidence": [
+      "full time as an accountant"
+     ],
+     "slots": []
+    },
+    {
+     "id": "baby",
+     "required": true,
+     "match": [
+      "baby|march"
+     ],
+     "evidence": [
+      "baby is due in March"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "ed-contract",
+   "category": "employment",
+   "dimensions": [
+    "employment"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My contract ends on 30 June."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "My manager hinted they'd like to extend it."
+    }
+   ],
+   "question": "Should I start looking for another job?",
+   "needs": [
+    {
+     "id": "end",
+     "required": true,
+     "match": [
+      "30 june"
+     ],
+     "evidence": [
+      "ends on 30 June"
+     ],
+     "slots": []
+    },
+    {
+     "id": "hint",
+     "required": true,
+     "match": [
+      "extend"
+     ],
+     "evidence": [
+      "like to extend"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "ed-relocate",
+   "category": "employment",
+   "dimensions": [
+    "employment"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My company wants me to relocate to the Rotterdam office."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "My partner just started a new job here in Antwerp."
+    }
+   ],
+   "question": "Should I accept the relocation?",
+   "needs": [
+    {
+     "id": "relo",
+     "required": true,
+     "match": [
+      "rotterdam"
+     ],
+     "evidence": [
+      "relocate to the Rotterdam office"
+     ],
+     "slots": []
+    },
+    {
+     "id": "partner",
+     "required": true,
+     "match": [
+      "partner.*(job|antwerp)|antwerp"
+     ],
+     "evidence": [
+      "partner just started a new job"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "ed-sidegig",
+   "category": "employment",
+   "dimensions": [
+    "employment"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My employment contract says I need approval for any outside work."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "A friend wants me to build her a website for 1,500."
+    }
+   ],
+   "question": "Can I take on the website job?",
+   "needs": [
+    {
+     "id": "clause",
+     "required": true,
+     "match": [
+      "approval|outside work"
+     ],
+     "evidence": [
+      "need approval for any outside work"
+     ],
+     "slots": []
+    },
+    {
+     "id": "gig",
+     "required": true,
+     "match": [
+      "1,?500|website"
+     ],
+     "evidence": [
+      "website for 1,500"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "ed-course-time",
+   "category": "employment",
+   "dimensions": [
+    "employment"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My employer offers a paid study day every month."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I want to get a project management certificate."
+    }
+   ],
+   "question": "How should I fit the certificate around work?",
+   "needs": [
+    {
+     "id": "study",
+     "required": true,
+     "match": [
+      "study day"
+     ],
+     "evidence": [
+      "paid study day"
+     ],
+     "slots": []
+    },
+    {
+     "id": "cert",
+     "required": true,
+     "match": [
+      "certificate"
+     ],
+     "evidence": [
+      "project management certificate"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "tp-sister-job",
+   "category": "third-party",
+   "dimensions": [
+    "third-party"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My sister Maya is a vet in Galway."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I work in insurance in Dublin."
+    }
+   ],
+   "question": "What does my sister do?",
+   "needs": [
+    {
+     "id": "maya",
+     "required": true,
+     "match": [
+      "vet"
+     ],
+     "evidence": [
+      "Maya is a vet"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [
+    {
+     "id": "self",
+     "match": [
+      "insurance"
+     ]
+    }
+   ],
+   "crossEntity": [
+    {
+     "id": "vet-not-user",
+     "forbid": [
+      "(profession|role|job)\\W.*vet\\b"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "tp-mum-city",
+   "category": "third-party",
+   "dimensions": [
+    "third-party"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My mum lives in Porto now."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I live in Leeds."
+    }
+   ],
+   "question": "Where does my mum live?",
+   "needs": [
+    {
+     "id": "mum",
+     "required": true,
+     "match": [
+      "porto"
+     ],
+     "evidence": [
+      "mum lives in Porto"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "crossEntity": [
+    {
+     "id": "porto-not-user",
+     "forbid": [
+      "(city|location|lives? in|home)\\W.*porto"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "tp-friend-bday",
+   "category": "third-party",
+   "dimensions": [
+    "third-party"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My best friend Kemi's birthday is on 2 May."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "My own birthday is in November."
+    }
+   ],
+   "question": "When is Kemi's birthday?",
+   "needs": [
+    {
+     "id": "kemi",
+     "required": true,
+     "match": [
+      "2 may|may 2"
+     ],
+     "evidence": [
+      "birthday is on 2 May"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "crossEntity": [
+    {
+     "id": "may-not-user",
+     "forbid": [
+      "(birthday|bday)\\W.*2 may"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "tp-partner-allergy",
+   "category": "third-party",
+   "dimensions": [
+    "third-party"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My partner Luis is allergic to shellfish."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I love prawns."
+    }
+   ],
+   "question": "What should I avoid cooking for Luis?",
+   "needs": [
+    {
+     "id": "luis",
+     "required": true,
+     "match": [
+      "shellfish"
+     ],
+     "evidence": [
+      "allergic to shellfish"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "tp-boss",
+   "category": "third-party",
+   "dimensions": [
+    "third-party"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My boss Helen prefers updates by email, not Slack."
+    }
+   ],
+   "question": "How should I send Helen my update?",
+   "needs": [
+    {
+     "id": "helen",
+     "required": true,
+     "match": [
+      "email"
+     ],
+     "evidence": [
+      "prefers updates by email"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "tp-son-hobby",
+   "category": "third-party",
+   "dimensions": [
+    "third-party"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Our son Oskar is obsessed with dinosaurs."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Our daughter Lena loves horses."
+    }
+   ],
+   "question": "What should I get Oskar for his birthday?",
+   "needs": [
+    {
+     "id": "oskar",
+     "required": true,
+     "match": [
+      "dinosaur"
+     ],
+     "evidence": [
+      "obsessed with dinosaurs"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [
+    {
+     "id": "lena",
+     "match": [
+      "horses"
+     ]
+    }
+   ],
+   "crossEntity": [
+    {
+     "id": "horses-not-oskar",
+     "forbid": [
+      "oskar.*horses"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "tp-dad-health-free",
+   "category": "third-party",
+   "dimensions": [
+    "third-party"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My dad retired last year after 30 years as a postman."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "He spends most days in his allotment."
+    }
+   ],
+   "question": "What could I get my dad for Christmas?",
+   "needs": [
+    {
+     "id": "dad",
+     "required": true,
+     "match": [
+      "allotment|postman|retired"
+     ],
+     "evidence": [
+      "days in his allotment"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "tp-cofounder",
+   "category": "third-party",
+   "dimensions": [
+    "third-party"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My co-founder Ravi handles all the sales."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "I handle product and engineering."
+    }
+   ],
+   "question": "Who handles sales at my company?",
+   "needs": [
+    {
+     "id": "ravi",
+     "required": true,
+     "match": [
+      "ravi"
+     ],
+     "evidence": [
+      "Ravi handles all the sales"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "crossEntity": [
+    {
+     "id": "sales-not-user",
+     "forbid": [
+      "(role|profession)\\W.*sales"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "tp-neighbour",
+   "category": "third-party",
+   "dimensions": [
+    "third-party"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Our neighbour Pete has a spare key to our house."
+    }
+   ],
+   "question": "Who has our spare key?",
+   "needs": [
+    {
+     "id": "pete",
+     "required": true,
+     "match": [
+      "pete"
+     ],
+     "evidence": [
+      "Pete has a spare key"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": []
+  },
+  {
+   "id": "tp-two-sams",
+   "category": "third-party",
+   "dimensions": [
+    "third-party"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "Sam Okoro is my accountant."
+    },
+    {
+     "id": "m2",
+     "conv": "c-b",
+     "text": "Sam Lindqvist is my climbing partner."
+    },
+    {
+     "id": "m3",
+     "conv": "c-c",
+     "text": "Sam said the tax return is nearly done."
+    }
+   ],
+   "question": "What did Sam say about the tax return?",
+   "needs": [
+    {
+     "id": "stmt",
+     "required": true,
+     "match": [
+      "tax return"
+     ],
+     "evidence": [
+      "tax return is nearly done"
+     ],
+     "slots": []
+    }
+   ],
+   "distractors": [],
+   "unknowns": [
+    {
+     "id": "which",
+     "label": "which Sam (they know two)",
+     "match": [
+      "which sam|sam okoro|sam lindqvist"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ng-boil",
+   "category": "negative",
+   "dimensions": [
+    "negative"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I'm a pharmacist in Cork and my husband is a fireman."
+    }
+   ],
+   "question": "What is the boiling point of water in Fahrenheit?",
+   "needs": [],
+   "distractors": [
+    {
+     "id": "personal",
+     "match": [
+      "pharmacist|cork|husband|fireman"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ng-capital",
+   "category": "negative",
+   "dimensions": [
+    "negative"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My kids are 4 and 6 and my wife runs a florist."
+    }
+   ],
+   "question": "What is the capital of Canada?",
+   "needs": [],
+   "distractors": [
+    {
+     "id": "personal",
+     "match": [
+      "kids|florist|wife"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ng-math",
+   "category": "negative",
+   "dimensions": [
+    "negative"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I owe the bank 12,000 and my rent is 900."
+    }
+   ],
+   "question": "What is 17 times 23?",
+   "needs": [],
+   "distractors": [
+    {
+     "id": "personal",
+     "match": [
+      "12,?000|rent|\\b900\\b"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ng-history",
+   "category": "negative",
+   "dimensions": [
+    "negative"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I support Hibernian and I go to every home game."
+    }
+   ],
+   "question": "When did the Second World War end?",
+   "needs": [],
+   "distractors": [
+    {
+     "id": "personal",
+     "match": [
+      "hibernian|home game"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ng-science",
+   "category": "negative",
+   "dimensions": [
+    "negative"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "I'm allergic to cats and I live with my partner Noor."
+    }
+   ],
+   "question": "How does photosynthesis work?",
+   "needs": [],
+   "distractors": [
+    {
+     "id": "personal",
+     "match": [
+      "cats|noor|partner"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ng-translate",
+   "category": "negative",
+   "dimensions": [
+    "negative"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My manager Claire wants the report by Friday."
+    }
+   ],
+   "question": "How do you say 'good morning' in German?",
+   "needs": [],
+   "distractors": [
+    {
+     "id": "personal",
+     "match": [
+      "claire|report|friday"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ng-define",
+   "category": "negative",
+   "dimensions": [
+    "negative"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "We are saving for a house deposit of 30k."
+    }
+   ],
+   "question": "What does inflation mean?",
+   "needs": [],
+   "distractors": [
+    {
+     "id": "personal",
+     "match": [
+      "deposit|30k|house"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "ng-trivia",
+   "category": "negative",
+   "dimensions": [
+    "negative"
+   ],
+   "history": [
+    {
+     "id": "m1",
+     "conv": "c-a",
+     "text": "My brother Callum lives in Perth, Australia."
+    }
+   ],
+   "question": "How many legs does a spider have?",
+   "needs": [],
+   "distractors": [
+    {
+     "id": "personal",
+     "match": [
+      "callum|perth"
+     ]
+    }
+   ]
+  }
+ ]
+}

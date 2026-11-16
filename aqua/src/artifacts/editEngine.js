@@ -31,7 +31,7 @@ import { extractJson, ArtifactError } from './planner.js';
 import { stripOuterFences } from './builder.js';
 import { validateArtifactFiles } from './validator.js';
 import {
-  getArtifact, appendVersion, getFileAbsolutePath,
+  getArtifact, appendVersion, getFileAbsolutePath, readArtifactFile,
 } from './artifactStore.js';
 
 const EDIT_BUDGET      = { maxResponseTokens: 4_096 };
@@ -114,10 +114,9 @@ async function editFilesModel({ manifest, instruction, ask, onEvent }) {
   onEvent({ type: 'progress', progress: { stage: 'editing', targets, selectedBy } });
 
   const providers = selProvider ? [selProvider] : [];
-  const current = new Map(manifest.files.map(f => [
-    f.path,
-    fs.readFileSync(getFileAbsolutePath(manifest, f.path)),
-  ]));
+  // Phase 4B: read through the object store — this instance may never have
+  // held these files (the artifact was created or last edited elsewhere).
+  const current = new Map(await Promise.all(manifest.files.map(async f => [f.path, await readArtifactFile(manifest, f.path)])));
 
   const files = [];
   let idx = 0;
@@ -312,9 +311,9 @@ export async function regenerateArtifact({
   // Single-file regen: merge fresh file into byte-identical copies of the rest.
   let files;
   if (onlyPath) {
-    files = manifest.files.map(f => f.path === onlyPath
+    files = await Promise.all(manifest.files.map(async f => f.path === onlyPath
       ? exported.files.find(x => x.path === onlyPath) ?? exported.files[0]
-      : { path: f.path, buffer: fs.readFileSync(getFileAbsolutePath(manifest, f.path)), mime: f.mime });
+      : { path: f.path, buffer: await readArtifactFile(manifest, f.path), mime: f.mime }));
   } else {
     files = exported.files;
   }

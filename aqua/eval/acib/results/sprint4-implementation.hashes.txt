@@ -1,0 +1,11 @@
+# Sprint 4 implementation as evaluated on acib.v2.eval (first run, 2026-11-11):
+64bd193cfb875cfedaaaa11dc92990b12c5208aba8cabb871a319d34ac8f44db *src/brain/contextEngine/informationNeeds.js
+82f09a4fbb38d5d817a5ad57cc13ee4c78f73ea7439302c2b5566e098f56d36f *src/understanding/speechAct.js
+d130446ae83a7b6e76f53afd5cc933e586c740bd1fa3ae43b06227b6c89fd9bc *src/memory/candidateExtractor.js
+266672d9a0130c8213d903b9cbb3f4e20ccac2db9c0990d1750faeb93f7599af *src/memory/memorySchema.js
+4518064781d5d7e806423572dabd42caaccd09dd3bed1cc3a243ab3fdd2a1d7f *src/memory/memoryExtractor.js
+dcd35721650ddb04e168d170255a0ef593c94dc6a0782375ba4ca86fd6d00a7f *src/mind/goalTracker.js
+# After the eval run, ONE behaviour-neutral change: informationNeeds.js gained __failNextForTests (test seam);
+# chat.js [NEEDS] log hashes the owner id. Re-run: results/acib-v2-eval-needs.sprint4-after-seam-recheck.json — 0/133 metrics differ, all items identical.
+42ef24a374754953a0c1023f2d6d83e5bcdb206ad1ffdd5555d51fa6deb432a3 *src/brain/contextEngine/informationNeeds.js
+146a07c17649a83d30c58f7fc0728dfc2d7e76fe1ca779ac673e969d3fbaeea6 *src/routes/chat.js

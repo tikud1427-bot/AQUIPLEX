@@ -32,18 +32,17 @@ import { runReasoning }    from './reasoningEngine.js';
 import { reviewReasoning } from './critic.js';
 import { synthesize }      from './synthesizer.js';
 import { getAgent }        from './agentRegistry.js';
-import { LOW_CONFIDENCE_THRESHOLD } from '../orchestrator/verificationStrategy.js';
+import { reviewDepth } from '../orchestrator/verificationStrategy.js';
 
 /**
  * Whether this turn earns a REAL model reasoning pass (Phase 3) vs the
- * deterministic brief. Same gate the verification loop uses for a deep review:
- * high complexity, or a shaky classification. Deliberately conservative — the
+ * deterministic brief. Same gate the verification loop uses for a deep review
+ * (verificationStrategy.reviewDepth): high complexity, or a shaky
+ * classification that is long or sensitive. Deliberately conservative — the
  * pass is a pre-generation model call, so medium/low traffic never pays for it.
  */
-function warrantsReasoningPass(complexity, confidence) {
-  if (complexity === 'high') return true;
-  if (typeof confidence === 'number' && confidence < LOW_CONFIDENCE_THRESHOLD) return true;
-  return false;
+function warrantsReasoningPass(complexity, confidence, tags, userMessage) {
+  return reviewDepth({ complexity, confidence, tags, userMessage }).reasoningPass;
 }
 
 /**
@@ -56,7 +55,7 @@ function warrantsReasoningPass(complexity, confidence) {
  * deterministic pipeline as before — no model call, no added latency. Fails
  * open: a failed/absent pass falls back to the deterministic brief.
  */
-export async function runIntelligencePipeline({ taskType, complexity, confidence = 1.0, userMessage = '', requestId, conversationId, skipReasoningPass = false, costLedger = null }) {
+export async function runIntelligencePipeline({ taskType, complexity, confidence = 1.0, userMessage = '', reasoningMessage = null, requestId, conversationId, skipReasoningPass = false, costLedger = null, tags = [] }) {
   const plan      = createPlan({ taskType, complexity, confidence });
   const reasoning = runReasoning(plan, userMessage);
   const critic    = reviewReasoning(plan, reasoning);
@@ -71,9 +70,12 @@ export async function runIntelligencePipeline({ taskType, complexity, confidence
     // a full model call and its latency. The deterministic stages above still
     // run — they are pure and free.
     reasoningPass = { ran: false, skipped: true, reason: 'generation replaced by a specialist engine' };
-  } else if (plan.active && reasoningAgent && warrantsReasoningPass(complexity, confidence)) {
+  } else if (plan.active && reasoningAgent && warrantsReasoningPass(complexity, confidence, tags, userMessage)) {
     reasoningPass = await reasoningAgent.run({
-      userMessage, plan, reasoning, taskType, requestId, conversationId, costLedger,
+      // 2026-11-16 (conversation recovery): the pass analyses the question as
+      // the conversation resolved it ("Is it curable? (… means: pneumonia)"),
+      // never a bare pronoun. Gating above still reads the literal message.
+      userMessage: reasoningMessage ?? userMessage, plan, reasoning, taskType, requestId, conversationId, costLedger,
     });
   }
 

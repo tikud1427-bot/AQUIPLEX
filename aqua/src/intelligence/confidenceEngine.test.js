@@ -108,10 +108,27 @@ test('grounding expectation lookup covers retrieval-hungry task types only', () 
 
 // ═══ Verification Strategy — low-confidence trigger ══════════════════════════
 
-test('low classifier confidence alone now warrants verification', () => {
-  const d = shouldVerify({ taskType: 'analysis', complexity: 'medium', tags: [], userMessage: 'short', confidence: 0.3 });
+test('low classifier confidence on a LONG message warrants verification', () => {
+  const d = shouldVerify({ taskType: 'analysis', complexity: 'medium', tags: [], userMessage: 'x'.repeat(130), confidence: 0.3 });
   assert.equal(d.enabled, true);
   assert.ok(d.reasons.includes('low classification confidence'));
+});
+
+test('cost-aware review (2026-11-12): low confidence on a short, non-sensitive message no longer warrants verification', () => {
+  const d = shouldVerify({ taskType: 'analysis', complexity: 'medium', tags: [], userMessage: 'short', confidence: 0.3 });
+  assert.equal(d.enabled, false);
+});
+
+test('AQUA_COST_AWARE_REVIEW=off restores the previous policy (short + low confidence → verify)', () => {
+  const prev = process.env.AQUA_COST_AWARE_REVIEW;
+  process.env.AQUA_COST_AWARE_REVIEW = 'off';
+  try {
+    const d = shouldVerify({ taskType: 'analysis', complexity: 'medium', tags: [], userMessage: 'short', confidence: 0.3 });
+    assert.equal(d.enabled, true);
+    assert.ok(d.reasons.includes('low classification confidence'));
+  } finally {
+    if (prev === undefined) delete process.env.AQUA_COST_AWARE_REVIEW; else process.env.AQUA_COST_AWARE_REVIEW = prev;
+  }
 });
 
 test('confidence at/above threshold adds no reason; omitting it entirely preserves the original decision surface', () => {

@@ -122,7 +122,8 @@ async function refreshDailyAllowance(userOrId, { now = () => new Date() } = {}) 
       );
       if (before) {
         const removed = before.wallet.freeCredits - FREE_DAILY;
-        Transaction.create({
+        // Phase 4A: awaited (still fail-open) — the ledger row is durable before the response.
+        await Transaction.create({
           user:         user._id,
           type:         "ADMIN_ADJUST",
           amount:       -removed,
@@ -154,8 +155,14 @@ async function refreshDailyAllowance(userOrId, { now = () => new Date() } = {}) 
  * `fromFree`/`fromPaid`/`freeResetAt` are what refundCredits needs to give the
  * credits back to the right bucket.
  */
-async function deductCredits(userId, cost, actionType = "default", description = "") {
+async function deductCredits(userId, cost, actionType = "default", description = "", { chargeId = null } = {}) {
   if (!(cost > 0)) throw new Error("INVALID_COST");
+  // Phase 4B — with a charge id the debit is IDEMPOTENT: applied only while the
+  // id is not yet in wallet.appliedCharges, and the id is pushed in the same
+  // atomic update. A retried debit of the same charge returns the original
+  // breakdown instead of charging twice.
+  const chargeFilter = chargeId ? { "wallet.appliedCharges": { $ne: chargeId } } : {};
+  const chargePush = chargeId ? { $push: { "wallet.appliedCharges": { $each: [chargeId], $slice: -500 } } } : {};
 
   let user = await User.findById(userId);
   if (!user) throw new Error("USER_NOT_FOUND");
@@ -200,6 +207,7 @@ async function deductCredits(userId, cost, actionType = "default", description =
         "wallet.freeCredits": { $gte: fromFree },
         "wallet.paidCredits": { $gte: fromPaid },
         "wallet.freeResetAt": freeResetAt,
+        ...chargeFilter,
       },
       {
         $inc: {
@@ -207,6 +215,7 @@ async function deductCredits(userId, cost, actionType = "default", description =
           "wallet.paidCredits": -fromPaid,
           "wallet.totalSpent":  cost,
         },
+        ...chargePush,
       },
       { returnDocument: "after" }
     );
@@ -214,10 +223,21 @@ async function deductCredits(userId, cost, actionType = "default", description =
     if (!updated) {
       user = await User.findById(userId);
       if (!user) throw new Error("USER_NOT_FOUND");
+      if (chargeId && (user.wallet.appliedCharges ?? []).includes(chargeId)) {
+        // This charge was already debited (a retry after a crash): never twice.
+        const prior = await Transaction.findOne({ user: userId, type: "DEBIT", "metadata.chargeId": chargeId }).lean();
+        log.info(`DEBIT already applied user=${userId} charge=${chargeId} — not charged again`);
+        return {
+          deducted: 0, alreadyApplied: true, chargeId,
+          fromFree: prior?.breakdown?.fromFree ?? 0, fromPaid: prior?.breakdown?.fromPaid ?? cost, freeResetAt: user.wallet.freeResetAt,
+          balanceAfter: { freeCredits: user.wallet.freeCredits, paidCredits: user.wallet.paidCredits, total: user.wallet.freeCredits + user.wallet.paidCredits },
+        };
+      }
       continue;
     }
 
-    Transaction.create({
+    // Phase 4A: awaited (still fail-open) — the ledger row is durable before the response.
+    await Transaction.create({
       user:        userId,
       type:        "DEBIT",
       amount:      -cost,
@@ -229,6 +249,7 @@ async function deductCredits(userId, cost, actionType = "default", description =
       actionCost:  cost,
       description: description || `AI action: ${actionType}`,
       breakdown:   { fromFree, fromPaid },
+      ...(chargeId ? { metadata: { chargeId } } : {}),
     }).catch((e) => log.error("Transaction ledger write failed:", e.message));
 
     // Free-allowance funnel signals — the moment a user crosses "low" and the
@@ -327,7 +348,8 @@ async function refundCredits(userId, amount, reason = "generation_failed", break
   }
 
   const refunded = toFree + fromPaid;
-  Transaction.create({
+  // Phase 4A: awaited (still fail-open) — the ledger row is durable before the response.
+  await Transaction.create({
     user:        userId,
     type:        "REFUND",
     amount:      refunded,
@@ -471,8 +493,80 @@ async function getTransactionHistory(userId, limit = 30, skip = 0) {
     .lean();
 }
 
+/**
+ * refundCharge — Phase 4B, the idempotent refund of ONE pending charge
+ * (aqua/src/credits/pendingCharges.js). Applied at most once per charge id:
+ *
+ *   never-deducted    the charge's debit was never applied (the request died
+ *                     before it, or the user is unlimited): nothing to return —
+ *                     a refund never mints credits
+ *   already-refunded  this charge was refunded before (a retry, a race)
+ *   refunded          applied now (refunded = credits actually returned; 0 when
+ *                     the free part expired with yesterday's allowance — the
+ *                     charge id is still marked so it can never be retried)
+ *   user-gone         the account no longer exists
+ *
+ * Same split rules as refundCredits: paid credits always come back; free
+ * credits only while the same daily allowance runs and never above it.
+ */
+async function refundCharge({ chargeId, userId, amount, reason = "request_failed", breakdown = null }) {
+  if (!chargeId) throw new Error("refundCharge: chargeId is required");
+  let user = await User.findById(userId);
+  if (!user) return { outcome: "user-gone", refunded: 0 };
+  const applied = user.wallet.appliedCharges ?? [];
+  const refundedIds = user.wallet.refundedCharges ?? [];
+  if (!applied.includes(chargeId)) return { outcome: "never-deducted", refunded: 0 };
+  if (refundedIds.includes(chargeId)) return { outcome: "already-refunded", refunded: 0 };
+
+  // The split of THIS charge's debit: from the caller, else from its ledger row.
+  let split = breakdown && Number.isFinite(breakdown.fromFree) && Number.isFinite(breakdown.fromPaid)
+    && breakdown.fromFree + breakdown.fromPaid === amount ? breakdown : null;
+  if (!split) {
+    const prior = await Transaction.findOne({ user: userId, type: "DEBIT", "metadata.chargeId": chargeId }).lean();
+    split = prior
+      ? { fromFree: prior.breakdown?.fromFree ?? 0, fromPaid: prior.breakdown?.fromPaid ?? 0, freeResetAt: null }
+      : { fromFree: 0, fromPaid: amount, freeResetAt: null };   // no ledger row: return to paid (never lose credits)
+  }
+  const once = { "wallet.appliedCharges": chargeId, "wallet.refundedCharges": { $ne: chargeId } };
+  const mark = { "wallet.refundedCharges": { $each: [chargeId], $slice: -500 } };
+  const freeResetAt = split.freeResetAt ?? breakdown?.freeResetAt ?? null;
+
+  let updated = null; let toFree = 0;
+  if (split.fromFree > 0 && freeResetAt) {
+    updated = await User.findOneAndUpdate(
+      { _id: userId, ...once, "wallet.freeResetAt": freeResetAt, "wallet.freeCredits": { $lte: FREE_DAILY - split.fromFree } },
+      { $inc: { "wallet.freeCredits": split.fromFree, "wallet.paidCredits": split.fromPaid, "wallet.totalSpent": -amount }, $push: mark },
+      { returnDocument: "after" });
+    if (updated) toFree = split.fromFree;
+  }
+  if (!updated) {
+    // The free part (if any) expired with yesterday's allowance; the paid part always comes back.
+    updated = await User.findOneAndUpdate(
+      { _id: userId, ...once },
+      { $inc: { "wallet.paidCredits": split.fromPaid, "wallet.totalSpent": -split.fromPaid }, $push: mark },
+      { returnDocument: "after" });
+  }
+  if (!updated) {
+    user = await User.findById(userId);
+    if (!user) return { outcome: "user-gone", refunded: 0 };
+    return { outcome: "already-refunded", refunded: 0 };      // lost a race to another refund of this charge
+  }
+  const refunded = toFree + split.fromPaid;
+  if (refunded > 0) {
+    await Transaction.create({
+      user: userId, type: "REFUND", amount: refunded,
+      balanceAfter: { freeCredits: updated.wallet.freeCredits, paidCredits: updated.wallet.paidCredits },
+      description: `Refund: ${reason}`, breakdown: { fromFree: toFree, fromPaid: split.fromPaid },
+      metadata: { chargeId },
+    }).catch((e) => log.error("Refund ledger write failed:", e.message));
+  }
+  log.info(`REFUND charge=${chargeId} user=${userId} refunded=${refunded} toFree=${toFree} reason=${reason}`);
+  return { outcome: "refunded", refunded };
+}
+
 module.exports = {
   deductCredits,
+  refundCharge,
   refundCredits,
   addPaidCredits,
   refreshDailyAllowance,
