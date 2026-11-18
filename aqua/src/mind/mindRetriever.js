@@ -17,7 +17,7 @@ import { DIMENSIONS, GOAL_STATUS, STATUS } from './mindSchema.js';
 import { getBeliefs } from './beliefEngine.js';
 import { getActiveGoals } from './goalTracker.js';
 import { currentFocus } from './workingMemory.js';
-import { neighborhood, SELF_KEY } from './relationshipGraph.js';
+import { neighborhood, SELF_KEY, fileOriginTest } from './relationshipGraph.js';
 import { estimateTokens } from '../core/tokenManager.js';
 import { isAspirationalRole, intentLabel, laterWordNote, reviewNote, UNCERTAIN_RULE } from '../memory/displayLabels.js';
 import { contentTerms, isOverviewRequest } from '../pic/questionShape.js';
@@ -266,12 +266,16 @@ export function retrieveCognitiveContext(mind, { query = '', taskType = 'convers
   }
 
   // ── 8. Graph context only when the query names an entity ───────────────────
+  // Phase 1a.1: this block is injected UNFENCED as AQUA's model of the user, so
+  // nodes named by uploaded files (artifact / workspace nodes) never appear in
+  // it — memory/engine.js shows those paths in the fenced file context.
   if (q.length > 3) {
+    const fromFile = fileOriginTest(mind);
     const hit = Object.values(mind.graph.nodes).find(n =>
-      n.key !== SELF_KEY && n.label.length > 2 && q.includes(n.label.toLowerCase()));
+      n.key !== SELF_KEY && !fromFile(n.key) && n.label.length > 2 && q.includes(n.label.toLowerCase()));
     if (hit) {
       const nb = neighborhood(mind, hit.key, 1, 6);
-      const rel = nb.edges.slice(0, 4).map(e => {
+      const rel = nb.edges.filter(e => !fromFile(e.from) && !fromFile(e.to)).slice(0, 4).map(e => {
         const from = mind.graph.nodes[e.from]?.label ?? '?';
         const to   = mind.graph.nodes[e.to]?.label ?? '?';
         return `${from} —${e.type}→ ${to}`;

@@ -52,6 +52,25 @@ export function upsertEdge(mind, fromKey, toKey, type, note = '') {
   return edge;
 }
 
+/**
+ * Phase 1a.1 (2026-11-16) — keys of graph nodes whose LABEL came from an
+ * uploaded file rather than from the user's words: every `artifact:` node
+ * (rememberFile) and the project node rememberWorkspace() makes from a
+ * workspace name. Such labels are attacker-controlled text, so the UNFENCED
+ * memory lanes (the cognitive block's "Related:" line, the relationship-graph
+ * lane) must not print them; memory/engine.js renders them in the fenced file
+ * context instead. One definition, used by both.
+ *
+ * @returns {(key: string) => boolean}
+ */
+export function fileOriginTest(mind) {
+  const workspaceProjects = new Set();
+  for (const f of Object.values(mind?.files ?? {})) {
+    if (f?.kind === 'workspace' && f.name) workspaceProjects.add(nodeKey('project', f.name));
+  }
+  return key => typeof key === 'string' && (key.startsWith('artifact:') || workspaceProjects.has(key));
+}
+
 const SELF = 'person:__self__';
 function ensureSelf(mind) {
   if (!mind.graph.nodes[SELF]) {

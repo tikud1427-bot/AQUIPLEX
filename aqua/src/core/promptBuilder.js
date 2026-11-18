@@ -86,6 +86,27 @@ const MODULE_MAP = {
  * @param {string} [searchContext] - Web Search: compressed live-web block from search/contextExtractor.js ('' if search skipped/failed). Injected AFTER project context — repository truth stays foundational; web results supplement it.
  * @returns {{ prompt: string, modules: string[] }}
  */
+/**
+ * Join every INGESTED context block for one turn, in a fixed order, into the
+ * string buildSystemPrompt() fences as untrusted (its `projectContext` slot).
+ *
+ * Phase 1a.1 (2026-11-16): `fileMemoryContext` is memoryRetrieve()'s
+ * `fileContext` — verbatim chunks, extracted summaries and names of uploaded
+ * files. It used to ride the UNFENCED memory block. Routing it here is what
+ * puts it behind the fence; chat.js calls this rather than joining by hand so
+ * the order and membership are tested in one place.
+ *
+ * @param {{ attachmentContext?: string, fileMemoryContext?: string, projectContext?: string,
+ *           knowledgeContext?: string, recallContext?: string }} [parts]
+ * @returns {string}
+ */
+export function composeIngestedContext({
+  attachmentContext = '', fileMemoryContext = '', projectContext = '', knowledgeContext = '', recallContext = '',
+} = {}) {
+  return [attachmentContext, fileMemoryContext, projectContext, knowledgeContext, recallContext]
+    .filter(s => typeof s === 'string' && s.trim()).join('\n\n');
+}
+
 export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective = '', projectContext = '', intelligenceBlock = '', identityIntent = null, searchContext = '', enginePolicy = '') {
   const modules     = MODULE_MAP[taskType] ?? [];
   const parts       = [M.system];
@@ -111,7 +132,11 @@ export function buildSystemPrompt(taskType, memoryBlock = '', reasoningDirective
     moduleNames.push(identityIntent?.isSelf ? 'identity+' : 'identity');
   }
 
-  // Inject memory block right after identity — before task instructions
+  // Inject memory block right after identity — before task instructions.
+  // UNFENCED by design: it holds what the user told AQUA about themselves.
+  // CONTRACT (Phase 1a.1): no file-derived text may ride here — memoryRetrieve()
+  // returns uploaded-file content separately as `fileContext`, which goes
+  // through composeIngestedContext() into the fenced block below.
   if (memoryBlock && memoryBlock.trim()) {
     parts.push(memoryBlock);
     moduleNames.push('memory');

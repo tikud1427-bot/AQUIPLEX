@@ -162,9 +162,12 @@ test('file memory — uploads become durable owner memory + graph artifact', () 
   assert.ok(mind.files['file:roadmap.pdf'], 'file entry persisted');
   assert.ok(mind.graph.nodes['artifact:roadmap.pdf'], 'graph artifact node');
 
+  // Phase 1a.1: file memory is returned as `fileContext` (fenced by the
+  // caller), never inside the unfenced memory `block`.
   const r = engine.memoryRetrieve(owner, { query: 'what did the roadmap.pdf say?' });
-  assert.match(r.block, /roadmap\.pdf/i, 'file memory retrievable');
-  assert.match(r.block, /Q3 roadmap/i, 'summary surfaces');
+  assert.match(r.fileContext, /roadmap\.pdf/i, 'file memory retrievable');
+  assert.match(r.fileContext, /Q3 roadmap/i, 'summary surfaces');
+  assert.ok(!/roadmap\.pdf|Q3 roadmap/i.test(r.block), 'file memory must not ride the unfenced memory block');
 });
 
 // ── T7 + T11: single store, restart persistence ────────────────────────────────

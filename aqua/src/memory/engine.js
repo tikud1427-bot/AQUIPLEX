@@ -37,7 +37,7 @@ import { buildMeaningOf } from '../mind/itemMeaning.js';
 import { listFacts as listEvidenceFacts } from '../files/evidenceStore.js';
 import { propagationEnabled, recordTransitions, reconcileMind, propagateToEvidenceInBackground, releaseAfterForget, forgetValueInMind, notePronounReferents } from './propagation.js';
 import { classifySensitivity, classifyText, sensitivePolicy, scrubSensitiveLines } from './sensitivity.js';
-import { upsertNode, upsertEdge, SELF_KEY } from '../mind/relationshipGraph.js';
+import { upsertNode, upsertEdge, SELF_KEY, fileOriginTest } from '../mind/relationshipGraph.js';
 import { recallGraphPaths, formatGraphRecall } from '../mind/graphRecall.js';
 import { recallEpisodes, formatEpisodeRecall, isPastRecallQuery, latestEpisode } from '../mind/episodeRecall.js';
 import { detectContinuation } from './continuation.js';
@@ -46,6 +46,7 @@ import { estimateTokens } from '../core/tokenManager.js';
 import { indexOwnerFacts, semanticFactScores } from '../embeddings/semanticMemory.js';
 import { indexFileChunks, fileChunkScores, removeFileChunks } from '../embeddings/fileMemory.js';
 import { fileMeta } from '../core/logSafety.js';
+import { sanitizeInlineLabel } from '../core/untrustedContent.js';
 
 export { resolveOwner, isUserOwner };
 // Phase 2 — semantic retrieval. Re-exported through the ONE memory facade so
@@ -374,7 +375,7 @@ export function memoryRetrieve(ownerId, {
   const mindLanes = legacyUserMemory === true;
   const trace = (requestId && traces.get(requestId)) || makeTrace({ ownerId });
   trace.budgetTokens = budgetTokens;
-  if (!ownerId) return { block: '', relevantFacts: [], cognitiveUsed: {}, trace };
+  if (!ownerId) return { block: '', fileContext: '', relevantFacts: [], cognitiveUsed: {}, trace };
 
   // Phase F — timing + continuation fast-path. "Let's continue" carries no
   // retrievable tokens, but it's the clearest possible request for context:
@@ -467,7 +468,12 @@ export function memoryRetrieve(ownerId, {
   const laneFits = (block) => block && (spentTokens + estimateTokens(block)) <= budgetTokens;
 
   // Phase B — multi-hop graph recall: connected knowledge the query names.
+  // Phase 1a.1 — a path through a node that came from an uploaded file (an
+  // artifact node, or the project node of an uploaded workspace) carries a
+  // file NAME, which is attacker-controlled text. Those paths are rendered in
+  // the file context (fenced downstream); the rest stay in the memory block.
   let graphBlock = '';
+  let fileGraphBlock = '';
   try {
     const mindView = mindLanes ? peekMind(ownerId) : null;
     if (mindView) {
@@ -475,7 +481,10 @@ export function memoryRetrieve(ownerId, {
       if (paths.length) {
         const candidate = formatGraphRecall(paths);
         if (laneFits(candidate)) {
-          graphBlock = candidate;
+          const fromFile = fileOriginTest(mindView);
+          const fromFiles = p => (p.nodes ?? []).some(fromFile);
+          graphBlock = formatGraphRecall(paths.filter(p => !fromFiles(p)));
+          fileGraphBlock = formatFileGraphRecall(paths.filter(fromFiles));
           spentTokens += estimateTokens(candidate);
           trace.graphPaths = paths.map(p => p.line);
         }
@@ -521,7 +530,9 @@ export function memoryRetrieve(ownerId, {
   try {
     if (Array.isArray(fileChunks) && fileChunks.length) {
       const top = fileChunks.slice(0, 2);
-      const lines = top.map(c => `- [${c.name}] "${String(c.text).replace(/\s+/g, ' ').slice(0, 220)}${String(c.text).length > 220 ? '…' : ''}"`);
+      // Name and text are both file-derived: one line each, never a line break
+      // or a fence marker (the whole lane is fenced downstream — Phase 1a.1).
+      const lines = top.map(c => `- [${sanitizeInlineLabel(c.name)}] "${sanitizeInlineLabel(c.text, { max: 221 })}"`);
       const candidate = [
         '--- FILE RECALL (from uploaded content) ---',
         ...lines,
@@ -542,12 +553,26 @@ export function memoryRetrieve(ownerId, {
   // counts: resuming work implies the active workspace/files matter).
   const fileBlock = retrieveFileMemory(ownerId, query, taskType, trace, { force: continuing });
 
+  // Phase 1a.1 (2026-11-16) — TWO outputs, by trust:
+  //   block        the user's own statements and AQUA's model of them
+  //                (identity, facts, Mind, graph, episodes). The prompt builder
+  //                injects it UNFENCED, as user-stated.
+  //   fileContext  everything that came out of an uploaded file — verbatim
+  //                chunks, extracted summaries, file names, graph paths through
+  //                file nodes. Untrusted DATA: callers must place it inside the
+  //                untrusted fence (chat.js → composeIngestedContext /
+  //                composeEvidenceContext; intelligence.js → graph evidence).
+  // Before 1a.1 the file lanes rode in `block`, so a sentence inside a PDF
+  // reached the model with the standing of the user's own words.
   // Backstop for every lane above (Mind beliefs, graph, episodes, file recall):
   // a line about health or mood the policy withholds never leaves this function.
-  const scrubbed = scrubSensitiveLines([identityBlock, factBlock, cognitive.block, graphBlock, episodeBlock, fileChunkBlock, fileBlock].filter(Boolean).join('\n\n'), policy);
+  const scrubbed = scrubSensitiveLines([identityBlock, factBlock, cognitive.block, graphBlock, episodeBlock].filter(Boolean).join('\n\n'), policy);
+  const scrubbedFiles = scrubSensitiveLines([fileGraphBlock, fileChunkBlock, fileBlock].filter(Boolean).join('\n\n'), policy);
   const block = scrubbed.block;
-  if (scrubbed.removed) trace.notes.push(`sensitive_withheld_lines:${scrubbed.removed}`);
-  trace.injectedTokens = estimateTokens(block);
+  const fileContext = scrubbedFiles.block;
+  const withheld = scrubbed.removed + scrubbedFiles.removed;
+  if (withheld) trace.notes.push(`sensitive_withheld_lines:${withheld}`);
+  trace.injectedTokens = estimateTokens(block) + estimateTokens(fileContext);
 
   // Phase F — retrieval quality/latency metrics (fail-open, never throws).
   try {
@@ -555,7 +580,7 @@ export function memoryRetrieve(ownerId, {
     if (identityBlock) lanes.push('identity');
     if (factBlock) lanes.push('facts');
     if (cognitive.block) lanes.push('cognitive');
-    if (graphBlock) lanes.push('graph');
+    if (graphBlock || fileGraphBlock) lanes.push('graph');
     if (episodeBlock) lanes.push('episodes');
     if (fileChunkBlock) lanes.push('fileChunks');
     if (fileBlock) lanes.push('files');
@@ -566,7 +591,17 @@ export function memoryRetrieve(ownerId, {
     });
   } catch { /* non-fatal */ }
 
-  return { block, relevantFacts, cognitiveUsed: cognitive.used || {}, trace };
+  return { block, fileContext, relevantFacts, cognitiveUsed: cognitive.used || {}, trace };
+}
+
+/** Graph paths through file-derived nodes — fenced downstream with the rest of the file context. */
+function formatFileGraphRecall(paths) {
+  if (!paths?.length) return '';
+  return [
+    '--- RELATED FILES (relationship graph) ---',
+    ...paths.map(p => `- ${sanitizeInlineLabel(p.line, { max: 400 })}`),
+    '--- END RELATED FILES ---',
+  ].join('\n');
 }
 
 /**
@@ -737,6 +772,11 @@ function retrieveFileMemory(ownerId, query, taskType, trace, { force = false } =
   touchMind(mind);
   trace.filesInjected = top.map(f => f.name);
 
-  const lines = top.map(f => `- ${f.name} (${f.kind}${f.chars ? `, ~${f.chars} chars` : ''})${f.summary ? `: ${f.summary}` : ''}`);
+  // Name, kind and summary are all file-derived (Phase 1a.1): one line each, so
+  // a summary cannot end this list or fake a section header. Fenced downstream.
+  const lines = top.map(f => {
+    const summary = sanitizeInlineLabel(f.summary, { max: FILE_SUMMARY_CHARS });
+    return `- ${sanitizeInlineLabel(f.name)} (${sanitizeInlineLabel(f.kind, { max: 40 })}${f.chars ? `, ~${Number(f.chars) || 0} chars` : ''})${summary ? `: ${summary}` : ''}`;
+  });
   return ['--- KNOWN FILES (long-term workspace memory) ---', ...lines, '--- END KNOWN FILES ---'].join('\n');
 }

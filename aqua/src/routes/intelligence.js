@@ -179,17 +179,21 @@ router.post('/orchestrate', async (req, res) => {
     const readState = await Brain.resolveReadMode(); // unreachable DB ⇒ legacy, not an empty veto
     const readMode = readState.mode;
     const canonical = readMode !== 'legacy';
-    const memory = memoryRetrieve(ownerId, {
+    const retrieved = memoryRetrieve(ownerId, {
       query: message,
       legacyUserMemory: readMode === 'legacy' ? true : readMode === 'authoritative' ? 'gapfill' : false,
       // Degraded: the owner's deletions still apply without the canonical store (PWI Phase 1).
       legacyVeto: readMode === 'authoritative' ? await Brain.legacyVetoFor(ownerId) : readState.degraded ? Brain.deletionVetoFor(ownerId) : null,
-    })?.block ?? '';
-    const evidence = (canonical
+    });
+    const memory = retrieved?.block ?? '';
+    const knowledge = (canonical
       ? await Brain.assembleContextAsync(ownerId, message, () => ({ items: [], block: '', stats: {} }), {
           limit: 8, taskType, semanticScores: await Brain.canonicalSemanticScores(ownerId, message), canonicalOnly: true,
         })
       : retrieveKnowledge(ownerId, message))?.block ?? '';
+    // Phase 1a.1: uploaded-file memory travels as EVIDENCE (fenced by the graph
+    // runtime), never as user memory; the knowledge block was already file-derived.
+    const evidence = [retrieved?.fileContext ?? '', knowledge].filter(Boolean).join('\n\n');
 
     const result = await runTaskGraph({
       userMessage: message, taskType, plan,

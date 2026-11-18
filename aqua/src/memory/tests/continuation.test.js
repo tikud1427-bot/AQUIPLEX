@@ -60,17 +60,20 @@ test('continuation surfaces the latest active episode with zero token overlap', 
 test('continuation forces file-summary lane (workspace resurfaces)', () => {
   const owner = `user:phaseF-ws-${Math.random().toString(36).slice(2, 8)}`;
   engine.rememberFile(owner, { name: 'builder-spec.md', kind: 'document', summary: 'Universal Artifact Engine phase 2 plan', chars: 1200 });
-  const { block } = engine.memoryRetrieve(owner, { query: 'continue' });
-  assert.match(block, /KNOWN FILES/);
-  assert.match(block, /builder-spec\.md/);
+  // Phase 1a.1: the file lane comes back as `fileContext` (fenced downstream).
+  const { block, fileContext } = engine.memoryRetrieve(owner, { query: 'continue' });
+  assert.match(fileContext, /KNOWN FILES/);
+  assert.match(fileContext, /builder-spec\.md/);
+  assert.ok(!/KNOWN FILES/.test(block), 'file summaries must not ride the unfenced memory block');
 });
 
 test('normal unrelated query without file words: file-summary lane stays quiet', () => {
   const owner = `user:phaseF-quiet-${Math.random().toString(36).slice(2, 8)}`;
   engine.rememberFile(owner, { name: 'notes.md', kind: 'document', summary: 'misc', chars: 10 });
-  const { block, trace } = engine.memoryRetrieve(owner, { query: 'what is the capital of France' });
+  const { block, fileContext, trace } = engine.memoryRetrieve(owner, { query: 'what is the capital of France' });
   assert.equal(trace.continuation, undefined);
   assert.ok(!/KNOWN FILES/.test(block));
+  assert.ok(!/KNOWN FILES/.test(fileContext));
 });
 
 test('metrics: retrievals counted with latency + lanes', () => {

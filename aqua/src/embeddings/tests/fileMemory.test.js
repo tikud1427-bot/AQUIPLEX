@@ -116,14 +116,18 @@ test('engine lane: memoryRetrieve injects FILE RECALL from precomputed chunks + 
     { text: 'Security architecture uses session tokens.', name: 'report.pdf', fileKey: 'file:report.pdf', idx: 1, score: 0.72 },
     { text: 'third chunk should be dropped (top-2 only)', name: 'report.pdf', fileKey: 'file:report.pdf', idx: 2, score: 0.65 },
   ];
-  const { block, trace } = engine.memoryRetrieve(owner, { query: 'what did the report say about pricing?', fileChunks: chunks });
-  assert.match(block, /FILE RECALL/);
-  assert.match(block, /report\.pdf/);
-  assert.equal((block.match(/- \[report\.pdf\]/g) || []).length, 2, 'top-2 chunk lines only');
+  // Phase 1a.1: file content is returned as `fileContext` (fenced by the
+  // caller), never inside the unfenced memory `block`.
+  const { block, fileContext, trace } = engine.memoryRetrieve(owner, { query: 'what did the report say about pricing?', fileChunks: chunks });
+  assert.match(fileContext, /FILE RECALL/);
+  assert.match(fileContext, /report\.pdf/);
+  assert.equal((fileContext.match(/- \[report\.pdf\]/g) || []).length, 2, 'top-2 chunk lines only');
+  assert.ok(!/FILE RECALL|report\.pdf/.test(block), 'file content must not ride the unfenced memory block');
   assert.equal(trace.fileChunksInjected.length, 2);
 
   const quiet = engine.memoryRetrieve(owner, { query: 'same query', fileChunks: [] });
-  assert.ok(!/FILE RECALL/.test(quiet.block), 'empty chunks → no lane');
+  assert.ok(!/FILE RECALL/.test(quiet.fileContext), 'empty chunks → no lane');
+  assert.ok(!/FILE RECALL/.test(quiet.block));
 });
 
 test('rememberFile(content) fire-forget indexes; embeddings OFF → graceful no-op', async () => {

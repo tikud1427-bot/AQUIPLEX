@@ -56,7 +56,7 @@ getOrCreateConversation(id, meta) is the ONLY place that decides new-vs-existing
 import express  from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import { generateText, generateTextStream } from '../providers/router.js';
-import { buildSystemPrompt }      from '../core/promptBuilder.js';
+import { buildSystemPrompt, composeIngestedContext } from '../core/promptBuilder.js';
 import { buildContextWindowWithStats, estimateTokens } from '../core/tokenManager.js';
 import { buildConversationContext, conversationContextStats, referenceNote, renderRecentConversation, resolvedQuestionFor } from '../core/conversationContext.js';
 import { acquireConversationTurn } from '../core/conversationTurnLock.js';
@@ -712,6 +712,10 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   const relevantFacts = retrieved.relevantFacts;
   if (memoryOwner && mindRelevanceEnabled()) noteFeature('AQUA_MIND_RELEVANCE', 'ran');
   let memoryBlock     = retrieved.block;
+  // Phase 1a.1 — uploaded-file content (verbatim chunks, summaries, names,
+  // file-graph paths). Untrusted: it joins the FENCED ingested context below,
+  // never the unfenced memory block.
+  let fileMemoryContext = retrieved.fileContext ?? '';
   let sensitiveWithheld = (retrieved.trace?.sensitiveWithheld ?? 0)
     + (retrieved.trace?.notes ?? []).filter(n => n.startsWith('sensitive_withheld_lines:')).reduce((n, s) => n + Number(s.split(':')[1] || 0), 0);
   if (relevantFacts.length) {
@@ -812,6 +816,9 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     const scrubbedNeeds = scrubSensitiveLines(infoNeeds.memoryBlock, sensitive);   // backstop, as for every lane
     sensitiveWithheld += scrubbedNeeds.removed;
     memoryBlock = scrubbedNeeds.block;
+    // Unchanged behaviour: before Phase 1a.1 the file lanes rode in memoryBlock
+    // and were replaced along with it when the needs engine owns the context.
+    fileMemoryContext = '';
   }
 
   // ── 5c². Connected knowledge — Persistent Intelligence Core (Phase 4) ──────
@@ -980,7 +987,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     try {
       const h = hybridEngineError
         ? { block: '', summary: { reason: `engine-${hybridEngineError}`, added: 0, dup: 0, weak: 0, conflicts: 0, changes: 0, ended: 0, ambiguous: 0, unknownsDeclared: 0, notMatched: 0, notRetrieved: 0, question: 0, tokens: 0, trimmed: 0 } }
-        : hybridContribution({ v2: infoNeeds, aContext: { memoryBlock, knowledgeContext, recallBlock: recall.block }, maxTokens: hybridCfg.maxTokens, maxMs: hybridCfg.maxMs });
+        : hybridContribution({ v2: infoNeeds, aContext: { memoryBlock: [memoryBlock, fileMemoryContext].filter(Boolean).join('\n\n'), knowledgeContext, recallBlock: recall.block }, maxTokens: hybridCfg.maxTokens, maxMs: hybridCfg.maxMs });
       hs = h.summary;
       if (hybridMode === 'on' && h.block) recall = { ...recall, block: [recall.block, h.block].filter(Boolean).join('\n\n') };
       noteFeature('AQUA_HYBRID_CONTEXT', hybridEngineError ? 'failed' : 'ran', hybridEngineError ?? null);
@@ -1014,7 +1021,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   const enginePolicy = [referenceNote(conversation), knowledgePolicy, degradedNote].filter(Boolean).join('\n');
 
   const evidenceContext = composeEvidenceContext({
-    attachmentContext, projectContext,
+    attachmentContext, fileMemoryContext, projectContext,
     // Reviewers must see the quotes the drafter answered from, or they
     // "correct" a grounded answer (the F1 overwrite bug) — and the policy the
     // drafter followed (D-17 split it out of the knowledge block).
@@ -1041,7 +1048,8 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
   }
   // Attachment context rides the projectContext slot — same injection point,
   // same budget handling in promptBuilder, no signature change.
-  const combinedContext = [attachmentContext, projectContext, knowledgeContext, recallContext].filter(Boolean).join('\n\n');
+  // Phase 1a.1: uploaded-file memory joins here, so it is fenced with the rest.
+  const combinedContext = composeIngestedContext({ attachmentContext, fileMemoryContext, projectContext, knowledgeContext, recallContext });
   // CIE directive rides the SAME channel the Phase-4 reasoning directive
   // already owns — appended after it, never replacing it. Empty when CIE is
   // off or the style is 'fast', keeping casual traffic byte-identical.
@@ -1086,7 +1094,7 @@ export async function prepareTurn({ userMessage, workspaceId, conversationId, us
     identityIntent,
     orchestration, plan, reasoning, intelligence,
     extractedFacts, relevantFacts,
-    memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!memoryBlock, contextUsed: cognitive.used },
+    memoryOwner, mindOwner: memoryOwner, mind: { observedSignals: observed.mind.signals, goalsTouched: observed.mind.goalsTouched, contextInjected: !!(memoryBlock || fileMemoryContext), contextUsed: cognitive.used },
     projectContext, projectFiles,
     knowledgeContext, knowledgeItems, knowledgeStats,
     recall: { excerpts: recall.excerpts, stats: recall.stats },

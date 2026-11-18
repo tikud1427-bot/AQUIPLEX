@@ -39,6 +39,7 @@ import { validateGraph, graphSummary } from './taskGraph.js';
 import { planTaskGraph } from './graphPlanner.js';
 import { executeSpecialist, specialistDirective, fallbackCapability } from './graphSpecialists.js';
 import { generateText } from '../providers/router.js';
+import { fenceUntrusted, makeFenceNonce, INSTRUCTION_HIERARCHY } from '../core/untrustedContent.js';
 
 const PARALLELISM = 3;
 const LOW_CONF = 0.55;
@@ -87,8 +88,22 @@ function nodeSystemPrompt(node, context) {
   add('CONVERSATION SO FAR (this chat, oldest first)', context.conversation);
   if (context.conversationNote && String(context.conversationNote).trim()) parts.push(String(context.conversationNote).trim());
   if (['memory', 'synthesize', 'reason', 'search'].includes(node.capability)) add('USER MEMORY', context.memory);
-  if (['evidence', 'vision', 'extract', 'synthesize', 'search', 'verify'].includes(node.capability)) add('UPLOADED-FILE EVIDENCE', context.evidence);
-  if (['search', 'synthesize'].includes(node.capability)) add('WEB SEARCH RESULTS', context.search);
+  // Phase 1a.1 (2026-11-16) — uploaded-file evidence and web results are
+  // ingested, attacker-influenceable text. They were pasted into node prompts
+  // with no fence and no hierarchy statement, and the BLOCK_CAP slice could cut
+  // a caller's fence in half (leaving it open). Now: truncate FIRST, then fence
+  // with this prompt's own nonce (any fence the caller already applied is
+  // neutralised inside it), and state the hierarchy once before the material.
+  const nonce = makeFenceNonce();
+  let fenced = false;
+  const addUntrusted = (label, block) => {
+    if (!block || !String(block).trim()) return;
+    const f = fenceUntrusted(String(block).trim().slice(0, BLOCK_CAP), { source: label.toLowerCase(), nonce });
+    if (f) { parts.push(`--- ${label} ---\n${f}\n--- END ${label} ---`); fenced = true; }
+  };
+  if (['evidence', 'vision', 'extract', 'synthesize', 'search', 'verify'].includes(node.capability)) addUntrusted('UPLOADED-FILE EVIDENCE', context.evidence);
+  if (['search', 'synthesize'].includes(node.capability)) addUntrusted('WEB SEARCH RESULTS', context.search);
+  if (fenced) parts.splice(1, 0, INSTRUCTION_HIERARCHY);   // right after the specialist directive, before any material
   parts.push('Produce ONLY this subtask\'s result. Be specific and grounded; no meta-commentary.');
   return parts.join('\n\n');
 }

@@ -38,6 +38,9 @@ import { fenceUntrusted, makeFenceNonce } from '../core/untrustedContent.js';
 /** Order fixed and labeled — reviewers see evidence the way the drafter did. */
 const SECTIONS = [
   ['attachmentContext', 'UPLOADED FILE ANALYSES'],
+  // Phase 1a.1 — memoryRetrieve()'s fileContext: chunks, summaries and names of
+  // uploaded files. It used to arrive inside memoryBlock, i.e. UNFENCED here.
+  ['fileMemoryContext', 'UPLOADED FILE MEMORY'],
   ['projectContext',    'PROJECT / WORKSPACE CONTEXT'],
   ['knowledgeContext',  'CONNECTED KNOWLEDGE (CROSS-FILE)'],   // PIC (Phase 4) — additive; absent ⇒ byte-identical
   ['searchContext',     'WEB SEARCH RESULTS'],
@@ -49,6 +52,7 @@ const SECTIONS = [
  *
  * @param {object} [parts]
  * @param {string} [parts.attachmentContext] - formatAttachmentsForPrompt() output
+ * @param {string} [parts.fileMemoryContext] - memoryRetrieve() fileContext (uploaded-file chunks/summaries/names) — fenced
  * @param {string} [parts.projectContext]    - formatProjectContext() output
  * @param {string} [parts.searchContext]     - search contextBlock
  * @param {string} [parts.memoryBlock]       - memoryRetrieve() block
@@ -69,7 +73,9 @@ export function composeEvidenceContext(parts = {}) {
     // MEMORY IS NOT FENCED, exactly as in PR-5: `memoryBlock` holds facts the
     // user asserted about themselves — the same trust tier as their message,
     // not ingested third-party text. Fencing it would tell the reviewer AQUA
-    // distrusts what the user said directly.
+    // distrusts what the user said directly. (Phase 1a.1 made that premise
+    // true: uploaded-file lanes no longer ride memoryBlock — they arrive as
+    // `fileMemoryContext`, which is fenced like every other ingested section.)
     blocks.push(UNFENCED.has(key)
       ? `── ${label} ──\n${v}`
       : `── ${label} ──\n${fenceUntrusted(v, { source: label.toLowerCase(), nonce })}`);
