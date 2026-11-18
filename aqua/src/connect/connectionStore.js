@@ -97,6 +97,11 @@ function buildModel(mongoose) {
     credentialsExpireAt: { type: Number, default: null },
     checkpoint:   { type: mongoose.Schema.Types.Mixed, default: null },
     lastSync:     { type: mongoose.Schema.Types.Mixed, default: null },
+    // An unfinished full listing (cursor + held ids seen so far) and a
+    // withheld mass deletion (hash + counts only). Without these
+    // paths the strict schema would silently drop them.
+    fullSync:        { type: mongoose.Schema.Types.Mixed, default: null },
+    pendingDeletion: { type: mongoose.Schema.Types.Mixed, default: null },
     syncCount:    { type: Number, default: 0 },
     createdAt:    Number,
     updatedAt:    Number,

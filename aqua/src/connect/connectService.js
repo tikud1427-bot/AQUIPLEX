@@ -9,9 +9,17 @@
  *   connect({ userId, connectorId, input })      → connection view (no secrets)
  *   listConnections({ userId })                  → views
  *   getConnection({ userId, connectionId })      → view
- *   sync({ userId, connectionId, mode })         → { status, lastSync }
+ *   sync({ userId, connectionId, mode, confirmMassDeletion })
+ *                                                → { status, lastSync, aborted? }
  *   revokeCredentials({ userId, connectionId })  → revoke at source + wipe credentials; knowledge kept
  *   disconnect({ userId, connectionId })         → revoke + wipe + delete the source's knowledge + delete the record
+ *
+ *   Revoke/disconnect results report the two effects
+ *   separately and never claim a revocation that failed or was not attempted:
+ *     localCredentialsDeleted  true once the stored ciphertext is wiped
+ *     providerRevocation       'revoked' | 'failed' | 'not_attempted'
+ *     providerRevocationReason why it was not 'revoked' (fixed text, no provider output)
+ *     revokedAtSource          kept for compatibility: providerRevocation === 'revoked'
  *   unregisterConnector(connectorId)             → only when no connection uses it
  *   connectorHealth(connectorId)                 → registry probe
  *
@@ -20,13 +28,27 @@
  * vault; resource operations get a ctx whose credentials() opens the vault for
  * that one connection. Views returned to callers never include credentials.
  *
- * Concurrency: one in-process lock per owner serialises sync, revoke and
- * disconnect for that user. SINGLE PROCESS ONLY — not safe across instances.
+ * Concurrency: one lock per owner, shared by EVERY service
+ * instance in this Node.js process, serialises sync, revoke and disconnect for
+ * that user; sync also re-checks before every import batch and every removal
+ * that the connection still exists, belongs to the owner and is 'active'.
+ * SINGLE PROCESS ONLY — separate processes or servers are not coordinated;
+ * run connect operations from one process until a shared lease exists.
+ *
+ * Unreadable credentials: if the stored credentials cannot be
+ * opened (key missing, key changed, envelope corrupt or tampered) the connection
+ * moves to 'needs_reauth' with a fixed "reconnect required" error.
+ *
+ * Key stability: there is no key rotation. Changing or losing AQUA_CONNECTOR_KEY
+ * makes every stored credential unreadable and every connection must reconnect
+ * (the credentials cannot be recovered). Do not store real credentials until
+ * key rotation exists.
  */
 import crypto from 'node:crypto';
 import { ownerForUser } from '../memory/ownerResolver.js';
 import * as externalDefault from '../files/externalSources.js';
 import { runSync } from './syncEngine.js';
+import { UNREADABLE_CREDENTIAL_CODES } from './credentialVault.js';
 import { secretValues, scrubSecrets, isAuthError } from './contract.js';
 import { ownerLogId } from '../core/logSafety.js';
 import { sanitizeInlineLabel } from '../core/untrustedContent.js';
@@ -36,6 +58,26 @@ export class ConnectError extends Error {
 }
 
 const REFRESH_SKEW_MS = 2 * 60 * 1000;
+
+// ── ONE lock map per Node.js process ─────────────────────────────────────────
+// Module scope: every createConnectService() instance in this process (a route
+// that builds one per request, a job and a route) shares it, so a disconnect
+// cannot interleave with a running sync. It does NOT coordinate separate
+// processes or servers: run connect operations from a single process until a
+// shared cross-process lease exists.
+const processLocks = new Map();
+function withOwnerLock(ownerId, fn) {
+  const prev = processLocks.get(ownerId) ?? Promise.resolve();
+  const run = prev.then(fn, fn);
+  const tail = run.then(() => {}, () => {});
+  processLocks.set(ownerId, tail);
+  tail.then(() => { if (processLocks.get(ownerId) === tail) processLocks.delete(ownerId); });
+  return run;
+}
+/** Test-only: whether this process currently holds or queues work for an owner. */
+export const _ownerLockHeldForTests = ownerId => processLocks.has(ownerId);
+
+const UNREADABLE = new Set(UNREADABLE_CREDENTIAL_CODES);
 
 /**
  * @param {object} deps
@@ -49,16 +91,7 @@ const REFRESH_SKEW_MS = 2 * 60 * 1000;
 export function createConnectService({ registry, store, vault, external = externalDefault, retry = {}, now = Date.now, log = console } = {}) {
   if (!registry || !store || !vault) throw new ConnectError('MISCONFIGURED', 'connect service needs a registry, a store and a credential vault');
 
-  // ── per-owner serialisation ────────────────────────────────────────────────
-  const locks = new Map();
-  const withOwnerLock = (ownerId, fn) => {
-    const prev = locks.get(ownerId) ?? Promise.resolve();
-    const run = prev.then(fn, fn);
-    const tail = run.then(() => {}, () => {});
-    locks.set(ownerId, tail);
-    tail.then(() => { if (locks.get(ownerId) === tail) locks.delete(ownerId); });
-    return run;
-  };
+  // Per-owner serialisation: the process-wide withOwnerLock above.
 
   const ownerOf = userId => {
     const ownerId = ownerForUser(typeof userId === 'string' || typeof userId === 'number' ? String(userId).trim() : '');
@@ -74,6 +107,11 @@ export function createConnectService({ registry, store, vault, external = extern
     status: conn.status, account: { label: conn.account?.label ?? null },
     scopes: [...(conn.scopes ?? [])], credentialsExpireAt: conn.credentialsExpireAt ?? null,
     hasCredentials: Boolean(conn.credentials), lastSync: conn.lastSync ?? null, syncCount: conn.syncCount ?? 0,
+    // Phase 1b.1: listing progress and a withheld mass deletion awaiting confirmation (no ids exposed).
+    fullSyncInProgress: Boolean(conn.fullSync?.cursor),
+    pendingDeletion: conn.pendingDeletion
+      ? { count: conn.pendingDeletion.count, held: conn.pendingDeletion.held, origin: conn.pendingDeletion.origin, firstSeenAt: conn.pendingDeletion.firstSeenAt }
+      : null,
     createdAt: conn.createdAt, updatedAt: conn.updatedAt,
   });
 
@@ -88,6 +126,8 @@ export function createConnectService({ registry, store, vault, external = extern
   async function connect({ userId, connectorId, input = {} } = {}) {
     const ownerId = ownerOf(userId);
     if (!registry.has(connectorId)) throw new ConnectError('UNKNOWN_CONNECTOR', 'that connector is not available');
+    // Refuse BEFORE the provider issues tokens we could not store.
+    if (vault.unavailable) throw new ConnectError('CREDENTIAL_KEY_UNAVAILABLE', 'connecting is unavailable: the credential key is not configured');
     const connector = registry.get(connectorId);
     const connectionId = `conn_${crypto.randomBytes(10).toString('hex')}`;
     let result;
@@ -129,7 +169,12 @@ export function createConnectService({ registry, store, vault, external = extern
   // ── credentials (open only for this connection; refresh when expiring) ─────
   async function credentialsFor(conn, connector) {
     if (!conn.credentials) throw new ConnectError('NO_CREDENTIALS', 'connection has no credentials');
-    let creds = vault.open(conn.credentials, binding(conn));
+    let creds;
+    try { creds = vault.open(conn.credentials, binding(conn)); }
+    catch (err) {
+      if (UNREADABLE.has(err?.code)) throw new ConnectError('CREDENTIALS_UNREADABLE', 'reconnect required (stored credentials cannot be opened)');
+      throw err;
+    }
     const expiring = conn.credentialsExpireAt != null && conn.credentialsExpireAt - REFRESH_SKEW_MS <= now();
     if (expiring) {
       if (typeof connector.refresh !== 'function') throw new ConnectError('NEEDS_REAUTH', 'credentials expired');
@@ -151,7 +196,7 @@ export function createConnectService({ registry, store, vault, external = extern
   });
 
   // ── sync ───────────────────────────────────────────────────────────────────
-  function sync({ userId, connectionId, mode = 'auto' } = {}) {
+  function sync({ userId, connectionId, mode = 'auto', confirmMassDeletion = false } = {}) {
     const ownerId = ownerOf(userId);
     return withOwnerLock(ownerId, async () => {
       const conn = await load(ownerId, connectionId);
@@ -162,26 +207,54 @@ export function createConnectService({ registry, store, vault, external = extern
       let creds;
       try { creds = await credentialsFor(conn, connector); }
       catch (err) {
-        const code = err.code === 'NEEDS_REAUTH' ? 'needs_reauth' : conn.status;
-        const lastSync = { state: 'failed', error: err.code === 'NEEDS_REAUTH' ? 'reconnect required' : 'credentials unavailable', finishedAt: new Date().toISOString() };
-        await store.update(ownerId, connectionId, { status: code, lastSync });
-        throw new ConnectError(err.code === 'NEEDS_REAUTH' ? 'NEEDS_REAUTH' : 'CREDENTIALS_UNAVAILABLE', lastSync.error);
+        // NEEDS_REAUTH (expired / refused refresh) and CREDENTIALS_UNREADABLE
+        // (key missing or changed, envelope corrupt) both mean the user
+        // must reconnect. Anything else (e.g. the store failed while saving a
+        // refreshed token) leaves the status alone.
+        const reconnect = err.code === 'NEEDS_REAUTH' || err.code === 'CREDENTIALS_UNREADABLE';
+        const error = err.code === 'CREDENTIALS_UNREADABLE' ? err.message : reconnect ? 'reconnect required' : 'credentials unavailable';
+        const lastSync = { state: 'failed', complete: false, error, finishedAt: new Date().toISOString() };
+        await store.update(ownerId, connectionId, { status: reconnect ? 'needs_reauth' : conn.status, lastSync });
+        if (err.code === 'CREDENTIALS_UNREADABLE') log.warn?.(`[CONNECT] credentials unreadable connection=${connectionId} owner=${ownerLogId(ownerId)}; marked needs_reauth`);
+        throw new ConnectError(reconnect ? err.code : 'CREDENTIALS_UNAVAILABLE', error);
       }
       const secrets = secretValues(creds);
 
       await store.update(ownerId, connectionId, { lastSync: { ...(conn.lastSync ?? {}), state: 'running', startedAt: new Date().toISOString() } });
+      // Re-read the record before every write batch. Ownership is part of
+      // the store key; the explicit comparison also defends a misbehaving store.
+      const guard = async () => {
+        const cur = await store.get(ownerId, connectionId);
+        return Boolean(cur && cur.ownerId === ownerId && cur.connectionId === connectionId && cur.status === 'active');
+      };
       let outcome;
       try {
-        outcome = await runSync({ ownerId, conn, connector, ctx: ctxFor(conn, creds), secrets, mode, external, retry });
+        outcome = await runSync({ ownerId, conn, connector, ctx: ctxFor(conn, creds), secrets, mode, external, retry, guard, confirmMassDeletion: confirmMassDeletion === true });
       } catch (err) {
-        outcome = { authFailed: false, checkpoint: conn.checkpoint ?? null, lastSync: { state: 'failed', error: scrubSecrets(`sync crashed: ${err?.message ?? err}`, secrets).slice(0, 300), finishedAt: new Date().toISOString() } };
+        outcome = {
+          authFailed: false, aborted: false,
+          checkpoint: conn.checkpoint ?? null, fullSync: conn.fullSync ?? null, pendingDeletion: conn.pendingDeletion ?? null,
+          lastSync: { state: 'failed', complete: false, error: scrubSecrets(`sync crashed: ${err?.message ?? err}`, secrets).slice(0, 300), finishedAt: new Date().toISOString() },
+        };
+      }
+      if (outcome.aborted) {
+        // The connection was disconnected, revoked or deleted under us: do not
+        // touch its status, credentials or positions. Record the outcome only if
+        // the record still exists (it may already be gone).
+        const cur = await store.get(ownerId, connectionId);
+        const after = cur ? await store.update(ownerId, connectionId, { lastSync: outcome.lastSync }) : null;
+        registry.recordOutcome(conn.connectorId, false, 'sync aborted');
+        log.log?.(`[CONNECT] sync connection=${connectionId} owner=${ownerLogId(ownerId)} state=aborted`);
+        return { status: after?.status ?? 'deleted', lastSync: outcome.lastSync, aborted: true };
       }
       const patch = {
         lastSync: outcome.lastSync, checkpoint: outcome.checkpoint,
+        fullSync: outcome.fullSync ?? null, pendingDeletion: outcome.pendingDeletion ?? null,
         syncCount: (conn.syncCount ?? 0) + 1,
         ...(outcome.authFailed ? { status: 'needs_reauth' } : {}),
       };
       const updated = await store.update(ownerId, connectionId, patch);
+      if (!updated) return { status: 'deleted', lastSync: outcome.lastSync, aborted: true };
       registry.recordOutcome(conn.connectorId, outcome.lastSync.state === 'succeeded', outcome.lastSync.error ?? (outcome.lastSync.state === 'partial' ? 'partial sync' : null));
       const c = outcome.lastSync.counts ?? {};
       log.log?.(`[CONNECT] sync connection=${connectionId} owner=${ownerLogId(ownerId)} state=${outcome.lastSync.state} created=${c.created ?? 0} updated=${c.updated ?? 0} unchanged=${c.unchanged ?? 0} removed=${c.removed ?? 0} failed=${c.failed ?? 0}`);
@@ -190,16 +263,30 @@ export function createConnectService({ registry, store, vault, external = extern
   }
 
   // ── revoke / disconnect ────────────────────────────────────────────────────
+  /**
+   * Best-effort provider-side revocation. Returns exactly what happened
+   * Fixed reason text only, never provider output.
+   */
   async function revokeAtSource(conn, connector) {
-    if (!conn.credentials || !connector) return { attempted: false };
+    if (!conn.credentials) return { providerRevocation: 'not_attempted', reason: 'no stored credentials' };
+    if (!connector) return { providerRevocation: 'not_attempted', reason: 'connector no longer available' };
+    if (typeof connector.disconnect !== 'function') return { providerRevocation: 'not_attempted', reason: 'connector has no revocation call' };
+    let creds;
+    try { creds = vault.open(conn.credentials, binding(conn)); }
+    catch { return { providerRevocation: 'not_attempted', reason: 'stored credentials cannot be opened (credential key missing or changed); revoke access at the provider' }; }
     try {
-      const creds = vault.open(conn.credentials, binding(conn));
       await connector.disconnect(ctxFor(conn, creds));
-      return { attempted: true, ok: true };
+      return { providerRevocation: 'revoked', reason: null };
     } catch {
-      return { attempted: true, ok: false };   // best effort: local credentials are wiped regardless
+      return { providerRevocation: 'failed', reason: 'the provider did not confirm revocation; revoke access at the provider' };
     }
   }
+  const revocationFields = (revoke, localCredentialsDeleted) => ({
+    localCredentialsDeleted,
+    providerRevocation: revoke.providerRevocation,
+    providerRevocationReason: revoke.reason,
+    revokedAtSource: revoke.providerRevocation === 'revoked',
+  });
 
   /** Revoke the credentials (at the source, then locally). Imported knowledge is kept. */
   function revokeCredentials({ userId, connectionId } = {}) {
@@ -209,7 +296,7 @@ export function createConnectService({ registry, store, vault, external = extern
       const connector = registry.has(conn.connectorId) ? registry.get(conn.connectorId) : null;
       const revoke = await revokeAtSource(conn, connector);
       await store.update(ownerId, connectionId, { credentials: null, credentialsExpireAt: null, status: 'revoked' });
-      return { connection: view(await store.get(ownerId, connectionId)), revokedAtSource: revoke.ok === true };
+      return { connection: view(await store.get(ownerId, connectionId)), ...revocationFields(revoke, true) };
     });
   }
 
@@ -233,11 +320,11 @@ export function createConnectService({ registry, store, vault, external = extern
       catch (err) { purge = { complete: false, errors: [String(err?.message ?? err)] }; }
       if (!purge.complete) {
         await store.update(ownerId, connectionId, { status: 'disconnect_incomplete', lastSync: { ...(conn.lastSync ?? {}), state: 'disconnect_incomplete', remaining: purge.remaining ?? null } });
-        return { deleted: false, revokedAtSource: revoke.ok === true, knowledgeRemoved: false, remaining: purge.remaining ?? null };
+        return { deleted: false, ...revocationFields(revoke, true), knowledgeRemoved: false, remaining: purge.remaining ?? null };
       }
       await store.remove(ownerId, connectionId);
       log.log?.(`[CONNECT] disconnected connection=${connectionId} owner=${ownerLogId(ownerId)} removed=${purge.removed?.ukos ?? 0}`);
-      return { deleted: true, revokedAtSource: revoke.ok === true, knowledgeRemoved: true, removed: purge.removed };
+      return { deleted: true, ...revocationFields(revoke, true), knowledgeRemoved: true, removed: purge.removed };
     });
   }
 

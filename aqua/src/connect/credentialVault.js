@@ -24,6 +24,27 @@ import crypto from 'node:crypto';
 
 export const CONNECTOR_KEY_ENV = 'AQUA_CONNECTOR_KEY';
 const ALG = 'aes-256-gcm';
+export const IV_BYTES = 12;    // 96-bit GCM nonce, random per seal
+export const TAG_BYTES = 16;   // full 128-bit GCM tag — never truncated
+
+const STRICT_B64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
+
+/**
+ * Decode one envelope field as canonical base64 of an exact length (or any
+ * non-empty length when `bytes` is null). Anything else — wrong alphabet,
+ * non-canonical padding, truncated, padded or oversized — is rejected before
+ * decryption is attempted.
+ */
+function strictBase64(value, bytes, field) {
+  if (typeof value !== 'string' || !value || !STRICT_B64.test(value)) {
+    throw new CredentialVaultError('ENVELOPE_INVALID', `credential envelope field "${field}" is malformed`);
+  }
+  const buf = Buffer.from(value, 'base64');
+  if (buf.toString('base64') !== value || (bytes != null ? buf.length !== bytes : buf.length === 0)) {
+    throw new CredentialVaultError('ENVELOPE_INVALID', `credential envelope field "${field}" has the wrong length or encoding`);
+  }
+  return buf;
+}
 
 export class CredentialVaultError extends Error {
   constructor(code, message) { super(message); this.code = code; }
@@ -59,8 +80,8 @@ export function createCredentialVault({ key = null, env = process.env } = {}) {
 
   function seal(credentials, binding) {
     if (credentials == null || typeof credentials !== 'object') throw new CredentialVaultError('CREDENTIALS_INVALID', 'credentials must be an object');
-    const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv(ALG, k, iv);
+    const iv = crypto.randomBytes(IV_BYTES);
+    const cipher = crypto.createCipheriv(ALG, k, iv, { authTagLength: TAG_BYTES });
     cipher.setAAD(aadFor(binding));
     const ct = Buffer.concat([cipher.update(JSON.stringify(credentials), 'utf8'), cipher.final()]);
     return { v: 1, alg: ALG, keyId, iv: iv.toString('base64'), tag: cipher.getAuthTag().toString('base64'), ct: ct.toString('base64') };
@@ -69,11 +90,17 @@ export function createCredentialVault({ key = null, env = process.env } = {}) {
   function open(envelope, binding) {
     if (!envelope || envelope.v !== 1 || envelope.alg !== ALG) throw new CredentialVaultError('ENVELOPE_INVALID', 'unrecognised credential envelope');
     if (envelope.keyId !== keyId) throw new CredentialVaultError('KEY_MISMATCH', 'credentials were sealed with a different key');
+    // Decode strictly and check lengths BEFORE any
+    // decryption. Node's GCM decipher otherwise accepts tags as short as 4
+    // bytes (and any IV length), which would cut integrity to 32 bits.
+    const iv = strictBase64(envelope.iv, IV_BYTES, 'iv');
+    const tag = strictBase64(envelope.tag, TAG_BYTES, 'tag');
+    const ct = strictBase64(envelope.ct, null, 'ct');
     try {
-      const decipher = crypto.createDecipheriv(ALG, k, Buffer.from(envelope.iv, 'base64'));
+      const decipher = crypto.createDecipheriv(ALG, k, iv, { authTagLength: TAG_BYTES });
       decipher.setAAD(aadFor(binding));
-      decipher.setAuthTag(Buffer.from(envelope.tag, 'base64'));
-      const pt = Buffer.concat([decipher.update(Buffer.from(envelope.ct, 'base64')), decipher.final()]);
+      decipher.setAuthTag(tag);
+      const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
       return JSON.parse(pt.toString('utf8'));
     } catch {
       // One message for every failure: wrong owner/connection, tampering, corruption.
@@ -83,3 +110,29 @@ export function createCredentialVault({ key = null, env = process.env } = {}) {
 
   return Object.freeze({ seal, open, keyId });
 }
+
+/**
+ * A vault that holds NO key. Every seal/open fails with
+ * `code` (KEY_MISSING / KEY_INVALID). It lets the connect service keep working
+ * for the operations that do not need credentials — listing connections,
+ * marking them reconnect-required, disconnecting and deleting knowledge —
+ * when the key is absent, instead of refusing to start at all. It never
+ * decrypts anything and never substitutes a key.
+ */
+export function createUnavailableVault(code = 'KEY_MISSING') {
+  const fail = () => { throw new CredentialVaultError(code, 'the connector credential key is not available'); };
+  return Object.freeze({ seal: fail, open: fail, keyId: null, unavailable: true, code });
+}
+
+/** The vault for a deployment: real when the key parses, otherwise an unavailable vault (never a fallback key). */
+export function vaultFromEnv(env = process.env) {
+  try {
+    return createCredentialVault({ env });
+  } catch (err) {
+    if (err?.code === 'KEY_MISSING' || err?.code === 'KEY_INVALID') return createUnavailableVault(err.code);
+    throw err;
+  }
+}
+
+/** Vault errors that mean "these stored credentials can never be opened with what we have". */
+export const UNREADABLE_CREDENTIAL_CODES = Object.freeze(['KEY_MISSING', 'KEY_INVALID', 'KEY_MISMATCH', 'DECRYPT_FAILED', 'ENVELOPE_INVALID']);
