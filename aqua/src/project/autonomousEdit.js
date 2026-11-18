@@ -43,26 +43,27 @@ function isClean(proposal) {
   return !!proposal?.verification?.passed && (proposal.failedOperations?.length ?? 0) === 0;
 }
 
-/** Turn a failed attempt into a concrete corrective instruction for the model. */
-function buildRepairInstruction(originalInstruction, { proposal, error } = {}) {
-  const lines = [
-    originalInstruction,
-    '',
-    'A previous attempt to make this change did not pass verification. Produce a CORRECTED edit that fixes the specific problems below — do not repeat them:',
-  ];
-
-  if (error) lines.push(`- The edit could not be applied: ${error}`);
-
-  for (const w of proposal?.verification?.warnings ?? []) lines.push(`- ${w}`);
+/**
+ * Turn a failed attempt into concrete repair FEEDBACK for the model.
+ *
+ * These diagnostics quote repository-derived text — file
+ * paths, export and module names, the model's own path strings, and parse
+ * errors that can echo file or model content. They used to be appended to the
+ * user's instruction, i.e. sent UNFENCED with the authority of the user. They
+ * are now returned as a separate list; proposeEdit renders them inside the
+ * untrusted fence, after the user's unchanged instruction, under AQUA's own
+ * repair framing (editEngine.js REPAIR_FRAMING).
+ *
+ * @returns {string[]} one diagnostic per entry (empty when there is nothing to repair)
+ */
+export function buildRepairFeedback({ proposal, error } = {}) {
+  const lines = [];
+  if (error) lines.push(`The edit could not be applied: ${error}`);
+  for (const w of proposal?.verification?.warnings ?? []) lines.push(String(w));
   for (const fo of proposal?.failedOperations ?? []) {
-    lines.push(`- ${fo.file}: ${fo.error}${fo.suggestion ? ` (${fo.suggestion})` : ''}`);
+    lines.push(`${fo.file}: ${fo.error}${fo.suggestion ? ` (${fo.suggestion})` : ''}`);
   }
-
-  lines.push(
-    '',
-    'Requirements for the corrected edit: keep brackets balanced; keep every local import resolvable; do not remove exports that are still referenced by other files; and target search snippets that exist verbatim in the current file content.',
-  );
-  return lines.join('\n');
+  return lines;
 }
 
 /**
@@ -88,7 +89,9 @@ export async function proposeEditWithRepair({
 }) {
   const attempts = [];
   let bestProposal = null;
-  let currentInstruction = instruction;
+  // The user's instruction is sent unchanged on every attempt; repair
+  // diagnostics travel separately as `feedback` (fenced by proposeEdit).
+  let currentFeedback = [];
   let lastError = null;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -97,7 +100,7 @@ export async function proposeEditWithRepair({
     let proposal = null;
     let errMsg = null;
     try {
-      proposal = await _propose({ workspaceId, instruction: currentInstruction, requestId, conversationId, onStage });
+      proposal = await _propose({ workspaceId, instruction, feedback: currentFeedback, requestId, conversationId, onStage });
     } catch (err) {
       // Structural errors cannot be repaired by retrying — surface immediately.
       if (!REPAIRABLE_CODES.has(err.code)) {
@@ -129,7 +132,9 @@ export async function proposeEditWithRepair({
     }
 
     // Not clean — prepare a corrective instruction for the next attempt.
-    currentInstruction = buildRepairInstruction(instruction, { proposal: bestProposal, error: lastError });
+    currentFeedback = buildRepairFeedback({ proposal: bestProposal, error: lastError });
+    // A retry is always framed as a repair, even when no specific diagnostic exists.
+    if (!currentFeedback.length) currentFeedback = ['The previous attempt did not pass static verification.'];
   }
 
   // Exhausted without a clean proposal. Return the best we produced (if any).

@@ -16,13 +16,16 @@ async function test(name, fn) {
 // assert repair-context was fed back.
 function scriptedPropose(script) {
   const calls = [];
-  const fn = async ({ instruction }) => {
+  const args = [];   // full { instruction, feedback } per call
+  const fn = async ({ instruction, feedback = [] }) => {
     calls.push(instruction);
+    args.push({ instruction, feedback });
     const step = script[calls.length - 1];
     if (step instanceof Error) throw step;
     return step;
   };
   fn.calls = calls;
+  fn.args = args;
   return fn;
 }
 
@@ -60,11 +63,15 @@ await test('repair instruction carries the SPECIFIC verification failure back', 
     clean(),
   ]);
   await proposeEditWithRepair({ workspaceId: 'w', instruction: 'add a bar import', _propose });
-  const repairInstruction = _propose.calls[1];
-  assert.ok(repairInstruction.includes('add a bar import'), 'keeps the original instruction');
-  assert.ok(repairInstruction.includes('did not pass verification'), 'frames it as a repair');
-  assert.ok(repairInstruction.includes('missing local module(s): ./bar.js'), 'includes the exact failure');
-  assert.ok(/keep brackets balanced/i.test(repairInstruction), 'includes the correction requirements');
+  // The user's instruction is passed UNCHANGED; the specific failure travels
+  // as separate `feedback`, which proposeEdit fences under AQUA's repair framing
+  // (the framing and the requirements text are asserted in untrustedContent.test.js
+  // through the real edit prompt).
+  const { instruction, feedback } = _propose.args[1];
+  assert.equal(instruction, 'add a bar import', 'keeps the original instruction, unmodified');
+  assert.equal(_propose.args[0].feedback.length, 0, 'first attempt carries no repair feedback');
+  assert.ok(feedback.some(l => l.includes('missing local module(s): ./bar.js')), 'includes the exact failure');
+  assert.ok(!instruction.includes('./bar.js'), 'diagnostics never ride the unfenced instruction');
 });
 
 await test('failedOperations are fed back as repair context', async () => {
@@ -73,8 +80,10 @@ await test('failedOperations are fed back as repair context', async () => {
     clean(),
   ]);
   await proposeEditWithRepair({ workspaceId: 'w', instruction: 'edit a.js', _propose });
-  assert.ok(_propose.calls[1].includes('a.js: search snippet not found'), 'failed op surfaced');
-  assert.ok(_propose.calls[1].includes('snippet drifted'), 'suggestion surfaced');
+  const fb = _propose.args[1].feedback.join('\n');
+  assert.ok(fb.includes('a.js: search snippet not found'), 'failed op surfaced');
+  assert.ok(fb.includes('snippet drifted'), 'suggestion surfaced');
+  assert.equal(_propose.calls[1], 'edit a.js', 'instruction unchanged');
 });
 
 console.log('autonomousEdit — exhaustion returns best');
@@ -110,7 +119,8 @@ await test('repairable error (BAD_EDIT_PLAN) → retried with feedback, then pas
   const out = await proposeEditWithRepair({ workspaceId: 'w', instruction: 'do X', _propose });
   assert.equal(out.converged, true);
   assert.equal(out.attemptCount, 2);
-  assert.ok(_propose.calls[1].includes('could not be applied: unparseable plan'), 'error fed back');
+  assert.ok(_propose.args[1].feedback.some(l => l.includes('could not be applied: unparseable plan')), 'error fed back');
+  assert.equal(_propose.calls[1], 'do X', 'instruction unchanged');
 });
 
 await test('all attempts throw repairable → ok:false, no proposal, attempts recorded', async () => {
