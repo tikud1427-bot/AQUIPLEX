@@ -39,6 +39,7 @@ import { runEnrichment } from './enrichmentPipeline.js';
 import { saveUKO, cacheKnowledge, getCachedKnowledge } from './ukoStore.js';
 import { enqueueDocumentUnderstanding } from './documentUnderstanding.js';
 import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
+import { externalIdentity } from './externalIdentity.js';
 
 registerBuiltinParsers();
 
@@ -70,10 +71,13 @@ export async function ingestFiles({ files, ownerId = null, conversationId = null
   let workspace = null;
 
   // ── 1. Detect ──
-  const classified = files.map(f => ({ name: f.name, buffer: f.buffer, cls: classifyUpload(f.name, f.buffer) }));
+  // Phase 1a.2: a file may carry `external` = { sourceId, externalId, version?, sourceUpdatedAt?,
+  // url?, title? } (files/externalSources.js). Absent for every upload — unchanged path.
+  const classified = files.map(f => ({ name: f.name, buffer: f.buffer, cls: classifyUpload(f.name, f.buffer), external: f.external ?? null }));
 
   // ── 2. Batch claim (repository experience — engine knows only "a parser claimed these") ──
-  const claim = claimBatch(classified);
+  // External resources never join a batch claim: each keeps its own source identity.
+  const claim = claimBatch(classified.filter(c => !c.external));
   if (claim) {
     const batchFiles = classified.filter(c => claim.claimed.has(c.name));
     try {
@@ -107,7 +111,7 @@ export async function ingestFiles({ files, ownerId = null, conversationId = null
 
   // ── 3. Per-file lifecycle for everything unclaimed ──
   const claimed = claim?.claimed ?? new Set();
-  const individual = classified.filter(c => !claimed.has(c.name));
+  const individual = classified.filter(c => c.external || !claimed.has(c.name));
 
   const documents = [];
   await promisePool(individual, PARALLELISM, async (item) => {
@@ -173,7 +177,14 @@ export async function ingestFiles({ files, ownerId = null, conversationId = null
 // ── Single-file lifecycle ─────────────────────────────────────────────────────
 
 async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
-  const { name, buffer, cls } = item;
+  const { name, buffer, cls, external } = item;
+
+  // Phase 1a.2 — an archive from an external source would become a repository
+  // workspace with no per-resource identity; not supported until a connector
+  // phase defines it. Refused before anything is written.
+  if (external && cls.kind === 'repository') {
+    return { result: { name, kind: cls.kind, status: 'failed', error: 'External archives are not supported yet; import the resources individually.' } };
+  }
 
   const parser = resolveParser({ name, buffer, classification: cls });
   if (!parser) {
@@ -185,11 +196,23 @@ async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
   }
 
   const hash = sha256(buffer);
+  // Phase 1a.2 — external resources get ids derived from (source, resource, version),
+  // and their file-memory/chunk key is preset so no stage falls back to the NAME.
+  const ext = external ? externalIdentity(external.sourceId, external.externalId, hash) : null;
   const uko = createUKO({
     ownerId, conversationId,
     sourceFile: { name, ext: cls.ext ?? path.extname(name).toLowerCase(), bytes: buffer.length, hash },
     fileType: cls.kind, mimeType: cls.mime ?? null, traceId,
+    ...(ext ? {
+      id: ext.ukoId,
+      external: {
+        sourceId: external.sourceId, externalId: external.externalId, itemTag: ext.itemTag,
+        version: external.version ?? null, sourceUpdatedAt: external.sourceUpdatedAt ?? null,
+        url: external.url ?? null, title: external.title ?? null, syncedAt: Date.now(),
+      },
+    } : {}),
   });
+  if (ext) uko.memoryLinks.fileKey = ext.fileKey;
   uko.provenance.parser        = parser.id;
   uko.provenance.parserVersion = parser.version;
 

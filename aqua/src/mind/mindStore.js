@@ -463,6 +463,7 @@ export function deleteMind(ownerId) {
   try {
     clearNamespace(ownerId);
     clearNamespace(`files:${ownerId}`);
+    clearNamespace(`xfiles:${ownerId}`);   // Phase 1a.2: external-resource chunks (embeddings/fileMemory.js)
     clearNamespace(`recall:${ownerId}`);   // semantic episodic recall (memory/semanticRecall.js)
   } catch { /* non-fatal */ }
   return existed;

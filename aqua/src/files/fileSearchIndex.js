@@ -17,11 +17,15 @@ import {
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
 import { bindKeyedStore } from '../core/storage/keyedBinding.js';
+import { isExternalFileId } from './externalIdentity.js';
 
 const STORE_FILE = dataPath('.aqua-fileindex.json');
 const SCHEMA     = 1;
 
-const MAX_FILES_PER_OWNER = 200;   // eviction horizon — oldest indexed file drops first
+const MAX_FILES_PER_OWNER = 200;   // eviction horizon — oldest indexed file drops first (uploads)
+// Phase 1a.2 — external resources are indexed under their own horizon and evict
+// only each other; an import never drops an upload from the index.
+const MAX_EXTERNAL_FILES_PER_OWNER = 200;
 const MAX_TERM_LENGTH     = 80;
 
 /** ownerId → { files: Map<ukoId,{name,kind,conversationId,indexedAt}>, entities: Map<value,Set<ukoId>>, keywords: Map<term,Set<ukoId>> } */
@@ -124,8 +128,10 @@ export function indexUKO(ownerId, uko) {
   const o = ownerIndex(ownerId);
 
   if (o.files.has(uko.id)) removeFromLanes(o, uko.id);
-  if (o.files.size >= MAX_FILES_PER_OWNER) {
-    const oldest = [...o.files.entries()].sort((a, b) => a[1].indexedAt - b[1].indexedAt)[0]?.[0];
+  const external = isExternalFileId(uko.id);
+  const sameClass = [...o.files.entries()].filter(([id]) => isExternalFileId(id) === external);
+  if (sameClass.length >= (external ? MAX_EXTERNAL_FILES_PER_OWNER : MAX_FILES_PER_OWNER)) {
+    const oldest = sameClass.sort((a, b) => a[1].indexedAt - b[1].indexedAt)[0]?.[0];
     if (oldest) { removeFromLanes(o, oldest); o.files.delete(oldest); }
   }
 
@@ -154,6 +160,13 @@ function removeFromLanes(o, ukoId) {
       if (!set.size) lane.delete(key);
     }
   }
+}
+
+/** Phase 1a.2 — indexed file ids with an external source/resource prefix. */
+export function indexedFileIdsByPrefix(ownerId, prefix) {
+  if (!isExternalFileId(prefix)) return [];
+  const o = store.get(ownerId);
+  return o ? [...o.files.keys()].filter(id => id.startsWith(prefix)) : [];
 }
 
 export function removeUKOFromIndex(ownerId, ukoId) {

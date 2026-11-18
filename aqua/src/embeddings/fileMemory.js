@@ -28,6 +28,7 @@
 import { embed, embedOne, isEmbeddingEnabled, contentHash } from './embeddingProvider.js';
 import { upsert, has, remove, idsIn, topK, getMeta, clearNamespace } from './vectorStore.js';
 import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
+import { isExternalFileKey } from '../files/externalIdentity.js';
 
 export const CHUNK_CHARS = 700;          // target chunk size
 export const MAX_CHUNKS_PER_FILE = 30;   // per-file cap (big docs: head coverage)
@@ -35,6 +36,22 @@ export const CHUNK_MIN_SCORE = 0.60;     // cosine floor — below this, not rec
 
 export function fileNamespace(ownerId) {
   return `files:${ownerId}`;
+}
+
+/**
+ * Phase 1a.2 — chunks of EXTERNAL resources live in their own namespace,
+ * `xfiles:<ownerId>`. vectorStore caps each namespace (NS_ITEM_CAP, oldest
+ * evicted), so sharing `files:<owner>` would let an import evict the chunks of
+ * the user's uploads. Separate namespaces = separate budgets; retrieval reads
+ * both (fileChunkScores). Still one namespace per owner: no cross-owner reach.
+ */
+export function externalFileNamespace(ownerId) {
+  return `xfiles:${ownerId}`;
+}
+
+/** The namespace a file key's chunks live in. */
+function namespaceForKey(ownerId, fileKey) {
+  return isExternalFileKey(fileKey) ? externalFileNamespace(ownerId) : fileNamespace(ownerId);
 }
 
 function chunkIdPrefix(fileKey) {
@@ -92,7 +109,7 @@ export function chunkText(content, { chunkChars = CHUNK_CHARS, maxChunks = MAX_C
 export async function indexFileChunks(ownerId, fileKey, name, content) {
   if (!ownerId || !fileKey || !isEmbeddingEnabled()) return;
   try {
-    const nsKey = fileNamespace(ownerId);
+    const nsKey = namespaceForKey(ownerId, fileKey);
     const chunks = chunkText(content);
     const prefix = chunkIdPrefix(fileKey);
 
@@ -130,16 +147,18 @@ export async function indexFileChunks(ownerId, fileKey, name, content) {
 export async function fileChunkScores(ownerId, query, { k = 4, minScore = CHUNK_MIN_SCORE } = {}) {
   if (!ownerId || !isEmbeddingEnabled() || !query || !query.trim()) return [];
   try {
-    const nsKey = fileNamespace(ownerId);
     const qvec = await embedOne(query);
     if (!qvec) return [];
-    const hits = topK(nsKey, qvec, k, minScore);
+    // Phase 1a.2: uploads and external resources compete on relevance alone —
+    // the top k across both namespaces (each is owner-scoped).
     const out = [];
-    for (const { id, score } of hits) {
-      const meta = getMeta(nsKey, id);
-      if (meta?.text) out.push({ text: meta.text, name: meta.name, fileKey: meta.fileKey, idx: meta.idx, score: +score.toFixed(3) });
+    for (const nsKey of [fileNamespace(ownerId), externalFileNamespace(ownerId)]) {
+      for (const { id, score } of topK(nsKey, qvec, k, minScore)) {
+        const meta = getMeta(nsKey, id);
+        if (meta?.text) out.push({ text: meta.text, name: meta.name, fileKey: meta.fileKey, idx: meta.idx, score: +score.toFixed(3) });
+      }
     }
-    return out;
+    return out.sort((a, b) => b.score - a.score).slice(0, k);
   } catch (err) {
     console.warn('[FILE_MEM] fileChunkScores failed (non-fatal):', err.message);
     return [];
@@ -151,7 +170,7 @@ export async function fileChunkScores(ownerId, query, { k = 4, minScore = CHUNK_
 export function removeFileChunks(ownerId, fileKey) {
   if (!ownerId || !fileKey) return;
   try {
-    const nsKey = fileNamespace(ownerId);
+    const nsKey = namespaceForKey(ownerId, fileKey);
     const prefix = chunkIdPrefix(fileKey);
     for (const id of idsIn(nsKey)) {
       if (id.startsWith(prefix)) remove(nsKey, id);
@@ -159,7 +178,29 @@ export function removeFileChunks(ownerId, fileKey) {
   } catch { /* non-fatal */ }
 }
 
+/**
+ * Phase 1a.2 — drop every external chunk whose file key starts with
+ * `keyPrefix` (one source, or one resource), except chunks of the file keys in
+ * `keep`. Works from the stored ids alone, so it reaches chunks a crashed sync
+ * wrote before any file-memory entry existed. Only the external namespace is
+ * touched: upload chunks cannot match. Returns the number removed.
+ */
+export function removeFileChunksByPrefix(ownerId, keyPrefix, { keep = new Set() } = {}) {
+  if (!ownerId || !isExternalFileKey(keyPrefix)) return 0;
+  const nsKey = externalFileNamespace(ownerId);
+  const keepPrefixes = [...keep].map(chunkIdPrefix);
+  let removed = 0;
+  for (const id of idsIn(nsKey)) {
+    if (!id.startsWith(keyPrefix) || keepPrefixes.some(p => id.startsWith(p))) continue;
+    remove(nsKey, id);
+    removed++;
+  }
+  return removed;
+}
+
 /** GDPR cascade: every file chunk for an owner. */
 export function clearOwnerFileChunks(ownerId) {
-  if (ownerId) clearNamespace(fileNamespace(ownerId));
+  if (!ownerId) return;
+  clearNamespace(fileNamespace(ownerId));
+  clearNamespace(externalFileNamespace(ownerId));   // Phase 1a.2
 }

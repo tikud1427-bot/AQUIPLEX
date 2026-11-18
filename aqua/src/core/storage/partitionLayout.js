@@ -75,7 +75,12 @@ export const LAYOUTS = Object.freeze({
   ],
   '.aqua-vectors.json': [{
     name: 'ns', path: [], kind: 'map',
-    ownerOf: key => (String(key).startsWith('files:') ? String(key).slice('files:'.length) : String(key)),
+    // 'xfiles:' — Phase 1a.2 external-resource chunks belong to the same owner.
+    ownerOf: key => {
+      const k = String(key);
+      for (const p of ['files:', 'xfiles:']) if (k.startsWith(p)) return k.slice(p.length);
+      return k;
+    },
   }],
   '.aqua-projects.json':          [{ name: 'ws', path: [], kind: 'map', ownerOf: key => `ws:${key}` }],
   '.aqua-index.json':             [{ name: 'ws', path: [], kind: 'map', ownerOf: key => `ws:${key}` }],

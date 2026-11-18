@@ -27,11 +27,17 @@ import {
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
 import { bindKeyedStore } from '../core/storage/keyedBinding.js';
+import { isExternalFileId } from './externalIdentity.js';
 
 const STORE_FILE = dataPath('.aqua-uko.json');
 const SCHEMA     = 1;
 
-const MAX_UKOS_PER_OWNER = 100;
+const MAX_UKOS_PER_OWNER = 100;   // uploads (and workspaces) — unchanged, counted over uploads only
+// Phase 1a.2 — external resources have their OWN budget. The sync layer
+// (files/externalSources.js) refuses new items before ingest when it is
+// reached; this backstop makes the store refuse rather than evict if any
+// caller ever bypasses that check. An external UKO never evicts anything.
+export const MAX_EXTERNAL_UKOS_PER_OWNER = 200;
 const MAX_CACHE_ENTRIES  = 150;
 
 /** ownerKey → Map<ukoId, uko>   (ownerKey: ownerId or 'anon') */
@@ -105,10 +111,26 @@ export function saveUKO(uko) {
   const key = ownerKey(uko.owner);
   const m = byOwner.get(key) ?? new Map();
   if (!byOwner.has(key)) byOwner.set(key, m);
-  if (m.size >= MAX_UKOS_PER_OWNER && !m.has(uko.id)) {
-    // Evict the oldest by upload time — bounded like every AQUA store.
-    const oldest = [...m.values()].sort((a, b) => a.provenance.uploadedAt - b.provenance.uploadedAt)[0];
-    if (oldest) m.delete(oldest.id);
+  if (!m.has(uko.id)) {
+    if (isExternalFileId(uko.id)) {
+      // Phase 1a.2: never evict — refuse. (Thrown inside ingestOne → that file fails cleanly.)
+      // Counted in RESOURCES, not versions: during an update the new version is
+      // stored beside the old one until it succeeds, and that must not count twice.
+      const itemOf = id => id.slice(0, id.lastIndexOf('_'));
+      const items = new Set([...m.keys()].filter(isExternalFileId).map(itemOf));
+      if (!items.has(itemOf(uko.id)) && items.size >= MAX_EXTERNAL_UKOS_PER_OWNER) {
+        throw Object.assign(new Error('External resource limit reached for this owner'), { code: 'EXTERNAL_LIMIT' });
+      }
+    } else {
+      // Uploads: the original policy — evict the oldest by upload time — but
+      // counted over, and choosing from, uploads only. With no external UKOs
+      // present this is exactly the previous behaviour.
+      const uploads = [...m.values()].filter(u => !isExternalFileId(u.id));
+      if (uploads.length >= MAX_UKOS_PER_OWNER) {
+        const oldest = uploads.sort((a, b) => a.provenance.uploadedAt - b.provenance.uploadedAt)[0];
+        if (oldest) m.delete(oldest.id);
+      }
+    }
   }
   m.set(uko.id, uko);
   scheduleSave(key);
@@ -125,6 +147,37 @@ export function listUKOs(ownerId, { limit = 50 } = {}) {
   return [...m.values()]
     .sort((a, b) => b.provenance.uploadedAt - a.provenance.uploadedAt)
     .slice(0, limit);
+}
+
+/**
+ * Phase 1a.2 — UKOs whose id starts with `prefix` (an external source or
+ * resource prefix from files/externalIdentity.js). Upload ids are uuids and
+ * cannot match an external prefix.
+ */
+export function listUKOsByPrefix(ownerId, prefix) {
+  if (!isExternalFileId(prefix)) return [];
+  const m = byOwner.get(ownerKey(ownerId));
+  return m ? [...m.values()].filter(u => u.id.startsWith(prefix)) : [];
+}
+
+/**
+ * Phase 1a.2 — drop the content-hash cache entry for `hash` unless a live UKO
+ * (any owner — with partitions off the cache is shared by identical bytes)
+ * still has that content. Leaves no parsed copy of deleted external content
+ * in the cache; costs at most a re-parse. Returns whether an entry was dropped.
+ */
+export function dropCachedKnowledgeIfUnused(ownerId, hash) {
+  if (!hash) return false;
+  // Partitions off: one cache entry serves every owner with these bytes.
+  // Partitions on: the entry is this owner's own (cacheKey), so only theirs count.
+  const owners = binding.mode === 'off' ? [...byOwner.values()] : [byOwner.get(ownerKey(ownerId))].filter(Boolean);
+  for (const m of owners) {
+    for (const u of m.values()) if (u?.sourceFile?.hash === hash) return false;
+  }
+  const ck = cacheKey(hash, ownerId);
+  const had = byHash.delete(ck);
+  if (had && binding.mode === 'off') scheduleSave();
+  return had;
 }
 
 export function removeUKO(ownerId, ukoId) {

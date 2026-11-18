@@ -476,7 +476,8 @@ export function registerOwnerResolver(prefix, fn) { ownerResolvers.set(prefix, f
 export function namespaceOwner(key) {
   const k = String(key);
   for (const [p, fn] of ownerResolvers) if (k.startsWith(p)) return fn(k.slice(p.length)) ?? null;
-  for (const p of ['files:', 'recall:', 'canonical-claims:']) if (k.startsWith(p)) return k.slice(p.length);
+  // 'xfiles:' — Phase 1a.2 external-resource chunks (embeddings/fileMemory.js externalFileNamespace).
+  for (const p of ['files:', 'xfiles:', 'recall:', 'canonical-claims:']) if (k.startsWith(p)) return k.slice(p.length);
   return k;
 }
 

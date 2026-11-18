@@ -123,6 +123,9 @@ export const memoryLinkStage = {
       chars: uko.rawContent.length,
       conversationId: uko.conversation,
       content: uko.rawContent,
+      // Phase 1a.2 — an external resource keeps its source-derived key (set by
+      // ingestOne); uploads pass null and keep the name-based key as before.
+      ...(uko.provenance?.external ? { key: uko.memoryLinks.fileKey, external: uko.provenance.external } : {}),
     });
     if (entry?.key) uko.memoryLinks.fileKey = entry.key;
   },

@@ -187,6 +187,30 @@ export function purgeOwner(ownerId) {
   return removed;
 }
 
+/**
+ * Phase 1a.2 — source-scoped deletion: drop the lifecycle, version history and
+ * reasoning-feedback signals of specific UKOs and facts, and strip those fact
+ * ids from recorded retrieval sessions. Leaves every other subject untouched.
+ * Idempotent (a retry removes nothing more). Returns the number of records dropped.
+ */
+export function forgetSubjects(ownerId, { ukoIds = [], factIds = [] } = {}) {
+  const key = ownerId ?? 'anon';
+  const b = store.get(key) ?? (binding.mode === 'off' ? null : picBucket(ownerId));
+  if (!b) return 0;
+  const facts = new Set(factIds);
+  let removed = 0;
+  for (const subject of [...ukoIds.map(id => `uko:${id}`), ...factIds.map(id => `fact:${id}`)]) {
+    if (b.lifecycle.delete(subject)) removed++;
+    if (b.versions.delete(subject)) removed++;
+  }
+  for (const id of facts) if (b.signals.delete(id)) removed++;
+  for (const s of b.sessions) {
+    if (Array.isArray(s?.usedFacts) && s.usedFacts.some(id => facts.has(id))) s.usedFacts = s.usedFacts.filter(id => !facts.has(id));
+  }
+  if (removed) { touched.add(key); schedulePicSave(); }
+  return removed;
+}
+
 export function getPicStoreStats() {
   let subjects = 0, revisions = 0, sessions = 0;
   for (const b of store.values()) {

@@ -40,16 +40,21 @@ export const UKO_SCHEMA_VERSION = 1;
  * @param {string}      seed.fileType         - classifier kind: document|image|audio|video|source|repository|…
  * @param {string|null} seed.mimeType
  * @param {string|null} [seed.traceId]
+ * @param {string|null} [seed.id]             - Phase 1a.2: a deterministic id for an EXTERNAL
+ *                                              resource (files/externalSources.js). Absent = uuid,
+ *                                              exactly as before, for every upload.
+ * @param {object|null} [seed.external]       - Phase 1a.2: { sourceId, externalId, version,
+ *                                              sourceUpdatedAt, url, title, syncedAt } → provenance.external
  * @returns {object} UKO
  */
-export function createUKO({ ownerId = null, conversationId = null, sourceFile, fileType, mimeType = null, traceId = null }) {
+export function createUKO({ ownerId = null, conversationId = null, sourceFile, fileType, mimeType = null, traceId = null, id = null, external = null }) {
   if (!sourceFile?.name || !sourceFile?.hash) {
     throw new Error('createUKO: sourceFile{name,hash} is required');
   }
   const now = Date.now();
   return {
     // ── Identity ──
-    id:             uuidv4(),
+    id:             id || uuidv4(),
     schemaVersion:  UKO_SCHEMA_VERSION,
     owner:          ownerId,
     conversation:   conversationId,
@@ -94,6 +99,10 @@ export function createUKO({ ownerId = null, conversationId = null, sourceFile, f
       analyzer:      null,       // model/provider used inside the parser, if any
       uploadedAt:    now,
       contentHash:   sourceFile.hash,
+      // Phase 1a.2 — present only for knowledge imported from an external
+      // source; its presence is what classes this UKO as external (separate
+      // identity, storage budget and source-scoped deletion).
+      ...(external ? { external: { ...external } } : {}),
     },
     processing: {
       traceId:     traceId ?? null,

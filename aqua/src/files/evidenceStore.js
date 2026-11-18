@@ -51,13 +51,21 @@ import { dataPath } from '../core/dataDir.js';
 import { bindKeyedStore } from '../core/storage/keyedBinding.js';
 import { evidenceChecksum } from './evidence.js';
 import { indexCanonicalClaim, indexCanonicalClaims, canonicalClaimNamespace } from '../brain/contextEngine/canonicalSemantic.js';
+import { isExternalFileId } from './externalIdentity.js';
 import { clearNamespace } from '../embeddings/vectorStore.js';
 
 const STORE_FILE = dataPath('.aqua-evidence.json');
 const SCHEMA     = 1;
 
-const MAX_FACTS_PER_OWNER    = 5000;
+const MAX_FACTS_PER_OWNER    = 5000;   // uploads + conversation (unchanged; counted over that class only)
 const MAX_EVIDENCE_PER_OWNER = 8000;
+// Phase 1a.2 — EXTERNAL knowledge (evidence whose sourceFileId is an external
+// UKO id, files/externalIdentity.js) has its own budget and evicts only within
+// it, so an import can never evict a fact the user's uploads or conversations
+// produced. With no external facts present the original policy is unchanged.
+export const MAX_EXTERNAL_FACTS_PER_OWNER    = 3000;
+export const MAX_EXTERNAL_EVIDENCE_PER_OWNER = 5000;
+const isExternalEvidence = ev => isExternalFileId(ev?.sourceFileId);
 
 /** ownerKey → owner bucket */
 const store = new Map();
@@ -181,7 +189,11 @@ export function saveEvidence(ownerId, evidence) {
   const existingId = b.byChecksum.get(evidence.checksum);
   if (existingId) return b.evidence.get(existingId);
 
-  if (b.evidence.size >= MAX_EVIDENCE_PER_OWNER) evictOldestEvidence(b);
+  if (b.evidence.size >= Math.min(MAX_EVIDENCE_PER_OWNER, MAX_EXTERNAL_EVIDENCE_PER_OWNER)) {
+    const external = isExternalEvidence(evidence);
+    const inClass = [...b.evidence.values()].filter(ev => isExternalEvidence(ev) === external).length;
+    if (inClass >= (external ? MAX_EXTERNAL_EVIDENCE_PER_OWNER : MAX_EVIDENCE_PER_OWNER)) evictOldestEvidence(b, external);
+  }
   b.evidence.set(evidence.id, evidence);
   b.byChecksum.set(evidence.checksum, evidence.id);
   if (!b.evidenceRefs.has(evidence.id)) b.evidenceRefs.set(evidence.id, new Set());
@@ -198,7 +210,11 @@ export function saveEvidence(ownerId, evidence) {
  */
 export function saveFact(ownerId, fact, { sourceFileId = null } = {}) {
   const b = bucket(ownerId);
-  if (b.facts.size >= MAX_FACTS_PER_OWNER && !b.facts.has(fact.id)) evictOldestFact(b);
+  if (b.facts.size >= Math.min(MAX_FACTS_PER_OWNER, MAX_EXTERNAL_FACTS_PER_OWNER) && !b.facts.has(fact.id)) {
+    const external = isExternalFileId(sourceFileId) || isExternalFact(b, fact);
+    const inClass = [...b.facts.values()].filter(f => isExternalFact(b, f) === external).length;
+    if (inClass >= (external ? MAX_EXTERNAL_FACTS_PER_OWNER : MAX_FACTS_PER_OWNER)) evictOldestFact(b, external);
+  }
 
   b.facts.set(fact.id, fact);
   const fileId = sourceFileId ?? sourceFileOf(b, fact);
@@ -291,6 +307,21 @@ export function updateFact(ownerId, factId, patch = {}) {
 
 // ── Cascade delete (keeps the graph consistent — no orphans on removal) ──────
 
+/**
+ * Phase 1a.2 — ids of the files this owner's evidence store links to whose id
+ * starts with `prefix` (an external source/resource prefix). Reads the link
+ * table itself, so it finds files whose UKO was never saved (a crashed sync).
+ */
+export function fileIdsByPrefix(ownerId, prefix) {
+  if (!isExternalFileId(prefix)) return [];
+  return [...bucket(ownerId).byFile.keys()].filter(id => typeof id === 'string' && id.startsWith(prefix));
+}
+
+/** Phase 1a.2 — facts linked to one file (ids), for PIC/vector cleanup before removeFile. */
+export function factIdsForFile(ownerId, ukoId) {
+  return [...(bucket(ownerId).byFile.get(ukoId)?.facts ?? [])];
+}
+
 export function removeFile(ownerId, ukoId) {
   const b = bucket(ownerId);
   const links = b.byFile.get(ukoId);
@@ -365,8 +396,18 @@ function isConversationFact(b, fact) {
  * Falls through to oldest-overall when no conversational fact exists, so with
  * an all-document store the behaviour is byte-identical to before.
  */
-function evictOldestFact(b) {
-  const facts = [...b.facts.values()];
+/** Phase 1a.2 — a fact is external when its evidence came from an external UKO. */
+function isExternalFact(b, fact) {
+  for (const evId of fact?.evidence ?? []) {
+    const ev = b.evidence.get(evId);
+    if (ev) return isExternalEvidence(ev);
+  }
+  return false;
+}
+
+function evictOldestFact(b, external = false) {
+  // Phase 1a.2: choose only within the incoming fact's class (see the caps above).
+  const facts = [...b.facts.values()].filter(f => isExternalFact(b, f) === external);
   const byAge = (a, c) => a.createdAt - c.createdAt;
 
   const conversational = facts.filter(f => isConversationFact(b, f)).sort(byAge)[0];
@@ -378,10 +419,12 @@ function evictOldestFact(b) {
   return oldest;
 }
 
-function evictOldestEvidence(b) {
+function evictOldestEvidence(b, external = false) {
   // Evict oldest evidence that no fact references (safe); else oldest overall.
-  const unreferenced = [...b.evidence.values()].filter(ev => !(b.evidenceRefs.get(ev.id)?.size)).sort((a, c) => a.createdAt - c.createdAt)[0];
-  const victim = unreferenced ?? [...b.evidence.values()].sort((a, c) => a.createdAt - c.createdAt)[0];
+  // Phase 1a.2: both choices are made within the incoming evidence's class.
+  const pool = [...b.evidence.values()].filter(ev => isExternalEvidence(ev) === external);
+  const unreferenced = pool.filter(ev => !(b.evidenceRefs.get(ev.id)?.size)).sort((a, c) => a.createdAt - c.createdAt)[0];
+  const victim = unreferenced ?? pool.sort((a, c) => a.createdAt - c.createdAt)[0];
   if (!victim) return;
   b.evidence.delete(victim.id);
   b.byChecksum.delete(victim.checksum);

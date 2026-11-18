@@ -44,9 +44,10 @@ import { detectContinuation } from './continuation.js';
 import { recordMemoryRetrieval } from '../core/observability.js';
 import { estimateTokens } from '../core/tokenManager.js';
 import { indexOwnerFacts, semanticFactScores } from '../embeddings/semanticMemory.js';
-import { indexFileChunks, fileChunkScores, removeFileChunks } from '../embeddings/fileMemory.js';
+import { indexFileChunks, fileChunkScores, removeFileChunks, removeFileChunksByPrefix } from '../embeddings/fileMemory.js';
 import { fileMeta } from '../core/logSafety.js';
 import { sanitizeInlineLabel } from '../core/untrustedContent.js';
+import { isExternalFileKey } from '../files/externalIdentity.js';
 
 export { resolveOwner, isUserOwner };
 // Phase 2 — semantic retrieval. Re-exported through the ONE memory facade so
@@ -76,7 +77,8 @@ export {
 
 const TOTAL_BUDGET_TOKENS = 800;   // one budget for the whole memory block
 const MIN_COGNITIVE_BUDGET = 150;
-const FILE_MEMORY_CAP = 60;        // per owner; oldest-least-referenced evicted
+const FILE_MEMORY_CAP = 60;        // per owner; oldest-least-referenced evicted (uploads + workspaces)
+const EXTERNAL_FILE_MEMORY_CAP = 200;   // Phase 1a.2: external resources — a separate budget (== MAX_EXTERNAL_ITEMS_PER_OWNER)
 const FILE_SUMMARY_CHARS = 280;
 const TRACE_RING_MAX = 100;
 
@@ -673,16 +675,25 @@ function fileKey(name) {
  * it contains (compact summary — NOT the full content), and where it came
  * from. Also lands in the relationship graph as an artifact the user uses.
  */
-export function rememberFile(ownerId, { name, kind = 'document', summary = '', chars = 0, conversationId = null, workspaceId = null, content = '' } = {}) {
+export function rememberFile(ownerId, { name, kind = 'document', summary = '', chars = 0, conversationId = null, workspaceId = null, content = '', key: explicitKey = null, external = null } = {}) {
   if (!ownerId || !name) return null;
   try {
     const mind = getMind(ownerId);
-    const key = fileKey(name);
+    // Phase 1a.2 — an external resource arrives with a source-derived key
+    // (files/externalIdentity.js) so two sources' README.md never share an
+    // entry. Uploads keep the name key, exactly as before.
+    const key = explicitKey && isExternalFileKey(explicitKey) ? explicitKey : fileKey(name);
     const now = Date.now();
     const existing = mind.files[key];
     const entry = existing || {
       key, name, kind, uploadedAt: now, refCount: 0,
     };
+    if (external) {
+      entry.external = {
+        sourceId: external.sourceId, externalId: external.externalId,
+        sourceUpdatedAt: external.sourceUpdatedAt ?? null, url: external.url ?? null,
+      };
+    }
     entry.kind = kind;
     entry.summary = (summary || entry.summary || '').slice(0, FILE_SUMMARY_CHARS);
     entry.chars = chars || entry.chars || 0;
@@ -693,14 +704,24 @@ export function rememberFile(ownerId, { name, kind = 'document', summary = '', c
     mind.files[key] = entry;
     enforceFileCap(mind);
 
-    const node = upsertNode(mind, 'artifact', name);
-    if (node) upsertEdge(mind, SELF_KEY, node.key, 'uses', kind);
+    // Phase 1a.2 — no relationship-graph node for an external resource. The
+    // Mind graph is keyed by LABEL (two sources' README.md would share one
+    // node) and its nodes carry no tombstones, so a removed node could be
+    // restored by a store merge — source deletion could not be made reliable.
+    // External knowledge still reaches the reasoning graph through its evidence.
+    if (!entry.external) {
+      const node = upsertNode(mind, 'artifact', name);
+      if (node) upsertEdge(mind, SELF_KEY, node.key, 'uses', kind);
+    }
     touchMind(mind);
 
     // Phase D — the CONTENT becomes durable, semantically searchable owner
     // knowledge. Fire-and-forget: never adds latency to the upload response;
     // fails open internally; no-op when embeddings are unavailable.
-    if (content) {
+    // Phase 1a.2: not for external resources — the ingest embedding stage has
+    // already indexed them (awaited, under the same key). A second, un-awaited
+    // index here could land AFTER a source deletion and bring chunks back.
+    if (content && !entry.external) {
       indexFileChunks(ownerId, key, name, content).catch(() => {});
     }
 
@@ -710,6 +731,32 @@ export function rememberFile(ownerId, { name, kind = 'document', summary = '', c
     console.warn('[MEMORY] rememberFile failed (non-fatal):', err.message);
     return null;
   }
+}
+
+/**
+ * Phase 1a.2 — remove EXTERNAL file-memory entries (and their content chunks)
+ * whose key starts with `keyPrefix` (files/externalIdentity.js sourcePrefixes /
+ * itemPrefixes), except the keys in `keep`. Upload entries can never match: their
+ * keys do not carry the external prefix. Deletions are tombstoned (deleteItem),
+ * so a store merge cannot bring an entry back. Chunks are also swept by prefix,
+ * which reaches chunks a crashed sync wrote without ever creating the entry.
+ *
+ * @returns {{ entries: number }} entries removed
+ */
+export function forgetExternalFiles(ownerId, keyPrefix, { keep = [] } = {}) {
+  if (!ownerId || !isExternalFileKey(keyPrefix)) return { entries: 0 };
+  const keepSet = new Set(keep);
+  let entries = 0;
+  const mind = getMind(ownerId);   // loads the owner when partitioned (peek could miss them)
+  if (mind?.files) {
+    for (const key of Object.keys(mind.files)) {
+      if (!key.startsWith(keyPrefix) || keepSet.has(key)) continue;
+      if (deleteItem(mind, 'files', key)) entries++;
+    }
+    if (entries) touchMind(mind);
+  }
+  removeFileChunksByPrefix(ownerId, keyPrefix, { keep: keepSet });
+  return { entries };
 }
 
 /** Workspace (project upload) becomes a project node + file memory entry. */
@@ -734,12 +781,23 @@ export function rememberWorkspace(ownerId, workspace) {
 }
 
 function enforceFileCap(mind) {
-  const keys = Object.keys(mind.files);
-  if (keys.length <= FILE_MEMORY_CAP) return;
+  // Phase 1a.2 — two independent budgets. Uploads (and workspaces) keep the
+  // original FILE_MEMORY_CAP and LRU, counted over uploads only; external
+  // resources have their own EXTERNAL_FILE_MEMORY_CAP and only ever evict each
+  // other. An import can therefore never push a user's upload out of memory.
+  // (External items are bounded at sync time — files/externalSources.js — so
+  // this second loop is a backstop, not the policy.)
+  enforceFileClassCap(mind, k => !isExternalFileKey(k), FILE_MEMORY_CAP);
+  enforceFileClassCap(mind, isExternalFileKey, EXTERNAL_FILE_MEMORY_CAP);
+}
+
+function enforceFileClassCap(mind, inClass, cap) {
+  const keys = Object.keys(mind.files).filter(inClass);
+  if (keys.length <= cap) return;
   const sorted = keys
     .map(k => [k, mind.files[k]])
     .sort((a, b) => (a[1].lastReferencedAt || 0) - (b[1].lastReferencedAt || 0));
-  while (sorted.length > FILE_MEMORY_CAP) {
+  while (sorted.length > cap) {
     const [k] = sorted.shift();
     deleteItem(mind, 'files', k);
     // Phase D — evicting the file entry also drops its content chunks; a

@@ -622,6 +622,64 @@ export function traverse(ownerId, startId, { maxHops = 3, maxNodes = 50, edgeTyp
 
 // ── Incremental maintenance ──────────────────────────────────────────────────
 
+/**
+ * Phase 1a.2 — remove every trace of deleted files from the graph by PROVENANCE.
+ *
+ * removeFile() only drops what was linked to the file through `byFile`. Entity
+ * nodes are cross-file by nature and are upserted without that link (the
+ * resolver works over all files at once), so an entity contributed ONLY by a
+ * deleted file survived removeFile and kept surfacing in the knowledge lane as
+ * "Entity: … appears in" with no live file behind it. Here every node and edge
+ * loses the deleted ids from its `sourceFiles`; one left with no source at all
+ * is removed with its incident edges. Anything another file still supports
+ * stays. Idempotent. Returns { nodes, edges } removed.
+ */
+export function detachFiles(ownerId, fileIds = []) {
+  const gone = new Set(fileIds);
+  if (!gone.size) return { nodes: 0, edges: 0 };
+  const g = graph(ownerId);
+  let nodes = 0, edges = 0;
+  const dropEdge = eid => {
+    const e = g.edges.get(eid);
+    if (!e) return;
+    g.adj.get(e.from)?.delete(eid);
+    g.adj.get(e.to)?.delete(eid);
+    g.edges.delete(eid);
+    edges++;
+  };
+  for (const [eid, e] of [...g.edges]) {
+    const src = e.sourceFiles ?? [];
+    if (!src.some(f => gone.has(f))) continue;
+    const keep = src.filter(f => !gone.has(f));
+    if (keep.length) e.sourceFiles = keep; else dropEdge(eid);
+  }
+  for (const [nid, n] of [...g.nodes]) {
+    const src = n.sourceFiles ?? [];
+    if (!src.some(f => gone.has(f))) continue;
+    const keep = src.filter(f => !gone.has(f));
+    if (keep.length) { n.sourceFiles = keep; continue; }
+    for (const eid of [...(g.adj.get(nid) ?? [])]) dropEdge(eid);
+    g.nodes.delete(nid);
+    g.adj.delete(nid);
+    nodes++;
+  }
+  for (const [f, l] of g.byFile) {
+    if (gone.has(f)) { g.byFile.delete(f); continue; }
+    for (const nid of [...l.nodes]) if (!g.nodes.has(nid)) l.nodes.delete(nid);
+    for (const eid of [...l.edges]) if (!g.edges.has(eid)) l.edges.delete(eid);
+  }
+  if (nodes || edges) {
+    if (binding.mode !== 'off') for (const f of gone) (g.removedFiles ??= new Map()).set(f, Date.now());
+    scheduleSave(ownerId ?? 'anon');
+  }
+  return { nodes, edges };
+}
+
+/** Phase 1a.2 — file ids this owner's graph holds contributions for (source-scoped deletion sweep). */
+export function graphFileIds(ownerId) {
+  return [...graph(ownerId).byFile.keys()];
+}
+
 export function removeFile(ownerId, ukoId) {
   const g = graph(ownerId);
   const links = g.byFile.get(ukoId);
