@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * NVIDIA adapter — key pool, error scoping, pinning, streaming, accounting.
  *

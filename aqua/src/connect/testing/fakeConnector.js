@@ -89,6 +89,10 @@ export function createFakeConnector({ world, id = 'fake', version = '1.0.0', ove
   const token = ctx => ctx.credentials().accessToken;
   const base = {
     id, version, displayName: 'Fake Source (tests only)', testOnly: true,
+    // Test-only: the fake source's deterministic content may go anywhere, so the
+    // Phase 1a.2/1b suites keep exercising every store. Real connectors declare
+    // nothing (→ no provider) until an approval; Gmail cannot declare at all.
+    dataPolicy: { allowedProviders: '*' },
     auth: { type: 'oauth2', scopes: ['fake.read'] },
     capabilities: ['list', 'fetch', 'sync', 'incremental', 'refresh'],
     resourceTypes: ['document'],

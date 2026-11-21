@@ -68,6 +68,13 @@ export function createMemoryPg() {
       });
     }
   }
+  // clock_timestamp() (wall clock at the statement) is absent from pg-mem; the
+  // G1-2 deletion tombstone and source observation use it. Same value a real
+  // server returns, minus the transaction-vs-statement distinction pg-mem
+  // does not model anyway.
+  db.public.registerFunction({
+    name: 'clock_timestamp', args: [], returns: DataType.timestamptz, impure: true, implementation: () => new Date(),
+  });
 
   // btrim(text) — used by 0025's expression index. Postgres semantics: one-arg
   // btrim strips SPACES only, not all whitespace.

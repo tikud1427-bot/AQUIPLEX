@@ -27,6 +27,7 @@ import { GoogleGenAI } from '@google/genai';
 import { getCandidateModels, markModelWorking, pinCandidates } from './modelRegistry.js';
 import { rotate, keyPoolFor, raceAbort } from './keyRotation.js';
 import { recordProviderCall } from '../core/costAccounting.js';
+import { assertEgress } from '../core/egressGuard.js';
 
 /** E12: every successful call is counted (tokens always; USD only when priced). */
 function countedCall(provider, purpose, res) {
@@ -118,6 +119,7 @@ function toContents(messages) {
  *   { text, truncated, finishReason }.
  */
 export async function generateGemini(systemPrompt, messages, signal, maxTokens, opts = {}) {
+  assertEgress('gemini', 'generate');   // G1-2: data-class boundary, before any key or network use
   if (!pool.hasKeys()) throw noKeys();
   const candidates = candidatesOrThrow(pinCandidates(getCandidateModels('gemini'), opts.model ?? null, 'gemini'));
 
@@ -171,6 +173,7 @@ export async function generateGemini(systemPrompt, messages, signal, maxTokens, 
  * @returns {Promise<{ text:string, truncated:boolean, finishReason:string, streamed:true }>}
  */
 export async function streamGemini(systemPrompt, messages, signal, maxTokens, onDelta) {
+  assertEgress('gemini', 'stream');   // G1-2: data-class boundary, before any key or network use
   if (!pool.hasKeys()) throw noKeys();
   const candidates = candidatesOrThrow(getCandidateModels('gemini'));
   const purpose = 'chat';
@@ -244,6 +247,7 @@ export async function streamGemini(systemPrompt, messages, signal, maxTokens, on
 //   [{ inlineData: { mimeType: 'image/png', data: '<base64>' } }, { text: 'Describe…' }]
 
 export async function analyzeMediaWithGemini(parts, { systemPrompt, maxTokens = 2048, signal } = {}) {
+  assertEgress('gemini', 'media');   // G1-2: data-class boundary, before any key or network use
   if (!pool.hasKeys()) throw noKeys(' — media analysis unavailable');
   const candidates = candidatesOrThrow(getCandidateModels('gemini'));
 

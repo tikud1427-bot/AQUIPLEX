@@ -40,6 +40,7 @@ import { saveUKO, cacheKnowledge, getCachedKnowledge } from './ukoStore.js';
 import { enqueueDocumentUnderstanding } from './documentUnderstanding.js';
 import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 import { externalIdentity } from './externalIdentity.js';
+import { dataClassOfSource, isUnrestricted } from '../core/dataClass.js';
 
 registerBuiltinParsers();
 
@@ -213,6 +214,11 @@ async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
     } : {}),
   });
   if (ext) uko.memoryLinks.fileKey = ext.fileKey;
+  // G1-2 — the content's data class travels with it (ukoStore.dataClassOfUko
+  // re-derives and cross-checks it on every read). External: the connector
+  // that fetched it; everything else entering here is the user's upload.
+  uko.dataClass = ext ? dataClassOfSource(external.sourceId) : 'upload';
+  const unrestricted = isUnrestricted(uko.dataClass);
   uko.provenance.parser        = parser.id;
   uko.provenance.parserVersion = parser.version;
 
@@ -240,7 +246,13 @@ async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
       await runEnrichment(uko, { deps, only: 'knowledge' });
       cacheKnowledge(uko);
     }
-    await runEnrichment(uko, { deps, only: 'integration' });
+    // G1-2 — integration stages copy content into stores that carry no data
+    // class and feed every prompt (file memory + its Gemini embeddings, the
+    // memory engine, the search index, evidence/facts → Mind). Content a
+    // provider may not receive is never copied there: it stays in the UKO
+    // store, where normal readers cannot see it (ukoStore.getUKO).
+    if (unrestricted) await runEnrichment(uko, { deps, only: 'integration' });
+    else uko.processing.warnings.push(`integration skipped: data class ${uko.dataClass} is restricted`);
 
     finalizeUKO(uko);
     saveUKO(uko);
@@ -253,7 +265,13 @@ async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
     }
 
     return { ukoId: uko.id, result: legacyResult(uko, attachmentId),
-      document: { ukoId: uko.id, name, kind: cls.kind, text: uko.rawContent, hash } };
+      // Understanding (extraction by a provider + canonical claims) only for
+      // unrestricted content (G1-2; external understanding is also gated off).
+      document: unrestricted ? {
+        ukoId: uko.id, name, kind: cls.kind, text: uko.rawContent, hash, dataClass: uko.dataClass,
+        // D-1: when the sync saw the source (externalDeletionGuard.observeExternalSource).
+        ...(external?.observedAt ? { observedAt: external.observedAt } : {}),
+      } : null };
   } catch (err) {
     recordParserOutcome(parser.id, false, err.message);
     console.error(`[FILES] Ingest failed ${fileMeta(name)} parser=${parser.id}:`, stripQuoted(err.message));

@@ -28,6 +28,8 @@ import {
 import { dataPath } from '../core/dataDir.js';
 import { bindKeyedStore } from '../core/storage/keyedBinding.js';
 import { isExternalFileId } from './externalIdentity.js';
+import { dataClassOfSource, isKnownDataClass, isUnrestricted, UNCLASSIFIED } from '../core/dataClass.js';
+import { noteDataClasses } from '../core/egressGuard.js';
 
 const STORE_FILE = dataPath('.aqua-uko.json');
 const SCHEMA     = 1;
@@ -137,14 +139,54 @@ export function saveUKO(uko) {
   return uko;
 }
 
-export function getUKO(ownerId, ukoId) {
-  return byOwner.get(ownerKey(ownerId))?.get(ukoId) ?? null;
+// ── Data classes (G1-2) ───────────────────────────────────────────────────────
+/**
+ * The data class of a stored UKO (core/dataClass.js). An external resource's
+ * class comes from its source id (`<connector>:<scope>` → external:<connector>);
+ * a stored class that contradicts it, or an external id with no usable source,
+ * is UNCLASSIFIED (fail closed). Uploads are `upload`; a stored class on an
+ * upload is honoured only when it is at least as restrictive (never downgraded).
+ */
+export function dataClassOfUko(uko) {
+  if (!uko) return UNCLASSIFIED;
+  const external = uko.provenance?.external ?? null;
+  if (isExternalFileId(uko.id) || external) {
+    const derived = external?.sourceId ? dataClassOfSource(external.sourceId) : UNCLASSIFIED;
+    return uko.dataClass && uko.dataClass !== derived ? UNCLASSIFIED : derived;
+  }
+  if (uko.dataClass === undefined || uko.dataClass === null || uko.dataClass === 'upload') return 'upload';
+  return isKnownDataClass(uko.dataClass) ? uko.dataClass : UNCLASSIFIED;
 }
 
-export function listUKOs(ownerId, { limit = 50 } = {}) {
+/**
+ * RESTRICTED content (a class not every provider may receive — e.g.
+ * external:gmail) is invisible to every normal reader: the reasoning graph,
+ * PIC, forensic/research engines, understanding observers and the chat context
+ * all read through getUKO/listUKOs and simply never see it. Only lifecycle code
+ * (external-source sync/delete, the understanding worker) asks for it with
+ * `includeRestricted`, and that read records the class in the current
+ * data-class scope (core/egressGuard.js) — or throws when there is none — so
+ * nothing that follows in that request/job can send it to a provider.
+ */
+function visible(uko, includeRestricted) {
+  if (!uko) return false;
+  const cls = dataClassOfUko(uko);
+  if (isUnrestricted(cls)) return true;
+  if (!includeRestricted) return false;
+  noteDataClasses([cls]);
+  return true;
+}
+
+export function getUKO(ownerId, ukoId, { includeRestricted = false } = {}) {
+  const uko = byOwner.get(ownerKey(ownerId))?.get(ukoId) ?? null;
+  return visible(uko, includeRestricted) ? uko : null;
+}
+
+export function listUKOs(ownerId, { limit = 50, includeRestricted = false } = {}) {
   const m = byOwner.get(ownerKey(ownerId));
   if (!m) return [];
   return [...m.values()]
+    .filter(u => visible(u, includeRestricted))
     .sort((a, b) => b.provenance.uploadedAt - a.provenance.uploadedAt)
     .slice(0, limit);
 }
@@ -154,10 +196,10 @@ export function listUKOs(ownerId, { limit = 50 } = {}) {
  * resource prefix from files/externalIdentity.js). Upload ids are uuids and
  * cannot match an external prefix.
  */
-export function listUKOsByPrefix(ownerId, prefix) {
+export function listUKOsByPrefix(ownerId, prefix, { includeRestricted = false } = {}) {
   if (!isExternalFileId(prefix)) return [];
   const m = byOwner.get(ownerKey(ownerId));
-  return m ? [...m.values()].filter(u => u.id.startsWith(prefix)) : [];
+  return m ? [...m.values()].filter(u => u.id.startsWith(prefix) && visible(u, includeRestricted)) : [];
 }
 
 /**

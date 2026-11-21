@@ -27,6 +27,7 @@
  * or a different model touches ONLY this file.
  */
 import { GoogleGenAI } from '@google/genai';
+import { egressAllowed } from '../core/egressGuard.js';
 import { EMBED_MODEL, EMBED_DIM } from './embeddingModel.js';
 import keyPoolLib from '../providers/keyPool.cjs';
 import { noteFeature } from '../core/flags.js';
@@ -215,6 +216,10 @@ const inflight = new Map(); // text → Promise<number[]|null>
 export async function embed(texts) {
   if (!Array.isArray(texts) || !texts.length) return [];
   if (!isEmbeddingEnabled()) return texts.map(() => null);
+  // G1-2: embedding text is egress to Gemini. A scope whose data classes do not
+  // allow it gets no vectors (keyword fallback, as on any embedding failure) and
+  // nothing — not even a cache or in-flight lookup — runs.
+  if (!egressAllowed('gemini', 'embed')) return texts.map(() => null);
 
   const out = new Array(texts.length).fill(null);
   const waits = [];       // [index, promise] — served by a call already open

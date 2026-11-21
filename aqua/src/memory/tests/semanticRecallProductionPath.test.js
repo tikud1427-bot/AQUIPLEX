@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Semantic episodic recall through the real chat turn (routes/chat.js prepareTurn).
  * Private data dir, no provider (deterministic fake embedder), no database.

@@ -15,6 +15,8 @@
 import { claim, complete, fail, enqueue, heartbeat, release, HEARTBEAT_STALE_MS, canarySleep } from './jobQueue.js';
 import { ensureOwnerLoaded, anyAuthoritative as anyPartitionStoreAuthoritative, flushOwnerBindingsStrict } from '../storage/ownerBinding.js';
 import { isOwnerDeleted } from '../storage/deletedOwners.js';
+import { runWithDataClass } from '../egressGuard.js';
+import { isUnrestricted } from '../dataClass.js';
 import { LEARNING_HANDLERS, readTurnText } from '../../learning/turnLearning.js';
 import { logJobEvent } from './jobLog.js';
 import { RECONCILE_KIND, runReconcile, scheduleChargeReconcile, RECONCILE_INTERVAL_MS } from '../../credits/reconcileJob.js';
@@ -103,9 +105,17 @@ export const HANDLERS = Object.freeze({
     // knowledge can be deleted with the source. A resource already deleted is
     // not understood (no resurrection from a queued job). Uploads: unchanged.
     const external = typeof p.ukoId === 'string' && p.ukoId.startsWith('ext_');
+    let dataClass = 'upload';
     if (external) {
-      const { getUKO } = await import('../../files/ukoStore.js');
-      if (!getUKO(job.ownerId, p.ukoId)) return;
+      // G1-2: the lifecycle read records the resource's class in this job's
+      // scope; restricted content (e.g. external:gmail) is not understood —
+      // understanding sends it to an extraction provider and writes claims
+      // that carry no class. Done, not failed: no retry, no dead letter.
+      const { getUKO, dataClassOfUko } = await import('../../files/ukoStore.js');
+      const uko = getUKO(job.ownerId, p.ukoId, { includeRestricted: true });
+      if (!uko) return;
+      dataClass = dataClassOfUko(uko);
+      if (!isUnrestricted(dataClass)) return { skipped: 'data-class-restricted' };
     }
     const conversationId = external
       ? `extuko:${p.ukoId}`
@@ -117,7 +127,7 @@ export const HANDLERS = Object.freeze({
       // `enqueuedAt`: the commit refuses an external resource deleted at or
       // after this job was enqueued — re-checked under the source lock at
       // commit time, not only here (externalDeletionGuard.js).
-      source: { kind: 'document', name: String(p.name ?? 'document'), hash: p.hash ?? null, chunk: Number.isInteger(p.chunk) ? p.chunk : 0, ...(external ? { ukoId: p.ukoId, enqueuedAt: job.createdAt ?? null } : {}) },
+      source: { kind: 'document', name: String(p.name ?? 'document'), hash: p.hash ?? null, chunk: Number.isInteger(p.chunk) ? p.chunk : 0, dataClass, ...(external ? { ukoId: p.ukoId, enqueuedAt: job.createdAt ?? null } : {}) },
     });
     logE6Turn({ ownerId: job.ownerId, conversationId, result, ms: Date.now() - started });
     assertUnderstood(result);
@@ -334,7 +344,10 @@ export async function runOneJob(workerId, { kinds = null, handlers = HANDLERS } 
         return { ...base, ok: false, state: 'released', error: String(err?.message ?? err) };
       }
     }
-    const outcome = await handler(job);
+    // G1-2: every job runs in a data-class scope (core/egressGuard.js). A job is
+    // AQUA's own work for the owner (`user`); a handler that reads classified
+    // content adds that class (document jobs: their resource's).
+    const outcome = await runWithDataClass(job.kind === DOCUMENT_JOB_KIND && !String(job.payload?.ukoId ?? '').startsWith('ext_') ? 'upload' : 'user', () => handler(job));
     // Nothing is acknowledged while what it wrote is only in this process's memory.
     if (anyPartitionStoreAuthoritative()) await flushOwnerBindingsStrict();
     done();

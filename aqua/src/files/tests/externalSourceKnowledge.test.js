@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * G0 — source-specific knowledge deletion: what a disconnected external source
  * contributed to entities, facts, relationships and the Reflection V2
@@ -10,6 +12,7 @@
  * knowledge is therefore modelled as a sentence BOTH sources state.
  */
 import { test, before } from 'node:test';
+import { registerConnectorDataPolicy } from '../../core/dataClass.js';
 import assert from 'node:assert/strict';
 import fs from 'fs';
 import os from 'os';
@@ -24,6 +27,10 @@ for (const k of Object.keys(process.env)) {
 }
 process.env.AQUA_DISABLE_MONGO_MIRROR = '1';
 process.env.MONGO_URI = '';
+// G1-2: this file's fixture connector ("gmail-test", not a real connector) is
+// declared unrestricted so its content reaches every store this suite checks.
+// Real connectors declare no providers; external:gmail is frozen at none.
+registerConnectorDataPolicy('gmail-test', { allowedProviders: '*' });
 delete process.env.DATABASE_URL;
 process.chdir(TMP);
 

@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Memory 5.0 Phase D — File Content Memory
  * Run: node --test src/embeddings/tests/fileMemory.test.js

@@ -49,6 +49,7 @@ import {
   classifyProviderError, describeError, createProviderError, ProviderError,
 } from './providerErrors.js';
 import { computeBackoff, sleep as backoffSleep } from '../core/backoff.js';
+import { assertEgress, wouldAllowEgress } from '../core/egressGuard.js';
 
 // ── Retry-round configuration (env-tunable; sane production defaults) ──────────
 // Governs ONLY the transient-failure retry path. The common case — a provider
@@ -184,6 +185,8 @@ function timedAbort(ms) {
 async function callProvider(providerFns, provider, systemPrompt, messages, signal, maxTokens, purpose) {
   const start  = Date.now();
   const fn     = providerFns[provider] ?? providerFns.openrouter;
+  // G1-2: the data-class boundary — also for injected providers (tests, soak).
+  assertEgress(providerFns[provider] ? provider : 'openrouter', 'generate');
   // 5th arg carries ONLY the cost/usage purpose — no model pin, no temperature,
   // so the request bytes are unchanged. Credential rotation happens INSIDE the
   // adapter (keyPool.cjs); this router only ranks providers.
@@ -258,6 +261,11 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
   // exhausting the chain and returning a 500.
   for (let round = 1; round <= cfg.maxRounds; round++) {
     const ranked = rankProviders(taskType, complexity);
+
+    // G1-2: a provider this scope's data classes do not allow is never tried —
+    // not attempted, not counted as a failure, no circuit-breaker penalty. None
+    // allowed → fail now (EgressBlockedError, not retryable), no retry rounds.
+    if (!ranked.some(r => wouldAllowEgress(r.provider, 'generate'))) assertEgress(ranked[0]?.provider ?? 'openrouter', 'generate');
     // A RETRY round against degraded mode re-sends the request to every
     // provider whose circuit is open — typically every free-tier quota is
     // exhausted (429s), and each extra round multiplies the calls per user
@@ -274,6 +282,7 @@ export async function generateText(userMessage, systemPrompt, messages, ctx = {}
     let retryableThisRound = false;
 
     for (const { provider, score } of ranked) {
+      if (!wouldAllowEgress(provider)) continue;   // G1-2 (see the gate above)
       if (ctx.clientSignal?.aborted) {
         const a = new Error('CLIENT_ABORTED'); a.code = 'CLIENT_ABORTED'; throw a;
       }
@@ -413,6 +422,7 @@ const STREAM_FNS = {
 async function callProviderStream(provider, systemPrompt, messages, signal, maxTokens, onDelta, streamFns = STREAM_FNS) {
   const start = Date.now();
   const fn = streamFns[provider] ?? streamFns.openrouter;
+  assertEgress(streamFns[provider] ? provider : 'openrouter', 'stream');   // G1-2
   const result = await fn(systemPrompt, messages, signal, maxTokens, onDelta);
   return { ...result, latency: Date.now() - start };
 }
@@ -463,6 +473,10 @@ export async function generateTextStream({
   }
 
   const ranked = rankProviders(taskType, complexity);
+  // G1-2: a provider this scope's data classes do not allow is never tried —
+  // not attempted, not counted as a failure, no circuit-breaker penalty. None
+  // allowed → fail now (EgressBlockedError, not retryable), no retry rounds.
+  if (!ranked.some(r => wouldAllowEgress(r.provider, 'stream'))) assertEgress(ranked[0]?.provider ?? 'openrouter', 'stream');
   console.log(`[ROUTER] stream providers=[${ranked.map(r => `${r.provider}(${r.score.toFixed(0)})`).join(', ')}] task=${taskType} complexity=${complexity ?? 'n/a'} req=${requestId}`);
 
   const promptLength  = systemPrompt.length + messages.reduce((s, m) => s + m.content.length, 0);
@@ -471,6 +485,7 @@ export async function generateTextStream({
   let   attempt = 0;
 
   for (const { provider, score } of ranked) {
+    if (!wouldAllowEgress(provider)) continue;   // G1-2
     if (clientSignal?.aborted) {
       const err = new Error('CLIENT_ABORTED');
       err.partialText = '';

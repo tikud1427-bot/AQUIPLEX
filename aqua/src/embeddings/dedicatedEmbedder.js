@@ -22,6 +22,7 @@
  * retry-after (default 60 s) — no hammering, no other key tried.
  */
 import { GoogleGenAI } from '@google/genai';
+import { egressAllowed } from '../core/egressGuard.js';
 import { EMBED_MODEL, EMBED_DIM } from './embeddingModel.js';
 
 export const DEDICATED_KEY_ENV = 'AQUA_EMBEDDING_API_KEY';
@@ -126,6 +127,7 @@ export async function dedicatedEmbed(texts) {
   if (!Array.isArray(texts) || !texts.length) return [];
   const out = new Array(texts.length).fill(null);
   if (!dedicatedEmbeddingEnabled()) return out;
+  if (!egressAllowed('gemini', 'embed')) return out;   // G1-2: data-class boundary (keyword fallback)
   const miss = [];
   texts.forEach((t, i) => {
     const s = typeof t === 'string' ? t : String(t ?? '');

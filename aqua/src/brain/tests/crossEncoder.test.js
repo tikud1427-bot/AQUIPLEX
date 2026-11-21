@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHuggingFaceCrossEncoder } from '../contextEngine/crossEncoder.js';

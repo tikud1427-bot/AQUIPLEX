@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Phase 2 — semantic retrieval integration (offline; embedder injected).
  * Proves: (a) a paraphrase query with ZERO keyword overlap surfaces the right

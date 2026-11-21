@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * 2026-11-10 — concurrent embeds of the same text share one API call.
  * A chat turn's three retrieval lanes embed the same user message at once.

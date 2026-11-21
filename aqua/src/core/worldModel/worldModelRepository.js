@@ -16,6 +16,7 @@ import crypto from 'node:crypto';
 import { outboxRole, claimTransitionEvent } from './outboxEvents.js';
 import { getPool, isConfigured } from '../db/pool.js';
 import { ukoIdFromExternalRef, lockExternalSource, externalSourceDeletedSince } from './externalDeletionGuard.js';
+import { isUnrestricted } from '../dataClass.js';
 
 export class WorldModelError extends Error {
   constructor(message) {
@@ -600,6 +601,11 @@ export async function commitUnderstanding(input = {}) {
     // after the job was enqueued (even while it was running) makes this a no-op
     // write; one still in progress is waited for. See externalDeletionGuard.js.
     const externalUkoId = ukoIdFromExternalRef(input.externalRef);
+    // G1-2: canonical claims carry no data class and reach every provider
+    // through retrieval, so external knowledge is committed only when its
+    // class lets every provider see it. Missing or restricted → no write.
+    if (externalUkoId && !isUnrestricted(input.dataClass))
+      return { committed: false, skipped: true, reason: 'data-class-restricted', claims: [] };
     if (externalUkoId) {
       await lockExternalSource(client, ownerId, externalUkoId);
       if (await externalSourceDeletedSince(client, { ownerId, ukoId: externalUkoId, enqueuedAt: input.enqueuedAt ?? null }))

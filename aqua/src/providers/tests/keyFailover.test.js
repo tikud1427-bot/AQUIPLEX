@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Key-scoped failover through the REAL adapters — gemini.js, groq.js,
  * openrouter.js — and the router on top of them.

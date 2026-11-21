@@ -15,6 +15,9 @@
  *       transaction is open WAITS on the per-source lock, then writes nothing.
  *   L6  RACE, commit first — a deletion queued behind an in-flight commit runs
  *       after it and removes what the commit wrote.
+ *   L8  D-1, deletion first — an enqueue waits on the lock, then is refused.
+ *   L9  D-1, enqueue first — the deletion runs after it and sweeps its job;
+ *       a re-addition then gets a new (generation 1) job (D-2).
  *   L7  RACE, production path — worker-shaped understandTurn (scripted model,
  *       no provider) whose source is deleted DURING extraction writes nothing.
  *
@@ -33,6 +36,11 @@ process.env.AQUA_SELF_ENTITY = 'on';
 const { isConfigured, getPool, closePool } = await import('../db/pool.js');
 const LIVE = isConfigured();
 const skip = LIVE ? false : 'needs a live migrated Postgres — set AQUA_TEST_DATABASE_URL';
+// G1-2: the fixture source's class is unrestricted, so its knowledge may be
+// committed (external:gmail is refused — dataClassEgress/externalDataClass tests).
+(await import('../dataClass.js')).registerConnectorDataPolicy('livesrc', { allowedProviders: '*' });
+const { _enterDataClassForTests } = await import('../egressGuard.js');
+_enterDataClassForTests('user');   // L7 runs understandTurn with a scripted model: AQUA's own content
 
 const RUN = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 const OWNERS = [];
@@ -99,7 +107,7 @@ async function commitExternal(o, ukoId, text, enqueuedAt) {
   return WM.commitUnderstanding({
     ownerId: o, sourceId: canonicalTurnSourceId(o, `extuko:${ukoId}`, 1), actor: 'e6:live', extractorVersion: 'e6-live',
     segmentRange: { start: 0, end: text.length }, sourceKind: 'document', trustTier: 3,
-    externalRef: SD.externalUnderstandingRef(ukoId, 0), title: 'External resource — live.md', enqueuedAt,
+    externalRef: SD.externalUnderstandingRef(ukoId, 0), title: 'External resource — live.md', enqueuedAt, dataClass: 'external:livesrc',
     contentHash: crypto.createHash('sha256').update(text).digest('hex'), assertedAt: new Date(),
     claims: [{
       claimId: crypto.randomUUID(), predicate: 'owns', objectKind: 'entity', subject: 'Lena', object: { entity: `Vega${n} service` },
@@ -260,7 +268,7 @@ describe('G1-1 live', { skip }, () => {
     };
     const r = await Brain.understandTurn({
       ownerId: O, conversationId: `extuko:${id}`, turn: 1, userMessage: `${text}.`, callModel,
-      source: { kind: 'document', name: 'live.md', hash: 'd'.repeat(64), chunk: 0, ukoId: id, enqueuedAt: new Date(Date.now() - 60_000) },
+      source: { kind: 'document', name: 'live.md', hash: 'd'.repeat(64), chunk: 0, ukoId: id, enqueuedAt: new Date(Date.now() - 60_000), dataClass: 'external:livesrc' },
     });
     assert.ok(deleted?.complete, 'the deletion did not run mid-job');
     const commits = r?.canonicalCommit?.commits ?? [];
@@ -270,6 +278,64 @@ describe('G1-1 live', { skip }, () => {
     assert.equal(await count(p, `SELECT count(*)::int AS n FROM aqua_outbox WHERE owner_id = $1 AND event_type = 'claim.embedding.requested'`, [O]), 0);
     const { assertUnderstood } = await import('../jobs/workerRuntime.js');
     assert.doesNotThrow(() => assertUnderstood(r));
+  });
+
+  // ── G1-2 / D-1: enqueue vs deletion, two real connections, both orders ────
+  const jobRows = async (p, o) => (await p.query(`SELECT idempotency_key FROM aqua_jobs WHERE owner_id = $1 AND kind = 'understanding.document.v1'`, [o])).rows;
+  const liveDoc = (id, observedAt) => ({ ukoId: id, name: 'live.md', kind: 'document', text: 'Lena owns the Vega service.', hash: 'e'.repeat(64), dataClass: 'external:livesrc', observedAt });
+
+  test('L8 · D-1, deletion first: an enqueue arriving while the deletion is open waits, then is refused (no job)', async () => {
+    const p = await getPool();
+    const SD = await import('../worldModel/sourceDeletion.js');
+    const G = await import('../worldModel/externalDeletionGuard.js');
+    const DU = await import('../../files/documentUnderstanding.js');
+    const O = owner('l8');
+    const observedAt = await G.observeExternalSource(p, O, UKO('1'));   // the sync saw the resource
+    let release, entered;
+    const held = new Promise(r => { release = r; });
+    const inside = new Promise(r => { entered = r; });
+    const deletion = SD.forgetExternalSourceClaims(O, { ukoPrefix: PREFIX }, { ...noVectors, beforeCommit: async () => { entered(); await held; } });
+    await inside;
+    let settled = false;
+    const enq = DU.enqueueDocumentUnderstanding({ ownerId: O, documents: [liveDoc(UKO('1'), observedAt)], deps: { enabled: async () => true } })
+      .finally(() => { settled = true; });
+    await waitFor(async () => (await lockWaiters(p, O, UKO('1'))) === 1, 'the enqueue to queue on the source lock');
+    assert.equal(settled, false, 'the enqueue did not wait for the deletion');
+    release();
+    const [d, r] = await Promise.all([deletion, enq]);
+    assert.equal(d.complete, true);
+    assert.deepEqual(r.refusedReasons, ['source-deleted']);
+    assert.deepEqual(await jobRows(p, O), []);
+  });
+
+  test('L9 · D-1, enqueue first: a deletion queued behind an in-flight enqueue runs after it and removes its job', async () => {
+    const p = await getPool();
+    const SD = await import('../worldModel/sourceDeletion.js');
+    const G = await import('../worldModel/externalDeletionGuard.js');
+    const DU = await import('../../files/documentUnderstanding.js');
+    const O = owner('l9');
+    const observedAt = await G.observeExternalSource(p, O, UKO('1'));
+    const gate = await p.connect();
+    let enq, deletion;
+    try {
+      await gate.query('BEGIN');
+      await G.lockExternalSource(gate, O, UKO('1'));
+      enq = DU.enqueueDocumentUnderstanding({ ownerId: O, documents: [liveDoc(UKO('1'), observedAt)], deps: { enabled: async () => true } });
+      await waitFor(async () => (await lockWaiters(p, O, UKO('1'))) === 1, 'the enqueue to queue first');
+      deletion = SD.forgetExternalSourceClaims(O, { ukoPrefix: PREFIX }, noVectors);
+      await waitFor(async () => (await lockWaiters(p, O, UKO('1'))) === 2, 'the deletion to queue second');
+      await gate.query('COMMIT');
+    } finally { gate.release(); }
+    const r = await enq;
+    assert.ok(r.enqueued >= 1, 'the enqueue that came first should have enqueued');
+    const d = await deletion;
+    assert.equal(d.complete, true);
+    assert.ok(d.counts.jobs >= 1, 'the deletion did not sweep the job enqueued before it');
+    assert.deepEqual(await jobRows(p, O), []);
+    // re-addition afterwards (D-2): a new generation key, understood again
+    const again = await DU.enqueueDocumentUnderstanding({ ownerId: O, documents: [liveDoc(UKO('1'), await G.observeExternalSource(p, O, UKO('1')))], deps: { enabled: async () => true } });
+    assert.ok(again.enqueued >= 1);
+    assert.ok((await jobRows(p, O)).every(j => j.idempotency_key.endsWith(':g1')));
   });
 
   test('catalogue: aqua_embeddings → aqua_claims is ON DELETE CASCADE', async () => {

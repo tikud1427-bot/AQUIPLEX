@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Sprint 6 (2026-11-11) — AQUA_HYBRID_CONTEXT on the REAL chat route.
  *

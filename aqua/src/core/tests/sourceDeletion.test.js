@@ -559,10 +559,13 @@ describe('G1-1 · integration and tagging', () => {
   test('document jobs for an external resource are keyed by its ukoId; uploads keep their key', async () => {
     const { enqueueDocumentUnderstanding } = await import('../../files/documentUnderstanding.js');
     const keys = [];
-    const deps = { enabled: async () => true, enqueue: async j => { keys.push(j.idempotencyKey); } };
+    // G1-2: an external document carries its (unrestricted) class and is enqueued
+    // under the source lock in a transaction (deps.pool).
+    (await import('../dataClass.js')).registerConnectorDataPolicy('keysrc', { allowedProviders: '*' });
+    const deps = { enabled: async () => true, pool: mem.pool, enqueue: async j => { keys.push(j.idempotencyKey); } };
     const text = 'The same sentence in two places. '.repeat(3);
     const ext = uko(SRC_A, '1');
-    await enqueueDocumentUnderstanding({ ownerId: 'user:k', documents: [{ ukoId: ext, name: 'a.md', text, hash: 'h'.repeat(64) }], deps });
+    await enqueueDocumentUnderstanding({ ownerId: 'user:k', documents: [{ ukoId: ext, name: 'a.md', text, hash: 'h'.repeat(64), dataClass: 'external:keysrc' }], deps });
     await enqueueDocumentUnderstanding({ ownerId: 'user:k', documents: [{ ukoId: 'b2c3d4e5-0000-0000-0000-000000000000', name: 'a.md', text, hash: 'h'.repeat(64) }], deps });
     assert.equal(keys.length, 2);
     assert.ok(keys[0].includes(ext), 'external key lacks the ukoId');

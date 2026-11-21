@@ -63,12 +63,68 @@ export async function lockExternalSource(client, ownerId, ukoIdOrPrefix) {
   await client.query('SELECT pg_advisory_xact_lock($1::bigint)', [externalSourceLockKey(ownerId, ukoIdOrPrefix)]);
 }
 
-/** Records the deletion. Call AFTER `lockExternalSource`, inside the deletion transaction. */
+/**
+ * Records the deletion. Call AFTER `lockExternalSource`, inside the deletion
+ * transaction. `deleted_at` is the wall clock AT THE INSERT (under the lock),
+ * not the transaction start, so it orders strictly against an observation
+ * (`observeExternalSource`) taken under the same lock (G1-2 / D-1).
+ */
 export async function recordExternalDeletion(client, { ownerId, ukoPrefix, keepUkoId = null }) {
   await client.query(
-    `INSERT INTO aqua_external_deletions (deletion_id, owner_id, uko_prefix, keep_uko_id)
-     VALUES ($1, $2, $3, $4)`,
+    `INSERT INTO aqua_external_deletions (deletion_id, owner_id, uko_prefix, keep_uko_id, deleted_at)
+     VALUES ($1, $2, $3, $4, clock_timestamp())`,
     [crypto.randomUUID(), ownerId, ukoPrefix, keepUkoId]);
+}
+
+/** Tombstones of this owner that cover `ukoId` (prefix match, not the kept version). */
+async function coveringDeletions(client, ownerId, ukoId) {
+  const { rows } = await client.query(
+    'SELECT uko_prefix, keep_uko_id, deleted_at FROM aqua_external_deletions WHERE owner_id = $1',
+    [ownerId]);
+  return rows.filter(r => String(ukoId).startsWith(String(r.uko_prefix)) && r.keep_uko_id !== ukoId);
+}
+
+/**
+ * G1-2 / D-1 + D-2 — the enqueue-side view of one resource, read under the
+ * source lock (`lockExternalSource` first, same transaction):
+ *
+ *   deletedSince  a deletion covering `ukoId` happened at or after
+ *                 `observedAt` — the resource was deleted after the sync that
+ *                 wants to enqueue it saw it: refuse. Without `observedAt`:
+ *                 any covering deletion refuses (conservative).
+ *   generation    how many deletions have ever covered `ukoId`. It goes into
+ *                 the job's idempotency key, so a resource RE-ADDED after a
+ *                 deletion is a new job (understood once more), while retries
+ *                 between two deletions keep one key (still idempotent).
+ */
+export async function externalEnqueueState(client, { ownerId, ukoId, observedAt = null }) {
+  const covering = await coveringDeletions(client, ownerId, ukoId);
+  const since = observedAt == null ? NaN : new Date(observedAt).getTime();
+  const deletedSince = covering.length > 0
+    && (Number.isNaN(since) || covering.some(r => new Date(r.deleted_at).getTime() >= since));
+  return { deletedSince, generation: covering.length };
+}
+
+/**
+ * G1-2 / D-1 — the moment a sync SAW a source, on the database clock and under
+ * the source lock: every deletion is then strictly before it (and was already
+ * committed — the lock waited for it) or strictly after it. Pass it to the
+ * enqueue as `observedAt`.
+ */
+export async function observeExternalSource(pool, ownerId, ukoIdOrPrefix) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await lockExternalSource(client, ownerId, ukoIdOrPrefix);
+    const { rows } = await client.query('SELECT clock_timestamp() AS t');
+    await client.query('COMMIT');
+    return new Date(rows[0].t);
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -77,11 +133,5 @@ export async function recordExternalDeletion(client, { ownerId, ukoPrefix, keepU
  * conservative: any covering deletion blocks. Call AFTER `lockExternalSource`.
  */
 export async function externalSourceDeletedSince(client, { ownerId, ukoId, enqueuedAt = null }) {
-  const { rows } = await client.query(
-    'SELECT uko_prefix, keep_uko_id, deleted_at FROM aqua_external_deletions WHERE owner_id = $1',
-    [ownerId]);
-  const since = enqueuedAt == null ? null : new Date(enqueuedAt).getTime();
-  return rows.some(r => String(ukoId).startsWith(String(r.uko_prefix))
-    && r.keep_uko_id !== ukoId
-    && (since == null || Number.isNaN(since) || new Date(r.deleted_at).getTime() >= since));
+  return (await externalEnqueueState(client, { ownerId, ukoId, observedAt: enqueuedAt })).deletedSince;
 }

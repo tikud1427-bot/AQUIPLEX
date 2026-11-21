@@ -44,6 +44,7 @@ import OpenAI from 'openai';
 import { getCandidateModels, pinCandidates } from './modelRegistry.js';
 import { rotate, keyPoolFor, raceAbort } from './keyRotation.js';
 import { recordProviderCall } from '../core/costAccounting.js';
+import { assertEgress } from '../core/egressGuard.js';
 
 /** E12: every successful call is counted (tokens always; USD only when priced). */
 function countedCall(provider, purpose, res) {
@@ -127,6 +128,7 @@ const MODEL_ATTEMPT_LIMIT = 5;
  *   label, never the key). Additive.
  */
 export async function generateOpenRouter(systemPrompt, messages, signal, maxTokens, opts = {}) {
+  assertEgress('openrouter', 'generate');   // G1-2: data-class boundary, before any key or network use
   if (signal?.aborted) throw timeoutError();
 
   const candidates = pinCandidates(getCandidateModels('openrouter'), opts.model ?? null, 'openrouter');
@@ -174,6 +176,7 @@ export async function generateOpenRouter(systemPrompt, messages, signal, maxToke
  * @returns {Promise<{ text:string, truncated:boolean, finishReason:string, streamed:true }>}
  */
 export async function streamOpenRouter(systemPrompt, messages, signal, maxTokens, onDelta) {
+  assertEgress('openrouter', 'stream');   // G1-2: data-class boundary, before any key or network use
   if (signal?.aborted) throw timeoutError();
 
   const candidates = getCandidateModels('openrouter');

@@ -55,6 +55,8 @@
 import crypto from 'node:crypto';
 import * as externalDefault from '../files/externalSources.js';
 import { sanitizeRef, normalizeOutput, isAuthError, isTransient, isNotFound, scrubSecrets } from './contract.js';
+import { dataClassOfSource } from '../core/dataClass.js';
+import { runWithDataClass } from '../core/egressGuard.js';
 
 export const SYNC_LIMITS = Object.freeze({
   maxPages: 50,            // listResources pages per run (a full pass may span runs)
@@ -102,7 +104,15 @@ const removalKey = ids => crypto.createHash('sha256').update([...ids].sort().joi
  * @param {() => number} [a.now]  clock (ms); injected so the confirmation interval is testable
  * @returns {Promise<{ lastSync, checkpoint, fullSync, pendingDeletion, authFailed: boolean, aborted: boolean }>}
  */
-export async function runSync({
+export function runSync(args) {
+  // G1-2 — a sync fetches the source's content (listResources/fetchResource/
+  // normalize) before the lifecycle stores it: all of it runs in the
+  // connection's data class, so nothing in this request or job can send what
+  // was fetched to a provider the class does not allow (core/egressGuard.js).
+  return runWithDataClass(dataClassOfSource(args?.conn?.sourceId), () => runSyncScoped(args));
+}
+
+async function runSyncScoped({
   ownerId, conn, connector, ctx, secrets = [], mode = 'auto', external = externalDefault, retry = {},
   guard = null, confirmMassDeletion = false, limits = SYNC_LIMITS, now: clock = Date.now,
 }) {

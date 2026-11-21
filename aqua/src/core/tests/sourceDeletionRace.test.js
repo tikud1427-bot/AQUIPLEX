@@ -55,6 +55,9 @@ before(async () => {
   G = await import('../worldModel/externalDeletionGuard.js');
   WM = await import('../worldModel/worldModelRepository.js');
   ({ canonicalTurnSourceId } = await import('../worldModel/turnSourceIdentity.js'));
+  // G1-2: the fixture source's class (external:racesrc) is unrestricted, so its
+  // knowledge may be committed; the data-class refusal has its own tests.
+  (await import('../dataClass.js')).registerConnectorDataPolicy('racesrc', { allowedProviders: '*' });
 });
 after(async () => {
   restorePool?.();
@@ -97,6 +100,7 @@ function commitJob(owner, { ukoId = null, text, enqueuedAt, chunk = 0, hash = 'f
     ownerId: owner, sourceId: canonicalTurnSourceId(owner, conversationId, chunk + 1),
     actor: 'e6:test', extractorVersion: 'e6-race', segmentRange: { start: 0, end: text.length },
     sourceKind: 'document', trustTier: 3,
+    ...(external ? { dataClass: 'external:racesrc' } : {}),
     externalRef: external ? SD.externalUnderstandingRef(ukoId, chunk) : `file:note.md:chunk:${chunk}`,
     title: external ? 'External resource — note.md' : 'Uploaded file — note.md',
     ...(enqueuedAt !== undefined ? { enqueuedAt } : {}),

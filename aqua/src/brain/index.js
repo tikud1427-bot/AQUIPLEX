@@ -1615,6 +1615,7 @@ export async function understandTurn(
             : `file:${doc.name}:chunk:${Number.isInteger(doc.chunk) ? doc.chunk : 0}`,
           title: typeof doc.ukoId === 'string' && doc.ukoId.startsWith('ext_') ? `External resource — ${doc.name}` : `Uploaded file — ${doc.name}`,
           ...(doc.enqueuedAt ? { enqueuedAt: doc.enqueuedAt } : {}),
+          ...(doc.dataClass ? { dataClass: doc.dataClass } : {}),   // G1-2: checked by the commit
         } : {
           sourceKind: 'conversation',
           externalRef: conversationId

@@ -29,6 +29,7 @@ import Groq from 'groq-sdk';
 import { getCandidateModels, markModelWorking, pinCandidates } from './modelRegistry.js';
 import { rotate, keyPoolFor, raceAbort } from './keyRotation.js';
 import { recordProviderCall } from '../core/costAccounting.js';
+import { assertEgress } from '../core/egressGuard.js';
 
 /** E12: every successful call is counted (tokens always; USD only when priced). */
 function countedCall(provider, purpose, res) {
@@ -122,6 +123,7 @@ function candidatesFor(opts) {
  *   destructures { text, truncated, finishReason }.
  */
 export async function generateGroq(systemPrompt, messages, signal, maxTokens, opts = {}) {
+  assertEgress('groq', 'generate');   // G1-2: data-class boundary, before any key or network use
   if (signal?.aborted) throw timeoutError();
   const candidates = candidatesFor(opts);
   const chatMessages = chatMessagesOf(systemPrompt, messages);
@@ -176,6 +178,7 @@ export async function generateGroq(systemPrompt, messages, signal, maxTokens, op
  * @returns {Promise<{ text:string, truncated:boolean, finishReason:string, streamed:true }>}
  */
 export async function streamGroq(systemPrompt, messages, signal, maxTokens, onDelta) {
+  assertEgress('groq', 'stream');   // G1-2: data-class boundary, before any key or network use
   if (signal?.aborted) throw timeoutError();
   const candidates = getCandidateModels('groq');
   if (!candidates.length) throw Object.assign(new Error('No Groq models currently available (cooling down or deprecated)'), { code: 'NO_CANDIDATE_MODELS' });

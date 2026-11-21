@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Phase 2c — retrieveProjectContext semantic blend integration (offline).
  * Proves the payoff through the REAL retriever: a paraphrase query with zero

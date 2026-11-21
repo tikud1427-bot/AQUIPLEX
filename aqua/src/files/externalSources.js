@@ -46,6 +46,8 @@ import {
   externalIdentity, sourcePrefixes, itemPrefixes, assertSourceRef, isExternalFileId,
 } from './externalIdentity.js';
 import { ownerLogId } from '../core/logSafety.js';
+import { dataClassOfSource } from '../core/dataClass.js';
+import { runWithDataClass } from '../core/egressGuard.js';
 
 // ── Limits (per owner, all sources together) ─────────────────────────────────
 // Deterministic behaviour at a limit: resources are considered in the order the
@@ -80,12 +82,17 @@ function assertOwner(ownerId) {
 
 /** All external UKOs of one owner (every source). */
 function externalUKOs(ownerId) {
-  return ukoStore.listUKOs(ownerId, { limit: 100_000 }).filter(u => isExternalFileId(u.id));
+  return ukoStore.listUKOs(ownerId, { limit: 100_000, includeRestricted: true }).filter(u => isExternalFileId(u.id));
 }
 
 /** Items and source bytes currently stored for this owner, with the limits. */
 export function externalUsage(ownerId) {
   assertOwner(ownerId);
+  // G1-2: reads every source's resources (their classes enter the scope).
+  return runWithDataClass('user', () => usageOf(ownerId));
+}
+
+function usageOf(ownerId) {
   const ukos = externalUKOs(ownerId);
   return {
     // Resources, not versions (a version id is <item prefix>_<versionTag>).
@@ -98,6 +105,10 @@ export function externalUsage(ownerId) {
 /** Sources this owner has knowledge from: [{ sourceId, items, bytes, lastSyncedAt }]. */
 export function listExternalSources(ownerId) {
   assertOwner(ownerId);
+  return runWithDataClass('user', () => sourcesOf(ownerId));
+}
+
+function sourcesOf(ownerId) {
   const by = new Map();
   for (const u of externalUKOs(ownerId)) {
     const sid = u.provenance?.external?.sourceId;
@@ -115,13 +126,13 @@ export function listExternalSources(ownerId) {
 export function listExternalResources(ownerId, sourceId) {
   assertOwner(ownerId);
   const { ukoPrefix } = sourcePrefixes(sourceId);
-  return ukoStore.listUKOsByPrefix(ownerId, ukoPrefix).map(u => ({
+  return runWithDataClass(dataClassOfSource(sourceId), () => ukoStore.listUKOsByPrefix(ownerId, ukoPrefix, { includeRestricted: true }).map(u => ({
     externalId: u.provenance.external?.externalId ?? null,
     ukoId: u.id, name: u.sourceFile.name, bytes: u.sourceFile.bytes,
     version: u.provenance.external?.version ?? null,
     sourceUpdatedAt: u.provenance.external?.sourceUpdatedAt ?? null,
     syncedAt: u.provenance.external?.syncedAt ?? null,
-  }));
+  })));
 }
 
 // ── Sync ─────────────────────────────────────────────────────────────────────
@@ -142,7 +153,10 @@ export function syncExternalResources({ ownerId, sourceId, resources = [], deps 
   assertOwner(ownerId);
   assertSourceRef(sourceId);
   if (!Array.isArray(resources)) throw new TypeError('resources must be an array');
-  return withOwnerLock(ownerId, () => syncLocked({ ownerId, sourceId, resources, deps }));
+  // G1-2: the whole sync — parse, enrichment, every provider a parser might
+  // call — runs in the source's data class (core/egressGuard.js).
+  return runWithDataClass(dataClassOfSource(sourceId),
+    () => withOwnerLock(ownerId, () => syncLocked({ ownerId, sourceId, resources, deps })));
 }
 
 async function syncLocked({ ownerId, sourceId, resources, deps }) {
@@ -172,7 +186,7 @@ async function syncLocked({ ownerId, sourceId, resources, deps }) {
 
     const ident = externalIdentity(sourceId, r.externalId, sha256(buffer));
     const { ukoPrefix } = itemPrefixes(sourceId, r.externalId);
-    const versions = ukoStore.listUKOsByPrefix(ownerId, ukoPrefix);
+    const versions = ukoStore.listUKOsByPrefix(ownerId, ukoPrefix, { includeRestricted: true });
     const current = versions.find(u => u.id === ident.ukoId);
     const previous = versions.filter(u => u.id !== ident.ukoId);
 
@@ -218,7 +232,7 @@ async function syncLocked({ ownerId, sourceId, resources, deps }) {
 
     let replaced = false;
     for (const q of queue) {
-      const stored = ukoStore.getUKO(ownerId, q.ident.ukoId);
+      const stored = ukoStore.getUKO(ownerId, q.ident.ukoId, { includeRestricted: true });
       if (stored) {
         // The new version is in. Only now remove the old version(s) and any
         // leftovers of this resource — a failed update never loses the old one.
@@ -255,22 +269,22 @@ async function syncLocked({ ownerId, sourceId, resources, deps }) {
 export function deleteExternalSource(ownerId, sourceId) {
   assertOwner(ownerId);
   assertSourceRef(sourceId);
-  return withOwnerLock(ownerId, async () => {
+  return runWithDataClass(dataClassOfSource(sourceId), () => withOwnerLock(ownerId, async () => {
     const { ukoPrefix, keyPrefix } = sourcePrefixes(sourceId);
     const report = await sweep(ownerId, { ukoPrefix, keyPrefix });
     console.log(`[EXTERNAL] delete-source source=#${ukoPrefix.slice(4, 10)} owner=${ownerLogId(ownerId)} ukos=${report.removed.ukos} facts=${report.removed.facts} complete=${report.complete}`);
     return { sourceId, ...report };
-  });
+  }));
 }
 
 /** Delete one resource (every version) of one source. Same guarantees as deleteExternalSource. */
 export function deleteExternalResource(ownerId, sourceId, externalId) {
   assertOwner(ownerId);
   assertSourceRef(sourceId, externalId);
-  return withOwnerLock(ownerId, async () => {
+  return runWithDataClass(dataClassOfSource(sourceId), () => withOwnerLock(ownerId, async () => {
     const { ukoPrefix, keyPrefix } = itemPrefixes(sourceId, externalId);
     return { sourceId, externalId, ...(await sweep(ownerId, { ukoPrefix, keyPrefix })) };
-  });
+  }));
 }
 
 /**
@@ -288,7 +302,7 @@ async function sweep(ownerId, { ukoPrefix, keyPrefix, keepUkoId = null, keepFile
   //    crashed sync wrote derived data for without saving the UKO.
   const ids = new Set();
   const collect = (name, list) => { for (const id of step(name, list) ?? []) if (id.startsWith(ukoPrefix) && id !== keepUkoId) ids.add(id); };
-  collect('list:ukos', () => ukoStore.listUKOsByPrefix(ownerId, ukoPrefix).map(u => u.id));
+  collect('list:ukos', () => ukoStore.listUKOsByPrefix(ownerId, ukoPrefix, { includeRestricted: true }).map(u => u.id));
   collect('list:evidence', () => evidenceStore.fileIdsByPrefix(ownerId, ukoPrefix));
   collect('list:index', () => indexedFileIdsByPrefix(ownerId, ukoPrefix));
   collect('list:graph', () => graphFileIds(ownerId));
@@ -298,7 +312,7 @@ async function sweep(ownerId, { ukoPrefix, keyPrefix, keepUkoId = null, keepFile
   //    their claim vectors, lifecycle records, the search index, the graph.
   const hashes = new Set();
   for (const id of ids) {
-    const uko = ukoStore.getUKO(ownerId, id);
+    const uko = ukoStore.getUKO(ownerId, id, { includeRestricted: true });
     if (uko?.sourceFile?.hash) hashes.add(uko.sourceFile.hash);
     const factIds = step(`facts:${id}`, () => evidenceStore.factIdsForFile(ownerId, id)) ?? [];
     step(`claimVectors:${id}`, () => {
@@ -382,7 +396,7 @@ export function remainingUnder(ownerId, { ukoPrefix, keyPrefix, keepUkoId = null
   const mind = getMind(ownerId);
   const chunkPrefixKept = keepFileKey ? `${keepFileKey}#` : null;
   return {
-    ukos:       ukoStore.listUKOsByPrefix(ownerId, ukoPrefix).filter(u => notKept(u.id)).length,
+    ukos:       ukoStore.listUKOsByPrefix(ownerId, ukoPrefix, { includeRestricted: true }).filter(u => notKept(u.id)).length,
     fileLinks:  evidenceStore.fileIdsByPrefix(ownerId, ukoPrefix).filter(notKept).length,
     indexed:    indexedFileIdsByPrefix(ownerId, ukoPrefix).filter(notKept).length,
     graphFiles: graphFileIds(ownerId).filter(id => id.startsWith(ukoPrefix) && notKept(id)).length,

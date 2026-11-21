@@ -49,6 +49,7 @@ import { fail, ErrorCodes } from "./src/routes/envelope.js";
 import { errorText } from './src/core/errorText.js';
 import { ensureOwnerLoaded, anyAuthoritative as anyPartitionStoreAuthoritative } from './src/core/storage/ownerBinding.js';
 import { runWithWriteScope } from './src/core/storage/requestWrites.js';
+import { dataClassScope } from './src/core/egressGuard.js';
 import { installResponseGate } from './src/core/storage/responseGate.js';
 import { ownerForUser } from './src/memory/ownerResolver.js';
 import { errorMeta, stackFrames } from './src/core/logSafety.js';
@@ -239,6 +240,12 @@ const router = express.Router();
 // what it wrote is durable (core/storage/responseGate.js). A no-op while no
 // store is on partitions and no refund is owed.
 router.use((req, res, next) => runWithWriteScope(() => { installResponseGate(req, res); next(); }));
+
+// G1-2 — every request runs in a DATA-CLASS scope (core/egressGuard.js). What
+// a user sends AQUA is class `user`; reading classified content (e.g. an
+// external source's) adds its class, and every outbound model call checks the
+// scope. A provider call with no scope at all is refused (fail closed).
+router.use(dataClassScope('user'));
 
 // Phase 2b — the unit-of-work load. When any store is authoritative on owner
 // partitions (AQUA_STORE_PARTITIONS=<store>:on), this request's owner is loaded

@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Sprint 4 (2026-11-11) — Render shadow readiness for AQUA_INFO_NEEDS=shadow, on
  * the REAL chat route. Each test is one item of AQUA_RENDER_SHADOW_READINESS.md:

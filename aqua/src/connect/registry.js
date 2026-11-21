@@ -16,6 +16,7 @@
  * connector's own health() probe: ok → degraded (consecutive failures) → down.
  */
 import { validateConnectorDefinition } from './contract.js';
+import { registerConnectorDataPolicy, isFrozenDataClass, externalDataClass } from '../core/dataClass.js';
 
 const DEGRADED_AFTER = 1;
 const DOWN_AFTER = 3;
@@ -27,6 +28,7 @@ export class ConnectorRegistryError extends Error {
 export function createConnectorRegistry({ allowTestOnly = false } = {}) {
   const connectors = new Map();   // id → frozen definition
   const health = new Map();       // id → { state, consecutiveFailures, lastError, lastOkAt, lastFailureAt }
+  const dropPolicies = new Map(); // id → unregister fn of its data policy (G1-2)
 
   function register(definition) {
     const problems = validateConnectorDefinition(definition);
@@ -37,6 +39,18 @@ export function createConnectorRegistry({ allowTestOnly = false } = {}) {
     if (connectors.has(definition.id)) {
       throw new ConnectorRegistryError('DUPLICATE_CONNECTOR', `connector "${definition.id}" is already registered`);
     }
+    // G1-2 — publish the connector's data policy. A frozen class (Gmail) keeps
+    // the policy fixed in core/dataClass.js; a definition may not declare one.
+    let dropPolicy = null;
+    if (isFrozenDataClass(externalDataClass(definition.id))) {
+      if (definition.dataPolicy !== undefined) {
+        throw new ConnectorRegistryError('INVALID_CONNECTOR', `connector "${definition.id}": its data policy is fixed in code and cannot be declared`);
+      }
+    } else {
+      try { dropPolicy = registerConnectorDataPolicy(definition.id, definition.dataPolicy ?? {}); }
+      catch (err) { throw new ConnectorRegistryError('INVALID_CONNECTOR', `connector rejected: ${err.message}`); }
+    }
+    dropPolicies.set(definition.id, dropPolicy);
     connectors.set(definition.id, Object.freeze({ ...definition }));
     health.set(definition.id, { state: 'unknown', consecutiveFailures: 0, lastError: null, lastOkAt: null, lastFailureAt: null });
     return describe(definition.id);
@@ -55,6 +69,8 @@ export function createConnectorRegistry({ allowTestOnly = false } = {}) {
     }
     connectors.delete(id);
     health.delete(id);
+    dropPolicies.get(id)?.();      // its content becomes unclassified → no provider (fail closed)
+    dropPolicies.delete(id);
     return true;
   }
 

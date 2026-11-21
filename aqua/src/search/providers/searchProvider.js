@@ -28,6 +28,7 @@
  * searchErrors.classifySearchError() can act. It NEVER swallows errors;
  * retry/fallback policy belongs to the router, not the adapter.
  */
+import { assertEgress } from '../../core/egressGuard.js';
 
 export class SearchProvider {
   /**
@@ -71,6 +72,8 @@ export class SearchProvider {
 
   /** Shared timeout-wrapped fetch. Throws Error with .status for HTTP errors. */
   async _post(url, { key, headers, body, timeoutMs, signal }) {
+    // G1-2: a search query is egress too (it can quote what the user is working on).
+    assertEgress(this.name, 'search');
     const ctrl  = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     const onOuterAbort = () => ctrl.abort();

@@ -44,6 +44,7 @@ import OpenAI from 'openai';
 import { getCandidateModels, markModelWorking, pinCandidates } from './modelRegistry.js';
 import { rotate, keyPoolFor } from './keyRotation.js';
 import { recordProviderCall } from '../core/costAccounting.js';
+import { assertEgress } from '../core/egressGuard.js';
 
 const PROVIDER = 'nvidia';
 const DEFAULT_BASE_URL = 'https://integrate.api.nvidia.com/v1';
@@ -176,6 +177,7 @@ async function runWithRotation({ opts, signal, maxTokens, label, attempt }) {
  * @param {object} [opts] `model` (pin), `temperature` (sent only when given), `purpose` (cost)
  */
 export async function generateNvidia(systemPrompt, messages, signal, maxTokens, opts = {}) {
+  assertEgress('nvidia', 'generate');   // G1-2: data-class boundary, before any key or network use
   const chatMessages = chatMessagesOf(systemPrompt, messages);
 
   const res = await runWithRotation({
@@ -221,6 +223,7 @@ export async function generateNvidia(systemPrompt, messages, signal, maxTokens, 
  * @param {object} [opts] `model` (pin), `purpose`
  */
 export async function streamNvidia(systemPrompt, messages, signal, maxTokens, onDelta, opts = {}) {
+  assertEgress('nvidia', 'stream');   // G1-2: data-class boundary, before any key or network use
   const chatMessages = chatMessagesOf(systemPrompt, messages);
 
   const res = await runWithRotation({

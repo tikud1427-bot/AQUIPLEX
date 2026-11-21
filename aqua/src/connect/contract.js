@@ -59,6 +59,14 @@ export function validateConnectorDefinition(c) {
   }
   if (c.capabilities?.includes('incremental') && typeof c.syncChanges !== 'function') p.push('capability "incremental" requires syncChanges()');
   if (c.capabilities?.includes('refresh') && typeof c.refresh !== 'function') p.push('capability "refresh" requires refresh()');
+  // G1-2 — which AI providers may receive this connector's content
+  // (core/dataClass.js). Optional; absent = none (fail closed).
+  if (c.dataPolicy !== undefined) {
+    const a = c.dataPolicy?.allowedProviders;
+    if (!c.dataPolicy || typeof c.dataPolicy !== 'object' || !(a === '*' || (Array.isArray(a) && a.every(x => typeof x === 'string')))) {
+      p.push('dataPolicy.allowedProviders must be "*" or a string array');
+    }
+  }
   return p;
 }
 

@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Memory 5.0 Phase G — Unified Recall API (GET /memory/recall)
  * Boots the real router on an ephemeral port; no supertest, no new deps.

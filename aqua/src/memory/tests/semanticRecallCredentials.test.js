@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Semantic episodic recall uses its OWN credential (AQUA_EMBEDDING_API_KEY) and
  * nothing else (2026-11-05). The shared Gemini pool (GEMINI_KEY_*, GEMINI_API_KEY)

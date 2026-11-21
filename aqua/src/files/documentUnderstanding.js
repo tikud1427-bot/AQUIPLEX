@@ -25,6 +25,8 @@
 import crypto from 'node:crypto';
 import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 import { isExternalFileId } from './externalIdentity.js';
+import { isUnrestricted } from '../core/dataClass.js';
+import { lockExternalSource, externalEnqueueState } from '../core/worldModel/externalDeletionGuard.js';
 
 export const DOCUMENT_JOB_KIND = 'understanding.document.v1';
 export const MAX_CHUNKS = 24;
@@ -70,12 +72,28 @@ export function chunkDocument(text, { maxChunks = MAX_CHUNKS, chunkChars = CHUNK
  *
  * @param {object} args
  * @param {string} args.ownerId
- * @param {Array<{ ukoId:string, name:string, kind?:string, text:string, hash?:string }>} args.documents
- * @param {object} [args.deps]  { enqueue, enabled } for tests
- * @returns {Promise<{ enqueued:number, skipped:string|null, files:number, truncated:number }>}
+ * @param {Array<{ ukoId:string, name:string, kind?:string, text:string, hash?:string,
+ *                 dataClass?:string, observedAt?:Date|string }>} args.documents
+ *   External resources (source-derived ukoId) MUST carry their `dataClass` and
+ *   SHOULD carry `observedAt` (externalDeletionGuard.observeExternalSource).
+ * @param {object} [args.deps]  { enqueue, enabled, pool } for tests
+ * @returns {Promise<{ enqueued:number, skipped:string|null, files:number, truncated:number,
+ *                     refused:number, refusedReasons:string[] }>}
+ *
+ * G1-2 — an EXTERNAL resource is enqueued only when
+ *   · its data class lets every provider see it (isUnrestricted); a missing or
+ *     restricted class (e.g. external:gmail) is REFUSED — understanding sends
+ *     text to an extraction provider and writes unlabeled canonical claims;
+ *   · (D-1) no deletion covering it happened at or after the sync observed it:
+ *     decided under the per-source lock, in the same transaction as the insert,
+ *     so a deletion running concurrently either finished first (and is seen)
+ *     or waits for this enqueue (and its job sweep then removes the job);
+ *   · (D-2) its job key carries the deletion GENERATION (`:g<n>` once n > 0
+ *     deletions have covered it), so the same version re-added after a
+ *     deletion is a new job and is understood once more.
  */
 export async function enqueueDocumentUnderstanding({ ownerId, documents = [], deps = {} } = {}) {
-  const out = { enqueued: 0, skipped: null, files: 0, truncated: 0 };
+  const out = { enqueued: 0, skipped: null, files: 0, truncated: 0, refused: 0, refusedReasons: [] };
   try {
     if (!ownerId) return { ...out, skipped: 'no-owner' };
     const enabled = deps.enabled ?? (async () => {
@@ -94,25 +112,70 @@ export async function enqueueDocumentUnderstanding({ ownerId, documents = [], de
         console.warn(`[FILES] ${fileMeta(doc.name)}: ${all.length} chunks, understanding the first ${chunks.length} (MAX_CHUNKS)`);
       }
       const hash = doc.hash ?? crypto.createHash('sha256').update(doc.text).digest('hex');
+      if (isExternalFileId(doc.ukoId)) {
+        const r = await enqueueExternal({ ownerId, doc, hash, chunks, enqueue, deps });
+        if (r.refused) { out.refused++; out.refusedReasons.push(r.refused); continue; }
+        out.files++;
+        out.enqueued += r.enqueued;
+        continue;
+      }
       out.files++;
       for (const chunk of chunks) {
         await enqueue({
           ownerId, kind: DOCUMENT_JOB_KIND,
           payload: { ukoId: doc.ukoId ?? null, name: doc.name, hash, chunk: chunk.index, text: chunk.text },
-          // G1-1: an EXTERNAL resource is understood on its own (key includes its
-          // source-derived ukoId), so identical text in an upload and a connected
-          // source never share one canonical source — deleting one keeps the other.
-          idempotencyKey: isExternalFileId(doc.ukoId)
-            ? `${DOCUMENT_JOB_KIND}:${doc.ukoId}:${hash.slice(0, 32)}:${chunk.index}`
-            : `${DOCUMENT_JOB_KIND}:${hash.slice(0, 32)}:${chunk.index}`,
+          idempotencyKey: `${DOCUMENT_JOB_KIND}:${hash.slice(0, 32)}:${chunk.index}`,
         });
         out.enqueued++;
       }
     }
+    if (out.refused) console.log(`[FILES] understanding refused owner=${ownerId} files=${out.refused} reasons=${[...new Set(out.refusedReasons)].join(',')}`);
     if (out.enqueued) console.log(`[FILES] understanding enqueued owner=${ownerId} files=${out.files} chunks=${out.enqueued}`);
     return out;
   } catch (err) {
     console.warn(`[FILES] document understanding not enqueued (fail-open): ${err?.message ?? err}`);
     return { ...out, skipped: 'error' };
+  }
+}
+
+/**
+ * The job key of one external chunk. G1-1: the source-derived ukoId is in it,
+ * so identical text in an upload and a connected source never share one
+ * canonical source. G1-2 / D-2: the deletion generation is appended once a
+ * deletion has covered the resource (generation 0 keeps the G1-1 key).
+ */
+export function externalDocumentJobKey(ukoId, hash, chunkIndex, generation = 0) {
+  return `${DOCUMENT_JOB_KIND}:${ukoId}:${String(hash).slice(0, 32)}:${chunkIndex}${generation > 0 ? `:g${generation}` : ''}`;
+}
+
+/** One external document's chunks, under the source lock, in one transaction (D-1/D-2). */
+async function enqueueExternal({ ownerId, doc, hash, chunks, enqueue, deps }) {
+  if (!isUnrestricted(doc.dataClass)) return { refused: 'data-class-restricted', enqueued: 0 };
+  const pool = deps.pool ?? await (await import('../core/db/pool.js')).getPool();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await lockExternalSource(client, ownerId, doc.ukoId);
+    const state = await externalEnqueueState(client, { ownerId, ukoId: doc.ukoId, observedAt: doc.observedAt ?? null });
+    if (state.deletedSince) {
+      await client.query('ROLLBACK');
+      return { refused: 'source-deleted', enqueued: 0 };
+    }
+    let enqueued = 0;
+    for (const chunk of chunks) {
+      await enqueue({
+        ownerId, kind: DOCUMENT_JOB_KIND,
+        payload: { ukoId: doc.ukoId, name: doc.name, hash, chunk: chunk.index, text: chunk.text },
+        idempotencyKey: externalDocumentJobKey(doc.ukoId, hash, chunk.index, state.generation),
+      }, { client });
+      enqueued++;
+    }
+    await client.query('COMMIT');
+    return { refused: null, enqueued };
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw err;
+  } finally {
+    client.release();
   }
 }

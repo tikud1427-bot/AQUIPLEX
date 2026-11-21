@@ -1,3 +1,4 @@
+import { assertEgress } from '../../core/egressGuard.js';
 /**
  * AQUA E7 PR-8 — model-backed cross-encoder adapter.
  *
@@ -83,6 +84,7 @@ export function createHuggingFaceCrossEncoder({
       const cached = cacheGet(key);
       if (cached !== null) return cached;
 
+      assertEgress('huggingface', 'rerank');   // G1-2: data-class boundary, before the network
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeout);
       try {

@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Sprint 6 (2026-11-11) — a FAILED turn under AQUA_INFO_NEEDS=shadow leaves no
  * memory change, even though the shadow analysis has already run for that turn.

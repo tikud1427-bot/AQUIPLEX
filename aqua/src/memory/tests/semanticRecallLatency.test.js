@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Semantic recall query vector: started at the top of the turn, reused by recall
  * (2026-11-05). The live run measured 608–699 ms per single embedding; awaited

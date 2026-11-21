@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Phase 2 — embedding substrate tests (offline; embedder injected).
  * Run: node src/embeddings/tests/vectors.test.js

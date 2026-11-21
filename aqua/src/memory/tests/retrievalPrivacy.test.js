@@ -1,3 +1,5 @@
+import { _enterDataClassForTests } from '../../core/egressGuard.js';
+_enterDataClassForTests('user');   // G1-2: this file's fixture content is user-class (core/egressGuard.js)
 /**
  * Retrieval privacy, sentence by sentence (2026-11-06): policy-withheld health /
  * mood sentences and forgotten sentences never influence keyword ranking,
