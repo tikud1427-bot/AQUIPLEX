@@ -249,12 +249,20 @@ describe('mass-deletion guard', () => {
     assert.equal((await s.service.getConnection({ userId: s.userId, connectionId: s.id })).pendingDeletion, null);
   });
 
-  test('a genuinely emptied source is reconciled when the next complete listing agrees', async () => {
-    const s = await holding(5);
+  // Phase 1b.2: agreement requires the SAME set from a complete listing at least one hour later.
+  test('a genuinely emptied source is reconciled by an identical complete listing at least an hour later', async () => {
+    let t = Date.parse('2026-11-18T09:00:00Z');
+    const now = () => t;
+    const s = await holding(5, { world: createFakeWorld({ now }), now });
     for (let i = 0; i < 5; i++) s.world.remove(s.account, `r${String(i).padStart(3, '0')}`);
     const r1 = await s.service.sync({ userId: s.userId, connectionId: s.id, mode: 'full' });
     assert.equal(r1.lastSync.counts.withheldRemovals, 5);
     assert.equal(held(s.owner, s.id).length, 5);
+    t += 59 * 60 * 1000;
+    const early = await s.service.sync({ userId: s.userId, connectionId: s.id });
+    assert.equal(early.lastSync.mode, 'full');
+    assert.equal(early.lastSync.counts.withheldRemovals, 5, 'confirmed before the interval');
+    t += 60 * 1000;
     const r2 = await s.service.sync({ userId: s.userId, connectionId: s.id });
     assert.equal(r2.lastSync.mode, 'full');
     assert.equal(r2.lastSync.state, 'succeeded');
@@ -277,14 +285,19 @@ describe('mass-deletion guard', () => {
     assert.equal(r2.lastSync.counts.withheldRemovals, 4);
   });
 
-  test('a different removal set on the next listing is withheld again (agreement means the SAME set)', async () => {
-    const s = await holding(6);
+  test('a different removal set restarts the sequence (agreement means the SAME set, an hour apart)', async () => {
+    let t = Date.parse('2026-11-18T09:00:00Z');
+    const now = () => t;
+    const s = await holding(6, { world: createFakeWorld({ now }), now });
     for (const id of ['r000', 'r001', 'r002', 'r003']) s.world.remove(s.account, id);
     await s.service.sync({ userId: s.userId, connectionId: s.id, mode: 'full' });
+    t += 61 * 60 * 1000;
     s.world.remove(s.account, 'r004');
     const r2 = await s.service.sync({ userId: s.userId, connectionId: s.id, mode: 'full' });
-    assert.equal(r2.lastSync.counts.withheldRemovals, 5);
+    assert.equal(r2.lastSync.counts.withheldRemovals, 5, 'a different set must not be confirmed by the older sighting');
     assert.equal(held(s.owner, s.id).length, 6);
+    assert.equal(s.store._rawForTests()[0].pendingDeletion.firstSeenAt, new Date(t).toISOString(), 'the sequence restarted');
+    t += 60 * 60 * 1000;
     const r3 = await s.service.sync({ userId: s.userId, connectionId: s.id, mode: 'full' });
     assert.equal(r3.lastSync.counts.removed, 5);
     assert.deepEqual(held(s.owner, s.id).map(x => x.externalId), ['r005']);
@@ -303,17 +316,26 @@ describe('mass-deletion guard', () => {
     assert.equal(held(s.owner, s.id).length, 2);
   });
 
-  test('a change feed reporting a mass removal is withheld, and applied when the repeated feed agrees', async () => {
-    const s = await holding(5);
+  test('a change feed reporting a mass removal is withheld and can never confirm it; complete full listings do', async () => {
+    let t = Date.parse('2026-11-18T09:00:00Z');
+    const now = () => t;
+    const s = await holding(5, { world: createFakeWorld({ now }), now });
     await s.service.sync({ userId: s.userId, connectionId: s.id, mode: 'incremental' });   // establish a feed checkpoint
     for (const id of ['r000', 'r001', 'r002', 'r003']) s.world.remove(s.account, id);
     const r1 = await s.service.sync({ userId: s.userId, connectionId: s.id, mode: 'incremental' });
     assert.equal(r1.lastSync.counts.withheldRemovals, 4);
-    assert.equal(s.store._rawForTests()[0].pendingDeletion.origin, 'incremental');
-    assert.equal(held(s.owner, s.id).length, 5);
+    assert.equal(s.store._rawForTests()[0].pendingDeletion.origin, 'feed');
+    t += 2 * 60 * 60 * 1000;
     const r2 = await s.service.sync({ userId: s.userId, connectionId: s.id, mode: 'incremental' });
-    assert.equal(r2.lastSync.counts.removed, 4);
-    assert.equal(r2.lastSync.state, 'succeeded');
+    assert.equal(r2.lastSync.counts.withheldRemovals, 4, 'a repeated feed confirmed a mass deletion');
+    assert.equal(held(s.owner, s.id).length, 5);
+    const full1 = await s.service.sync({ userId: s.userId, connectionId: s.id });   // auto → full (pending)
+    assert.equal(full1.lastSync.mode, 'full');
+    assert.equal(full1.lastSync.counts.withheldRemovals, 4, 'the first complete listing only records the sighting');
+    t += 60 * 60 * 1000;
+    const full2 = await s.service.sync({ userId: s.userId, connectionId: s.id });
+    assert.equal(full2.lastSync.counts.removed, 4);
+    assert.equal(full2.lastSync.state, 'succeeded');
     assert.equal(held(s.owner, s.id).length, 1);
   });
 

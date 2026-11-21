@@ -21,13 +21,19 @@
  * The per-run change limit is applied AFTER unchanged resources are set aside
  * so a large, mostly unchanged source keeps progressing.
  *
- * Mass-deletion guard: if a complete listing or a change feed
- * would remove at least MASS_DELETION.minCount resources AND more than
- * MASS_DELETION.maxFraction of what this connection holds, the removals are
- * WITHHELD (run 'partial', note, conn.pendingDeletion recorded). They are
- * applied only when (a) the NEXT complete listing / change feed proposes the
- * identical removal set, or (b) the caller passes confirmMassDeletion. Smaller
- * deletions apply normally.
+ * Mass-deletion guard (Phase 1b.2): a removal set of at least
+ * MASS_DELETION.minCount resources AND more than MASS_DELETION.maxFraction of
+ * what this connection holds is WITHHELD (run 'partial', note,
+ * conn.pendingDeletion recorded). It is applied only when either
+ *   (a) a COMPLETE FULL LISTING records the exact set and its time, and a
+ *       later complete full listing, at least MASS_DELETION.confirmAfterMs
+ *       later, proposes exactly the same set — with no failed, aborted or
+ *       incomplete run in between (any of those resets the sequence; a
+ *       different set restarts it); or
+ *   (b) the caller passes confirmMassDeletion === true (explicit user choice).
+ * A change feed can never confirm: a mass removal reported by a feed is
+ * withheld and auto mode then runs a full listing. Removals are never
+ * proposed from an incomplete listing. Smaller deletions apply normally.
  *
  * Failure semantics: transient errors are retried a bounded number of times;
  * a resource that still fails is reported in `failed`; the CHECKPOINT ADVANCES
@@ -60,7 +66,7 @@ export const SYNC_LIMITS = Object.freeze({
 });
 
 /** Withhold a removal set this large without confirmation. */
-export const MASS_DELETION = Object.freeze({ minCount: 3, maxFraction: 0.5 });
+export const MASS_DELETION = Object.freeze({ minCount: 3, maxFraction: 0.5, confirmAfterMs: 60 * 60 * 1000 });
 
 const realSleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -93,20 +99,21 @@ const removalKey = ids => crypto.createHash('sha256').update([...ids].sort().joi
  * @param {() => Promise<boolean>} [a.guard]  true while the connection may still be written to
  * @param {boolean} [a.confirmMassDeletion]   apply a withheld mass deletion now (explicit user confirmation)
  * @param {object} [a.limits]     overrides SYNC_LIMITS (tests)
+ * @param {() => number} [a.now]  clock (ms); injected so the confirmation interval is testable
  * @returns {Promise<{ lastSync, checkpoint, fullSync, pendingDeletion, authFailed: boolean, aborted: boolean }>}
  */
 export async function runSync({
   ownerId, conn, connector, ctx, secrets = [], mode = 'auto', external = externalDefault, retry = {},
-  guard = null, confirmMassDeletion = false, limits = SYNC_LIMITS,
+  guard = null, confirmMassDeletion = false, limits = SYNC_LIMITS, now: clock = Date.now,
 }) {
-  const started = Date.now();
+  const started = clock();
   const scrub = s => scrubSecrets(s, secrets);
   const pass = conn.fullSync?.cursor ? conn.fullSync : null;   // an unfinished full pass
   const supportsIncremental = connector.capabilities.includes('incremental');
-  // A withheld deletion found by a FULL listing can only be confirmed by
-  // another full listing (a change feed may never report it), so auto mode
-  // runs a full pass while one is pending.
-  const fullPending = conn.pendingDeletion?.origin === 'full';
+  // A withheld mass deletion can only be confirmed by a complete full
+  // listing, so auto mode runs a full pass while one is pending (whatever
+  // found it).
+  const fullPending = conn.pendingDeletion != null;
   const incremental = mode === 'incremental'
     || (mode === 'auto' && !pass && !fullPending && supportsIncremental && conn.checkpoint != null);
 
@@ -117,7 +124,10 @@ export async function runSync({
     counts.failed++;
     if (failed.length < limits.maxFailedReported) failed.push({ externalId: externalId == null ? null : String(externalId).slice(0, 200), reason: scrub(reason).slice(0, 300) });
   };
-  const keep = { checkpoint: conn.checkpoint ?? null, fullSync: conn.fullSync ?? null, pendingDeletion: conn.pendingDeletion ?? null };
+  // A failed or aborted run keeps its positions but RESETS any pending mass
+  // deletion: the confirmation sequence must be two complete listings with
+  // nothing failed in between (Phase 1b.2).
+  const keep = { checkpoint: conn.checkpoint ?? null, fullSync: conn.fullSync ?? null, pendingDeletion: null };
 
   if (mode === 'incremental' && !supportsIncremental) {
     return finish({ state: 'failed', error: 'connector does not support incremental sync' }, keep);
@@ -236,27 +246,44 @@ export async function runSync({
     }
   }
 
-  // Mass-deletion guard.
-  let nextPending = conn.pendingDeletion ?? null;
+  // Mass-deletion guard (Phase 1b.2).
+  // Only a COMPLETE FULL listing may start or confirm a sequence; a change
+  // feed can only withhold (and request a full listing); an incomplete
+  // listing resets; a different set restarts; confirmation needs the same set
+  // at least confirmAfterMs after the first sighting.
+  const fullComplete = !incremental && listingComplete;
+  const prev = conn.pendingDeletion ?? null;
+  // Only a sighting recorded by a complete full listing (exact ids + time) can be confirmed.
+  const prevSighting = prev && prev.origin === 'full' && Array.isArray(prev.ids) && prev.firstSeenAt ? prev : null;
+  let nextPending = (!incremental && !listingComplete) ? null : prev;   // incomplete listing → reset
   let toRemove = [];
   if (proposed) {
     const now = heldIds();
-    const removals = [...new Set(proposed)].filter(id => now.has(id));
-    const judging = incremental || listingComplete;
+    const removals = [...new Set(proposed)].filter(id => now.has(id)).sort();
     if (removals.length) {
       const key = removalKey(removals);
       const isMass = removals.length >= MASS_DELETION.minCount && removals.length / Math.max(1, now.size) > MASS_DELETION.maxFraction;
-      const confirmedByRepeat = judging && conn.pendingDeletion?.key === key;
-      if (isMass && !confirmMassDeletion && !confirmedByRepeat) {
+      const sameSet = fullComplete && prevSighting?.key === key;
+      const firstSeenMs = sameSet ? Date.parse(prevSighting.firstSeenAt) : started;
+      const confirmedByRepeat = sameSet && Number.isFinite(firstSeenMs) && started - firstSeenMs >= MASS_DELETION.confirmAfterMs;
+      if (isMass && confirmMassDeletion !== true && !confirmedByRepeat) {
         counts.withheldRemovals = removals.length;
-        nextPending = { key, origin: incremental ? 'incremental' : 'full', count: removals.length, held: now.size, firstSeenAt: conn.pendingDeletion?.key === key ? conn.pendingDeletion.firstSeenAt : new Date(started).toISOString() };
-        notes.push(`mass deletion withheld: the source no longer lists ${removals.length} of ${now.size} resource(s); applied only if the next complete listing agrees, or on explicit confirmation`);
+        if (fullComplete) {
+          // First sighting, a repeat that is too early (keeps the original time), or a new set (restarts).
+          nextPending = { key, ids: removals, origin: 'full', count: removals.length, held: now.size, firstSeenAt: new Date(firstSeenMs).toISOString() };
+          const at = new Date(firstSeenMs + MASS_DELETION.confirmAfterMs).toISOString();
+          notes.push(`mass deletion withheld: the source no longer lists ${removals.length} of ${now.size} resource(s); applied only if a complete listing at or after ${at} proposes exactly the same set, or on explicit confirmation`);
+        } else {
+          // A change feed (or a partial pass's fetch results) cannot start or confirm a sequence.
+          nextPending = { key: null, ids: null, origin: 'feed', count: removals.length, held: now.size, firstSeenAt: null };
+          notes.push(`mass deletion withheld: ${removals.length} of ${now.size} resource(s) reported removed; a complete full listing must confirm it, or explicit confirmation`);
+        }
       } else {
         toRemove = removals;
-        if (judging) nextPending = null;
+        if (isMass || fullComplete) nextPending = null;   // applied (or a complete listing judged): the sequence ends
       }
-    } else if (judging) {
-      nextPending = null;   // nothing to remove: any earlier pending mass deletion resolved itself
+    } else if (fullComplete) {
+      nextPending = null;   // a complete listing proposes nothing: any pending mass deletion resolved itself
     }
   }
 
@@ -293,8 +320,8 @@ export async function runSync({
       lastSync: {
         mode: incremental ? 'incremental' : 'full',
         startedAt: new Date(started).toISOString(),
-        finishedAt: new Date().toISOString(),
-        durationMs: Date.now() - started,
+        finishedAt: new Date(clock()).toISOString(),
+        durationMs: clock() - started,
         complete: false,
         counts, failed,
         ...extra,

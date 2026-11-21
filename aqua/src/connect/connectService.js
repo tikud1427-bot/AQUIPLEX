@@ -47,7 +47,7 @@
 import crypto from 'node:crypto';
 import { ownerForUser } from '../memory/ownerResolver.js';
 import * as externalDefault from '../files/externalSources.js';
-import { runSync } from './syncEngine.js';
+import { runSync, MASS_DELETION } from './syncEngine.js';
 import { UNREADABLE_CREDENTIAL_CODES } from './credentialVault.js';
 import { secretValues, scrubSecrets, isAuthError } from './contract.js';
 import { ownerLogId } from '../core/logSafety.js';
@@ -110,7 +110,11 @@ export function createConnectService({ registry, store, vault, external = extern
     // Phase 1b.1: listing progress and a withheld mass deletion awaiting confirmation (no ids exposed).
     fullSyncInProgress: Boolean(conn.fullSync?.cursor),
     pendingDeletion: conn.pendingDeletion
-      ? { count: conn.pendingDeletion.count, held: conn.pendingDeletion.held, origin: conn.pendingDeletion.origin, firstSeenAt: conn.pendingDeletion.firstSeenAt }
+      ? {
+          count: conn.pendingDeletion.count, held: conn.pendingDeletion.held, origin: conn.pendingDeletion.origin, firstSeenAt: conn.pendingDeletion.firstSeenAt,
+          // Phase 1b.2: earliest time a complete listing may confirm it (null until a full listing has recorded it). Ids are never exposed.
+          confirmableAt: conn.pendingDeletion.firstSeenAt ? new Date(Date.parse(conn.pendingDeletion.firstSeenAt) + MASS_DELETION.confirmAfterMs).toISOString() : null,
+        }
       : null,
     createdAt: conn.createdAt, updatedAt: conn.updatedAt,
   });
@@ -214,7 +218,7 @@ export function createConnectService({ registry, store, vault, external = extern
         const reconnect = err.code === 'NEEDS_REAUTH' || err.code === 'CREDENTIALS_UNREADABLE';
         const error = err.code === 'CREDENTIALS_UNREADABLE' ? err.message : reconnect ? 'reconnect required' : 'credentials unavailable';
         const lastSync = { state: 'failed', complete: false, error, finishedAt: new Date().toISOString() };
-        await store.update(ownerId, connectionId, { status: reconnect ? 'needs_reauth' : conn.status, lastSync });
+        await store.update(ownerId, connectionId, { status: reconnect ? 'needs_reauth' : conn.status, lastSync, pendingDeletion: null });
         if (err.code === 'CREDENTIALS_UNREADABLE') log.warn?.(`[CONNECT] credentials unreadable connection=${connectionId} owner=${ownerLogId(ownerId)}; marked needs_reauth`);
         throw new ConnectError(reconnect ? err.code : 'CREDENTIALS_UNAVAILABLE', error);
       }
@@ -229,11 +233,11 @@ export function createConnectService({ registry, store, vault, external = extern
       };
       let outcome;
       try {
-        outcome = await runSync({ ownerId, conn, connector, ctx: ctxFor(conn, creds), secrets, mode, external, retry, guard, confirmMassDeletion: confirmMassDeletion === true });
+        outcome = await runSync({ ownerId, conn, connector, ctx: ctxFor(conn, creds), secrets, mode, external, retry, guard, confirmMassDeletion: confirmMassDeletion === true, now });
       } catch (err) {
         outcome = {
           authFailed: false, aborted: false,
-          checkpoint: conn.checkpoint ?? null, fullSync: conn.fullSync ?? null, pendingDeletion: conn.pendingDeletion ?? null,
+          checkpoint: conn.checkpoint ?? null, fullSync: conn.fullSync ?? null, pendingDeletion: null,   // a crashed run resets a pending mass deletion (1b.2)
           lastSync: { state: 'failed', complete: false, error: scrubSecrets(`sync crashed: ${err?.message ?? err}`, secrets).slice(0, 300), finishedAt: new Date().toISOString() },
         };
       }
@@ -242,7 +246,8 @@ export function createConnectService({ registry, store, vault, external = extern
         // touch its status, credentials or positions. Record the outcome only if
         // the record still exists (it may already be gone).
         const cur = await store.get(ownerId, connectionId);
-        const after = cur ? await store.update(ownerId, connectionId, { lastSync: outcome.lastSync }) : null;
+        // 1b.2: an aborted run also resets a pending mass deletion.
+        const after = cur ? await store.update(ownerId, connectionId, { lastSync: outcome.lastSync, pendingDeletion: null }) : null;
         registry.recordOutcome(conn.connectorId, false, 'sync aborted');
         log.log?.(`[CONNECT] sync connection=${connectionId} owner=${ownerLogId(ownerId)} state=aborted`);
         return { status: after?.status ?? 'deleted', lastSync: outcome.lastSync, aborted: true };
