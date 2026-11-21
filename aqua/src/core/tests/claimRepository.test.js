@@ -397,6 +397,9 @@ describe('claim repository — wiring', () => {
       // E5/PR-6 — account deletion must reach claim rows (G4). Found by running
       // the purge gate, not by reading it.
       path.join('account', 'accountPurge.js'),
+      // G1-1 (2026-11-20) — source-scoped deletion recomputes corroboration
+      // inside its own transaction (recomputeCorroborationWithClient).
+      path.join('worldModel', 'sourceDeletion.js'),
     ];
     const offenders = [];
     const walk = (dir) => {

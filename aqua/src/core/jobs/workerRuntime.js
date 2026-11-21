@@ -98,12 +98,26 @@ export const HANDLERS = Object.freeze({
     const p = job.payload ?? {};
     const text = String(p.text ?? '').trim();
     if (!text) return;
-    const conversationId = `file:${String(p.hash ?? p.ukoId ?? 'unknown').slice(0, 32)}`;
+    // G1-1: an EXTERNAL resource (source-derived ukoId) gets its own canonical
+    // source identity — never shared with an upload of the same bytes — so its
+    // knowledge can be deleted with the source. A resource already deleted is
+    // not understood (no resurrection from a queued job). Uploads: unchanged.
+    const external = typeof p.ukoId === 'string' && p.ukoId.startsWith('ext_');
+    if (external) {
+      const { getUKO } = await import('../../files/ukoStore.js');
+      if (!getUKO(job.ownerId, p.ukoId)) return;
+    }
+    const conversationId = external
+      ? `extuko:${p.ukoId}`
+      : `file:${String(p.hash ?? p.ukoId ?? 'unknown').slice(0, 32)}`;
     const result = await Brain.understandTurn({
       ownerId: job.ownerId, conversationId,
       turn: Number.isInteger(p.chunk) ? p.chunk + 1 : 1,
       userMessage: text,
-      source: { kind: 'document', name: String(p.name ?? 'document'), hash: p.hash ?? null, chunk: Number.isInteger(p.chunk) ? p.chunk : 0 },
+      // `enqueuedAt`: the commit refuses an external resource deleted at or
+      // after this job was enqueued — re-checked under the source lock at
+      // commit time, not only here (externalDeletionGuard.js).
+      source: { kind: 'document', name: String(p.name ?? 'document'), hash: p.hash ?? null, chunk: Number.isInteger(p.chunk) ? p.chunk : 0, ...(external ? { ukoId: p.ukoId, enqueuedAt: job.createdAt ?? null } : {}) },
     });
     logE6Turn({ ownerId: job.ownerId, conversationId, result, ms: Date.now() - started });
     assertUnderstood(result);

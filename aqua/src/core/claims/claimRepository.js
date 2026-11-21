@@ -241,7 +241,8 @@ async function attachEvidenceWithClient(client, claimId, ownerId, evidenceIds, r
   return added;
 }
 
-async function recomputeCorroborationWithClient(client, claimId, ownerId) {
+// Exported (G1-1) so source-scoped deletion recomputes corroboration inside ITS transaction.
+export async function recomputeCorroborationWithClient(client, claimId, ownerId) {
   const { rows } = await client.query(
     `SELECT count(DISTINCT e.source_id)::int AS sources
        FROM aqua_claim_evidence ce

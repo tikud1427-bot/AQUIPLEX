@@ -539,6 +539,9 @@ describe('world model schema — canonical writer only', () => {
     // rather than weakened: the invariant is now "declared writer(s) only", not
     // "nothing", and a THIRD module showing up here should still fail loudly.
     const ALLOWED = [
+      // G1-1 (2026-11-20) — source-scoped deletion removes/restores edges,
+      // events and their lifecycle/revision/correction history for ONE source.
+      'src/core/worldModel/sourceDeletion.js',
       // E5 — the canonical World Model writer/reader for lifecycle, edges,
       // events, revisions and corrections.
       'src/core/worldModel/worldModelRepository.js',

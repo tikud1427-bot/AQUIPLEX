@@ -88,6 +88,7 @@ describe('db pool — inert by default', () => {
     // installing shadow mode. Each entry cost a red battery first, which is
     // the point of the guard.
     const ALLOWED = [
+      'src/core/worldModel/sourceDeletion.js',   // G1-1 (2026-11-20) — one transaction for source-scoped deletion
       'src/core/storage/pgBlobAdapter.js',
       'src/core/storage/index.js',
       'src/core/db/migrate.js',

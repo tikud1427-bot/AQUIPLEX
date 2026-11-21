@@ -1606,8 +1606,15 @@ export async function understandTurn(
           // L10: an uploaded document is the user's own material — file tier
           // (worldModelRepository maps trust_tier ≥ 3 to 'file').
           sourceKind: 'document', trustTier: 3,
-          externalRef: `file:${doc.name}:chunk:${Number.isInteger(doc.chunk) ? doc.chunk : 0}`,
-          title: `Uploaded file — ${doc.name}`,
+          // G1-1: an external resource is tagged by its source-derived ukoId so
+          // core/worldModel/sourceDeletion.js can find and delete exactly its
+          // knowledge. Uploads keep their existing tag. (Trust tier for
+          // external sources is a G1-2 decision; external understanding is OFF.)
+          externalRef: typeof doc.ukoId === 'string' && doc.ukoId.startsWith('ext_')
+            ? `extuko:${doc.ukoId}:chunk:${Number.isInteger(doc.chunk) ? doc.chunk : 0}`
+            : `file:${doc.name}:chunk:${Number.isInteger(doc.chunk) ? doc.chunk : 0}`,
+          title: typeof doc.ukoId === 'string' && doc.ukoId.startsWith('ext_') ? `External resource — ${doc.name}` : `Uploaded file — ${doc.name}`,
+          ...(doc.enqueuedAt ? { enqueuedAt: doc.enqueuedAt } : {}),
         } : {
           sourceKind: 'conversation',
           externalRef: conversationId

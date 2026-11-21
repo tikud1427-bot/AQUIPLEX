@@ -33,6 +33,7 @@ import * as evidenceStore from './evidenceStore.js';
 import { indexedFileIdsByPrefix, removeUKOFromIndex } from './fileSearchIndex.js';
 import { graphFileIds, removeFile as removeGraphFile, detachFiles, nodesByType, NODE_TYPES, getNode, edgesOf } from '../reasoning/reasoningGraph.js';
 import { pruneReflectionSnapshot } from '../brain/reflectionV2/reflectionStore.js';
+import { forgetExternalSourceClaims } from '../core/worldModel/sourceDeletion.js';
 import { rebuildOwnerGraph } from '../reasoning/graphBuilder.js';
 import { forgetSubjects, picBucket } from '../pic/picStore.js';
 import { forgetExternalFiles } from '../memory/engine.js';
@@ -348,10 +349,31 @@ async function sweep(ownerId, { ukoPrefix, keyPrefix, keepUkoId = null, keepFile
     if (pr) { removed.reflectionNodes = pr.nodes; removed.reflectionEdges = pr.edges; if (pr.deferred) removed.reflectionDeferred = true; }
   }
 
+  // 5c. G1-1: canonical (Postgres) World Model knowledge derived from this
+  //     prefix — claims with independent support survive. No-op without
+  //     Postgres. Runs even when no JSON-store artefact was found: canonical
+  //     rows can outlive a crashed sync's local artefacts.
+  let canonical = null;
+  try {
+    canonical = await forgetExternalSourceClaims(ownerId, { ukoPrefix, keepUkoId });
+    // `removed` stays a flat map of numbers (callers sum/compare it); the full
+    // canonical breakdown is returned separately as `canonical`.
+    removed.canonicalClaims = canonical.counts.claimsDeleted;
+    removed.canonicalSources = canonical.counts.sources;
+    if (!canonical.complete) errors.push('canonical: knowledge remains under the prefix');
+  } catch (err) {
+    errors.push(`canonical: ${err?.message ?? err}`);
+  }
+
   // 6. Verify: nothing under the prefix may remain anywhere we can look.
   const remaining = step('verify', () => remainingUnder(ownerId, { ukoPrefix, keyPrefix, keepUkoId, keepFileKey })) ?? null;
+  if (remaining && canonical?.remaining && !canonical.remaining.skipped) {
+    remaining.canonicalSources = canonical.remaining.sources;
+    remaining.canonicalClaims = canonical.remaining.claimsRemaining;
+    remaining.canonicalJobs = canonical.remaining.queuedJobs;
+  }
   const complete = !errors.length && remaining != null && Object.values(remaining).every(n => n === 0);
-  return { removed, remaining, complete, errors, removedUkoIds: [...ids] };
+  return { removed, remaining, complete, errors, removedUkoIds: [...ids], canonical: canonical?.counts ?? null };
 }
 
 /** Counts of artefacts still stored under a prefix (all must be 0 after a complete deletion). */

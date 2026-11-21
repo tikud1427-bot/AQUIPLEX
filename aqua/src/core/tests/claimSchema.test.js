@@ -331,6 +331,8 @@ describe('claim schema — writers are declared, not accidental', () => {
     // beliefClaimRepository.js) is not a writer; comments are stripped before
     // the scan so those don't have to be declared to keep this green.
     const ALLOWED = [
+      // G1-1 (2026-11-20) — source-scoped deletion of an external source's claims.
+      'src/core/worldModel/sourceDeletion.js',
       'src/core/claims/claimRepository.js', 'src/core/claims/backfill.js',
       'src/core/claims/projection.js',
       'src/core/worldModel/worldModelRepository.js',

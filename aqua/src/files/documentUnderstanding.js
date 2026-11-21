@@ -24,6 +24,7 @@
  */
 import crypto from 'node:crypto';
 import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
+import { isExternalFileId } from './externalIdentity.js';
 
 export const DOCUMENT_JOB_KIND = 'understanding.document.v1';
 export const MAX_CHUNKS = 24;
@@ -98,7 +99,12 @@ export async function enqueueDocumentUnderstanding({ ownerId, documents = [], de
         await enqueue({
           ownerId, kind: DOCUMENT_JOB_KIND,
           payload: { ukoId: doc.ukoId ?? null, name: doc.name, hash, chunk: chunk.index, text: chunk.text },
-          idempotencyKey: `${DOCUMENT_JOB_KIND}:${hash.slice(0, 32)}:${chunk.index}`,
+          // G1-1: an EXTERNAL resource is understood on its own (key includes its
+          // source-derived ukoId), so identical text in an upload and a connected
+          // source never share one canonical source — deleting one keeps the other.
+          idempotencyKey: isExternalFileId(doc.ukoId)
+            ? `${DOCUMENT_JOB_KIND}:${doc.ukoId}:${hash.slice(0, 32)}:${chunk.index}`
+            : `${DOCUMENT_JOB_KIND}:${hash.slice(0, 32)}:${chunk.index}`,
         });
         out.enqueued++;
       }

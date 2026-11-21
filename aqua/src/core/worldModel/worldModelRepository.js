@@ -15,6 +15,7 @@
 import crypto from 'node:crypto';
 import { outboxRole, claimTransitionEvent } from './outboxEvents.js';
 import { getPool, isConfigured } from '../db/pool.js';
+import { ukoIdFromExternalRef, lockExternalSource, externalSourceDeletedSince } from './externalDeletionGuard.js';
 
 export class WorldModelError extends Error {
   constructor(message) {
@@ -593,6 +594,17 @@ export async function commitUnderstanding(input = {}) {
     throw new WorldModelError('segmentRange must be an integer [start,end] with end >= start');
   const claims = Array.isArray(input.claims) ? input.claims : [];
   return transact(async client => {
+    // G1-1 race guard: an EXTERNAL resource's knowledge is written only while
+    // its source is still active. Same per-source lock as the deletion, then the
+    // tombstone check, both inside THIS transaction — a deletion that committed
+    // after the job was enqueued (even while it was running) makes this a no-op
+    // write; one still in progress is waited for. See externalDeletionGuard.js.
+    const externalUkoId = ukoIdFromExternalRef(input.externalRef);
+    if (externalUkoId) {
+      await lockExternalSource(client, ownerId, externalUkoId);
+      if (await externalSourceDeletedSince(client, { ownerId, ukoId: externalUkoId, enqueuedAt: input.enqueuedAt ?? null }))
+        return { committed: false, skipped: true, reason: 'source-deleted', claims: [] };
+    }
     // The commit ledger has a real FK to aqua_sources. Establish the source
     // first, inside THIS transaction, then reserve the S9 idempotency tuple.
     // The previous order attempted the ledger insert first, which could never
@@ -1464,6 +1476,9 @@ export async function purgeOwner(ownerId) {
   const understandingCommitLedger = await p.query(
     'DELETE FROM aqua_understanding_commit_ledger WHERE owner_id = $1', [ownerId]);
   const sources = await p.query('DELETE FROM aqua_sources WHERE owner_id = $1', [ownerId]);
+  // G1-1 external-deletion tombstones (0032). After an account deletion the
+  // worker is stopped by aqua_deleted_owners; these rows have no further use.
+  await p.query('DELETE FROM aqua_external_deletions WHERE owner_id = $1', [ownerId]);
 
   return {
     edges: edges.rowCount ?? 0,
