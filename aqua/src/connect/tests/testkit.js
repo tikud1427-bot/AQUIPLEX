@@ -50,7 +50,8 @@ export function stack({ connectorOverrides = {}, world: w = null, logs = null, n
   const store = createMemoryConnectionStore();
   const vault = createCredentialVault({ key: TEST_KEY });
   const log = logs ? { log: (...a) => logs.push(a.join(' ')) } : { log: () => {} };
-  const service = createConnectService({ registry, store, vault, retry: { sleep: noSleep, baseMs: 0 }, log, ...(now ? { now } : {}) });
+  // trustRawUserId: these tests act as a trusted server-side caller. Routes must use principals (principal.js; IS-1).
+  const service = createConnectService({ registry, store, vault, retry: { sleep: noSleep, baseMs: 0 }, log, trustRawUserId: true, ...(now ? { now } : {}) });
   return { world, registry, connector, store, vault, service };
 }
 

@@ -38,7 +38,7 @@ async function connected({ account = 'acct-1', ...opts } = {}) {
 }
 /** A second, independent service instance over the same registry/store/vault. */
 const secondInstance = (s, { vault = s.vault } = {}) =>
-  createConnectService({ registry: s.registry, store: s.store, vault, retry: noRetry, log: quiet });
+  createConnectService({ registry: s.registry, store: s.store, vault, retry: noRetry, log: quiet, trustRawUserId: true });
 
 const seed = (world, account, n, prefix = 'r') => {
   for (let i = 0; i < n; i++) world.put(account, `${prefix}${String(i).padStart(3, '0')}`, { name: `${prefix}${i}.md`, content: doc(`Item${prefix}${i}x`) });
@@ -649,7 +649,7 @@ describe('one lock per process; re-checks before every write', () => {
     const slow = deferred();
     const gateConn = createConnectService({
       registry: (() => { const r = createConnectorRegistry({ allowTestOnly: true }); r.register(createFakeConnector({ world: a.world, overrides: { async listResources() { order.push('A-start'); await slow.promise; order.push('A-end'); return { resources: [], cursor: null }; } } })); return r; })(),
-      store: a.store, vault: a.vault, retry: noRetry, log: quiet,
+      store: a.store, vault: a.vault, retry: noRetry, log: quiet, trustRawUserId: true,
     });
     const p1 = gateConn.sync({ userId: a.userId, connectionId: a.id, mode: 'full' });
     await settle(10);

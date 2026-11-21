@@ -213,6 +213,35 @@ export function saveReflectionState(ownerId, snapshot, lastReflectionAt) {
   persist(ownerId);
 }
 
+/**
+ * G0 (SD-9) — after a SOURCE-scoped deletion, drop snapshot entries the live
+ * graph no longer has. The snapshot holds entity LABELS, so without this a
+ * deleted source's names survived until the next reflection, and that
+ * reflection then reported them as "removed from your world". Nothing is
+ * added or changed: only entries whose node (or edge, or either endpoint) is
+ * gone are dropped. Returns null when the owner's state is not loaded in this
+ * unit of work (partitioned mode) — the caller reports that, never guesses.
+ *
+ * @param {string} ownerId
+ * @param {{ isLiveNode: (id:string)=>boolean, isLiveEdge: (edge:{id,from,to})=>boolean }} live
+ * @returns {{ nodes:number, edges:number } | null}
+ */
+export function pruneReflectionSnapshot(ownerId, { isLiveNode, isLiveEdge }) {
+  if (!ownerId) return { nodes: 0, edges: 0 };
+  if (!reflectionOwnerReady(ownerId)) return null;
+  const snap = store.get(ownerId)?.snapshot;
+  if (!snap?.nodes) return { nodes: 0, edges: 0 };
+  let nodes = 0, edges = 0;
+  for (const id of [...snap.nodes.keys()]) {
+    if (!isLiveNode(id)) { snap.nodes.delete(id); nodes++; }
+  }
+  for (const [id, e] of [...(snap.edges ?? new Map())]) {
+    if (!snap.nodes.has(e.from) || !snap.nodes.has(e.to) || !isLiveEdge(e)) { snap.edges.delete(id); edges++; }
+  }
+  if (nodes || edges) persist(ownerId);
+  return { nodes, edges };
+}
+
 /** Account deletion / tests. */
 export function forgetReflectionState(ownerId) {
   if (!ownerId) return;

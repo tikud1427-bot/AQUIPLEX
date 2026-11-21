@@ -31,7 +31,8 @@ import { ingestFiles } from './fileEngine.js';
 import * as ukoStore from './ukoStore.js';
 import * as evidenceStore from './evidenceStore.js';
 import { indexedFileIdsByPrefix, removeUKOFromIndex } from './fileSearchIndex.js';
-import { graphFileIds, removeFile as removeGraphFile, detachFiles, nodesByType, NODE_TYPES } from '../reasoning/reasoningGraph.js';
+import { graphFileIds, removeFile as removeGraphFile, detachFiles, nodesByType, NODE_TYPES, getNode, edgesOf } from '../reasoning/reasoningGraph.js';
+import { pruneReflectionSnapshot } from '../brain/reflectionV2/reflectionStore.js';
 import { rebuildOwnerGraph } from '../reasoning/graphBuilder.js';
 import { forgetSubjects, picBucket } from '../pic/picStore.js';
 import { forgetExternalFiles } from '../memory/engine.js';
@@ -280,7 +281,7 @@ export function deleteExternalResource(ownerId, sourceId, externalId) {
 async function sweep(ownerId, { ukoPrefix, keyPrefix, keepUkoId = null, keepFileKey = null, rebuild = true }) {
   const errors = [];
   const step = (name, fn) => { try { return fn(); } catch (err) { errors.push(`${name}: ${err?.message ?? err}`); return null; } };
-  const removed = { ukos: 0, facts: 0, fileLinks: 0, indexed: 0, graphFiles: 0, graphNodes: 0, graphEdges: 0, picRecords: 0, fileEntries: 0, cacheEntries: 0, claimVectors: 0 };
+  const removed = { ukos: 0, facts: 0, fileLinks: 0, indexed: 0, graphFiles: 0, graphNodes: 0, graphEdges: 0, picRecords: 0, fileEntries: 0, cacheEntries: 0, claimVectors: 0, reflectionNodes: 0, reflectionEdges: 0 };
 
   // 1. Every file id under the prefix that ANY store knows — including files a
   //    crashed sync wrote derived data for without saving the UKO.
@@ -331,6 +332,21 @@ async function sweep(ownerId, { ukoPrefix, keyPrefix, keepUkoId = null, keepFile
   // 5. Re-derive the owner graph from what remains (cross-file entities and
   //    contradictions that involved the removed facts disappear with them).
   if (rebuild && ids.size) step('graph:rebuild', () => rebuildGraphSafely(ownerId, { throwOnError: true }));
+
+  // 5b. G0 (SD-9): the Reflection V2 snapshot holds entity labels; drop the
+  //     entries the rebuilt graph no longer has (a deletion, not a world change).
+  if (rebuild && ids.size) {
+    const pr = step('reflection:prune', () => {
+      const r = pruneReflectionSnapshot(ownerId, {
+        isLiveNode: nid => getNode(ownerId, nid) != null,
+        isLiveEdge: e => edgesOf(ownerId, e.from).some(x => x.id === e.id),
+      });
+      // Partitioned mode with this owner's reflection state not loaded: reported, not fatal —
+      // failing here would make the disconnect itself un-completable.
+      return r ?? { nodes: 0, edges: 0, deferred: true };
+    });
+    if (pr) { removed.reflectionNodes = pr.nodes; removed.reflectionEdges = pr.edges; if (pr.deferred) removed.reflectionDeferred = true; }
+  }
 
   // 6. Verify: nothing under the prefix may remain anywhere we can look.
   const remaining = step('verify', () => remainingUnder(ownerId, { ukoPrefix, keyPrefix, keepUkoId, keepFileKey })) ?? null;

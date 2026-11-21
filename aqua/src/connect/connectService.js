@@ -1,18 +1,21 @@
 /**
  * AQUA Connect — connection lifecycle service (Phase 1b)
  *
- * The engine API a future HTTP route (or job) calls. Every method takes the
- * AUTHENTICATED user id (the platform's req.aquaUserId) and acts only on that
- * user's connections: the owner is derived here (memory/ownerResolver.js), never
- * accepted from a caller, and every store read is (ownerId, connectionId).
+ * The engine API a future HTTP route (or job) calls. Every method takes an
+ * authenticated PRINCIPAL (principal.js: principalFromRequest(req), built from
+ * the server-side req.aquaUserId/session — never from client data) and acts only
+ * on that user's connections: the owner is derived here
+ * (memory/ownerResolver.js), never accepted from a caller, and every store read
+ * is (ownerId, connectionId). A raw userId is accepted only when the service is
+ * built with trustRawUserId (server-internal callers, tests).
  *
- *   connect({ userId, connectorId, input })      → connection view (no secrets)
- *   listConnections({ userId })                  → views
- *   getConnection({ userId, connectionId })      → view
- *   sync({ userId, connectionId, mode, confirmMassDeletion })
+ *   connect({ principal, connectorId, input })      → connection view (no secrets)
+ *   listConnections({ principal })               → views
+ *   getConnection({ principal, connectionId })      → view
+ *   sync({ principal, connectionId, mode, confirmMassDeletion })
  *                                                → { status, lastSync, aborted? }
- *   revokeCredentials({ userId, connectionId })  → revoke at source + wipe credentials; knowledge kept
- *   disconnect({ userId, connectionId })         → revoke + wipe + delete the source's knowledge + delete the record
+ *   revokeCredentials({ principal, connectionId })  → revoke at source + wipe credentials; knowledge kept
+ *   disconnect({ principal, connectionId })         → revoke + wipe + delete the source's knowledge + delete the record
  *
  *   Revoke/disconnect results report the two effects
  *   separately and never claim a revocation that failed or was not attempted:
@@ -49,6 +52,7 @@ import { ownerForUser } from '../memory/ownerResolver.js';
 import * as externalDefault from '../files/externalSources.js';
 import { runSync, MASS_DELETION } from './syncEngine.js';
 import { UNREADABLE_CREDENTIAL_CODES } from './credentialVault.js';
+import { isPrincipal } from './principal.js';
 import { secretValues, scrubSecrets, isAuthError } from './contract.js';
 import { ownerLogId } from '../core/logSafety.js';
 import { sanitizeInlineLabel } from '../core/untrustedContent.js';
@@ -88,14 +92,31 @@ const UNREADABLE = new Set(UNREADABLE_CREDENTIAL_CODES);
  * @param {object} [deps.retry]    sync retry options (tests pass sleep: () => {})
  * @param {Function} [deps.now]
  */
-export function createConnectService({ registry, store, vault, external = externalDefault, retry = {}, now = Date.now, log = console } = {}) {
+export function createConnectService({ registry, store, vault, external = externalDefault, retry = {}, now = Date.now, log = console, trustRawUserId = false } = {}) {
   if (!registry || !store || !vault) throw new ConnectError('MISCONFIGURED', 'connect service needs a registry, a store and a credential vault');
 
   // Per-owner serialisation: the process-wide withOwnerLock above.
 
-  const ownerOf = userId => {
-    const ownerId = ownerForUser(typeof userId === 'string' || typeof userId === 'number' ? String(userId).trim() : '');
-    if (!ownerId || ownerId === 'user:') throw new ConnectError('UNAUTHENTICATED', 'an authenticated user is required');
+  /**
+   * IS-1 (G0): the owner comes ONLY from an authenticated principal
+   * (principal.js — principalFromRequest(req) / principalForServerJob). Any
+   * userId / ownerId in the call is IGNORED when a principal is given, so a
+   * route that spreads client data into the call cannot impersonate anyone.
+   * A raw userId is accepted only by a service built with trustRawUserId
+   * (server-internal callers and tests) — never the default.
+   */
+  const ownerOf = ({ principal, userId } = {}) => {
+    let id;
+    if (principal !== undefined) {
+      if (!isPrincipal(principal)) throw new ConnectError('UNAUTHENTICATED', 'an authenticated user is required');
+      id = principal.userId;
+    } else if (trustRawUserId) {
+      id = typeof userId === 'string' || typeof userId === 'number' ? String(userId).trim() : '';
+    } else {
+      throw new ConnectError('UNAUTHENTICATED', 'an authenticated user is required');
+    }
+    const ownerId = ownerForUser(id);
+    if (!id || !ownerId || ownerId === 'user:') throw new ConnectError('UNAUTHENTICATED', 'an authenticated user is required');
     return ownerId;
   };
 
@@ -127,8 +148,8 @@ export function createConnectService({ registry, store, vault, external = extern
   }
 
   // ── connect ────────────────────────────────────────────────────────────────
-  async function connect({ userId, connectorId, input = {} } = {}) {
-    const ownerId = ownerOf(userId);
+  async function connect({ userId, principal, connectorId, input = {} } = {}) {
+    const ownerId = ownerOf({ principal, userId });
     if (!registry.has(connectorId)) throw new ConnectError('UNKNOWN_CONNECTOR', 'that connector is not available');
     // Refuse BEFORE the provider issues tokens we could not store.
     if (vault.unavailable) throw new ConnectError('CREDENTIAL_KEY_UNAVAILABLE', 'connecting is unavailable: the credential key is not configured');
@@ -162,12 +183,12 @@ export function createConnectService({ registry, store, vault, external = extern
     return view(await store.get(ownerId, connectionId));
   }
 
-  async function listConnections({ userId } = {}) {
-    return (await store.listByOwner(ownerOf(userId))).map(view);
+  async function listConnections({ userId, principal } = {}) {
+    return (await store.listByOwner(ownerOf({ principal, userId }))).map(view);
   }
 
-  async function getConnection({ userId, connectionId } = {}) {
-    return view(await load(ownerOf(userId), connectionId));
+  async function getConnection({ userId, principal, connectionId } = {}) {
+    return view(await load(ownerOf({ principal, userId }), connectionId));
   }
 
   // ── credentials (open only for this connection; refresh when expiring) ─────
@@ -200,8 +221,9 @@ export function createConnectService({ registry, store, vault, external = extern
   });
 
   // ── sync ───────────────────────────────────────────────────────────────────
-  function sync({ userId, connectionId, mode = 'auto', confirmMassDeletion = false } = {}) {
-    const ownerId = ownerOf(userId);
+  function sync({ userId, principal, connectionId, mode = 'auto', confirmMassDeletion = false } = {}) {
+    let ownerId;
+    try { ownerId = ownerOf({ principal, userId }); } catch (err) { return Promise.reject(err); }   // identity errors reject like every other failure
     return withOwnerLock(ownerId, async () => {
       const conn = await load(ownerId, connectionId);
       if (conn.status !== 'active') throw new ConnectError('NOT_ACTIVE', `connection is ${conn.status}`);
@@ -294,8 +316,9 @@ export function createConnectService({ registry, store, vault, external = extern
   });
 
   /** Revoke the credentials (at the source, then locally). Imported knowledge is kept. */
-  function revokeCredentials({ userId, connectionId } = {}) {
-    const ownerId = ownerOf(userId);
+  function revokeCredentials({ userId, principal, connectionId } = {}) {
+    let ownerId;
+    try { ownerId = ownerOf({ principal, userId }); } catch (err) { return Promise.reject(err); }   // identity errors reject like every other failure
     return withOwnerLock(ownerId, async () => {
       const conn = await load(ownerId, connectionId);
       const connector = registry.has(conn.connectorId) ? registry.get(conn.connectorId) : null;
@@ -312,8 +335,9 @@ export function createConnectService({ registry, store, vault, external = extern
    * incomplete the record stays as 'disconnect_incomplete' (no credentials) and
    * calling disconnect again finishes it.
    */
-  function disconnect({ userId, connectionId } = {}) {
-    const ownerId = ownerOf(userId);
+  function disconnect({ userId, principal, connectionId } = {}) {
+    let ownerId;
+    try { ownerId = ownerOf({ principal, userId }); } catch (err) { return Promise.reject(err); }   // identity errors reject like every other failure
     return withOwnerLock(ownerId, async () => {
       const conn = await load(ownerId, connectionId);
       const connector = registry.has(conn.connectorId) ? registry.get(conn.connectorId) : null;
