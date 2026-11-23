@@ -46,6 +46,7 @@ import crypto from 'node:crypto';
 import { getPool, isConfigured } from '../db/pool.js';
 import { recomputeCorroborationWithClient } from '../claims/claimRepository.js';
 import { lockExternalSource, recordExternalDeletion } from './externalDeletionGuard.js';
+import { checkFenceOn } from '../storage/writeFence.js';
 
 export const EXTUKO_REF_PREFIX = 'extuko:';
 const DOCUMENT_JOB_KIND = 'understanding.document.v1';
@@ -157,6 +158,11 @@ export async function forgetExternalSourceClaims(ownerId, { ukoPrefix, keepUkoId
     // Race guard (externalDeletionGuard.js): serialise with any running
     // understanding commit for this source, and leave a tombstone so a job
     // enqueued before this deletion can never write the knowledge back.
+    // Multi-instance connect safety: inside a connect operation (disconnect,
+    // sync removals) the deletion commits only while this process holds the
+    // owner's lease — checked in this transaction, before the source lock.
+    // A deletion: never refused by the account-deletion barrier.
+    await checkFenceOn(q, ownerId, { deletion: true });
     await lockExternalSource(q, ownerId, ukoPrefix);
     await recordExternalDeletion(q, { ownerId, ukoPrefix, keepUkoId });
     const S = new Set(await sourcesUnder(q, ownerId, ukoPrefix, keepUkoId));

@@ -78,7 +78,8 @@ const encodeIndex = o => ({
 const binding = bindKeyedStore({
   storeKey: '.aqua-fileindex.json', file: STORE_FILE, label: 'fileindex', schema: SCHEMA,
   mergeSchema: {
-    collections: { files: { time: f => Number(f?.indexedAt) || 0 } },
+    // Safety Fix 2: external files — deletion wins; an addition needs a valid connect fence.
+    collections: { files: { time: f => Number(f?.indexedAt) || 0, external: id => isExternalFileId(id) } },
     links: ['entities', 'keywords'],
     finalize: m => {
       for (const lane of ['entities', 'keywords']) {

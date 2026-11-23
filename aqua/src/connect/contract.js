@@ -23,6 +23,10 @@
  *                                            A name without one fails that resource (reported, not
  *                                            silently dropped) — e.g. a Drive title needs ".md"/".txt".
  *     async syncChanges?(ctx, { checkpoint }) → { changed: ResourceRef[], removed: string[], checkpoint }
+ *                                            may throw ConnectorError('CURSOR_EXPIRED') when the
+ *                                            checkpoint is gone at the source
+ *     listResources' LAST page may also return { checkpoint }: the source position
+ *     the listing started from, stored after a clean complete full pass.
  *     async health()                       → { ok, detail? }
  *   }
  *
@@ -73,16 +77,36 @@ export function validateConnectorDefinition(c) {
 // ── Errors a connector may raise (anything else is treated as transient-unknown) ──
 
 export class ConnectorError extends Error {
-  /** @param {'AUTH'|'TRANSIENT'|'NOT_FOUND'|'PERMANENT'} kind */
-  constructor(kind, message) { super(message); this.kind = kind; }
+  /**
+   * @param {'AUTH'|'TRANSIENT'|'NOT_FOUND'|'PERMANENT'|'CURSOR_EXPIRED'|'REFUSED'} kind
+   *   REFUSED (2026-11-23): the source refused for a reason that is neither an
+   *   authorisation failure nor temporary (an unknown 403, an exhausted daily quota).
+   *   The run stops; the connection's status is NOT changed (no reconnect demanded).
+   * @param {string} message
+   * @param {{ status?: number, reason?: string|null, rateLimited?: boolean }} [detail]
+   *   status/reason: the source's HTTP status and its fixed reason code (never free text).
+   */
+  constructor(kind, message, detail = {}) {
+    super(message);
+    this.kind = kind;
+    if (Number.isFinite(detail.status)) this.status = detail.status;
+    if (detail.reason) this.reason = detail.reason;
+    if (detail.rateLimited === true) this.rateLimited = true;
+  }
 }
 export const isAuthError = err => err?.kind === 'AUTH';
+/** 2026-11-23: a refusal that is neither auth nor temporary (status kept; the run stops). */
+export const isRefused = err => err?.kind === 'REFUSED';
+/** 2026-11-23: a temporary failure the source attributed to a rate limit (longer backoff, then the run stops). */
+export const isRateLimited = err => err?.kind === 'TRANSIENT' && err?.rateLimited === true;
 // A connector's explicit classification always wins; the message heuristic only
 // applies to errors that carry no kind (a raw network/library error).
 export const isTransient = err => (err?.kind
   ? err.kind === 'TRANSIENT'
   : /\b(429|5\d\d)\b|timeout|ECONNRESET|ETIMEDOUT/i.test(String(err?.message ?? '')));
 export const isNotFound = err => err?.kind === 'NOT_FOUND';
+/** syncChanges: the saved checkpoint no longer exists at the source (the engine lists the whole source instead). */
+export const isCursorExpired = err => err?.kind === 'CURSOR_EXPIRED';
 
 // ── Untrusted output → the Phase 1a.2 resource shape ────────────────────────
 

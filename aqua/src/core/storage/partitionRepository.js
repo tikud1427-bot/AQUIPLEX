@@ -46,8 +46,16 @@ import crypto from 'node:crypto';
 
 import { getPool } from '../db/pool.js';
 import { partitionChecksum } from './partitionLayout.js';
+import { withOwnerFence, checkFenceOn } from './writeFence.js';
+import { OwnerDeletedError, noteOwnerDeleted } from './deletedOwners.js';
 
 export const TABLE = 'aqua_store_partitions';
+
+// Account-deletion barrier, part 2 (part 1: deletedOwners.assertOwnerLive in the
+// same transaction). Every write that can put owner DATA into a row carries
+// this predicate, so the statement itself never writes for a deleted owner.
+// Tombstones do not: they are the purge. $OWNER is the statement's owner param.
+const LIVE_OWNER = p => `NOT EXISTS (SELECT 1 FROM aqua_deleted_owners d WHERE d.owner_id = ${p})`;
 
 export class PartitionConflictError extends Error {
   constructor(storeKey, partitionKey, expected, actual) {
@@ -316,16 +324,16 @@ const msOf = t => (t == null ? null : (t instanceof Date ? t.getTime() : Date.pa
   async function insertChild({ storeKey, parentKey, partitionKey, data, ownerId, ordinal = null }) {
     const p = await pool();
     const bytes = Buffer.byteLength(data, 'utf8');
-    const { rows } = await p.query(
+    const { rows } = await withOwnerFence(p, ownerId, q => q.query(
       `WITH parent AS (
          SELECT 1 FROM ${TABLE}
           WHERE store_key = $1 AND partition_key = $2 AND owner_id = $4 AND deleted_at IS NULL
           FOR SHARE)
        INSERT INTO ${TABLE} (store_key, partition_key, owner_id, ordinal, data, bytes, checksum, version, updated_at, updated_by)
-       SELECT $1, $3, $4, $5, $6, $7, $8, 1, now(), $9 WHERE EXISTS (SELECT 1 FROM parent)
+       SELECT $1, $3, $4, $5, $6, $7, $8, 1, now(), $9 WHERE EXISTS (SELECT 1 FROM parent) AND ${LIVE_OWNER('$4')}
        ON CONFLICT (store_key, partition_key) DO NOTHING
        RETURNING version`,
-      [storeKey, parentKey, partitionKey, String(ownerId), ordinal, data, bytes, partitionChecksum(data), instanceId]);
+      [storeKey, parentKey, partitionKey, String(ownerId), ordinal, data, bytes, partitionChecksum(data), instanceId]));
     if (rows.length) {
       stats.writes++; stats.bytesWritten += bytes;
       cachePut({ storeKey, partitionKey, ownerId: String(ownerId), data, version: Number(rows[0].version), deleted: false });
@@ -350,6 +358,7 @@ const msOf = t => (t == null ? null : (t instanceof Date ? t.getTime() : Date.pa
     const client = await (await pool()).connect();
     try {
       await client.query('BEGIN');
+      await checkFenceOn(client, owner);
       const parent = await client.query(
         `SELECT 1 FROM ${TABLE}
           WHERE store_key = $1 AND partition_key = $2 AND owner_id = $3 AND deleted_at IS NULL
@@ -396,6 +405,7 @@ const msOf = t => (t == null ? null : (t instanceof Date ? t.getTime() : Date.pa
     try {
       await client.query('BEGIN');
       const owner = String(ownerId);
+      await checkFenceOn(client, owner, { deletion: true });
       await client.query(
         `SELECT 1 FROM ${TABLE} WHERE store_key = $1 AND partition_key = $2 FOR UPDATE`, [storeKey, parentKey]);
       const parent = await client.query(
@@ -473,11 +483,11 @@ const msOf = t => (t == null ? null : (t instanceof Date ? t.getTime() : Date.pa
 
   /** Tombstone one owner's live rows of one store whose key starts with `prefix` (exact prefix). */
   async function tombstonePrefix({ storeKey, ownerId, prefix }) {
-    const { rows } = await (await pool()).query(
+    const { rows } = await withOwnerFence(await pool(), ownerId, q => q.query(
       `UPDATE ${TABLE} SET data = NULL, bytes = 0, checksum = NULL, version = version + 1,
               deleted_at = now(), updated_at = now(), updated_by = $4
         WHERE store_key = $1 AND owner_id = $2 AND left(partition_key, length($3)) = $3 AND deleted_at IS NULL
-        RETURNING partition_key`, [storeKey, String(ownerId), prefix, instanceId]);
+        RETURNING partition_key`, [storeKey, String(ownerId), prefix, instanceId]), { deletion: true });
     for (const r of rows) cacheDrop(ck(storeKey, r.partition_key));
     stats.deletes += rows.length;
     return rows.length;
@@ -515,11 +525,14 @@ const msOf = t => (t == null ? null : (t instanceof Date ? t.getTime() : Date.pa
     const tombstone = data === null;
     const bytes = tombstone ? 0 : Buffer.byteLength(data, 'utf8');
     const sum = tombstone ? null : partitionChecksum(data);
+    // Data (not a tombstone) of a real owner: refused at the statement for a deleted owner.
+    const guarded = !tombstone && owner !== '';
     let rows;
     if (expected === 0) {
       ({ rows } = await q.query(
         `INSERT INTO ${TABLE} (store_key, partition_key, owner_id, ordinal, data, bytes, checksum, version, deleted_at, updated_at, updated_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 1, ${tombstone ? 'now()' : 'NULL'}, now(), $8)
+         SELECT $1::text, $2::text, $3::text, $4::bigint, $5::text, $6::integer, $7::text, 1, ${tombstone ? 'now()' : 'NULL'}, now(), $8::text
+          WHERE ${guarded ? LIVE_OWNER('$3') : 'true'}
          ON CONFLICT (store_key, partition_key) DO NOTHING
          RETURNING version, deleted_at`,
         [storeKey, partitionKey, owner, ordinal, data, bytes, sum, instanceId]));
@@ -528,13 +541,19 @@ const msOf = t => (t == null ? null : (t instanceof Date ? t.getTime() : Date.pa
         `UPDATE ${TABLE}
             SET data = $3, bytes = $4, checksum = $5, version = version + 1,
                 deleted_at = ${tombstone ? 'now()' : 'NULL'}, updated_at = now(), updated_by = $6
-          WHERE store_key = $1 AND partition_key = $2 AND version = $7 AND owner_id = $8
+          WHERE store_key = $1 AND partition_key = $2 AND version = $7 AND owner_id = $8${guarded ? ` AND ${LIVE_OWNER('$8')}` : ''}
           RETURNING version, deleted_at`,
         [storeKey, partitionKey, data, bytes, sum, instanceId, expected, owner]));
     }
     if (rows.length) return { version: toVersion(rows[0].version), bytes, deletedAt: msOf(rows[0].deleted_at) };
 
-    // Nothing written: tell a lost race apart from a cross-owner write.
+    // Nothing written: the account was deleted (explicit, never retried), a lost
+    // race, or a cross-owner write.
+    if (guarded && (await q.query('SELECT 1 FROM aqua_deleted_owners WHERE owner_id = $1', [owner])).rows.length) {
+      noteOwnerDeleted(owner);
+      stats.ownerDeletedRefusals = (stats.ownerDeletedRefusals ?? 0) + 1;
+      throw new OwnerDeletedError();
+    }
     const cur = await readRow(q, storeKey, partitionKey);
     if (cur && cur.owner_id !== owner) {
       stats.ownershipRefusals++;
@@ -560,7 +579,8 @@ const msOf = t => (t == null ? null : (t instanceof Date ? t.getTime() : Date.pa
     if (typeof data !== 'string') throw new TypeError('put: data must be a JSON string');
     const w = { storeKey, partitionKey, ownerId, data, ordinal, expected: expectedFor(storeKey, partitionKey, expectedVersion) };
     try {
-      const { version, bytes, deletedAt } = await casWrite(await pool(), w);
+      // Multi-instance connect safety: a fenced owner's write runs in one transaction with its lease check.
+      const { version, bytes, deletedAt } = await withOwnerFence(await pool(), w.ownerId, q => casWrite(q, w));
       afterWrite(w, version, bytes, deletedAt);
       return { version };
     } catch (err) {
@@ -574,7 +594,7 @@ const msOf = t => (t == null ? null : (t instanceof Date ? t.getTime() : Date.pa
     if (ownerId === undefined || ownerId === null) throw new Error('delete: ownerId is required');
     const w = { storeKey, partitionKey, ownerId, data: null, expected: expectedFor(storeKey, partitionKey, expectedVersion) };
     try {
-      const { version, deletedAt } = await casWrite(await pool(), w);
+      const { version, deletedAt } = await withOwnerFence(await pool(), w.ownerId, q => casWrite(q, w), { deletion: true });
       afterWrite(w, version, 0, deletedAt);
       return { version };
     } catch (err) {
@@ -626,6 +646,10 @@ const msOf = t => (t == null ? null : (t instanceof Date ? t.getTime() : Date.pa
     const results = [];
     try {
       await client.query('BEGIN');
+      for (const owner of new Set(planned.map(w => String(w.ownerId)))) {
+        // An owner whose ops here are all tombstones is being deleted: no barrier.
+        await checkFenceOn(client, owner, { deletion: planned.every(w => String(w.ownerId) !== owner || w.data === null) });
+      }
       for (const w of planned) results.push({ w, ...(await casWrite(client, w)) });
       await client.query('COMMIT');
     } catch (err) {

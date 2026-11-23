@@ -133,6 +133,7 @@ const SOURCE = {
   AQUA_LOG_CONTENT: { files: ['core/logSafety.js'], expr: "String(env.AQUA_LOG_CONTENT ?? '').toLowerCase() !== 'local'", fn: null },   // behaviour tested via contentLoggingAllowed below
   AQUA_E8_PERSONAL_SCOPE: { files: ['brain/contextEngine/queryPlan.js'], expr: "String(process.env.AQUA_E8_PERSONAL_SCOPE ?? 'on').trim().toLowerCase() === 'off'", fn: env => !(String(env.AQUA_E8_PERSONAL_SCOPE ?? 'on').trim().toLowerCase() === 'off') },
   AQUA_STRICT_CONVERSATION_IDS: { files: ['routes/chat.js'], expr: "String(process.env.AQUA_STRICT_CONVERSATION_IDS ?? 'on').trim().toLowerCase() !== 'off'", fn: env => String(env.AQUA_STRICT_CONVERSATION_IDS ?? 'on').trim().toLowerCase() !== 'off' },
+  AQUA_GMAIL_CONNECT: { files: ['connect/gmail/gmailOAuthConfig.js'], expr: "String(env.AQUA_GMAIL_CONNECT ?? '').toLowerCase() === 'on'", fn: env => String(env.AQUA_GMAIL_CONNECT ?? '').toLowerCase() === 'on' },
   AQUA_SEMANTIC_RECALL: { files: ['memory/semanticRecall.js'], expr: "String(env.AQUA_SEMANTIC_RECALL ?? '').toLowerCase() === 'on'", fn: env => String(env.AQUA_SEMANTIC_RECALL ?? '').toLowerCase() === 'on' },   // && isEmbeddingEnabled(): a dependency
 };
 

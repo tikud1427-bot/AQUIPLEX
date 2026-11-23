@@ -167,6 +167,14 @@ describe('db pool — inert by default', () => {
       'src/core/storage/deletedOwners.js',
       // Phase 4B — pending-charge state machine (aqua_charges, 0031).
       'src/credits/pendingCharges.js',
+      // Multi-instance connect safety — the per-owner connect lease
+      // (aqua_scheduler_leases rows named connect-owner:<hash>).
+      'src/connect/ownerLease.js',
+      // Safety Fix 4 — the account purge of connector state (its lease, jobs,
+      // deletion records, version counters) and the connect service's
+      // "is a database configured?" check (multi-instance store refusal).
+      'src/connect/connectPurge.js',
+      'src/connect/connectService.js',
     ];
     const offenders = [];
     const walk = (dir) => {

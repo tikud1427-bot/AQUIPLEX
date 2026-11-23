@@ -1261,7 +1261,7 @@ export async function canonicalSemanticScores(ownerId, query) {
   if (!ownerId || !query) return null;
   try {
     const facts = evidenceStore.listFacts(ownerId, { limit: 5000 });
-    await indexCanonicalClaims(ownerId, facts);
+    await indexCanonicalClaims(ownerId, facts, { isExternal: f => evidenceStore.isExternalFactOf(ownerId, f) });
     const scores = await canonicalClaimScores(ownerId, query);
     if (!(scores instanceof Map) || !scores.size) return scores;
 

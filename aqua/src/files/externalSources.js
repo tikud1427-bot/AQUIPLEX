@@ -28,6 +28,7 @@
  */
 import crypto from 'node:crypto';
 import { ingestFiles } from './fileEngine.js';
+import { observeExternalSourceForSync, externalResourcesDeletedForImport } from './documentUnderstanding.js';
 import * as ukoStore from './ukoStore.js';
 import * as evidenceStore from './evidenceStore.js';
 import { indexedFileIdsByPrefix, removeUKOFromIndex } from './fileSearchIndex.js';
@@ -41,7 +42,13 @@ import { remove as removeVector, idsIn } from '../embeddings/vectorStore.js';
 import { externalFileNamespace } from '../embeddings/fileMemory.js';
 import { canonicalClaimNamespace } from '../brain/contextEngine/canonicalSemantic.js';
 import { classifyUpload } from '../upload/uploadClassifier.js';
-import { getMind } from '../mind/mindStore.js';
+import { getMind, mindPartitionBinding } from '../mind/mindStore.js';
+import { graphPartitionBinding } from '../reasoning/reasoningGraph.js';
+import { picPartitionBinding } from '../pic/picStore.js';
+import { fileIndexPartitionBinding } from './fileSearchIndex.js';
+import { vectorsPartitionBinding } from '../embeddings/vectorStore.js';
+import { flushOwnerStrict } from '../core/storage/ownerBinding.js';
+import { pruneUkos, pruneEvidence, pruneFileIndex, prunePic, pruneChunks, pruneClaimVectors, pruneMindFiles, pruneGraph } from './externalPrune.js';
 import {
   externalIdentity, sourcePrefixes, itemPrefixes, assertSourceRef, isExternalFileId,
 } from './externalIdentity.js';
@@ -54,9 +61,11 @@ import { runWithDataClass } from '../core/egressGuard.js';
 // caller gives them; one that would exceed a limit is REJECTED with a reason and
 // nothing is written for it; nothing already stored is evicted to make room.
 // Updates replace in place (no extra item), so they only need the byte budget.
+// The two per-owner TOTALS apply to capped sources only: Gmail (ukoStore.UNCAPPED_CLASSES)
+// has none since 2026-11-23 (founder decision). Per-resource and per-call bounds apply to all.
 export const EXTERNAL_LIMITS = Object.freeze({
-  itemsPerOwner:    ukoStore.MAX_EXTERNAL_UKOS_PER_OWNER,   // 200 resources
-  bytesPerOwner:    50 * 1024 * 1024,                       // 50 MB of source bytes
+  itemsPerOwner:    ukoStore.MAX_EXTERNAL_UKOS_PER_OWNER,   // 200 resources (capped sources)
+  bytesPerOwner:    50 * 1024 * 1024,                       // 50 MB of source bytes (capped sources)
   bytesPerResource: 10 * 1024 * 1024,                       // 10 MB per resource
   resourcesPerSync: 100,                                    // per call
 });
@@ -93,7 +102,9 @@ export function externalUsage(ownerId) {
 }
 
 function usageOf(ownerId) {
-  const ukos = externalUKOs(ownerId);
+  // 2026-11-23: only CAPPED sources count toward the per-owner totals; an uncapped
+  // class (Gmail) neither uses nor is limited by them (ukoStore.UNCAPPED_CLASSES).
+  const ukos = externalUKOs(ownerId).filter(u => !ukoStore.UNCAPPED_CLASSES.has(ukoStore.dataClassOfUko(u)));
   return {
     // Resources, not versions (a version id is <item prefix>_<versionTag>).
     items: new Set(ukos.map(u => u.id.slice(0, u.id.lastIndexOf('_')))).size,
@@ -145,21 +156,49 @@ export function listExternalResources(ownerId, sourceId) {
  * @param {string} args.sourceId            "<connector>:<scope>", e.g. "github:inst-123"
  * @param {Array<{ externalId: string, name: string, buffer?: Buffer, content?: string,
  *                 version?: string, sourceUpdatedAt?: string|number, url?: string, title?: string }>} args.resources
+ * @param {Date|string|null} [args.observedAt]  D-1: when the sync saw the source
+ *   (observeSource, taken by connect/syncEngine.runSync BEFORE discovery). Omitted
+ *   → observed here, before ingest. null → unknown (an enqueue is conservative).
  * @param {object} [args.deps]              passed to ingestFiles (tests)
  * @returns {Promise<{ sourceId, results: Array<{ externalId, status, ukoId?, reason? }>, usage }>}
  *   status: 'created' | 'updated' | 'unchanged' | 'rejected' | 'failed'
  */
-export function syncExternalResources({ ownerId, sourceId, resources = [], deps = {} } = {}) {
+export function syncExternalResources({ ownerId, sourceId, resources = [], observedAt = undefined, deps = {} } = {}) {
   assertOwner(ownerId);
   assertSourceRef(sourceId);
   if (!Array.isArray(resources)) throw new TypeError('resources must be an array');
   // G1-2: the whole sync — parse, enrichment, every provider a parser might
   // call — runs in the source's data class (core/egressGuard.js).
   return runWithDataClass(dataClassOfSource(sourceId),
-    () => withOwnerLock(ownerId, () => syncLocked({ ownerId, sourceId, resources, deps })));
+    () => withOwnerLock(ownerId, async () => {
+      const seen = observedAt !== undefined ? observedAt : await observeSource(ownerId, sourceId, deps);
+      return syncLocked({ ownerId, sourceId, resources, observedAt: seen, deps });
+    }));
 }
 
-async function syncLocked({ ownerId, sourceId, resources, deps }) {
+/**
+ * D-1 — observe a source for the enqueue protocol: the per-source lock plus
+ * the database clock (files/documentUnderstanding.observeExternalSourceForSync).
+ * The sync engine calls this BEFORE discovery, so a deletion committed at any
+ * later point — even while resources are being fetched — keeps what this run
+ * fetched from being enqueued for understanding. Reads nothing of the source's
+ * content; returns null without a database.
+ */
+export async function observeSource(ownerId, sourceId, deps = {}) {
+  assertOwner(ownerId);
+  assertSourceRef(sourceId);
+  return observeExternalSourceForSync(ownerId, sourcePrefixes(sourceId).ukoPrefix, deps.observation ?? {});
+}
+
+// External-source understanding (extraction by a provider + canonical claims)
+// stays OFF in production (G1 plan; G1-2 founder acceptance). This switch only
+// lets the test suite exercise the real D-1 enqueue path end to end; nothing in
+// production sets it. Restricted classes (external:gmail) never produce a
+// document either way (files/fileEngine.js).
+let externalUnderstandingForTests = false;
+export function __setExternalUnderstandingForTests(on) { externalUnderstandingForTests = on === true; }
+
+async function syncLocked({ ownerId, sourceId, resources, observedAt = null, deps }) {
   // One outcome per input resource, reported in the caller's order (deterministic),
   // whatever order the ingest completes in.
   const slots = new Array(resources.length);
@@ -167,6 +206,9 @@ async function syncLocked({ ownerId, sourceId, resources, deps }) {
   const queue = [];   // accepted for ingest: { externalId, name, buffer, ident, meta, previous }
 
   // Budget as it stands, then as this call claims it, in order.
+  // 2026-11-23 (founder decision): a Gmail mailbox is imported completely — no
+  // per-owner item or byte TOTAL. Per-resource size and per-call count still apply.
+  const capped = !ukoStore.UNCAPPED_CLASSES.has(dataClassOfSource(sourceId));
   const usage = externalUsage(ownerId);
   let items = usage.items;
   let bytes = usage.bytes;
@@ -201,15 +243,36 @@ async function syncLocked({ ownerId, sourceId, resources, deps }) {
     const oldBytes = previous.reduce((n, u) => n + (u.sourceFile?.bytes ?? 0), 0);
     const nextItems = previous.length ? items : items + 1;
     const nextBytes = bytes - oldBytes + buffer.length;
-    if (nextItems > EXTERNAL_LIMITS.itemsPerOwner) { reject('limit:items'); continue; }
-    if (nextBytes > EXTERNAL_LIMITS.bytesPerOwner) { reject('limit:bytes'); continue; }
+    if (capped && nextItems > EXTERNAL_LIMITS.itemsPerOwner) { reject('limit:items'); continue; }
+    if (capped && nextBytes > EXTERNAL_LIMITS.bytesPerOwner) { reject('limit:bytes'); continue; }
     items = nextItems;
     bytes = nextBytes;
 
     queue.push({
       slot: i, externalId: r.externalId, name: r.name, buffer, ident, previous,
-      meta: { version: r.version ?? null, sourceUpdatedAt: r.sourceUpdatedAt ?? null, url: r.url ?? null, title: r.title ?? null },
+      meta: { version: r.version ?? null, sourceUpdatedAt: r.sourceUpdatedAt ?? null, url: r.url ?? null, title: r.title ?? null,
+        // D-1: carried to the understanding document (fileEngine) for the enqueue check; not stored on the UKO.
+        observedAt: observedAt ?? null },
     });
+  }
+
+  // Multi-instance connect safety — re-check the deletion records BEFORE this
+  // batch is imported: a resource deleted since the sync observed the source
+  // (another instance, an operator, an expired lease) is not written to any
+  // store. No database → nothing recorded to check; the check failing →
+  // refuse the batch (fail closed).
+  if (queue.length) {
+    let deleted = null;
+    let checkError = null;
+    try { deleted = await externalResourcesDeletedForImport(ownerId, queue.map(q => q.ident.ukoId), observedAt, deps.observation ?? {}); }
+    catch (err) { checkError = err; }
+    for (let k = queue.length - 1; k >= 0; k--) {
+      const q = queue[k];
+      if (checkError) slots[q.slot] = { externalId: q.externalId, status: 'failed', reason: 'deletion records could not be checked; import refused' };
+      else if (deleted?.has(q.ident.ukoId)) slots[q.slot] = { externalId: q.externalId, status: 'rejected', reason: 'source-deleted: removed after this sync started' };
+      else continue;
+      queue.splice(k, 1);
+    }
   }
 
   if (queue.length) {
@@ -224,7 +287,7 @@ async function syncLocked({ ownerId, sourceId, resources, deps }) {
         ownerId, conversationId: null, workspaceName: 'External source',
         // No canonical (Postgres) claims for external resources until source-scoped
         // deletion reaches that store too.
-        deps: { ...deps, skipUnderstanding: true },
+        deps: { ...deps, skipUnderstanding: !externalUnderstandingForTests },
       });
     } catch (err) {
       ingestError = err;
@@ -266,6 +329,15 @@ async function syncLocked({ ownerId, sourceId, resources, deps }) {
  *
  * @returns {Promise<{ sourceId, removed: object, remaining: object, complete: boolean, errors: string[] }>}
  */
+/**
+ * 2026-11-23 — make this owner's imported resources durable NOW (connect/syncEngine
+ * calls it before a listing or history position is persisted, so a position never
+ * runs ahead of what was stored). Throws when the write could not be completed.
+ */
+export async function flushImports() {
+  await ukoStore.flushUKOStore();
+}
+
 export function deleteExternalSource(ownerId, sourceId) {
   assertOwner(ownerId);
   assertSourceRef(sourceId);
@@ -311,10 +383,12 @@ async function sweep(ownerId, { ukoPrefix, keyPrefix, keepUkoId = null, keepFile
   // 2. Retrieval-facing derived data first: facts/evidence (knowledge lane),
   //    their claim vectors, lifecycle records, the search index, the graph.
   const hashes = new Set();
+  const sweptFactIds = new Set();
   for (const id of ids) {
     const uko = ukoStore.getUKO(ownerId, id, { includeRestricted: true });
     if (uko?.sourceFile?.hash) hashes.add(uko.sourceFile.hash);
     const factIds = step(`facts:${id}`, () => evidenceStore.factIdsForFile(ownerId, id)) ?? [];
+    for (const fid of factIds) sweptFactIds.add(String(fid));
     step(`claimVectors:${id}`, () => {
       const ns = canonicalClaimNamespace(ownerId);
       const present = new Set(idsIn(ns));
@@ -363,6 +437,38 @@ async function sweep(ownerId, { ukoPrefix, keyPrefix, keepUkoId = null, keepFile
     if (pr) { removed.reflectionNodes = pr.nodes; removed.reflectionEdges = pr.edges; if (pr.deferred) removed.reflectionDeferred = true; }
   }
 
+  // 5d. Safety Fix 2 — make the deletion hold IN THE DATABASE, whatever another
+  //     instance did meanwhile (authoritative partitions only; otherwise the JSON
+  //     stores of this one process are the truth and the steps above suffice).
+  //     (a) every pending write of the owner reaches the database (fenced);
+  //     (b) each store's LATEST row is pruned of everything under the prefix via
+  //         commit(): re-run on the newer row after a version conflict, so items
+  //         another instance added or edited since this process loaded them go too.
+  //     A concurrent writer elsewhere cannot bring them back afterwards: the
+  //     merge lets an external deletion win and refuses unfenced external
+  //     additions (core/storage/entryMerge.js, mindStore, reasoningGraph).
+  const m = { ukoPrefix, keyPrefix, keepUkoId, keepFileKey };
+  const durable = authoritativeExternalStores();
+  if (durable) {
+    const at = Date.now();
+    const commitStep = async (name, fn) => { try { await fn(); } catch (err) { errors.push(`db:${name}: ${err?.code ?? ''} ${String(err?.message ?? err).slice(0, 160)}`.trim()); } };
+    await commitStep('flush', () => flushOwnerStrict(ownerId));
+    const pruneVia = prune => cur => { const r = prune(cur); return r.removed ? r.entry : undefined; };
+    await commitStep('evidence', () => evidenceStore.evidencePartitionBinding().commit(ownerId, cur => {
+      const r = pruneEvidence(cur, m, [...sweptFactIds]);
+      for (const fid of r.factIds) sweptFactIds.add(String(fid));   // a re-run after a conflict only adds
+      return r.removed ? r.entry : undefined;
+    }, { ownerId }));
+    const facts = () => [...sweptFactIds];
+    await commitStep('ukos', () => ukoStore.ukoPartitionBinding().commit(ownerId, pruneVia(c => pruneUkos(c, m)), { ownerId }));
+    await commitStep('fileindex', () => fileIndexPartitionBinding().commit(ownerId, pruneVia(c => pruneFileIndex(c, m)), { ownerId }));
+    await commitStep('pic', () => picPartitionBinding().commit(ownerId, pruneVia(c => prunePic(c, m, facts())), { ownerId }));
+    await commitStep('chunks', () => vectorsPartitionBinding().commit(externalFileNamespace(ownerId), pruneVia(c => pruneChunks(c, m)), { ownerId }));
+    await commitStep('claimVectors', () => vectorsPartitionBinding().commit(canonicalClaimNamespace(ownerId), pruneVia(c => pruneClaimVectors(c, facts())), { ownerId }));
+    await commitStep('mind', () => mindPartitionBinding().commit(ownerId, pruneVia(c => pruneMindFiles(c, m, at))));
+    await commitStep('graph', () => graphPartitionBinding().commit(ownerId, pruneVia(c => pruneGraph(c, m, at))));
+  }
+
   // 5c. G1-1: canonical (Postgres) World Model knowledge derived from this
   //     prefix — claims with independent support survive. No-op without
   //     Postgres. Runs even when no JSON-store artefact was found: canonical
@@ -379,15 +485,18 @@ async function sweep(ownerId, { ukoPrefix, keyPrefix, keepUkoId = null, keepFile
     errors.push(`canonical: ${err?.message ?? err}`);
   }
 
-  // 6. Verify: nothing under the prefix may remain anywhere we can look.
-  const remaining = step('verify', () => remainingUnder(ownerId, { ukoPrefix, keyPrefix, keepUkoId, keepFileKey })) ?? null;
+  // 6. Verify: nothing under the prefix may remain anywhere we can look —
+  //    with authoritative partitions, in the DATABASE (fresh reads), not here.
+  const remaining = durable
+    ? await remainingInDatabase(ownerId, m, [...sweptFactIds], errors)
+    : (step('verify', () => remainingUnder(ownerId, { ukoPrefix, keyPrefix, keepUkoId, keepFileKey })) ?? null);
   if (remaining && canonical?.remaining && !canonical.remaining.skipped) {
     remaining.canonicalSources = canonical.remaining.sources;
     remaining.canonicalClaims = canonical.remaining.claimsRemaining;
     remaining.canonicalJobs = canonical.remaining.queuedJobs;
   }
   const complete = !errors.length && remaining != null && Object.values(remaining).every(n => n === 0);
-  return { removed, remaining, complete, errors, removedUkoIds: [...ids], canonical: canonical?.counts ?? null };
+  return { removed, remaining, complete, errors, removedUkoIds: [...ids], removedFactIds: [...sweptFactIds], canonical: canonical?.counts ?? null };
 }
 
 /** Counts of artefacts still stored under a prefix (all must be 0 after a complete deletion). */
@@ -407,6 +516,52 @@ export function remainingUnder(ownerId, { ukoPrefix, keyPrefix, keepUkoId = null
     fileEntries: Object.keys(mind?.files ?? {}).filter(k => k.startsWith(keyPrefix) && k !== keepFileKey).length,
     chunks:     idsIn(externalFileNamespace(ownerId)).filter(id => id.startsWith(keyPrefix) && !(chunkPrefixKept && id.startsWith(chunkPrefixKept))).length,
   };
+}
+
+/** Safety Fix 2: are all stores an external source writes to partition-authoritative? */
+function authoritativeExternalStores() {
+  try {
+    return [ukoStore.ukoPartitionBinding(), evidenceStore.evidencePartitionBinding(), fileIndexPartitionBinding(), picPartitionBinding(),
+      vectorsPartitionBinding(), mindPartitionBinding(), graphPartitionBinding()].every(b => b?.authoritative?.() === true);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Safety Fix 2: what is STILL under the prefix in the database — fresh reads of
+ * every row, counted with the same prune definitions the deletion applied.
+ * null (and an error) when a row cannot be read: completeness is then unknown.
+ */
+export async function remainingInDatabase(ownerId, m, factIds = [], errors = []) {
+  try {
+    const [uko, ev, idx, pic, chunks, claims, mind, graph] = await Promise.all([
+      ukoStore.ukoPartitionBinding().readCommitted(ownerId, { ownerId }),
+      evidenceStore.evidencePartitionBinding().readCommitted(ownerId, { ownerId }),
+      fileIndexPartitionBinding().readCommitted(ownerId, { ownerId }),
+      picPartitionBinding().readCommitted(ownerId, { ownerId }),
+      vectorsPartitionBinding().readCommitted(externalFileNamespace(ownerId), { ownerId }),
+      vectorsPartitionBinding().readCommitted(canonicalClaimNamespace(ownerId), { ownerId }),
+      mindPartitionBinding().readCommitted(ownerId),
+      graphPartitionBinding().readCommitted(ownerId),
+    ]);
+    const e = pruneEvidence(ev, m, factIds);   // the swept facts count even without their links
+    const ids = [...new Set([...factIds.map(String), ...e.factIds.map(String)])];
+    const g = pruneGraph(graph, m);
+    return {
+      ukos: pruneUkos(uko, m).removed,
+      facts: e.facts, evidence: e.evidence, fileLinks: e.files,
+      indexed: pruneFileIndex(idx, m).removed,
+      picSubjects: prunePic(pic, m, ids).removed,
+      chunks: pruneChunks(chunks, m).removed,
+      claimVectors: pruneClaimVectors(claims, ids).removed,
+      fileEntries: pruneMindFiles(mind, m).removed,
+      graphFiles: g.files, graphRefs: g.refs,
+    };
+  } catch (err) {
+    errors.push(`verify: ${String(err?.message ?? err).slice(0, 160)}`);
+    return null;
+  }
 }
 
 /** Remove every version of one resource except the kept one (no lock: callers hold it). */

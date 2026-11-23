@@ -62,7 +62,8 @@ export function createMemoryPg() {
   // Locking is stubbed, not implemented. Registered for both argument types
   // because the driver may infer either from a bigint literal.
   for (const type of [DataType.text, DataType.integer, DataType.bigint]) {
-    for (const name of ['pg_advisory_lock', 'pg_advisory_unlock', 'pg_advisory_xact_lock']) {
+    // (_shared: the account-deletion barrier's writer side, deletedOwners.js.)
+    for (const name of ['pg_advisory_lock', 'pg_advisory_unlock', 'pg_advisory_xact_lock', 'pg_advisory_xact_lock_shared']) {
       db.public.registerFunction({
         name, args: [type], returns: DataType.bool, implementation: () => true,
       });

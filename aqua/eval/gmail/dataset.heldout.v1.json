@@ -1,0 +1,867 @@
+{
+  "version": "gmail-eval.heldout.v1",
+  "synthetic": true,
+  "groundTruthPolicy": "Same policy as dataset.v1.json. Written AFTER the v1-driven fixes and BEFORE any system run on this set, to test whether those fixes generalise and whether they introduce false positives. Not used to tune anything.",
+  "now": "2026-02-04T12:00:00Z",
+  "threads": [
+    {
+      "id": "H01",
+      "messages": [
+        {
+          "id": "2b00000000000101",
+          "date": "Mon, 2 Feb 2026 09:00:00 +0000",
+          "from": "Nina Ross <nina@delta.example>",
+          "to": "Omar Haddad <omar@delta.example>",
+          "subject": "Security review",
+          "rfc": "<h01m1@eval.example>",
+          "text": "I'll send the security review by Thursday.",
+          "expect": {
+            "people": [
+              "nina@delta.example",
+              "omar@delta.example"
+            ],
+            "organizations": [
+              "delta.example"
+            ],
+            "projects": [],
+            "topic": "security review",
+            "parent": null,
+            "items": [
+              {
+                "type": "commitment",
+                "anchor": "send the security review",
+                "basis": "direct",
+                "due": "2026-02-05",
+                "actor": "nina@delta.example",
+                "status": "current"
+              }
+            ],
+            "reject": []
+          }
+        },
+        {
+          "id": "2b00000000000102",
+          "date": "Tue, 3 Feb 2026 09:00:00 +0000",
+          "from": "Nina Ross <nina@delta.example>",
+          "to": "Omar Haddad <omar@delta.example>",
+          "subject": "Re: Security review",
+          "rfc": "<h01m2@eval.example>",
+          "inReplyTo": "<h01m1@eval.example>",
+          "text": "I've sent the travel booking.",
+          "expect": {
+            "people": [
+              "nina@delta.example",
+              "omar@delta.example"
+            ],
+            "organizations": [
+              "delta.example"
+            ],
+            "projects": [],
+            "topic": "security review",
+            "parent": "2b00000000000101",
+            "items": [],
+            "reject": [
+              {
+                "type": "commitment",
+                "anchor": "sent the travel booking",
+                "why": "a completed action about a different thing; it does not close the review"
+              }
+            ]
+          }
+        }
+      ],
+      "threadExpect": {
+        "superseded": [],
+        "contradictions": [],
+        "open": [
+          "send the security review"
+        ],
+        "notOpen": [],
+        "upcoming": [
+          "send the security review"
+        ],
+        "notUpcoming": []
+      }
+    },
+    {
+      "id": "H02",
+      "messages": [
+        {
+          "id": "2b00000000000201",
+          "date": "Mon, 2 Feb 2026 10:00:00 +0000",
+          "from": "Lee Wong <lee@delta.example>",
+          "to": "Sam Park <sam@delta.example>",
+          "cc": "Nina Ross <nina@delta.example>",
+          "subject": "Onboarding deck",
+          "rfc": "<h02m1@eval.example>",
+          "text": "Hi Sam, please update the onboarding deck by Friday.\nPlease find attached the old version.",
+          "expect": {
+            "people": [
+              "lee@delta.example",
+              "sam@delta.example",
+              "nina@delta.example"
+            ],
+            "organizations": [
+              "delta.example"
+            ],
+            "projects": [],
+            "topic": "onboarding deck",
+            "parent": null,
+            "items": [
+              {
+                "type": "task",
+                "anchor": "update the onboarding deck",
+                "basis": "direct",
+                "due": "2026-02-06",
+                "assignee": "sam@delta.example",
+                "status": "current"
+              }
+            ],
+            "reject": [
+              {
+                "type": "task",
+                "anchor": "find attached",
+                "why": "courtesy formula, not a request"
+              }
+            ]
+          }
+        }
+      ],
+      "threadExpect": {
+        "superseded": [],
+        "contradictions": [],
+        "open": [
+          "update the onboarding deck"
+        ],
+        "notOpen": [],
+        "upcoming": [
+          "update the onboarding deck"
+        ],
+        "notUpcoming": []
+      }
+    },
+    {
+      "id": "H03",
+      "messages": [
+        {
+          "id": "2b00000000000301",
+          "date": "Mon, 2 Feb 2026 15:00:00 +0000",
+          "from": "Raj Mehta <raj@acme.example>",
+          "to": "Priya Sharma <priya@acme.example>, Ana Silva <ana@beta.example>",
+          "subject": "Partner FAQ",
+          "rfc": "<h03m1@eval.example>",
+          "text": "Priya, please draft the partner FAQ by Friday.",
+          "expect": {
+            "people": [
+              "raj@acme.example",
+              "priya@acme.example",
+              "ana@beta.example"
+            ],
+            "organizations": [
+              "acme.example",
+              "beta.example"
+            ],
+            "projects": [],
+            "topic": "partner faq",
+            "parent": null,
+            "items": [
+              {
+                "type": "task",
+                "anchor": "draft the partner faq",
+                "basis": "direct",
+                "due": "2026-02-06",
+                "assignee": "priya@acme.example",
+                "status": "current"
+              }
+            ],
+            "reject": []
+          }
+        },
+        {
+          "id": "2b00000000000302",
+          "date": "Tue, 3 Feb 2026 11:00:00 +0000",
+          "from": "Ana Silva <ana@beta.example>",
+          "to": "Raj Mehta <raj@acme.example>, Priya Sharma <priya@acme.example>",
+          "subject": "Re: Partner FAQ",
+          "rfc": "<h03m2@eval.example>",
+          "inReplyTo": "<h03m1@eval.example>",
+          "text": "I think there is no need to draft the partner FAQ.",
+          "expect": {
+            "people": [
+              "ana@beta.example",
+              "raj@acme.example",
+              "priya@acme.example"
+            ],
+            "organizations": [
+              "beta.example",
+              "acme.example"
+            ],
+            "projects": [],
+            "topic": "partner faq",
+            "parent": "2b00000000000301",
+            "items": [],
+            "reject": [
+              {
+                "type": "task",
+                "anchor": "draft the partner faq",
+                "why": "an opinion from someone who did not make the request; it does not call the request off"
+              }
+            ]
+          }
+        }
+      ],
+      "threadExpect": {
+        "superseded": [],
+        "contradictions": [],
+        "open": [
+          "draft the partner faq"
+        ],
+        "notOpen": [],
+        "upcoming": [],
+        "notUpcoming": []
+      }
+    },
+    {
+      "id": "H04",
+      "messages": [
+        {
+          "id": "2b00000000000401",
+          "date": "Wed, 4 Feb 2026 08:00:00 +0000",
+          "from": "Ana Silva <ana@beta.example>",
+          "to": "Ben Cole <ben@beta.example>",
+          "subject": "Demo follow-up",
+          "rfc": "<h04m1@eval.example>",
+          "text": "The demo on Monday was great, thanks. Our next review session is scheduled for February 10 at 3pm.",
+          "expect": {
+            "people": [
+              "ana@beta.example",
+              "ben@beta.example"
+            ],
+            "organizations": [
+              "beta.example"
+            ],
+            "projects": [],
+            "topic": "demo follow-up",
+            "parent": null,
+            "items": [
+              {
+                "type": "event",
+                "anchor": "review session is scheduled",
+                "basis": "direct",
+                "due": "2026-02-10",
+                "time": "15:00",
+                "status": "current"
+              }
+            ],
+            "reject": [
+              {
+                "type": "event",
+                "anchor": "demo on monday",
+                "why": "a remark about a past demo"
+              }
+            ]
+          }
+        }
+      ],
+      "threadExpect": {
+        "superseded": [],
+        "contradictions": [],
+        "open": [],
+        "notOpen": [],
+        "upcoming": [
+          "review session is scheduled"
+        ],
+        "notUpcoming": [
+          "demo on monday"
+        ]
+      }
+    },
+    {
+      "id": "H05",
+      "messages": [
+        {
+          "id": "2b00000000000501",
+          "date": "Mon, 2 Feb 2026 09:00:00 +0000",
+          "from": "Meera Rao <meera@acme.example>",
+          "to": "Raj Mehta <raj@acme.example>",
+          "subject": "Filing dates",
+          "rfc": "<h05m1@eval.example>",
+          "text": "The tax filing is due Friday.",
+          "expect": {
+            "people": [
+              "meera@acme.example",
+              "raj@acme.example"
+            ],
+            "organizations": [
+              "acme.example"
+            ],
+            "projects": [],
+            "topic": "filing dates",
+            "parent": null,
+            "items": [
+              {
+                "type": "deadline",
+                "anchor": "tax filing is due friday",
+                "basis": "direct",
+                "due": "2026-02-06",
+                "status": "superseded"
+              }
+            ],
+            "reject": []
+          }
+        },
+        {
+          "id": "2b00000000000502",
+          "date": "Mon, 2 Feb 2026 11:00:00 +0000",
+          "from": "Meera Rao <meera@acme.example>",
+          "to": "Raj Mehta <raj@acme.example>",
+          "subject": "Re: Filing dates",
+          "rfc": "<h05m2@eval.example>",
+          "inReplyTo": "<h05m1@eval.example>",
+          "text": "Update: the vendor contract deadline has moved to March 2.",
+          "expect": {
+            "people": [
+              "meera@acme.example",
+              "raj@acme.example"
+            ],
+            "organizations": [
+              "acme.example"
+            ],
+            "projects": [],
+            "topic": "filing dates",
+            "parent": "2b00000000000501",
+            "items": [
+              {
+                "type": "deadline",
+                "anchor": "vendor contract deadline has moved",
+                "basis": "direct",
+                "due": "2026-03-02",
+                "status": "current"
+              }
+            ],
+            "reject": []
+          }
+        },
+        {
+          "id": "2b00000000000503",
+          "date": "Tue, 3 Feb 2026 09:00:00 +0000",
+          "from": "Meera Rao <meera@acme.example>",
+          "to": "Raj Mehta <raj@acme.example>",
+          "subject": "Re: Filing dates",
+          "rfc": "<h05m3@eval.example>",
+          "inReplyTo": "<h05m2@eval.example>",
+          "text": "Correction: the tax filing deadline has moved to February 13.",
+          "expect": {
+            "people": [
+              "meera@acme.example",
+              "raj@acme.example"
+            ],
+            "organizations": [
+              "acme.example"
+            ],
+            "projects": [],
+            "topic": "filing dates",
+            "parent": "2b00000000000502",
+            "items": [
+              {
+                "type": "deadline",
+                "anchor": "tax filing deadline has moved",
+                "basis": "direct",
+                "due": "2026-02-13",
+                "status": "current"
+              }
+            ],
+            "reject": []
+          }
+        }
+      ],
+      "threadExpect": {
+        "superseded": [
+          {
+            "earlier": [
+              "2b00000000000501",
+              "tax filing is due friday"
+            ],
+            "later": [
+              "2b00000000000503",
+              "tax filing deadline has moved"
+            ],
+            "kind": "deadline"
+          }
+        ],
+        "contradictions": [],
+        "open": [],
+        "notOpen": [],
+        "upcoming": [
+          "tax filing deadline has moved",
+          "vendor contract deadline has moved"
+        ],
+        "notUpcoming": [
+          "tax filing is due friday"
+        ]
+      }
+    },
+    {
+      "id": "H06",
+      "messages": [
+        {
+          "id": "2b00000000000601",
+          "date": "Mon, 2 Feb 2026 12:00:00 +0000",
+          "from": "Ben Cole <ben@beta.example>",
+          "to": "Ana Silva <ana@beta.example>",
+          "subject": "Pricing sheet",
+          "rfc": "<h06m1@eval.example>",
+          "text": "Could you review the pricing sheet?",
+          "expect": {
+            "people": [
+              "ben@beta.example",
+              "ana@beta.example"
+            ],
+            "organizations": [
+              "beta.example"
+            ],
+            "projects": [],
+            "topic": "pricing sheet",
+            "parent": null,
+            "items": [
+              {
+                "type": "task",
+                "anchor": "review the pricing sheet",
+                "basis": "direct",
+                "due": null,
+                "assignee": "ana@beta.example",
+                "status": "current"
+              }
+            ],
+            "reject": []
+          }
+        },
+        {
+          "id": "2b00000000000602",
+          "date": "Mon, 2 Feb 2026 14:00:00 +0000",
+          "from": "Ana Silva <ana@beta.example>",
+          "to": "Ben Cole <ben@beta.example>",
+          "subject": "Re: Pricing sheet",
+          "rfc": "<h06m2@eval.example>",
+          "inReplyTo": "<h06m1@eval.example>",
+          "text": "Sure, I can see why the pricing is confusing. Yes, I can review it on Friday.",
+          "expect": {
+            "people": [
+              "ana@beta.example",
+              "ben@beta.example"
+            ],
+            "organizations": [
+              "beta.example"
+            ],
+            "projects": [],
+            "topic": "pricing sheet",
+            "parent": "2b00000000000601",
+            "items": [
+              {
+                "type": "commitment",
+                "anchor": "review it on friday",
+                "basis": "direct",
+                "due": "2026-02-06",
+                "actor": "ana@beta.example",
+                "status": "current"
+              }
+            ],
+            "reject": [
+              {
+                "type": "commitment",
+                "anchor": "see why",
+                "why": "agreement with a point, not a promise to act"
+              }
+            ]
+          }
+        }
+      ],
+      "threadExpect": {
+        "superseded": [],
+        "contradictions": [],
+        "open": [
+          "review the pricing sheet",
+          "review it on friday"
+        ],
+        "notOpen": [],
+        "upcoming": [
+          "review it on friday"
+        ],
+        "notUpcoming": []
+      }
+    },
+    {
+      "id": "H07",
+      "messages": [
+        {
+          "id": "2b00000000000701",
+          "date": "Mon, 2 Feb 2026 08:00:00 +0000",
+          "from": "Omar Haddad <omar@delta.example>",
+          "to": "Lee Wong <lee@delta.example>",
+          "subject": "User guide",
+          "rfc": "<h07m1@eval.example>",
+          "text": "Please translate the user guide by Wednesday.",
+          "expect": {
+            "people": [
+              "omar@delta.example",
+              "lee@delta.example"
+            ],
+            "organizations": [
+              "delta.example"
+            ],
+            "projects": [],
+            "topic": "user guide",
+            "parent": null,
+            "items": [
+              {
+                "type": "task",
+                "anchor": "translate the user guide",
+                "basis": "direct",
+                "due": "2026-02-04",
+                "assignee": "lee@delta.example",
+                "status": "closed"
+              }
+            ],
+            "reject": []
+          }
+        },
+        {
+          "id": "2b00000000000702",
+          "date": "Tue, 3 Feb 2026 08:00:00 +0000",
+          "from": "Omar Haddad <omar@delta.example>",
+          "to": "Lee Wong <lee@delta.example>",
+          "subject": "Re: User guide",
+          "rfc": "<h07m2@eval.example>",
+          "inReplyTo": "<h07m1@eval.example>",
+          "text": "Is the user guide translation done?",
+          "expect": {
+            "people": [
+              "omar@delta.example",
+              "lee@delta.example"
+            ],
+            "organizations": [
+              "delta.example"
+            ],
+            "projects": [],
+            "topic": "user guide",
+            "parent": "2b00000000000701",
+            "items": [],
+            "reject": [
+              {
+                "type": "task",
+                "anchor": "translation done",
+                "why": "a status question"
+              }
+            ]
+          }
+        },
+        {
+          "id": "2b00000000000703",
+          "date": "Tue, 3 Feb 2026 10:00:00 +0000",
+          "from": "Lee Wong <lee@delta.example>",
+          "to": "Omar Haddad <omar@delta.example>",
+          "subject": "Re: User guide",
+          "rfc": "<h07m3@eval.example>",
+          "inReplyTo": "<h07m2@eval.example>",
+          "text": "Yes, the user guide is translated now.",
+          "expect": {
+            "people": [
+              "lee@delta.example",
+              "omar@delta.example"
+            ],
+            "organizations": [
+              "delta.example"
+            ],
+            "projects": [],
+            "topic": "user guide",
+            "parent": "2b00000000000702",
+            "items": [],
+            "reject": []
+          }
+        }
+      ],
+      "threadExpect": {
+        "superseded": [],
+        "contradictions": [],
+        "open": [],
+        "notOpen": [
+          "translate the user guide"
+        ],
+        "upcoming": [],
+        "notUpcoming": [
+          "translate the user guide"
+        ]
+      }
+    },
+    {
+      "id": "H08",
+      "messages": [
+        {
+          "id": "2b00000000000801",
+          "date": "Mon, 2 Feb 2026 16:00:00 +0000",
+          "from": "Ben Cole <ben@beta.example>",
+          "to": "Ana Silva <ana@beta.example>, Ana Costa <acosta@gamma.example>",
+          "subject": "Order form",
+          "rfc": "<h08m1@eval.example>",
+          "text": "Ana Silva, please send the signed order form. Ana, please also check the invoice.",
+          "expect": {
+            "people": [
+              "ben@beta.example",
+              "ana@beta.example",
+              "acosta@gamma.example"
+            ],
+            "organizations": [
+              "beta.example",
+              "gamma.example"
+            ],
+            "projects": [],
+            "topic": "order form",
+            "parent": null,
+            "items": [
+              {
+                "type": "task",
+                "anchor": "send the signed order form",
+                "basis": "direct",
+                "due": null,
+                "assignee": "ana@beta.example",
+                "status": "current"
+              },
+              {
+                "type": "task",
+                "anchor": "check the invoice",
+                "basis": "direct",
+                "due": null,
+                "assignee": "ambiguous",
+                "status": "current"
+              }
+            ],
+            "reject": []
+          }
+        }
+      ],
+      "threadExpect": {
+        "superseded": [],
+        "contradictions": [],
+        "open": [
+          "send the signed order form",
+          "check the invoice"
+        ],
+        "notOpen": [],
+        "upcoming": [],
+        "notUpcoming": []
+      }
+    },
+    {
+      "id": "H09",
+      "messages": [
+        {
+          "id": "2b00000000000901",
+          "date": "Tue, 3 Feb 2026 09:00:00 +0000",
+          "from": "Priya Sharma <priya@acme.example>",
+          "to": "Raj Mehta <raj@acme.example>",
+          "subject": "Supplier",
+          "rfc": "<h09m1@eval.example>",
+          "text": "I'll call the supplier tomorrow. I'll be in Pune on Friday.",
+          "expect": {
+            "people": [
+              "priya@acme.example",
+              "raj@acme.example"
+            ],
+            "organizations": [
+              "acme.example"
+            ],
+            "projects": [],
+            "topic": "supplier",
+            "parent": null,
+            "items": [
+              {
+                "type": "commitment",
+                "anchor": "call the supplier tomorrow",
+                "basis": "direct",
+                "due": "2026-02-04",
+                "actor": "priya@acme.example",
+                "status": "current"
+              },
+              {
+                "type": "commitment",
+                "anchor": "be in pune",
+                "basis": "inference",
+                "optional": true
+              }
+            ],
+            "reject": []
+          }
+        }
+      ],
+      "threadExpect": {
+        "superseded": [],
+        "contradictions": [],
+        "open": [
+          "call the supplier tomorrow"
+        ],
+        "notOpen": [],
+        "upcoming": [
+          "call the supplier tomorrow"
+        ],
+        "notUpcoming": []
+      }
+    },
+    {
+      "id": "H10",
+      "messages": [
+        {
+          "id": "2b00000000001001",
+          "date": "Mon, 2 Feb 2026 09:30:00 +0000",
+          "from": "Priya Sharma <priya@acme.example>",
+          "to": "Raj Mehta <raj@acme.example>",
+          "subject": "Hiring and offsite",
+          "rfc": "<h10m1@eval.example>",
+          "text": "I'll send the hiring plan by Thursday. I'll also send the offsite budget by Friday.",
+          "expect": {
+            "people": [
+              "priya@acme.example",
+              "raj@acme.example"
+            ],
+            "organizations": [
+              "acme.example"
+            ],
+            "projects": [],
+            "topic": "hiring and offsite",
+            "parent": null,
+            "items": [
+              {
+                "type": "commitment",
+                "anchor": "send the hiring plan",
+                "basis": "direct",
+                "due": "2026-02-05",
+                "actor": "priya@acme.example",
+                "status": "closed"
+              },
+              {
+                "type": "commitment",
+                "anchor": "send the offsite budget",
+                "basis": "direct",
+                "due": "2026-02-06",
+                "actor": "priya@acme.example",
+                "status": "current"
+              }
+            ],
+            "reject": []
+          }
+        },
+        {
+          "id": "2b00000000001002",
+          "date": "Wed, 4 Feb 2026 09:00:00 +0000",
+          "from": "Priya Sharma <priya@acme.example>",
+          "to": "Raj Mehta <raj@acme.example>",
+          "subject": "Re: Hiring and offsite",
+          "rfc": "<h10m2@eval.example>",
+          "inReplyTo": "<h10m1@eval.example>",
+          "text": "I've sent the hiring plan.",
+          "expect": {
+            "people": [
+              "priya@acme.example",
+              "raj@acme.example"
+            ],
+            "organizations": [
+              "acme.example"
+            ],
+            "projects": [],
+            "topic": "hiring and offsite",
+            "parent": "2b00000000001001",
+            "items": [],
+            "reject": []
+          }
+        }
+      ],
+      "threadExpect": {
+        "superseded": [],
+        "contradictions": [],
+        "open": [
+          "send the offsite budget"
+        ],
+        "notOpen": [
+          "send the hiring plan"
+        ],
+        "upcoming": [
+          "send the offsite budget"
+        ],
+        "notUpcoming": [
+          "send the hiring plan"
+        ]
+      }
+    }
+  ],
+  "questions": [
+    {
+      "id": "HQ1",
+      "question": "What are my open commitments?",
+      "intent": [
+        "open_commitments"
+      ],
+      "mustInclude": [
+        "send the security review",
+        "send the offsite budget",
+        "draft the partner faq",
+        "review it on friday",
+        "update the onboarding deck"
+      ],
+      "mustExclude": [
+        "send the hiring plan",
+        "translate the user guide",
+        "see why",
+        "find attached"
+      ]
+    },
+    {
+      "id": "HQ2",
+      "question": "What deadlines are coming up?",
+      "intent": [
+        "upcoming_deadlines"
+      ],
+      "mustInclude": [
+        "tax filing deadline has moved",
+        "review session is scheduled",
+        "send the offsite budget"
+      ],
+      "mustExclude": [
+        "tax filing is due friday",
+        "send the hiring plan",
+        "demo on monday"
+      ]
+    },
+    {
+      "id": "HQ3",
+      "question": "What did Ana Silva promise?",
+      "intent": [
+        "person"
+      ],
+      "mustInclude": [
+        "review it on friday"
+      ],
+      "mustExclude": [
+        "see why"
+      ]
+    },
+    {
+      "id": "HQ4",
+      "question": "When is the next review session?",
+      "intent": [
+        "upcoming_deadlines"
+      ],
+      "mustInclude": [
+        "review session is scheduled"
+      ],
+      "mustExclude": []
+    },
+    {
+      "id": "HQ5",
+      "question": "What did we decide about the logo?",
+      "intent": [
+        "decisions_about"
+      ],
+      "mustInclude": [],
+      "mustExclude": []
+    }
+  ]
+}

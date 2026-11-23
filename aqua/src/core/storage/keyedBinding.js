@@ -31,10 +31,12 @@ import fs from 'node:fs';
 import {
   parsePartitionModes, registerPartitionBinding, partitionRepositoryForBindings, partitionsDatabaseConfigured,
 } from './ownerBinding.js';
-import { mergeEntry } from './entryMerge.js';
-import { isOwnerDeleted } from './deletedOwners.js';
+import { mergeEntry, mergeStats, withoutExternal } from './entryMerge.js';
+import { isOwnerDeleted, OwnerDeletedError } from './deletedOwners.js';
 import { noteWrite } from './requestWrites.js';
 import { errorText } from '../errorText.js';
+import { registerFenceInvalidator, isWriteRefused, isFenceLost, withWriteOrigins, externalWritesAllowed, FenceLostError } from './writeFence.js';
+import { createOriginTracker } from './pendingOrigins.js';
 
 const FLUSH_DEBOUNCE_MS = 250;
 const RETRY_CAP_MS = 30_000;
@@ -77,8 +79,14 @@ export function bindKeyedStore(spec) {
   const dirty = new Set();
   const pendingDelete = new Map();   // key → local deletion time
   const backupPending = new Map();
+  // Multi-instance connect safety (core/storage/writeFence.js): keys whose
+  // pending writes were DISCARDED because their owner's write fence was lost.
+  const discarded = new Map();       // key → FenceLostError
+  // Safety Fix 3: the connect-operation fences each pending write was CREATED
+  // under (core/storage/pendingOrigins.js) — carried to its eventual write.
+  const tracker = createOriginTracker();
   const maxOwners = Number(process.env.AQUA_PARTITION_STORE_OWNERS) > 0 ? Number(process.env.AQUA_PARTITION_STORE_OWNERS) : 2_000;
-  const stats = { flushed: 0, writes: 0, unchanged: 0, merged: 0, deletes: 0, droppedStale: 0, unowned: 0, failures: 0, retries: 0, installs: 0, evictions: 0, notReady: 0 };
+  const stats = { fenceDiscards: 0, flushed: 0, writes: 0, unchanged: 0, merged: 0, deletes: 0, droppedStale: 0, unowned: 0, failures: 0, retries: 0, installs: 0, evictions: 0, notReady: 0 };
   let lastError = null; let timer = null; let running = null; let retryDelay = 0; let backupWriter = null;
 
   const noteOwner = (key, owner) => {
@@ -149,23 +157,33 @@ export function bindKeyedStore(spec) {
     const owner = keyOwner.get(key) ?? ownerOf(key, encoded);
     if (!owner) { stats.unowned++; return; }      // not owner data we can place: left to the JSON path
     // Phase 3: a deleted account's data is never written back; its deletion still lands.
-    if (!del && await isOwnerDeleted(owner)) { stats.blockedDeletedOwner = (stats.blockedDeletedOwner ?? 0) + 1; return; }
+    const gone = await isOwnerDeleted(owner);
+    // Refused explicitly (discarded by the caller, never retried) — not a silent success.
+    if (!del && gone) { stats.blockedDeletedOwner = (stats.blockedDeletedOwner ?? 0) + 1; throw new OwnerDeletedError(); }
     noteOwner(key, owner);
     const b = baseOf(key);
+    // Safety Fix 2/3: external-origin items — deletion wins; additions AND updates
+    // only when this write carries a valid origin fence (proven in its transaction).
+    const allowExternal = externalWritesAllowed(owner);
+    const mopts = { allowExternalAdditions: allowExternal, allowExternalWrites: allowExternal, key };
+    // No row to merge with (first write / re-creation): an unfenced write adds no external item.
+    const guard = e => (allowExternal ? e : withoutExternal(e, mergeSchema, mopts));
+    const refusedBefore = mergeStats.externalAdditionsRefused + mergeStats.externalUpdatesRefused;
 
     let result = null; let kind = 'write';
     const r = await repo().update(storeKey, pk(key), (cur, meta) => {
       const theirs = cur ? JSON.parse(cur) : null;
       if (del) {
-        if (ours === undefined) { result = null; kind = 'delete'; return meta.deleted ? undefined : null; }
-        result = ours; kind = 'recreate';              // re-created by THIS process after its own delete
-        return JSON.stringify(ours);
+        // A deleted ACCOUNT's pending deletion stays a pure tombstone (nothing re-created).
+        if (ours === undefined || gone) { result = null; kind = 'delete'; return meta.deleted ? undefined : null; }
+        result = guard(ours); kind = 'recreate';       // re-created by THIS process after its own delete
+        return JSON.stringify(result);
       }
       if (meta.deleted) {
-        if (loadedVersion.get(key) === meta.version) { result = ours; kind = 'recreate'; return JSON.stringify(ours); }
+        if (loadedVersion.get(key) === meta.version) { result = guard(ours); kind = 'recreate'; return JSON.stringify(result); }
         if (b !== undefined) {
           // Deleted elsewhere after our base: what we did not change is gone; what we changed survives.
-          const kept = mergeEntry(ours, spec.empty ? spec.empty() : {}, b, mergeSchema);
+          const kept = mergeEntry(ours, spec.empty ? spec.empty() : {}, b, mergeSchema, mopts);
           const empty = kept == null || (Array.isArray(kept) ? !kept.length : !Object.keys(kept).length);
           if (empty) { result = null; kind = 'dropped-stale'; return undefined; }
           result = kept; kind = 'recreate';
@@ -173,16 +191,21 @@ export function bindKeyedStore(spec) {
         }
         const cut = (meta.deletedAt ?? 0) + repo().clockOffsetMs();
         if (changedAt(ours) <= cut) { result = null; kind = 'dropped-stale'; return undefined; }
-        result = ours; kind = 'recreate';
-        return JSON.stringify(ours);
+        result = guard(ours); kind = 'recreate';
+        return JSON.stringify(result);
       }
-      result = theirs ? mergeEntry(ours, theirs, b, mergeSchema) : ours;
+      result = theirs ? mergeEntry(ours, theirs, b, mergeSchema, mopts) : guard(ours);
       kind = theirs ? 'merge' : 'write';
       const text = JSON.stringify(result);
       if (text === cur) { kind = 'unchanged'; return undefined; }
       return text;
     }, { ownerId: owner, maxAttempts: 20 });
 
+    const refused = mergeStats.externalAdditionsRefused + mergeStats.externalUpdatesRefused - refusedBefore;
+    if (refused > 0) {
+      stats.externalAdditionsRefused = (stats.externalAdditionsRefused ?? 0) + refused;
+      console.warn(`[STORE] ${label}: refused ${refused} external item addition(s)/update(s) without a valid connect fence`);
+    }
     stats.flushed++;
     if (kind === 'unchanged' || !r.changed) stats.unchanged++;
     else if (kind === 'merge') stats.merged++;
@@ -201,6 +224,55 @@ export function bindKeyedStore(spec) {
     }
   }
 
+  /** The owner of a key, as far as this binding can tell (no throw). */
+  const ownerOfKey = key => {
+    const known = keyOwner.get(key);
+    if (known) return known;
+    try { return ownerOf(key, spec.encode(key)) ?? null; } catch { return null; }
+  };
+  /** Fence lost for this key's owner: record its pending write as discarded — never re-queued. */
+  function discard(key, err) {
+    dirty.delete(key); pendingDelete.delete(key); backupPending.delete(key);
+    tracker.clear(key);
+    discarded.set(key, err);
+    stats.fenceDiscards++;
+    // The entry in memory is this process's unproven copy: drop it too (keys
+    // taken out of `dirty` by an in-flight flush are not in ownerKeys yet).
+    if (authoritative()) {
+      try { spec.install(key, null); } catch { /* store-specific */ }
+      loadedVersion.delete(key); base.delete(key);
+    }
+  }
+
+  /**
+   * Safety Fix 3: write ONE pending entry with the origins it was CREATED under
+   * (not the context this flush happens to run in). See pendingOrigins.plan.
+   */
+  async function writePending(key) {
+    const p = tracker.take(key);
+    if (p.refuse) throw p.refuse;                    // work of an invalidated operation only
+    const del = pendingDelete.get(key);
+    try {
+      await withWriteOrigins(p.origins, () => flushKey(key));
+    } catch (err) {
+      if (isFenceLost(err) && p.origins.length && p.plain) {
+        // An origin was refused in the transaction (lost for good now). Changes
+        // made outside any operation still persist — as a plain write, external
+        // items frozen; never under another fence.
+        if (del) pendingDelete.set(key, del);
+        await withWriteOrigins([], () => flushKey(key));
+        discarded.set(key, err); stats.fenceDiscards++;
+        return;
+      }
+      if (!isWriteRefused(err)) tracker.restore(key, p);   // an ordinary failure: retried with the SAME origins
+      throw err;
+    }
+    if (p.lost.length && p.valid.length) {
+      discarded.set(key, new FenceLostError(ownerOfKey(key), 'pending write mixed with invalidated work: its external changes were refused'));
+      stats.fenceDiscards++;
+    }
+  }
+
   async function flush() {
     while (running) await running;
     if (!dirty.size) return;
@@ -210,7 +282,11 @@ export function bindKeyedStore(spec) {
       const failed = [];
       for (const key of keys) {
         const del = pendingDelete.get(key);
-        try { await flushKey(key); } catch (err) { stats.failures++; lastError = errorText(err); failed.push([key, del]); }
+        try { await writePending(key); }
+        catch (err) {
+          if (isWriteRefused(err)) { discard(key, err); continue; }   // fence lost / account deleted: never into the retry queue
+          stats.failures++; lastError = errorText(err); failed.push([key, del]);
+        }
       }
       if (failed.length) {
         for (const [key, del] of failed) { dirty.add(key); if (del) pendingDelete.set(key, del); }
@@ -228,21 +304,40 @@ export function bindKeyedStore(spec) {
   async function flushOnly(keys) {
     while (running) await running;
     const mine = [...keys].filter(k => dirty.has(k));
-    if (!mine.length) return;
-    running = (async () => {
-      for (const key of mine) {
-        const del = pendingDelete.get(key);
-        dirty.delete(key);
-        try { await flushKey(key); }
-        catch (err) {
-          stats.failures++; lastError = errorText(err);
-          dirty.add(key); if (del) pendingDelete.set(key, del);
-          schedule(Math.max(500, retryDelay));
+    if (mine.length) {
+      running = (async () => {
+        for (const key of mine) {
+          const del = pendingDelete.get(key);
+          dirty.delete(key);
+          try { await writePending(key); }
+          catch (err) {
+            if (isWriteRefused(err)) { discard(key, err); continue; }
+            stats.failures++; lastError = errorText(err);
+            dirty.add(key); if (del) pendingDelete.set(key, del);
+            schedule(Math.max(500, retryDelay));
+          }
         }
-      }
-    })();
-    try { await running; } finally { running = null; }
+      })();
+      try { await running; } finally { running = null; }
+    }
+    // Explicit failure for a caller whose writes were discarded (fence lost).
+    for (const k of keys) {
+      const err = discarded.get(k);
+      if (err) { discarded.delete(k); throw err; }
+    }
   }
+
+  // A fence was lost (Safety Fix 3: per operation, not per owner): discard the
+  // pending writes CREATED UNDER IT that carry nothing else (discard also drops
+  // the unproven in-memory copy); a write that also holds changes made outside
+  // any operation is kept and written without origins (external items frozen).
+  registerFenceInvalidator((owner, err, fence) => {
+    if (mode === 'off' || !fence) return;
+    for (const k of tracker.keysOf(fence)) {
+      if (tracker.isPlain(k)) continue;
+      if (dirty.has(k) || pendingDelete.has(k)) discard(k, err);
+    }
+  });
 
   const binding = {
     storeKey, label,
@@ -270,12 +365,16 @@ export function bindKeyedStore(spec) {
     isDirty: key => dirty.has(key) || pendingDelete.has(key),
     markDirty(key) {
       if (mode === 'off' || key == null) return;
+      discarded.delete(key);       // a new write supersedes an earlier discard
+      tracker.note(key, ownerOfKey(key));   // Safety Fix 3: the origin is recorded NOW, at creation
       dirty.add(key);
       noteWrite(binding, key);   // Phase 4A: the request's durable write boundary
       schedule();
     },
     markDeleted(key, at = Date.now()) {
       if (mode === 'off' || key == null) return;
+      discarded.delete(key);
+      tracker.note(key, ownerOfKey(key));
       pendingDelete.set(key, at);
       dirty.add(key);
       noteWrite(binding, key);
@@ -283,6 +382,8 @@ export function bindKeyedStore(spec) {
     },
     /** Tell the binding an entry's owner before it is first written (e.g. from route context). */
     noteOwner,
+    /** The store's merge schema (read-only; tests and diagnostics). */
+    get mergeSchema() { return mergeSchema; },
     /**
      * Write ONE entry NOW, version-checked, re-running `mutate(current|null,
      * meta)` on the newest row after a conflict. For operations that must
@@ -307,6 +408,15 @@ export function bindKeyedStore(spec) {
       spec.install(key, result === null ? null : spec.decode(result, key));
       if (mode === 'on') { backupPending.set(key, result); await backupFlush(); }
       return result;
+    },
+    /**
+     * Safety Fix 2: the entry AS THE DATABASE HOLDS IT NOW (fresh read, nothing
+     * installed or cached here). null = absent or deleted. For verification.
+     */
+    async readCommitted(key, { ownerId } = {}) {
+      const owner = ownerId ?? keyOwner.get(key) ?? ownerOf(key, spec.encode(key));
+      const cur = await repo().get(storeKey, pk(key), { ownerId: owner, fresh: true });
+      return cur && !cur.deleted && cur.data != null ? JSON.parse(cur.data) : null;
     },
     wanted(owner, versions) {
       if (!authoritative()) return [];
@@ -347,6 +457,8 @@ export function bindKeyedStore(spec) {
     },
     flush,
     pendingCount: () => dirty.size,
+    /** Keys of this owner with a pending write (connect lease release: flushOwnerStrict). */
+    pendingKeysOfOwner: owner => [...new Set([...dirty, ...pendingDelete.keys()])].filter(k => ownerOfKey(k) === String(owner)),
     async configure() {
       if (!authoritative()) return;
       try {
@@ -365,7 +477,7 @@ export function bindKeyedStore(spec) {
     },
     status: () => ({ store: storeKey, mode, reason, loadedOwners: loadedOwners.size, entries: loadedVersion.size, pending: dirty.size, lastError, ...stats }),
     _reset() {
-      loadedVersion.clear(); base.clear(); keyOwner.clear(); ownerKeys.clear(); loadedOwners.clear(); dirty.clear(); pendingDelete.clear(); backupPending.clear();
+      loadedVersion.clear(); base.clear(); keyOwner.clear(); ownerKeys.clear(); loadedOwners.clear(); dirty.clear(); pendingDelete.clear(); backupPending.clear(); discarded.clear(); tracker.reset();
       if (timer) clearTimeout(timer); timer = null; lastError = null; for (const k of Object.keys(stats)) stats[k] = 0;
     },
   };

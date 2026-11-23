@@ -115,12 +115,19 @@ export async function ingestFiles({ files, ownerId = null, conversationId = null
   const individual = classified.filter(c => c.external || !claimed.has(c.name));
 
   const documents = [];
+  const restricted = new Set();   // Phase 4B: UKOs of a restricted class (e.g. Gmail)
   await promisePool(individual, PARALLELISM, async (item) => {
     const r = await ingestOne({ item, ownerId, conversationId, traceId, deps });
     results.push(r.result);
     if (r.ukoId) ukoIds.push(r.ukoId);
+    if (r.ukoId && r.restricted) restricted.add(r.ukoId);
     if (r.document) documents.push(r.document);
   });
+  // Phase 4B (2026-11-23): restricted objects never enter the graph / PIC bookkeeping. They
+  // add no evidence (integration is skipped for them), PIC cannot read them, and registering
+  // them only copied their identifiers into PIC and — 20,000-subject FIFO bound — could evict
+  // the owner's own lifecycle records on a large mailbox (measured: 1,367 subjects for one import).
+  const graphUkoIds = ukoIds.filter(id => !restricted.has(id));
 
   // ── Canonical World Model (2026-10-11) ──
   // Each document's text through the same understanding pipeline as a chat
@@ -140,7 +147,7 @@ export async function ingestFiles({ files, ownerId = null, conversationId = null
   // sinks an otherwise-successful ingest. Opt-out via deps.skipGraph (batch
   // sub-ingests, tests that assert on raw results).
   let graph = null;
-  if (ownerId && !deps.skipGraph && ukoIds.length) {
+  if (ownerId && !deps.skipGraph && graphUkoIds.length) {
     try {
       const { rebuildOwnerGraph } = await import('../reasoning/graphBuilder.js');
       const es = deps.evidenceStore ?? await import('./evidenceStore.js');
@@ -157,7 +164,7 @@ export async function ingestFiles({ files, ownerId = null, conversationId = null
       try {
         const pic = deps.pic ?? await import('../pic/core.js');
         pic.onKnowledgeIngested({
-          ownerId, ukoIds, traceId,
+          ownerId, ukoIds: graphUkoIds, traceId,
           entities: built.entities, contradictions: built.contradictions,
           deps: { evidenceStore: es, ukoStore: us },
         });
@@ -224,7 +231,11 @@ async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
 
   try {
     // ── Parse (or content-hash cache) ──
-    const cached = getCachedKnowledge(hash, cls.kind, { ownerId });
+    // Gmail Phase 1 — the content-hash cache carries no data class (and with
+    // partitions off it is shared by identical bytes across owners): restricted
+    // content neither reads from it nor is copied into it. It is parsed afresh
+    // and lives only in its own UKO.
+    const cached = unrestricted ? getCachedKnowledge(hash, cls.kind, { ownerId }) : null;
     if (cached) {
       uko.processing.cacheHit = true;
       for (const f of CACHED_FIELDS) uko[f] = structuredClone(cached[f]);
@@ -244,7 +255,7 @@ async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
     // ── Enrichment: knowledge only on cache miss; integration always ──
     if (!uko.processing.cacheHit) {
       await runEnrichment(uko, { deps, only: 'knowledge' });
-      cacheKnowledge(uko);
+      if (unrestricted) cacheKnowledge(uko);
     }
     // G1-2 — integration stages copy content into stores that carry no data
     // class and feed every prompt (file memory + its Gemini embeddings, the
@@ -264,7 +275,7 @@ async function ingestOne({ item, ownerId, conversationId, traceId, deps }) {
       attachmentId = attach(conversationId, toLegacyAttachment(uko)).id;
     }
 
-    return { ukoId: uko.id, result: legacyResult(uko, attachmentId),
+    return { ukoId: uko.id, restricted: !unrestricted, result: legacyResult(uko, attachmentId),
       // Understanding (extraction by a provider + canonical claims) only for
       // unrestricted content (G1-2; external understanding is also gated off).
       document: unrestricted ? {

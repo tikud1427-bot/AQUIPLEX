@@ -23,6 +23,22 @@
  *   logs:        { field: { id, time, cap } }  append-mostly arrays, union by id
  *   finalize:    (merged) => merged            fix-ups (e.g. drop links to deleted items)
  * Any other field: three-way on the whole value, ours on a double change.
+ *
+ * EXTERNAL-ORIGIN ITEMS (Safety Fix 2). An item spec (root / collections /
+ * logMaps entries) or `linkExternal[field]` may declare `external(id, item, ctx)`
+ * — true for data derived from a connected external source. For those items:
+ *   · present in the base, missing on EITHER side → DELETED, whatever the other
+ *     side did to it (a disconnect wins over a concurrent edit, archive,
+ *     consolidation or re-touch on another instance);
+ *   · not in the base, present only on OUR side → an ADDITION, kept only when
+ *     `opts.allowExternalAdditions` (the writer holds a valid connect fence;
+ *     the write transaction re-checks that fence). Otherwise refused — a stale
+ *     or unfenced process cannot re-create a deleted external item.
+ *   · present on both sides → the ordinary three-way merge — but only for a
+ *     write that may write external data (`opts.allowExternalWrites`, Safety
+ *     Fix 3: it carries a valid origin fence). Any other write keeps THE
+ *     DATABASE'S version: a stale or plain process cannot update external items.
+ * Items without an `external` predicate merge exactly as before.
  */
 
 /** Deterministic JSON (sorted keys) — equality must not depend on key order. */
@@ -35,7 +51,7 @@ export function stable(v) {
 const eq = (a, b) => stable(a) === stable(b);
 const defaultTime = x => Number(x?.updatedAt ?? x?.lastAt ?? x?.at ?? x?.ts ?? x?.uploadedAt ?? x?.createdAt ?? 0) || 0;
 
-export const mergeStats = { conflicts: 0, editBeatDelete: 0 };
+export const mergeStats = { conflicts: 0, editBeatDelete: 0, externalDeleteWins: 0, externalAdditionsRefused: 0, externalUpdatesRefused: 0 };
 
 /** Pick the newer of two conflicting items, deterministically. */
 function newer(o, t, time) {
@@ -68,11 +84,41 @@ export function mergeItem(o, t, b, { time = defaultTime, counters = [] } = {}, h
   return win;
 }
 
-function mergeMap(o = {}, t = {}, b, spec, hasBase) {
+/**
+ * One EXTERNAL-ORIGIN item (see the header). `undefined` = absent afterwards.
+ */
+export function mergeExternalItem(o, t, b, spec, hasBase, allowAdd) {
+  if (o === undefined && t === undefined) return undefined;
+  if (hasBase && b !== undefined) {
+    if (o === undefined || t === undefined) {
+      // Deleted on one side: gone. Counted when the other side had changed it.
+      const other = o === undefined ? t : o;
+      if (!eq(other, b)) mergeStats.externalDeleteWins++;
+      return undefined;
+    }
+    if (!allowAdd) { if (!eq(o, t)) mergeStats.externalUpdatesRefused++; return t; }   // no valid origin: the database's version
+    return mergeItem(o, t, b, spec, true);
+  }
+  if (t === undefined) {                       // ours only, no base: our addition
+    if (allowAdd) return o;
+    mergeStats.externalAdditionsRefused++;
+    return undefined;
+  }
+  if (o === undefined) return t;               // in the database already
+  if (!allowAdd) { if (!eq(o, t)) mergeStats.externalUpdatesRefused++; return t; }
+  return mergeItem(o, t, b, spec, hasBase);
+}
+
+const isExternalKey = (spec, k, o, t, b, ctx) =>
+  typeof spec?.external === 'function' && Boolean(spec.external(k, o ?? t ?? b, ctx));
+
+function mergeMap(o = {}, t = {}, b, spec, hasBase, x = {}) {
   const out = {};
   const keys = new Set([...Object.keys(t ?? {}), ...Object.keys(o ?? {}), ...Object.keys(b ?? {})]);
   for (const k of [...keys].sort()) {
-    const v = mergeItem(o?.[k], t?.[k], b?.[k], spec, hasBase);
+    const v = isExternalKey(spec, k, o?.[k], t?.[k], b?.[k], x.ctx)
+      ? mergeExternalItem(o?.[k], t?.[k], b?.[k], spec, hasBase, x.allowExternalAdditions !== false)
+      : mergeItem(o?.[k], t?.[k], b?.[k], spec, hasBase);
     if (v !== undefined) out[k] = v;
   }
   return out;
@@ -91,12 +137,29 @@ export function mergeSet(o = [], t = [], b, hasBase = true) {
   return out;
 }
 
-function mergeLink(o, t, b, hasBase) {
+function mergeLink(o, t, b, hasBase, external = null, x = {}) {
   const isObj = v => v && typeof v === 'object' && !Array.isArray(v);
   const out = {};
   for (const k of new Set([...Object.keys(t ?? {}), ...Object.keys(o ?? {}), ...Object.keys(b ?? {})])) {
     const ov = o?.[k]; const tv = t?.[k]; const bv = b?.[k];
     if (ov === undefined && tv === undefined) continue;
+    if (external && external(k, x.ctx)) {
+      // An external link key (e.g. byFile[ext_…]): deletion on either side wins;
+      // an unfenced addition is refused (see EXTERNAL-ORIGIN ITEMS).
+      if (hasBase && bv !== undefined && (ov === undefined || tv === undefined)) {
+        if (!eq(ov === undefined ? tv : ov, bv)) mergeStats.externalDeleteWins++;
+        continue;
+      }
+      if (!(hasBase && bv !== undefined) && tv === undefined && x.allowExternalAdditions === false) {
+        mergeStats.externalAdditionsRefused++;
+        continue;
+      }
+      if (x.allowExternalAdditions === false && ov !== undefined && tv !== undefined) {
+        if (!eq(ov, tv)) mergeStats.externalUpdatesRefused++;
+        out[k] = tv;                                  // no valid origin: the database's version
+        continue;
+      }
+    }
     if (hasBase && bv !== undefined) {
       if (ov === undefined && eq(tv, bv)) continue;   // removed here, untouched there
       if (tv === undefined && eq(ov, bv)) continue;   // removed there, untouched here
@@ -121,13 +184,31 @@ function mergeLog(o = [], t = [], spec) {
   return spec.cap ? all.slice(-spec.cap) : all;
 }
 
-function mergeRootList(o = [], t = [], b, spec, hasBase) {
+function mergeRootList(o = [], t = [], b, spec, hasBase, x = {}) {
   const id = spec.id ?? (x => x?.id);
   const toMap = arr => Object.fromEntries((arr ?? []).map(x => [id(x), x]));
-  const m = mergeMap(toMap(o), toMap(t), b ? toMap(b) : undefined, spec, hasBase && Array.isArray(b));
+  const m = mergeMap(toMap(o), toMap(t), b ? toMap(b) : undefined, spec, hasBase && Array.isArray(b), x);
   const time = spec.time ?? defaultTime;
   const list = Object.values(m).sort((x, y) => time(x) - time(y) || (String(id(x)) < String(id(y)) ? -1 : 1));
   return spec.cap ? list.slice(-spec.cap) : list;
+}
+
+/** Does this schema declare any external-origin items? */
+export const schemaHasExternal = s => Boolean(s && (
+  typeof s.root?.external === 'function' || typeof s.rootList?.external === 'function'
+  || Object.values(s.collections ?? {}).some(c => typeof c?.external === 'function')
+  || Object.values(s.logMaps ?? {}).some(c => typeof c?.external === 'function')
+  || Object.keys(s.linkExternal ?? {}).length > 0));
+
+/**
+ * Safety Fix 3: an entry about to be written with NO database row to merge
+ * with (first write, or re-creation over a tombstone) by a write that may not
+ * write external data — every external item in it would be an unfenced
+ * ADDITION: drop them all. Non-external content is returned unchanged.
+ */
+export function withoutExternal(entry, schema = {}, opts = {}) {
+  if (entry == null || !schemaHasExternal(schema)) return entry;
+  return mergeEntry(entry, schema.rootList ? [] : {}, undefined, schema, { ...opts, allowExternalWrites: false, allowExternalAdditions: false });
 }
 
 /**
@@ -135,9 +216,16 @@ function mergeRootList(o = [], t = [], b, spec, hasBase) {
  * @param {object|null} theirs   null = no row
  * @param {object|null|undefined} base  undefined = unknown (never loaded here)
  * @param {object} schema
+ * @param {{ allowExternalWrites?: boolean, allowExternalAdditions?: boolean, key?: string }} [opts]
+ *        allowExternalWrites (Step 2 name: allowExternalAdditions) — may this
+ *        write ADD or UPDATE external items? Default true (callers that do not
+ *        opt in keep the previous behaviour); the partition bindings pass
+ *        whether the write carries a valid origin fence. key — the entry's key.
  */
-export function mergeEntry(ours, theirs, base, schema = {}) {
+export function mergeEntry(ours, theirs, base, schema = {}, opts = {}) {
   const hasBase = base !== undefined;
+  const allow = opts.allowExternalWrites ?? opts.allowExternalAdditions;
+  const x = { allowExternalAdditions: allow !== false, ctx: { ours, theirs, base, key: opts.key ?? null } };
   if (theirs == null) return ours;
   if (schema.whole) {
     // The entry is replaced as a unit by its writer (e.g. a full re-ingest):
@@ -147,12 +235,12 @@ export function mergeEntry(ours, theirs, base, schema = {}) {
     if (!eq(theirs, base)) mergeStats.conflicts++;
     return ours;
   }
-  if (schema.rootList) return mergeRootList(ours, theirs, base ?? undefined, schema.rootList, hasBase);
-  if (schema.root) return mergeMap(ours, theirs, base ?? undefined, schema.root, hasBase);
+  if (schema.rootList) return mergeRootList(ours, theirs, base ?? undefined, schema.rootList, hasBase, x);
+  if (schema.root) return mergeMap(ours, theirs, base ?? undefined, schema.root, hasBase, x);
   const out = {};
   const handled = new Set([...Object.keys(schema.collections ?? {}), ...(schema.links ?? []), ...Object.keys(schema.logs ?? {}), ...Object.keys(schema.logMaps ?? {})]);
-  for (const [f, spec] of Object.entries(schema.collections ?? {})) out[f] = mergeMap(ours?.[f], theirs?.[f], base?.[f], spec, hasBase && base?.[f] !== undefined);
-  for (const f of schema.links ?? []) out[f] = mergeLink(ours?.[f], theirs?.[f], base?.[f], hasBase && base?.[f] !== undefined);
+  for (const [f, spec] of Object.entries(schema.collections ?? {})) out[f] = mergeMap(ours?.[f], theirs?.[f], base?.[f], spec, hasBase && base?.[f] !== undefined, x);
+  for (const f of schema.links ?? []) out[f] = mergeLink(ours?.[f], theirs?.[f], base?.[f], hasBase && base?.[f] !== undefined, schema.linkExternal?.[f] ?? null, x);
   for (const [f, spec] of Object.entries(schema.logs ?? {})) out[f] = mergeLog(ours?.[f], theirs?.[f], spec);
   // logMaps: key → log (e.g. a subject's version history). A key removed on one
   // side and untouched on the other is removed; otherwise the logs are unioned.
@@ -160,6 +248,16 @@ export function mergeEntry(ours, theirs, base, schema = {}) {
     const o = ours?.[f] ?? {}; const t = theirs?.[f] ?? {}; const b = base?.[f];
     const m = {};
     for (const k of new Set([...Object.keys(t), ...Object.keys(o)])) {
+      if (isExternalKey(spec, k, o[k], t[k], b?.[k], x.ctx)) {
+        // External subject: deletion on either side wins; unfenced addition refused.
+        if (hasBase && b?.[k] !== undefined && (o[k] === undefined || t[k] === undefined)) { mergeStats.externalDeleteWins++; continue; }
+        if (!(hasBase && b?.[k] !== undefined) && t[k] === undefined && !x.allowExternalAdditions) { mergeStats.externalAdditionsRefused++; continue; }
+        if (!x.allowExternalAdditions && o[k] !== undefined && t[k] !== undefined) {
+          if (!eq(o[k], t[k])) mergeStats.externalUpdatesRefused++;
+          m[k] = t[k];                                // no valid origin: the database's version
+          continue;
+        }
+      }
       if (hasBase && b?.[k] !== undefined) {
         if (o[k] === undefined && eq(t[k], b[k])) continue;
         if (t[k] === undefined && eq(o[k], b[k])) continue;

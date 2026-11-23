@@ -53,6 +53,7 @@ import { evidenceChecksum } from './evidence.js';
 import { indexCanonicalClaim, indexCanonicalClaims, canonicalClaimNamespace } from '../brain/contextEngine/canonicalSemantic.js';
 import { isExternalFileId } from './externalIdentity.js';
 import { clearNamespace } from '../embeddings/vectorStore.js';
+import { setExternalFactResolver } from '../pic/picStore.js';
 
 const STORE_FILE = dataPath('.aqua-evidence.json');
 const SCHEMA     = 1;
@@ -149,11 +150,26 @@ function scheduleSave(ownerKey = null) {
 //                     longer exist are dropped; byChecksum is rebuilt, not merged
 // DELETION: purgeOwner → row tombstone.
 const factTime = f => Number(f?.updatedAt ?? f?.createdAt) || 0;
+// Safety Fix 2 — EXTERNAL ORIGIN, judged on all three sides of a merge (ctx):
+//   evidence      its sourceFileId is an external file (ext_…);
+//   fact          linked under an external file in byFile, or citing external evidence;
+//   byFile[f]     f is an external file; evidenceRefs[e]: e is external evidence.
+// For those, a deletion wins over a concurrent edit and an addition needs a
+// valid connect fence (core/storage/entryMerge.js).
+const sides = ctx => [ctx?.ours, ctx?.theirs, ctx?.base].filter(Boolean);
+const evidenceIsExternal = (evId, ctx) => sides(ctx).some(side => isExternalEvidence(side.evidence?.[evId]));
+const factIsExternal = (factId, fact, ctx) =>
+  sides(ctx).some(side => Object.entries(side.byFile ?? {}).some(([file, l]) => isExternalFileId(file) && (l?.facts ?? []).includes(factId)))
+  || (fact?.evidence ?? []).some(evId => evidenceIsExternal(evId, ctx));
 const binding = bindKeyedStore({
   storeKey: '.aqua-evidence.json', file: STORE_FILE, label: 'evidence', schema: SCHEMA,
   mergeSchema: {
-    collections: { evidence: { time: e => Number(e?.createdAt) || 0 }, facts: { time: factTime } },
+    collections: {
+      evidence: { time: e => Number(e?.createdAt) || 0, external: (id, ev) => isExternalEvidence(ev) },
+      facts: { time: factTime, external: factIsExternal },
+    },
     links: ['byFile', 'evidenceRefs'],
+    linkExternal: { byFile: file => isExternalFileId(file), evidenceRefs: evidenceIsExternal },
     finalize: m => {
       for (const l of Object.values(m.byFile ?? {})) {
         l.facts = (l.facts ?? []).filter(id => m.facts[id]);
@@ -225,7 +241,7 @@ export function saveFact(ownerId, fact, { sourceFileId = null } = {}) {
     if (refs) refs.add(fact.id);   // only real evidence gets an edge
   }
   scheduleSave(ownerId ?? 'anon');
-  void indexCanonicalClaim(ownerId, fact).catch(() => {});
+  void indexCanonicalClaim(ownerId, fact, { external: isExternalFileId(fileId) || isExternalFact(b, fact) }).catch(() => {});
   return fact;
 }
 
@@ -300,7 +316,7 @@ export function updateFact(ownerId, factId, patch = {}) {
   }
   scheduleSave(ownerId ?? 'anon');
   if (Object.prototype.hasOwnProperty.call(patch, 'statement')) {
-    void indexCanonicalClaim(ownerId, fact).catch(() => {});
+    void indexCanonicalClaim(ownerId, fact, { external: isExternalFact(b, fact) }).catch(() => {});
   }
   return fact;
 }
@@ -339,7 +355,7 @@ export function removeFile(ownerId, ukoId) {
   }
   b.byFile.delete(ukoId);
   scheduleSave(ownerId ?? 'anon');
-  void indexCanonicalClaims(ownerId, [...b.facts.values()]).catch(() => {});
+  void indexCanonicalClaims(ownerId, [...b.facts.values()], { isExternal: f => isExternalFact(b, f) }).catch(() => {});
   return true;
 }
 
@@ -396,6 +412,16 @@ function isConversationFact(b, fact) {
  * Falls through to oldest-overall when no conversational fact exists, so with
  * an all-document store the behaviour is byte-identical to before.
  */
+/** Safety Fix 2: is this fact (of this owner) derived from a connected external source? */
+export function isExternalFactOf(ownerId, fact) { return isExternalFact(bucket(ownerId), fact); }
+// Safety Fix 3: PIC fact subjects/signals are external-origin when their fact is
+// (answered from this process's evidence — a stale consolidation still holds the fact).
+setExternalFactResolver((ownerId, factId) => {
+  const b = store.get(ownerId);
+  const f = b?.facts.get(factId);
+  return f ? isExternalFact(b, f) : false;
+});
+
 /** Phase 1a.2 — a fact is external when its evidence came from an external UKO. */
 function isExternalFact(b, fact) {
   for (const evId of fact?.evidence ?? []) {

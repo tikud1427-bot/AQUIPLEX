@@ -105,6 +105,27 @@ const WARN_REPEAT_MS = 5 * 60_000;
 const CHUNK_BYTES = Number(process.env.AQUA_MIRROR_CHUNK_BYTES) || 10_000_000;
 const CHUNK_CHARS = Math.max(1, Math.floor(CHUNK_BYTES / 4));
 
+/**
+ * Part slices of `json`, each ≤ CHUNK_CHARS, never ending between the two
+ * halves of a UTF-16 surrogate pair. BSON stores UTF-8, and a lone half
+ * encodes as U+FFFD: an emoji cut by a boundary came back as two replacement
+ * characters on every later hydration (reproduced against real MongoDB,
+ * 2026-11-24). Shortening such a part by one char keeps the pair together.
+ */
+function chunkSlices(json) {
+  const out = [];
+  for (let start = 0; start < json.length;) {
+    let end = Math.min(start + CHUNK_CHARS, json.length);
+    if (end < json.length && end - start > 1) {
+      const c = json.charCodeAt(end - 1);
+      if (c >= 0xD800 && c <= 0xDBFF) end -= 1;
+    }
+    out.push(json.slice(start, end));
+    start = end;
+  }
+  return out;
+}
+
 const INSTANCE_ID = `${os.hostname()}:${process.pid}:${crypto.randomBytes(3).toString('hex')}`;
 
 // ── Single authoritative writer (P0 2026-10-12) ──────────────────────────────
@@ -308,10 +329,11 @@ async function preserveLocal(col, filename, json) {
     await col.updateOne({ _id: id }, { $set: { ...base, chunked: false, parts: 0, json } }, { upsert: true });
   } else {
     const gen = nextGen();
-    const n = Math.ceil(json.length / CHUNK_CHARS);
+    const slices = chunkSlices(json);
+    const n = slices.length;
     for (let i = 0; i < n; i++) {
       await col.updateOne({ _id: `${id}::part${gen}:${i}` },
-        { $set: { part: true, of: id, i, gen, json: json.slice(i * CHUNK_CHARS, (i + 1) * CHUNK_CHARS) } }, { upsert: true });
+        { $set: { part: true, of: id, i, gen, json: slices[i] } }, { upsert: true });
     }
     await col.updateOne({ _id: id }, { $set: { ...base, chunked: true, parts: n, gen, json: null } }, { upsert: true });
   }
@@ -333,7 +355,7 @@ async function reconcileAfterOutage() {
     try {
       const col = await connect();
       if (!col) return false;
-      const docs = await col.find({}, { projection: { json: 0 } }).toArray();
+      const docs = await listMirrorMeta(col);   // metadata only, no chunk parts
       const marker = readMarker();
       for (const doc of liveDocs(docs)) {
         const filename = String(doc._id);
@@ -590,6 +612,71 @@ async function releaseLease() {
 }
 
 // ── Boot hydration ────────────────────────────────────────────────────────────
+//
+// BOUNDED MEMORY (2026-11-24 — Render heap OOM, audit/render-heap-oom/).
+// Hydration used to run `col.find({}).toArray()`: EVERY document in aqua_kv,
+// bodies included — live stores, every chunk part of every generation
+// (superseded generations are never GC'd while a chunked conflict copy of the
+// file exists), and every preserved conflict copy — then joined each chunked
+// store into one more string. On the Node versions Render runs (20/22), those
+// decoded strings live on the V8 heap at up to 2 bytes/char, so peak heap was
+// ~3.4× the collection's data size; a 512 MB instance has a 259 MB heap.
+// Reproduced: a 140 MB collection exhausts it exactly as production does.
+//
+// Now: one metadata listing (no bodies, no chunk parts), then ONE file at a
+// time — an unchunked body, or a chunked store streamed part by part into its
+// temp file. Peak heap is bounded by the largest single document (≤ CHUNK_BYTES),
+// whatever the collection holds. Every decision below is unchanged: generation
+// tracking, lineage/newer-wins, conflict and preserved-copy exclusion,
+// incomplete-chunk blocking, temp + rename.
+
+const META_ONLY = { projection: { json: 0 } };
+
+/** Every doc that is not a chunk part, without bodies. */
+async function listMirrorMeta(col) {
+  return (await col.find({ part: { $exists: false } }, META_ONLY).toArray());
+}
+
+/** Write a string to an fd as UTF-8, looping over partial writes. */
+function writeAllSync(fd, str) {
+  const buf = Buffer.from(str, 'utf8');
+  for (let off = 0; off < buf.length;) off += fs.writeSync(fd, buf, off, buf.length - off);
+  return buf.length;
+}
+
+/**
+ * Stream one chunked generation into `tmp`, one part in memory at a time.
+ * Same completeness rule as before: exactly `doc.parts` parts with indices
+ * 0..n-1 for `doc.gen`, each holding a string. Returns { ok, found, bytes }.
+ * The caller unlinks `tmp` on failure.
+ */
+async function streamChunksTo(col, filename, doc, tmp, counters) {
+  const metas = (await col.find({ part: true, of: filename, gen: doc.gen }, META_ONLY).toArray())
+    .filter(p => p.part && p.of === filename && p.gen === doc.gen)   // defensive: a driver/fake ignoring the filter
+    .sort((a, b) => a.i - b.i);
+  if (metas.length !== doc.parts || metas.some((p, i) => p.i !== i)) return { ok: false, found: metas.length };
+  const fd = fs.openSync(tmp, 'w');
+  let bytes = 0, carry = '';
+  try {
+    for (const m of metas) {
+      const p = await col.findOne({ _id: m._id });
+      counters.parts++;
+      if (!p || p.gen !== doc.gen || p.i !== m.i || typeof p.json !== 'string') return { ok: false, found: m.i };
+      // Parts are sliced by UTF-16 unit, so one may end inside a surrogate pair.
+      // Encoding the halves separately would not be byte-identical to encoding
+      // the joined string; hold a trailing high surrogate for the next part.
+      let s = carry + p.json;
+      carry = '';
+      const last = s.charCodeAt(s.length - 1);
+      if (last >= 0xD800 && last <= 0xDBFF) { carry = s.slice(-1); s = s.slice(0, -1); }
+      if (s) bytes += writeAllSync(fd, s);
+    }
+    if (carry) bytes += writeAllSync(fd, carry);
+  } finally {
+    fs.closeSync(fd);
+  }
+  return { ok: true, found: metas.length, bytes };
+}
 
 /**
  * Restore every mirrored store file into `dataDir` before stores load.
@@ -598,7 +685,7 @@ async function releaseLease() {
  * (gen mismatch / missing part) are skipped with a warning — the previous
  * complete generation of that file, if any, was already GC'd only AFTER its
  * successor's manifest landed, so "skip" can only mean "keep local".
- * Newer-wins per file. Never throws.
+ * Newer-wins per file. Never throws. Bounded memory (see above).
  */
 export async function hydrateFromMongo(dataDir) {
   const empty = { restored: 0, kept: 0, total: 0 };
@@ -614,52 +701,74 @@ export async function hydrateFromMongo(dataDir) {
       return { ...empty, verified: sync.status === 'verified', status: sync.status };
     }
     const marker = readMarker();   // BEFORE this hydration writes anything
+    const t0 = Date.now();
+    const heap0 = process.memoryUsage().heapUsed;
+    const counters = { listed: 0, parts: 0, bytes: 0 };
 
-    const docs = await col.find({}).toArray();
-    const parts = new Map();               // "of:gen" → [ {i, json} ]
-    const mains = [];
-
-    for (const doc of docs) {
-      if (doc.part) {
-        const k = `${doc.of}:${doc.gen}`;
-        if (!parts.has(k)) parts.set(k, []);
-        parts.get(k).push(doc);
-        continue;
+    // A temp file left by a hydration killed mid-stream was never renamed into
+    // place, so it is never data; without this a crash-looping instance would
+    // keep one orphan per store per attempt on a warm disk.
+    try {
+      for (const f of fs.readdirSync(dataDir)) {
+        if (/^\..+\.hydrate\.\d+$/.test(f)) { try { fs.unlinkSync(path.join(dataDir, f)); } catch { /* not a file / in use */ } }
       }
+    } catch { /* best effort */ }
+
+    const metas = await listMirrorMeta(col);
+    counters.listed = metas.length;
+    const mains = [];
+    for (const doc of metas) {
+      if (doc.part) continue;                                   // filter ignored by a driver/fake
       if (doc._id === CANARY_ID || doc._id === LOCK_ID) continue;
       if (doc.conflict || String(doc._id ?? '').startsWith(CONFLICT_PREFIX)) continue;   // preserved generations are not live stores
       mains.push(doc);
     }
 
     let restored = 0, kept = 0, preserved = 0;
-    for (const doc of mains) {
-      const filename = String(doc._id ?? '');
+    for (const meta of mains) {
+      const filename = String(meta._id ?? '');
       // Defense: _id is a filename WE wrote (basename form). Refuse anything
       // that could escape the data dir.
       if (!filename || filename.includes('/') || filename.includes('\\') || filename.includes('..')) {
         warn(`skipping suspicious doc _id=${JSON.stringify(filename)}`);
         continue;
       }
+      const tmp = path.join(dataDir, `.${filename}.hydrate.${process.pid}`);
+      const discard = () => { try { fs.unlinkSync(tmp); } catch { /* absent */ } };
+
+      // Load THIS file's current state: the body of a single doc, or the parts
+      // of a chunked one streamed into `tmp`. A writer may supersede the
+      // listed generation meanwhile (deploy overlap); follow it, bounded.
+      let doc = meta, staged = null, incompleteFound = 0;
+      for (let attempt = 0; ; attempt++) {
+        if (!doc.chunked) {
+          const full = await col.findOne({ _id: filename });
+          if (full?.chunked && attempt < 2) { doc = full; continue; }
+          doc = full;                         // null: removed since the listing
+          break;
+        }
+        const r = await streamChunksTo(col, filename, doc, tmp, counters);
+        if (r.ok) { staged = r; break; }
+        discard();
+        incompleteFound = r.found;
+        const cur = attempt < 2 ? await col.findOne({ _id: filename }, META_ONLY) : null;
+        if (cur && cur.gen !== doc.gen) { doc = cur; continue; }
+        break;
+      }
+      if (!doc) continue;
+
       // The generation our first write of this file must find, whatever the
       // newer-wins decision below — anything else means another writer moved it.
       if (doc.gen !== undefined) state.knownGen.set(filename, doc.gen);
 
-      let json;
-      if (doc.chunked) {
-        const set = (parts.get(`${filename}:${doc.gen}`) ?? []).sort((a, b) => a.i - b.i);
-        if (set.length !== doc.parts || set.some((p, i) => p.i !== i || typeof p.json !== 'string')) {
-          // Keep the local copy for reading — but never let it overwrite a backup
-          // this process could not read (Sprint 1): the file is blocked.
-          sync.blocked.set(filename, { reason: 'remote-chunk-set-incomplete', remoteGen: doc.gen ?? null, since: Date.now(), preservedAs: null });
-          warn(`${filename}: chunk set incomplete (${set.length}/${doc.parts} gen=${doc.gen}) — keeping local copy; NOT mirroring it over the backup.`);
-          continue;
-        }
-        json = set.map(p => p.json).join('');
-      } else if (typeof doc.json === 'string') {
-        json = doc.json;
-      } else {
+      if (doc.chunked && !staged) {
+        // Keep the local copy for reading — but never let it overwrite a backup
+        // this process could not read (Sprint 1): the file is blocked.
+        sync.blocked.set(filename, { reason: 'remote-chunk-set-incomplete', remoteGen: doc.gen ?? null, since: Date.now(), preservedAs: null });
+        warn(`${filename}: chunk set incomplete (${incompleteFound}/${doc.parts} gen=${doc.gen}) — keeping local copy; NOT mirroring it over the backup.`);
         continue;
       }
+      if (!doc.chunked && typeof doc.json !== 'string') continue;
 
       const target = path.join(dataDir, filename);
       let fileMtime = 0;
@@ -677,26 +786,33 @@ export async function hydrateFromMongo(dataDir) {
           warn(`${filename}: local copy has unknown lineage (written while unverified, or the backup moved) — preserved as "${id}", restoring the backup`);
         } catch (err) {
           // Could not preserve it: do not destroy it either. Keep local, block mirroring.
+          discard();
           sync.blocked.set(filename, { reason: 'local-unpreservable', remoteGen: doc.gen ?? null, since: Date.now(), preservedAs: null });
           warn(`${filename}: local copy has unknown lineage and could not be preserved (${err.message}) — keeping it, NOT mirroring it`);
           continue;
         }
       } else if (fileMtime && fileMtime >= docTime) {
+        discard();
         kept++;
         recordLineage(filename, doc.gen);
         continue;
       }
 
       // Atomic write (temp+rename) — same guarantee as atomicStore, inlined
-      // to avoid an import cycle (atomicStore imports this module).
-      const tmp = path.join(dataDir, `.${filename}.hydrate.${process.pid}`);
+      // to avoid an import cycle (atomicStore imports this module). A chunked
+      // store is already complete in `tmp`.
       try {
-        fs.writeFileSync(tmp, json, 'utf8');
+        if (!staged) {
+          fs.writeFileSync(tmp, doc.json, 'utf8');
+          counters.bytes += Buffer.byteLength(doc.json, 'utf8');
+        } else {
+          counters.bytes += staged.bytes;
+        }
         fs.renameSync(tmp, target);
         restored++;
         recordLineage(filename, doc.gen);   // per file: an interrupted hydration resumes from here
       } catch (err) {
-        try { fs.unlinkSync(tmp); } catch { /* temp may not exist */ }
+        discard();
         // The backup could not be loaded, so the local copy (if any) is not it.
         sync.blocked.set(filename, { reason: 'restore-failed', remoteGen: doc.gen ?? null, since: Date.now(), preservedAs: null });
         warn(`could not restore ${filename}: ${err.message} — NOT mirroring it over the backup`);
@@ -711,7 +827,9 @@ export async function hydrateFromMongo(dataDir) {
       if (readMarker()) updateMarker(m => { m.unverifiedSince = null; m.unverifiedReason = null; m.verifiedAt = Date.now(); });
       sync.unverifiedSince = null;
     }
-    log(`hydration: ${restored} restored, ${kept} kept (local newer), ${preserved} local copies preserved, ${sync.blocked.size} blocked, ${mains.length} mirrored file(s) — initialization verified`);
+    log(`hydration: ${restored} restored, ${kept} kept (local newer), ${preserved} local copies preserved, ${sync.blocked.size} blocked, ${mains.length} mirrored file(s) — initialization verified`
+      + ` [${counters.listed} doc(s) listed, ${counters.parts} part(s) streamed, ${(counters.bytes / 1e6).toFixed(1)} MB written, ${Date.now() - t0} ms,`
+      + ` heap ${(heap0 / 1048576).toFixed(0)}→${(process.memoryUsage().heapUsed / 1048576).toFixed(0)} MB]`);
     return { restored, kept, preserved, blocked: sync.blocked.size, total: mains.length, verified: true, status: sync.status };
   } catch (err) {
     warn(`hydration failed (${err.message}) — continuing with local files only.`);
@@ -760,7 +878,7 @@ async function preserveForeignGeneration(col, filename) {
 const PRESERVE_PER_FILE = 3;
 async function prunePreserved(col, filename) {
   try {
-    const docs = (await col.find({ conflict: true, of: filename }).toArray())
+    const docs = (await col.find({ conflict: true, of: filename }, META_ONLY).toArray())   // bodies not needed
       // A local copy preserved during outage recovery can be the ONLY copy of
       // what users wrote meanwhile: never pruned automatically (Sprint 1).
       .filter(d => !d.localRecovery)
@@ -799,11 +917,12 @@ async function writeOne(col, filename, json) {
   // Chunked: parts first, generation-stamped; manifest LAST so a concurrent
   // hydration can only ever assemble a COMPLETE generation.
   const gen = nextGen();
-  const n   = Math.ceil(json.length / CHUNK_CHARS);
+  const slices = chunkSlices(json);
+  const n   = slices.length;
   for (let i = 0; i < n; i++) {
     await col.updateOne(
       { _id: `${filename}::part${gen}:${i}` },
-      { $set: { part: true, of: filename, i, gen, json: json.slice(i * CHUNK_CHARS, (i + 1) * CHUNK_CHARS) } },
+      { $set: { part: true, of: filename, i, gen, json: slices[i] } },
       { upsert: true },
     );
   }
@@ -813,7 +932,7 @@ async function writeOne(col, filename, json) {
   // Never while a preserved (conflict) generation of this file exists: its
   // parts are the only copy of what the other writer held.
   let preservedChunked = false;
-  try { preservedChunked = (await col.find({ conflict: true, of: filename }).toArray()).some(d => d.chunked); } catch { preservedChunked = true; }
+  try { preservedChunked = (await col.find({ conflict: true, of: filename }, META_ONLY).toArray()).some(d => d.chunked); } catch { preservedChunked = true; }
   if (!preservedChunked && typeof col.deleteMany === 'function') {
     try { await col.deleteMany({ part: true, of: filename, gen: { $lt: gen } }); } catch { /* best effort */ }
   }

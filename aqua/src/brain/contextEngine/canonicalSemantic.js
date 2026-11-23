@@ -25,8 +25,13 @@ function factText(fact) {
   return String(fact?.statement ?? '').trim();
 }
 
-/** Index ONE canonical claim without pruning the owner's other claims. */
-export async function indexCanonicalClaim(ownerId, fact) {
+/**
+ * Index ONE canonical claim without pruning the owner's other claims.
+ * `external`: the claim came from a connected external source — recorded on
+ * the vector (meta.external) so the partition merge treats it as external
+ * origin (Safety Fix 2: a disconnect wins; a re-add needs a connect fence).
+ */
+export async function indexCanonicalClaim(ownerId, fact, { external = false } = {}) {
   if (!ownerId || !fact?.id || !isEmbeddingEnabled()) return false;
   const text = factText(fact);
   if (!text) return false;
@@ -37,7 +42,7 @@ export async function indexCanonicalClaim(ownerId, fact) {
     if (has(ns, id, hash)) return false;
     const vectors = await embed([text]);
     if (!vectors[0]) return false;
-    upsert(ns, id, vectors[0], hash, { kind: 'claim' });
+    upsert(ns, id, vectors[0], hash, external ? { kind: 'claim', external: true } : { kind: 'claim' });
     return true;
   } catch (err) {
     console.warn('[E7] canonical claim indexing failed (non-fatal):', err?.message ?? err);
@@ -49,7 +54,7 @@ export async function indexCanonicalClaim(ownerId, fact) {
  * Reconcile the complete canonical claim index for an owner. Used for initial
  * backfill and after destructive fact/file operations.
  */
-export async function indexCanonicalClaims(ownerId, facts = []) {
+export async function indexCanonicalClaims(ownerId, facts = [], { isExternal = () => false } = {}) {
   if (!ownerId || !isEmbeddingEnabled() || !Array.isArray(facts)) {
     return { indexed: 0, skipped: 0, removed: 0, enabled: false };
   }
@@ -67,7 +72,7 @@ export async function indexCanonicalClaims(ownerId, facts = []) {
       live.add(id);
       const hash = contentHash(text);
       if (has(ns, id, hash)) { skipped += 1; continue; }
-      pending.push({ id, text, hash });
+      pending.push({ id, text, hash, external: Boolean(isExternal(fact)) });
     }
 
     let removed = 0;
@@ -81,7 +86,7 @@ export async function indexCanonicalClaims(ownerId, facts = []) {
     let indexed = 0;
     for (let i = 0; i < pending.length; i++) {
       if (vectors[i]) {
-        upsert(ns, pending[i].id, vectors[i], pending[i].hash, { kind: 'claim' });
+        upsert(ns, pending[i].id, vectors[i], pending[i].hash, pending[i].external ? { kind: 'claim', external: true } : { kind: 'claim' });
         indexed += 1;
       }
     }

@@ -97,7 +97,10 @@ function scheduleSave(namespace = null) {
 const binding = bindKeyedStore({
   storeKey: '.aqua-vectors.json', file: STORE_FILE, label: 'vectors', section: 'ns', envelope: false,
   mergeSchema: {
-    root: { time: r => Number(r?.ts) || 0 },
+    // Safety Fix 2: external-origin vectors — every chunk of the external-files
+    // namespace (xfiles:<owner>), and claim vectors marked meta.external — a
+    // deletion wins over a concurrent re-index; an addition needs a valid connect fence.
+    root: { time: r => Number(r?.ts) || 0, external: (id, r, ctx) => String(ctx?.key ?? '').startsWith('xfiles:') || r?.meta?.external === true },
     finalize: m => {
       const entries = Object.entries(m);
       if (entries.length <= NS_ITEM_CAP) return m;

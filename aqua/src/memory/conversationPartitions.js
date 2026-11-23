@@ -45,8 +45,9 @@ import {
 import { PartitionConflictError } from '../core/storage/partitionRepository.js';
 import { headerKey, messageKey, parseMessageKey, legacyMessageKey, MESSAGES_MARK } from '../core/storage/partitionLayout.js';
 import { errorText } from '../core/errorText.js';
-import { isOwnerDeleted } from '../core/storage/deletedOwners.js';
+import { isOwnerDeleted, OwnerDeletedError } from '../core/storage/deletedOwners.js';
 import { noteWrite } from '../core/storage/requestWrites.js';
+import { registerFenceInvalidator, isWriteRefused, originFor, withWriteOrigins } from '../core/storage/writeFence.js';
 
 export const STORE_KEY = '.aqua-history.json';
 export const TRASH_STORE_KEY = '.aqua-history-trash.json';
@@ -91,6 +92,9 @@ export function bindConversationStore({ file, store, reloadJson = null, mode: fo
   const ownerConvs = new Map();      // owner → Set<conversationId>
   const loadedOwners = new Map();    // owner → true, LRU order
   const ops = [];
+  // Multi-instance connect safety (core/storage/writeFence.js): op keys whose
+  // writes were DISCARDED because their owner's write fence was lost.
+  const discarded = new Map();       // opKey → FenceLostError
   const metaDirty = new Map();       // conversationId → Set<metaKey> | 'all'
   const deletingConvs = new Set();
   const backupPending = new Map();   // conversationId → conv | null
@@ -116,7 +120,14 @@ export function bindConversationStore({ file, store, reloadJson = null, mode: fo
   /** Phase 4A — the key a request's write boundary tracks for an op. */
   const opKey = op => (op.id != null ? String(op.id) : `owner:${op.owner}`);
   /** Queue an op and record it in the current request's write scope. */
-  const enqueueOp = op => { ops.push(op); noteWrite(binding, opKey(op)); };
+  // Safety Fix 3: an op carries the connect-operation fence it was CREATED under
+  // (null outside any operation) to its eventual write, whatever context flushes it.
+  const enqueueOp = op => {
+    const owner = op.owner ?? state.get(op.id)?.owner ?? conversationOwner(op.id, store.get(op.id));
+    op.origin = originFor(owner);
+    discarded.delete(opKey(op)); ops.push(op); noteWrite(binding, opKey(op));
+  };
+  const applyWithOrigin = op => withWriteOrigins(op.origin ? [op.origin] : [], () => applyOp(op));
 
   function schedule(delay = 50) {
     if (mode === 'off' || timer) return;
@@ -134,6 +145,22 @@ export function bindConversationStore({ file, store, reloadJson = null, mode: fo
     conv.messages.length = 0;
     conv.messages.push(...ordered);
   }
+
+  // A fence was lost (Safety Fix 3: per operation): drop ONLY the queued ops
+  // CREATED UNDER IT (recorded as discarded) and, where partitions are
+  // authoritative, the local copies of their conversations — the next unit of
+  // work reloads them. Ops created outside that operation: untouched.
+  registerFenceInvalidator((owner, err, fence) => {
+    if (mode === 'off' || !fence) return;
+    const convs = new Set();
+    for (let i = 0; i < ops.length; i++) {
+      if (ops[i].origin === fence) {
+        if (ops[i].id) convs.add(ops[i].id);
+        discarded.set(opKey(ops[i]), err); ops.splice(i, 1); i--; stats.fenceDiscards = (stats.fenceDiscards ?? 0) + 1;
+      }
+    }
+    if (authoritative()) for (const id of convs) removeLocal(id);
+  });
 
   function removeLocal(id) {
     const st = state.get(id);
@@ -244,7 +271,8 @@ export function bindConversationStore({ file, store, reloadJson = null, mode: fo
     // Phase 3: nothing of a deleted account is written back (deletions still land).
     if (['insert', 'header', 'trash'].includes(op.t)) {
       const owner = op.owner ?? state.get(op.id)?.owner ?? conversationOwner(op.id, store.get(op.id));
-      if (await isOwnerDeleted(owner)) { stats.blockedDeletedOwner = (stats.blockedDeletedOwner ?? 0) + 1; return; }
+      // Refused explicitly (discarded by the caller, never retried) — not a silent success.
+      if (await isOwnerDeleted(owner)) { stats.blockedDeletedOwner = (stats.blockedDeletedOwner ?? 0) + 1; throw new OwnerDeletedError(); }
     }
     if (op.t === 'insert') {
       if (deletingConvs.has(op.id) || !state.has(op.id)) return;
@@ -403,10 +431,16 @@ export function bindConversationStore({ file, store, reloadJson = null, mode: fo
       const touched = new Set();
       let failedAt = -1;
       for (let i = 0; i < batch.length; i++) {
+        const lost = batch[i].origin?.lost;
+        if (lost) { discarded.set(opKey(batch[i]), lost); stats.fenceDiscards = (stats.fenceDiscards ?? 0) + 1; continue; }
         try {
-          await applyOp(batch[i]);
+          await applyWithOrigin(batch[i]);
           if (batch[i].id) touched.add(batch[i].id);
         } catch (err) {
+          if (isWriteRefused(err)) {   // fence lost / account deleted: never into the retry queue
+            discarded.set(opKey(batch[i]), err); stats.fenceDiscards = (stats.fenceDiscards ?? 0) + 1;
+            continue;
+          }
           // Phase 3: a row owned by someone else will never accept this write.
           // Retrying it would block every later write of this process behind
           // it (ops apply in order) — drop it, loudly.
@@ -682,12 +716,21 @@ export function bindConversationStore({ file, store, reloadJson = null, mode: fo
       const want = new Set([...keys].map(String));
       const mine = [];
       for (let i = 0; i < ops.length; i++) if (want.has(opKey(ops[i]))) { mine.push(ops[i]); ops.splice(i, 1); i--; }
-      if (!mine.length) return;
+      if (!mine.length) {
+        for (const k of want) { const err = discarded.get(k); if (err) { discarded.delete(k); throw err; } }
+        return;
+      }
       running = (async () => {
         const touched = new Set();
         for (let i = 0; i < mine.length; i++) {
-          try { await applyOp(mine[i]); if (mine[i].id) touched.add(mine[i].id); }
+          const lost = mine[i].origin?.lost;
+          if (lost) { discarded.set(opKey(mine[i]), lost); stats.fenceDiscards = (stats.fenceDiscards ?? 0) + 1; continue; }
+          try { await applyWithOrigin(mine[i]); if (mine[i].id) touched.add(mine[i].id); }
           catch (err) {
+            if (isWriteRefused(err)) {
+              discarded.set(opKey(mine[i]), err); stats.fenceDiscards = (stats.fenceDiscards ?? 0) + 1;
+              continue;
+            }
             if (err instanceof PartitionOwnershipError) {
               stats.ownershipDropped = (stats.ownershipDropped ?? 0) + 1;
               lastError = errorText(err);
@@ -704,7 +747,14 @@ export function bindConversationStore({ file, store, reloadJson = null, mode: fo
         await backupFlush(touched);
       })();
       try { await running; } finally { running = null; }
+      // Explicit failure for a caller whose writes were discarded (fence lost).
+      for (const k of want) {
+        const err = discarded.get(k);
+        if (err) { discarded.delete(k); throw err; }
+      }
     },
+    /** Op keys of this owner still queued (connect lease release: flushOwnerStrict). */
+    pendingKeysOfOwner: owner => [...new Set(ops.filter(o => o.owner === String(owner)).map(opKey))],
     pendingAmong: keys => { const want = new Set([...keys].map(String)); return ops.filter(o => want.has(opKey(o))).length; },
     pendingCount: () => ops.length,
     async configure() {

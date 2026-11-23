@@ -623,6 +623,12 @@ app.use("/api/account", accountRoutes);
 
 const aquaEngine = express.Router();
 
+// Until the engine import below finishes (it restores every store from the
+// Mongo mirror first), answer 503 + Retry-After instead of metering a request
+// that then falls through to the HTML 404 (utils/engineGate.js).
+const engineGate = require("./utils/engineGate").createEngineGate();
+aquaEngine.use(engineGate.middleware);
+
 // Activation/retention events (no content — see services/analytics/productEvents.js).
 aquaEngine.use(engineEventTap());
 
@@ -701,9 +707,13 @@ import("./aqua/router.js")
     aquaEngine.use("/v1", m.default);
     aquaEngine.use(m.default);
     aquaMounted = true;
+    engineGate.markMounted();
     console.log("✅ AQUA engine mounted at /api/aqua + /v1 (single route tree)");
+    const mem = process.memoryUsage();
+    console.log(`[MEM] engine mounted — heap ${(mem.heapUsed / 1048576).toFixed(0)} MB, rss ${(mem.rss / 1048576).toFixed(0)} MB`);
   })
   .catch((err) => {
+    engineGate.markFailed();
     console.error("❌ AQUA engine failed to mount:", err);
     aquaEngine.use((req, res) =>
       res.status(503).json({ success: false, error: "AQUA engine unavailable" }));

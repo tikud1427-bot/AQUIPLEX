@@ -26,7 +26,55 @@ import crypto from 'node:crypto';
 import { textMeta, valueMeta, safeKey, fileMeta, stripQuoted } from '../core/logSafety.js';
 import { isExternalFileId } from './externalIdentity.js';
 import { isUnrestricted } from '../core/dataClass.js';
-import { lockExternalSource, externalEnqueueState } from '../core/worldModel/externalDeletionGuard.js';
+import { lockExternalSource, externalEnqueueState, observeExternalSource, externalResourcesDeletedSince } from '../core/worldModel/externalDeletionGuard.js';
+import { checkFenceOn } from '../core/storage/writeFence.js';
+
+/**
+ * D-1 — the moment a SYNC saw an external source, for the enqueue check
+ * (`observedAt` on each document). Taken under the per-source lock on the
+ * database clock (externalDeletionGuard.observeExternalSource), so every
+ * deletion of the source is strictly before it (and committed) or after it.
+ *
+ * Returns null without a database, or when the observation fails: the sync
+ * itself goes on (file ingest needs no database), and an enqueue without an
+ * observation is CONSERVATIVE — it refuses any resource a deletion covers.
+ *
+ * @param {string} ownerId
+ * @param {string} ukoPrefix   the source's `ext_<sourceTag>_` prefix
+ * @param {{ pool?: object }} [deps]
+ * @returns {Promise<Date|null>}
+ */
+/**
+ * Multi-instance connect safety — before an import batch: which of these
+ * resources were deleted since the sync observed the source? Returns null when
+ * there is no database (nothing can have been recorded); THROWS when the
+ * database cannot answer (the caller refuses the batch — fail closed).
+ * @returns {Promise<Set<string>|null>}
+ */
+export async function externalResourcesDeletedForImport(ownerId, ukoIds, observedAt, deps = {}) {
+  let pool = deps.pool ?? null;
+  if (!pool) {
+    const db = await import('../core/db/pool.js');
+    if (!db.isConfigured()) return null;
+    pool = await db.getPool();
+  }
+  return externalResourcesDeletedSince(pool, { ownerId, ukoIds, observedAt });
+}
+
+export async function observeExternalSourceForSync(ownerId, ukoPrefix, deps = {}) {
+  try {
+    let pool = deps.pool ?? null;
+    if (!pool) {
+      const db = await import('../core/db/pool.js');
+      if (!db.isConfigured()) return null;
+      pool = await db.getPool();
+    }
+    return await observeExternalSource(pool, ownerId, ukoPrefix);
+  } catch (err) {
+    console.warn(`[FILES] source observation unavailable — external enqueue will be conservative: ${stripQuoted(String(err?.message ?? err))}`);
+    return null;
+  }
+}
 
 export const DOCUMENT_JOB_KIND = 'understanding.document.v1';
 export const MAX_CHUNKS = 24;
@@ -155,6 +203,10 @@ async function enqueueExternal({ ownerId, doc, hash, chunks, enqueue, deps }) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    // Multi-instance connect safety: inside a connect operation, prove this
+    // process still holds the owner's lease in THIS transaction (lease row
+    // first, then the source lock — one lock order everywhere).
+    await checkFenceOn(client, ownerId);
     await lockExternalSource(client, ownerId, doc.ukoId);
     const state = await externalEnqueueState(client, { ownerId, ukoId: doc.ukoId, observedAt: doc.observedAt ?? null });
     if (state.deletedSince) {

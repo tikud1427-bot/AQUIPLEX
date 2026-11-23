@@ -1,0 +1,694 @@
+{
+  "label": "baseline",
+  "datasetSha": "f61840ea3f6f9c51b2fa434253efc521ae4bcc1ca829ddb1348922cf73e065f7",
+  "generatedAt": "2026-11-23T05:38:24.770Z",
+  "now": "2026-01-07T12:00:00Z",
+  "dataset": {
+    "threads": 15,
+    "messages": 28,
+    "expectedItems": 20,
+    "rejectCases": 16,
+    "questions": 14
+  },
+  "categories": {
+    "commitments": {
+      "tp": 4,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1,
+      "recall": 0.8,
+      "f1": 0.888888888888889
+    },
+    "tasks": {
+      "tp": 4,
+      "fp": 0,
+      "fn": 2,
+      "precision": 1,
+      "recall": 0.6666666666666666,
+      "f1": 0.8
+    },
+    "deadlines": {
+      "tp": 4,
+      "fp": 2,
+      "fn": 0,
+      "precision": 0.6666666666666666,
+      "recall": 1,
+      "f1": 0.8
+    },
+    "events": {
+      "tp": 2,
+      "fp": 2,
+      "fn": 0,
+      "precision": 0.5,
+      "recall": 1,
+      "f1": 0.6666666666666666
+    },
+    "decisions": {
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "people": {
+      "tp": 61,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "organizations": {
+      "tp": 41,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "projects": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "topics": {
+      "tp": 28,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "conversationRelationships": {
+      "tp": 12,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    }
+  },
+  "supersession": {
+    "all": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1,
+      "recall": 0.5,
+      "f1": 0.6666666666666666
+    },
+    "decisions": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    }
+  },
+  "contradictions": {
+    "tp": 1,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1,
+    "recall": 1,
+    "f1": 1
+  },
+  "attributes": {
+    "basis": {
+      "correct": 11,
+      "overClaimed": 0,
+      "underClaimed": 5
+    },
+    "due": {
+      "correct": 13,
+      "wrong": 1
+    },
+    "time": {
+      "correct": 2,
+      "wrong": 0
+    },
+    "actor": {
+      "correct": 4,
+      "wrong": 0
+    },
+    "assignee": {
+      "correct": 1,
+      "wrong": 3
+    },
+    "status": {
+      "correct": 13,
+      "wrong": 3
+    }
+  },
+  "inference": {
+    "correctlyRejectedOrLabelled": 1,
+    "incorrectlyAcceptedAsDirect": 0
+  },
+  "rejections": {
+    "correctlyRejected": 14,
+    "incorrectlyAccepted": 2,
+    "byCategory": {
+      "tasks": {
+        "correctlyRejected": 2,
+        "incorrectlyAccepted": 0
+      },
+      "commitments": {
+        "correctlyRejected": 6,
+        "incorrectlyAccepted": 0
+      },
+      "events": {
+        "correctlyRejected": 3,
+        "incorrectlyAccepted": 2
+      },
+      "projects": {
+        "correctlyRejected": 1,
+        "incorrectlyAccepted": 0
+      },
+      "decisions": {
+        "correctlyRejected": 1,
+        "incorrectlyAccepted": 0
+      },
+      "deadlines": {
+        "correctlyRejected": 1,
+        "incorrectlyAccepted": 0
+      }
+    }
+  },
+  "language": {
+    "messages": 2,
+    "detectedUnsupported": 2,
+    "statementsExtracted": 0,
+    "humanItemsOutOfScope": 5
+  },
+  "temporal": {
+    "passed": 20,
+    "total": 30,
+    "failed": [
+      {
+        "name": "T01 open: send the vendor quotes",
+        "ok": false
+      },
+      {
+        "name": "T01 NOT open: send the revised budget",
+        "ok": false
+      },
+      {
+        "name": "T01 NOT upcoming: send the revised budget",
+        "ok": false
+      },
+      {
+        "name": "T02 open: share it tomorrow",
+        "ok": false
+      },
+      {
+        "name": "T02 upcoming: share it tomorrow",
+        "ok": false
+      },
+      {
+        "name": "T02 upcoming: start the pilot",
+        "ok": false
+      },
+      {
+        "name": "T03 NOT upcoming: prepare the investor memo",
+        "ok": false
+      },
+      {
+        "name": "T04 NOT upcoming: final report is due tomorrow",
+        "ok": false
+      },
+      {
+        "name": "T15 NOT open: update the pricing page",
+        "ok": false
+      },
+      {
+        "name": "T15 NOT upcoming: update the pricing page",
+        "ok": false
+      }
+    ]
+  },
+  "qa": {
+    "passed": 10,
+    "total": 14,
+    "intentCorrect": 13,
+    "results": [
+      {
+        "id": "Q01",
+        "question": "What are my open commitments?",
+        "intent": "open_commitments",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [
+          "share it tomorrow",
+          "send the vendor quotes"
+        ],
+        "wronglyIncluded": [
+          "send the revised budget",
+          "update the pricing page"
+        ],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": true,
+        "countedOnce": true,
+        "evidenceBacked": true,
+        "relevantRetrieved": 5,
+        "relevantExpected": 7,
+        "returned": 7,
+        "pass": false
+      },
+      {
+        "id": "Q02",
+        "question": "Any upcoming deadlines?",
+        "intent": "upcoming_deadlines",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [
+          "share it tomorrow",
+          "start the pilot"
+        ],
+        "wronglyIncluded": [
+          "prepare the investor memo",
+          "final report is due tomorrow",
+          "update the pricing page",
+          "send the revised budget"
+        ],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": true,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 6,
+        "relevantExpected": 8,
+        "returned": 12,
+        "pass": false
+      },
+      {
+        "id": "Q03",
+        "question": "What did we decide about the summit?",
+        "intent": "decisions_about",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": true,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 1,
+        "pass": true
+      },
+      {
+        "id": "Q04",
+        "question": "Which decisions were changed?",
+        "intent": "superseded_decisions",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 1,
+        "pass": true
+      },
+      {
+        "id": "Q05",
+        "question": "Is anything contradictory?",
+        "intent": "contradictions",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 2,
+        "relevantExpected": 2,
+        "returned": 2,
+        "pass": true
+      },
+      {
+        "id": "Q06",
+        "question": "What did Priya promise?",
+        "intent": "person",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": true,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      },
+      {
+        "id": "Q07",
+        "question": "What did Raj ask for?",
+        "intent": "person",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [
+          "send the vendor quotes"
+        ],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 2,
+        "relevantExpected": 3,
+        "returned": 2,
+        "pass": false
+      },
+      {
+        "id": "Q08",
+        "question": "What is happening with project Falcon?",
+        "intent": "project",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 4,
+        "pass": true
+      },
+      {
+        "id": "Q09",
+        "question": "Show the evidence for {id:summit in goa}",
+        "intent": "evidence",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 1,
+        "pass": true
+      },
+      {
+        "id": "Q10",
+        "question": "Summarise my inbox",
+        "intent": null,
+        "supported": false,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": true,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      },
+      {
+        "id": "Q11",
+        "question": "What's the weather in Goa?",
+        "intent": null,
+        "supported": false,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": true,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      },
+      {
+        "id": "Q12",
+        "question": "What did we decide about pricing?",
+        "intent": "decisions_about",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      },
+      {
+        "id": "Q13",
+        "question": "What did Meera promise?",
+        "intent": "person",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      },
+      {
+        "id": "Q14",
+        "question": "When is the Falcon kickoff?",
+        "intent": null,
+        "supported": false,
+        "intentCorrect": false,
+        "missing": [
+          "kickoff is scheduled"
+        ],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 1,
+        "returned": 0,
+        "pass": false
+      }
+    ]
+  },
+  "falsePositives": [
+    {
+      "cat": "deadlines",
+      "where": "1a00000000000103",
+      "got": "please also send the vendor quotes by friday.",
+      "status": "current",
+      "basis": "direct"
+    },
+    {
+      "cat": "deadlines",
+      "where": "1a00000000000301",
+      "got": "please prepare the investor memo by friday.",
+      "status": "current",
+      "basis": "direct"
+    },
+    {
+      "cat": "events",
+      "where": "1a00000000000502",
+      "got": "lunch on tuesday was great, thanks everyone.",
+      "status": "current",
+      "basis": "inference"
+    },
+    {
+      "cat": "events",
+      "where": "1a00000000000603",
+      "got": "thanks for the call today.",
+      "status": "current",
+      "basis": "inference"
+    }
+  ],
+  "falseNegatives": [
+    {
+      "cat": "tasks",
+      "where": "1a00000000000103",
+      "expected": "send the vendor quotes"
+    },
+    {
+      "cat": "commitments",
+      "where": "1a00000000000202",
+      "expected": "share it tomorrow"
+    },
+    {
+      "cat": "tasks",
+      "where": "1a00000000000301",
+      "expected": "prepare the investor memo"
+    },
+    {
+      "cat": "supersession",
+      "where": "T04",
+      "expected": "final report is due tomorrow → deadline has moved to wednesday"
+    }
+  ],
+  "wrongAttributes": [
+    {
+      "where": "1a00000000000101",
+      "anchor": "send the revised budget",
+      "attr": "status",
+      "expected": "closed",
+      "got": "current"
+    },
+    {
+      "where": "1a00000000000201",
+      "anchor": "share the onboarding checklist",
+      "attr": "basis",
+      "expected": "direct",
+      "got": "inference"
+    },
+    {
+      "where": "1a00000000000201",
+      "anchor": "share the onboarding checklist",
+      "attr": "assignee",
+      "expected": "priya@acme.example",
+      "got": "inferred:person:priya@acme.example"
+    },
+    {
+      "where": "1a00000000000201",
+      "anchor": "start the pilot",
+      "attr": "due",
+      "expected": "2026-01-12",
+      "got": null
+    },
+    {
+      "where": "1a00000000000401",
+      "anchor": "final report is due tomorrow",
+      "attr": "status",
+      "expected": "superseded",
+      "got": "current"
+    },
+    {
+      "where": "1a00000000000701",
+      "anchor": "send the signed nda",
+      "attr": "basis",
+      "expected": "direct",
+      "got": "inference"
+    },
+    {
+      "where": "1a00000000000702",
+      "anchor": "confirm the delivery address",
+      "attr": "basis",
+      "expected": "direct",
+      "got": "inference"
+    },
+    {
+      "where": "1a00000000000702",
+      "anchor": "confirm the delivery address",
+      "attr": "assignee",
+      "expected": "pshah@beta.example",
+      "got": "unresolved:"
+    },
+    {
+      "where": "1a00000000000801",
+      "anchor": "kickoff is scheduled",
+      "attr": "basis",
+      "expected": "direct",
+      "got": "inference"
+    },
+    {
+      "where": "1a00000000001401",
+      "anchor": "demo call is booked",
+      "attr": "basis",
+      "expected": "direct",
+      "got": "inference"
+    },
+    {
+      "where": "1a00000000001501",
+      "anchor": "update the pricing page",
+      "attr": "assignee",
+      "expected": "raj@acme.example",
+      "got": "inferred:person:raj@acme.example"
+    },
+    {
+      "where": "1a00000000001501",
+      "anchor": "update the pricing page",
+      "attr": "status",
+      "expected": "closed",
+      "got": "current"
+    }
+  ],
+  "sync": {
+    "state": "succeeded",
+    "counts": {
+      "listed": 28,
+      "considered": 28,
+      "skippedSameVersion": 0,
+      "fetched": 28,
+      "created": 28,
+      "updated": 0,
+      "unchanged": 0,
+      "removed": 0,
+      "rejected": 0,
+      "failed": 0,
+      "withheldRemovals": 0
+    }
+  },
+  "egress": []
+}

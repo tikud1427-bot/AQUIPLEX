@@ -56,6 +56,7 @@ import {
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
 import { bindOwnerStore } from '../core/storage/ownerBinding.js';
+import { isExternalFileId } from '../files/externalIdentity.js';
 import {
   EDGE_CLASS, ensureEdgeType, isKnownEdgeType, isKnownNodeType,
   edgeClassOf, expandEdgeTypes, listEdgeTypes, listNodeTypes,
@@ -304,18 +305,45 @@ function mergeEdge(t, o) {
   };
 }
 
-export function mergeGraphs(ours, theirs) {
+/**
+ * `ctx.allowExternalAdditions === false` (a partition flush WITHOUT a valid
+ * connect fence, Safety Fix 2), for EXTERNAL files (ext_… ids):
+ *   · a removed external file is never re-linked (whatever the link's time);
+ *   · an external file link the database copy does not hold is not written
+ *     (a deletion there wins; an addition needs a connect fence);
+ *   · node/edge provenance (sourceFiles) citing such a file is dropped;
+ *   · (Safety Fix 3) an external file link the database copy DOES hold, and a
+ *     node/edge whose provenance is external only, keep the database's version
+ *     (no unfenced update); an external-only node/edge the database does not
+ *     hold is not written (no unfenced addition).
+ * Without ctx (or with a fence) the merge is exactly as before.
+ */
+export function mergeGraphs(ours, theirs, ctx = {}) {
   const removed = { ...(theirs.removedFiles ?? {}) };
   for (const [f, at] of Object.entries(ours.removedFiles ?? {})) removed[f] = Math.max(Number(removed[f]) || 0, Number(at) || 0);
+  const unfenced = ctx.allowExternalAdditions === false;
+  const refusedExternal = new Set();
+  if (unfenced) {
+    for (const f of Object.keys(removed)) if (isExternalFileId(f)) refusedExternal.add(f);
+    for (const f of Object.keys(ours.byFile ?? {})) {
+      if (isExternalFileId(f) && !Object.prototype.hasOwnProperty.call(theirs.byFile ?? {}, f)) refusedExternal.add(f);
+    }
+  }
   // A file link survives a removal only if it was made AFTER it (re-linked).
   // Symmetric: whichever side still holds a pre-removal link, it is dropped.
-  const keepLink = (f, l) => !removed[f] || (Number(l?.at) || 0) > removed[f];
+  const keepLink = (f, l) => !refusedExternal.has(f) && (!removed[f] || (Number(l?.at) || 0) > removed[f]);
+  const cleanSources = x => (refusedExternal.size && Array.isArray(x?.sourceFiles) && x.sourceFiles.some(id => refusedExternal.has(id))
+    ? { ...x, sourceFiles: x.sourceFiles.filter(id => !refusedExternal.has(id)) } : x);
+  // Unfenced: OUR version of an external link the database holds is ignored (theirs stands).
+  const ignoredOurs = f => unfenced && isExternalFileId(f) && Object.prototype.hasOwnProperty.call(theirs.byFile ?? {}, f);
+  const externalOnly = x => Array.isArray(x?.sourceFiles) && x.sourceFiles.length > 0 && x.sourceFiles.every(id => isExternalFileId(id));
   const dropNodes = new Set();
   const dropEdges = new Set();
   const keptNodes = new Set();
   const keptEdges = new Set();
   for (const side of [ours, theirs]) {
     for (const [f, l] of Object.entries(side.byFile ?? {})) {
+      if (side === ours && ignoredOurs(f)) continue;
       const into = keepLink(f, l) ? [keptNodes, keptEdges] : [dropNodes, dropEdges];
       for (const n of l.nodes ?? []) into[0].add(n);
       for (const e of l.edges ?? []) into[1].add(e);
@@ -328,23 +356,30 @@ export function mergeGraphs(ours, theirs) {
   for (const [id, o] of Object.entries(ours.nodes ?? {})) {
     if (goneNode(id)) continue;
     const t = nodes[id];
+    if (unfenced && (t ? externalOnly(t) : externalOnly(o))) continue;   // external-only: the database's version / no addition
     nodes[id] = t ? { ...t, ...o, data: { ...(t.data ?? {}), ...(o.data ?? {}) }, sourceFiles: union(t.sourceFiles, o.sourceFiles) } : o;
   }
   const edges = {};
   for (const [id, e] of Object.entries(theirs.edges ?? {})) if (!goneEdge(id)) edges[id] = e;
   for (const [id, o] of Object.entries(ours.edges ?? {})) {
     if (goneEdge(id)) continue;
+    if (unfenced && (edges[id] ? externalOnly(edges[id]) : externalOnly(o))) continue;
     edges[id] = edges[id] ? mergeEdge(edges[id], o) : o;
   }
   const byFile = {};
   for (const side of [theirs, ours]) {
     for (const [f, l] of Object.entries(side.byFile ?? {})) {
       if (!keepLink(f, l)) continue;
+      if (side === ours && ignoredOurs(f)) continue;
       const cur = byFile[f] ?? { nodes: [], edges: [] };
       byFile[f] = { nodes: union(cur.nodes, l.nodes).filter(id => nodes[id]), edges: union(cur.edges, l.edges).filter(id => edges[id]) };
       const at = Math.max(Number(cur.at) || 0, Number(l.at) || 0);
       if (at) byFile[f].at = at;
     }
+  }
+  if (refusedExternal.size) {
+    for (const [id, n] of Object.entries(nodes)) nodes[id] = cleanSources(n);
+    for (const [id, e] of Object.entries(edges)) edges[id] = cleanSources(e);
   }
   const out = { nodes, edges, byFile };
   const kept = Object.entries(removed).sort((a, b) => b[1] - a[1]).slice(0, MAX_REMOVED_FILES);
@@ -366,6 +401,7 @@ const binding = bindOwnerStore({
   decode: decodeGraph,
   install: (owner, g) => { if (g) store.set(owner, g); else store.delete(owner); },
   merge: mergeGraphs,
+  externalAware: true,      // Safety Fix 3: the merge also guards first writes (no row) of external file links
   changedAt: graphChangedAt,
   // After an account purge: only what was created or confirmed after it.
   pruneBefore: (obj, at) => {

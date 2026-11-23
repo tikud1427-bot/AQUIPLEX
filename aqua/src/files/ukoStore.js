@@ -40,6 +40,8 @@ const MAX_UKOS_PER_OWNER = 100;   // uploads (and workspaces) — unchanged, cou
 // reached; this backstop makes the store refuse rather than evict if any
 // caller ever bypasses that check. An external UKO never evicts anything.
 export const MAX_EXTERNAL_UKOS_PER_OWNER = 200;
+/** Data classes with no per-owner total item cap (founder decision 2026-11-23: complete Gmail sync). */
+export const UNCAPPED_CLASSES = Object.freeze(new Set(['external:gmail']));
 const MAX_CACHE_ENTRIES  = 150;
 
 /** ownerKey → Map<ukoId, uko>   (ownerKey: ownerId or 'anon') */
@@ -63,7 +65,11 @@ function loadFromDisk() {
   }
 }
 
-const _writer = createDebouncedWriter(STORE_FILE);
+let lastWriteError = null;   // flushUKOStore: the last JSON write failure (cleared by a successful write)
+const _writer = createDebouncedWriter(STORE_FILE, {
+  onError: err => { lastWriteError = err; console.warn(`[STORE] atomic write failed for .aqua-uko.json: ${err?.message ?? err}`); },
+  onFlushed: () => { lastWriteError = null; },
+});
 function scheduleSave(ownerKeyToSave = null) {
   if (ownerKeyToSave) binding.markDirty(ownerKeyToSave);
   if (!binding.writesWholeJson()) return;
@@ -88,7 +94,9 @@ function scheduleSave(ownerKeyToSave = null) {
 const binding = bindKeyedStore({
   storeKey: '.aqua-uko.json', file: STORE_FILE, label: 'uko', schema: SCHEMA,
   section: 'owners', jsonPath: ['owners'],
-  mergeSchema: { root: { time: u => Number(u?.provenance?.uploadedAt) || 0 } },
+  // Safety Fix 2: external resources (ext_ ids) — a deletion wins over a concurrent
+  // edit; an addition needs a valid connect fence (core/storage/entryMerge.js).
+  mergeSchema: { root: { time: u => Number(u?.provenance?.uploadedAt) || 0, external: id => isExternalFileId(id) } },
   encode: owner => (byOwner.has(owner) ? Object.fromEntries(byOwner.get(owner)) : undefined),
   decode: obj => new Map(Object.entries(obj ?? {})),
   install: (owner, m) => { if (m) byOwner.set(owner, m); else byOwner.delete(owner); },
@@ -118,9 +126,13 @@ export function saveUKO(uko) {
       // Phase 1a.2: never evict — refuse. (Thrown inside ingestOne → that file fails cleanly.)
       // Counted in RESOURCES, not versions: during an update the new version is
       // stored beside the old one until it succeeds, and that must not count twice.
+      // 2026-11-23 (founder-approved): Gmail has NO total item cap — the whole eligible
+      // mailbox is imported. Gmail items neither hit nor count toward this backstop,
+      // which still bounds every other external source.
+      const capped = u => !UNCAPPED_CLASSES.has(dataClassOfUko(u));
       const itemOf = id => id.slice(0, id.lastIndexOf('_'));
-      const items = new Set([...m.keys()].filter(isExternalFileId).map(itemOf));
-      if (!items.has(itemOf(uko.id)) && items.size >= MAX_EXTERNAL_UKOS_PER_OWNER) {
+      const items = new Set([...m.values()].filter(u => isExternalFileId(u.id) && capped(u)).map(u => itemOf(u.id)));
+      if (capped(uko) && !items.has(itemOf(uko.id)) && items.size >= MAX_EXTERNAL_UKOS_PER_OWNER) {
         throw Object.assign(new Error('External resource limit reached for this owner'), { code: 'EXTERNAL_LIMIT' });
       }
     } else {
@@ -280,6 +292,29 @@ export function getCachedKnowledge(hash, fileType, { ownerId = null } = {}) {
   if (!entry) return null;
   if (fileType && entry.fileType !== fileType) return null; // same bytes classified differently — don't cross-wire
   return entry;
+}
+
+/**
+ * 2026-11-23 — write pending UKO changes NOW (durably) instead of on the 500 ms
+ * debounce. A connector sync calls this before it persists an advanced listing
+ * or history position, so a position never runs ahead of the stored messages
+ * (a crash in between would otherwise skip them). JSON mode: synchronous atomic
+ * write (+ the Mongo mirror). Partitioned modes: the binding's own flush.
+ * Throws if the write could not be completed.
+ */
+export async function flushUKOStore({ timeoutMs = 10_000 } = {}) {
+  if (binding.writesWholeJson()) {
+    // An async debounced write may be in flight with an OLDER snapshot: let it end
+    // first, then write the newest snapshot last, synchronously.
+    const deadline = Date.now() + timeoutMs;
+    while (_writer.isPending() && Date.now() < deadline) { _writer.flush(); await new Promise(r => setTimeout(r, 20)); }
+    if (_writer.isPending()) throw Object.assign(new Error('UKO store write still pending'), { code: 'FLUSH_INCOMPLETE' });
+    lastWriteError = null;
+    scheduleSave();
+    _writer.flush();
+    if (lastWriteError) throw Object.assign(new Error(`UKO store write failed: ${lastWriteError.message ?? lastWriteError}`), { code: 'FLUSH_INCOMPLETE' });
+  }
+  if (binding.mode !== 'off' && typeof binding.flush === 'function') await binding.flush();
 }
 
 export function getUKOStoreStats() {

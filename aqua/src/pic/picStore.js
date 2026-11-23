@@ -26,6 +26,7 @@ import {
 } from '../core/atomicStore.js';
 import { dataPath } from '../core/dataDir.js';
 import { bindKeyedStore } from '../core/storage/keyedBinding.js';
+import { isExternalFileId } from '../files/externalIdentity.js';
 
 const STORE_FILE = dataPath('.aqua-pic.json');
 const SCHEMA     = 1;
@@ -113,15 +114,26 @@ export function schedulePicSave() {
 //   sessions,
 //   ledger     logs unioned by identity, time-ordered, capped as today
 // DELETION: purgeOwner → row tombstone.
+// Safety Fix 3: a FACT subject (`fact:<id>`) and a fact signal carry no source of their
+// own; whether the fact came from an external source is answered by the evidence
+// store (registered below, no import cycle). The merge key of a PIC entry is its owner.
+let externalFact = () => false;
+/** evidenceStore registers (ownerId, factId) => is that fact derived from an external source? */
+export function setExternalFactResolver(fn) { externalFact = typeof fn === 'function' ? fn : () => false; }
+const isExternalFactOf = (owner, factId) => { try { return Boolean(owner && externalFact(owner, String(factId))); } catch { return false; } };
+const isExternalSubject = (id, owner = null) => typeof id === 'string'
+  && ((id.startsWith('uko:') && isExternalFileId(id.slice(4))) || (id.startsWith('fact:') && isExternalFactOf(owner, id.slice(5))));
 const lifecycleTime = r => Math.max(Number(r?.updatedAt) || 0, ...(r?.transitions ?? []).map(t => Number(t?.at) || 0), 0);
 const binding = bindKeyedStore({
   storeKey: '.aqua-pic.json', file: STORE_FILE, label: 'pic', schema: SCHEMA,
   mergeSchema: {
+    // Safety Fix 2: subjects of external files (uko:ext_…) — deletion wins; an addition
+    // needs a valid connect fence. (fact:<id> subjects carry no source: see the report.)
     collections: {
-      lifecycle: { time: lifecycleTime },
-      signals: { time: s => Number(s?.lastAt) || 0, counters: ['ok', 'bad'] },
+      lifecycle: { time: lifecycleTime, external: (id, item, ctx) => isExternalSubject(id, ctx?.key) },
+      signals: { time: s => Number(s?.lastAt) || 0, counters: ['ok', 'bad'], external: (id, item, ctx) => isExternalFactOf(ctx?.key, id) },
     },
-    logMaps: { versions: { id: v => `${v?.rev}:${v?.at}`, time: v => Number(v?.at) || 0, cap: MAX_REVISIONS_PER_SUBJ } },
+    logMaps: { versions: { id: v => `${v?.rev}:${v?.at}`, time: v => Number(v?.at) || 0, cap: MAX_REVISIONS_PER_SUBJ, external: (id, item, ctx) => isExternalSubject(id, ctx?.key) } },
     logs: {
       sessions: { id: x => `${x?.at}:${x?.requestId ?? ''}:${x?.query ?? ''}`, time: x => Number(x?.at) || 0, cap: MAX_SESSIONS_PER_OWNER },
       ledger: { time: x => Number(x?.at) || 0, cap: MAX_LEDGER_PER_OWNER },

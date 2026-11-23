@@ -10,6 +10,7 @@ const MindPage = lazy(() => import('@/pages/MindPage'));
 const IntroPage = lazy(() => import('@/pages/IntroPage'));
 const ProjectsPage = lazy(() => import('@/pages/ProjectsPage'));
 const MemoryPage = lazy(() => import('@/pages/MemoryPage'));
+const GmailIntelligencePage = lazy(() => import('@/pages/GmailIntelligencePage'));
 
 /* Fixture preview, DEV builds only.
    The `import()` has to live INSIDE the guard, not beside it. A top-level
@@ -58,6 +59,10 @@ export const router = createBrowserRouter(
         {
           path: 'mind',
           element: <LazyRoute label="Opening the mind…"><MindPage /></LazyRoute>,
+        },
+        {
+          path: 'email',
+          element: <LazyRoute label="Reading your email knowledge…"><GmailIntelligencePage /></LazyRoute>,
         },
 
         {

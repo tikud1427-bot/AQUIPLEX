@@ -85,6 +85,24 @@ async function coveringDeletions(client, ownerId, ukoId) {
 }
 
 /**
+ * Multi-instance connect safety — the import-batch re-check (read only): of
+ * `ukoIds`, those a deletion covers at or after `observedAt` (any covering
+ * deletion when `observedAt` is missing). Same predicate as the enqueue.
+ * @returns {Promise<Set<string>>}
+ */
+export async function externalResourcesDeletedSince(q, { ownerId, ukoIds, observedAt = null }) {
+  const { rows } = await q.query(
+    'SELECT uko_prefix, keep_uko_id, deleted_at FROM aqua_external_deletions WHERE owner_id = $1', [ownerId]);
+  const since = observedAt == null ? NaN : new Date(observedAt).getTime();
+  const out = new Set();
+  for (const id of ukoIds) {
+    const covering = rows.filter(r => String(id).startsWith(String(r.uko_prefix)) && r.keep_uko_id !== id);
+    if (covering.length && (Number.isNaN(since) || covering.some(r => new Date(r.deleted_at).getTime() >= since))) out.add(id);
+  }
+  return out;
+}
+
+/**
  * G1-2 / D-1 + D-2 — the enqueue-side view of one resource, read under the
  * source lock (`lockExternalSource` first, same transaction):
  *

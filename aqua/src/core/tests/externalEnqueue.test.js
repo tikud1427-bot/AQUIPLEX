@@ -96,11 +96,16 @@ describe('D-1 · enqueue under the source lock, checked against the deletion tom
     const observedAt = new Date(Date.now() + 1000);
     await DU.enqueueDocumentUnderstanding({ ownerId: O, documents: [doc(id, observedAt)], deps: { enabled: async () => true, pool: spy } });
     assert.match(stmts[0].s, /^BEGIN/);
-    assert.match(stmts[1].s, /pg_advisory_xact_lock/);
-    assert.deepEqual(stmts[1].p, delLock, 'enqueue and deletion must take the same lock');
-    assert.match(stmts[2].s, /FROM aqua_external_deletions/);
+    // Step 1 (account-deletion barrier): the enqueue is an owner-data write, so it
+    // first takes the owner's barrier (shared) and reads the deletion marker. A
+    // source deletion is a deletion and never takes the barrier: no lock cycle.
+    assert.match(stmts[1].s, /pg_advisory_xact_lock_shared/);
+    assert.match(stmts[2].s, /FROM aqua_deleted_owners/);
+    assert.match(stmts[3].s, /pg_advisory_xact_lock\(/);
+    assert.deepEqual(stmts[3].p, delLock, 'enqueue and deletion must take the same lock');
+    assert.match(stmts[4].s, /FROM aqua_external_deletions/);
     const firstInsert = stmts.findIndex(x => /^INSERT INTO aqua_jobs/.test(x.s));
-    assert.ok(firstInsert > 2);
+    assert.ok(firstInsert > 4);
     assert.match(stmts.at(-1).s, /^COMMIT/);
     // a refused enqueue writes nothing and rolls back
     stmts.length = 0;

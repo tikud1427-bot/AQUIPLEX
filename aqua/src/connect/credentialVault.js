@@ -69,14 +69,55 @@ const aadFor = ({ ownerId, connectionId, connectorId }) => {
   return Buffer.from(`aqua-connect-v1|${ownerId}|${connectionId}|${connectorId}`, 'utf8');
 };
 
+const keyIdOf = k => crypto.createHash('sha256').update(k).digest('hex').slice(0, 16);
+
 /**
- * @param {{ key?: Buffer|string, env?: object }} [opts]  key: raw 32-byte Buffer (tests) or
- *        the env value; default reads process.env.AQUA_CONNECTOR_KEY.
+ * Previous keys (decrypt-only) from AQUA_CONNECTOR_PREVIOUS_KEYS: a comma- or
+ * whitespace-separated list, each 32 bytes in base64 or hex. Any entry that
+ * does not parse makes the WHOLE list invalid (KEY_INVALID) — a typo in a
+ * rotation must not silently drop the key that opens half the credentials.
  */
-export function createCredentialVault({ key = null, env = process.env } = {}) {
+export function parsePreviousConnectorKeys(raw) {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  if (!s) return [];
+  return s.split(/[\s,]+/).filter(Boolean).map(part => {
+    try { return parseConnectorKey(part); }
+    catch { throw new CredentialVaultError('KEY_INVALID', `${PREVIOUS_KEYS_ENV} contains an entry that is not a 32-byte key`); }
+  });
+}
+export const PREVIOUS_KEYS_ENV = 'AQUA_CONNECTOR_PREVIOUS_KEYS';
+
+/**
+ * KEY ROTATION (Phase 2A). A vault holds ONE current key and any number of
+ * PREVIOUS keys:
+ *   seal   always uses the current key;
+ *   open   selects the key by the envelope's keyId (current or previous); a
+ *          keyId the vault does not hold is KEY_MISMATCH, never guessed at;
+ *   needsReseal(envelope)  true when the envelope was sealed by a previous key;
+ *   reseal(envelope, binding)  open with the previous key, seal with the current.
+ * The connect service reseals lazily on every use and on demand
+ * (rotateCredentials). Procedure: set the new key as AQUA_CONNECTOR_KEY and the
+ * old one in AQUA_CONNECTOR_PREVIOUS_KEYS, deploy, reseal, then remove the old
+ * key. A previous key equal to the current one is ignored (no duplicate ids).
+ *
+ * @param {{ key?: Buffer|string, previousKeys?: Array<Buffer|string>, env?: object }} [opts]
+ *        key: raw 32-byte Buffer (tests) or the env value; default reads
+ *        process.env.AQUA_CONNECTOR_KEY. previousKeys default: AQUA_CONNECTOR_PREVIOUS_KEYS
+ *        (only when `key` is not given explicitly).
+ */
+export function createCredentialVault({ key = null, previousKeys = null, env = process.env } = {}) {
   const k = Buffer.isBuffer(key) ? key : parseConnectorKey(key ?? env.AQUA_CONNECTOR_KEY);
   if (k.length !== 32) throw new CredentialVaultError('KEY_INVALID', 'key must be 32 bytes');
-  const keyId = crypto.createHash('sha256').update(k).digest('hex').slice(0, 16);
+  const keyId = keyIdOf(k);
+  const prevRaw = previousKeys ?? (key == null ? parsePreviousConnectorKeys(env.AQUA_CONNECTOR_PREVIOUS_KEYS) : []);
+  const keyring = new Map([[keyId, k]]);   // keyId → key; the current key first
+  for (const p of prevRaw) {
+    const pk = Buffer.isBuffer(p) ? p : parseConnectorKey(p);
+    if (pk.length !== 32) throw new CredentialVaultError('KEY_INVALID', 'previous key must be 32 bytes');
+    const id = keyIdOf(pk);
+    if (!keyring.has(id)) keyring.set(id, pk);
+  }
+  const previousKeyIds = Object.freeze([...keyring.keys()].filter(id => id !== keyId));
 
   function seal(credentials, binding) {
     if (credentials == null || typeof credentials !== 'object') throw new CredentialVaultError('CREDENTIALS_INVALID', 'credentials must be an object');
@@ -89,7 +130,8 @@ export function createCredentialVault({ key = null, env = process.env } = {}) {
 
   function open(envelope, binding) {
     if (!envelope || envelope.v !== 1 || envelope.alg !== ALG) throw new CredentialVaultError('ENVELOPE_INVALID', 'unrecognised credential envelope');
-    if (envelope.keyId !== keyId) throw new CredentialVaultError('KEY_MISMATCH', 'credentials were sealed with a different key');
+    const openKey = typeof envelope.keyId === 'string' ? keyring.get(envelope.keyId) : undefined;
+    if (!openKey) throw new CredentialVaultError('KEY_MISMATCH', 'credentials were sealed with a different key');
     // Decode strictly and check lengths BEFORE any
     // decryption. Node's GCM decipher otherwise accepts tags as short as 4
     // bytes (and any IV length), which would cut integrity to 32 bits.
@@ -97,7 +139,7 @@ export function createCredentialVault({ key = null, env = process.env } = {}) {
     const tag = strictBase64(envelope.tag, TAG_BYTES, 'tag');
     const ct = strictBase64(envelope.ct, null, 'ct');
     try {
-      const decipher = crypto.createDecipheriv(ALG, k, iv, { authTagLength: TAG_BYTES });
+      const decipher = crypto.createDecipheriv(ALG, openKey, iv, { authTagLength: TAG_BYTES });
       decipher.setAAD(aadFor(binding));
       decipher.setAuthTag(tag);
       const pt = Buffer.concat([decipher.update(ct), decipher.final()]);
@@ -108,7 +150,13 @@ export function createCredentialVault({ key = null, env = process.env } = {}) {
     }
   }
 
-  return Object.freeze({ seal, open, keyId });
+  /** Sealed under a key this vault still holds, but not the current one. */
+  const needsReseal = envelope => Boolean(envelope && typeof envelope.keyId === 'string' && envelope.keyId !== keyId && keyring.has(envelope.keyId));
+
+  /** Re-encrypt under the current key (same binding). Throws like open() when it cannot be opened. */
+  function reseal(envelope, binding) { return seal(open(envelope, binding), binding); }
+
+  return Object.freeze({ seal, open, keyId, previousKeyIds, needsReseal, reseal });
 }
 
 /**
@@ -121,7 +169,7 @@ export function createCredentialVault({ key = null, env = process.env } = {}) {
  */
 export function createUnavailableVault(code = 'KEY_MISSING') {
   const fail = () => { throw new CredentialVaultError(code, 'the connector credential key is not available'); };
-  return Object.freeze({ seal: fail, open: fail, keyId: null, unavailable: true, code });
+  return Object.freeze({ seal: fail, open: fail, reseal: fail, needsReseal: () => false, keyId: null, previousKeyIds: Object.freeze([]), unavailable: true, code });
 }
 
 /** The vault for a deployment: real when the key parses, otherwise an unavailable vault (never a fallback key). */

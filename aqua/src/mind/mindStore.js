@@ -23,6 +23,7 @@ import { createDebouncedWriter, loadJsonFile, wrapStore, unwrapStore } from '../
 import { migrateLegacyFile } from '../core/dataDir.js';
 import { clearNamespace } from '../embeddings/vectorStore.js';
 import { bindOwnerStore } from '../core/storage/ownerBinding.js';
+import { isExternalFileKey } from '../files/externalIdentity.js';
 
 // P0 — memory is critical user data: it now lives in the canonical DATA
 // DIRECTORY (survives every redeploy), with a one-time loss-proof migration
@@ -117,8 +118,15 @@ function replaceInPlace(target, source) {
   for (const k of Object.keys(target)) if (!(k in source)) delete target[k];
   Object.assign(target, source);
 }
-/** Both processes changed this owner: fold the disk version into ours, in place. */
-function mergeConcurrent(ours, disk) {
+/**
+ * Both processes changed this owner: fold the disk version into ours, in place.
+ * `ctx.allowExternalAdditions === false` (a partition flush WITHOUT a valid
+ * origin fence, Safety Fixes 2/3): external file entries (ext:… keys) are the
+ * database's — one the database copy does not hold is not written back (it was
+ * deleted there, or it would be an unfenced addition), and one it holds keeps
+ * the database's version (no unfenced update). Other bags and keys: unchanged.
+ */
+function mergeConcurrent(ours, disk, ctx = {}) {
   // Tombstones first: the union of both sides' deletions, newest time wins.
   ours.tombstones ??= {};
   for (const bag of TOMBSTONE_BAGS) {
@@ -136,6 +144,13 @@ function mergeConcurrent(ours, disk) {
     // …and a deletion the OTHER process made removes our older copy.
     for (const [key, item] of Object.entries(ours[bag])) {
       if (itemTime(item) <= deletedAt(bag, key)) delete ours[bag][key];
+    }
+    if (bag === 'files' && ctx.allowExternalAdditions === false) {
+      for (const key of Object.keys(ours.files)) {
+        if (!isExternalFileKey(key)) continue;
+        if (Object.prototype.hasOwnProperty.call(disk.files ?? {}, key)) ours.files[key] = disk.files[key];
+        else delete ours.files[key];
+      }
     }
   }
   for (const part of ['nodes', 'edges']) {
@@ -251,13 +266,14 @@ const binding = bindOwnerStore({
     if (cur) replaceInPlace(cur, mind); else store.set(owner, mind);
     baseUpdatedAt.set(owner, tsOf(mind));
   },
-  merge: (ours, theirs) => {
+  merge: (ours, theirs, ctx = {}) => {
     const copy = structuredClone(ours);
-    mergeConcurrent(copy, upgradeMind(structuredClone(theirs)));
+    mergeConcurrent(copy, upgradeMind(structuredClone(theirs)), ctx);
     return copy;
   },
   changedAt: tsOf,
   pruneBefore: pruneMindBefore,
+  externalAware: true,      // Safety Fix 3: the merge also guards first writes (no row) of external file entries
   evict: owner => { store.delete(owner); baseUpdatedAt.delete(owner); },
   reloadJson: () => { loaded = false; loadFromDisk(); },
 });

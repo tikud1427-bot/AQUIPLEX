@@ -1,0 +1,234 @@
+{
+  "version": "gmail-eval.v1",
+  "synthetic": true,
+  "groundTruthPolicy": "Expected results were written from what a careful human annotator concludes about each email, BEFORE the system was run on this dataset. Anchors are lowercase substrings of the sentence a correct item must come from. 'basis' is the annotator's judgement: direct = the email explicitly states the obligation/decision/date; inference = conditional, tentative, or derived. 'status' is the correct state after reading the whole thread: current | superseded | contradicted | duplicate | closed (fulfilled or cancelled — must not appear as open/upcoming). 'optional' = acceptable to extract or not, but if extracted it must be an inference. 'reject' = must NOT be extracted. 'outOfScope' = what a human would extract from a language the system does not support (measured as coverage, not as English recall).",
+  "now": "2026-01-07T12:00:00Z",
+  "threads": [
+    {
+      "id": "T01", "covers": ["explicit commitments", "follow-up obligations", "completed commitments", "conversation relationships"],
+      "messages": [
+        { "id": "1a00000000000101", "date": "Mon, 5 Jan 2026 09:00:00 +0000", "from": "Priya Sharma <priya@acme.example>", "to": "Raj Mehta <raj@acme.example>", "subject": "Q1 budget", "rfc": "<t01m1@acme.example>",
+          "text": "Hi Raj,\nI'll send the revised budget by Wednesday.\nThanks,\nPriya",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "q1 budget", "parent": null,
+            "items": [ { "type": "commitment", "anchor": "send the revised budget", "basis": "direct", "due": "2026-01-07", "actor": "priya@acme.example", "status": "closed" } ], "reject": [] } },
+        { "id": "1a00000000000102", "date": "Wed, 7 Jan 2026 10:00:00 +0000", "from": "Priya Sharma <priya@acme.example>", "to": "Raj Mehta <raj@acme.example>", "subject": "Re: Q1 budget", "rfc": "<t01m2@acme.example>", "inReplyTo": "<t01m1@acme.example>",
+          "text": "I've sent the revised budget; it's attached. Let me know if anything is missing.",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "q1 budget", "parent": "1a00000000000101",
+            "items": [], "reject": [ { "type": "task", "anchor": "let me know", "why": "courtesy phrase, not a request with an obligation" }, { "type": "commitment", "anchor": "sent the revised budget", "why": "a completed past action, not a promise" } ] } },
+        { "id": "1a00000000000103", "date": "Thu, 8 Jan 2026 09:00:00 +0000", "from": "Raj Mehta <raj@acme.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Re: Q1 budget", "rfc": "<t01m3@acme.example>", "inReplyTo": "<t01m2@acme.example>",
+          "text": "Thanks. Please also send the vendor quotes by Friday.",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "q1 budget", "parent": "1a00000000000102",
+            "items": [ { "type": "task", "anchor": "send the vendor quotes", "basis": "direct", "due": "2026-01-09", "assignee": "priya@acme.example", "status": "current" } ], "reject": [] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": ["send the vendor quotes"], "notOpen": ["send the revised budget"], "upcoming": [], "notUpcoming": ["send the revised budget"] }
+    },
+    {
+      "id": "T02", "covers": ["requests that are not accepted commitments", "conditional commitments", "tentative intentions", "accepted request"],
+      "messages": [
+        { "id": "1a00000000000201", "date": "Tue, 6 Jan 2026 09:00:00 +0000", "from": "Alex Kim <alex@beta.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Pilot", "rfc": "<t02m1@beta.example>",
+          "text": "Hi Priya,\nCould you share the onboarding checklist?\nIf the contract is signed this week, we'll start the pilot on Monday.\nI might be able to join the kickoff call.\nBest, Alex",
+          "expect": { "people": ["alex@beta.example", "priya@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "pilot", "parent": null,
+            "items": [
+              { "type": "task", "anchor": "share the onboarding checklist", "basis": "direct", "due": null, "assignee": "priya@acme.example", "status": "current" },
+              { "type": "commitment", "anchor": "start the pilot", "basis": "inference", "due": "2026-01-12", "actor": "alex@beta.example", "status": "current" },
+              { "type": "commitment", "anchor": "join the kickoff call", "basis": "inference", "optional": true }
+            ],
+            "reject": [ { "type": "commitment", "anchor": "share the onboarding checklist", "why": "a request to the recipient, not the sender's commitment" }, { "type": "event", "anchor": "kickoff call", "why": "no date or time is given" } ] } },
+        { "id": "1a00000000000202", "date": "Tue, 6 Jan 2026 11:00:00 +0000", "from": "Priya Sharma <priya@acme.example>", "to": "Alex Kim <alex@beta.example>", "subject": "Re: Pilot", "rfc": "<t02m2@acme.example>", "inReplyTo": "<t02m1@beta.example>",
+          "text": "Sure, I can share it tomorrow.",
+          "expect": { "people": ["alex@beta.example", "priya@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "pilot", "parent": "1a00000000000201",
+            "items": [ { "type": "commitment", "anchor": "share it tomorrow", "basis": "direct", "due": "2026-01-07", "actor": "priya@acme.example", "status": "current" } ], "reject": [] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": ["share it tomorrow", "start the pilot", "share the onboarding checklist"], "notOpen": [], "upcoming": ["share it tomorrow", "start the pilot"], "notUpcoming": [] }
+    },
+    {
+      "id": "T03", "covers": ["cancelled tasks", "cancelled deadlines"],
+      "messages": [
+        { "id": "1a00000000000301", "date": "Mon, 5 Jan 2026 10:00:00 +0000", "from": "Raj Mehta <raj@acme.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Investor memo", "rfc": "<t03m1@acme.example>",
+          "text": "Please prepare the investor memo by Friday.",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "investor memo", "parent": null,
+            "items": [ { "type": "task", "anchor": "prepare the investor memo", "basis": "direct", "due": "2026-01-09", "assignee": "priya@acme.example", "status": "closed" } ], "reject": [] } },
+        { "id": "1a00000000000302", "date": "Wed, 7 Jan 2026 15:00:00 +0000", "from": "Raj Mehta <raj@acme.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Re: Investor memo", "rfc": "<t03m2@acme.example>", "inReplyTo": "<t03m1@acme.example>",
+          "text": "Never mind the investor memo. The investor meeting was cancelled, so there is no need to prepare it.",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "investor memo", "parent": "1a00000000000301",
+            "items": [], "reject": [ { "type": "task", "anchor": "prepare it", "why": "a cancellation, not a request" }, { "type": "event", "anchor": "investor meeting", "why": "cancelled" } ] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": [], "notOpen": ["prepare the investor memo"], "upcoming": [], "notUpcoming": ["prepare the investor memo"] }
+    },
+    {
+      "id": "T04", "covers": ["changed deadlines", "time-zone differences"],
+      "messages": [
+        { "id": "1a00000000000401", "date": "Sat, 10 Jan 2026 00:15:00 +0545", "from": "Meera Rao <meera@acme.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Final report", "rfc": "<t04m1@acme.example>",
+          "text": "Team, the final report is due tomorrow.",
+          "expect": { "people": ["meera@acme.example", "priya@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "final report", "parent": null,
+            "items": [ { "type": "deadline", "anchor": "final report is due tomorrow", "basis": "direct", "due": "2026-01-11", "status": "superseded" } ], "reject": [] } },
+        { "id": "1a00000000000402", "date": "Mon, 12 Jan 2026 09:00:00 +0545", "from": "Meera Rao <meera@acme.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Re: Final report", "rfc": "<t04m2@acme.example>", "inReplyTo": "<t04m1@acme.example>",
+          "text": "Update: the final report deadline has moved to Wednesday.",
+          "expect": { "people": ["meera@acme.example", "priya@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "final report", "parent": "1a00000000000401",
+            "items": [ { "type": "deadline", "anchor": "deadline has moved to wednesday", "basis": "direct", "due": "2026-01-14", "status": "current" } ], "reject": [] } }
+      ],
+      "threadExpect": { "superseded": [ { "earlier": ["1a00000000000401", "final report is due tomorrow"], "later": ["1a00000000000402", "deadline has moved to wednesday"], "kind": "deadline" } ], "contradictions": [], "open": [], "notOpen": [], "upcoming": ["deadline has moved to wednesday"], "notUpcoming": ["final report is due tomorrow"] }
+    },
+    {
+      "id": "T05", "covers": ["changed decisions", "unrelated later message"],
+      "messages": [
+        { "id": "1a00000000000501", "date": "Mon, 5 Jan 2026 09:00:00 +0000", "from": "Priya Sharma <priya@acme.example>", "to": "Raj Mehta <raj@acme.example>, Alex Kim <alex@beta.example>", "subject": "Summit venue", "rfc": "<t05m1@acme.example>",
+          "text": "We decided to host the summit in Pune.",
+          "expect": { "people": ["alex@beta.example", "priya@acme.example", "raj@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "summit venue", "parent": null,
+            "items": [ { "type": "decision", "anchor": "summit in pune", "basis": "direct", "status": "superseded" } ], "reject": [] } },
+        { "id": "1a00000000000502", "date": "Tue, 6 Jan 2026 18:00:00 +0000", "from": "Raj Mehta <raj@acme.example>", "to": "Priya Sharma <priya@acme.example>, Alex Kim <alex@beta.example>", "subject": "Re: Summit venue", "rfc": "<t05m2@acme.example>", "inReplyTo": "<t05m1@acme.example>",
+          "text": "Lunch on Tuesday was great, thanks everyone.",
+          "expect": { "people": ["alex@beta.example", "priya@acme.example", "raj@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "summit venue", "parent": "1a00000000000501",
+            "items": [], "reject": [ { "type": "event", "anchor": "lunch", "why": "a remark about a past lunch, not a scheduled event" } ] } },
+        { "id": "1a00000000000503", "date": "Wed, 7 Jan 2026 09:00:00 +0000", "from": "Priya Sharma <priya@acme.example>", "to": "Raj Mehta <raj@acme.example>, Alex Kim <alex@beta.example>", "subject": "Re: Summit venue", "rfc": "<t05m3@acme.example>", "inReplyTo": "<t05m2@acme.example>",
+          "text": "Change of plan: we have decided to host the summit in Goa instead.",
+          "expect": { "people": ["alex@beta.example", "priya@acme.example", "raj@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "summit venue", "parent": "1a00000000000502",
+            "items": [ { "type": "decision", "anchor": "summit in goa", "basis": "direct", "status": "current" } ], "reject": [] } }
+      ],
+      "threadExpect": { "superseded": [ { "earlier": ["1a00000000000501", "summit in pune"], "later": ["1a00000000000503", "summit in goa"], "kind": "decision" } ], "contradictions": [], "open": [], "notOpen": [], "upcoming": [], "notUpcoming": [] }
+    },
+    {
+      "id": "T06", "covers": ["contradictions"],
+      "messages": [
+        { "id": "1a00000000000601", "date": "Mon, 5 Jan 2026 09:00:00 +0000", "from": "Ana Silva <ana@beta.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Contract renewal", "rfc": "<t06m1@beta.example>",
+          "text": "The contract renewal date is March 31.",
+          "expect": { "people": ["ana@beta.example", "priya@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "contract renewal", "parent": null,
+            "items": [ { "type": "date", "anchor": "renewal date is march 31", "basis": "direct", "due": "2026-03-31", "status": "contradicted" } ], "reject": [] } },
+        { "id": "1a00000000000602", "date": "Tue, 6 Jan 2026 09:00:00 +0000", "from": "Ben Cole <ben@beta.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Re: Contract renewal", "rfc": "<t06m2@beta.example>", "inReplyTo": "<t06m1@beta.example>",
+          "text": "The contract renewal date is April 30.",
+          "expect": { "people": ["ben@beta.example", "priya@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "contract renewal", "parent": "1a00000000000601",
+            "items": [ { "type": "date", "anchor": "renewal date is april 30", "basis": "direct", "due": "2026-04-30", "status": "contradicted" } ], "reject": [] } },
+        { "id": "1a00000000000603", "date": "Wed, 7 Jan 2026 09:00:00 +0000", "from": "Ana Silva <ana@beta.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Re: Contract renewal", "rfc": "<t06m3@beta.example>", "inReplyTo": "<t06m2@beta.example>",
+          "text": "Thanks for the call today.",
+          "expect": { "people": ["ana@beta.example", "priya@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "contract renewal", "parent": "1a00000000000602",
+            "items": [], "reject": [ { "type": "event", "anchor": "call today", "why": "thanks for a call that already happened" } ] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [ { "a": ["1a00000000000601", "renewal date is march 31"], "b": ["1a00000000000602", "renewal date is april 30"] } ], "open": [], "notOpen": [], "upcoming": ["renewal date is march 31", "renewal date is april 30"], "notUpcoming": [] }
+    },
+    {
+      "id": "T07", "covers": ["multiple people with similar names"],
+      "messages": [
+        { "id": "1a00000000000701", "date": "Mon, 5 Jan 2026 11:00:00 +0000", "from": "Raj Mehta <raj@acme.example>", "to": "Priya Sharma <priya@acme.example>, Priya Shah <pshah@beta.example>", "subject": "NDA and delivery", "rfc": "<t07m1@acme.example>",
+          "text": "Priya, please send the signed NDA.",
+          "expect": { "people": ["priya@acme.example", "pshah@beta.example", "raj@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "nda and delivery", "parent": null,
+            "items": [ { "type": "task", "anchor": "send the signed nda", "basis": "direct", "due": null, "assignee": "ambiguous", "status": "current" } ], "reject": [] } },
+        { "id": "1a00000000000702", "date": "Mon, 5 Jan 2026 12:00:00 +0000", "from": "Raj Mehta <raj@acme.example>", "to": "Priya Sharma <priya@acme.example>, Priya Shah <pshah@beta.example>", "subject": "Re: NDA and delivery", "rfc": "<t07m2@acme.example>", "inReplyTo": "<t07m1@acme.example>",
+          "text": "Priya Shah, please confirm the delivery address.",
+          "expect": { "people": ["priya@acme.example", "pshah@beta.example", "raj@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "nda and delivery", "parent": "1a00000000000701",
+            "items": [ { "type": "task", "anchor": "confirm the delivery address", "basis": "direct", "due": null, "assignee": "pshah@beta.example", "status": "current" } ], "reject": [] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": ["send the signed nda", "confirm the delivery address"], "notOpen": [], "upcoming": [], "notUpcoming": [] }
+    },
+    {
+      "id": "T08", "covers": ["organization and project identification", "unrelated mention of a project name", "events"],
+      "messages": [
+        { "id": "1a00000000000801", "date": "Mon, 5 Jan 2026 09:00:00 +0000", "from": "Raj Mehta <raj@acme.example>", "to": "Alex Kim <alex@beta.example>", "subject": "Falcon kickoff", "rfc": "<t08m1@acme.example>",
+          "text": "Project Falcon kickoff is scheduled for Thursday at 2pm. Beta Labs will lead the integration.",
+          "expect": { "people": ["alex@beta.example", "raj@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": ["falcon"], "topic": "falcon kickoff", "parent": null,
+            "items": [ { "type": "event", "anchor": "kickoff is scheduled", "basis": "direct", "due": "2026-01-08", "time": "14:00", "status": "current" } ],
+            "reject": [ { "type": "commitment", "anchor": "lead the integration", "why": "a third party's role, not the sender's promise" } ] } },
+        { "id": "1a00000000000802", "date": "Tue, 6 Jan 2026 09:00:00 +0000", "from": "Alex Kim <alex@beta.example>", "to": "Raj Mehta <raj@acme.example>", "subject": "Re: Falcon kickoff", "rfc": "<t08m2@beta.example>", "inReplyTo": "<t08m1@acme.example>",
+          "text": "Unrelated, but my cat is called Falcon and she says hello.",
+          "expect": { "people": ["alex@beta.example", "raj@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "falcon kickoff", "parent": "1a00000000000801",
+            "items": [], "reject": [ { "type": "project", "anchor": "falcon", "why": "a cat's name, not a project" } ] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": [], "notOpen": [], "upcoming": ["kickoff is scheduled"], "notUpcoming": [] }
+    },
+    {
+      "id": "T09", "covers": ["negation"],
+      "messages": [
+        { "id": "1a00000000000901", "date": "Mon, 5 Jan 2026 09:00:00 +0000", "from": "Priya Sharma <priya@acme.example>", "to": "Raj Mehta <raj@acme.example>", "subject": "Board meeting", "rfc": "<t09m1@acme.example>",
+          "text": "I won't be able to attend the board meeting on Friday. We have not decided on the venue yet. I will not send the draft until legal approves.",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "board meeting", "parent": null,
+            "items": [], "reject": [ { "type": "commitment", "anchor": "attend", "why": "negated" }, { "type": "event", "anchor": "board meeting", "why": "the sender is declining; no scheduling statement" }, { "type": "decision", "anchor": "venue", "why": "explicitly not decided" }, { "type": "commitment", "anchor": "send the draft", "why": "negated" } ] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": [], "notOpen": ["attend", "send the draft"], "upcoming": [], "notUpcoming": ["board meeting"] }
+    },
+    {
+      "id": "T10", "covers": ["forwarded messages"],
+      "messages": [
+        { "id": "1a00000000001001", "date": "Tue, 6 Jan 2026 09:00:00 +0000", "from": "Raj Mehta <raj@acme.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Fwd: Server delivery", "rfc": "<t10m1@acme.example>",
+          "text": "FYI, see below.\n\n---------- Forwarded message ---------\nFrom: Vendor Sales <sales@vendor.example>\nDate: Mon, 5 Jan 2026\nSubject: Server delivery\n\nWe will deliver the servers by Friday.",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "server delivery", "parent": null,
+            "items": [], "reject": [ { "type": "commitment", "anchor": "deliver the servers", "why": "the vendor's words, forwarded — not the sender's commitment" }, { "type": "deadline", "anchor": "deliver the servers", "why": "forwarded content" } ] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": [], "notOpen": ["deliver the servers"], "upcoming": [], "notUpcoming": ["deliver the servers"] }
+    },
+    {
+      "id": "T11", "covers": ["repeated and duplicate messages"],
+      "messages": [
+        { "id": "1a00000000001101", "date": "Mon, 5 Jan 2026 09:00:00 +0000", "from": "Priya Sharma <priya@acme.example>", "to": "Raj Mehta <raj@acme.example>", "subject": "Venue booking", "rfc": "<t11@acme.example>",
+          "text": "I'll book the venue by Thursday.",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "venue booking", "parent": null,
+            "items": [ { "type": "commitment", "anchor": "book the venue", "basis": "direct", "due": "2026-01-08", "actor": "priya@acme.example", "status": "current" } ], "reject": [] } },
+        { "id": "1a00000000001102", "date": "Mon, 5 Jan 2026 09:00:00 +0000", "from": "Priya Sharma <priya@acme.example>", "to": "Raj Mehta <raj@acme.example>", "subject": "Venue booking", "rfc": "<t11@acme.example>",
+          "text": "I'll book the venue by Thursday.",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "venue booking", "parent": null,
+            "items": [ { "type": "commitment", "anchor": "book the venue", "basis": "direct", "due": "2026-01-08", "actor": "priya@acme.example", "status": "duplicate" } ], "reject": [] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": ["book the venue"], "openCount": { "book the venue": 1 }, "notOpen": [], "upcoming": ["book the venue"], "notUpcoming": [] }
+    },
+    {
+      "id": "T12", "covers": ["Spanish (unsupported language)"],
+      "messages": [
+        { "id": "1a00000000001201", "date": "Mon, 5 Jan 2026 09:00:00 +0000", "from": "Lucía Gómez <lucia@beta.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Contrato", "rfc": "<t12@beta.example>",
+          "text": "Hola Priya, enviaré el contrato firmado el viernes. Decidimos usar el proveedor local para el Proyecto Halcón. Gracias por tu paciencia con este proceso.",
+          "expect": { "people": ["lucia@beta.example", "priya@acme.example"], "organizations": ["acme.example", "beta.example"], "projects": [], "topic": "contrato", "parent": null, "languageSupported": false,
+            "items": [], "reject": [],
+            "outOfScope": [ { "type": "commitment", "what": "enviaré el contrato firmado el viernes (will send the signed contract on Friday)" }, { "type": "decision", "what": "decidimos usar el proveedor local (we decided to use the local supplier)" }, { "type": "project", "what": "Proyecto Halcón" } ] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": [], "notOpen": [], "upcoming": [], "notUpcoming": [] }
+    },
+    {
+      "id": "T13", "covers": ["Hindi (unsupported language)"],
+      "messages": [
+        { "id": "1a00000000001301", "date": "Mon, 5 Jan 2026 09:00:00 +0000", "from": "Ravi Kumar <ravi@acme.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Report", "rfc": "<t13@acme.example>",
+          "text": "प्रिया, मैं रिपोर्ट सोमवार तक भेज दूँगा। मीटिंग गुरुवार को है।",
+          "expect": { "people": ["priya@acme.example", "ravi@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "report", "parent": null, "languageSupported": false,
+            "items": [], "reject": [],
+            "outOfScope": [ { "type": "commitment", "what": "मैं रिपोर्ट सोमवार तक भेज दूँगा (I will send the report by Monday)" }, { "type": "event", "what": "मीटिंग गुरुवार को है (the meeting is on Thursday)" } ] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": [], "notOpen": [], "upcoming": [], "notUpcoming": [] }
+    },
+    {
+      "id": "T14", "covers": ["time-zone differences", "events", "free-mail organisation"],
+      "messages": [
+        { "id": "1a00000000001401", "date": "Mon, 5 Jan 2026 20:00:00 -0800", "from": "Sam Kerr <sam.k@gmail.com>", "to": "Priya Sharma <priya@acme.example>", "subject": "Demo", "rfc": "<t14@gmail.com>",
+          "text": "Our demo call is booked for tomorrow at 10am.",
+          "expect": { "people": ["priya@acme.example", "sam.k@gmail.com"], "organizations": ["acme.example"], "projects": [], "topic": "demo", "parent": null,
+            "items": [ { "type": "event", "anchor": "demo call is booked", "basis": "direct", "due": "2026-01-06", "time": "10:00", "status": "current" } ], "reject": [] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": [], "notOpen": [], "upcoming": [], "notUpcoming": ["demo call is booked"] }
+    },
+    {
+      "id": "T15", "covers": ["follow-up obligations", "completed tasks", "conversation relationships"],
+      "messages": [
+        { "id": "1a00000000001501", "date": "Mon, 5 Jan 2026 09:00:00 +0000", "from": "Priya Sharma <priya@acme.example>", "to": "Raj Mehta <raj@acme.example>", "subject": "Pricing page", "rfc": "<t15m1@acme.example>",
+          "text": "Action items: Raj to update the pricing page by Thursday.",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "pricing page", "parent": null,
+            "items": [ { "type": "task", "anchor": "update the pricing page", "basis": "direct", "due": "2026-01-08", "assignee": "raj@acme.example", "status": "closed" } ], "reject": [] } },
+        { "id": "1a00000000001502", "date": "Tue, 6 Jan 2026 09:00:00 +0000", "from": "Raj Mehta <raj@acme.example>", "to": "Priya Sharma <priya@acme.example>", "subject": "Re: Pricing page", "rfc": "<t15m2@acme.example>", "inReplyTo": "<t15m1@acme.example>",
+          "text": "Done, the pricing page is updated.",
+          "expect": { "people": ["priya@acme.example", "raj@acme.example"], "organizations": ["acme.example"], "projects": [], "topic": "pricing page", "parent": "1a00000000001501",
+            "items": [], "reject": [] } }
+      ],
+      "threadExpect": { "superseded": [], "contradictions": [], "open": [], "notOpen": ["update the pricing page"], "upcoming": [], "notUpcoming": ["update the pricing page"] }
+    }
+  ],
+  "questions": [
+    { "id": "Q01", "question": "What are my open commitments?", "intent": ["open_commitments"], "mustInclude": ["share it tomorrow", "start the pilot", "book the venue", "send the vendor quotes", "share the onboarding checklist", "send the signed nda", "confirm the delivery address"], "mustExclude": ["send the revised budget", "deliver the servers", "prepare the investor memo", "update the pricing page", "send the draft"], "inferenceMustBeLabelled": ["start the pilot"], "countOnce": ["book the venue"] },
+    { "id": "Q02", "question": "Any upcoming deadlines?", "intent": ["upcoming_deadlines"], "mustInclude": ["share it tomorrow", "kickoff is scheduled", "book the venue", "send the vendor quotes", "start the pilot", "deadline has moved to wednesday", "renewal date is march 31", "renewal date is april 30"], "mustExclude": ["prepare the investor memo", "final report is due tomorrow", "update the pricing page", "demo call is booked", "send the revised budget"], "contradictionsMustBeDisclosed": true },
+    { "id": "Q03", "question": "What did we decide about the summit?", "intent": ["decisions_about"], "mustInclude": ["summit in goa"], "mustExclude": ["summit in pune"], "supersededMustList": ["summit in pune"] },
+    { "id": "Q04", "question": "Which decisions were changed?", "intent": ["superseded_decisions"], "mustInclude": ["summit in pune"], "mustExclude": ["summit in goa"] },
+    { "id": "Q05", "question": "Is anything contradictory?", "intent": ["contradictions"], "mustInclude": ["renewal date is march 31", "renewal date is april 30"], "mustExclude": [] },
+    { "id": "Q06", "question": "What did Priya promise?", "intent": ["person"], "ambiguous": true, "mustInclude": [], "mustExclude": ["send the revised budget", "share it tomorrow", "book the venue"] },
+    { "id": "Q07", "question": "What did Raj ask for?", "intent": ["person"], "mustInclude": ["send the vendor quotes", "send the signed nda", "confirm the delivery address"], "mustExclude": ["prepare the investor memo"] },
+    { "id": "Q08", "question": "What is happening with project Falcon?", "intent": ["project"], "mustInclude": ["kickoff is scheduled"], "mustExclude": ["summit"] },
+    { "id": "Q09", "question": "Show the evidence for {id:summit in goa}", "intent": ["evidence"], "mustInclude": ["summit in goa"], "mustExclude": [] },
+    { "id": "Q10", "question": "Summarise my inbox", "intent": [null], "unsupported": true, "mustInclude": [], "mustExclude": [] },
+    { "id": "Q11", "question": "What's the weather in Goa?", "intent": [null], "unsupported": true, "mustInclude": [], "mustExclude": [] },
+    { "id": "Q12", "question": "What did we decide about pricing?", "intent": ["decisions_about"], "mustInclude": [], "mustExclude": ["venue", "summit"] },
+    { "id": "Q13", "question": "What did Meera promise?", "intent": ["person"], "mustInclude": [], "mustExclude": ["deadline has moved"] },
+    { "id": "Q14", "question": "When is the Falcon kickoff?", "intent": ["project", "upcoming_deadlines"], "mustInclude": ["kickoff is scheduled"], "mustExclude": [] }
+  ]
+}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  Brain, BrainCircuit, ChevronDown, ChevronRight, FolderGit2, PanelLeftClose, PanelLeftOpen,
+  Brain, BrainCircuit, ChevronDown, ChevronRight, FolderGit2, Mail, PanelLeftClose, PanelLeftOpen,
   Search, Settings, SquarePen, X,
 } from 'lucide-react';
 import { AccountMenu } from './AccountMenu';
@@ -36,6 +36,7 @@ const WORLD = [
   { to: '/projects', label: 'Projects', icon: FolderGit2 },
   { to: '/memory', label: 'Memory', icon: Brain },
   { to: '/mind', label: 'Understanding', icon: BrainCircuit },
+  { to: '/email', label: 'Email', icon: Mail },   // Gmail Phase 5: the user's own email knowledge (model-free)
 ];
 
 const navRow = (isActive: boolean) =>

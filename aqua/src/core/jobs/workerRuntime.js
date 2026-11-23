@@ -38,6 +38,10 @@ import { hashOwner } from '../spanAttributes.js';
 import { DOCUMENT_JOB_KIND } from '../../files/documentUnderstanding.js';
 
 export const HANDLERS = Object.freeze({
+  // Connect sync is deliberately NOT a worker job (finalization 2026-11-23): it writes
+  // the UKO store, whose only writer is the API process. It runs there
+  // (connect/productionDeps.js createInProcessSyncRunner). A stray 'connect.sync.v1'
+  // job fails here as "no handler" rather than splitting the store between processes.
   'claim.embedding.v1': async job => {
     const payload = job.payload ?? {};
     const statementText = String(payload.statementText ?? '').trim();

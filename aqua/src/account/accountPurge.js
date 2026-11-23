@@ -69,6 +69,7 @@ import { purgeOwner as purgeEmbeddings } from '../core/worldModel/embeddingRepos
 import { purgeOwner as purgeJobs } from '../core/jobs/jobQueue.js';
 import { purgeOwnerCharges } from '../credits/pendingCharges.js';
 import { markOwnerDeleted } from '../core/storage/deletedOwners.js';
+import { purgeConnectorState } from '../connect/connectPurge.js';
 import { purgeOwner as purgeInterventions } from '../brain/proactive/repository.js';
 import { purgeOwner as purgeActionRuns } from '../brain/actions/repository.js';
 // E10 migration audit rows (aqua_migration_runs) are owner data too.
@@ -238,6 +239,15 @@ export async function purgeOwnerData({ userId } = {}) {
   // ── 7. In-process Inspector traces (never persisted, but hold fact values) ─
   report.traces = step(report, 'traces', () => purgeTracesForOwner(ownerId)) ?? 0;
   report.recallRedactions = step(report, 'recallRedactions', () => purgeRecallRedactions(ownerId)) ?? 0;
+
+  // ── 8. (Safety Fix 4) Connector-owned state, LAST: connection records with
+  //    their sealed credentials, cursors, checkpoints and pending deletions;
+  //    connector jobs, deletion records, version counters; finally the connect
+  //    lease row. Under the owner's lease (taken over from any running
+  //    operation), verified by fresh reads; idempotent. The marker (step 0) stays.
+  const connectors = await stepAsync(report, 'connectors', () => purgeConnectorState(ownerId));
+  report.connectors = connectors ? { complete: connectors.complete, removed: connectors.removed, remaining: connectors.remaining } : null;
+  if (connectors && !connectors.complete) report.errors.push(`connectors: incomplete ${JSON.stringify(connectors.remaining)}${connectors.errors.length ? ` (${connectors.errors.join('; ')})` : ''}`);
 
   console.log(
     `[ACCOUNT] Purged engine data owner=${ownerId} conversations=${report.conversations} ` +

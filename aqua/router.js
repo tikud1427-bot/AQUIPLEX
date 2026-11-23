@@ -30,6 +30,7 @@ import artifactsRoute     from "./src/routes/artifacts.js";
 import mindRoute          from "./src/mind/mindRoutes.js";
 import intelligenceRoute  from "./src/routes/intelligence.js";
 import brainRoute         from "./src/routes/brain.js";
+import connectRoute       from "./src/routes/connect.js";
 import {
   brainEnabled, ingestEnabled, factIngestEnabled, contextV2Enabled, reflectV2Enabled, twinV2Enabled,
   revisionVoiceMode,
@@ -273,6 +274,7 @@ router.use("/understanding",   understandingRoute);  // UUS read model — what 
 router.use("/mind",            mindRoute);   // persistent cognitive model (Mind layer)
 router.use("/intelligence",    intelligenceRoute); // Persistent Intelligence Core (Phase 4)
 router.use("/brain",           brainRoute);   // World Model read API (Brain V1 / Phase 0)
+router.use("/connect",         connectRoute); // Connect: Gmail OAuth (read-only); 404 unless AQUA_GMAIL_CONNECT=on
 
 // JSON 404 for unknown engine routes (never fall through to platform HTML 404).
 // The path is derived from Express' actual mount point so the same router can

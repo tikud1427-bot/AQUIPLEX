@@ -63,12 +63,13 @@ export async function flushScopeStrict({ timeoutMs = 10_000 } = {}) {
   stats.flushes++;
   let keys = 0;
   const stuck = [];
+  let fenceLost = null;   // multi-instance connect safety: writes DISCARDED, not merely pending
   for (const { binding, keys: set } of pending) {
     const list = new Set(set);
     keys += list.size;
     const work = typeof binding.flushOnly === 'function' ? binding.flushOnly(list) : binding.flush();
     const outcome = await Promise.race([
-      Promise.resolve(work).then(() => 'flushed', () => 'failed'),
+      Promise.resolve(work).then(() => 'flushed', err => { if (err?.code === 'WRITE_FENCE_LOST' || err?.code === 'OWNER_DELETED') { fenceLost ??= err; for (const k of list) set.delete(k); } return 'failed'; }),
       new Promise(r => setTimeout(() => r('timeout'), timeoutMs).unref?.()),
     ]);
     const left = typeof binding.pendingAmong === 'function' ? binding.pendingAmong(list) : (binding.pendingCount?.() ?? 0);
@@ -77,6 +78,13 @@ export async function flushScopeStrict({ timeoutMs = 10_000 } = {}) {
   }
   const ms = Date.now() - t0;
   stats.flushMs.push(ms); if (stats.flushMs.length > 2_000) stats.flushMs.shift();
+  if (fenceLost) {
+    // Explicit, NOT retryable: this request's writes were discarded because
+    // this process lost the owner's connect lease (core/storage/writeFence.js).
+    stats.failures++;
+    // (or the account was deleted: OWNER_DELETED — the database barrier refused them).
+    throw Object.assign(new Error(`request writes discarded: ${fenceLost.message}`), { code: fenceLost.code, retryable: false });
+  }
   if (stuck.length) {
     stats.failures++;
     throw Object.assign(new Error(`request writes not durable: ${stuck.join(', ')}`), { code: 'FLUSH_INCOMPLETE', retryable: true, retryAfterMs: 2_000 });

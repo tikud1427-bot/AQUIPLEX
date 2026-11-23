@@ -416,18 +416,23 @@ describe('the change limit counts only resources that need work', () => {
     assert.ok(out.checkpoint?.fullSyncAt);
   });
 
-  test('when real changes exceed the limit the run is partial, keeps its checkpoint, and the next run finishes the rest', async () => {
+  // 2026-11-23: a full pass no longer truncates (and skips) beyond maxChanges; it stops
+  // LISTING once the run's budget is reached and resumes from the saved cursor.
+  test('when real changes exceed the limit the run is partial, keeps its checkpoint, and the next runs finish the rest', async () => {
     const { ext, conn, run } = await big({ total: 1005, changed: 8, maxChanges: 3 });
     const o1 = await run(conn);
     assert.equal(o1.lastSync.state, 'partial');
-    assert.match(o1.lastSync.note, /5 changed resource\(s\) beyond the per-run limit of 3/);
+    assert.match(o1.lastSync.note, /listing incomplete/);
+    assert.equal(o1.lastSync.more, true);
+    assert.ok(o1.fullSync?.cursor, 'the pass resumes from a saved cursor');
     assert.equal(o1.checkpoint, null);
-    const o2 = await run({ ...conn, checkpoint: o1.checkpoint });
-    const o3 = await run({ ...conn, checkpoint: o2.checkpoint });
-    assert.equal(o3.lastSync.state, 'succeeded');
+    let prev = o1, runs = 1;
+    while (prev.lastSync.more && runs < 20) { prev = await run({ ...conn, checkpoint: prev.checkpoint, fullSync: prev.fullSync }); runs++; }
+    assert.equal(prev.lastSync.state, 'succeeded');
+    assert.ok(prev.checkpoint?.fullSyncAt);
+    assert.ok(runs >= 2, 'the pass spans runs (a run lists whole pages: at most one page beyond the budget)');
     assert.equal(ext.imported.length, 8, 'a change was imported twice or never');
     assert.equal(new Set(ext.imported).size, 8);
-    assert.equal(o3.lastSync.counts.skippedSameVersion, 1005 - 2);
   });
 });
 

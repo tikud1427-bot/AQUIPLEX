@@ -1,0 +1,500 @@
+{
+  "label": "final",
+  "datasetSha": "f61840ea3f6f9c51b2fa434253efc521ae4bcc1ca829ddb1348922cf73e065f7",
+  "generatedAt": "2026-11-23T05:46:50.894Z",
+  "now": "2026-01-07T12:00:00Z",
+  "dataset": {
+    "threads": 15,
+    "messages": 28,
+    "expectedItems": 20,
+    "rejectCases": 16,
+    "questions": 14
+  },
+  "categories": {
+    "commitments": {
+      "tp": 5,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "tasks": {
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "deadlines": {
+      "tp": 4,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "events": {
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "decisions": {
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "people": {
+      "tp": 61,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "organizations": {
+      "tp": 41,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "projects": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "topics": {
+      "tp": 28,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "conversationRelationships": {
+      "tp": 12,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    }
+  },
+  "supersession": {
+    "all": {
+      "tp": 2,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "decisions": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    }
+  },
+  "contradictions": {
+    "tp": 1,
+    "fp": 0,
+    "fn": 0,
+    "precision": 1,
+    "recall": 1,
+    "f1": 1
+  },
+  "attributes": {
+    "basis": {
+      "correct": 19,
+      "overClaimed": 0,
+      "underClaimed": 0
+    },
+    "due": {
+      "correct": 17,
+      "wrong": 0
+    },
+    "time": {
+      "correct": 2,
+      "wrong": 0
+    },
+    "actor": {
+      "correct": 5,
+      "wrong": 0
+    },
+    "assignee": {
+      "correct": 6,
+      "wrong": 0
+    },
+    "status": {
+      "correct": 19,
+      "wrong": 0
+    }
+  },
+  "inference": {
+    "correctlyRejectedOrLabelled": 1,
+    "incorrectlyAcceptedAsDirect": 0
+  },
+  "rejections": {
+    "correctlyRejected": 16,
+    "incorrectlyAccepted": 0,
+    "byCategory": {
+      "tasks": {
+        "correctlyRejected": 2,
+        "incorrectlyAccepted": 0
+      },
+      "commitments": {
+        "correctlyRejected": 6,
+        "incorrectlyAccepted": 0
+      },
+      "events": {
+        "correctlyRejected": 5,
+        "incorrectlyAccepted": 0
+      },
+      "projects": {
+        "correctlyRejected": 1,
+        "incorrectlyAccepted": 0
+      },
+      "decisions": {
+        "correctlyRejected": 1,
+        "incorrectlyAccepted": 0
+      },
+      "deadlines": {
+        "correctlyRejected": 1,
+        "incorrectlyAccepted": 0
+      }
+    }
+  },
+  "language": {
+    "messages": 2,
+    "detectedUnsupported": 2,
+    "statementsExtracted": 0,
+    "humanItemsOutOfScope": 5
+  },
+  "temporal": {
+    "passed": 30,
+    "total": 30,
+    "failed": []
+  },
+  "qa": {
+    "passed": 14,
+    "total": 14,
+    "intentCorrect": 14,
+    "results": [
+      {
+        "id": "Q01",
+        "question": "What are my open commitments?",
+        "intent": "open_commitments",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": true,
+        "countedOnce": true,
+        "evidenceBacked": true,
+        "relevantRetrieved": 7,
+        "relevantExpected": 7,
+        "returned": 7,
+        "pass": true
+      },
+      {
+        "id": "Q02",
+        "question": "Any upcoming deadlines?",
+        "intent": "upcoming_deadlines",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": true,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 8,
+        "relevantExpected": 8,
+        "returned": 8,
+        "pass": true
+      },
+      {
+        "id": "Q03",
+        "question": "What did we decide about the summit?",
+        "intent": "decisions_about",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": true,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 1,
+        "pass": true
+      },
+      {
+        "id": "Q04",
+        "question": "Which decisions were changed?",
+        "intent": "superseded_decisions",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 1,
+        "pass": true
+      },
+      {
+        "id": "Q05",
+        "question": "Is anything contradictory?",
+        "intent": "contradictions",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 2,
+        "relevantExpected": 2,
+        "returned": 2,
+        "pass": true
+      },
+      {
+        "id": "Q06",
+        "question": "What did Priya promise?",
+        "intent": "person",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": true,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      },
+      {
+        "id": "Q07",
+        "question": "What did Raj ask for?",
+        "intent": "person",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 3,
+        "relevantExpected": 3,
+        "returned": 3,
+        "pass": true
+      },
+      {
+        "id": "Q08",
+        "question": "What is happening with project Falcon?",
+        "intent": "project",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 4,
+        "pass": true
+      },
+      {
+        "id": "Q09",
+        "question": "Show the evidence for {id:summit in goa}",
+        "intent": "evidence",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 1,
+        "pass": true
+      },
+      {
+        "id": "Q10",
+        "question": "Summarise my inbox",
+        "intent": null,
+        "supported": false,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": true,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      },
+      {
+        "id": "Q11",
+        "question": "What's the weather in Goa?",
+        "intent": null,
+        "supported": false,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": true,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      },
+      {
+        "id": "Q12",
+        "question": "What did we decide about pricing?",
+        "intent": "decisions_about",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      },
+      {
+        "id": "Q13",
+        "question": "What did Meera promise?",
+        "intent": "person",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      },
+      {
+        "id": "Q14",
+        "question": "When is the Falcon kickoff?",
+        "intent": "upcoming_deadlines",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 8,
+        "pass": true
+      }
+    ]
+  },
+  "falsePositives": [],
+  "falseNegatives": [],
+  "wrongAttributes": [],
+  "sync": {
+    "state": "succeeded",
+    "counts": {
+      "listed": 28,
+      "considered": 28,
+      "skippedSameVersion": 0,
+      "fetched": 28,
+      "created": 28,
+      "updated": 0,
+      "unchanged": 0,
+      "removed": 0,
+      "rejected": 0,
+      "failed": 0,
+      "withheldRemovals": 0
+    }
+  },
+  "egress": []
+}

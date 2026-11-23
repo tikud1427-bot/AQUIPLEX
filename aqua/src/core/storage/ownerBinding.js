@@ -47,9 +47,11 @@ import fs from 'node:fs';
 
 import { isConfigured } from '../db/pool.js';
 import { createPartitionRepository } from './partitionRepository.js';
-import { isOwnerDeleted } from './deletedOwners.js';
+import { isOwnerDeleted, OwnerDeletedError } from './deletedOwners.js';
 import { noteWrite } from './requestWrites.js';
 import { errorText } from '../errorText.js';
+import { registerFenceInvalidator, isWriteRefused, isFenceLost, withWriteOrigins, externalWritesAllowed, FenceLostError } from './writeFence.js';
+import { createOriginTracker } from './pendingOrigins.js';
 
 export const MODES = Object.freeze(['off', 'shadow', 'on', 'only']);
 const FLUSH_DEBOUNCE_MS = 250;
@@ -102,7 +104,14 @@ export function bindOwnerStore(spec) {
   const dirty = new Set();
   const pendingDelete = new Map();   // owner → deletion time
   const backupPending = new Map();   // owner → encoded entry | null (for the rollback copy)
-  const stats = { flushed: 0, writes: 0, unchanged: 0, merged: 0, deletes: 0, droppedStale: 0, failures: 0, retries: 0, loads: 0, installs: 0, notReady: 0, evictions: 0 };
+  // Multi-instance connect safety (core/storage/writeFence.js): owners whose
+  // pending writes were DISCARDED because their write fence was lost. A caller
+  // waiting for durability of one of them gets that error (flushOnly).
+  const discarded = new Map();       // owner → FenceLostError
+  // Safety Fix 3: the connect-operation fences each pending write was CREATED
+  // under (core/storage/pendingOrigins.js) — carried to its eventual write.
+  const tracker = createOriginTracker();
+  const stats = { fenceDiscards: 0, flushed: 0, writes: 0, unchanged: 0, merged: 0, deletes: 0, droppedStale: 0, failures: 0, retries: 0, loads: 0, installs: 0, notReady: 0, evictions: 0 };
   let lastError = null;
   let timer = null;
   let running = null;
@@ -176,10 +185,21 @@ export function bindOwnerStore(spec) {
     // has BOTH a pending deletion and a new local entry: `ours` is that entry.
     // Phase 3: the account was deleted — nothing of it may be written back
     // (a job or flush that was already in flight). Its deletion still lands.
-    if (!del && await isOwnerDeleted(owner)) { stats.blockedDeletedOwner = (stats.blockedDeletedOwner ?? 0) + 1; return; }
+    const gone = await isOwnerDeleted(owner);
+    // Refused explicitly (discarded by the caller, never retried) — not a silent success.
+    if (!del && gone) { stats.blockedDeletedOwner = (stats.blockedDeletedOwner ?? 0) + 1; throw new OwnerDeletedError(); }
     const encoded = encode(owner);
-    const ours = encoded !== undefined && (!del || changedAt(encoded) > del) ? encoded : undefined;
+    // A deleted ACCOUNT's pending deletion stays a pure tombstone: nothing is
+    // re-created for it (the database barrier would refuse it anyway).
+    const ours = !gone && encoded !== undefined && (!del || changedAt(encoded) > del) ? encoded : undefined;
     if (!del && ours === undefined) return;
+    // Safety Fix 2/3: may this write add or update external items? Only with a valid
+    // origin fence (proven in its transaction). A store that declares external
+    // semantics (spec.externalAware) gets its merge applied even with no row to
+    // merge with, so an unfenced first write / re-creation adds no external entry.
+    const allowExternal = externalWritesAllowed(owner);
+    const mctx = { allowExternalAdditions: allowExternal, allowExternalWrites: allowExternal, owner };
+    const guard = e => (e == null || allowExternal || !spec.externalAware ? e : merge(e, spec.emptyEntry?.() ?? {}, mctx));
 
     let result = null;           // the entry the partition holds afterwards (null = deleted/absent)
     let kind = 'write';
@@ -194,7 +214,7 @@ export function bindOwnerStore(spec) {
           result = null; kind = 'delete';
           return meta.deleted ? undefined : null;
         }
-        const fresh = prune(ours, del);
+        const fresh = guard(prune(ours, del));
         if (!fresh) { result = null; kind = 'delete'; return meta.deleted ? undefined : null; }
         result = fresh;
         kind = 'recreate';
@@ -207,18 +227,18 @@ export function bindOwnerStore(spec) {
         // converted into this process's clock with the measured offset
         // (repository.clockOffsetMs, error ≤ half a round trip) — not by
         // assuming the hosts' clocks agree.
-        if (loaded.get(owner) === meta.version) { result = ours; kind = 'recreate'; return JSON.stringify(ours); }
+        if (loaded.get(owner) === meta.version) { result = guard(ours); kind = 'recreate'; return JSON.stringify(result); }
         const cut = (meta.deletedAt ?? 0) + getRepo().clockOffsetMs();
         if (changedAt(ours) <= cut) { result = null; kind = 'dropped-stale'; return undefined; }
         // Touched after the deletion — but a process that held the record from
         // BEFORE the deletion still carries the old items. Only items that
         // changed after the deletion are new information; the rest stay deleted.
-        result = prune(ours, cut);
+        result = guard(prune(ours, cut));
         if (result === null) { kind = 'dropped-stale'; return undefined; }
         kind = 'recreate';
         return JSON.stringify(result);
       }
-      result = theirs ? merge(ours, theirs) : ours;
+      result = theirs ? merge(ours, theirs, mctx) : guard(ours);
       kind = theirs ? 'merge' : 'write';
       const text = JSON.stringify(result);
       if (text === cur) { kind = 'unchanged'; return undefined; }
@@ -243,6 +263,53 @@ export function bindOwnerStore(spec) {
     }
   }
 
+  /**
+   * A pending write is refused for good (its origin fence was lost, or the
+   * account was deleted): record it as discarded — never re-queued — and drop
+   * this process's unproven in-memory copy (authoritative modes): the next unit
+   * of work reloads the database truth.
+   */
+  function discard(owner, err) {
+    dirty.delete(owner); pendingDelete.delete(owner); backupPending.delete(owner);
+    tracker.clear(owner);
+    discarded.set(owner, err);
+    stats.fenceDiscards++;
+    if (authoritative()) {
+      loaded.delete(owner); recent.delete(owner);
+      try { install(owner, null); } catch { /* store-specific; the owner is not loaded either way */ }
+    }
+  }
+
+  /**
+   * Safety Fix 3: write ONE pending entry with the origins it was CREATED under
+   * (not the context this flush happens to run in). See pendingOrigins.plan.
+   */
+  async function writePending(owner) {
+    const p = tracker.take(owner);
+    if (p.refuse) throw p.refuse;                    // work of an invalidated operation only
+    const del = pendingDelete.get(owner);
+    try {
+      await withWriteOrigins(p.origins, () => flushOwner(owner));
+    } catch (err) {
+      if (isFenceLost(err) && p.origins.length && p.plain) {
+        // An origin was refused in the transaction (lost for good now). The
+        // changes made outside any operation still persist — as a plain write,
+        // external items frozen; never under another fence.
+        if (del) pendingDelete.set(owner, del);
+        await withWriteOrigins([], () => flushOwner(owner));
+        discarded.set(owner, err); stats.fenceDiscards++;
+        return;
+      }
+      if (!isWriteRefused(err)) tracker.restore(owner, p);   // an ordinary failure: retried with the SAME origins
+      throw err;
+    }
+    if (p.lost.length && p.valid.length) {
+      // Mixed with invalidated work: written without origins (external frozen) — tell the valid operation.
+      discarded.set(owner, new FenceLostError(owner, 'pending write mixed with invalidated work: its external changes were refused'));
+      stats.fenceDiscards++;
+    }
+  }
+
   async function flush() {
     while (running) await running;
     if (!dirty.size) return;
@@ -253,8 +320,9 @@ export function bindOwnerStore(spec) {
       for (const owner of owners) {
         const del = pendingDelete.get(owner);
         try {
-          await flushOwner(owner);
+          await writePending(owner);
         } catch (err) {
+          if (isWriteRefused(err)) { discard(owner, err); continue; }   // fence lost / account deleted: never into the retry queue
           stats.failures++;
           lastError = errorText(err);
           failed.push([owner, del]);
@@ -284,21 +352,40 @@ export function bindOwnerStore(spec) {
   async function flushOnly(owners) {
     while (running) await running;
     const mine = [...owners].filter(o => dirty.has(o));
-    if (!mine.length) return;
-    running = (async () => {
-      for (const owner of mine) {
-        const del = pendingDelete.get(owner);
-        dirty.delete(owner);
-        try { await flushOwner(owner); }
-        catch (err) {
-          stats.failures++; lastError = errorText(err);
-          dirty.add(owner); if (del) pendingDelete.set(owner, del);
-          schedule(Math.max(500, retryDelay));
+    if (mine.length) {
+      running = (async () => {
+        for (const owner of mine) {
+          const del = pendingDelete.get(owner);
+          dirty.delete(owner);
+          try { await writePending(owner); }
+          catch (err) {
+            if (isWriteRefused(err)) { discard(owner, err); continue; }
+            stats.failures++; lastError = errorText(err);
+            dirty.add(owner); if (del) pendingDelete.set(owner, del);
+            schedule(Math.max(500, retryDelay));
+          }
         }
-      }
-    })();
-    try { await running; } finally { running = null; }
+      })();
+      try { await running; } finally { running = null; }
+    }
+    // Explicit failure for a caller whose writes were discarded (fence lost).
+    for (const o of owners) {
+      const err = discarded.get(o);
+      if (err) { discarded.delete(o); throw err; }
+    }
   }
+
+  // A fence was lost (Safety Fix 3: per operation, not per owner): discard the
+  // pending writes CREATED UNDER IT that carry nothing else; a write that also
+  // holds changes made outside any operation is kept and written without
+  // origins (external items frozen). Other operations and owners: untouched.
+  registerFenceInvalidator((owner, err, fence) => {
+    if (mode === 'off' || !fence) return;
+    for (const key of tracker.keysOf(fence)) {
+      if (tracker.isPlain(key)) continue;
+      if (dirty.has(key) || pendingDelete.has(key)) discard(key, err);
+    }
+  });
 
   const binding = {
     storeKey, label,
@@ -326,6 +413,8 @@ export function bindOwnerStore(spec) {
     isLoaded: owner => loaded.has(owner),
     markDirty(owner) {
       if (mode === 'off' || owner == null) return;
+      discarded.delete(owner);     // a new write supersedes an earlier discard
+      tracker.note(owner, owner);  // Safety Fix 3: the origin is recorded NOW, at creation
       // A pending deletion is KEPT: the flush must still retire the old data
       // before writing the re-created entry (see flushOwner).
       dirty.add(owner);
@@ -335,6 +424,8 @@ export function bindOwnerStore(spec) {
     },
     markDeleted(owner, at = Date.now()) {
       if (mode === 'off' || owner == null) return;
+      discarded.delete(owner);
+      tracker.note(owner, owner);
       pendingDelete.set(owner, at);
       dirty.add(owner);
       noteWrite(binding, owner);
@@ -373,6 +464,37 @@ export function bindOwnerStore(spec) {
     },
     flush,
     pendingCount: () => dirty.size,
+    /** Keys of this owner with a pending write (connect lease release: flushOwnerStrict). */
+    pendingKeysOfOwner: owner => (dirty.has(owner) || pendingDelete.has(owner) ? [owner] : []),
+    /**
+     * Safety Fix 2: write ONE owner's entry NOW, version-checked, re-running
+     * `mutate(current|null, meta)` on the newest row after a conflict (the same
+     * primitive as keyedBinding.commit). Installs and returns what is stored.
+     * The owner's pending local write is flushed first, so it is not lost.
+     */
+    async commit(owner, mutate) {
+      if (!authoritative()) throw new Error(`${label}: commit needs authoritative partitions`);
+      if (dirty.has(owner) || pendingDelete.has(owner)) await flushOnly(new Set([owner]));
+      let result = null;
+      const r = await getRepo().update(storeKey, pk(owner), (cur, meta) => {
+        const current = cur && !meta.deleted ? JSON.parse(cur) : null;
+        const next = mutate(current, meta);
+        if (next === undefined) { result = current; return undefined; }
+        result = next;
+        return next === null ? null : JSON.stringify(next);
+      }, { ownerId: owner, maxAttempts: 20 });
+      if (!dirty.has(owner) && !pendingDelete.has(owner)) {
+        install(owner, result === null ? null : decode(result));
+        loaded.set(owner, r.version);
+      }
+      if (mode === 'on') { backupPending.set(owner, result); await backupFlush(); }
+      return result;
+    },
+    /** Safety Fix 2: the owner's entry AS THE DATABASE HOLDS IT NOW (fresh read). null = absent/deleted. */
+    async readCommitted(owner) {
+      const cur = await getRepo().get(storeKey, pk(owner), { ownerId: owner, fresh: true });
+      return cur && !cur.deleted && cur.data != null ? JSON.parse(cur.data) : null;
+    },
     async configure() {
       if (!authoritative()) return;
       try {
@@ -395,7 +517,7 @@ export function bindOwnerStore(spec) {
       return { store: storeKey, mode, reason, loadedOwners: loaded.size, pending: dirty.size, lastError, ...stats };
     },
     /** Tests only. */
-    _reset() { recent.clear(); loaded.clear(); dirty.clear(); pendingDelete.clear(); backupPending.clear(); if (timer) clearTimeout(timer); timer = null; lastError = null; for (const k of Object.keys(stats)) stats[k] = 0; },
+    _reset() { recent.clear(); loaded.clear(); dirty.clear(); pendingDelete.clear(); backupPending.clear(); discarded.clear(); tracker.reset(); if (timer) clearTimeout(timer); timer = null; lastError = null; for (const k of Object.keys(stats)) stats[k] = 0; },
   };
   registry.set(storeKey, binding);
   return binding;
@@ -512,6 +634,37 @@ export async function flushOwnerBindingsStrict(timeoutMs = 15_000) {
       { code: 'FLUSH_INCOMPLETE' });
   }
   return outcome;
+}
+
+/**
+ * Multi-instance connect safety — write every pending entry of ONE owner, in
+ * every bound store, now (fenced, when the owner is fenced). Throws the
+ * FenceLostError when any of them was discarded, FLUSH_INCOMPLETE when any is
+ * still pending. A connect operation calls this before releasing its lease.
+ */
+export async function flushOwnerStrict(ownerId, { timeoutMs = 15_000 } = {}) {
+  const owner = String(ownerId);
+  const work = [];
+  for (const b of registry.values()) {
+    const keys = typeof b.pendingKeysOfOwner === 'function' ? b.pendingKeysOfOwner(owner) : [];
+    if (keys.length && typeof b.flushOnly === 'function') work.push({ b, keys });
+  }
+  let firstErr = null;
+  for (const { b, keys } of work) {
+    let timer = null;
+    try {
+      await Promise.race([
+        b.flushOnly(new Set(keys)),
+        new Promise((_, rej) => { timer = setTimeout(() => rej(Object.assign(new Error('owner flush timed out'), { code: 'FLUSH_INCOMPLETE' })), timeoutMs); timer.unref?.(); }),
+      ]);
+    } catch (err) { firstErr ??= err; }
+    finally { if (timer) clearTimeout(timer); }
+    if (!firstErr && typeof b.pendingAmong === 'function' && b.pendingAmong(new Set(keys)) > 0) {
+      firstErr = Object.assign(new Error(`partition flush incomplete for ${b.label ?? b.storeKey}`), { code: 'FLUSH_INCOMPLETE' });
+    }
+  }
+  if (firstErr) throw firstErr;
+  return { stores: work.length };
 }
 
 /** Is this store (by key) authoritative on partitions here? */

@@ -25,6 +25,7 @@ import {
   deriveTopics, shortSummary,
 } from './extractors.js';
 import { recordStage } from './uko.js';
+import { understandEmail } from '../connect/gmail/emailUnderstanding.js';
 import { indexFileChunks, fileNamespace } from '../embeddings/fileMemory.js';
 import { rememberFile, rememberWorkspace } from '../memory/engine.js';
 import { indexUKO } from './fileSearchIndex.js';
@@ -178,9 +179,25 @@ export const evidenceStage = {
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────
 
+/**
+ * Gmail Phase 3 — email understanding (connect/gmail/emailUnderstanding.js):
+ * a DETERMINISTIC, LOCAL knowledge stage for messages of class external:gmail
+ * only. Its structured record (people, decisions, commitments, tasks,
+ * deadlines, events, dates, documents — each with message/thread ids,
+ * timestamps, evidence span, certainty, explicit/inferred) stays ON the
+ * restricted UKO: never cached, never integrated into Memory/Mind/search/
+ * embeddings (restricted classes skip integration), removed with the source.
+ */
+export const emailUnderstandingStage = {
+  name: 'emailUnderstanding', version: '1.0.0', class: 'knowledge',
+  // dataClass is set at ingest from the source id (fileEngine: dataClassOfSource) — the UKO keeps no `external` block.
+  applicable: (uko) => uko?.dataClass === 'external:gmail',
+  run(uko) { uko.emailUnderstanding = understandEmail(uko.rawContent, { extractedAt: new Date().toISOString() }); },
+};
+
 export const KNOWLEDGE_STAGES = [
   metadataStage, keywordStage, entityStage, topicStage,
-  timelineStage, factStage, summaryStage, reasoningHintStage,
+  timelineStage, factStage, summaryStage, reasoningHintStage, emailUnderstandingStage,
 ];
 export const INTEGRATION_STAGES = [embeddingStage, memoryLinkStage, searchIndexStage, evidenceStage];
 export const DEFAULT_STAGES = [...KNOWLEDGE_STAGES, ...INTEGRATION_STAGES];

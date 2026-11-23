@@ -1,0 +1,352 @@
+{
+  "label": "after",
+  "datasetSha": "6fb93ac9ff936658fdb007f6e3a5b95be641d44ce447510d7db8a8bfc38abbdf",
+  "generatedAt": "2026-11-23T05:46:05.341Z",
+  "now": "2026-02-04T12:00:00Z",
+  "dataset": {
+    "threads": 10,
+    "messages": 18,
+    "expectedItems": 16,
+    "rejectCases": 6,
+    "questions": 5
+  },
+  "categories": {
+    "commitments": {
+      "tp": 5,
+      "fp": 1,
+      "fn": 0,
+      "precision": 0.8333333333333334,
+      "recall": 1,
+      "f1": 0.9090909090909091
+    },
+    "tasks": {
+      "tp": 6,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "deadlines": {
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "events": {
+      "tp": 1,
+      "fp": 2,
+      "fn": 0,
+      "precision": 0.3333333333333333,
+      "recall": 1,
+      "f1": 0.5
+    },
+    "decisions": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": null,
+      "recall": null,
+      "f1": null
+    },
+    "people": {
+      "tp": 40,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "organizations": {
+      "tp": 21,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "projects": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": null,
+      "recall": null,
+      "f1": null
+    },
+    "topics": {
+      "tp": 18,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "conversationRelationships": {
+      "tp": 8,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    }
+  },
+  "supersession": {
+    "all": {
+      "tp": 1,
+      "fp": 0,
+      "fn": 0,
+      "precision": 1,
+      "recall": 1,
+      "f1": 1
+    },
+    "decisions": {
+      "tp": 0,
+      "fp": 0,
+      "fn": 0,
+      "precision": null,
+      "recall": null,
+      "f1": null
+    }
+  },
+  "contradictions": {
+    "tp": 0,
+    "fp": 0,
+    "fn": 0,
+    "precision": null,
+    "recall": null,
+    "f1": null
+  },
+  "attributes": {
+    "basis": {
+      "correct": 15,
+      "overClaimed": 0,
+      "underClaimed": 0
+    },
+    "due": {
+      "correct": 15,
+      "wrong": 0
+    },
+    "time": {
+      "correct": 1,
+      "wrong": 0
+    },
+    "actor": {
+      "correct": 5,
+      "wrong": 0
+    },
+    "assignee": {
+      "correct": 6,
+      "wrong": 0
+    },
+    "status": {
+      "correct": 14,
+      "wrong": 1
+    }
+  },
+  "inference": {
+    "correctlyRejectedOrLabelled": 1,
+    "incorrectlyAcceptedAsDirect": 0
+  },
+  "rejections": {
+    "correctlyRejected": 5,
+    "incorrectlyAccepted": 1,
+    "byCategory": {
+      "commitments": {
+        "correctlyRejected": 1,
+        "incorrectlyAccepted": 1
+      },
+      "tasks": {
+        "correctlyRejected": 3,
+        "incorrectlyAccepted": 0
+      },
+      "events": {
+        "correctlyRejected": 1,
+        "incorrectlyAccepted": 0
+      }
+    }
+  },
+  "language": {
+    "messages": 0,
+    "detectedUnsupported": 0,
+    "statementsExtracted": 0,
+    "humanItemsOutOfScope": 0
+  },
+  "temporal": {
+    "passed": 23,
+    "total": 25,
+    "failed": [
+      {
+        "name": "H07 NOT open: translate the user guide",
+        "ok": false
+      },
+      {
+        "name": "H07 NOT upcoming: translate the user guide",
+        "ok": false
+      }
+    ]
+  },
+  "qa": {
+    "passed": 3,
+    "total": 5,
+    "intentCorrect": 5,
+    "results": [
+      {
+        "id": "HQ1",
+        "question": "What are my open commitments?",
+        "intent": "open_commitments",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [
+          "translate the user guide",
+          "see why"
+        ],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 5,
+        "relevantExpected": 5,
+        "returned": 12,
+        "pass": false
+      },
+      {
+        "id": "HQ2",
+        "question": "What deadlines are coming up?",
+        "intent": "upcoming_deadlines",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 3,
+        "relevantExpected": 3,
+        "returned": 13,
+        "pass": true
+      },
+      {
+        "id": "HQ3",
+        "question": "What did Ana Silva promise?",
+        "intent": "person",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [
+          "see why"
+        ],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 4,
+        "pass": false
+      },
+      {
+        "id": "HQ4",
+        "question": "When is the next review session?",
+        "intent": "upcoming_deadlines",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 1,
+        "relevantExpected": 1,
+        "returned": 13,
+        "pass": true
+      },
+      {
+        "id": "HQ5",
+        "question": "What did we decide about the logo?",
+        "intent": "decisions_about",
+        "supported": true,
+        "intentCorrect": true,
+        "missing": [],
+        "wronglyIncluded": [],
+        "unsupportedCorrect": null,
+        "ambiguityCorrect": null,
+        "contradictionsDisclosed": null,
+        "supersededListed": null,
+        "inferenceLabelled": null,
+        "countedOnce": null,
+        "evidenceBacked": true,
+        "relevantRetrieved": 0,
+        "relevantExpected": 0,
+        "returned": 0,
+        "pass": true
+      }
+    ]
+  },
+  "falsePositives": [
+    {
+      "cat": "commitments",
+      "where": "2b00000000000602",
+      "got": "sure, i can see why the pricing is confusing.",
+      "status": "current",
+      "basis": "direct"
+    },
+    {
+      "cat": "events",
+      "where": "2b00000000000901",
+      "got": "i'll call the supplier tomorrow.",
+      "status": "current",
+      "basis": "inference"
+    },
+    {
+      "cat": "events",
+      "where": "2b00000000001001",
+      "got": "i'll also send the offsite budget by friday.",
+      "status": "current",
+      "basis": "inference"
+    }
+  ],
+  "falseNegatives": [],
+  "wrongAttributes": [
+    {
+      "where": "2b00000000000701",
+      "anchor": "translate the user guide",
+      "attr": "status",
+      "expected": "closed",
+      "got": "current"
+    }
+  ],
+  "sync": {
+    "state": "succeeded",
+    "counts": {
+      "listed": 18,
+      "considered": 18,
+      "skippedSameVersion": 0,
+      "fetched": 18,
+      "created": 18,
+      "updated": 0,
+      "unchanged": 0,
+      "removed": 0,
+      "rejected": 0,
+      "failed": 0,
+      "withheldRemovals": 0
+    }
+  },
+  "egress": []
+}
