@@ -35,7 +35,7 @@
  */
 import fs   from 'fs';
 import path from 'path';
-import { mirrorWrite, drainMirror } from './mongoMirror.js';
+import { mirrorWrite, drainMirror, blockMirrorFile } from './mongoMirror.js';
 // E3/PR-3 — every byte that leaves or enters a store now passes through an
 // adapter. The JSON adapter is the same filesystem code that was inline here,
 // moved; nothing about the public API or the semantics changed. See
@@ -178,6 +178,10 @@ export function loadJsonFile(file, { label = path.basename(file) } = {}) {
     const aside = `${file}.corrupt-${Date.now()}`;
     try { fs.renameSync(file, aside); } catch { try { getAdapter().copySync(file, aside); } catch { /* keep going */ } }
     console.error(`[STORE] ${label}: file is corrupt — preserved as ${path.basename(aside)}, attempting .bak recovery`);
+    // Whatever this store now runs from (an older .bak, or nothing), it is NOT
+    // the backup it failed to load — so it must never be mirrored over it
+    // (audit/recovery Phase E, R-A3). No-op for files the mirror never restored.
+    try { blockMirrorFile(file, 'restored-store-unparseable'); } catch { /* never break a load */ }
     try {
       const bak = JSON.parse(getAdapter().readSync(`${file}.bak`) ?? '');
       console.warn(`[STORE] ${label}: RECOVERED from ${path.basename(file)}.bak`);

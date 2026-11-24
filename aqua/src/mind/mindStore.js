@@ -69,8 +69,15 @@ const TOMBSTONE_BAGS = Object.freeze(['facts', 'beliefs', 'goals', 'episodes', '
 const TOMBSTONE_TTL_MS = 30 * 24 * 3600 * 1000;   // far beyond any flush interval between the two processes
 const TOMBSTONE_CAP = 2000;                        // per bag, newest kept
 
-/** When an item last changed. Facts keep `ts` = first stored; a correction moves `updatedAt`. */
-const itemTime = x => Math.max(Number(x?.updatedAt ?? 0), Number(x?.ts ?? 0), Number(x?.createdAt ?? 0), Number(x?.lastReferencedAt ?? 0));
+/**
+ * When an item last changed. Facts keep `ts` = first stored; a correction moves `updatedAt`.
+ * Episodes carry `startedAt` / `lastActivityAt` (mindSchema.createEpisode) and none of the
+ * other fields — before 2026-11-24 their itemTime was 0 (audit/recovery, Phase E).
+ */
+const timeOf = v => { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0; };
+const itemTime = x => Math.max(timeOf(x?.updatedAt), timeOf(x?.ts), timeOf(x?.createdAt), timeOf(x?.lastReferencedAt),
+  timeOf(x?.lastActivityAt), timeOf(x?.startedAt));
+export { itemTime as _itemTimeForTests };
 
 function pruneTombstones(t, now = Date.now()) {
   for (const [k, at] of Object.entries(t)) if (now - at > TOMBSTONE_TTL_MS) delete t[k];
@@ -134,16 +141,20 @@ function mergeConcurrent(ours, disk, ctx = {}) {
     for (const [k, at] of Object.entries(disk.tombstones?.[bag] ?? {})) t[k] = Math.max(t[k] ?? 0, at);
   }
   const deletedAt = (bag, key) => ours.tombstones[bag]?.[key] ?? 0;
+  // Deleted only when a tombstone EXISTS and the item did not change after it.
+  // `itemTime <= (tombstone ?? 0)` treated every item with no time fields as
+  // deleted — every episode, on every two-process merge (audit/recovery, Phase E).
+  const isDeleted = (bag, key, item) => { const at = deletedAt(bag, key); return at > 0 && itemTime(item) <= at; };
   for (const bag of TOMBSTONE_BAGS) {
     ours[bag] ??= {};
     for (const [key, item] of Object.entries(disk[bag] ?? {})) {
-      if (itemTime(item) <= deletedAt(bag, key)) continue;          // deleted after this copy was written
+      if (isDeleted(bag, key, item)) continue;                      // deleted after this copy was written
       const mine = ours[bag][key];
       if (!mine || itemTime(item) > itemTime(mine)) ours[bag][key] = item;
     }
     // …and a deletion the OTHER process made removes our older copy.
     for (const [key, item] of Object.entries(ours[bag])) {
-      if (itemTime(item) <= deletedAt(bag, key)) delete ours[bag][key];
+      if (isDeleted(bag, key, item)) delete ours[bag][key];
     }
     if (bag === 'files' && ctx.allowExternalAdditions === false) {
       for (const key of Object.keys(ours.files)) {

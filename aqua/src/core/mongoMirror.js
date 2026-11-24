@@ -196,6 +196,9 @@ const state = {
   leader:        false,     // this instance holds the writer lease
   leaseHolder:   null,      // who does, when it is not us
   knownGen:      new Map(), // filename → generation this instance last saw/wrote
+  knownBytes:    new Map(), // filename → UTF-8 size of that generation (shrink guard, 2026-11-24)
+  shrinkRefused: 0,         // payloads refused by the shrink guard
+  shrinkPreserved: 0,       // generations preserved before a large shrink landed
   writeConflicts: 0,        // CAS conflicts (another writer moved a doc under us)
   lastConflict:  null,
   standbyWarned: false,
@@ -243,6 +246,29 @@ function warn(msg) { console.warn(`[MIRROR] ${msg}`); }
 
 const SYNC_MARKER = '.mirror-sync.json';
 const LOCAL_RECOVERY_TAG = 'local-';
+
+// ── Shrink guard (2026-11-24, audit/recovery Phase E) ────────────────────────
+// Every path to the 2026-11-16 loss ended the same way: a store holding almost
+// nothing replaced a large backup. The state checks above stop the known paths;
+// this stops the outcome, whatever the path (a store that failed to parse and
+// started empty, a bug not yet found). Compared against the generation THIS
+// instance last saw or wrote (knownBytes), never against a fresh remote read.
+//   payload < REFUSE × remote → not written: the file is blocked and the payload
+//                               preserved as a local-recovery copy (RECOVERY REQUIRED)
+//   payload < PRESERVE × remote → the remote generation is preserved first
+//                               (protected from pruning), then the write lands
+// Only above FLOOR bytes: small stores legitimately swing in size.
+// AQUA_MIRROR_SHRINK_GUARD=off disables it (rollback).
+const SHRINK_FLOOR_BYTES = Number(process.env.AQUA_MIRROR_SHRINK_FLOOR_BYTES) || 64 * 1024;
+const SHRINK_REFUSE_RATIO = 0.05;
+const SHRINK_PRESERVE_RATIO = 0.5;
+const shrinkGuardOn = () => String(process.env.AQUA_MIRROR_SHRINK_GUARD ?? 'on').trim().toLowerCase() !== 'off';
+class ShrinkRefused extends Error {
+  constructor(filename, bytes, prev) {
+    super(`${filename}: payload ${bytes} B is under ${SHRINK_REFUSE_RATIO * 100}% of the backup's ${prev} B — refused`);
+    this.code = 'SHRINK_REFUSED';
+  }
+}
 
 const sync = {
   status: 'pending',          // 'pending' | 'verified' | 'unverified' | 'not-configured'
@@ -760,6 +786,10 @@ export async function hydrateFromMongo(dataDir) {
       // The generation our first write of this file must find, whatever the
       // newer-wins decision below — anything else means another writer moved it.
       if (doc.gen !== undefined) state.knownGen.set(filename, doc.gen);
+      // Its size, for the shrink guard (writeOne).
+      const remoteBytes = doc.chunked ? Number(staged?.bytes ?? doc.bytes ?? 0)
+        : (typeof doc.json === 'string' ? Buffer.byteLength(doc.json, 'utf8') : 0);
+      if (remoteBytes > 0) state.knownBytes.set(filename, remoteBytes);
 
       if (doc.chunked && !staged) {
         // Keep the local copy for reading — but never let it overwrite a backup
@@ -779,7 +809,22 @@ export async function hydrateFromMongo(dataDir) {
       // not win on mtime: preserve it in Mongo, then restore the backup.
       // No marker at all = a data dir from before this rule: newer-wins, as before.
       const unknownLineage = fileMtime && marker && !lineageKnown(marker, filename, doc.gen);
-      if (unknownLineage) {
+      if (unknownLineage && state.role !== 'writer') {
+        // A READER never writes the shared mirror (2026-11-24: a developer laptop
+        // wrote its local stores into production as local-recovery docs). Its
+        // local copy is kept on ITS OWN disk, beside the restored backup.
+        const aside = `${target}.local-${Date.now()}`;
+        try {
+          fs.copyFileSync(target, aside);
+          preserved++;
+          warn(`${filename}: local copy has unknown lineage — kept on this disk as ${path.basename(aside)} (reader: the shared mirror is never written), restoring the backup`);
+        } catch (err) {
+          discard();
+          sync.blocked.set(filename, { reason: 'local-unpreservable', remoteGen: doc.gen ?? null, since: Date.now(), preservedAs: null });
+          warn(`${filename}: local copy has unknown lineage and could not be set aside (${err.message}) — keeping it`);
+          continue;
+        }
+      } else if (unknownLineage) {
         try {
           const id = await preserveLocal(col, filename, fs.readFileSync(target, 'utf8'));
           preserved++;
@@ -857,11 +902,13 @@ async function preserveForeignGeneration(col, filename) {
   const cur = await col.findOne({ _id: filename });
   if (!cur) { state.knownGen.delete(filename); return; }
   const preservedId = `${CONFLICT_PREFIX}${filename}/${cur.gen ?? 'nogen'}`;
+  const curBytes = sizeOfDoc(cur);
   await col.updateOne({ _id: preservedId }, { $set: {
     conflict: true, of: filename, gen: cur.gen ?? null, chunked: !!cur.chunked, parts: cur.parts ?? 0,
-    bytes: cur.bytes ?? null, json: cur.json ?? null, writer: cur.writer ?? null, updatedAt: cur.updatedAt ?? null,
+    bytes: curBytes, json: cur.json ?? null, writer: cur.writer ?? null, updatedAt: cur.updatedAt ?? null,
     preservedAt: Date.now(), preservedBy: INSTANCE_ID,
   } }, { upsert: true });
+  if (curBytes) state.knownBytes.set(filename, curBytes);   // the generation our retry now lands over
   await prunePreserved(col, filename);
   state.writeConflicts += 1;
   state.lastConflict ={ filename, foreignGen: cur.gen ?? null, foreignWriter: cur.writer ?? null, preservedAs: preservedId, at: Date.now() };
@@ -876,14 +923,37 @@ async function preserveForeignGeneration(col, filename) {
  * stores would grow the cluster without limit. Best-effort.
  */
 const PRESERVE_PER_FILE = 3;
+/** UTF-8 size of a mirror doc's store: the manifest's `bytes` when chunked, else the body. */
+function sizeOfDoc(d) {
+  if (!d) return null;
+  if (Number(d.bytes) > 0) return Number(d.bytes);
+  return typeof d.json === 'string' ? Buffer.byteLength(d.json, 'utf8') : null;
+}
+/**
+ * Which preserved copies may the count cap delete? (2026-11-24, audit/recovery Phase E.)
+ * Never one that can be the only copy of something:
+ *   · a local-recovery copy (Sprint 1) or one marked `protected` (shrink guard);
+ *   · a copy LARGER than the live generation — it holds more than live does;
+ *   · a copy whose size is unknown (written before sizes were recorded);
+ *   · the largest preserved copy of the file.
+ * The 2026-11-16 pre-loss history and Mind each survived as ONE count-prunable
+ * copy; three deploy-overlap conflicts would have deleted them.
+ */
+export function prunableCopies(docs, liveBytes, keep = PRESERVE_PER_FILE) {
+  const candidates = docs.filter(d => !d.localRecovery && !d.protected)
+    .sort((a, b) => Number(b.preservedAt ?? 0) - Number(a.preservedAt ?? 0));
+  const largest = candidates.reduce((m, d) => (Number(d.bytes ?? 0) > Number(m?.bytes ?? -1) ? d : m), null);
+  return candidates.slice(keep).filter(d => {
+    if (d === largest) return false;
+    if (!(Number(d.bytes) > 0)) return false;
+    if (liveBytes != null && Number(d.bytes) > liveBytes) return false;
+    return true;
+  });
+}
 async function prunePreserved(col, filename) {
   try {
-    const docs = (await col.find({ conflict: true, of: filename }, META_ONLY).toArray())   // bodies not needed
-      // A local copy preserved during outage recovery can be the ONLY copy of
-      // what users wrote meanwhile: never pruned automatically (Sprint 1).
-      .filter(d => !d.localRecovery)
-      .sort((a, b) => Number(b.preservedAt ?? 0) - Number(a.preservedAt ?? 0));
-    for (const d of docs.slice(PRESERVE_PER_FILE)) {
+    const docs = await col.find({ conflict: true, of: filename }, META_ONLY).toArray();   // bodies not needed
+    for (const d of prunableCopies(docs, state.knownBytes.get(filename) ?? null)) {
       if (typeof col.deleteMany !== 'function') break;
       await col.deleteMany({ _id: d._id });
       if (d.chunked && d.gen != null) await col.deleteMany({ part: true, of: filename, gen: d.gen });
@@ -906,11 +976,44 @@ async function casUpdate(col, filename, $set) {
   throw new Error(`generation conflict on ${filename} persisted across 3 attempts`);
 }
 
+/**
+ * Copy the generation this instance knows as live to `conflict/<file>/<tag>-<gen>`,
+ * PROTECTED from pruning. Used before a large shrink lands. Chunked: the manifest
+ * (its parts stay under the live name, and part GC is skipped while a chunked
+ * preserved copy exists).
+ */
+async function preserveCurrentGeneration(col, filename, tag) {
+  const cur = await col.findOne({ _id: filename });
+  if (!cur) return null;
+  const id = `${CONFLICT_PREFIX}${filename}/${tag}-${cur.gen ?? 'nogen'}`;
+  await col.updateOne({ _id: id }, { $set: {
+    conflict: true, protected: true, reason: tag, of: filename, gen: cur.gen ?? null, chunked: !!cur.chunked, parts: cur.parts ?? 0,
+    bytes: sizeOfDoc(cur), json: cur.json ?? null, writer: cur.writer ?? null, updatedAt: cur.updatedAt ?? null,
+    preservedAt: Date.now(), preservedBy: INSTANCE_ID,
+  } }, { upsert: true });
+  return id;
+}
+
+/** Shrink guard (see SHRINK_*): throws ShrinkRefused, or preserves the remote first. */
+async function guardShrink(col, filename, bytes) {
+  if (!shrinkGuardOn()) return;
+  const prev = state.knownBytes.get(filename) ?? 0;
+  if (prev < SHRINK_FLOOR_BYTES) return;
+  if (bytes < prev * SHRINK_REFUSE_RATIO) throw new ShrinkRefused(filename, bytes, prev);
+  if (bytes < prev * SHRINK_PRESERVE_RATIO) {
+    const id = await preserveCurrentGeneration(col, filename, 'shrink');
+    state.shrinkPreserved += 1;
+    warn(`SHRINK on ${filename}: ${prev} B → ${bytes} B — the previous generation is preserved as "${id}" (protected) before this write lands`);
+  }
+}
+
 async function writeOne(col, filename, json) {
   const bytes = Buffer.byteLength(json, 'utf8');
+  await guardShrink(col, filename, bytes);
 
   if (bytes <= CHUNK_BYTES) {
-    await casUpdate(col, filename, { json, updatedAt: Date.now(), chunked: false, parts: 0, gen: nextGen(), writer: INSTANCE_ID });
+    await casUpdate(col, filename, { json, updatedAt: Date.now(), chunked: false, parts: 0, bytes, gen: nextGen(), writer: INSTANCE_ID });
+    state.knownBytes.set(filename, bytes);
     return;
   }
 
@@ -927,6 +1030,7 @@ async function writeOne(col, filename, json) {
     );
   }
   await casUpdate(col, filename, { chunked: true, parts: n, gen, updatedAt: Date.now(), bytes, json: null, writer: INSTANCE_ID });
+  state.knownBytes.set(filename, bytes);
   // GC superseded generations (best-effort; harmless if unsupported/failed —
   // hydration matches parts by gen, so stale parts are inert, just storage).
   // Never while a preserved (conflict) generation of this file exists: its
@@ -987,6 +1091,16 @@ async function upsertLoop(filename) {
       state.retryAttempts.delete(filename);
       noteOk();
     } catch (err) {
+      if (err?.code === 'SHRINK_REFUSED') {
+        // The backup stays as it is; this payload is kept beside it (the
+        // blocked branch above preserves it on the next pass), and status says
+        // RECOVERY REQUIRED. Never retried as-is: it would be refused again.
+        state.shrinkRefused += 1;
+        sync.blocked.set(filename, { reason: 'shrink-refused', remoteGen: state.knownGen.get(filename) ?? null, since: Date.now(), preservedAs: null });
+        warn(`SHRINK REFUSED — ${err.message}; the backup is left untouched and this payload is preserved as a local-recovery copy`);
+        requeue(filename, json);
+        continue;
+      }
       // DO NOT DROP. Before this, a failed upsert discarded the JSON and only
       // "retried" if the store happened to be written again — so a transient
       // Atlas outage silently cost a low-traffic store its newest generation.
@@ -1037,6 +1151,24 @@ function flushQueued() {
     if (t) { clearTimeout(t); state.retryTimers.delete(filename); }
     drive(filename);
   }
+}
+
+/**
+ * A store restored from the mirror could not be loaded (it failed to parse) and
+ * is running from a fallback (`.bak`, or empty). Its flushes must never replace
+ * the backup it failed to load (2026-11-24, audit/recovery Phase E, risk R-A3):
+ * block the file exactly like an unverified one. Only files this process
+ * actually saw in the mirror are blocked — a local-only file has no backup.
+ * @returns {boolean} whether the file is now blocked
+ */
+export function blockMirrorFile(filePath, reason = 'local-load-failed') {
+  const filename = path.basename(String(filePath ?? ''));
+  if (!filename || !state.knownGen.has(filename)) return false;
+  if (!sync.blocked.has(filename)) {
+    sync.blocked.set(filename, { reason, remoteGen: state.knownGen.get(filename) ?? null, since: Date.now(), preservedAs: null });
+    warn(`${filename}: ${reason} — NOT mirroring it over the backup; RECOVERY REQUIRED (restart to reload the backup)`);
+  }
+  return true;
 }
 
 /**
@@ -1150,6 +1282,7 @@ export function getMirrorStatus() {
     leaseHolder:  state.leaseHolder,
     writeConflicts: state.writeConflicts,   // generation CAS hits; each preserved, never silently overwritten
     lastConflict: state.lastConflict,
+    shrinkGuard:  { on: shrinkGuardOn(), refused: state.shrinkRefused, preserved: state.shrinkPreserved },
     chunkBytes:   CHUNK_BYTES,
     // Sprint 1 — verified initialization. File names are store names (.aqua-*.json), never user data.
     sync: {
@@ -1207,8 +1340,10 @@ export function __resetForTests() {
     lastOkAt: null, lastFailureAt: null, consecutiveFailures: 0,
     warnKey: null, warnAt: 0, warnSuppressed: 0, retryDelayOverride: null,
     role: configuredRole(), leader: false, leaseHolder: null, writeConflicts: 0, lastConflict: null, standbyWarned: false,
+    shrinkRefused: 0, shrinkPreserved: 0,
   });
   state.knownGen.clear();
+  state.knownBytes.clear();
   state.pending.clear();
   state.inflight.clear();
   state.retryTimers.clear();

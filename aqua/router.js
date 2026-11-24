@@ -52,6 +52,7 @@ import { ensureOwnerLoaded, anyAuthoritative as anyPartitionStoreAuthoritative }
 import { runWithWriteScope } from './src/core/storage/requestWrites.js';
 import { dataClassScope } from './src/core/egressGuard.js';
 import { installResponseGate } from './src/core/storage/responseGate.js';
+import { storeGateMiddleware } from './src/core/storeGate.js';
 import { ownerForUser } from './src/memory/ownerResolver.js';
 import { errorMeta, stackFrames } from './src/core/logSafety.js';
 import { configureTelemetryFromEnv } from './src/core/telemetryExport.js';
@@ -247,6 +248,11 @@ router.use((req, res, next) => runWithWriteScope(() => { installResponseGate(req
 // external source's) adds its class, and every outbound model call checks the
 // scope. A provider call with no scope at all is refused (fail closed).
 router.use(dataClassScope('user'));
+
+// 2026-11-24 (audit/recovery Phase E) — never serve user data from stores that
+// are not known to equal the Mongo backup (unverified start / recovery required).
+// Open when no mirror is configured, and with AQUA_STORE_GATE=off.
+router.use(storeGateMiddleware());
 
 // Phase 2b — the unit-of-work load. When any store is authoritative on owner
 // partitions (AQUA_STORE_PARTITIONS=<store>:on), this request's owner is loaded

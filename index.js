@@ -800,6 +800,17 @@ app.get("/health", (req, res) => res.status(200).json({ status: "OK", timestamp:
 let draining = false;
 app.get("/ready", async (req, res) => {
   const checks = { mongo: mongoose.connection.readyState === 1, engine: aquaMounted, accepting: !draining };
+  // 2026-11-24 (audit/recovery Phase E): stores known to equal the Mongo backup.
+  // False while unverified / recovery required — an orchestrator using /ready
+  // then restarts the instance, which re-hydrates (aqua/src/core/storeGate.js).
+  if (aquaMounted) {
+    try {
+      const { storeGateReason } = await import("./aqua/src/core/storeGate.js");
+      checks.stores = storeGateReason() === null;
+    } catch {
+      checks.stores = false;
+    }
+  }
   if (process.env.DATABASE_URL) {
     try {
       const { isReachable } = await import("./aqua/src/core/db/pool.js");
